@@ -594,7 +594,7 @@ def main():
                 if  not printStarted:
 
                     print "\nHeating bed (t0: %d)...\n" % t0
-                    printer.heatUp(HeaterBed, t0)
+                    printer.heatUp(HeaterBed, t0, t0)
                     print "\nHeating extruder (t1: %d)...\n" % t1
                     printer.heatUp(HeaterEx1, t1, wait=0.95 * t1)
 
@@ -621,7 +621,7 @@ def main():
         if not printStarted:
 
             print "\nHeating bed (t0: %d)...\n" % t0
-            printer.heatUp(HeaterBed, t0)
+            printer.heatUp(HeaterBed, t0, t0)
             print "\nHeating extruder (t1: %d)...\n" % t1
             printer.heatUp(HeaterEx1, t1, wait=0.95 * t1)
 
