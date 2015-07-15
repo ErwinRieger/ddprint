@@ -68,32 +68,14 @@ from ddprinter import Printer
 # logger.setLevel(logging.DEBUG)
 
 #
-# todo handle non-extrusion moves -> traveling movev
 # todo check max move length (max_length_steps)
-# todo handle decelleration on last step
 # todo Optimierung joinMovesFwd(): z.b. beschleunigung über mehrere gleich gerichtete steps (kommt das oft vor?)?
 #
 #
 # Nicht so dringend:
 #
-# todo implement slowdown if buffer drains in firmware, xxx needed or are we fast enough?
 # todo check for cura flavor gcode (extrude-length computing)
 # todo resend funktioniert nur mit dem aktuellen kommando, es dürfen nicht mehrere kommandos verloren gehen.
-#
-# docs/hints:
-#
-#   jerk/join:
-#      * https://github.com/Traumflug/Teacup_Firmware/issues/43
-#      * https://github.com/Traumflug/Teacup_Firmware/issues/45
-#      * https://github.com/Traumflug/Teacup_Firmware/issues/68
-#
-# https://github.com/ambrop72/aprinter/tree/master/aprinter
-# http://forums.parallax.com/showthread.php/159950-The-Teacup-Port-A-Work-In-Progress-3D-Printer-Firmware
-#
-#
-# Testfiles von anderen:
-#   * teacup
-#
 #
 # Move-Join, gestückelte verarbeitung, streaming:
 # -----------------------------------------------
