@@ -1,0 +1,35 @@
+{
+  "machinenames" : ["UM2"],
+  "axes"  : {
+    "X" : {
+      "platform_length" : 230,
+      "max_feedrate"  : 300,
+      "steps_per_mm"  : 80,
+      "jerk"          : 20
+    },
+    "Y" : {
+      "platform_length":  230,
+      "max_feedrate"  : 300,
+      "steps_per_mm"  : 80,
+      "jerk"          : 20
+    },
+    "Z" : {
+      "platform_length": 230,
+      "max_feedrate"  : 40,
+      "steps_per_mm"  : 200,
+      "jerk"          : 0.5
+    },
+    "A" : {
+      "max_feedrate"  : 45,
+      "steps_per_mm"  : 282,
+      "jerk"          : 5
+    },
+    "B" : {
+      "max_feedrate"  : 45,
+      "steps_per_mm"  : 282,
+      "jerk"          : 5
+    }
+  }
+}
+
+

@@ -1,0 +1,115 @@
+#/*
+# This file is part of ddprint - a direct drive 3D printer firmware.
+# 
+# Copyright 2015 erwin.rieger@ibrieger.de
+# 
+# ddprint is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+# 
+# ddprint is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+# 
+# You should have received a copy of the GNU General Public License
+# along with ddprint.  If not, see <http://www.gnu.org/licenses/>.
+#*/
+
+HARDWARE_MOTHERBOARD ?= 72
+HARDWARE_VARIANT ?= arduino
+MCU              ?= atmega2560
+F_CPU ?= 16000000
+HARDWARE_SUB_VARIANT ?= mega
+
+ARDUINO_INSTALL_DIR = /home/erwin/elektronik/arduino-1.0.1
+HW = $(ARDUINO_INSTALL_DIR)/hardware/tools/avr/lib/avr/include
+
+VPATH += $(ARDUINO_INSTALL_DIR)/hardware/arduino/variants/$(HARDWARE_SUB_VARIANT)
+
+DEFS = -D__AVR__ -D__ATTR_PROGMEM__= -DF_CPU=$(F_CPU) -D__OPTIMIZE__ -D__AVR_ATmega2560__ -DARDUINO=100 
+# DEFS =           -D__ATTR_PROGMEM__= -DF_CPU=$(F_CPU) -D__OPTIMIZE__ -D__AVR_ATmega2560__ -DARDUINO=100 
+# -mmcu=$(MCU)
+
+# PROF = -g -pg -DPROFILING -fno-omit-frame-pointer -msoft-float
+# MATHEMUL = -L simulator/libgcc/soft-fp -lsoft-fp
+
+DEFINES = -DDDSim $(PROF) -I./simulator -I.
+
+all: temperature.o ddprint.o ddprintSim.o stepper.o stepperSim.o MarlinSerial.o MarlinSerialSim.o ArduinoSim.o swapdev.o swapdevSim.o eepromSettings.o
+	gcc -g -o sim $(DEFINES) temperature.o ddprint.o ddprintSim.o MarlinSerial.o MarlinSerialSim.o stepper.o stepperSim.o ArduinoSim.o swapdev.o swapdevSim.o eepromSettings.o -lm -lstdc++ -lpthread $(MATHEMUL)
+
+swapdev.o: swapdev.cpp ddprint.h Configuration.h swapdev.h
+	gcc  $(DEFINES)  -fpermissive -Wno-write-strings $(DEFS) -g -c swapdev.cpp 
+
+swapdevSim.o: simulator/swapdevSim.cpp ddprint.h Configuration.h swapdev.h
+	gcc  $(DEFINES)  -fpermissive -Wno-write-strings $(DEFS) -g -c simulator/swapdevSim.cpp 
+
+ArduinoSim.o: simulator/ArduinoSim.cpp ddprint.h Configuration.h
+	gcc  $(DEFINES)  -fpermissive -Wno-write-strings $(DEFS) -g -c simulator/ArduinoSim.cpp 
+
+ddprintSim.o: simulator/ddprintSim.cpp ddprint.h stepper.h Configuration.h simulator/Arduino.h
+	gcc  $(DEFINES)  -fpermissive -Wno-write-strings $(DEFS) -g -c simulator/ddprintSim.cpp 
+
+MarlinSerial.o: MarlinSerial.cpp ddprint.h MarlinSerial.h Configuration.h
+	gcc  $(DEFINES)  -fpermissive -Wno-write-strings $(DEFS) -g -c MarlinSerial.cpp 
+
+MarlinSerialSim.o: simulator/MarlinSerialSim.cpp ddprint.h MarlinSerial.h simulator/MarlinSerialSim.h Configuration.h
+	gcc  $(DEFINES)  -fpermissive -Wno-write-strings $(DEFS) -g -c simulator/MarlinSerialSim.cpp 
+
+ddprint.o: ddprint.cpp ddprint.h stepper.h Configuration.h swapdev.h
+	gcc  $(DEFINES)  -fpermissive -Wno-write-strings $(DEFS) -g -c ddprint.cpp 
+
+planner.o: planner.cpp planner.h ddprint.h
+	gcc  $(DEFINES)  -fpermissive -Wno-write-strings $(DEFS) -g -c planner.cpp 
+
+stepperSim.o: simulator/stepperSim.cpp ddprint.h simulator/stepperSim.h
+	gcc  $(DEFINES)  -fpermissive -Wno-write-strings $(DEFS) -g -c simulator/stepperSim.cpp 
+
+stepper.o: stepper.cpp ddprint.h stepper.h
+	gcc  $(DEFINES)  -fpermissive -Wno-write-strings $(DEFS) -g -c stepper.cpp 
+
+UltiLCD2.o: UltiLCD2.cpp ddprint.h stepper.h
+	gcc  $(DEFINES)  -fpermissive -Wno-write-strings $(DEFS) -g -c UltiLCD2.cpp 
+
+UltiLCD2_menu_material.o: UltiLCD2_menu_material.cpp ddprint.h stepper.h
+	gcc  $(DEFINES)  -fpermissive -Wno-write-strings $(DEFS) -g -c UltiLCD2_menu_material.cpp
+
+UltiLCD2_hi_lib.o: UltiLCD2_hi_lib.cpp ddprint.h stepper.h
+	gcc  $(DEFINES)  -fpermissive -Wno-write-strings $(DEFS) -g -c UltiLCD2_hi_lib.cpp
+
+UltiLCD2_gfx.o: UltiLCD2_gfx.cpp ddprint.h stepper.h
+	gcc  $(DEFINES)  -fpermissive -Wno-write-strings $(DEFS) -g -c UltiLCD2_gfx.cpp
+
+UltiLCD2_menu_first_run.o: UltiLCD2_menu_first_run.cpp ddprint.h stepper.h
+	gcc  $(DEFINES)  -fpermissive -Wno-write-strings $(DEFS) -g -c UltiLCD2_menu_first_run.cpp
+
+UltiLCD2_menu_print.o: UltiLCD2_menu_print.cpp ddprint.h stepper.h
+	gcc  $(DEFINES)  -fpermissive -Wno-write-strings $(DEFS) -g -c UltiLCD2_menu_print.cpp
+
+UltiLCD2_menu_maintenance.o: UltiLCD2_menu_maintenance.cpp ddprint.h stepper.h
+	gcc  $(DEFINES)  -fpermissive -Wno-write-strings $(DEFS) -g -c UltiLCD2_menu_maintenance.cpp
+
+# lifetime_stats.o: lifetime_stats.cpp ddprint.h stepper.h
+#	gcc  $(DEFINES)  -fpermissive -Wno-write-strings $(DEFS) -g -c lifetime_stats.cpp
+
+ConfigurationStore.o: ConfigurationStore.cpp ddprint.h stepper.h
+	gcc  $(DEFINES)  -fpermissive -Wno-write-strings $(DEFS) -g -c ConfigurationStore.cpp
+
+temperature.o: temperature.cpp ddprint.h temperature.h
+	gcc  $(DEFINES)  -fpermissive -Wno-write-strings $(DEFS) -g -c temperature.cpp
+
+tasks.o: tasks.cpp ddprint.h tasks.h
+	gcc  $(DEFINES)  -fpermissive -Wno-write-strings $(DEFS) -g -c tasks.cpp
+
+eepromSettings.o: eepromSettings.cpp ddprint.h eepromSettings.h Configuration.h
+	gcc  $(DEFINES)  -fpermissive -Wno-write-strings $(DEFS) -g -c eepromSettings.cpp 
+
+run: all
+	./sim
+   
+clean: 
+	rm -f *.o
+	rm -f sim sim.gcode
+	
