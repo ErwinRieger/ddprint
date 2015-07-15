@@ -53,7 +53,7 @@ import threading, time, traceback, logging, pprint, sys, math
 import argparse, struct, collections
 
 
-import ddprintutil as util, gcodeparser, PackedValue
+import ddprintutil as util, gcodeparser, packedvalue
 from ddprintutil import X_AXIS, Y_AXIS, vectorAdd, vectorSub, circaf
 from move import VVector, Move
 
@@ -773,7 +773,7 @@ def main():
     elif args.mode == 'fanspeed':
 
         printer.commandInit(args)
-        printer.sendCommandParam(CmdFanSpeed, p1=PackedValue.uint8_t(args.speed), wantReply="ok")
+        printer.sendCommandParam(CmdFanSpeed, p1=packedvalue.uint8_t(args.speed), wantReply="ok")
 
     elif args.mode == 'test':
 

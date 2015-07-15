@@ -21,7 +21,7 @@
 
 import math, collections
 
-import ddprintutil as util, dddumbui, PackedValue
+import ddprintutil as util, dddumbui, packedvalue
 from ddprofile import PrinterProfile, MatProfile
 from move import VVector, Move
 
@@ -208,8 +208,8 @@ class Planner (object):
             self.gui.log("Layer2, reducing bedtemp to: ", bedTemp)
             self.addSynchronizedCommand(
                 CmdSyncTargetTemp, 
-                p1 = PackedValue.uint8_t(HeaterBed),
-                p2 = PackedValue.uint16_t(bedTemp))
+                p1 = packedvalue.uint8_t(HeaterBed),
+                p2 = packedvalue.uint16_t(bedTemp))
 
     # Called from gcode parser
     def addMove(self, move):
@@ -440,8 +440,8 @@ class Planner (object):
                         # Schedule target temp command
                         self.printer.sendCommandParam(
                             CmdSyncTargetTemp,
-                            p1=PackedValue.uint8_t(HeaterEx1),
-                            p2=PackedValue.uint16_t(newTemp),
+                            p1=packedvalue.uint8_t(HeaterEx1),
+                            p2=packedvalue.uint16_t(newTemp),
                             wantReply=None)
 
                         self.pathData.lastTemp = newTemp
