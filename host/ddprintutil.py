@@ -25,7 +25,7 @@ import ddprintconstants
 from ddprintcommands import *
 from ddprintstates import *
 from ddprintconstants import dimNames
-from ddprofile import PrinterProfile
+from ddprofile import PrinterProfile, MatProfile
 
 debugMoves = True
 debugMoves = False
@@ -792,7 +792,7 @@ def insertFilament(args, parser):
     while printer.query(CmdGetState) != StateInit:
         time.sleep(1)
 
-    self.mat_t1 = MatProfile.getHotendBaseTemp()
+    t1 = MatProfile.getHotendBaseTemp()
     printer.heatUp(HeaterEx1, t1, wait=t1 - 5)
 
     print "\nInsert filament.\n"
@@ -817,7 +817,7 @@ def insertFilament(args, parser):
     while printer.query(CmdGetState) != StateInit:
         time.sleep(1)
 
-    printer.coolDown(HeaterEx1,wait=150)
+    printer.coolDown(HeaterEx1, wait=150)
 
 ####################################################################################################
 
@@ -849,7 +849,7 @@ def removeFilament(args, parser):
     while printer.query(CmdGetState) != StateInit:
         time.sleep(1)
 
-    self.mat_t1 = MatProfile.getHotendBaseTemp()
+    t1 = MatProfile.getHotendBaseTemp()
     printer.heatUp(HeaterEx1, t1, wait=t1 - 5)
 
     manualMove(parser, A_AXIS, -1.3*FILAMENT_REVERSAL_LENGTH)
@@ -865,7 +865,7 @@ def retract(args, parser):
 
     commonInit(args, parser)
 
-    self.mat_t1 = MatProfile.getHotendBaseTemp()
+    t1 = MatProfile.getHotendBaseTemp()
     printer.heatUp(HeaterEx1, t1, wait=t1 - 5)
 
     # hack
