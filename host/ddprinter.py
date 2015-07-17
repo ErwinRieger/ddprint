@@ -192,8 +192,10 @@ class Printer(Serial):
             try:
                 recvLine = self.safeReadline()        
             except SERIALDISCON:
-                self.gui.log("Line disconnected in readMore")
-                return
+                self.gui.logError("Line disconnected in processCommand(). Trying reconnect!")
+                self.reconnect()
+                time.sleep(0.1)
+                continue
 
             if recvLine:
                 if ord(recvLine[0]) > 20:
