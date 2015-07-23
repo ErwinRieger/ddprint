@@ -1014,6 +1014,24 @@ def bedLeveling(args, parser):
 
 ####################################################################################################
 
+def bedLevelAdjust(args, parser):
+
+    planner = parser.planner
+    printer = planner.printer
+
+    printer.initSerial(args.device, args.baud)
+    printer.sendCommand(CmdResetLineNr)
+
+    distance = float(args.distance)
+
+    add_homeing_z = printer.query(CmdGetEepromSettings)['add_homeing'][Z_AXIS] + distance
+
+    # Store new bedlevel offset in printer eeprom
+    payload = struct.pack("<pf", "add_homeing_z", add_homeing_z)
+    printer.sendCommand(CmdWriteEepromFloat, binPayload=payload, wantReply="ok")
+
+####################################################################################################
+
 def storeSD(parser):
 
     driver = parser.planner
