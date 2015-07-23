@@ -537,6 +537,9 @@ def main():
 
     sp = subparsers.add_parser("bedLeveling", help=u"Do bed leveling sequence.")
 
+    sp = subparsers.add_parser("bedLevelAdjust", help=u"Adjust bedleveling offset - dangerous.")
+    sp.add_argument("distance", help="Adjust-distance (+/-) in mm.", type=float)
+
     sp = subparsers.add_parser("heatHotend", help=u"Heat up hotend (to clean it, etc).")
 
     sp = subparsers.add_parser("getPos", help=u"Get current printer and virtual position.")
@@ -717,6 +720,10 @@ def main():
     elif args.mode == 'bedLeveling':
 
         util.bedLeveling(args, parser)
+
+    elif args.mode == 'bedLevelAdjust':
+
+        util.bedLevelAdjust(args, parser)
 
     elif args.mode == 'heatHotend':
 
