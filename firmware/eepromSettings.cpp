@@ -25,14 +25,14 @@
 #include "MarlinSerial.h"
 #include "Configuration.h"
 
-#define EEPROM_OFFSET 100
+#define EEPROM_OFFSET ((uint8_t*)100)
 #define EEPROM_VERSION "V11"
 
-void _EEPROM_readData(int &pos, uint8_t* value, uint8_t size)
+void _EEPROM_readData(uint8_t * &pos, uint8_t* value, uint8_t size)
 {
     do
     {
-        *value = eeprom_read_byte((unsigned char*)pos);
+        *value = eeprom_read_byte(pos);
         pos++;
         value++;
     }while(--size);
@@ -59,7 +59,7 @@ void inline eeprom_write_float(float* addr, float f)
 
 void getEepromVersion() {
 
-    int i = EEPROM_OFFSET;
+    uint8_t * i = EEPROM_OFFSET;
     char stored_ver[4];
 
     EEPROM_READ_VAR(i, stored_ver); //read stored version
