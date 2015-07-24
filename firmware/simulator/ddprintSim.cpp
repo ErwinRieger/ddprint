@@ -762,52 +762,52 @@ void eepromFlush() {
 uint8_t eeprom_read_byte (const uint8_t *__p)
 {  
     eepromROOpen();
-    return __eeprom__storage[int(__p)];
+    return __eeprom__storage[long(__p)];
 }
 
 uint16_t eeprom_read_word (const uint16_t *__p)
 {
     eepromROOpen();
-    return *(uint16_t*)&__eeprom__storage[int(__p)];
+    return *(uint16_t*)&__eeprom__storage[long(__p)];
 }
 
 #define LIFETIME_EEPROM_OFFSET 0x700
 uint32_t eeprom_read_dword (const uint32_t *__p)
 {
     eepromROOpen();
-    return *(uint32_t*)&__eeprom__storage[int(__p)];
+    return *(uint32_t*)&__eeprom__storage[long(__p)];
 }
 
 void eeprom_read_block (void *__dst, const void *__src, size_t __n)
 {
     eepromROOpen();
-    memcpy(__dst, &__eeprom__storage[int(__src)], __n);
+    memcpy(__dst, &__eeprom__storage[long(__src)], __n);
 }
 
 void eeprom_write_dword (uint32_t *__p, uint32_t __value)
 {
     eepromROOpen();
-    *(uint32_t*)&__eeprom__storage[int(__p)] = __value;
+    *(uint32_t*)&__eeprom__storage[long(__p)] = __value;
     eepromFlush();
 }
 
 void eeprom_write_word (uint16_t *__p, uint16_t __value)
 {
     eepromROOpen();
-    *(uint16_t*)&__eeprom__storage[int(__p)] = __value;
+    *(uint16_t*)&__eeprom__storage[long(__p)] = __value;
     eepromFlush();
 }
 
 void eeprom_write_byte (uint8_t *__p, uint8_t __value)
 {
     eepromROOpen();
-    __eeprom__storage[int(__p)] = __value;
+    __eeprom__storage[long(__p)] = __value;
     eepromFlush();
 }
 
 void eeprom_write_block(const void * __src, void * __dst, size_t __n) {
     eepromROOpen();
-    memcpy(__eeprom__storage+(int)__dst, __src, __n);
+    memcpy(__eeprom__storage+(long)__dst, __src, __n);
     eepromFlush();
 }
 
