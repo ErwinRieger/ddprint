@@ -25,16 +25,7 @@
 //
 // #define HEAVYDEBUG 1
 
-#if defined(__i386__)
-
-    #include <assert.h>
-    #define massert assert
-
-    // Assertion that is only active in simulation
-    #define simassert assert
-
-    #define FWINLINE 
-#else
+#if defined(AVR)
 
     extern void kill(const char*);
     #define  massert(expr) { \
@@ -45,6 +36,17 @@
     #define simassert(x) 
 
     #define FWINLINE inline
+
+#else
+
+    #include <assert.h>
+    #define massert assert
+
+    // Assertion that is only active in simulation
+    #define simassert assert
+
+    #define FWINLINE  /* */
+
 #endif
 
 #endif
