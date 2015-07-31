@@ -59,6 +59,10 @@ class UM2GcodeParser:
                 "G1": self.g0,
                 "G10": self.g10_retract,
                 "G11": self.g11_retract_recover,
+                "G21": self.g21_metric_values,
+                "G28": self.g28_home,
+                "G29": self.g29_autolevel,
+                "G90": self.g90_abs_values,
                 "G92": self.g92_set_pos,
                 "M25": self.m25_stop_reading,
                 "M106": self.m106_fan_on,
@@ -232,6 +236,22 @@ class UM2GcodeParser:
                     }
             self.g0("G11", values)
             self.retracted = False
+
+    def g21_metric_values(self, line, values):
+        # We're always using metric values...
+        pass
+
+    def g28_home(self, line, values):
+        # Homing is done implicitly...
+        pass
+
+    def g29_autolevel(self, line, values):
+        # Autoleveling not implemented
+        pass
+
+    def g90_abs_values(self, line, values):
+        # We're always using absolute coords...
+        pass
 
     def g92_set_pos(self, line, values):
 
