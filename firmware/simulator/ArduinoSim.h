@@ -46,7 +46,7 @@
 
     #define WDTO_4S 4
 
-    #define LCD_ALERTMESSAGEPGM(s) printf(s"\n")
+    // #define LCD_ALERTMESSAGEPGM(s) printf(s"\n")
 
     #define PROGMEM /**/
     #define  PSTR(x) x

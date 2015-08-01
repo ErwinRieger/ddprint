@@ -46,7 +46,7 @@
     #define OCIE1B 2
     #define OCIE3A 0
 
-    #define LCD_ALERTMESSAGEPGM(s) printf(s"\n")
+    // #define LCD_ALERTMESSAGEPGM(s) printf(s"\n")
 
     #define PROGMEM /**/
     #define _BV(x) x
