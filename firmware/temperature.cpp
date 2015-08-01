@@ -31,7 +31,7 @@
 #include <Arduino.h>
 
 #include "temperature.h"
-#include "temp.h"
+#include "ddtemp.h"
 #include "pins.h"
 #include "fastio.h"
 #include "MarlinSerial.h"
