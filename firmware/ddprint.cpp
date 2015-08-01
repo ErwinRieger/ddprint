@@ -26,6 +26,7 @@
 #include "ddprint.h"
 #include "MarlinSerial.h"
 #include "temperature.h"
+#include "ddtemp.h"
 #include "stepper.h"
 #include "swapdev.h"
 #include "eepromSettings.h"
@@ -147,7 +148,7 @@ void kill(const char* msg) {
   SERIAL_ERROR_START;
   SERIAL_ECHO(MSG_ERR_KILLED);
   SERIAL_ECHOLN(msg);
-  LCD_ALERTMESSAGEPGM(MSG_KILLED);
+  // LCD_ALERTMESSAGEPGM(MSG_KILLED);
 
   // We hav no suicide-pin
   // suicide();
