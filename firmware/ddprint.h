@@ -49,27 +49,11 @@
 #define MSG_KILLED "KILLED. "
 
 
-#define STOP_REASON_MAXTEMP              1
-#define STOP_REASON_MINTEMP              2
-#define STOP_REASON_MAXTEMP_BED          3
-#define STOP_REASON_HEATER_ERROR         4
-#define STOP_REASON_MINTEMP_BED          11
-
 #define LCD_MESSAGEPGM(x) SERIAL_PROTOCOLLNPGM(x)
 #define lcd_setstatus(message) SERIAL_PROTOCOLLN(message)
-#if defined(MarlinFw)
-    #define LCD_ALERTMESSAGEPGM(s) SERIAL_PROTOCOLLNPGM(s)
-#endif
-
-#if EXTRUDERS > 3
-  # error Unsupported number of extruders
-#elif EXTRUDERS > 2
-  # define ARRAY_BY_EXTRUDERS(v1, v2, v3) { v1, v2, v3 }
-#elif EXTRUDERS > 1
-  # define ARRAY_BY_EXTRUDERS(v1, v2, v3) { v1, v2 }
-#else
-  # define ARRAY_BY_EXTRUDERS(v1, v2, v3) { v1 }
-#endif
+// #if defined(MarlinFw)
+    // #define LCD_ALERTMESSAGEPGM(s) SERIAL_PROTOCOLLNPGM(s)
+// #endif
 
 #if defined(X_ENABLE_PIN) && X_ENABLE_PIN > -1
   #define  enable_x() WRITE(X_ENABLE_PIN, X_ENABLE_ON)
