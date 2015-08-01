@@ -37,8 +37,8 @@ DEFS = -D__AVR__ -D__ATTR_PROGMEM__= -DF_CPU=$(F_CPU) -D__OPTIMIZE__ -D__AVR_ATm
 
 DEFINES = -DDDSim $(PROF) -I./simulator -I.
 
-all: temperature.o ddprint.o ddprintSim.o stepper.o stepperSim.o MarlinSerial.o MarlinSerialSim.o ArduinoSim.o swapdev.o swapdevSim.o eepromSettings.o
-	gcc -g -o sim $(DEFINES) temperature.o ddprint.o ddprintSim.o MarlinSerial.o MarlinSerialSim.o stepper.o stepperSim.o ArduinoSim.o swapdev.o swapdevSim.o eepromSettings.o -lm -lstdc++ -lpthread $(MATHEMUL)
+all: temperature.o temp.o ddprint.o ddprintSim.o stepper.o stepperSim.o MarlinSerial.o MarlinSerialSim.o ArduinoSim.o swapdev.o swapdevSim.o eepromSettings.o
+	gcc -g -o sim $(DEFINES) temperature.o temp.o ddprint.o ddprintSim.o MarlinSerial.o MarlinSerialSim.o stepper.o stepperSim.o ArduinoSim.o swapdev.o swapdevSim.o eepromSettings.o -lm -lstdc++ -lpthread $(MATHEMUL)
 
 swapdev.o: swapdev.cpp ddprint.h Configuration.h swapdev.h
 	gcc  $(DEFINES)  -fpermissive -Wno-write-strings $(DEFS) -g -c swapdev.cpp 
@@ -99,6 +99,9 @@ ConfigurationStore.o: ConfigurationStore.cpp ddprint.h stepper.h
 
 temperature.o: temperature.cpp ddprint.h temperature.h
 	gcc  $(DEFINES)  -fpermissive -Wno-write-strings $(DEFS) -g -c temperature.cpp
+
+temp.o: temp.cpp ddprint.h temp.h
+	gcc  $(DEFINES)  -fpermissive -Wno-write-strings $(DEFS) -g -c temp.cpp
 
 tasks.o: tasks.cpp ddprint.h tasks.h
 	gcc  $(DEFINES)  -fpermissive -Wno-write-strings $(DEFS) -g -c tasks.cpp
