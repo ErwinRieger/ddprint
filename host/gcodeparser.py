@@ -67,6 +67,7 @@ class UM2GcodeParser:
                 "M25": self.m25_stop_reading,
                 "M106": self.m106_fan_on,
                 "M107": self.m107_fan_off,
+                "M117": self.m117_message,
                 }
 
         # To compute extrude length from volume (see getValues()):
@@ -150,9 +151,11 @@ class UM2GcodeParser:
             # print "line:", tokens
             meth = self.commands[cmd]
 
-            values = self.getValues(tokens[1:])
-
-            meth(line, values)
+            if cmd not in ["M117"]:
+                values = self.getValues(tokens[1:])
+                meth(line, values)
+            else:
+                meth(line)
 
     def getValues(self, tokens):
 
@@ -199,6 +202,9 @@ class UM2GcodeParser:
     def m107_fan_off(self, line, values):
         # print "m107_fan_off", values
         self.planner.addSynchronizedCommand(CmdSyncFanSpeed, p1=packedvalue.uint8_t(0))
+
+    def m117_message(self, line):
+        print "m117_message: ", line
 
     def g10_retract(self, line, values):
         # print "g10_retract", values
@@ -268,7 +274,10 @@ class UM2GcodeParser:
         if 'F' in values:
             feedrate = values['F']
 
-        assert("X" in values or "Y" in values or "Z" in values or "A" in values or "B" in values)
+        if not ("X" in values or "Y" in values or "Z" in values or "A" in values or "B" in values):
+            # Nothing to move, F-Only gcode or invalid
+            assert("F" in values)
+            return
 
         curGcodePos = self.getGcodePos()
         curRealPos = self.getRealPos()
