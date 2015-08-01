@@ -53,7 +53,7 @@
 #define STEPPER1_DRIVER_INTERRUPT_ENABLED() (TIMSK1 & (1<<OCIE1B))
 
 #if MOTOR_CURRENT_PWM_XY_PIN > -1
-extern int motor_current_setting[3];
+extern const int motor_current_setting[3];
 #endif
 
 #ifdef ABORT_ON_ENDSTOP_HIT_FEATURE_ENABLED

@@ -27,7 +27,7 @@
 
 
 #if MOTOR_CURRENT_PWM_XY_PIN > -1
-  int motor_current_setting[3] = DEFAULT_PWM_MOTOR_CURRENT;
+  const int motor_current_setting[3] = DEFAULT_PWM_MOTOR_CURRENT;
 #endif
 
 volatile long current_pos_steps[NUM_AXIS] = { 0, 0, 0, 0};
