@@ -2,7 +2,7 @@ ddprint
 =======
 
 
-Ultimaker direct drive firmware with host preprocessing.
+Ultimaker direct drive firmware with host side preprocessing.
 
 This is a experimental firmware for Arduino Mega based 3D printers. I use it to print on a Ultimaker2 over USB, 
 the slicer used is Cura.
