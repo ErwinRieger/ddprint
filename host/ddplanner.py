@@ -22,7 +22,7 @@
 import math, collections
 
 import ddprintutil as util, dddumbui, packedvalue
-from ddprofile import PrinterProfile, MatProfile
+from ddprofile import PrinterProfile, MatProfile, NozzleProfile
 from move import VVector, Move
 
 from ddprintconstants import fTimer, dimNames, maxTimerValue24, DEFAULT_MAX_ACCELERATION, DropSegments
@@ -426,11 +426,10 @@ class Planner (object):
                     avgSpeed = self.pathData.distance / self.pathData.time
                     print "AutoTemp: distance: %.2f, avg speed: %.2f." % (self.pathData.distance, avgSpeed)
 
-                    # xxx hardcoded parameters: adjust temp between Tbase and Tbase+50 in the speed range 20...100 mm/s
+                    # Adjust temp between Tbase and max. Tbase+50 if speed is greater than 20 mm/s
                     newTemp = MatProfile.getHotendBaseTemp() # Extruder 1 temp
                     if avgSpeed > 20:
-                        # f = 50.0 / 80
-                        f = 1.0
+                        f = NozzleProfile.getAutoTempFactor()
                         newTemp += min((avgSpeed - 20) * f, ATMaxTempIncrease)
                         newTemp = min(newTemp, MatProfile.getHotendMaxTemp())
 

@@ -59,7 +59,7 @@ from move import VVector, Move
 
 from ddprintconstants import maxTimerValue16, maxTimerValue24, DropSegments
 
-from ddprofile import PrinterProfile, MatProfile
+from ddprofile import PrinterProfile, MatProfile, NozzleProfile
 from ddplanner import Planner
 from ddprinter import Printer
 
@@ -467,6 +467,8 @@ def initParser(args, mode=None, gui=None):
     if args.t1:
         mat.override("hotendBaseTemp", args.t1)
 
+    nozzle = NozzleProfile(args.nozzle)
+
     # Create the Printer singleton instance
     printer = Printer(gui)
 
@@ -494,6 +496,7 @@ def main():
     argParser.add_argument("-t1", dest="t1", action="store", type=int, help="Temp 1 (hotend 1), default comes from mat. profile.")
 
     argParser.add_argument("-mat", dest="mat", action="store", help="Name of material profile to use [pla, abs...], default is pla.", default="pla")
+    argParser.add_argument("-noz", dest="nozzle", action="store", help="Name of nozzle profile to use [nozzle40, nozzle80...], default is nozzle40.", default="nozzle40")
 
     # fake endstops with CmdDisableStepperIsr as long we have no real ones
     argParser.add_argument("-F", dest="fakeendstop", action="store", type=bool, help="fake endstops", default=False)

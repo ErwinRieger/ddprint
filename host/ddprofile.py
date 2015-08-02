@@ -111,3 +111,35 @@ class MatProfile():
         return int(cls.getValues()["fanPercent"])
 
 
+####################################################################################################
+#
+# Nozzle profile, singleton
+#
+####################################################################################################
+class NozzleProfile():
+
+    __single = None 
+
+    def __init__(self, name):
+
+        if NozzleProfile.__single:
+            raise RuntimeError('A NozzleProfile already exists')
+
+        self.values = json.load(open(name + ".json"))
+        NozzleProfile.__single = self
+
+    @classmethod
+    def get(cls):
+        return cls.__single
+
+    @classmethod
+    def getValues(cls):
+        return cls.get().values
+
+    @classmethod
+    def getAutoTempFactor(cls):
+        return float(cls.getValues()["autoTempFactor"])
+
+
+
+
