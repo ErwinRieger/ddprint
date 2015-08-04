@@ -1,0 +1,10 @@
+{
+  "material_diameter" : 3.0,
+  "hotendBaseTemp"    : 210,
+  "hotendMaxTemp"     : 250,
+  "bedTemp"           : 70,
+  "bedTempReduced"    : 50,
+  "fanPercent"        : 100
+}
+
+
