@@ -73,6 +73,8 @@ class UM2GcodeParser:
         # To compute extrude length from volume (see getValues()):
         # V = A * h, h = V / A, A = pi/4 * diameter²
         self.volume_to_filament_length = 4 / (math.pi * pow(MatProfile.getValues()["material_diameter"], 2))
+        # Apply material flow parameter from material profile
+        self.volume_to_filament_length *= MatProfile.getFlow() / 100.0
 
         self.steps_per_mm = PrinterProfile.getStepsPerMMVector()
         self.mm_per_step = map(lambda dim: 1.0 / self.steps_per_mm[dim], range(5))

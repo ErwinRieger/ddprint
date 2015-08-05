@@ -110,6 +110,11 @@ class MatProfile():
     def getFanPercent(cls):
         return int(cls.getValues()["fanPercent"])
 
+    @classmethod
+    def getFlow(cls):
+        flow = float(cls.getValues()["flow"])
+        assert((flow >= 50) and (flow <= 150))
+        return flow
 
 ####################################################################################################
 #

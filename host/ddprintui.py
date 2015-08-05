@@ -324,7 +324,7 @@ class MainForm(npyscreen.Form):
         if not printStarted:
 
             self._log( "\nHeating bed (t0: %d)...\n" % self.mat_t0 )
-            self.printer.heatUp(HeaterBed, self.mat_t0.t0, self.mat_t0)
+            self.printer.heatUp(HeaterBed, self.mat_t0, self.mat_t0)
             self._log( "\nHeating extruder (t1: %d)...\n" % self.mat_t1 )
             self.printer.heatUp(HeaterEx1, self.mat_t1, wait=self.mat_t1 - 10)
 
