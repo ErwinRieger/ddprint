@@ -65,16 +65,17 @@ class UM2GcodeParser:
                 "G90": self.g90_abs_values,
                 "G92": self.g92_set_pos,
                 "M25": self.m25_stop_reading,
+                "M82": self.m82_extruder_abs_values,
+                "M84": self.m84_disable_motors,
+                "M104": self.m104_extruder_temp,
                 "M106": self.m106_fan_on,
                 "M107": self.m107_fan_off,
+                "M109": self.m109_extruder_temp_wait,
                 "M117": self.m117_message,
                 }
 
-        # To compute extrude length from volume (see getValues()):
-        # V = A * h, h = V / A, A = pi/4 * diameter²
-        self.volume_to_filament_length = 4 / (math.pi * pow(MatProfile.getValues()["material_diameter"], 2))
         # Apply material flow parameter from material profile
-        self.volume_to_filament_length *= MatProfile.getFlow() / 100.0
+        self.e_to_filament_length = MatProfile.getFlow() / 100.0
 
         self.steps_per_mm = PrinterProfile.getStepsPerMMVector()
         self.mm_per_step = map(lambda dim: 1.0 / self.steps_per_mm[dim], range(5))
@@ -94,6 +95,8 @@ class UM2GcodeParser:
 
         # For G10/G11 handling: xxx session handling
         self.retracted = False
+
+        self.ultiGcodeFlavor = False
 
     # Set current virtual printer position
     def set_position(self, point):
@@ -121,11 +124,19 @@ class UM2GcodeParser:
         for line in f:
             line = line.strip()
             if line.startswith(";"):
-                if "LAYER:" in line.upper():
+                upperLine = line.upper()
+                if "LAYER:" in upperLine:
                     layerNum = int(line.split(":")[1])
                     if layerNum == 1:
                         self.numParts += 1
                         self.planner.newPart(self.numParts)
+
+                # ;FLAVOR:UltiGCode
+                if "FLAVOR:ULTIGCODE" in upperLine:
+                    self.ultiGcodeFlavor = True
+                    # To compute extrude length from volume (see getValues()):
+                    # V = A * h, h = V / A, A = pi/4 * diameter²
+                    self.e_to_filament_length *= 4 / (math.pi * pow(MatProfile.MatProfile.getMatDiameter(), 2))
 
         print "pre-parsing # parts:", self.numParts
         f.seek(0) # rewind
@@ -175,7 +186,7 @@ class UM2GcodeParser:
 
             # XXX assuming ultiGcode here !!! --> parse ;FLAVOR:UltiGCode
             if valueChar == "E":
-                factor = self.volume_to_filament_length
+                factor = self.e_to_filament_length
                 # print "replacing ", param, " --> A", float(param[1:]) * factor
                 valueChar = "A"
 
@@ -196,6 +207,16 @@ class UM2GcodeParser:
     def m25_stop_reading(self, line, values):
         print "XXX todo implement M25", values
 
+    def m82_extruder_abs_values(self, line, values):
+        # We're always using absolute coords...
+        pass
+
+    def m84_disable_motors(self, line, values):
+        print "ignoring m84..."
+
+    def m104_extruder_temp(self, line, values):
+        print "ignoring m104..."
+
     def m106_fan_on(self, line, values):
         # print "m106_fan_on", values
         fanSpeed = (values["S"] * MatProfile.getFanPercent()) / 100
@@ -204,6 +225,9 @@ class UM2GcodeParser:
     def m107_fan_off(self, line, values):
         # print "m107_fan_off", values
         self.planner.addSynchronizedCommand(CmdSyncFanSpeed, p1=packedvalue.uint8_t(0))
+
+    def m109_extruder_temp_wait(self, line, values):
+        print "ignoring m109..."
 
     def m117_message(self, line):
         print "m117_message: ", line
