@@ -660,9 +660,11 @@ def prime(parser):
 
     pos = parser.getRealPos()
 
+    aFilament = (math.pi * pow(MatProfile.getMatDiameter(), 2)) / 4.0
+
     parser.execute_line("G0 F%f A%f" % (
-        (ddprintconstants.PRIMING_MM3_PER_SEC * parser.volume_to_filament_length * 60),
-        pos[A_AXIS] + (ddprintconstants.PRIMING_MM3 * parser.volume_to_filament_length)))
+        ((ddprintconstants.PRIMING_MM3_PER_SEC / aFilament) * 60),
+        pos[A_AXIS] + (ddprintconstants.PRIMING_MM3 / aFilament)))
 
     # Set E to 0
     current_position = parser.getRealPos()
@@ -673,6 +675,10 @@ def prime(parser):
     # Retract
     #
     # parser.execute_line("G10")
+
+    # Wipe priming material if not ultigcode flavor 
+    if not parser.ultiGcodeFlavor:
+        parser.execute_line("G0 F%f X100 Z0.5" % (driver.HOMING_FEEDRATE[X_AXIS]*60))
 
 ####################################################################################################
 
@@ -718,7 +724,7 @@ def manualMove(parser, axis, distance, absolute=False):
 
     feedrate = PrinterProfile.getMaxFeedrate(axis)
 
-    # parser.execute_line("G0 F%d E%f" % (feedrate*60, distance / parser.volume_to_filament_length))
+    # parser.execute_line("G0 F%d E%f" % (feedrate*60, distance / parser.e_to_filament_length))
     if absolute:
         parser.execute_line("G0 F%d %s%f" % (feedrate*60, dimNames[axis], distance))
     else:
