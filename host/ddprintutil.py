@@ -678,7 +678,8 @@ def prime(parser):
 
     # Wipe priming material if not ultigcode flavor 
     if not parser.ultiGcodeFlavor:
-        parser.execute_line("G0 F%f X100 Z0.5" % (driver.HOMING_FEEDRATE[X_AXIS]*60))
+        # parser.execute_line("G0 F%f X50 Z0.5" % (driver.HOMING_FEEDRATE[X_AXIS]*60))
+        parser.execute_line("G0 F1200 X50 Z0.5")
 
 ####################################################################################################
 
