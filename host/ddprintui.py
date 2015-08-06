@@ -279,11 +279,11 @@ class MainForm(npyscreen.Form):
         self._log( "\nPre-Heating extruder (t1: %d)...\n" % t)
         self.printer.heatUp(HeaterEx1, t)
 
-        # Send priming moves
-        util.prime(self.parser)
-
         # Send printing moves
         f = self.parser.preParse(self.fn.get_value())
+
+        # Send priming moves
+        util.prime(self.parser)
 
         lineNr = 0
         printStarted = False

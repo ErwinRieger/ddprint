@@ -578,12 +578,12 @@ def main():
         print "\nPre-Heating extruder...\n"
         printer.heatUp(HeaterEx1, 150)
 
-        # Send priming moves
-        util.prime(parser)
-
         # Send printing moves
         # f = open(args.gfile)
         f = parser.preParse(args.gfile)
+
+        # Send priming moves
+        util.prime(parser)
 
         lineNr = 0
         printStarted = False
