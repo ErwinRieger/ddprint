@@ -91,6 +91,10 @@ class MatProfile():
         return cls.get().values
 
     @classmethod
+    def getMatDiameter(cls):
+        return float(cls.getValues()["material_diameter"])
+
+    @classmethod
     def getHotendBaseTemp(cls):
         return int(cls.getValues()["hotendBaseTemp"])
 
