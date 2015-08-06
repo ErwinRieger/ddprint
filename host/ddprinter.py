@@ -192,7 +192,7 @@ class Printer(Serial):
             try:
                 recvLine = self.safeReadline()        
             except SERIALDISCON:
-                self.gui.logError("Line disconnected in processCommand(). Trying reconnect!")
+                self.gui.logError("Line disconnected in readMore(), reconnecting!")
                 self.reconnect()
                 time.sleep(0.1)
                 continue
@@ -338,27 +338,6 @@ class Printer(Serial):
                 payload += p.pack()
         self.sendCommand(cmd, wantReply=wantReply, binPayload=payload, lineNr=lineNr)
 
-    # The 'mainloop' process each command in the list 'gcode', check
-    # for the required responses and do errorhandling.
-    def nu__sendGcode(self, command, wantReply=None):
-
-        self.printing = True
-
-        self.startTime = time.time()
-
-        self.gcodeData = (command, wantReply)
-        self.gcodePos = 0
-
-        self.wantReply = None
-        self.wantAck = False
-
-        self.recvPart = None
-
-        ev = DummyEvent()
-
-        while self.processCommand(ev):
-            pass
-
     def reconnect(self):
 
         # XXX add timeout, or otherwise prevent re-connection to power-cycled printer?!
@@ -407,7 +386,7 @@ class Printer(Serial):
             except SERIALDISCON:
                 # self.printing = False
                 # self.postMonitor = 0
-                self.gui.logError("Line disconnected in processCommand(). Trying reconnect!")
+                self.gui.logError("Line disconnected in send2(), reconnecting!")
                 self.reconnect()
 
                 startTime = time.time()
