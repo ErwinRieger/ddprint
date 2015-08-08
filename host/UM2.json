@@ -19,14 +19,19 @@
       "steps_per_mm"  : 200,
       "jerk"          : 0.5
     },
-    "A" : {
+    "Aorig" : {
       "max_feedrate"  : 45,
       "steps_per_mm"  : 282,
       "jerk"          : 5
     },
+    "A" : {
+      "max_feedrate"  : 45,
+      "steps_per_mm"  : 141,
+      "jerk"          : 5
+    },
     "B" : {
       "max_feedrate"  : 45,
-      "steps_per_mm"  : 282,
+      "steps_per_mm"  : 141,
       "jerk"          : 5
     }
   }
