@@ -32,13 +32,32 @@ import ddprintutil as util
 
 ############################################################################
 # Constants, xxx todo: query from printer and/or profile
-RetractFeedrate = 25      # mm/s
+# RetractFeedrate = 25      # mm/s
+RetractFeedrate = 40      # mm/s
 RetractLength = 4.5       # mm
+
 # xxx erhöht wegen bowdenzug-spiel am feeder/kopf
 # RetractLength = 6.5       # mm
 
+# Temporarily increased retractlength to fix 'retraction blobs'
+RetractLength = 5.0       # mm
+
 # MATERIAL_DIAMETER = 2.9 # [mm]
 ############################################################################
+
+# Get layer number from cura gcode comment
+def getCuraLayer(line):
+
+    return int(line.split(":")[1])
+
+# Get layer number from simplify3d gcode comment
+def getSimplifyLayer(line):
+
+    lstr = line.split(" ")[2].split(",")[0]
+    if lstr != "end":
+        return int(lstr)
+
+    return None
 
 class UM2GcodeParser: 
 
@@ -72,6 +91,9 @@ class UM2GcodeParser:
                 "M107": self.m107_fan_off,
                 "M109": self.m109_extruder_temp_wait,
                 "M117": self.m117_message,
+                "M140": self.m140_bed_temp,
+                "M907": self.m907_motor_current,
+                "T0": self.t0,
                 }
 
         # Apply material flow parameter from material profile
@@ -125,14 +147,22 @@ class UM2GcodeParser:
             line = line.strip()
             if line.startswith(";"):
                 upperLine = line.upper()
+                # Cura: "LAYER:"
                 if "LAYER:" in upperLine:
-                    layerNum = int(line.split(":")[1])
+                    layerNum = getCuraLayer(line)
+                    if layerNum == 1:
+                        self.numParts += 1
+                        self.planner.newPart(self.numParts)
+
+                # Simplify3D: "; LAYER "
+                elif "; LAYER " in upperLine:
+                    layerNum = getSimplifyLayer(line)
                     if layerNum == 1:
                         self.numParts += 1
                         self.planner.newPart(self.numParts)
 
                 # ;FLAVOR:UltiGCode
-                if "FLAVOR:ULTIGCODE" in upperLine:
+                elif "FLAVOR:ULTIGCODE" in upperLine:
                     self.ultiGcodeFlavor = True
                     # To compute extrude length from volume (see getValues()):
                     # V = A * h, h = V / A, A = pi/4 * diameter²
@@ -153,10 +183,18 @@ class UM2GcodeParser:
             cmd = tokens[0]
             if cmd.startswith(";"):
 
-                if "LAYER:" in line.upper():
-                    layerNum = int(line.split(":")[1])
+                upperLine = line.upper()
+
+                if "LAYER:" in upperLine:
+                    getCuraLayer(line)
                     self.planner.layerChange(layerNum)
                     return
+
+                elif "; LAYER " in upperLine:
+                    layerNum = getSimplifyLayer(line)
+                    self.planner.layerChange(layerNum)
+                    return
+
 
                 # print "skipping comment: ", line
                 return
@@ -231,6 +269,15 @@ class UM2GcodeParser:
 
     def m117_message(self, line):
         print "m117_message: ", line
+
+    def m140_bed_temp(self, line, values):
+        print "ignoring m140..."
+
+    def m907_motor_current(self, line, values):
+        print "ignoring m907..."
+
+    def t0(self, line, values):
+        print "ignoring t0..."
 
     def g10_retract(self, line, values):
         # print "g10_retract", values
