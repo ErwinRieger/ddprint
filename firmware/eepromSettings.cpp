@@ -63,19 +63,19 @@ void getEepromVersion() {
     char stored_ver[4];
 
     EEPROM_READ_VAR(i, stored_ver); //read stored version
-    SERIAL_ECHO("Res:'");
+    SERIAL_ECHOPGM("Res:'");
     SERIAL_ECHO(stored_ver);
     SERIAL_ECHOLN("'");
 }
 
 template <typename ElemType>
 void dumpArray(ElemType *array, uint8_t len) {
-    SERIAL_ECHO("(");
+    SERIAL_ECHOPGM("(");
     for (uint8_t i=0; i<len; i++) {
         SERIAL_ECHO(array[i]);
-        SERIAL_ECHO(",");
+        SERIAL_ECHOPGM(",");
     }
-    SERIAL_ECHO(")");
+    SERIAL_ECHOPGM(")");
 }
 
 // void getEepromSettings(EepromSettings &es) {
@@ -95,25 +95,25 @@ void eeDumpValue(int l, uint8_t) {
 }
 
 void eeDumpValue(float *array, uint8_t len) {
-    SERIAL_ECHO("(");
+    SERIAL_ECHOPGM("(");
     for (uint8_t i=0; i<len/sizeof(float); i++) {
         SERIAL_ECHO(array[i]);
-        SERIAL_ECHO(",");
+        SERIAL_ECHOPGM(",");
     }
-    SERIAL_ECHO(")");
+    SERIAL_ECHOPGM(")");
 }
 
 void eeDumpValue(long *array, uint8_t len) {
-    SERIAL_ECHO("(");
+    SERIAL_ECHOPGM("(");
     for (uint8_t i=0; i<len/sizeof(long); i++) {
         SERIAL_ECHO(array[i]);
-        SERIAL_ECHO(",");
+        SERIAL_ECHOPGM(",");
     }
-    SERIAL_ECHO(")");
+    SERIAL_ECHOPGM(")");
 }
 
 #define eeDump(s, member) {  \
-  SERIAL_ECHO("'" #member "':"); \
+  SERIAL_ECHOPGM("'" #member "':"); \
   eeDumpValue(s . member, sizeof(s . member)); } \
 
 void defaultEepromSettings(EepromSettings &es) {
@@ -168,7 +168,7 @@ void getEepromSettings(EepromSettings &es) {
     }
 }
 
-void dumpEepromSettings() {
+void dumpEepromSettings(const char* prefix) {
 
     EepromSettings es;
 
@@ -176,90 +176,91 @@ void dumpEepromSettings() {
 
     // Eeprom version number matches
 
-        SERIAL_ECHO("Res:{");
+        SERIAL_ECHO(prefix);
+        SERIAL_ECHOPGM("{");
 
         eeDump(es, axis_steps_per_unit);
 
-        SERIAL_ECHO(",");
+        SERIAL_ECHOPGM(",");
 
         eeDump(es, max_feedrate);
 
-        SERIAL_ECHO(",");
+        SERIAL_ECHOPGM(",");
 
         eeDump(es, max_acceleration_units_per_sq_second);
 
-        SERIAL_ECHO(",");
+        SERIAL_ECHOPGM(",");
 
         // steps per sq second need to be updated to agree with the units per sq second (as they are what is used in the planner)
 		// reset_acceleration_rates();
 
         eeDump(es, acceleration);
 
-        SERIAL_ECHO(",");
+        SERIAL_ECHOPGM(",");
 
         eeDump(es, retract_acceleration);
 
-        SERIAL_ECHO(",");
+        SERIAL_ECHOPGM(",");
 
         eeDump(es, minimumfeedrate);
 
-        SERIAL_ECHO(",");
+        SERIAL_ECHOPGM(",");
 
         eeDump(es, mintravelfeedrate);
 
-        SERIAL_ECHO(",");
+        SERIAL_ECHOPGM(",");
 
         eeDump(es, minsegmenttime);
 
-        SERIAL_ECHO(",");
+        SERIAL_ECHOPGM(",");
 
         eeDump(es, max_xy_jerk);
 
-        SERIAL_ECHO(",");
+        SERIAL_ECHOPGM(",");
 
         eeDump(es, max_z_jerk);
 
-        SERIAL_ECHO(",");
+        SERIAL_ECHOPGM(",");
 
         eeDump(es, max_e_jerk);
 
-        SERIAL_ECHO(",");
+        SERIAL_ECHOPGM(",");
 
         eeDump(es, add_homeing);
 
-        SERIAL_ECHO(",");
+        SERIAL_ECHOPGM(",");
 
         eeDump(es, plaPreheatHotendTemp);
 
-        SERIAL_ECHO(",");
+        SERIAL_ECHOPGM(",");
 
         eeDump(es, plaPreheatHPBTemp);
 
-        SERIAL_ECHO(",");
+        SERIAL_ECHOPGM(",");
 
         eeDump(es, plaPreheatFanSpeed);
 
-        SERIAL_ECHO(",");
+        SERIAL_ECHOPGM(",");
 
         eeDump(es, absPreheatHotendTemp);
 
-        SERIAL_ECHO(",");
+        SERIAL_ECHOPGM(",");
 
         eeDump(es, absPreheatHPBTemp);
 
-        SERIAL_ECHO(",");
+        SERIAL_ECHOPGM(",");
 
         eeDump(es, absPreheatFanSpeed);
 
-        SERIAL_ECHO(",");
+        SERIAL_ECHOPGM(",");
 
         eeDump(es, Kp);
 
-        SERIAL_ECHO(",");
+        SERIAL_ECHOPGM(",");
 
         eeDump(es, Ki);
 
-        SERIAL_ECHO(",");
+        SERIAL_ECHOPGM(",");
 
         eeDump(es, Kd);
 
@@ -297,7 +298,7 @@ void writeEepromFloat(char *valueName, uint8_t len, float value) {
     }
     else {
         valueName[len] = '\0';
-        SERIAL_ECHO("Error: unknown value name in writeEepromFloat: ");
+        SERIAL_ECHOPGM("Error: unknown value name in writeEepromFloat: ");
         SERIAL_ECHOLN(valueName);
     }
 }
