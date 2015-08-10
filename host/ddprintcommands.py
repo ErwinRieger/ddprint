@@ -34,6 +34,8 @@ CmdG1_24         = 0x9 # Same as CmdG1, but with 32 bit accel- and deccel-timerv
 CmdDirG1_24      = 0xa # CmdDirBits and CmdG1_24 combined
 CmdSyncTargetTemp= 0xb # Parameters: heater, temp 
 
+CmdUnknown       = 0x7f # Unknown command for debugging
+
 #
 # Direct commands:
 # ----------------------
@@ -108,6 +110,7 @@ CommandNames = {
     CmdDirG1: "CmdDirG1",
     CmdDirG1_24: "CmdDirG1_24",
     CmdSyncTargetTemp: "CmdSyncTargetTemp",
+    CmdUnknown: "CmdUnknown",
     #
     # Direct commands:
     # ----------------------
