@@ -198,7 +198,7 @@ void setup() {
 
     // loads data from EEPROM if available else uses defaults (and resets step acceleration rate)
     // Config_RetrieveSettings();
-    dumpEepromSettings();
+    dumpEepromSettings("Eeprom:");
 
     tp_init();    // Initialize temperature loop
 
@@ -446,7 +446,7 @@ class FillBufferTask : public Protothread {
                     SERIAL_ECHOPGM("Error: UNKNOWN command byte: ");
                     SERIAL_ECHO((int)cmd);
                     SERIAL_ECHOPGM(", Swapsize: ");
-                    SERIAL_ECHOLN(swapDev.getSize());
+                    SERIAL_ECHO(swapDev.getSize());
                     SERIAL_ECHOPGM(", SwapReadPos is: ");
                     SERIAL_ECHO(swapDev.getReadPos());
                     SERIAL_ECHOPGM(", SDRReadPos+5 is: ");
@@ -904,9 +904,10 @@ void Printer::cmdMove(MoveType mt) {
         massert(homed[1]);
         massert(homed[2]);
 
-        EepromSettings es;
-        getEepromSettings(es);
-
+        // xxx check if data is available (swapDev.getSize() > 0)?
+        
+        // EepromSettings es;
+        // getEepromSettings(es);
         // Compute max z step pos for software endstops, xxx um2 specific.
         // z_max_pos_steps = (long)((Z_MAX_POS + es.add_homeing[Z_AXIS]) * AXIS_STEPS_PER_MM_Z);
     }
