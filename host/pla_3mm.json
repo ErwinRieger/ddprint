@@ -4,7 +4,7 @@
   "hotendBaseTemp"    : 210,
   "hotendMaxTemp"     : 250,
   "bedTemp"           : 70,
-  "bedTempReduced"    : 50,
+  "bedTempReduced"    : 60,
   "fanPercent"        : 100
 }
 
