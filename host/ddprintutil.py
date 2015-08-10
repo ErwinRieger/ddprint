@@ -502,8 +502,7 @@ def home(parser, fakeHomingEndstops=False, force=False):
             printer.sendCommandParam(CmdMove, p1=MoveTypeNormal, wantReply="ok")
             printer.sendCommand(CmdEOT, wantReply="ok")
 
-            while printer.query(CmdGetState) != StateInit:
-                time.sleep(0.1)
+            printer.waitForState(StateInit, wait=0.1)
 
             # res = printer.query(CmdGetEndstops)
             # print "endstop state:", res
@@ -541,8 +540,7 @@ def home(parser, fakeHomingEndstops=False, force=False):
             time.sleep(0.1)
             printer.sendCommand(CmdDisableStepperIsr, wantReply="ok")
 
-        while printer.query(CmdGetState) != StateInit:
-            time.sleep(0.1)
+        printer.waitForState(StateInit, wait=0.1)
 
         # Check, if enstop was pressed
         res = printer.query(CmdGetEndstops)
@@ -565,8 +563,7 @@ def home(parser, fakeHomingEndstops=False, force=False):
         printer.sendCommandParam(CmdMove, p1=MoveTypeHoming, wantReply="ok")
         printer.sendCommand(CmdEOT, wantReply="ok")
 
-        while printer.query(CmdGetState) != StateInit:
-            time.sleep(0.1)
+        printer.waitForState(StateInit, wait=0.1)
 
         # Check, if enstop was opened
         res = printer.query(CmdGetEndstops)
@@ -593,8 +590,7 @@ def home(parser, fakeHomingEndstops=False, force=False):
             # time.sleep(0.1)
             printer.sendCommand(CmdDisableStepperIsr, wantReply="ok")
 
-        while printer.query(CmdGetState) != StateInit:
-            time.sleep(0.1)
+        printer.waitForState(StateInit, wait=0.1)
 
         # Check, if enstop was pressed
         res = printer.query(CmdGetEndstops)
@@ -617,8 +613,7 @@ def home(parser, fakeHomingEndstops=False, force=False):
         printer.sendCommandParam(CmdMove, p1=MoveTypeHoming, wantReply="ok")
         printer.sendCommand(CmdEOT, wantReply="ok")
 
-        while printer.query(CmdGetState) != StateInit:
-            time.sleep(0.1)
+        printer.waitForState(StateInit, wait=0.1)
 
         # Check, if enstop was opened
         res = printer.query(CmdGetEndstops)
@@ -692,27 +687,26 @@ def prime(parser):
 
 def zRepeatability(parser):
 
-        import random
+    import random
 
-        printer.initSerial(args.device, args.baud)
-        printer.sendCommand(CmdResetLineNr)
+    printer.commandInit(args)
 
-        feedrate = PrinterProfile.getMaxFeedrate(Z_AXIS)
+    feedrate = PrinterProfile.getMaxFeedrate(Z_AXIS)
 
-        home(parser, args.fakeendstop)
+    home(parser, args.fakeendstop)
 
-        printer.sendPrinterInit()
+    printer.sendPrinterInit()
 
-        for i in range(10):
+    for i in range(10):
 
-            parser.execute_line("G0 F%d X115 Y210 Z10" % (feedrate*60))
-            parser.execute_line("G0 F%d Z%f" % (feedrate*60, random.randint(20, 150)))
+        parser.execute_line("G0 F%d X115 Y210 Z10" % (feedrate*60))
+        parser.execute_line("G0 F%d Z%f" % (feedrate*60, random.randint(20, 150)))
 
-        parser.finishMoves()
-        printer.sendCommandParam(CmdMove, p1=MoveTypeNormal, wantReply="ok")
-        printer.sendCommand(CmdEOT, wantReply="ok")
-        while printer.query(CmdGetState) != StateInit:
-            time.sleep(1)
+    parser.finishMoves()
+    printer.sendCommandParam(CmdMove, p1=MoveTypeNormal, wantReply="ok")
+    printer.sendCommand(CmdEOT, wantReply="ok")
+
+    printer.waitForState(StateInit)
 
 ####################################################################################################
 
@@ -746,8 +740,7 @@ def manualMove(parser, axis, distance, absolute=False):
 
     printer.sendCommandParam(CmdMove, p1=MoveTypeNormal, wantReply="ok")
 
-    while printer.query(CmdGetState) != StateInit:
-        time.sleep(1)
+    printer.waitForState(StateInit)
 
     printer.readMore(10)
 
@@ -788,9 +781,7 @@ def insertFilament(args, parser):
             parser.finishMoves()
             printer.sendCommandParam(CmdMove, p1=MoveTypeNormal, wantReply="ok")
             printer.sendCommand(CmdEOT, wantReply="ok")
-            while printer.query(CmdGetState) != StateInit:
-                time.sleep(0.1)
-
+            printer.waitForState(StateInit, wait=0.1)
 
     commonInit(args, parser)
 
@@ -803,8 +794,7 @@ def insertFilament(args, parser):
     printer.sendCommandParam(CmdMove, p1=MoveTypeNormal, wantReply="ok")
     printer.sendCommand(CmdEOT, wantReply="ok")
 
-    while printer.query(CmdGetState) != StateInit:
-        time.sleep(1)
+    printer.waitForState(StateInit)
 
     t1 = MatProfile.getHotendBaseTemp()
     printer.heatUp(HeaterEx1, t1, wait=t1 - 5)
@@ -828,8 +818,7 @@ def insertFilament(args, parser):
     printer.sendCommandParam(CmdMove, p1=MoveTypeNormal, wantReply="ok")
     printer.sendCommand(CmdEOT, wantReply="ok")
 
-    while printer.query(CmdGetState) != StateInit:
-        time.sleep(1)
+    printer.waitForState(StateInit)
 
     printer.coolDown(HeaterEx1, wait=150)
 
@@ -840,8 +829,7 @@ def removeFilament(args, parser):
     driver = parser.planner
     printer = driver.printer
 
-    printer.initSerial(args.device, args.baud)
-    printer.sendCommand(CmdResetLineNr)
+    printer.commandInit(args)
 
     home(parser, args.fakeendstop)
 
@@ -860,8 +848,7 @@ def removeFilament(args, parser):
     printer.sendCommandParam(CmdMove, p1=MoveTypeNormal, wantReply="ok")
     printer.sendCommand(CmdEOT, wantReply="ok")
 
-    while printer.query(CmdGetState) != StateInit:
-        time.sleep(1)
+    printer.waitForState(StateInit)
 
     t1 = MatProfile.getHotendBaseTemp()
     printer.heatUp(HeaterEx1, t1, wait=t1 - 5)
@@ -891,8 +878,7 @@ def retract(args, parser):
     printer.sendCommandParam(CmdMove, p1=MoveTypeNormal, wantReply="ok")
     printer.sendCommand(CmdEOT, wantReply="ok")
 
-    while printer.query(CmdGetState) != StateInit:
-        time.sleep(1)
+    printer.waitForState(StateInit)
 
     printer.coolDown(HeaterEx1,wait=150)
 
@@ -903,8 +889,7 @@ def bedLeveling(args, parser):
     driver = parser.planner
     printer = driver.printer
 
-    printer.initSerial(args.device, args.baud)
-    printer.sendCommand(CmdResetLineNr)
+    printer.commandInit(args)
 
     # Reset bedlevel offset in printer eeprom
     payload = struct.pack("<pf", "add_homeing_z", 0)
@@ -950,8 +935,8 @@ def bedLeveling(args, parser):
             parser.finishMoves()
             printer.sendCommandParam(CmdMove, p1=MoveTypeNormal, wantReply="ok")
             printer.sendCommand(CmdEOT, wantReply="ok")
-            while printer.query(CmdGetState) != StateInit:
-                time.sleep(0.1)
+
+            printer.waitForState(StateInit, wait=0.1)
 
 
     feedrate = PrinterProfile.getMaxFeedrate(X_AXIS)
@@ -965,8 +950,8 @@ def bedLeveling(args, parser):
     parser.finishMoves()
     printer.sendCommandParam(CmdMove, p1=MoveTypeNormal, wantReply="ok")
     printer.sendCommand(CmdEOT, wantReply="ok")
-    while printer.query(CmdGetState) != StateInit:
-        time.sleep(0.1)
+
+    printer.waitForState(StateInit, wait=0.1)
 
     manualMoveZ()
 
@@ -1003,8 +988,8 @@ def bedLeveling(args, parser):
     parser.finishMoves()
     printer.sendCommandParam(CmdMove, p1=MoveTypeNormal, wantReply="ok")
     printer.sendCommand(CmdEOT, wantReply="ok")
-    while printer.query(CmdGetState) != StateInit:
-        time.sleep(0.1)
+
+    printer.waitForState(StateInit, wait=0.1)
 
     raw_input("\nAdjust left front buildplate screw and press <Return>\n")
 
@@ -1019,8 +1004,8 @@ def bedLeveling(args, parser):
     parser.finishMoves()
     printer.sendCommandParam(CmdMove, p1=MoveTypeNormal, wantReply="ok")
     printer.sendCommand(CmdEOT, wantReply="ok")
-    while printer.query(CmdGetState) != StateInit:
-        time.sleep(0.1)
+
+    printer.waitForState(StateInit, wait=0.1)
 
     raw_input("\nAdjust right fron buildplate screw and press <Return>\n")
 
@@ -1033,8 +1018,7 @@ def bedLevelAdjust(args, parser):
     planner = parser.planner
     printer = planner.printer
 
-    printer.initSerial(args.device, args.baud)
-    printer.sendCommand(CmdResetLineNr)
+    printer.commandInit(args)
 
     distance = float(args.distance)
 
@@ -1056,7 +1040,7 @@ def storeSD(parser):
 
 ####################################################################################################
 
-def stringFromArgs(self, *args):
+def stringFromArgs(*args):
     r = ""
     for a in args:
         if type(a) == types.StringType:
