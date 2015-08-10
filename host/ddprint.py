@@ -419,23 +419,6 @@ def heatHotend(args, parser):
     driver = parser.planner
     printer = driver.printer
 
-    """
-    util.commonInit(args, parser)
-
-    # Move to mid-front
-    feedrate = PrinterProfile.getMaxFeedrate(X_AXIS)
-    parser.execute_line("G0 F%d X%f Y%f" % (feedrate*60, driver.MAX_POS[X_AXIS]/2, driver.MAX_POS[Y_AXIS]/2))
-
-    parser.finishMoves()
-
-    printer.sendCommandParam(CmdMove, p1=MoveTypeNormal, wantReply="ok")
-
-    printer.sendCommand(CmdEOT, wantReply="ok")
-
-    while printer.query(CmdGetState) != StateInit:
-        time.sleep(1)
-    """
-
     printer.commandInit(args)
 
     t1 = MatProfile.getHotendBaseTemp()
@@ -608,8 +591,6 @@ def main():
                 else:
 
                     # Stop sending moves on error
-                    # if printer.query(CmdGetState) != StateStart:
-                     #    break
                     status = printer.getStatus()
                     pprint.pprint(status)
                     if status['state'] != StateStart:
@@ -631,13 +612,7 @@ def main():
             # Send print command
             printer.sendCommandParam(CmdMove, p1=MoveTypeNormal, wantReply="ok")
 
-        # while printer.query(CmdGetState) != StateInit:
-            # time.sleep(1)
-        status = printer.getStatus()
-        while status['state'] != StateInit:
-            pprint.pprint(status)
-            time.sleep(1)
-            status = printer.getStatus()
+        printer.waitForState(StateInit)
 
         printer.coolDown(HeaterEx1)
         printer.coolDown(HeaterBed)
@@ -784,10 +759,16 @@ def main():
 
     elif args.mode == 'test':
 
-        printer.commandInit(args)
+        util.commonInit(args, parser)
 
-        while True:
-            printer.readMore()
+        printer.sendCommandParam(CmdUnknown, p1=packedvalue.uint8_t(0xff))
+        printer.sendCommand(CmdEOT, wantReply="ok")
+
+        printer.sendCommandParam(CmdMove, p1=MoveTypeNormal, wantReply="ok")
+
+        printer.waitForState(StateInit)
+
+        printer.readMore()
 
 if __name__ == "__main__":
 
