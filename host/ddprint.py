@@ -52,6 +52,7 @@ from argparse import Namespace
 import threading, time, traceback, logging, pprint, sys, math
 import argparse, struct, collections
 
+logging.basicConfig(level=logging.DEBUG)
 
 import ddprintutil as util, gcodeparser, packedvalue
 from ddprintutil import X_AXIS, Y_AXIS, vectorAdd, vectorSub, circaf
@@ -62,10 +63,6 @@ from ddprintconstants import maxTimerValue16, maxTimerValue24, DropSegments
 from ddprofile import PrinterProfile, MatProfile, NozzleProfile
 from ddplanner import Planner
 from ddprinter import Printer
-
-# logger = logging.getLogger(__name__)
-# logging.basicConfig()
-# logger.setLevel(logging.DEBUG)
 
 #
 # todo check max move length (max_length_steps)

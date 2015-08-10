@@ -20,6 +20,9 @@
 # along with ddprint.  If not, see <http://www.gnu.org/licenses/>.
 #*/
 
+import logging, datetime
+logging.basicConfig(filename=datetime.datetime.now().strftime("/tmp/ddprint_%y.%m.%d_%H:%M:%S.log"), level=logging.DEBUG)
+
 import npyscreen , time, curses, sys, types, threading, Queue
 import argparse
 import ddprint
@@ -345,48 +348,49 @@ class MainForm(npyscreen.Form):
 
         self.printer.sendCommand(CmdDisableSteppers, wantReply="ok")
 
-    def stringFromArgs(self, *args):
-        r = ""
-        for a in args:
-            if type(a) == types.StringType:
-                r += a
-            else:
-                r += str(a)
-        return r
-
     # Non-thread save version
     def _log(self, *args):
-        self.appLog.buffer([self.stringFromArgs(*args)])
+        self.appLog.buffer([util.stringFromArgs(*args)])
         self.appLog._need_update = True
 
     def _logError(self, err):
         # xxx manage error-log here ...
+        logging.error( err )
         self.errors.set_value( err )
         self.errors.update()
 
     # Thread save version
     def log(self, *args):
-        # self.appLog.buffer([self.stringFromArgs(*args)])
-        self.guiQueue.put(SyncCallUpdate(self.appLog.buffer, [self.stringFromArgs(*args)]))
+        # self.appLog.buffer([util.stringFromArgs(*args)])
+        s = util.stringFromArgs(*args)
+        logging.info(util.stringFromArgs(*args))
+        self.guiQueue.put(SyncCallUpdate(self.appLog.buffer, [s]))
 
     def logError(self, *args):
         # xxx special error handling
-        self.guiQueue.put(SyncCall(self._logError, self.stringFromArgs(*args)))
+        self.guiQueue.put(SyncCall(self._logError, util.stringFromArgs(*args)))
 
     def logSend(self, *args):
-        # self.commLog.buffer([self.stringFromArgs(*args)])
-        self.guiQueue.put(SyncCallUpdate(self.commLog.buffer, [self.stringFromArgs(*args)]))
+        # self.commLog.buffer([util.stringFromArgs(*args)])
+        s = util.stringFromArgs(*args)
+        logging.info("SEND: %s", s)
+        self.guiQueue.put(SyncCallUpdate(self.commLog.buffer, [s]))
 
     def logRecv(self, *args):
-        # self.commLog.buffer(["    " + self.stringFromArgs(*args) ])
-        self.guiQueue.put(SyncCallUpdate(self.commLog.buffer, ["    " + self.stringFromArgs(*args)]))
+        # self.commLog.buffer(["    " + util.stringFromArgs(*args) ])
+        s = util.stringFromArgs(*args)
+        logging.info("REPLY: %s", s)
+        self.guiQueue.put(SyncCallUpdate(self.commLog.buffer, ["    " + s]))
 
     # Stdout redirection 
     def write(self, s):
         # self.appLog.buffer(["STDOUT:" + s])
-        self.guiQueue.put(SyncCallUpdate(self.appLog.buffer, ["STDOUT:" + s.strip()]))
+        s = s.strip()
+        logging.info("STDOUT: %s", s)
+        self.guiQueue.put(SyncCallUpdate(self.appLog.buffer, ["STDOUT:" + s]))
 
     def tempCb(self, t0=None, t1=None):
+        logging.info("tempCb: %s %s", str(t0), str(t1))
         self.guiQueue.put(SyncCall(self.updateTemps, t0, t1))
 
 # class TestApp(npyscreen.NPSApp): 

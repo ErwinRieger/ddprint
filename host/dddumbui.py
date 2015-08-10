@@ -17,7 +17,9 @@
 # along with ddprint.  If not, see <http://www.gnu.org/licenses/>.
 #*/
 
-from __future__ import print_function
+import ddprintutil as util, logging
+
+# from __future__ import print_function
 
 #
 # Dumb console tui interface
@@ -25,16 +27,25 @@ from __future__ import print_function
 class DumbGui:
 
     def log(self, *args):
-        print(*args)
+        # print(*args)
+        logging.info(util.stringFromArgs(*args))
 
     def logRecv(self, *args):
-        print(*args)
+        # print(*args)
+        logging.info("REPLY: %s", util.stringFromArgs(*args))
 
     def logSend(self, *args):
-        print(*args)
+        # print(*args)
+        logging.info("SEND: %s", util.stringFromArgs(*args))
 
     def logError(self, *args):
-        print(*args)
+        # print(*args)
+        logging.error(util.stringFromArgs(*args))
 
     def tempCb(self, t0=None, t1=None):
-        print("tempCb: ", t0, t1)
+        # print("tempCb: ", t0, t1)
+        logging.info("tempCb: %s %s", str(t0), str(t1))
+
+
+
+
