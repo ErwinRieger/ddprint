@@ -23,7 +23,7 @@ import packedvalue
 
 from ddprofile import MatProfile, PrinterProfile
 from ddplanner import Planner
-from ddprintcommands import CmdSyncFanSpeed
+from ddprintcommands import CmdSyncFanSpeed, CmdUnknown
 from ddprintconstants import dimNames
 from move import VVector, Move
 from ddprintutil import A_AXIS, B_AXIS, debugMoves, vectorDistance, circaf
@@ -94,6 +94,7 @@ class UM2GcodeParser:
                 "M140": self.m140_bed_temp,
                 "M907": self.m907_motor_current,
                 "T0": self.t0,
+                "U": self.unknown, # unknown command for testing purposes
                 }
 
         # Apply material flow parameter from material profile
@@ -477,8 +478,8 @@ class UM2GcodeParser:
         self.setRealPos(newRealPos)
 
 
-
-
+    def unknown(self, line, values):
+        self.planner.addSynchronizedCommand(CmdUnknown, p1=packedvalue.uint8_t(values["X"]))
 
 
 
