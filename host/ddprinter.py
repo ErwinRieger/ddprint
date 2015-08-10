@@ -47,6 +47,13 @@ SOH = 0x81
 class SERIALDISCON(SerialException):
     pass
 
+class FatalPrinterError(Exception):
+    def __init__(self, msg):
+        self.msg = msg
+
+    def __str__(self):
+        return "FatalPrinterError: " + self.msg
+
 class Printer(Serial):
 
     __single = None 
@@ -89,8 +96,6 @@ class Printer(Serial):
         # Timespan where we monitor the serial line after the
         # print has finished.
         self.postMonitor = 0
-
-        self.printing = False
 
         self.startTime = None
 
@@ -138,13 +143,13 @@ class Printer(Serial):
         for token in ["Error:", "cold extrusion", "SD init fail", "open failed"]:
             if token in recvLine:
 
-                self.printing = False
-
-                s = "ERROR: reply from printer: '%s'" % recvLine
-                self.gui.logError(s)
+                self.gui.logError("ERROR: reply from printer: '%s'" % recvLine)
 
                 self.readMore(20)
-                self.reset()
+
+                # self.reset()
+                if "UNKNOWN COMMAND" in recvLine.upper():
+                    raise FatalPrinterError(recvLine)
 
     # Read a response from printer, "handle" exceptions
     def safeReadline(self):
@@ -223,16 +228,18 @@ class Printer(Serial):
 
         # Read left over garbage
         recvLine = self.safeReadline()        
-        self.gui.logRecv("Initial read: ")
+        self.gui.logRecv("Initial read: ", recvLine)
         self.gui.logRecv(recvLine.encode("hex"), "\n")
 
     def commandInit(self, args):
-
         self.initSerial(args.device, args.baud)
+        self.resetLineNumber()
+
+    def resetLineNumber(self):
+        self.lineNr = 0
         self.sendCommand(CmdResetLineNr)
     
     def sendPrinterInit(self):
-
         self.curdirbits = 0
         self.sendCommand(CmdPrinterInit, wantReply="ok")
 
@@ -384,8 +391,6 @@ class Printer(Serial):
             try:
                 recvLine = self.safeReadline()        
             except SERIALDISCON:
-                # self.printing = False
-                # self.postMonitor = 0
                 self.gui.logError("Line disconnected in send2(), reconnecting!")
                 self.reconnect()
 
@@ -461,6 +466,13 @@ class Printer(Serial):
             statusDict[valueNames[i]] = statusList[i]
 
         return statusDict
+
+    def waitForState(self, destState, wait=1):
+
+        status = self.getStatus()
+        while status['state'] != destState:
+            time.sleep(wait)
+            status = self.getStatus()
 
     def getTemps(self):
         temps = self.query(CmdGetTemps)
