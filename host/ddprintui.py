@@ -20,10 +20,10 @@
 # along with ddprint.  If not, see <http://www.gnu.org/licenses/>.
 #*/
 
-import logging, datetime
+import logging, datetime, traceback
 logging.basicConfig(filename=datetime.datetime.now().strftime("/tmp/ddprint_%y.%m.%d_%H:%M:%S.log"), level=logging.DEBUG)
 
-import npyscreen , time, curses, sys, types, threading, Queue
+import npyscreen , time, curses, sys, threading, Queue
 import argparse
 import ddprint
 import ddprintutil as util
@@ -31,6 +31,7 @@ import ddprintutil as util
 from ddprintcommands import *
 from ddprintstates import *
 from ddprofile import MatProfile
+from ddprinter import FatalPrinterError
 
 class SyncCall:
     def __init__(self, meth, *args):
@@ -169,10 +170,18 @@ class MainForm(npyscreen.Form):
             obj = self.guiQueue.get()
             obj.call()
 
-        for w in [self.commLog, self.appLog]:
-            if w._need_update:
-                w.update()
-                w._need_update = False
+        #
+        # Note: update() can raise a TypeError if we receive non-printable characters over the
+        # usb-serial link. Ignore this exceptions here.
+        #
+        try:
+            for w in [self.commLog, self.appLog]:
+                if w._need_update:
+                    w._need_update = False
+                    w.update()
+        except TypeError:
+            self._log("while_waiting(): Ignoring exception: ", traceback.format_exc())
+
 
     def printWorker(self):
 
@@ -248,6 +257,7 @@ class MainForm(npyscreen.Form):
         # self.display()
 
     def display(self, clear=False):
+
         npyscreen.Form.display(self, clear)
         self.curses_pad.vline( 1, self.columns/2-1, curses.ACS_VLINE, self.lines-2)
         self.curses_pad.hline( self.lines/2-1, 1, curses.ACS_HLINE, self.columns/2-2)
@@ -268,89 +278,101 @@ class MainForm(npyscreen.Form):
 
     def printFile(self):
 
-        self.parser.reset()
-        self.planner.reset()
+        try:
 
-        util.home(self.parser, self.args.fakeendstop)
-        self.printer.sendPrinterInit()
+            self.parser.reset()
+            self.planner.reset()
 
-        # Send heat up  command
-        self._log( "\nPre-Heating bed (t0: %d)...\n" % self.mat_t0)
-        self.printer.heatUp(HeaterBed, self.mat_t0)
+            util.home(self.parser, self.args.fakeendstop)
+            self.printer.sendPrinterInit()
 
-        t = int(self.mat_t1 * 0.5)
-        self._log( "\nPre-Heating extruder (t1: %d)...\n" % t)
-        self.printer.heatUp(HeaterEx1, t)
+            # Send heat up  command
+            self._log( "\nPre-Heating bed (t0: %d)...\n" % self.mat_t0)
+            self.printer.heatUp(HeaterBed, self.mat_t0)
 
-        # Send printing moves
-        f = self.parser.preParse(self.fn.get_value())
+            t = int(self.mat_t1 * 0.5)
+            self._log( "\nPre-Heating extruder (t1: %d)...\n" % t)
+            self.printer.heatUp(HeaterEx1, t)
 
-        # Send priming moves
-        util.prime(self.parser)
+            # Send printing moves
+            f = self.parser.preParse(self.fn.get_value())
 
-        lineNr = 0
-        printStarted = False
+            # Send priming moves
+            util.prime(self.parser)
 
-        for line in f:
-            self.parser.execute_line(line)
+            lineNr = 0
+            printStarted = False
 
-            #
-            # Send more than one 512 byte block for dlprint
-            #
-            if lineNr > 1000 and (lineNr % 250) == 0:
-                # check temp and start print
+            for line in f:
+                self.parser.execute_line(line)
 
-                if  not printStarted:
+                #
+                # Send more than one 512 byte block for dlprint
+                #
+                if lineNr > 1000 and (lineNr % 250) == 0:
+                    # check temp and start print
 
-                    self._log( "\nHeating bed (t0: %d)...\n" % self.mat_t0 )
-                    self.printer.heatUp(HeaterBed, self.mat_t0, wait=self.mat_t0)
-                    self._log( "\nHeating extruder (t1: %d)...\n" % self.mat_t1 )
-                    self.printer.heatUp(HeaterEx1, self.mat_t1, wait=self.mat_t1 - 10)
+                    if  not printStarted:
 
-                    # Send print command
-                    self.printer.sendCommandParam(CmdMove, p1=MoveTypeNormal, wantReply="ok")
-                    printStarted = True
+                        self._log( "\nHeating bed (t0: %d)...\n" % self.mat_t0 )
+                        self.printer.heatUp(HeaterBed, self.mat_t0, wait=self.mat_t0)
+                        self._log( "\nHeating extruder (t1: %d)...\n" % self.mat_t1 )
+                        self.printer.heatUp(HeaterEx1, self.mat_t1, wait=self.mat_t1 - 10)
 
-                else:
+                        # Send print command
+                        self.printer.sendCommandParam(CmdMove, p1=MoveTypeNormal, wantReply="ok")
+                        printStarted = True
 
-                    status = self.printer.getStatus()
-                    self.guiQueue.put(SyncCall(self.updateStatus, status))
-                    if status['state'] != StateStart:
-                        break
+                    else:
 
-            lineNr += 1
+                        status = self.printer.getStatus()
+                        self.guiQueue.put(SyncCall(self.updateStatus, status))
+                        if status['state'] != StateStart:
+                            break
 
-        self.parser.finishMoves()
-        self.printer.sendCommand(CmdEOT, wantReply="ok")
+                lineNr += 1
 
-        # XXX start print if less than 1000 lines or temp not yet reached:
-        if not printStarted:
+            self.parser.finishMoves()
+            self.printer.sendCommand(CmdEOT, wantReply="ok")
 
-            self._log( "\nHeating bed (t0: %d)...\n" % self.mat_t0 )
-            self.printer.heatUp(HeaterBed, self.mat_t0, self.mat_t0)
-            self._log( "\nHeating extruder (t1: %d)...\n" % self.mat_t1 )
-            self.printer.heatUp(HeaterEx1, self.mat_t1, wait=self.mat_t1 - 10)
+            # XXX start print if less than 1000 lines or temp not yet reached:
+            if not printStarted:
 
-            # Send print command
-            self.printer.sendCommandParam(CmdMove, p1=MoveTypeNormal, wantReply="ok")
+                self._log( "\nHeating bed (t0: %d)...\n" % self.mat_t0 )
+                self.printer.heatUp(HeaterBed, self.mat_t0, self.mat_t0)
+                self._log( "\nHeating extruder (t1: %d)...\n" % self.mat_t1 )
+                self.printer.heatUp(HeaterEx1, self.mat_t1, wait=self.mat_t1 - 10)
 
-        status = self.printer.getStatus()
-        self.guiQueue.put(SyncCall(self.updateStatus, status))
-        while status['state'] != StateInit:
-            time.sleep(2)
+                # Send print command
+                self.printer.sendCommandParam(CmdMove, p1=MoveTypeNormal, wantReply="ok")
+
             status = self.printer.getStatus()
             self.guiQueue.put(SyncCall(self.updateStatus, status))
+            while status['state'] != StateInit:
+                time.sleep(2)
+                status = self.printer.getStatus()
+                self.guiQueue.put(SyncCall(self.updateStatus, status))
 
-        self.printer.coolDown(HeaterEx1)
-        self.printer.coolDown(HeaterBed)
+            self.printer.coolDown(HeaterEx1)
+            self.printer.coolDown(HeaterBed)
 
-        util.home(self.parser, self.args.fakeendstop)
+            util.home(self.parser, self.args.fakeendstop)
 
-        self.printer.sendCommand(CmdDisableSteppers, wantReply="ok")
+            self.printer.sendCommand(CmdDisableSteppers, wantReply="ok")
+
+        except FatalPrinterError, ex:
+            self._log("printFile(): Caught FatalPrinterError", ex.msg)
+            # Reset line numbers in case of a printer restart.
+            self.printer.resetLineNumber()
+
+        except:
+            self._log("printFile(): Caught exception: ", traceback.format_exc())
 
     # Non-thread save version
     def _log(self, *args):
-        self.appLog.buffer([util.stringFromArgs(*args)])
+        s = util.stringFromArgs(*args)
+        logging.info(s)
+        self.appLog.buffer([s])
         self.appLog._need_update = True
 
     def _logError(self, err):
@@ -363,7 +385,7 @@ class MainForm(npyscreen.Form):
     def log(self, *args):
         # self.appLog.buffer([util.stringFromArgs(*args)])
         s = util.stringFromArgs(*args)
-        logging.info(util.stringFromArgs(*args))
+        logging.info(s)
         self.guiQueue.put(SyncCallUpdate(self.appLog.buffer, [s]))
 
     def logError(self, *args):
