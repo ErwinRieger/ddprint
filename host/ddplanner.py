@@ -34,6 +34,8 @@ from ddprintstates import HeaterEx1, HeaterBed
 debugPlot = True
 debugPlot = False
 
+debugAutoTemp = False
+
 # Debug object
 class StreamedMove:
         pass
@@ -47,6 +49,8 @@ errorMove = StreamedMove()
 # ATInterval time and compute/set the temp for that interval.
 #
 UseAutoTemp = True
+# UseAutoTemp = False
+
 ATInterval = 5 # [s]
 
 ATMaxTempIncrease = 50
@@ -260,10 +264,6 @@ class Planner (object):
 
         move.typ = Move.NormalMove
 
-        # self.prepareMoveStart(move)
-        # self.prepareMoveEnd(move)
-        # self.joinMovesFwd(move)
-
         util.joinSpeed(lastMove, move, self.jerk, self.min_speeds)
 
         self.pathData.path.append(move)
@@ -419,12 +419,9 @@ class Planner (object):
 
                 if self.pathData.time > 0:
 
-                    print "AutoTemp: collected %d moves with %.2f s duration." % (len(self.pathData.atMoves), self.pathData.time)
-
                     # Compute temperature for this segment and add tempcommand into the stream
                     # Average speed:
                     avgSpeed = self.pathData.distance / self.pathData.time
-                    print "AutoTemp: distance: %.2f, avg speed: %.2f." % (self.pathData.distance, avgSpeed)
 
                     # Adjust temp between Tbase and max. Tbase+50 if speed is greater than 20 mm/s
                     newTemp = MatProfile.getHotendBaseTemp() # Extruder 1 temp
@@ -433,7 +430,10 @@ class Planner (object):
                         newTemp += min((avgSpeed - 20) * f, ATMaxTempIncrease)
                         newTemp = min(newTemp, MatProfile.getHotendMaxTemp())
 
-                    print "AutoTemp: new temp: %.2f." % (newTemp)
+                    if debugAutoTemp:
+                        print "AutoTemp: collected %d moves with %.2f s duration." % (len(self.pathData.atMoves), self.pathData.time)
+                        print "AutoTemp: distance: %.2f, avg speed: %.2f." % (self.pathData.distance, avgSpeed)
+                        print "AutoTemp: new temp: %.2f." % (newTemp)
 
                     if newTemp != self.pathData.lastTemp and self.args.mode != "pre":
 
