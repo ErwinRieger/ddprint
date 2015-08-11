@@ -629,10 +629,7 @@ def main():
         ### xxx profiling
         ### printer.sendCommand(CmdExit)
 
-    elif args.mode == 'pre':
-
-        # XXX set to warm up/home position
-        # parser.set_position(driver.zeroPos)
+    elif args.mode == "pre":
 
         # Virtuelle position des druckkopfes falls 'gehomed'
         homePosMM = util.MyPoint(
@@ -642,10 +639,10 @@ def main():
             )
         parser.set_position(homePosMM)
 
-        # f = open(args.gfile)
         f = parser.preParse(args.gfile)
         for line in f:
             parser.execute_line(line)
+
         parser.finishMoves()
 
     elif args.mode == 'mon':
