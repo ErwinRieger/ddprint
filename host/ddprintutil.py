@@ -45,7 +45,7 @@ B_AXIS = 4
 FILAMENT_REVERSAL_LENGTH = 750
 
 # To prevent false assertions because of rounding errors
-RoundSafe = 0.999
+RoundSafe = 0.995
 
 ####################################################################################################
 #
@@ -137,10 +137,6 @@ def joinSpeed(move1, move2, jerk, min_speeds):
             if debugMoves:
                 move1.pprint("JoinSpeed - disjoint Move1")
                 move2.pprint("JoinSpeed - disjoint Move2")
-
-            # jerkSpeed = move1.vVector().constrain(jerk) or move1.feedrate
-            # move1.setNominalEndFr(jerkSpeed)
-            move1.setNominalJerkEndSpeed(jerk)
 
             # Set endspeed to minimum of reachable endspeed and jerkspeed
             f = move1.getJerkSpeed(jerk)
