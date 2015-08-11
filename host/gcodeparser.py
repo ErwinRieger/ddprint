@@ -133,9 +133,11 @@ class UM2GcodeParser:
         return self._gcodePos.copy()
 
     def setRealPos(self, pos):
+        # print "setRealPos:", pos
         self._realPos = pos.copy()
 
     def setGcodePos(self, pos):
+        # print "setGcodePos:", pos
         self._gcodePos = pos.copy()
 
     def preParse(self, fn):
@@ -187,7 +189,7 @@ class UM2GcodeParser:
                 upperLine = line.upper()
 
                 if "LAYER:" in upperLine:
-                    getCuraLayer(line)
+                    layerNum = getCuraLayer(line)
                     self.planner.layerChange(layerNum)
                     return
 
@@ -335,11 +337,15 @@ class UM2GcodeParser:
 
     def g92_set_pos(self, line, values):
 
-        pos = self.getRealPos()
+        gcodePos = self.getGcodePos()
+        realPos = self.getRealPos()
         for key in values:
-            pos[key] = values[key]
+            gcodePos[key] = values[key]
+            realPos[key] = values[key]
 
-        self.set_position(pos)
+        # self.set_position(pos)
+        self.setGcodePos(gcodePos)
+        self.setRealPos(realPos)
 
     def g0(self, line, values):
         # print "g0", values
