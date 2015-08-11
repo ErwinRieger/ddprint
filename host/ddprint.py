@@ -635,7 +635,7 @@ def main():
         homePosMM = util.MyPoint(
             X = driver.X_HOME_POS,
             Y = driver.Y_HOME_POS,
-            Z = driver.Z_HOME_POS - 20,
+            Z = driver.Z_HOME_POS, #  - 20,
             )
         parser.set_position(homePosMM)
 
