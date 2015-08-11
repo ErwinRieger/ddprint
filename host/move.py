@@ -417,7 +417,6 @@ class Move(object):
         # self.joinData.sanityCheck()
 
         nextMove = self.nextMove
-        dirVS = self.getFeedrateV(self.getStartFr())
         dirVE = self.getFeedrateV(self.getEndFr())
         nullV = VVector((0, 0, 0, 0, 0))
 
@@ -435,6 +434,7 @@ class Move(object):
 
             # First move
             assert(self.typ & Move.StartMove)
+            dirVS = self.getFeedrateV(self.getStartFr())
             nullV.checkJerk(dirVS, jerk, "start 0", "#: %d" % self.moveNumber)
 
     def pprint(self, title):
