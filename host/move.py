@@ -544,8 +544,13 @@ class Move(object):
         if self.eOnly:
             return min(self.feedrateS, jerk[A_AXIS])
 
-        f = self.getFeedrateV().constrain3(jerk).feedrate3()
-        return f
+        # modxxx f = self.getFeedrateV().constrain3(jerk).feedrate3()
+        fv = self.getFeedrateV()
+        v = fv.constrain(jerk)
+        if v:
+            return v.feedrate3()
+
+        return fv.feedrate3()
 
     def setNominalJerkStartSpeed(self, jerk):
 
