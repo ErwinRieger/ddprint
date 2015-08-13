@@ -33,6 +33,7 @@ CmdDirG1         = 0x8 # CmdDirBits and CmdG1 combined
 CmdG1_24         = 0x9 # Same as CmdG1, but with 32 bit accel- and deccel-timervalues (vor very slow moves)
 CmdDirG1_24      = 0xa # CmdDirBits and CmdG1_24 combined
 CmdSyncTargetTemp= 0xb # Parameters: heater, temp 
+CmdDwellMS       = 0xc # Parameters: dwell time in mS
 
 CmdUnknown       = 0x7f # Unknown command for debugging
 
@@ -110,6 +111,7 @@ CommandNames = {
     CmdDirG1: "CmdDirG1",
     CmdDirG1_24: "CmdDirG1_24",
     CmdSyncTargetTemp: "CmdSyncTargetTemp",
+    CmdDwellMS: "CmdDwellMS",
     CmdUnknown: "CmdUnknown",
     #
     # Direct commands:
