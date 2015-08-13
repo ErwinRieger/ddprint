@@ -59,6 +59,7 @@
 #define CmdG1_24           0x9
 #define CmdDirG1_24        0xa
 #define CmdSyncTargetTemp  0xb
+#define CmdDwellMS         0xc
 
 //
 // Direct commands:
@@ -371,6 +372,8 @@ class FillBufferTask : public Protothread {
 
         int32_t deltaLead, step;
 
+        unsigned long dwellEnd;
+
         // StepBlock stepBlock;
 
     public:
@@ -441,6 +444,9 @@ class FillBufferTask : public Protothread {
 
                 case CmdSyncTargetTemp:
                     goto HandleCmdSyncTargetTemp;
+
+                case CmdDwellMS:
+                    goto HandleCmdDwellMS;
 
                 default:
                     SERIAL_ECHOPGM("Error: UNKNOWN command byte: ");
@@ -816,6 +822,19 @@ class FillBufferTask : public Protothread {
 
                 PT_RESTART();
 
+            HandleCmdDwellMS:
+
+                sDReader.setBytesToRead2();
+                PT_WAIT_THREAD(sDReader);
+
+                dwellEnd = millis() + FromBuf(uint16_t, sDReader.readData);
+                printer.dwellStart();
+
+                PT_WAIT_WHILE(millis() < dwellEnd);
+                printer.dwellEnd();
+
+                PT_RESTART();
+
             PT_END(); // Not reached
         }
 
@@ -1003,15 +1022,13 @@ void Printer::cmdGetCurrentTemps() {
     SERIAL_ECHOLNPGM(")");
 }
 
-// xxx call it moveFinished
-void Printer::checkPrintFinished() {
+void Printer::checkMoveFinished() {
 
     //
-    // Print is finished if:
+    // Move is finished if:
     // * eot was received (sender has sent all data)
     // * read file pos is at the end of file
     // * buffers are empty
-    // * xxx printer has performed finishing tasks, homing, temperature?
     //
     if (printerState == StateStart) {
 
@@ -1135,6 +1152,22 @@ void Printer::cmdGetStatus() {
     SERIAL_ECHOPGM(",");
     SERIAL_ECHO((uint16_t)bufferLow);
     SERIAL_ECHOLNPGM(")");
+}
+
+void Printer::dwellStart() {
+
+    massert(printerState == StateStart);
+    // massert(moveType == MoveTypeNormal);
+
+    printerState = StateDwell;
+    // moveType = MoveTypeNone;
+}
+
+void Printer::dwellEnd() {
+
+    printerState = StateStart;
+    // moveType = MoveTypeNormal;
+    bufferLow = -1;
 }
 
 Printer printer;
@@ -1677,7 +1710,8 @@ FWINLINE void loop() {
     static unsigned long timer10mS = millis();
     static unsigned long timer100mS = millis();
 
-    if (printer.moveType == Printer::MoveTypeNormal) {
+    // if (printer.moveType == Printer::MoveTypeNormal) {
+    if (printer.printerState == Printer::StateStart) {
 
         if (printer.bufferLow == -1) {
             if  (stepBuffer.byteSize() > 40)
@@ -1747,7 +1781,7 @@ FWINLINE void loop() {
             //
             tempControl.heater();
 
-            printer.checkPrintFinished();
+            printer.checkMoveFinished();
                             
             uint16_t sbs = stepBuffer.byteSize();
             if (sbs && sbs<512) {
@@ -1761,22 +1795,18 @@ FWINLINE void loop() {
         timer10mS = ts;
     }
 
-    // If printing, then read steps from the sd buffer and push it to
-    // the print buffer.
-
-    // if (printer.moveType >= Printer::MoveTypeHoming) {
-        // fillBufferTask.Run();
-    // }
-
     // Read usb commands
     usbCommand.Run();
 
+    /*
     if (printer.moveType == Printer::MoveTypeNone) {
         // Handle swapfile writing
         swapDev.Run();
     }
     else {
-
+*/
+        // If printing, then read steps from the sd buffer and push it to
+        // the print buffer.
         fillBufferTask.Run();
         swapDev.Run();
 #if 0
@@ -1808,7 +1838,9 @@ FWINLINE void loop() {
         }
         */
 #endif
+        /*
     }
+*/
 
     // Check swap dev error
     if (swapDev.errorCode()) {

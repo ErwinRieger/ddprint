@@ -120,8 +120,8 @@ class Printer {
         enum {
             StateIdle,       // 
             StateInit,       // 
-            StateStart // ,      //
-            // StateHoming,      // xxx should be SingleMove or somewhat
+            StateStart,      //
+            StateDwell       //
             } printerState;
 
         typedef enum {
@@ -143,7 +143,7 @@ class Printer {
         void cmdHome();
         void setHomePos( int32_t x, int32_t y, int32_t z, int32_t a, int32_t b);
         void cmdSetTargetTemp(uint8_t heater, uint16_t temp);
-        void checkPrintFinished();
+        void checkMoveFinished();
         void disableSteppers();
         void cmdDisableSteppers();
         void cmdDisableStepperIsr();
@@ -155,6 +155,8 @@ class Printer {
         void cmdGetTargetTemps();
         void cmdGetCurrentTemps();
         void cmdGetStatus();
+        void dwellStart();
+        void dwellEnd();
 };
 
 extern Printer printer;

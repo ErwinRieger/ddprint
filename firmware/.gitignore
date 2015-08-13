@@ -4,3 +4,4 @@ applet*
 .*.swp
 tags
 swapfile
+sim.gcode
