@@ -478,6 +478,8 @@ def main():
     argParser.add_argument("-mat", dest="mat", action="store", help="Name of material profile to use [pla, abs...], default is pla.", default="pla")
     argParser.add_argument("-noz", dest="nozzle", action="store", help="Name of nozzle profile to use [nozzle40, nozzle80...], default is nozzle40.", default="nozzle40")
 
+    argParser.add_argument("-np", dest="noPrime", action="store_const", const=True, help="Debug: don't prime nozzle, to test extrusion-less moves.")
+
     # fake endstops with CmdDisableStepperIsr as long we have no real ones
     argParser.add_argument("-F", dest="fakeendstop", action="store", type=bool, help="fake endstops", default=False)
 
@@ -563,7 +565,8 @@ def main():
         f = parser.preParse(args.gfile)
 
         # Send priming moves
-        util.prime(parser)
+        if not args.noPrime:
+            util.prime(parser)
 
         lineNr = 0
         printStarted = False
