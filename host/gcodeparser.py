@@ -23,7 +23,7 @@ import packedvalue
 
 from ddprofile import MatProfile, PrinterProfile
 from ddplanner import Planner
-from ddprintcommands import CmdSyncFanSpeed, CmdUnknown
+from ddprintcommands import CmdSyncFanSpeed, CmdUnknown, CmdDwellMS
 from ddprintconstants import dimNames
 from move import VVector, Move
 from ddprintutil import A_AXIS, B_AXIS, debugMoves, vectorDistance, circaf
@@ -76,6 +76,7 @@ class UM2GcodeParser:
                 # G0 and G1 are the same
                 "G0": self.g0,
                 "G1": self.g0,
+                "G4": self.g4_dwell,
                 "G10": self.g10_retract,
                 "G11": self.g11_retract_recover,
                 "G21": self.g21_metric_values,
@@ -92,6 +93,7 @@ class UM2GcodeParser:
                 "M109": self.m109_extruder_temp_wait,
                 "M117": self.m117_message,
                 "M140": self.m140_bed_temp,
+                "M190": self.m190_bed_temp_wait,
                 "M907": self.m907_motor_current,
                 "T0": self.t0,
                 "U": self.unknown, # unknown command for testing purposes
@@ -276,11 +278,24 @@ class UM2GcodeParser:
     def m140_bed_temp(self, line, values):
         print "ignoring m140..."
 
+    def m190_bed_temp_wait(self, line, values):
+        print "ignoring m190..."
+
     def m907_motor_current(self, line, values):
         print "ignoring m907..."
 
     def t0(self, line, values):
         print "ignoring t0..."
+
+    def g4_dwell(self, line, values):
+        if "P" in values:
+            print "dwell, ", values["P"], "ms"
+            self.planner.addSynchronizedCommand(CmdDwellMS, p1=packedvalue.uint16_t(values["P"]))
+        elif "S" in values:
+            self.planner.addSynchronizedCommand(CmdDwellMS, p1=packedvalue.uint16_t(values["S"] * 1000))
+        else:
+            # unknown parameter
+            assert(0)
 
     def g10_retract(self, line, values):
         # print "g10_retract", values
