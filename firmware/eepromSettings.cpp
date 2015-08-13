@@ -86,11 +86,11 @@ void eeDumpValue(float f, uint8_t) {
     SERIAL_ECHO(f);
 }
 
-void eeDumpValue(long l, uint8_t) {
+void eeDumpValue(int16_t l, uint8_t) {
     SERIAL_ECHO(l);
 }
 
-void eeDumpValue(int l, uint8_t) {
+void eeDumpValue(int32_t l, uint8_t) {
     SERIAL_ECHO(l);
 }
 
@@ -103,9 +103,9 @@ void eeDumpValue(float *array, uint8_t len) {
     SERIAL_ECHOPGM(")");
 }
 
-void eeDumpValue(long *array, uint8_t len) {
+void eeDumpValue(int32_t *array, uint8_t len) {
     SERIAL_ECHOPGM("(");
-    for (uint8_t i=0; i<len/sizeof(long); i++) {
+    for (uint8_t i=0; i<len/sizeof(int32_t); i++) {
         SERIAL_ECHO(array[i]);
         SERIAL_ECHOPGM(",");
     }

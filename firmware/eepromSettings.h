@@ -24,26 +24,26 @@ struct __attribute__((packed)) EepromSettings {
     char stored_ver[4];
     float axis_steps_per_unit[4];
     float max_feedrate[4];
-    long max_acceleration_units_per_sq_second[4]; // XXX unused
+    int32_t max_acceleration_units_per_sq_second[4]; // XXX unused
 
     float acceleration;
     float retract_acceleration;
     float minimumfeedrate;
     float mintravelfeedrate;
-    long minsegmenttime;
+    int32_t minsegmenttime;
     float max_xy_jerk;
     float max_z_jerk;
     float max_e_jerk;
 
     float add_homeing[4];
 
-    int plaPreheatHotendTemp;
-    int plaPreheatHPBTemp;
-    int plaPreheatFanSpeed;
+    int16_t plaPreheatHotendTemp;
+    int16_t plaPreheatHPBTemp;
+    int16_t plaPreheatFanSpeed;
 
-    int absPreheatHotendTemp;
-    int absPreheatHPBTemp;
-    int absPreheatFanSpeed;
+    int16_t absPreheatHotendTemp;
+    int16_t absPreheatHPBTemp;
+    int16_t absPreheatFanSpeed;
 
     float Kp;
     float Ki;
