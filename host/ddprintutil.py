@@ -416,8 +416,8 @@ class GetChar:
 
 def commonInit(args, parser):
 
-    driver = parser.planner
-    printer = driver.printer
+    planner = parser.planner
+    printer = planner.printer
 
     printer.commandInit(args)
 
@@ -459,8 +459,8 @@ def getVirtualPos(parser):
 
 def home(parser, fakeHomingEndstops=False, force=False):
 
-    driver = parser.planner
-    printer = driver.printer
+    planner = parser.planner
+    printer = planner.printer
 
     print "*"
     print "* Start homing..."
@@ -474,7 +474,7 @@ def home(parser, fakeHomingEndstops=False, force=False):
         # Get current pos from printer and set our virtual pos
         curPosMM = getVirtualPos(parser)
 
-        (homePosMM, homePosStepped) = driver.getHomePos()
+        (homePosMM, homePosStepped) = planner.getHomePos()
 
         # Move to home
         if not curPosMM.equal(homePosMM, "XYZ"):
@@ -494,7 +494,7 @@ def home(parser, fakeHomingEndstops=False, force=False):
                     PrinterProfile.getMaxFeedrate(X_AXIS)*60, 
                     homePosMM.X, homePosMM.Y))
 
-            parser.finishMoves()
+            planner.finishMoves()
             printer.sendCommandParam(CmdMove, p1=MoveTypeNormal, wantReply="ok")
             printer.sendCommand(CmdEOT, wantReply="ok")
 
@@ -523,9 +523,9 @@ def home(parser, fakeHomingEndstops=False, force=False):
 
         # Send homing moves
         # xxx create Moves directly
-        parser.set_position(driver.zeroPos)
-        parser.execute_line("G0 F%d %s%f" % (driver.HOMING_FEEDRATE[dim]*60, dimNames[dim], driver.MAX_POS[dim] * driver.HOME_DIR[dim] * 1.25)) # Move towards endstop
-        parser.finishMoves()
+        parser.set_position(planner.zeroPos)
+        parser.execute_line("G0 F%d %s%f" % (planner.HOMING_FEEDRATE[dim]*60, dimNames[dim], planner.MAX_POS[dim] * planner.HOME_DIR[dim] * 1.25)) # Move towards endstop
+        planner.finishMoves()
 
         # Send homing command
         print "---------------- send homing cmd 1 on axis", dimNames[dim]
@@ -550,9 +550,9 @@ def home(parser, fakeHomingEndstops=False, force=False):
 
         printer.sendPrinterInit()
 
-        parser.set_position(driver.zeroPos)
-        parser.execute_line("G0 F%d %s%f" % (driver.HOMING_FEEDRATE[dim]*60, dimNames[dim], driver.HOME_RETRACT_MM * -1 * driver.HOME_DIR[dim])) # Back off
-        parser.finishMoves()
+        parser.set_position(planner.zeroPos)
+        parser.execute_line("G0 F%d %s%f" % (planner.HOMING_FEEDRATE[dim]*60, dimNames[dim], planner.HOME_RETRACT_MM * -1 * planner.HOME_DIR[dim])) # Back off
+        planner.finishMoves()
 
         # Send homing command
         print "---------------- send homing cmd 2"
@@ -573,9 +573,9 @@ def home(parser, fakeHomingEndstops=False, force=False):
 
         printer.sendPrinterInit()
 
-        parser.set_position(driver.zeroPos)
-        parser.execute_line("G0 F%d %s%f" % (driver.HOMING_FEEDRATE[dim]*60/3, dimNames[dim], driver.HOME_RETRACT_MM*1.5*driver.HOME_DIR[dim])) # Move towards slowly
-        parser.finishMoves()
+        parser.set_position(planner.zeroPos)
+        parser.execute_line("G0 F%d %s%f" % (planner.HOMING_FEEDRATE[dim]*60/3, dimNames[dim], planner.HOME_RETRACT_MM*1.5*planner.HOME_DIR[dim])) # Move towards slowly
+        planner.finishMoves()
 
         # Send homing command
         print "---------------- send homing cmd 3"
@@ -600,9 +600,9 @@ def home(parser, fakeHomingEndstops=False, force=False):
 
         printer.sendPrinterInit()
 
-        parser.set_position(driver.zeroPos)
-        parser.execute_line("G0 F%d %s%f" % (driver.HOMING_FEEDRATE[dim]*60/3, dimNames[dim], driver.HOME_RETRACT_MM * -1 * driver.HOME_DIR[dim])) # Back off
-        parser.finishMoves()
+        parser.set_position(planner.zeroPos)
+        parser.execute_line("G0 F%d %s%f" % (planner.HOMING_FEEDRATE[dim]*60/3, dimNames[dim], planner.HOME_RETRACT_MM * -1 * planner.HOME_DIR[dim])) # Back off
+        planner.finishMoves()
 
         # Send homing command
         print "---------------- send homing cmd 4"
@@ -627,9 +627,9 @@ def home(parser, fakeHomingEndstops=False, force=False):
     #
     # xxx set end-of-print retraction e-pos also here?
     #
-    # parser.set_position(driver.homePosMM)
-    # payload = struct.pack("<iiiii", *driver.homePosStepped)
-    (homePosMM, homePosStepped) = driver.getHomePos()
+    # parser.set_position(planner.homePosMM)
+    # payload = struct.pack("<iiiii", *planner.homePosStepped)
+    (homePosMM, homePosStepped) = planner.getHomePos()
     parser.set_position(homePosMM)
     payload = struct.pack("<iiiii", *homePosStepped)
     printer.sendCommand(CmdSetHomePos, binPayload=payload, wantReply="ok")
@@ -644,10 +644,10 @@ def home(parser, fakeHomingEndstops=False, force=False):
 
 def prime(parser):
 
-    driver = parser.planner
-    # printer = driver.printer
+    planner = parser.planner
+    # printer = planner.printer
 
-    parser.execute_line("G0 F%f Y0 Z%f" % (driver.HOMING_FEEDRATE[X_AXIS]*60, ddprintconstants.PRIMING_HEIGHT))
+    parser.execute_line("G0 F%f Y0 Z%f" % (planner.HOMING_FEEDRATE[X_AXIS]*60, ddprintconstants.PRIMING_HEIGHT))
 
     pos = parser.getRealPos()
 
@@ -670,10 +670,10 @@ def prime(parser):
     # Wipe priming material if not ultigcode flavor 
     if not parser.ultiGcodeFlavor:
         # parser.execute_line("G10")
-        # parser.execute_line("G0 F%f X50 Z0.5" % (driver.HOMING_FEEDRATE[X_AXIS]*60))
+        # parser.execute_line("G0 F%f X50 Z0.5" % (planner.HOMING_FEEDRATE[X_AXIS]*60))
         parser.execute_line("G0 F9000 X20 Z0.1")
-        # parser.execute_line("G0 F1200 X%.2f" % (driver.X_MAX_POS * 0.8))
-        # parser.execute_line("G0 F%d Z10" % (driver.HOMING_FEEDRATE[Z_AXIS]*60))
+        # parser.execute_line("G0 F1200 X%.2f" % (planner.X_MAX_POS * 0.8))
+        # parser.execute_line("G0 F%d Z10" % (planner.HOMING_FEEDRATE[Z_AXIS]*60))
         # parser.execute_line("G1 X190 Z0.1 F9000") #  ; pull away filament
         # parser.execute_line("G1 X210 F9000") #  ; wipe
         # parser.execute_line("G1 Y20 F9000") #  ; wipe
@@ -698,7 +698,7 @@ def zRepeatability(parser):
         parser.execute_line("G0 F%d X115 Y210 Z10" % (feedrate*60))
         parser.execute_line("G0 F%d Z%f" % (feedrate*60, random.randint(20, 150)))
 
-    parser.finishMoves()
+    planner.finishMoves()
     printer.sendCommandParam(CmdMove, p1=MoveTypeNormal, wantReply="ok")
     printer.sendCommand(CmdEOT, wantReply="ok")
 
@@ -708,8 +708,8 @@ def zRepeatability(parser):
 
 def manualMove(parser, axis, distance, absolute=False):
 
-    driver = parser.planner
-    printer = driver.printer
+    planner = parser.planner
+    printer = planner.printer
 
     printer.sendPrinterInit()
 
@@ -729,7 +729,7 @@ def manualMove(parser, axis, distance, absolute=False):
         current_position = parser.getRealPos()
         parser.execute_line("G0 F%d %s%f" % (feedrate*60, dimNames[axis], current_position[axis] + distance))
 
-    parser.finishMoves()
+    planner.finishMoves()
 
     printer.sendCommand(CmdEOT, wantReply="ok")
     # time.sleep(1)
@@ -744,8 +744,8 @@ def manualMove(parser, axis, distance, absolute=False):
 
 def insertFilament(args, parser):
 
-    driver = parser.planner
-    printer = driver.printer
+    planner = parser.planner
+    printer = planner.printer
 
     def manualMoveE():
 
@@ -774,7 +774,7 @@ def insertFilament(args, parser):
             # XXX hardcoded feedrate
             parser.execute_line("G0 F%d A%f" % (5*60, aofs))
 
-            parser.finishMoves()
+            planner.finishMoves()
             printer.sendCommandParam(CmdMove, p1=MoveTypeNormal, wantReply="ok")
             printer.sendCommand(CmdEOT, wantReply="ok")
             printer.waitForState(StateInit, wait=0.1)
@@ -783,9 +783,9 @@ def insertFilament(args, parser):
 
     # Move to mid-front
     feedrate = PrinterProfile.getMaxFeedrate(X_AXIS)
-    parser.execute_line("G0 F%d X%f Y%f" % (feedrate*60, driver.MAX_POS[X_AXIS]/2, driver.MAX_POS[Y_AXIS]/2))
+    parser.execute_line("G0 F%d X%f Y%f" % (feedrate*60, planner.MAX_POS[X_AXIS]/2, planner.MAX_POS[Y_AXIS]/2))
 
-    parser.finishMoves()
+    planner.finishMoves()
 
     printer.sendCommandParam(CmdMove, p1=MoveTypeNormal, wantReply="ok")
     printer.sendCommand(CmdEOT, wantReply="ok")
@@ -809,7 +809,7 @@ def insertFilament(args, parser):
     #
     parser.execute_line("G10")
 
-    parser.finishMoves()
+    planner.finishMoves()
 
     printer.sendCommandParam(CmdMove, p1=MoveTypeNormal, wantReply="ok")
     printer.sendCommand(CmdEOT, wantReply="ok")
@@ -822,8 +822,8 @@ def insertFilament(args, parser):
 
 def removeFilament(args, parser):
 
-    driver = parser.planner
-    printer = driver.printer
+    planner = parser.planner
+    printer = planner.printer
 
     printer.commandInit(args)
 
@@ -837,9 +837,9 @@ def removeFilament(args, parser):
     # parser.execute_line("G0 F%d Z%f" % (feedrate*60, MAX_POS[Z_AXIS]))
 
     feedrate = PrinterProfile.getMaxFeedrate(X_AXIS)
-    parser.execute_line("G0 F%d X%f Y%f" % (feedrate*60, driver.MAX_POS[X_AXIS]/2, driver.MAX_POS[Y_AXIS]/2))
+    parser.execute_line("G0 F%d X%f Y%f" % (feedrate*60, planner.MAX_POS[X_AXIS]/2, planner.MAX_POS[Y_AXIS]/2))
 
-    parser.finishMoves()
+    planner.finishMoves()
 
     printer.sendCommandParam(CmdMove, p1=MoveTypeNormal, wantReply="ok")
     printer.sendCommand(CmdEOT, wantReply="ok")
@@ -857,8 +857,8 @@ def removeFilament(args, parser):
 
 def retract(args, parser):
 
-    driver = parser.planner
-    printer = driver.printer
+    planner = parser.planner
+    printer = planner.printer
 
     commonInit(args, parser)
 
@@ -869,7 +869,7 @@ def retract(args, parser):
     # parser.retracted = False
     parser.execute_line("G10")
 
-    parser.finishMoves()
+    planner.finishMoves()
 
     printer.sendCommandParam(CmdMove, p1=MoveTypeNormal, wantReply="ok")
     printer.sendCommand(CmdEOT, wantReply="ok")
@@ -882,8 +882,8 @@ def retract(args, parser):
 
 def bedLeveling(args, parser):
 
-    driver = parser.planner
-    printer = driver.printer
+    planner = parser.planner
+    printer = planner.printer
 
     printer.commandInit(args)
 
@@ -928,7 +928,7 @@ def bedLeveling(args, parser):
 
             parser.execute_line("G0 F%d Z%f" % (zFeedrate*60, zofs))
 
-            parser.finishMoves()
+            planner.finishMoves()
             printer.sendCommandParam(CmdMove, p1=MoveTypeNormal, wantReply="ok")
             printer.sendCommand(CmdEOT, wantReply="ok")
 
@@ -941,9 +941,9 @@ def bedLeveling(args, parser):
     print "Level point 1/3"
 
     printer.sendPrinterInit()
-    parser.execute_line("G0 F%d X%f Y%f Z%f" % (feedrate*60, driver.X_MAX_POS/2, driver.Y_MAX_POS - 10, driver.HEAD_HEIGHT))
+    parser.execute_line("G0 F%d X%f Y%f Z%f" % (feedrate*60, planner.X_MAX_POS/2, planner.Y_MAX_POS - 10, planner.HEAD_HEIGHT))
 
-    parser.finishMoves()
+    planner.finishMoves()
     printer.sendCommandParam(CmdMove, p1=MoveTypeNormal, wantReply="ok")
     printer.sendCommand(CmdEOT, wantReply="ok")
 
@@ -963,7 +963,7 @@ def bedLeveling(args, parser):
 
     # Finally we know the zero z position
     # current_position[Z_AXIS] = 0
-    current_position[Z_AXIS] = driver.LEVELING_OFFSET;
+    current_position[Z_AXIS] = planner.LEVELING_OFFSET;
 
     # Adjust the virtual position
     parser.set_position(current_position)
@@ -981,7 +981,7 @@ def bedLeveling(args, parser):
     parser.execute_line("G0 F%d X35 Y20" % (feedrate*60))
     parser.execute_line("G0 F%d Z0.1" % (zFeedrate*60))
 
-    parser.finishMoves()
+    planner.finishMoves()
     printer.sendCommandParam(CmdMove, p1=MoveTypeNormal, wantReply="ok")
     printer.sendCommand(CmdEOT, wantReply="ok")
 
@@ -994,10 +994,10 @@ def bedLeveling(args, parser):
 
     printer.sendPrinterInit()
     parser.execute_line("G0 F%d Z5" % (zFeedrate*60))
-    parser.execute_line("G0 F%d X%f" % (feedrate*60, driver.X_MAX_POS-10))
+    parser.execute_line("G0 F%d X%f" % (feedrate*60, planner.X_MAX_POS-10))
     parser.execute_line("G0 F%d Z0.1" % (zFeedrate*60))
 
-    parser.finishMoves()
+    planner.finishMoves()
     printer.sendCommandParam(CmdMove, p1=MoveTypeNormal, wantReply="ok")
     printer.sendCommand(CmdEOT, wantReply="ok")
 
@@ -1028,8 +1028,8 @@ def bedLevelAdjust(args, parser):
 
 def storeSD(parser):
 
-    driver = parser.planner
-    printer = driver.printer
+    planner = parser.planner
+    printer = planner.printer
 
     buf = (512 - 5) * chr(0x55)
     printer.sendBinaryCommand(chr(CmdRaw), binPayload=buf)
@@ -1047,12 +1047,14 @@ def stringFromArgs(*args):
 
 ####################################################################################################
 
+def endOfPrintLift(parser):
 
+    planner = parser.planner
 
+    pos = parser.getRealPos()
+    zlift = min(pos.Z + 25, planner.Z_MAX_POS)
 
-
-
-
-
+    if zlift > pos.Z:
+        parser.execute_line("G0 F%f Z%f" % (planner.HOMING_FEEDRATE[Z_AXIS]*60, zlift))
 
 

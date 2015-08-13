@@ -416,8 +416,8 @@ def plot4v(nom1, nom2, v1, v2, jerk, diff, fn = "/tmp/4v.gnuplot"):
 
 def heatHotend(args, parser):
 
-    driver = parser.planner
-    printer = driver.printer
+    planner = parser.planner
+    printer = planner.printer
 
     printer.commandInit(args)
 
@@ -453,8 +453,6 @@ def initParser(args, mode=None, gui=None):
     printer = Printer(gui)
 
     # Create the planner singleton instance
-    # driver = Planner(printer, mode, gui)
-    # parser.s3g = driver
     planner = Planner(args, gui)
 
     # Create parser singleton instance
@@ -543,7 +541,7 @@ def main():
     args = argParser.parse_args()
     # print "args: ", args
 
-    (parser, driver, printer) = initParser(args, mode=args.mode)
+    (parser, planner, printer) = initParser(args, mode=args.mode)
 
     steps_per_mm = PrinterProfile.getStepsPerMMVector()
 
@@ -601,7 +599,13 @@ def main():
 
             lineNr += 1
 
-        parser.finishMoves()
+        # 
+        # Add a move to lift the nozzle from the print if not ultigcode flavor
+        # 
+        if not parser.ultiGcodeFlavor:
+            util.endOfPrintLift(parser)
+
+        planner.finishMoves()
         printer.sendCommand(CmdEOT, wantReply="ok")
 
         # XXX start print if less than 1000 lines or temp not yet reached:
@@ -636,9 +640,9 @@ def main():
 
         # Virtuelle position des druckkopfes falls 'gehomed'
         homePosMM = util.MyPoint(
-            X = driver.X_HOME_POS,
-            Y = driver.Y_HOME_POS,
-            Z = driver.Z_HOME_POS, #  - 20,
+            X = planner.X_HOME_POS,
+            Y = planner.Y_HOME_POS,
+            Z = planner.Z_HOME_POS, #  - 20,
             )
         parser.set_position(homePosMM)
 
@@ -646,7 +650,7 @@ def main():
         for line in f:
             parser.execute_line(line)
 
-        parser.finishMoves()
+        planner.finishMoves()
 
     elif args.mode == 'mon':
         printer.initSerial(args.device, args.baud)
@@ -723,7 +727,7 @@ def main():
         # current_position = parser.state.getRealPosition()
         # print "Virtual pos: ", current_position
 
-        (homePosMM, homePosStepped) = driver.getHomePos()
+        (homePosMM, homePosStepped) = planner.getHomePos()
         print "Virtual home pos: ", homePosMM
 
     elif args.mode == 'getTemps':
