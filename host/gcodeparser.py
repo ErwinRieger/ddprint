@@ -244,8 +244,8 @@ class UM2GcodeParser:
 
         return values
 
-    def finishMoves(self):
-        self.planner.finishMoves()
+    # def finishMoves(self):
+        # self.planner.finishMoves()
 
     def m25_stop_reading(self, line, values):
         print "XXX todo implement M25", values
