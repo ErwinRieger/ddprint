@@ -343,7 +343,7 @@ class MainForm(npyscreen.Form):
             if not self.parser.ultiGcodeFlavor:
                 util.endOfPrintLift(self.parser)
 
-            self.parser.finishMoves()
+            self.planner.finishMoves()
             self.printer.sendCommand(CmdEOT, wantReply="ok")
 
             # XXX start print if less than 1000 lines or temp not yet reached:
