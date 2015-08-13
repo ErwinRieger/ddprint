@@ -83,7 +83,7 @@ class MainForm(npyscreen.Form):
         # Command queue of the printer thread
         self.cmdQueue = Queue.Queue()
 
-        self.stateNames = ["IDLE", "INIT", "MOVING"]
+        self.stateNames = ["IDLE", "INIT", "MOVING", "DWELL"]
 
         # t  = self.add(npyscreen.TitleText, name = "Text:",) 
         # t.entry_widget.add_handlers({ curses.ascii.NL: self.msgBox}) 
@@ -258,7 +258,12 @@ class MainForm(npyscreen.Form):
 
     def display(self, clear=False):
 
-        npyscreen.Form.display(self, clear)
+        try:
+            npyscreen.Form.display(self, clear)
+        except TypeError:
+            self._log("display(): Ignoring exception: ", traceback.format_exc())
+            return
+
         self.curses_pad.vline( 1, self.columns/2-1, curses.ACS_VLINE, self.lines-2)
         self.curses_pad.hline( self.lines/2-1, 1, curses.ACS_HLINE, self.columns/2-2)
         self.curses_pad.hline( self.lines/2-1, self.columns/2, curses.ACS_HLINE, self.columns/2-1)
@@ -408,8 +413,9 @@ class MainForm(npyscreen.Form):
     def write(self, s):
         # self.appLog.buffer(["STDOUT:" + s])
         s = s.strip()
-        logging.info("STDOUT: %s", s)
-        self.guiQueue.put(SyncCallUpdate(self.appLog.buffer, ["STDOUT:" + s]))
+        if s:
+            logging.info("STDOUT: %s", s)
+            self.guiQueue.put(SyncCallUpdate(self.appLog.buffer, ["STDOUT:" + s]))
 
     def tempCb(self, t0=None, t1=None):
         logging.info("tempCb: %s %s", str(t0), str(t1))
