@@ -533,6 +533,8 @@ def main():
 
     sp = subparsers.add_parser("zRepeatability", help=u"Debug: Move Z to 10 random positions to test repeatability.")
 
+    sp = subparsers.add_parser("stop", help=u"Stop print, cooldown, home, disable steppers.")
+
     sp = subparsers.add_parser("retract", help=u"Debug: Do the end-of-print retract manually after heating up.")
 
     sp = subparsers.add_parser("fanspeed", help=u"Set fan speed manually.")
@@ -755,6 +757,11 @@ def main():
     elif args.mode == 'retract':
 
         util.retract(args, parser)
+
+    elif args.mode == 'stop':
+
+        printer.commandInit(args)
+        util.stopMove(args, parser)
 
     elif args.mode == 'fanspeed':
 
