@@ -63,6 +63,7 @@ CmdSetTargetTemp = 134 # Parameters: heater, temp
 CmdWriteEepromFloat = 135 # Parameters: valuename, value
 CmdEepromFactory = 136 # Factory reset of eeprom values, bed leveling needed
 CmdFanSpeed = 137
+CmdStopMove = 138
 
 # Getters, they return a string of the form "ret: <expr>"
 CmdGetState = 150
@@ -140,6 +141,7 @@ CommandNames = {
     CmdEepromFactory: "CmdEepromFactory",
     CmdSyncFanSpeed: "CmdSyncFanSpeed",
     CmdFanSpeed: "CmdFanSpeed",
+    CmdStopMove: "CmdStopMove",
     CmdRaw: "CmdRaw",
     
     # Getters, they return a string of the form "ret: <expr>"
