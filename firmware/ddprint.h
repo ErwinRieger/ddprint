@@ -152,6 +152,7 @@ class Printer {
         void cmdGetEndstops();
         void cmdGetPos();
         void cmdFanSpeed(uint8_t speed);
+        void cmdStopMove();
         void cmdGetTargetTemps();
         void cmdGetCurrentTemps();
         void cmdGetStatus();

@@ -75,6 +75,7 @@
 #define CmdWriteEepromFloat     135
 #define CmdEepromFactory        136
 #define CmdFanSpeed             137
+#define CmdStopMove             138
 
 #define CmdGetState             150
 #define CmdGetHomed             151
@@ -987,13 +988,33 @@ void Printer::cmdSetTargetTemp(uint8_t heater, uint16_t temp) {
         target_temperature_bed = temp;
     else
         target_temperature[heater-1] = temp;
-
-    SERIAL_PROTOCOLLNPGM(MSG_OK);
 }
 
 void Printer::cmdFanSpeed(uint8_t speed) {
 
     analogWrite(FAN_PIN, speed);
+}
+
+void Printer::cmdStopMove() {
+
+    cmdSetTargetTemp(0, 20);
+    cmdSetTargetTemp(1, 20);
+
+    DISABLE_STEPPER_DRIVER_INTERRUPT();
+    DISABLE_STEPPER1_DRIVER_INTERRUPT();
+
+    printerState = StateInit;
+    moveType = MoveTypeNone;
+
+    // Flush remaining steps
+    sDReader.flush();
+    fillBufferTask.flush();
+    stepBuffer.flush();
+
+    cmdFanSpeed(0);
+
+    SERIAL_PROTOCOLLNPGM("Move stopped.");
+    SERIAL_PROTOCOLLNPGM(MSG_OK);
 }
 
 void Printer::cmdGetTargetTemps() {
@@ -1658,10 +1679,14 @@ class UsbCommand : public Protothread {
                         break;
                     case CmdSetTargetTemp:
                         printer.cmdSetTargetTemp(FromBuf(uint8_t, buffer + 5), FromBuf(uint16_t, buffer + 6));
+                        SERIAL_PROTOCOLLNPGM(MSG_OK);
                         break;
                     case CmdFanSpeed:
                         printer.cmdFanSpeed(FromBuf(uint8_t, buffer + 5));
                         SERIAL_PROTOCOLLNPGM(MSG_OK);
+                        break;
+                    case CmdStopMove:
+                        printer.cmdStopMove();
                         break;
                     case CmdGetTargetTemps:
                         printer.cmdGetTargetTemps();
