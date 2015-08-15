@@ -25,9 +25,10 @@ logging.basicConfig(filename=datetime.datetime.now().strftime("/tmp/ddprint_%y.%
 
 import npyscreen , time, curses, sys, threading, Queue
 import argparse
-import ddprint
+import ddprint, stoppableThread
 import ddprintutil as util
 
+from serial import SerialException
 from ddprintcommands import *
 from ddprintstates import *
 from ddprofile import MatProfile
@@ -61,14 +62,23 @@ class MainForm(npyscreen.Form):
         def whenPressed(self):
             # xxx check state
             # xxx cleanup?
-            return self.parent.exit_editing()
-    
+            return self.parent.quit()
+   
     class Stop_Button(npyscreen.MiniButtonPress):
         def whenPressed(self):
-            self.parent.msgBox("Not implemented.")
+            if npyscreen.notify_yes_no("doit?", title="doit?"):
+                self.parent.printThread.stop()
+                return self.parent.prepareStopMove()
     
     def msgBox(self, msg):
         npyscreen.notify_confirm(msg)
+
+    def quit(self, message=None):
+
+        if message:
+            self.msgBox(message)
+
+        return self.exit_editing()
 
     def create(self):
 
@@ -77,6 +87,8 @@ class MainForm(npyscreen.Form):
         self.lastUpdate = time.time()
 
         self.printThread = None
+        # self.threadStopCount = 0
+
         # Output queue, used by the printer thread to output 
         # information.
         self.guiQueue = Queue.Queue()
@@ -162,7 +174,7 @@ class MainForm(npyscreen.Form):
     def while_waiting(self): 
        
         if not self.printThread:
-            self.printThread = threading.Thread(target=self.printWorker)
+            self.printThread = stoppableThread.StoppableThread(target=self.printWorker)
             self.printThread.daemon = True
             self.printThread.start()
 
@@ -202,7 +214,13 @@ class MainForm(npyscreen.Form):
 
         (self.parser, self.planner, self.printer) = ddprint.initParser(self.args, gui=self)
         # util.commonInit(self.args, self.parser)
-        self.printer.commandInit(self.args)
+
+        try:
+            self.printer.commandInit(self.args)
+        except SerialException:
+            msg = "Can't open serial device '%s' (baudrate: %d)!\n\nPress OK to exit." % (self.args.device, self.args.baud)
+            self.guiQueue.put(SyncCall(self.quit, msg))
+            return
 
         self.mat_t0 = MatProfile.getBedTemp()
         self.mat_t1 = MatProfile.getHotendBaseTemp()
@@ -211,25 +229,33 @@ class MainForm(npyscreen.Form):
         self.guiQueue.put(SyncCall(self.fn.set_value, self.args.file))
 
         while True:
-            # self.guiQueue.put("hi")
-            # self.guiQueue.put(SyncCall(self.appLog.buffer, ["juhu"]))
 
-            workDone = False
+            try:
 
-            while not self.cmdQueue.empty():
-                obj = self.cmdQueue.get()
-                obj.call()
-                workDone = True
+                while True:
+                    # self.guiQueue.put("hi")
+                    # self.guiQueue.put(SyncCall(self.appLog.buffer, ["juhu"]))
 
-            if time.time() - self.lastUpdate > 2.5:
-                status = self.printer.getStatus()
-                self.guiQueue.put(SyncCall(self.updateStatus, status))
+                    workDone = False
 
-                workDone = True
-                self.lastUpdate = time.time()
+                    while not self.cmdQueue.empty():
+                        obj = self.cmdQueue.get()
+                        obj.call()
+                        workDone = True
 
-            if not workDone:
-                time.sleep(0.1)
+                    if time.time() - self.lastUpdate > 2.5:
+                        status = self.printer.getStatus()
+                        self.guiQueue.put(SyncCall(self.updateStatus, status))
+
+                        workDone = True
+                        self.lastUpdate = time.time()
+
+                    if not workDone:
+                        time.sleep(0.1)
+
+            except stoppableThread.StopThread:
+                self.printThread.incStopCount()
+                self.log("caught StopThread, continue....")
 
     def updateTemps(self, t0, t1):
 
@@ -270,16 +296,19 @@ class MainForm(npyscreen.Form):
 
     def preheat(self):
         t = int(self.mat_t0 * 0.9)
-        self._log( "\nPre-Heating bed (t0: %d)...\n" % t)
+        self.log( "\nPre-Heating bed (t0: %d)...\n" % t)
         self.printer.heatUp(HeaterBed, t)
 
         t = int(self.mat_t1 * 0.5)
-        self._log( "\nPre-Heating extruder (t1: %d)...\n" % t)
+        self.log( "\nPre-Heating extruder (t1: %d)...\n" % t)
         self.printer.heatUp(HeaterEx1, t)
 
     def preparePrintFile(self):
         self.errors.set_value("")
         self.cmdQueue.put(SyncCall(self.printFile))
+
+    def prepareStopMove(self):
+        self.cmdQueue.put(SyncCall(util.stopMove, self.args, self.parser))
 
     def printFile(self):
 
@@ -292,11 +321,11 @@ class MainForm(npyscreen.Form):
             self.printer.sendPrinterInit()
 
             # Send heat up  command
-            self._log( "\nPre-Heating bed (t0: %d)...\n" % self.mat_t0)
+            self.log( "\nPre-Heating bed (t0: %d)...\n" % self.mat_t0)
             self.printer.heatUp(HeaterBed, self.mat_t0)
 
             t = int(self.mat_t1 * 0.5)
-            self._log( "\nPre-Heating extruder (t1: %d)...\n" % t)
+            self.log( "\nPre-Heating extruder (t1: %d)...\n" % t)
             self.printer.heatUp(HeaterEx1, t)
 
             # Send printing moves
@@ -319,9 +348,9 @@ class MainForm(npyscreen.Form):
 
                     if  not printStarted:
 
-                        self._log( "\nHeating bed (t0: %d)...\n" % self.mat_t0 )
+                        self.log( "\nHeating bed (t0: %d)...\n" % self.mat_t0 )
                         self.printer.heatUp(HeaterBed, self.mat_t0, wait=self.mat_t0)
-                        self._log( "\nHeating extruder (t1: %d)...\n" % self.mat_t1 )
+                        self.log( "\nHeating extruder (t1: %d)...\n" % self.mat_t1 )
                         self.printer.heatUp(HeaterEx1, self.mat_t1, wait=self.mat_t1 - 10)
 
                         # Send print command
@@ -349,9 +378,9 @@ class MainForm(npyscreen.Form):
             # XXX start print if less than 1000 lines or temp not yet reached:
             if not printStarted:
 
-                self._log( "\nHeating bed (t0: %d)...\n" % self.mat_t0 )
+                self.log( "\nHeating bed (t0: %d)...\n" % self.mat_t0 )
                 self.printer.heatUp(HeaterBed, self.mat_t0, self.mat_t0)
-                self._log( "\nHeating extruder (t1: %d)...\n" % self.mat_t1 )
+                self.log( "\nHeating extruder (t1: %d)...\n" % self.mat_t1 )
                 self.printer.heatUp(HeaterEx1, self.mat_t1, wait=self.mat_t1 - 10)
 
                 # Send print command
@@ -371,13 +400,22 @@ class MainForm(npyscreen.Form):
 
             self.printer.sendCommand(CmdDisableSteppers, wantReply="ok")
 
+        except stoppableThread.StopThread:
+            # Stop of current action requested
+            self.printThread.incStopCount()
+            self.log("printFile(): Caught StopThread, bailing out.")
+            return
+
         except FatalPrinterError, ex:
-            self._log("printFile(): Caught FatalPrinterError", ex.msg)
+            self.log("printFile(): Caught FatalPrinterError", ex.msg)
             # Reset line numbers in case of a printer restart.
             self.printer.resetLineNumber()
 
         except:
-            self._log("printFile(): Caught exception: ", traceback.format_exc())
+            self.log("printFile(): Caught exception: ", traceback.format_exc())
+
+    # def stopMove(self):
+        # util.stopMove(self.parser)
 
     # Non-thread save version
     def _log(self, *args):

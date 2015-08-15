@@ -1058,3 +1058,19 @@ def endOfPrintLift(parser):
         parser.execute_line("G0 F%f Z%f" % (planner.HOMING_FEEDRATE[Z_AXIS]*60, zlift))
 
 
+####################################################################################################
+
+def stopMove(args, parser):
+
+    planner = parser.planner
+    printer = planner.printer
+
+    if isHomed(printer):
+        parser.reset()
+        planner.reset()
+        home(parser, args.fakeendstop)
+
+    printer.sendCommand(CmdStopMove, wantReply="ok")
+    printer.sendCommand(CmdDisableSteppers, wantReply="ok")
+
+
