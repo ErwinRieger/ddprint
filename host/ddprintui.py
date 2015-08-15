@@ -52,7 +52,7 @@ class MainForm(npyscreen.Form):
     # Preheat bed (90%) and heater (50%)
     class Preheat_Button(npyscreen.MiniButtonPress):
         def whenPressed(self):
-            self.parent.cmdQueue.put(SyncCall(self.parent.preheat))
+            return self.parent.preparePreheat()
     
     class Print_Button(npyscreen.MiniButtonPress):
         def whenPressed(self):
@@ -95,6 +95,7 @@ class MainForm(npyscreen.Form):
         # Command queue of the printer thread
         self.cmdQueue = Queue.Queue()
 
+        self.printerState = None
         self.stateNames = ["IDLE", "INIT", "MOVING", "DWELL"]
 
         # t  = self.add(npyscreen.TitleText, name = "Text:",) 
@@ -269,6 +270,7 @@ class MainForm(npyscreen.Form):
 
     def updateStatus(self, status):
 
+        self.printerState = status["state"]
         self.pState.set_value( "%8s" % self.stateNames[status["state"]])
         self.pState.update()
         self.updateTemps(status["t0"], status["t1"])
@@ -294,6 +296,14 @@ class MainForm(npyscreen.Form):
         self.curses_pad.hline( self.lines/2-1, 1, curses.ACS_HLINE, self.columns/2-2)
         self.curses_pad.hline( self.lines/2-1, self.columns/2, curses.ACS_HLINE, self.columns/2-1)
 
+    def preparePreheat(self):
+
+        if self.printerState != StateIdle:
+            self.msgBox("Can't start print - printer is not in IDLE state!.")
+            return
+
+        self.cmdQueue.put(SyncCall(self.preheat))
+
     def preheat(self):
         t = int(self.mat_t0 * 0.9)
         self.log( "\nPre-Heating bed (t0: %d)...\n" % t)
@@ -304,6 +314,15 @@ class MainForm(npyscreen.Form):
         self.printer.heatUp(HeaterEx1, t)
 
     def preparePrintFile(self):
+
+        if self.printerState != StateIdle:
+            self.msgBox("Can't start print - printer is not in IDLE state!.")
+            return
+
+        # Unset printerstate to prevent second start of print, printerstate will be set by
+        # updateStatus() again.
+        self.printerState = None
+
         self.errors.set_value("")
         self.cmdQueue.put(SyncCall(self.printFile))
 
@@ -388,7 +407,7 @@ class MainForm(npyscreen.Form):
 
             status = self.printer.getStatus()
             self.guiQueue.put(SyncCall(self.updateStatus, status))
-            while status['state'] != StateInit:
+            while status['state'] != StateIdle:
                 time.sleep(2)
                 status = self.printer.getStatus()
                 self.guiQueue.put(SyncCall(self.updateStatus, status))

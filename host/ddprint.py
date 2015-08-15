@@ -621,7 +621,7 @@ def main():
             # Send print command
             printer.sendCommandParam(CmdMove, p1=MoveTypeNormal, wantReply="ok")
 
-        printer.waitForState(StateInit)
+        printer.waitForState(StateIdle)
 
         printer.coolDown(HeaterEx1)
         printer.coolDown(HeaterBed)
@@ -777,7 +777,7 @@ def main():
 
         printer.sendCommandParam(CmdMove, p1=MoveTypeNormal, wantReply="ok")
 
-        printer.waitForState(StateInit)
+        printer.waitForState(StateIdle)
 
         printer.readMore()
 

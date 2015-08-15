@@ -498,7 +498,7 @@ def home(parser, fakeHomingEndstops=False, force=False):
             printer.sendCommandParam(CmdMove, p1=MoveTypeNormal, wantReply="ok")
             printer.sendCommand(CmdEOT, wantReply="ok")
 
-            printer.waitForState(StateInit, wait=0.1)
+            printer.waitForState(StateIdle, wait=0.1)
 
             # res = printer.query(CmdGetEndstops)
             # print "endstop state:", res
@@ -536,7 +536,7 @@ def home(parser, fakeHomingEndstops=False, force=False):
             time.sleep(0.1)
             printer.sendCommand(CmdDisableStepperIsr, wantReply="ok")
 
-        printer.waitForState(StateInit, wait=0.1)
+        printer.waitForState(StateIdle, wait=0.1)
 
         # Check, if enstop was pressed
         res = printer.query(CmdGetEndstops)
@@ -559,7 +559,7 @@ def home(parser, fakeHomingEndstops=False, force=False):
         printer.sendCommandParam(CmdMove, p1=MoveTypeHoming, wantReply="ok")
         printer.sendCommand(CmdEOT, wantReply="ok")
 
-        printer.waitForState(StateInit, wait=0.1)
+        printer.waitForState(StateIdle, wait=0.1)
 
         # Check, if enstop was opened
         res = printer.query(CmdGetEndstops)
@@ -586,7 +586,7 @@ def home(parser, fakeHomingEndstops=False, force=False):
             # time.sleep(0.1)
             printer.sendCommand(CmdDisableStepperIsr, wantReply="ok")
 
-        printer.waitForState(StateInit, wait=0.1)
+        printer.waitForState(StateIdle, wait=0.1)
 
         # Check, if enstop was pressed
         res = printer.query(CmdGetEndstops)
@@ -609,7 +609,7 @@ def home(parser, fakeHomingEndstops=False, force=False):
         printer.sendCommandParam(CmdMove, p1=MoveTypeHoming, wantReply="ok")
         printer.sendCommand(CmdEOT, wantReply="ok")
 
-        printer.waitForState(StateInit, wait=0.1)
+        printer.waitForState(StateIdle, wait=0.1)
 
         # Check, if enstop was opened
         res = printer.query(CmdGetEndstops)
@@ -702,7 +702,7 @@ def zRepeatability(parser):
     printer.sendCommandParam(CmdMove, p1=MoveTypeNormal, wantReply="ok")
     printer.sendCommand(CmdEOT, wantReply="ok")
 
-    printer.waitForState(StateInit)
+    printer.waitForState(StateIdle)
 
 ####################################################################################################
 
@@ -736,7 +736,7 @@ def manualMove(parser, axis, distance, absolute=False):
 
     printer.sendCommandParam(CmdMove, p1=MoveTypeNormal, wantReply="ok")
 
-    printer.waitForState(StateInit)
+    printer.waitForState(StateIdle)
 
     printer.readMore(10)
 
@@ -777,7 +777,7 @@ def insertFilament(args, parser):
             planner.finishMoves()
             printer.sendCommandParam(CmdMove, p1=MoveTypeNormal, wantReply="ok")
             printer.sendCommand(CmdEOT, wantReply="ok")
-            printer.waitForState(StateInit, wait=0.1)
+            printer.waitForState(StateIdle, wait=0.1)
 
     commonInit(args, parser)
 
@@ -790,7 +790,7 @@ def insertFilament(args, parser):
     printer.sendCommandParam(CmdMove, p1=MoveTypeNormal, wantReply="ok")
     printer.sendCommand(CmdEOT, wantReply="ok")
 
-    printer.waitForState(StateInit)
+    printer.waitForState(StateIdle)
 
     t1 = MatProfile.getHotendBaseTemp()
     printer.heatUp(HeaterEx1, t1, wait=t1 - 5)
@@ -814,7 +814,7 @@ def insertFilament(args, parser):
     printer.sendCommandParam(CmdMove, p1=MoveTypeNormal, wantReply="ok")
     printer.sendCommand(CmdEOT, wantReply="ok")
 
-    printer.waitForState(StateInit)
+    printer.waitForState(StateIdle)
 
     printer.coolDown(HeaterEx1, wait=150)
 
@@ -844,7 +844,7 @@ def removeFilament(args, parser):
     printer.sendCommandParam(CmdMove, p1=MoveTypeNormal, wantReply="ok")
     printer.sendCommand(CmdEOT, wantReply="ok")
 
-    printer.waitForState(StateInit)
+    printer.waitForState(StateIdle)
 
     t1 = MatProfile.getHotendBaseTemp()
     printer.heatUp(HeaterEx1, t1, wait=t1 - 5)
@@ -874,7 +874,7 @@ def retract(args, parser):
     printer.sendCommandParam(CmdMove, p1=MoveTypeNormal, wantReply="ok")
     printer.sendCommand(CmdEOT, wantReply="ok")
 
-    printer.waitForState(StateInit)
+    printer.waitForState(StateIdle)
 
     printer.coolDown(HeaterEx1,wait=150)
 
@@ -932,7 +932,7 @@ def bedLeveling(args, parser):
             printer.sendCommandParam(CmdMove, p1=MoveTypeNormal, wantReply="ok")
             printer.sendCommand(CmdEOT, wantReply="ok")
 
-            printer.waitForState(StateInit, wait=0.1)
+            printer.waitForState(StateIdle, wait=0.1)
 
 
     feedrate = PrinterProfile.getMaxFeedrate(X_AXIS)
@@ -947,7 +947,7 @@ def bedLeveling(args, parser):
     printer.sendCommandParam(CmdMove, p1=MoveTypeNormal, wantReply="ok")
     printer.sendCommand(CmdEOT, wantReply="ok")
 
-    printer.waitForState(StateInit, wait=0.1)
+    printer.waitForState(StateIdle, wait=0.1)
 
     manualMoveZ()
 
@@ -985,7 +985,7 @@ def bedLeveling(args, parser):
     printer.sendCommandParam(CmdMove, p1=MoveTypeNormal, wantReply="ok")
     printer.sendCommand(CmdEOT, wantReply="ok")
 
-    printer.waitForState(StateInit, wait=0.1)
+    printer.waitForState(StateIdle, wait=0.1)
 
     raw_input("\nAdjust left front buildplate screw and press <Return>\n")
 
@@ -1001,7 +1001,7 @@ def bedLeveling(args, parser):
     printer.sendCommandParam(CmdMove, p1=MoveTypeNormal, wantReply="ok")
     printer.sendCommand(CmdEOT, wantReply="ok")
 
-    printer.waitForState(StateInit, wait=0.1)
+    printer.waitForState(StateIdle, wait=0.1)
 
     raw_input("\nAdjust right fron buildplate screw and press <Return>\n")
 

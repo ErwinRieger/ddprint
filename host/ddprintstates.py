@@ -23,6 +23,7 @@ import packedvalue
 #
 # Printer states:
 # ----------------------------
+StateIdle = 0
 StateInit = 1
 StateStart = 2
 
