@@ -1003,7 +1003,8 @@ void Printer::cmdStopMove() {
     DISABLE_STEPPER_DRIVER_INTERRUPT();
     DISABLE_STEPPER1_DRIVER_INTERRUPT();
 
-    printerState = StateInit;
+    // printerState = StateInit;
+    printerState = StateIdle;
     moveType = MoveTypeNone;
 
     // Flush remaining steps
@@ -1072,7 +1073,8 @@ void Printer::checkMoveFinished() {
 
             SERIAL_PROTOCOLLNPGM("Move finished.");
 
-            printerState = StateInit;
+            // printerState = StateInit;
+            printerState = StateIdle;
             moveType = MoveTypeNone;
         }
     }
