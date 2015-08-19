@@ -159,12 +159,17 @@ class UM2GcodeParser:
                         self.numParts += 1
                         self.planner.newPart(self.numParts)
 
-                # Simplify3D: "; LAYER "
-                elif "; LAYER " in upperLine:
-                    layerNum = getSimplifyLayer(line)
-                    if layerNum == 1:
-                        self.numParts += 1
-                        self.planner.newPart(self.numParts)
+                # # Simplify3D: "; LAYER "
+                # elif "; LAYER " in upperLine:
+                    # layerNum = getSimplifyLayer(line)
+                    # if layerNum == 1:
+                        # self.numParts += 1
+                        # self.planner.newPart(self.numParts)
+
+                # Simplify3D: "; skirt "
+                elif upperLine.startswith("; SKIRT"):
+                    self.numParts += 1
+                    self.planner.newPart(self.numParts)
 
                 # ;FLAVOR:UltiGCode
                 elif "FLAVOR:ULTIGCODE" in upperLine:
