@@ -20,6 +20,7 @@
 
 import math
 import packedvalue
+import shutil, os
 
 from ddprofile import MatProfile, PrinterProfile
 from ddplanner import Planner
@@ -143,7 +144,16 @@ class UM2GcodeParser:
         self._gcodePos = pos.copy()
 
     def preParse(self, fn):
+
+        # Copy file to prevet problems with overwritten files
+        # while reading.
+        tmpfname = ("/tmp/%d_" % id(fn)) + os.path.basename(fn)
+        shutil.copyfile(fn, tmpfname)
+
         f = open(fn)
+
+        print "Unlinking temp. copy of gcode input: ", tmpfname
+        os.unlink(tmpfname)
 
         self.numParts = 0
 
