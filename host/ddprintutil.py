@@ -799,7 +799,7 @@ def insertFilament(args, parser):
     manualMoveE()
 
     print "\nForwarding filament.\n"
-    manualMove(parser, A_AXIS, FILAMENT_REVERSAL_LENGTH * 0.8)
+    manualMove(parser, A_AXIS, FILAMENT_REVERSAL_LENGTH * 0.85)
 
     print "\nExtrude filament.\n"
     manualMoveE()
