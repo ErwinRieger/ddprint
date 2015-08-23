@@ -117,6 +117,7 @@ class Printer {
     public:
 
         // State enum
+        // XXX can we combind the StateIdle and StateInit states?
         enum {
             StateIdle,       // 
             StateInit,       // 
