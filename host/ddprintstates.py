@@ -26,6 +26,7 @@ import packedvalue
 StateIdle = 0
 StateInit = 1
 StateStart = 2
+StateDwell = 3
 
 
 ############################################################################

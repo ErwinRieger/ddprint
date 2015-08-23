@@ -380,10 +380,12 @@ class MainForm(npyscreen.Form):
 
                         status = self.printer.getStatus()
                         self.guiQueue.put(SyncCall(self.updateStatus, status))
-                        if status['state'] != StateStart:
+                        if not self.printer.stateMoving(status):
                             break
 
                 lineNr += 1
+
+            print "Parsed %d gcode lines." % lineNr
 
             # 
             # Add a move to lift the nozzle from the print if not ultigcode flavor

@@ -596,10 +596,12 @@ def main():
                     # Stop sending moves on error
                     status = printer.getStatus()
                     pprint.pprint(status)
-                    if status['state'] != StateStart:
+                    if not printer.stateMoving(status):
                         break
 
             lineNr += 1
+
+        print "Parsed %d gcode lines." % lineNr
 
         # 
         # Add a move to lift the nozzle from the print if not ultigcode flavor
@@ -649,8 +651,12 @@ def main():
         parser.set_position(homePosMM)
 
         f = parser.preParse(args.gfile)
+        lineNr = 0
         for line in f:
             parser.execute_line(line)
+            lineNr += 1
+
+        print "Parsed %d gcode lines." % lineNr
 
         planner.finishMoves()
 

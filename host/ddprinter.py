@@ -36,6 +36,7 @@ import dddumbui
 
 from serial import Serial, SerialException, SerialTimeoutException
 from ddprintcommands import *
+from ddprintstates import *
 
 ############################################################################
 #
@@ -473,6 +474,13 @@ class Printer(Serial):
         while status['state'] != destState:
             time.sleep(wait)
             status = self.getStatus()
+
+    def stateMoving(self, status=None):
+
+        if not status:
+            status = self.getStatus()
+
+        return status['state'] == StateStart or status['state'] == StateDwell
 
     def getTemps(self):
         temps = self.query(CmdGetTemps)
