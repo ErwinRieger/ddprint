@@ -807,8 +807,8 @@ def insertFilament(args, parser):
     #
     # Retract
     #
+    printer.sendPrinterInit()
     parser.execute_line("G10")
-
     planner.finishMoves()
 
     printer.sendCommandParam(CmdMove, p1=MoveTypeNormal, wantReply="ok")
