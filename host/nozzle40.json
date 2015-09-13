@@ -1,5 +1,6 @@
 {
-  "autoTempFactor" : 1.0
+  "autoTempFactor" : 1.0,
+  "extrusionAutoTempFactor" : 2.5
 }
 
 
