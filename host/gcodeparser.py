@@ -186,7 +186,9 @@ class UM2GcodeParser:
                     self.ultiGcodeFlavor = True
                     # To compute extrude length from volume (see getValues()):
                     # V = A * h, h = V / A, A = pi/4 * diameter²
-                    self.e_to_filament_length *= 4 / (math.pi * pow(MatProfile.getMatDiameter(), 2))
+                    # self.e_to_filament_length *= 4 / (math.pi * pow(MatProfile.getMatDiameter(), 2))
+                    aFilament = MatProfile.getMatArea()
+                    self.e_to_filament_length = self.e_to_filament_length / aFilament
 
         print "pre-parsing # parts:", self.numParts
         f.seek(0) # rewind

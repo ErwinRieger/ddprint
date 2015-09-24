@@ -35,6 +35,7 @@ debugPlot = True
 debugPlot = False
 
 debugAutoTemp = False
+debugAutoTemp = True
 
 # Debug object
 class StreamedMove:
@@ -48,12 +49,16 @@ errorMove = StreamedMove()
 # Don't adjust hotend temperature on every move, collect moves for
 # ATInterval time and compute/set the temp for that interval.
 #
-UseAutoTemp = True
-# UseAutoTemp = False
-
 ATInterval = 5 # [s]
-
 ATMaxTempIncrease = 50
+
+# UseAutoTemp = True
+UseAutoTemp = False
+UseExtrusionAutoTemp = True
+
+ExtrusionAmountLow = 20 # mm/s
+if UseExtrusionAutoTemp:
+    ExtrusionAmountLow = 5 # mm³/s
 
 #####################################################################
 
@@ -65,11 +70,14 @@ class PathData (object):
         self.count = -1
 
         # AutoTemp
-        # Time needed to complete the moves, extruding moves only
-        self.time = 0
-        # Head move distance sum, extruding moves only
-        self.distance = 0
-        self.lastTemp = 0
+        if UseAutoTemp or UseExtrusionAutoTemp:
+
+            # Time needed to complete the moves, extruding moves only
+            self.time = 0
+            # Head move distance sum or extrusion volume, extruding moves only
+            self.extrusionAmount = 0
+            self.lastTemp = 0
+
         # Moves collected in the ATInterval
         self.atMoves = []
 
@@ -247,8 +255,10 @@ class Planner (object):
             # self.prepareMoveEnd(move)
             self.pathData.path.append(move)
 
-            self.pathData.time = self.pathData.distance = 0 # Reset path time
-            self.pathData.lastTemp = MatProfile.getHotendBaseTemp()
+            if UseAutoTemp or UseExtrusionAutoTemp:
+                self.pathData.time = 0 # Reset path time
+                self.pathData.extrusionAmount = 0
+                self.pathData.lastTemp = MatProfile.getHotendBaseTemp()
 
             #
             # Zum end-speed können wir nichts sagen, da der nächste move noch nicht
@@ -396,11 +406,18 @@ class Planner (object):
             #
             # Collect moves if AutoTemp
             #
-            if UseAutoTemp:
-                if move.isExtrudingMove():
+            if UseAutoTemp or UseExtrusionAutoTemp:
+                if move.isHeadMove() and move.isExtrudingMove(util.A_AXIS):
                     # Collect moves and sum up path time
                     self.pathData.time += move.getTime()
-                    self.pathData.distance += move.move_distance
+
+                    if UseAutoTemp:
+                        # Sum up distance
+                        self.pathData.extrusionAmount += move.move_distance
+                    else:
+                        # Sum extrusion volume
+                        self.pathData.extrusionAmount += move.getExtrusionVolume(util.A_AXIS, MatProfile.getMatArea())
+
                 self.pathData.atMoves.append(move)
 
             else:
@@ -413,7 +430,7 @@ class Planner (object):
             move.lastMove = errorMove
             move.nextMove = errorMove
         
-        if UseAutoTemp:
+        if UseAutoTemp or UseExtrusionAutoTemp:
 
             if self.pathData.time >= ATInterval or finish:
 
@@ -421,18 +438,19 @@ class Planner (object):
 
                     # Compute temperature for this segment and add tempcommand into the stream
                     # Average speed:
-                    avgSpeed = self.pathData.distance / self.pathData.time
+                    avgSpeed = self.pathData.extrusionAmount / self.pathData.time
 
-                    # Adjust temp between Tbase and max. Tbase+50 if speed is greater than 20 mm/s
+                    # UseAutoTemp: Adjust temp between Tbase and HotendMaxTemp, if speed is greater than 20 mm/s
+                    # UseExtrusionAutoTemp: Adjust temp between Tbase and HotendMaxTemp, if speed is greater than 5 mm³/s
                     newTemp = MatProfile.getHotendBaseTemp() # Extruder 1 temp
-                    if avgSpeed > 20:
-                        f = NozzleProfile.getAutoTempFactor()
-                        newTemp += min((avgSpeed - 20) * f, ATMaxTempIncrease)
+                    if avgSpeed > ExtrusionAmountLow:
+                        f = NozzleProfile.getAutoTempFactor(UseExtrusionAutoTemp)
+                        newTemp += min((avgSpeed - ExtrusionAmountLow) * f, ATMaxTempIncrease)
                         newTemp = min(newTemp, MatProfile.getHotendMaxTemp())
 
                     if debugAutoTemp:
                         print "AutoTemp: collected %d moves with %.2f s duration." % (len(self.pathData.atMoves), self.pathData.time)
-                        print "AutoTemp: distance: %.2f, avg speed: %.2f." % (self.pathData.distance, avgSpeed)
+                        print "AutoTemp: amount: %.2f, avg speed: %.2f." % (self.pathData.extrusionAmount, avgSpeed)
                         print "AutoTemp: new temp: %.2f." % (newTemp)
 
                     if newTemp != self.pathData.lastTemp and self.args.mode != "pre":
@@ -450,7 +468,7 @@ class Planner (object):
                     self.streamMove(move)
                    
                 self.pathData.atMoves = []
-                self.pathData.time = self.pathData.distance = 0 # Reset path time
+                self.pathData.time = self.pathData.extrusionAmount = 0 # Reset path time
                 # assert(0)
 
         # if debugPlot:

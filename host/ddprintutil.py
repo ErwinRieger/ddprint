@@ -651,7 +651,7 @@ def prime(parser):
 
     pos = parser.getRealPos()
 
-    aFilament = (math.pi * pow(MatProfile.getMatDiameter(), 2)) / 4.0
+    aFilament = MatProfile.getMatArea()
 
     parser.execute_line("G0 F%f A%f" % (
         ((ddprintconstants.PRIMING_MM3_PER_SEC / aFilament) * 60),

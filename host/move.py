@@ -23,7 +23,7 @@ import ddprintcommands
 
 # from ddprintconstants import DEFAULT_MAX_ACCELERATION, DEFAULT_ACCELERATION, fTimer, maxTimerValue16, maxTimerValue24
 from ddprintconstants import maxTimerValue16, maxTimerValue24, dimNames, DEFAULT_ACCELERATION, DEFAULT_MAX_ACCELERATION, fTimer
-from ddprintutil import A_AXIS, B_AXIS,vectorLength, vectorMul, vectorSub, circaf
+from ddprintutil import X_AXIS, Y_AXIS, Z_AXIS, A_AXIS, B_AXIS,vectorLength, vectorMul, vectorSub, circaf
 from ddprintcommands import CommandNames
 
 ##################################################
@@ -562,8 +562,11 @@ class Move(object):
         f = self.getJerkSpeed(jerk)
         self.setNominalEndFr(f)
 
-    def isExtrudingMove(self):
-        return self.displacement_vector_steps[A_AXIS] or self.displacement_vector_steps[B_AXIS]
+    def isHeadMove(self):
+        return self.displacement_vector[X_AXIS] or self.displacement_vector[Y_AXIS] or self.displacement_vector[Z_AXIS]
+
+    def isExtrudingMove(self, extruder):
+        return self.displacement_vector[extruder]
 
     def getTime(self):
         t = self.stepData.getTime()
@@ -675,5 +678,8 @@ class Move(object):
             if abs(self.displacement_vector_steps[dim]) > delta and abs(other.displacement_vector_steps[dim]) > delta:
                 return False
         return True
+
+    def getExtrusionVolume(self, extruder, area):
+        return self.displacement_vector[extruder] * area
 
 

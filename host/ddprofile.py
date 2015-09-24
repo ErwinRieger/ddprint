@@ -17,7 +17,7 @@
 # along with ddprint.  If not, see <http://www.gnu.org/licenses/>.
 #*/
 
-import json
+import json, math
 
 from ddprintconstants import dimNames
 
@@ -120,6 +120,11 @@ class MatProfile():
         assert((flow >= 50) and (flow <= 150))
         return flow
 
+    @classmethod
+    def getMatArea(cls):
+        aFilament = (math.pi * pow(cls.getMatDiameter(), 2)) / 4.0
+        return aFilament
+
 ####################################################################################################
 #
 # Nozzle profile, singleton
@@ -146,7 +151,11 @@ class NozzleProfile():
         return cls.get().values
 
     @classmethod
-    def getAutoTempFactor(cls):
+    def getAutoTempFactor(cls, useExtrusionAutoTemp):
+
+        if useExtrusionAutoTemp:
+            return float(cls.getValues()["extrusionAutoTempFactor"])
+
         return float(cls.getValues()["autoTempFactor"])
 
 
