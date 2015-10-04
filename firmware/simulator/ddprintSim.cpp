@@ -425,7 +425,8 @@ void *isrThread(void * data) {
                     if (ADMUX == ((1 << REFS0) | (TEMP_BED_PIN & 0x07))) {
                         if (heatdelta > 100000) {
                             if (bedHeaterOn)
-                                bedADC += 2;
+                                // bedADC += 2;
+                                bedADC += 1;
                             else 
                                 if (bedADC > 240)
                                     bedADC -= 1;
