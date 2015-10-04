@@ -355,6 +355,7 @@ class MainForm(npyscreen.Form):
 
             lineNr = 0
             printStarted = False
+            lastUpdate = time.time()
 
             for line in f:
                 self.parser.execute_line(line)
@@ -362,10 +363,12 @@ class MainForm(npyscreen.Form):
                 #
                 # Send more than one 512 byte block for dlprint
                 #
-                if lineNr > 1000 and (lineNr % 250) == 0:
+                # if lineNr > 1000 and (lineNr % 250) == 0:
+                if time.time() > (lastUpdate + 0.5):
+
                     # check temp and start print
 
-                    if  not printStarted:
+                    if lineNr > 1000 and not printStarted:
 
                         self.log( "\nHeating bed (t0: %d)...\n" % self.mat_t0 )
                         self.printer.heatUp(HeaterBed, self.mat_t0, wait=self.mat_t0)
@@ -376,12 +379,12 @@ class MainForm(npyscreen.Form):
                         self.printer.sendCommandParam(CmdMove, p1=MoveTypeNormal, wantReply="ok")
                         printStarted = True
 
-                    else:
+                    status = self.printer.getStatus()
+                    self.guiQueue.put(SyncCall(self.updateStatus, status))
+                    if printStarted and not self.printer.stateMoving(status):
+                        break
 
-                        status = self.printer.getStatus()
-                        self.guiQueue.put(SyncCall(self.updateStatus, status))
-                        if not self.printer.stateMoving(status):
-                            break
+                    lastUpdate = time.time()
 
                 lineNr += 1
 
