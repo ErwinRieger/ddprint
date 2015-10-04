@@ -158,6 +158,13 @@ class NozzleProfile():
 
         return float(cls.getValues()["autoTempFactor"])
 
+    @classmethod
+    def getSize(cls):
+        return float(cls.getValues()["size"])
+
+
+
+
 
 
 

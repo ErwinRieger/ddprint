@@ -50,15 +50,16 @@ errorMove = StreamedMove()
 # ATInterval time and compute/set the temp for that interval.
 #
 ATInterval = 5 # [s]
-ATMaxTempIncrease = 50
+# ATMaxTempIncrease = 50
 
 # UseAutoTemp = True
 UseAutoTemp = False
 UseExtrusionAutoTemp = True
 
-ExtrusionAmountLow = 20 # mm/s
+# Headspeed/extrusionspeed where autotemp increase starts
+ExtrusionAmountLow = 30 # [mm/s] for a 1mm nozzle
 if UseExtrusionAutoTemp:
-    ExtrusionAmountLow = 5 # mm³/s
+    ExtrusionAmountLow = 7.5 # [mm³/s] for a 1mm nozzle
 
 #####################################################################
 
@@ -443,9 +444,11 @@ class Planner (object):
                     # UseAutoTemp: Adjust temp between Tbase and HotendMaxTemp, if speed is greater than 20 mm/s
                     # UseExtrusionAutoTemp: Adjust temp between Tbase and HotendMaxTemp, if speed is greater than 5 mm³/s
                     newTemp = MatProfile.getHotendBaseTemp() # Extruder 1 temp
-                    if avgSpeed > ExtrusionAmountLow:
+                    extrusionLow = ExtrusionAmountLow * pow(NozzleProfile.getSize(), 2)
+                    if avgSpeed > extrusionLow:
                         f = NozzleProfile.getAutoTempFactor(UseExtrusionAutoTemp)
-                        newTemp += min((avgSpeed - ExtrusionAmountLow) * f, ATMaxTempIncrease)
+                        # newTemp += min((avgSpeed - ExtrusionAmountLow * pow(NozzleProfile.getSize(), 2)) * f, ATMaxTempIncrease)
+                        newTemp += (avgSpeed - extrusionLow) * f
                         newTemp = min(newTemp, MatProfile.getHotendMaxTemp())
 
                     if debugAutoTemp:
