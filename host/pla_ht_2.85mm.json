@@ -1,7 +1,7 @@
 {
   "material_diameter" : 2.85,
-  "hotendBaseTemp"    : 220,
-  "hotendMaxTemp"     : 250,
+  "hotendBaseTemp"    : 230,
+  "hotendMaxTemp"     : 260,
   "bedTemp"           : 65,
   "bedTempReduced"    : 60,
   "fanPercent"        : 100
