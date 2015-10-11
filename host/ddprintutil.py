@@ -855,7 +855,7 @@ def removeFilament(args, parser):
 
 ####################################################################################################
 
-def retract(args, parser):
+def retract(args, parser, doCooldown = True):
 
     planner = parser.planner
     printer = planner.printer
@@ -876,7 +876,8 @@ def retract(args, parser):
 
     printer.waitForState(StateIdle)
 
-    printer.coolDown(HeaterEx1,wait=150)
+    if doCooldown:
+        printer.coolDown(HeaterEx1,wait=150)
 
 ####################################################################################################
 
@@ -1072,5 +1073,82 @@ def stopMove(args, parser):
 
     printer.sendCommand(CmdStopMove, wantReply="ok")
     printer.sendCommand(CmdDisableSteppers, wantReply="ok")
+
+####################################################################################################
+
+def heatHotend(args, parser):
+
+    planner = parser.planner
+    printer = planner.printer
+
+    printer.commandInit(args)
+
+    t1 = MatProfile.getHotendBaseTemp()
+
+    printer.heatUp(HeaterEx1, t1, wait=t1-5)
+
+    raw_input("Press return to stop heating...")
+
+    printer.coolDown(HeaterEx1, wait=150)
+
+####################################################################################################
+
+#
+# Execute a single gcode command on the printer and wait for completion
+#
+def execSingleGcode(parser, gcode):
+
+    planner = parser.planner
+    printer = planner.printer
+
+    printer.sendPrinterInit()
+
+    parser.execute_line(gcode)
+    planner.finishMoves()
+
+    printer.sendCommandParam(CmdMove, p1=MoveTypeNormal, wantReply="ok")
+    printer.sendCommand(CmdEOT, wantReply="ok")
+
+    printer.waitForState(StateIdle)
+
+####################################################################################################
+
+# Heat up nozzle
+# Retract
+# Wait for user to change nozzle
+# Un-Retract
+# Cooldown
+def changeNozzle(args, parser):
+
+    planner = parser.planner
+    printer = planner.printer
+
+    retract(args, parser, doCooldown = False)
+
+    feedrate = PrinterProfile.getMaxFeedrate(X_AXIS)
+    execSingleGcode(parser, "G0 F%d X%f Y%f" % (feedrate*60, planner.MAX_POS[X_AXIS]/2, planner.MAX_POS[Y_AXIS]*0.1))
+
+    raw_input("Now change nozzle, Press return to stop heating...")
+
+    execSingleGcode(parser, "G11")
+    printer.coolDown(HeaterEx1, wait=100)
+
+####################################################################################################
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 

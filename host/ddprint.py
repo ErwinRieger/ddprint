@@ -413,22 +413,6 @@ def plot4v(nom1, nom2, v1, v2, jerk, diff, fn = "/tmp/4v.gnuplot"):
     f.write("e\n")
     f.close()
 
-
-def heatHotend(args, parser):
-
-    planner = parser.planner
-    printer = planner.printer
-
-    printer.commandInit(args)
-
-    t1 = MatProfile.getHotendBaseTemp()
-
-    printer.heatUp(HeaterEx1, t1, wait=t1-5)
-
-    raw_input("Press return to stop heating...")
-
-    printer.coolDown(HeaterEx1, wait=150)
-
 def initParser(args, mode=None, gui=None):
 
     printerProfileName = "UM2" # xxx get from commandline args
@@ -482,6 +466,8 @@ def main():
     argParser.add_argument("-F", dest="fakeendstop", action="store", type=bool, help="fake endstops", default=False)
 
     subparsers = argParser.add_subparsers(dest="mode", help='Mode: mon(itor)|print|store|reset|pre(process).')
+
+    sp = subparsers.add_parser("changenozzle", help=u"Heat hotend and change nozzle.")
 
     sp = subparsers.add_parser("mon", help=u"Monitor serial printer interface.")
 
@@ -547,7 +533,11 @@ def main():
 
     steps_per_mm = PrinterProfile.getStepsPerMMVector()
 
-    if args.mode == 'print':
+    if args.mode == 'changenozzle':
+
+        util.changeNozzle(args, parser)
+
+    elif args.mode == 'print':
 
         util.commonInit(args, parser)
 
@@ -714,7 +704,7 @@ def main():
 
     elif args.mode == 'heatHotend':
 
-        heatHotend(args, parser)
+        util.heatHotend(args, parser)
 
     elif args.mode == 'getPos':
 
