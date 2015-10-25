@@ -30,7 +30,7 @@
 # at second connect).
 # So i've mixed pyserial 2.5.x with the list_ports functions from 2.6.x
 #
-import time, struct
+import time, struct, crc16
 import list_ports
 import dddumbui
 
@@ -281,7 +281,7 @@ class Printer(Serial):
         # not reached
 
 
-    def Fletcher16(self, data):
+    def _Fletcher16(self, data):
         sum1 = 0
         sum2 = 0
                           
@@ -312,7 +312,8 @@ class Printer(Serial):
         else:
             binary += struct.pack("<I", 0);
 
-        checkSum = self.Fletcher16(binary)
+        # checkSum = self.Fletcher16(binary)
+        checkSum = crc16.crc16xmodem(binary)
 
         # self.gui.log("checkSum: ", checkSum, "0x%x" % checkSum)
         binary += struct.pack("<H", checkSum)
