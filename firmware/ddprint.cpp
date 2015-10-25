@@ -20,6 +20,7 @@
 #include <avr/interrupt.h>
 #include <avr/wdt.h>
 #include <Arduino.h>
+#include <util/crc16.h>
 
 #include "Protothread.h"
 
@@ -1235,8 +1236,9 @@ class UsbCommand : public Protothread {
         uint8_t commandByte;
 
         // Computed checksum
-        uint8_t checksum1;
-        uint8_t checksum2;
+        // uint8_t checksum1;
+        // uint8_t checksum2;
+        uint16_t checksum;
 
         // Number of characters we have to read
         uint32_t payloadLength;
@@ -1288,8 +1290,9 @@ class UsbCommand : public Protothread {
                 return (sum2 << 8) | sum1;
             }
             */
-            checksum1 = (checksum1 + b) % 255;
-            checksum2 = (checksum2 + checksum1) % 255;
+            // checksum1 = (checksum1 + b) % 255;
+            // checksum2 = (checksum2 + checksum1) % 255;
+            checksum = _crc_xmodem_update(checksum, b);
         }
 
         void rxError(uint8_t e) {
@@ -1398,7 +1401,8 @@ class UsbCommand : public Protothread {
             startTS = millis();
 
             serial_count = 0;
-            checksum1 = checksum2 = 0;
+            // checksum1 = checksum2 = 0;
+            checksum = 0;
             addCecksumByte(SOH);
 
             // Read packet number
@@ -1531,9 +1535,11 @@ class UsbCommand : public Protothread {
                 i += MSerial.serRead() << 8;
 
                 // printf("Read %d (+9) bytes, checksum: 0x%x, computed: 0x%x\n", serial_count, i,  (checksum2 << 8) | checksum1);
+                // printf("Read %d (+9) bytes, checksum: 0x%x, computed: 0x%x\n", serial_count, i,  checksum);
 
                 // Check checksum
-                if (i != ((checksum2 << 8) | checksum1)) {
+                // if (i != ((checksum2 << 8) | checksum1)) {
+                if (i != checksum) {
 
                     // Roll back data store
                     swapDev.setWritePos(writeBlockNumber, writePos);
@@ -1617,9 +1623,11 @@ class UsbCommand : public Protothread {
                 i |= MSerial.serRead() << 8;
 
                 // printf("checksum: 0x%x, computed: 0x%x\n", i,  (checksum2 << 8) | checksum1);
+                // printf("checksum: 0x%x, computed: 0x%x\n", i,  checksum);
 
                 // Check checksum
-                if (i != ((checksum2 << 8) | checksum1)) {
+                // if (i != ((checksum2 << 8) | checksum1)) {
+                if (i != checksum) {
 
                     crcError();
                     PT_RESTART();   // does a return
