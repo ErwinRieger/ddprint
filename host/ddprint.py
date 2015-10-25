@@ -457,7 +457,7 @@ def main():
     argParser.add_argument("-t0", dest="t0", action="store", type=int, help="Temp 0 (heated bed), default comes from mat. profile.")
     argParser.add_argument("-t1", dest="t1", action="store", type=int, help="Temp 1 (hotend 1), default comes from mat. profile.")
 
-    argParser.add_argument("-mat", dest="mat", action="store", help="Name of material profile to use [pla, abs...], default is pla.", default="pla")
+    argParser.add_argument("-mat", dest="mat", action="store", help="Name of material profile to use [pla, abs...], default is pla.", default="pla_3mm")
     argParser.add_argument("-noz", dest="nozzle", action="store", help="Name of nozzle profile to use [nozzle40, nozzle80...], default is nozzle40.", default="nozzle40")
 
     argParser.add_argument("-np", dest="noPrime", action="store_const", const=True, help="Debug: don't prime nozzle, to test extrusion-less moves.")
