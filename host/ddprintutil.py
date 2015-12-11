@@ -889,7 +889,7 @@ def bedLeveling(args, parser):
     printer.commandInit(args)
 
     # Reset bedlevel offset in printer eeprom
-    payload = struct.pack("<pf", "add_homeing_z", 0)
+    payload = struct.pack("<%dpf" % (len("add_homeing_z")+1), "add_homeing_z", 0)
     printer.sendCommand(CmdWriteEepromFloat, binPayload=payload, wantReply="ok")
 
     home(parser, args.fakeendstop, True)
@@ -959,7 +959,7 @@ def bedLeveling(args, parser):
     print "\nZ-Offset: ", add_homeing_z, "\n"
 
     # Store into printer eeprom:
-    payload = struct.pack("<pf", "add_homeing_z", add_homeing_z)
+    payload = struct.pack("<%dpf" % (len("add_homeing_z")+1), "add_homeing_z", add_homeing_z)
     printer.sendCommand(CmdWriteEepromFloat, binPayload=payload, wantReply="ok")
 
     # Finally we know the zero z position
@@ -1017,12 +1017,23 @@ def bedLevelAdjust(args, parser):
 
     printer.commandInit(args)
 
-    distance = float(args.distance)
 
-    add_homeing_z = printer.query(CmdGetEepromSettings)['add_homeing'][Z_AXIS] + distance
+    add_homeing_z = printer.query(CmdGetEepromSettings)['add_homeing'][Z_AXIS] + args.distance
 
     # Store new bedlevel offset in printer eeprom
-    payload = struct.pack("<pf", "add_homeing_z", add_homeing_z)
+    payload = struct.pack("<%dpf" % (len("add_homeing_z")+1), "add_homeing_z", add_homeing_z)
+    printer.sendCommand(CmdWriteEepromFloat, binPayload=payload, wantReply="ok")
+
+####################################################################################################
+
+def writeEEpromFloat(args, parser):
+
+    planner = parser.planner
+    printer = planner.printer
+
+    printer.commandInit(args)
+
+    payload = struct.pack("<%dpf" % (len(args.name)+1), args.name, args.value)
     printer.sendCommand(CmdWriteEepromFloat, binPayload=payload, wantReply="ok")
 
 ####################################################################################################
@@ -1132,6 +1143,244 @@ def changeNozzle(args, parser):
 
     execSingleGcode(parser, "G11")
     printer.coolDown(HeaterEx1, wait=100)
+
+####################################################################################################
+#
+# Measure closed loop step-response of the hotend and plot it with gnuplot
+#
+def stepResponse(args, parser):
+
+    planner = parser.planner
+    printer = planner.printer
+
+    def stopHeater():
+        payload = struct.pack("<BH", HeaterEx1, 0) # Parameters: heater, temp
+        printer.sendCommand(CmdSetTargetTemp, binPayload=payload, wantReply="ok")
+        printer.sendCommandParam(CmdFanSpeed, p1=packedvalue.uint8_t(0), wantReply="ok")
+
+    # Destination temperature
+    tDest = 200
+    # Bail out if tmax reached
+    tmax = 240
+
+    # Open output gnuplot file
+    f = open("stepresponse_closed.gnuplot", "w")
+
+    f.write("set grid\n")
+    f.write("set xrange [0:140]\n")
+    f.write("set yrange [0:250]\n")
+    f.write("set grid\n")
+    f.write("plot \"-\" using 1:2 with linespoints title \"StepResponse\",")
+    f.write("%d title \"tDest\"\n" % tDest)
+
+    printer.commandInit(args)
+
+    # Do the step
+    print "Starting input step to %d °" % tDest
+    payload = struct.pack("<BH", HeaterEx1, tDest) # Parameters: heater, temp
+    printer.sendCommand(CmdSetTargetTemp, binPayload=payload, wantReply="ok")
+    printer.sendCommandParam(CmdFanSpeed, p1=packedvalue.uint8_t(100), wantReply="ok")
+
+    timeStart = time.time()
+    status = printer.getStatus()
+    tempStart = status["t1"]
+
+    print "Temp:", tempStart
+    f.write("0 %f\n" % tempStart)
+
+    lastTime = timeStart 
+    lastTemp = tempStart
+
+    # Build 10 second average of the temperature change derivation
+    nAvg = 10
+    aAvg = nAvg * 1.0
+
+    # Stop if temp curve gets flat enough
+    while abs((aAvg/nAvg)) > 0.02:
+
+        if lastTemp > tmax:
+            print "Error, max temp (%d) reached: " % tmax, lastTemp
+            stopHeater()
+            return
+
+        time.sleep(1)
+
+        tim = time.time()
+        status = printer.getStatus()
+        temp = status["t1"]
+
+        relTime = tim-timeStart
+
+        f.write("%f %f\n" % (relTime, temp))
+
+        dy = temp - lastTemp
+        dx = tim - lastTime
+
+        a = dy / dx
+        print "Temp:", temp
+
+        aAvg = aAvg - (aAvg/nAvg) + a
+        print "Steigung: %7.4f %7.4f" % (a, aAvg/nAvg)
+
+        lastTime = tim
+        lastTemp = temp
+        
+    f.write("e\n")
+    stopHeater()
+
+
+####################################################################################################
+#
+# amax: 2.32109877421 , Tinflection: 12.5696818829 , tinflection: 15.64
+# Tdead: 5.83149384288
+# Mu, T: 205.63 94.4231566728
+# Ko:  10.0791100704
+# Kc: 12.0949, Ki:  1.0370, Kd: 35.2658
+#
+# https://controls.engin.umich.edu/wiki/index.php/PIDTuningClassical
+# http://rn-wissen.de/wiki/index.php/Regelungstechnik
+#
+def zieglerNichols(args, parser):
+
+    planner = parser.planner
+    printer = planner.printer
+
+    def stopHeater():
+        payload = struct.pack("<BB", HeaterEx1, 0) # heater, pwmvalue
+        printer.sendCommand(CmdSetHeaterY, binPayload=payload, wantReply="ok")
+        printer.sendCommandParam(CmdFanSpeed, p1=packedvalue.uint8_t(0), wantReply="ok")
+
+    f = open("stepresponse.gnuplot", "w")
+    # f.write("set xyplane 0\n")
+    f.write("set grid\n")
+    f.write("plot \"-\" using 1:2 with linespoints title \"StepResponse\",")
+    f.write("\"-\" using 1:($2*10) with linespoints title \"a\",")
+    f.write("\"-\" using 1:($2*10) with linespoints title \"a-avg\",")
+    f.write("\"-\" using 1:2 with linespoints title \"tangente\"\n")
+
+    printer.commandInit(args)
+
+    tmax = 240
+
+    Xo = 128
+
+    print "Starting input step"
+    printer.sendCommandParam(CmdFanSpeed, p1=packedvalue.uint8_t(100), wantReply="ok")
+    payload = struct.pack("<BB", HeaterEx1, Xo) # heater, pwmvalue
+    printer.sendCommand(CmdSetHeaterY, binPayload=payload, wantReply="ok")
+
+    timeStart = time.time()
+    status = printer.getStatus()
+    tempStart = status["t1"]
+
+    print "Temp:", tempStart
+    f.write("0 0\n")
+
+    lastTime = timeStart 
+    lastTemp = tempStart
+
+    temps = {}
+    aPlot = []
+
+    nAvg = 26
+    aAvg = nAvg * 1.0
+
+    while abs((aAvg/nAvg)) > 0.02:
+
+        if lastTemp > tmax:
+            print "Error, max temp (%d) reached: " % tmax, lastTemp
+            stopHeater()
+            return
+
+        time.sleep(0.1)
+
+        tim = time.time()
+        status = printer.getStatus()
+        temp = status["t1"]
+
+        relTime = tim-timeStart
+        Mu = temp-tempStart
+
+        temps[relTime] = Mu
+
+        f.write("%f %f\n" % (relTime, Mu))
+
+        dy = temp - lastTemp
+        dx = tim - lastTime
+
+        a = dy / dx
+        print "Temp:", temp
+
+        aPlot.append((relTime, a))
+
+        aAvg = aAvg - (aAvg/nAvg) + a
+        print "Steigung: %7.4f %7.4f" % (a, aAvg/nAvg)
+
+        lastTime = tim
+        lastTemp = temp
+        
+    stopHeater()
+
+    f.write("e\n")
+
+    for (x, y) in aPlot:
+        f.write("%f %f\n" % (x, y))
+    f.write("e\n")
+
+    nAvg = 20
+    aMax = 0
+    Tinflection = 0
+
+    aavg = []
+    for i in range(len(aPlot)-nAvg):
+
+        sum = 0.0
+        for j in range(nAvg):
+            sum += aPlot[i - (nAvg/2) + j][1]
+
+        avg = sum/nAvg
+        aavg.append((aPlot[i][0], avg))
+
+        f.write("%f %f\n" % (aPlot[i][0], avg))
+
+        if avg > aMax:
+            aMax = avg
+            Tinflection = aPlot[i][0]
+
+    f.write("e\n")
+
+    tinflection = temps[Tinflection]
+    print "amax:", aMax, ", Tinflection:", Tinflection, ", tinflection:", tinflection
+
+    # Tdead or Tu
+    Tdead = Tinflection - (tinflection / aMax)
+
+    print "Tdead:", Tdead
+
+    # T or Tg
+    T = Tinflection + ((Mu - tinflection) / aMax)
+
+    print "Mu, T:", Mu, T
+
+    f.write("%f 0\n" % Tdead)
+    f.write("%f %f\n" % (T, Mu))
+    f.write("e\n")
+
+    Ko = (Xo * T) / (Mu * Tdead)
+    print "Ko: ", Ko
+
+    # Kc or Kp
+    Kc = 1.2 * Ko
+    # Ti or Tn
+    Ti = 2 * Tdead
+    # Td or Tv
+    Td = 0.5 * Tdead
+
+    print "Kc: %7.4f, Ki: %7.4f, Kd: %7.4f" % (Kc, Kc/Ti, Kc*Td)
+
+    # Ki = Kp/Tn
+    # Kd = Kp·Tv
+    # y = Kp * e + Ki * Ta * esum + Kd * (e – ealt)/Ta
 
 ####################################################################################################
 
