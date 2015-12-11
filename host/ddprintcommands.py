@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 #/*
 # This file is part of ddprint - a direct drive 3D printer firmware.
 # 
@@ -64,6 +65,8 @@ CmdWriteEepromFloat = 135 # Parameters: valuename, value
 CmdEepromFactory = 136 # Factory reset of eeprom values, bed leveling needed
 CmdFanSpeed = 137
 CmdStopMove = 138
+# Set heater PWM value (stellgrösse) directly, used by PID autoTune. Parameters: heater, pwmvalue
+CmdSetHeaterY = 139
 
 # Getters, they return a string of the form "ret: <expr>"
 CmdGetState = 150
@@ -142,6 +145,7 @@ CommandNames = {
     CmdSyncFanSpeed: "CmdSyncFanSpeed",
     CmdFanSpeed: "CmdFanSpeed",
     CmdStopMove: "CmdStopMove",
+    CmdSetHeaterY: "CmdSetHeaterY",
     CmdRaw: "CmdRaw",
     
     # Getters, they return a string of the form "ret: <expr>"
