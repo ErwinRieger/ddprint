@@ -453,7 +453,7 @@ class Planner (object):
 
                     if debugAutoTemp:
                         print "AutoTemp: collected %d moves with %.2f s duration." % (len(self.pathData.atMoves), self.pathData.time)
-                        print "AutoTemp: amount: %.2f, avg speed: %.2f." % (self.pathData.extrusionAmount, avgSpeed)
+                        print "AutoTemp: amount: %.2f, avg extrusion rage: %.2f mm/s." % (self.pathData.extrusionAmount, avgSpeed)
                         print "AutoTemp: new temp: %.2f." % (newTemp)
 
                     if newTemp != self.pathData.lastTemp and self.args.mode != "pre":
