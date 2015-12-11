@@ -467,6 +467,8 @@ def main():
 
     subparsers = argParser.add_subparsers(dest="mode", help='Mode: mon(itor)|print|store|reset|pre(process).')
 
+    sp = subparsers.add_parser("autoTune", help=u"Autotune hotend PID values.")
+
     sp = subparsers.add_parser("changenozzle", help=u"Heat hotend and change nozzle.")
 
     sp = subparsers.add_parser("mon", help=u"Monitor serial printer interface.")
@@ -476,6 +478,10 @@ def main():
 
     sp = subparsers.add_parser("store", help=u"Store file as USB.G on sd-card.")
     sp.add_argument("gfile", help="Input GCode file.")
+
+    sp = subparsers.add_parser("writeEepromFloat", help=u"Store float value into eeprom.")
+    sp.add_argument("name", help="Valuename.")
+    sp.add_argument("value", action="store", type=float, help="value (float).")
 
     sp = subparsers.add_parser("reset", help=u"Try to stop/reset printer.")
 
@@ -494,11 +500,11 @@ def main():
 
     sp = subparsers.add_parser("moverel", help=u"Debug: Move axis manually, relative coords.")
     sp.add_argument("axis", help="Axis (XYZAB).", type=str)
-    sp.add_argument("distance", help="Move-distance (+/-) in mm.", type=float)
+    sp.add_argument("distance", action="store", help="Move-distance (+/-) in mm.", type=float)
 
     sp = subparsers.add_parser("moveabs", help=u"Debug: Move axis manually, absolute coords.")
     sp.add_argument("axis", help="Axis (XYZAB).", type=str)
-    sp.add_argument("distance", help="Move-distance (+/-) in mm.", type=float)
+    sp.add_argument("distance", action="store", help="Move-distance (+/-) in mm.", type=float)
 
     sp = subparsers.add_parser("insertFilament", help=u"Insert filament (heatup, forward filament).")
 
@@ -507,7 +513,7 @@ def main():
     sp = subparsers.add_parser("bedLeveling", help=u"Do bed leveling sequence.")
 
     sp = subparsers.add_parser("bedLevelAdjust", help=u"Adjust bedleveling offset - dangerous.")
-    sp.add_argument("distance", help="Adjust-distance (+/-) in mm.", type=float)
+    sp.add_argument("distance", action="store", help="Adjust-distance (+/-) in mm.", type=float)
 
     sp = subparsers.add_parser("heatHotend", help=u"Heat up hotend (to clean it, etc).")
 
@@ -521,6 +527,8 @@ def main():
 
     sp = subparsers.add_parser("stop", help=u"Stop print, cooldown, home, disable steppers.")
 
+    sp = subparsers.add_parser("stepResponse", help=u"Measure and plot stepResponse of hotend PID.")
+
     sp = subparsers.add_parser("retract", help=u"Debug: Do the end-of-print retract manually after heating up.")
 
     sp = subparsers.add_parser("fanspeed", help=u"Set fan speed manually.")
@@ -533,7 +541,11 @@ def main():
 
     steps_per_mm = PrinterProfile.getStepsPerMMVector()
 
-    if args.mode == 'changenozzle':
+    if args.mode == 'autoTune':
+
+        util.zieglerNichols(args, parser)
+
+    elif args.mode == 'changenozzle':
 
         util.changeNozzle(args, parser)
 
@@ -750,6 +762,10 @@ def main():
 
         util.zRepeatability(parser)
 
+    elif args.mode == 'stepResponse':
+
+        util.stepResponse(args, parser)
+
     elif args.mode == 'retract':
 
         util.retract(args, parser)
@@ -776,6 +792,14 @@ def main():
         printer.waitForState(StateIdle)
 
         printer.readMore()
+
+    elif args.mode == "writeEepromFloat":
+
+        util.writeEEpromFloat(args, parser)
+
+    else:
+        print "Unknown command: ", args.mode
+        assert(0)
 
 if __name__ == "__main__":
 
