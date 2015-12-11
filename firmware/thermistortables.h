@@ -10,10 +10,6 @@
 
 #include <avr/pgmspace.h>
 
-// #if defined(DDSim)
-    // #include "ArduinoSim.h"
-// #endif
-
 #define OVERSAMPLENR 8
 
 #if (THERMISTORHEATER_0 == 1) || (THERMISTORHEATER_1 == 1)  || (THERMISTORHEATER_2 == 1) || (THERMISTORBED == 1) //100k bed thermistor

@@ -114,8 +114,13 @@ void TempControl::init() {
     Ki = es.Ki;
     Kd = es.Kd;
 
-    temp_iState = 0;
-    temp_dState = 0;
+    // xxx
+    Kp = 12.0949;
+    Ki = 1.0370;
+    Kd = 35.2658;
+    
+    eSum = 0;
+    eAlt = 0;
 
     //
     // Timestamp of last pid computation
@@ -199,50 +204,40 @@ void TempControl::heater() {
             max_temp_error(0);
         }
         else {
-
+#if ! defined(PIDAutoTune)
 #ifdef PIDTEMP
-            // >>> OVERSAMPLENR=8
-            // >>> F_CPU=16000000
-            // >>> PID_dT = ((OVERSAMPLENR * 4.0)/(F_CPU / 64.0 / 256.0))
-            // >>> print PID_dT
-            // 0.032768 s
 
-            // HEATER_0_PIN = digital pin 2, PE4 ( OC3B/INT4 ), real pin 6? PWM output B timer 3 
-            // #define FAN_PIN            7, PE5 ( OC3C/INT5 )  Digital pin 3 (PWM)
+            // y = Kp*e + Ki*Ta*esum + Kd/Ta*(e – ealt);   //Reglergleichung
 
-            // ---------------------------------------------------
-
+            // PID interval [s]
             unsigned long ts = millis();
             float pid_dt = (ts - lastPidCompute) / 1000.0;
 
-            float ki = (Ki * pid_dt) / 10;
-            float kd = Kd / pid_dt;
+            // Regelabweichung
+            float e = target_temperature[0] - current_temperature[0];
 
-            float pid_error = target_temperature[0] - current_temperature[0];
+            float ki = Ki * pid_dt;
+            // float kd = Kd / pid_dt;
 
-            float pTerm = Kp * pid_error / 2;
+            float pTerm = Kp * e;
 
-            temp_iState += pid_error;
+            // eSum += e;
+            eSum = constrain(eSum + e, -PID_INTEGRAL_DRIVE_MAX/ki, PID_INTEGRAL_DRIVE_MAX/ki);
 
-            // temp_iState_max[e] = PID_INTEGRAL_DRIVE_MAX / Ki;
-            temp_iState = constrain(temp_iState, 0.0, PID_INTEGRAL_DRIVE_MAX / ki);
+            float iTerm = ki*eSum;
 
-            float iTerm = ki * temp_iState;
+            float dTerm = (Kd/pid_dt) * (e - eAlt);
 
-            //K1 defined in Configuration.h in the PID settings
-            #define K2 (1.0-K1)
-            float dTerm = (kd * (current_temperature[0] - temp_dState))*K2 + (K1 * dTerm);
+            float pid_output = pTerm + iTerm + dTerm;
 
-            temp_dState = current_temperature[0];
-
-            // float pid_output = constrain(pTerm + iTerm - dTerm, 0, 255.0);
-            float pid_output = pTerm + iTerm - dTerm;
-            if (pid_output > 255.0)
-                pid_output = 255;
+            if (pid_output > PID_MAX)
+                pid_output = PID_MAX;
             else if (pid_output < 0)
                 pid_output = 0;
 
             analogWrite(HEATER_0_PIN, (int)pid_output);
+
+            eAlt = e;
 
 // #ifdef PID_DEBUG
             static int dbgcount=0;
@@ -279,7 +274,8 @@ void TempControl::heater() {
             {
                 WRITE(HEATER_0_PIN, HIGH);
             }
-#endif
+#endif  // PIDTEMP
+#endif  // PIDAutoTune
         }
     }
 
@@ -312,6 +308,17 @@ void TempControl::heater() {
     //
     watchdog_reset();
 }
+
+#if defined(PIDAutoTune)
+// Set heater PWM value directly for PID AutoTune
+void TempControl::setHeaterY(uint8_t heater, uint8_t pwmValue) {
+
+    if (heater == 1) 
+        analogWrite(HEATER_0_PIN, pwmValue);
+    else
+        analogWrite(HEATER_1_PIN, pwmValue);
+}
+#endif
 
 TempControl tempControl;
 

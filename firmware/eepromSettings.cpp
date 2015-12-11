@@ -296,6 +296,24 @@ void writeEepromFloat(char *valueName, uint8_t len, float value) {
             value);
         SERIAL_PROTOCOLLNPGM(MSG_OK);
     }
+    else if (strncmp("Kp", valueName, len) == 0) {
+
+        eeprom_write_float(
+            (float*)(EEPROM_OFFSET + offsetof(struct EepromSettings, Kp)), value);
+        SERIAL_PROTOCOLLNPGM(MSG_OK);
+    }
+    else if (strncmp("Ki", valueName, len) == 0) {
+
+        eeprom_write_float(
+            (float*)(EEPROM_OFFSET + offsetof(struct EepromSettings, Ki)), value);
+        SERIAL_PROTOCOLLNPGM(MSG_OK);
+    }
+    else if (strncmp("Kd", valueName, len) == 0) {
+
+        eeprom_write_float(
+            (float*)(EEPROM_OFFSET + offsetof(struct EepromSettings, Kd)), value);
+        SERIAL_PROTOCOLLNPGM(MSG_OK);
+    }
     else {
         valueName[len] = '\0';
         SERIAL_ECHOPGM("Error: unknown value name in writeEepromFloat: ");

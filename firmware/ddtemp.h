@@ -19,12 +19,13 @@
 
 #pragma once
 
+#include "config.h"
 #include "Protothread.h"
 
 class TempControl: public Protothread
 {
-    unsigned long raw_temp_0_value;
-    unsigned long raw_temp_bed_value;
+    unsigned long raw_temp_0_value; // sum
+    unsigned long raw_temp_bed_value; // sum
 
     // PID values from eeprom
     float Kp;
@@ -34,14 +35,19 @@ class TempControl: public Protothread
     // Timestamp of last pid computation
     unsigned long lastPidCompute;
 
-    float temp_iState;
-    float temp_dState;
+    float eSum; // For I-Part
+    float eAlt; // For D-Part
 
     public:
         TempControl(): raw_temp_0_value(0), raw_temp_bed_value(0) {};
         void init();
         virtual bool Run();
         void heater();
+
+#if defined(PIDAutoTune)
+        // Set heater PWM value directly for PID AutoTune
+        void setHeaterY(uint8_t heater, uint8_t pwmValue);
+#endif
 };
 
 extern TempControl tempControl;

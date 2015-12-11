@@ -78,6 +78,10 @@
 #define CmdFanSpeed             137
 #define CmdStopMove             138
 
+#if defined(PIDAutoTune)
+    #define CmdSetHeaterY           139
+#endif
+
 #define CmdGetState             150
 #define CmdGetHomed             151
 #define CmdGetEndstops          152
@@ -1274,6 +1278,7 @@ class UsbCommand : public Protothread {
             }
         }
 
+        // Todo: inline this
         FWINLINE void addCecksumByte(uint8_t b) {
             /*
             uint16_t Fletcher16( uint8_t* data, int count )
@@ -1698,6 +1703,12 @@ class UsbCommand : public Protothread {
                     case CmdStopMove:
                         printer.cmdStopMove();
                         break;
+#if defined(PIDAutoTune)
+                    case CmdSetHeaterY:
+                        tempControl.setHeaterY(FromBuf(uint8_t, buffer + 5), FromBuf(uint8_t, buffer + 6));
+                        SERIAL_PROTOCOLLNPGM(MSG_OK);
+                        break;
+#endif
                     case CmdGetTargetTemps:
                         printer.cmdGetTargetTemps();
                         break;

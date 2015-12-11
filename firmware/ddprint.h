@@ -24,6 +24,7 @@
 
 #include <stdlib.h>
 
+#include "config.h"
 #include "Configuration.h"
 #include "pins.h"
 #include "mdebug.h"
