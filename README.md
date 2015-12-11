@@ -5,7 +5,7 @@ ddprint
 Ultimaker direct drive firmware with host side preprocessing.
 
 This is a experimental firmware for Arduino Mega based 3D printers. I use it to print on a Ultimaker2 over USB, 
-the slicers used are Cura and Slic3r.
+the slicers used are Cura, Slic3r and Simplify3D.
 
 The main goal for this firmware is to do fast and highly detailed (circles with many segmets) prints
 over USB. This is not possible with the original Marlin firmware because of the limited CPU power of the
@@ -22,8 +22,15 @@ The preprocessed move commands are sent through the USB connection between host 
 buffer the received data in the firmware (i call it 'SwapDevice'). The SD card is used in 'raw mode' without a
 filesystem on it - an existing filesystem and its contents will be erased!
 
-A simple form of a "AutoTemp" algorithm is implemented, the hotend temperature is increased for parts of the
-model where high printing speeds are reached.
+Some Features:
+
+*   Interrupt based movement with linear acceleration.
+*   Look ahead path planning (Keep the speed high when possible. High cornering speed).
+*   Hardware and software endstop support.
+*   EEPROM storage of parameters.
+*   Temperature oversampling.
+*   A simple form of an "AutoTemp" algorithm, the hotend temperature is increased for parts of the model where high printing speeds are reached.
+*   PID auto-tuning. Measuring and plotting (gnuplot) of the hotend temperature stepresponse.
 
 
 Links
