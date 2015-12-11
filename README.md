@@ -31,6 +31,7 @@ Some Features:
 *   Temperature oversampling.
 *   A simple form of an "AutoTemp" algorithm, the hotend temperature is increased for parts of the model where high printing speeds are reached.
 *   PID auto-tuning. Measuring and plotting (gnuplot) of the hotend temperature stepresponse.
+*   Simulator mode for testing/development: Firmware runs as a host-program with serial communication over a ptty device.
 
 
 Links
