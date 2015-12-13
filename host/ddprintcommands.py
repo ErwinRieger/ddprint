@@ -76,7 +76,7 @@ CmdGetEepromVersion = 153
 CmdGetEepromSettings = 154
 CmdDisableStepperIsr = 155
 CmdDisableSteppers = 156
-CmdGetTemps = 157
+CmdGetCurrentTemps = 157
 CmdGetTargetTemps = 158
 CmdGetPos = 159
 CmdExit = 160
@@ -156,7 +156,7 @@ CommandNames = {
     CmdGetEepromSettings: "CmdGetEepromSettings",
     CmdDisableStepperIsr: "CmdDisableStepperIsr",
     CmdDisableSteppers: "CmdDisableSteppers",
-    CmdGetTemps: "CmdGetTemps",
+    CmdGetCurrentTemps: "CmdGetCurrentTemps",
     CmdGetTargetTemps: "CmdGetTargetTemps",
     CmdGetPos: "CmdGetPos",
     CmdExit: "CmdExit",
