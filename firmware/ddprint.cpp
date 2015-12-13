@@ -1164,7 +1164,7 @@ void Printer::cmdGetPos() {
 
 void Printer::cmdGetStatus() {
 
-    // ["state", "t0", "t1", "Swap", "SDReader", "StepBuffer", "StepBufUnderRuns"]
+    // ["state", "t0", "t1", "Swap", "SDReader", "StepBuffer", "StepBufUnderRuns", "targetT1"]
     SERIAL_ECHOPGM("Res:(");
     SERIAL_ECHO(printerState);
     SERIAL_ECHOPGM(",");
@@ -1179,6 +1179,8 @@ void Printer::cmdGetStatus() {
     SERIAL_ECHO(stepBuffer.byteSize());
     SERIAL_ECHOPGM(",");
     SERIAL_ECHO((uint16_t)bufferLow);
+    SERIAL_ECHOPGM(",");
+    SERIAL_ECHO(target_temperature[0]);
     SERIAL_ECHOLNPGM(")");
 }
 
