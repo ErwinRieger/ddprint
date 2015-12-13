@@ -229,8 +229,10 @@ class Printer(Serial):
 
         # Read left over garbage
         recvLine = self.safeReadline()        
-        self.gui.logRecv("Initial read: ", recvLine)
-        self.gui.logRecv(recvLine.encode("hex"), "\n")
+        while recvLine:
+            self.gui.logRecv("Initial read: ", recvLine)
+            self.gui.logRecv(recvLine.encode("hex"), "\n")
+            recvLine = self.safeReadline()        
 
     def commandInit(self, args):
         self.initSerial(args.device, args.baud)
@@ -455,12 +457,17 @@ class Printer(Serial):
 
         self.gui.logSend("query: ", CommandNames[cmd])
         binary = self.buildBinaryCommand(struct.pack("<B", cmd), binPayload=binPayload);
+
         reply = self.send2(binary, "Res:")
+
+        if reply == True:
+            # Command was ok, but no response due to reconnect, restart query:
+            return self.query(cmd, binPayload)
 
         return eval(reply[4:])
 
     def getStatus(self):
-        valueNames = ["state", "t0", "t1", "Swap", "SDReader", "StepBuffer", "StepBufUnderRuns"]
+        valueNames = ["state", "t0", "t1", "Swap", "SDReader", "StepBuffer", "StepBufUnderRuns", "targetT1"]
         statusList = self.query(CmdGetStatus)
 
         statusDict = {}
@@ -484,8 +491,9 @@ class Printer(Serial):
         return status['state'] == StateStart or status['state'] == StateDwell
 
     def getTemps(self):
-        temps = self.query(CmdGetTemps)
-        self.gui.tempCb(temps[0], temps[1])
+        temps = self.query(CmdGetCurrentTemps)
+        targetTemps = self.query(CmdGetTargetTemps)
+        self.gui.tempCb(temps[0], temps[1], targetTemps[1])
         return temps
 
     ####################################################################################################
