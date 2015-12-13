@@ -29,6 +29,11 @@
       "steps_per_mm"  : 141,
       "jerk"          : 5
     },
+    "Abulldog" : {
+      "max_feedrate"  : 45,
+      "steps_per_mm"  : 495,
+      "jerk"          : 5
+    },
     "B" : {
       "max_feedrate"  : 45,
       "steps_per_mm"  : 141,
