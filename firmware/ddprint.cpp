@@ -378,6 +378,10 @@ class FillBufferTask : public Protothread {
 
         int32_t deltaLead, step;
 
+        // Hotend target temp for CmdSyncTargetTemp
+        uint8_t targetHeater;
+        uint16_t targetTemp;
+
         unsigned long dwellEnd;
 
         // StepBlock stepBlock;
@@ -823,8 +827,14 @@ class FillBufferTask : public Protothread {
                 sDReader.setBytesToRead3();
                 PT_WAIT_THREAD(sDReader);
 
+                targetHeater = *sDReader.readData;
+                targetTemp = FromBuf(uint16_t, sDReader.readData+1);
+
+                PT_WAIT_UNTIL( printer.printerState == Printer::StateStart );
+
                 // printf("autotemp: heater %d, temp: %d\n", *sDReader.readData, *(sDReader.readData+1));
-                printer.cmdSetTargetTemp(*sDReader.readData, FromBuf(uint16_t, sDReader.readData+1));
+                // printer.cmdSetTargetTemp(*sDReader.readData, FromBuf(uint16_t, sDReader.readData+1));
+                printer.cmdSetTargetTemp(targetHeater, targetTemp);
 
                 PT_RESTART();
 
