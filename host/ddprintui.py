@@ -258,14 +258,14 @@ class MainForm(npyscreen.Form):
                 self.printThread.incStopCount()
                 self.log("caught StopThread, continue....")
 
-    def updateTemps(self, t0, t1):
+    def updateTemps(self, t0, t1, targetT1):
 
         if t0 != None:
             self.curT0.set_value("%8.1f / %3.0f" % (t0, self.mat_t0))
             self.curT0.update()
 
         if t1 != None:
-            self.curT1.set_value( "%8.1f / %3.0f" % (t1, self.mat_t1))
+            self.curT1.set_value( "%8.1f / %3.0f" % (t1, targetT1))
             self.curT1.update()
 
     def updateStatus(self, status):
@@ -273,7 +273,7 @@ class MainForm(npyscreen.Form):
         self.printerState = status["state"]
         self.pState.set_value( "%8s" % self.stateNames[status["state"]])
         self.pState.update()
-        self.updateTemps(status["t0"], status["t1"])
+        self.updateTemps(status["t0"], status["t1"], status["targetT1"])
         self.swapSize.set_value( "%8s" % str(status["Swap"]))
         self.swapSize.update()
         self.sdrSize.set_value( "%8s" % str(status["SDReader"]))
@@ -485,9 +485,9 @@ class MainForm(npyscreen.Form):
             logging.info("STDOUT: %s", s)
             self.guiQueue.put(SyncCallUpdate(self.appLog.buffer, ["STDOUT:" + s]))
 
-    def tempCb(self, t0=None, t1=None):
-        logging.info("tempCb: %s %s", str(t0), str(t1))
-        self.guiQueue.put(SyncCall(self.updateTemps, t0, t1))
+    def tempCb(self, t0=None, t1=None, targetT1=None):
+        logging.info("tempCb: %s %s %s", str(t0), str(t1), str(targetT1))
+        self.guiQueue.put(SyncCall(self.updateTemps, t0, t1, targetT1))
 
 # class TestApp(npyscreen.NPSApp): 
 # class TestApp(npyscreen.NPSAppManaged): 
