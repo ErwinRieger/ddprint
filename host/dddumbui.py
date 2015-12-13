@@ -42,9 +42,9 @@ class DumbGui:
         # print(*args)
         logging.error(util.stringFromArgs(*args))
 
-    def tempCb(self, t0=None, t1=None):
+    def tempCb(self, t0=None, t1=None, targetT1=None):
         # print("tempCb: ", t0, t1)
-        logging.info("tempCb: %s %s", str(t0), str(t1))
+        logging.info("tempCb: %s %s/%s", str(t0), str(t1), str(targetT1))
 
 
 
