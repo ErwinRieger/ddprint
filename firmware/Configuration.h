@@ -299,8 +299,9 @@ const bool Z_ENDSTOPS_INVERTING = true; // set to true to invert the logic of th
 #define AXIS_STEPS_PER_MM_X 80
 #define AXIS_STEPS_PER_MM_Y 80
 #define AXIS_STEPS_PER_MM_Z 200
-// #define AXIS_STEPS_PER_MM_E 282  xxx original motor
-#define AXIS_STEPS_PER_MM_E 141     // 60mm 0.65Nm motor
+// #define AXIS_STEPS_PER_MM_E 282  // Original UM2 feeder motor
+#define AXIS_STEPS_PER_MM_E 141     // 60mm 0.65Nm feeder motor
+// #define AXIS_STEPS_PER_MM_E 495     // Bulldog XL feeder
 
 #define X_MIN_POS_STEPS (long)(X_MIN_POS * AXIS_STEPS_PER_MM_X)
 #define X_MAX_POS_STEPS (long)(X_MAX_POS * AXIS_STEPS_PER_MM_X)
