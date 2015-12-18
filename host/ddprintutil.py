@@ -1371,9 +1371,9 @@ def zieglerNichols(args, parser):
 
     # Kc or Kp
     Kc = 1.2 * Ko
-    # Ti or Tn
+    # Ti or Tn (Nachstellzeit)
     Ti = 2 * Tdead
-    # Td or Tv
+    # Td or Tv (Vorhaltezeit)
     Td = 0.5 * Tdead
 
     print "Kc: %7.4f, Ki: %7.4f, Kd: %7.4f" % (Kc, Kc/Ti, Kc*Td)
