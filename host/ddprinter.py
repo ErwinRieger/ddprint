@@ -121,7 +121,7 @@ class Printer(Serial):
 
             # Error:Line Number is not Last Line Number+1, Last Line: 9            
             # Error:checksum mismatch, Last Line: 71388
-            lastLine = int(recvLine.split(":")[2])
+            lastLine = int(recvLine[recvLine.index("Error"):].split(":")[2])
             time.sleep(0.1)
 
             if lastLine == (self.lineNr % 256):
@@ -360,7 +360,14 @@ class Printer(Serial):
             if usbid == self.usbId:
                 self.gui.log("reconnect(): found device %s, previous device: %s" % (dev, self.port))
                 self.close()
-                self.initSerial(dev, br=self.baudrate)
+
+                try:
+                    self.initSerial(dev, br=self.baudrate)
+                except SerialException as ex:
+                    self.gui.log("reconnect() Exception raised:", ex)
+                    time.sleep(1)
+                    self.reconnect()
+
                 return
 
         time.sleep(0.1)
