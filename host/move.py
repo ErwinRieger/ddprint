@@ -326,6 +326,11 @@ class Move(object):
         move_seconds = self.distance / feedrateS
         return self.displacement_vector.scale(1.0 / move_seconds)
 
+    # Get the reached speedvector, this is the nominal plateau speed if the move is long enough, else it is 
+    # the reached peek speed. Returns a speed vector.
+    def getReachedSpeedV(self):
+        return self.accelData.reachedovNominalVVector or self.getFeedrateV()
+
     # [mm/s]
     def _vDim(self, axis):
         return self.vVector()[axis]

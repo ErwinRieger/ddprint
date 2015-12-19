@@ -62,6 +62,52 @@ if UseExtrusionAutoTemp:
     ExtrusionAmountLow = 7.5 # [mm³/s] for a 1mm nozzle
 
 #####################################################################
+#
+# Computes some statistics about the used maximal extrusion rates.
+#
+class MaxExtrusionRate:
+    def __init__(self):
+        self.maxRate = 0
+        self.move = None
+        self.max10 = []
+
+        self.maxAvgRate = 0
+
+    def stat(self, move):
+
+        # Get maximum extrusion rate, take plateau speed into account only
+        # length of max constant speed:
+        reachedESpeed = abs( move.getReachedSpeedV()[util.A_AXIS] ) # [mm/s]
+        reachedEExtrusion = reachedESpeed * MatProfile.getMatArea()
+
+        if reachedEExtrusion > self.maxRate:
+
+            # print "New max reachedEExtrusion: ", reachedEExtrusion, "mm³/s"
+
+            self.maxRate = reachedEExtrusion
+            self.move = move
+
+            self.max10.append(reachedEExtrusion)
+            if len(self.max10) > 10:
+                self.max10 = self.max10[1:]
+
+    def avgStat(self, maxAvgRate):
+
+        if maxAvgRate > self.maxAvgRate:
+
+            # print "New max avg reachedEExtrusion: ", maxAvgRate, "mm³/s"
+
+            self.maxAvgRate = maxAvgRate
+
+    def printStat(self):
+
+        if self.maxRate:
+            print "Maximal Extrusion Rate (Extruder A): %.1f" % self.maxRate, "mm³/s, move: ",
+            self.move.pprint("Max. extrusion Move")
+            print "Max10: ", self.max10
+            print "Maximal Extrusion Rate (Extruder A) 5 second average: %.1f" % self.maxAvgRate, "mm³/s\n"
+
+#####################################################################
 
 class PathData (object):
 
@@ -82,6 +128,10 @@ class PathData (object):
         # Moves collected in the ATInterval
         self.atMoves = []
 
+        # Some statistics
+        self.maxExtrusionRate = MaxExtrusionRate()
+
+    # Number of moves
     def incCount(self):
         self.count += 1
         return self.count
@@ -375,6 +425,10 @@ class Planner (object):
             if debugPlot:
                 self.plotfile.write("e\n")
                 self.plotfile.close()
+
+            print "\nStatistics:"
+            print "-----------"
+            self.pathData.maxExtrusionRate.printStat()
             return
 
         print "finishMoves: nothing to do..."
@@ -403,6 +457,12 @@ class Planner (object):
 
             self.planAcceleration(move)
             self.planSteps(move)
+
+            #
+            # Collect some statistics
+            #
+            if move.isHeadMove():
+                self.pathData.maxExtrusionRate.stat(move)
 
             #
             # Collect moves if AutoTemp
@@ -453,8 +513,9 @@ class Planner (object):
 
                     if debugAutoTemp:
                         print "AutoTemp: collected %d moves with %.2f s duration." % (len(self.pathData.atMoves), self.pathData.time)
-                        print "AutoTemp: amount: %.2f, avg extrusion rage: %.2f mm/s." % (self.pathData.extrusionAmount, avgSpeed)
+                        print "AutoTemp: amount: %.2f, avg extrusion rate: %.2f mm³/s." % (self.pathData.extrusionAmount, avgSpeed)
                         print "AutoTemp: new temp: %.2f." % (newTemp)
+                        self.pathData.maxExtrusionRate.avgStat(avgSpeed)
 
                     if newTemp != self.pathData.lastTemp and self.args.mode != "pre":
 
@@ -736,7 +797,8 @@ class Planner (object):
 
         # debnegtimer
         # nominalSpeed = ( (move.accelData.reachedovNominalVVector or move.vVector())[leadAxis]) # [mm/s]
-        nominalSpeed = abs( (move.accelData.reachedovNominalVVector or move.getFeedrateV())[leadAxis]) # [mm/s]
+        # nominalSpeed = abs( (move.accelData.reachedovNominalVVector or move.getFeedrateV())[leadAxis]) # [mm/s]
+        nominalSpeed = abs( move.getReachedSpeedV()[leadAxis] ) # [mm/s]
 
         accel_steps_per_square_second = None
         deccel_steps_per_square_second = None
