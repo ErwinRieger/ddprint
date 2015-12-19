@@ -380,6 +380,7 @@ class UM2GcodeParser:
         self.setRealPos(realPos)
 
     def g0(self, line, values):
+
         # print "g0", values
 
         feedrate = self.feedrate
@@ -387,8 +388,11 @@ class UM2GcodeParser:
             feedrate = values['F']
 
         if not ("X" in values or "Y" in values or "Z" in values or "A" in values or "B" in values):
+
             # Nothing to move, F-Only gcode or invalid
             assert("F" in values)
+
+            self.feedrate = feedrate
             return
 
         curGcodePos = self.getGcodePos()
@@ -447,6 +451,11 @@ class UM2GcodeParser:
             # since it is included in the next absolute gcode command.
             # Current position has not been updated, yet (see self.state.set_position(values))
             # at the end of this method.
+            
+            # But respect a possible feedrate change:
+            if not eOnlyByGcode:
+                self.feedrate = feedrate
+
             return
 
         # Get head move distance:
