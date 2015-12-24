@@ -19,7 +19,7 @@
 # along with ddprint.  If not, see <http://www.gnu.org/licenses/>.
 #*/
 
-import struct, time, math, tty, termios, sys, types
+import struct, time, math, tty, termios, sys, types, json
 import ddprintconstants
 
 from ddprintcommands import *
@@ -1385,7 +1385,22 @@ def zieglerNichols(args, parser):
 ####################################################################################################
 
 
+#
+# Allow comments in json files.
+#
+def jsonLoad(f):
 
+    s = ""
+    for l in f.readlines():
+        l = l.strip()
+        if l.startswith("#"):
+            print "skip comment:", l
+            continue
+        s += l
+
+    return json.loads(s)
+
+####################################################################################################
 
 
 
