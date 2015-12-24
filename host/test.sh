@@ -3,7 +3,7 @@
 for inp in $* test_files/*.gcode; do 
 
     echo "###################################"
-    echo "$0: running $inp"
+    echo "$0: running python ddprint.py pre $inp"
     echo "###################################"
     python ddprint.py pre $inp
 
