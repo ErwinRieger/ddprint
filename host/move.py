@@ -203,9 +203,6 @@ class StepData:
         self.leadAxis = 0
         self.abs_vector_steps = None
 
-        # Sum of timer clocks to estimate time for move
-        self.clocks = 0
-
     def checkTimerValue(self, timer, limit=maxTimerValue24):
 
         if timer < 50:
@@ -219,7 +216,6 @@ class StepData:
     def addAccelPulse(self, timer):
         self.checkTimerValue(timer)
         self.accelPulses.append(timer)
-        self.clocks += timer
 
     def setLinTimer(self, timer):
         self.checkTimerValue(timer, maxTimerValue16)
@@ -232,7 +228,6 @@ class StepData:
     def addDeccelPulse(self, timer):
         self.checkTimerValue(timer)
         self.deccelPulses.append(timer)
-        self.clocks += timer
 
     def setBresenhamParameters(self, leadAxis, abs_vector_steps):
         self.leadAxis = leadAxis
@@ -251,9 +246,19 @@ class StepData:
         # assert((len(self.accelPulses) + len(self.linearPulses) + len(self.deccelPulses)) == deltaLead)
         assert(self.abs_vector_steps[self.leadAxis] - (len(self.accelPulses) + len(self.deccelPulses)) >= 0)
 
+    def getAccelTime(self):
+        return sum(self.accelPulses) / fTimer
+
+    def getLinearTime(self):
+        return (self.abs_vector_steps[self.leadAxis] * self.linearTimer) / fTimer
+
+    def getDeccelTime(self):
+        return sum(self.deccelPulses) / fTimer
+
     def getTime(self):
         # Estimate typ by using the sum of the timer values
-        return (self.clocks + (self.abs_vector_steps[self.leadAxis] * self.linearTimer)) / fTimer
+        # return (self.clocks + (self.abs_vector_steps[self.leadAxis] * self.linearTimer)) / fTimer
+        return self.getAccelTime() + self.getLinearTime() + self.getDeccelTime()
 
 ##################################################
 
@@ -314,6 +319,11 @@ class Move(object):
         self.state = 0 # 1: joined, 2: accel planned, 3: steps planned
         self.typ = None # 0: StartMove, 1: NormalMove, 2: IsolationMove, 3: EndMove
         self.streamed = False
+
+        # Time for the three phases of this move
+        self.accelTime = 0
+        self.linearTime = 0
+        self.deccelTime = 0
 
     # [mm/s]
     def getFeedrateV(self, feedrateS = None):
@@ -571,12 +581,29 @@ class Move(object):
         return self.displacement_vector[X_AXIS] or self.displacement_vector[Y_AXIS] or self.displacement_vector[Z_AXIS]
 
     def isExtrudingMove(self, extruder):
-        return self.displacement_vector[extruder]
+        return self.isHeadMove() and self.displacement_vector[extruder]
+
+    def setDuration(self, accelTime, linearTime, deccelTime):
+        self.accelTime = accelTime
+        self.linearTime = linearTime
+        self.deccelTime = deccelTime
 
     def getTime(self):
         t = self.stepData.getTime()
         # print "AutoTemp: time for move %d:" % self.moveNumber, t
-        return t
+
+        tx = self.accelTime + self.linearTime + self.deccelTime
+
+        if (abs(t - tx) > 0.025):
+            print "t, tx", t, tx
+            print "ta: ", self.stepData.getAccelTime(), self.accelTime
+            print "tl: ", self.stepData.getLinearTime(), self.linearTime
+            print "tb: ", self.stepData.getDeccelTime(), self.deccelTime
+
+            self.pprint("ERROR")
+            # assert(0)
+
+        return tx
 
     # return a list of binary encoded commands, ready to be send over serial...
     def commands(self):
@@ -686,5 +713,18 @@ class Move(object):
 
     def getExtrusionVolume(self, extruder, area):
         return self.displacement_vector[extruder] * area
+
+    def adjustExtrusion(self):
+        pass
+
+
+
+
+
+
+
+
+
+
 
 
