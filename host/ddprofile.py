@@ -17,30 +17,57 @@
 # along with ddprint.  If not, see <http://www.gnu.org/licenses/>.
 #*/
 
-import json, math
+import math
+import ddprintutil as util
 
 from ddprintconstants import dimNames
+
+####################################################################################################
+#
+# Json profile base class
+#
+####################################################################################################
+class ProfileBase(object):
+
+    def __init__(self, cls, name):
+
+        if cls._single:
+            raise RuntimeError('A ' + str(cls) + ' instance already exists')
+
+        self.name = name
+
+        try:
+            f = open(name + ".json")
+        except IOError:
+            f = open(name)
+
+        self.values = util.jsonLoad(f)
+
+        cls._single = self
+
+    def getValue(self, valueName):
+        try:
+            return self.values[valueName]
+        except KeyError:
+            print "\nERROR: Profile ", self.name, " does not conain key:", valueName, "\n"
+            raise
 
 ####################################################################################################
 #
 # Printer profile, singleton
 #
 ####################################################################################################
-class PrinterProfile():
+class PrinterProfile(ProfileBase):
 
-    __single = None 
+    _single = None 
 
     def __init__(self, name):
 
-        if PrinterProfile.__single:
-            raise RuntimeError('A PrinterProfile already exists')
-
-        self.values = json.load(open(name + ".json"))
-        PrinterProfile.__single = self
+        super(PrinterProfile, self).__init__(PrinterProfile, name)
 
     @classmethod
     def get(cls):
-        return cls.__single
+        return cls._single
 
     @classmethod
     def getValues(cls):
@@ -67,24 +94,20 @@ class PrinterProfile():
 # Material profile, singleton
 #
 ####################################################################################################
-class MatProfile():
+class MatProfile(ProfileBase):
 
-    __single = None 
+    _single = None 
 
     def __init__(self, name):
 
-        if MatProfile.__single:
-            raise RuntimeError('A MatProfile already exists')
-
-        self.values = json.load(open(name + ".json"))
-        MatProfile.__single = self
+        super(MatProfile, self).__init__(MatProfile, name)
 
     def override(self, key, value):
         self.values[key] = value
 
     @classmethod
     def get(cls):
-        return cls.__single
+        return cls._single
 
     @classmethod
     def getValues(cls):
@@ -130,21 +153,25 @@ class MatProfile():
 # Nozzle profile, singleton
 #
 ####################################################################################################
-class NozzleProfile():
+class NozzleProfile(ProfileBase):
 
-    __single = None 
+    _single = None 
 
     def __init__(self, name):
 
-        if NozzleProfile.__single:
-            raise RuntimeError('A NozzleProfile already exists')
+        super(NozzleProfile, self).__init__(NozzleProfile, name)
 
-        self.values = json.load(open(name + ".json"))
-        NozzleProfile.__single = self
+        # Compute max extrusion rate without extrusion adjust
+        extrusionRateAdjust = float(self.getValue("extrusionRateAdjust"))
+        self.netMaxExtrusionRate = NozzleProfile.getMaxExtrusionRate() / (1 + extrusionRateAdjust/100)
+        print "Max net extrusion rate:", self.netMaxExtrusionRate
+        # Extrusion adjust factor
+        self.kExtrusionAdjust = (extrusionRateAdjust/100) / self.netMaxExtrusionRate
+        print "kExtrusionAdjust: ", self.kExtrusionAdjust
 
     @classmethod
     def get(cls):
-        return cls.__single
+        return cls._single
 
     @classmethod
     def getValues(cls):
@@ -161,6 +188,16 @@ class NozzleProfile():
     @classmethod
     def getSize(cls):
         return float(cls.getValues()["size"])
+
+    @classmethod
+    def getMaxExtrusionRate(cls):
+        return float(cls.getValues()["maxExtrusionRate"])
+
+
+
+
+
+
 
 
 
