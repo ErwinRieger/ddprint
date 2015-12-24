@@ -1,7 +1,11 @@
 {
   "size" : 0.4,
   "autoTempFactor" : 1.0,
-  "extrusionAutoTempFactor" : 2.5
+  "extrusionAutoTempFactor" : 2.5,
+  # Max extrusion rate that can be done with this nozzle [mm³]
+  "maxExtrusionRate" : 15.0,
+  # Add up to extrusionAdjust percent to the extrusion [%]
+  "extrusionRateAdjust" : 10
 }
 
 
