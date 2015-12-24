@@ -51,4 +51,4 @@ Here are some links where i got ideas and inspiration from:
 * http://elm-chan.org/docs/mmc/mmc_e.html
 * http://www.hwml.com/leibramp.pdf
 * http://www.embedded.com/design/mcus-processors-and-socs/4006438/Generate-stepper-motor-speed-profiles-in-real-time
-
+* http://www.extrudable.me/2013/04/18/exploring-extrusion-variability-and-limits/
