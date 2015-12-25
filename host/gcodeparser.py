@@ -326,7 +326,6 @@ class UM2GcodeParser:
                     displacement_vector_steps=displacement_vector_steps,
                     e_distance=e_distance,
                     feedrate = RetractFeedrate,
-                    longest_axis=longest_axis,
                     ))
         """
 
@@ -409,8 +408,6 @@ class UM2GcodeParser:
 
         eOnlyByGcode = True
 
-        longest_axis = 0
-        longestAxisStep = 0
         for dim in range(5):
 
             dimC = dimNames[dim]
@@ -438,10 +435,6 @@ class UM2GcodeParser:
 
             newGcodePos[dimC] = values[dimC]
             newRealPos[dim] = curRealPos[dim] + rDiff
-
-            if abs(nSteps) > longestAxisStep:
-                longest_axis = dim
-                longestAxisStep = abs(nSteps)
 
         #
         # Check if zero or small length:
@@ -490,7 +483,6 @@ class UM2GcodeParser:
             displacement_vector=displacement_vector,
             displacement_vector_steps=displacement_vector_steps,
             feedrate=feedrate, # mm/s
-            longest_axis=longest_axis
             ))
             
         if not eOnlyByGcode:
