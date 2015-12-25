@@ -246,21 +246,6 @@ class StepData:
         # assert((len(self.accelPulses) + len(self.linearPulses) + len(self.deccelPulses)) == deltaLead)
         assert(self.abs_vector_steps[self.leadAxis] - (len(self.accelPulses) + len(self.deccelPulses)) >= 0)
 
-    def getAccelTime(self):
-        return sum(self.accelPulses) / fTimer
-
-    def getLinearTime(self):
-        # return (self.abs_vector_steps[self.leadAxis] * self.linearTimer) / fTimer
-        return ((self.abs_vector_steps[self.leadAxis] - len(self.accelPulses) - len(self.deccelPulses)) * self.linearTimer) / fTimer
-
-    def getDeccelTime(self):
-        return sum(self.deccelPulses) / fTimer
-
-    def getTime(self):
-        # Estimate typ by using the sum of the timer values
-        # return (self.clocks + (self.abs_vector_steps[self.leadAxis] * self.linearTimer)) / fTimer
-        return self.getAccelTime() + self.getLinearTime() + self.getDeccelTime()
-
 ##################################################
 
 class Move(object):
@@ -280,8 +265,12 @@ class Move(object):
 
         self.comment=comment
         # self.stepped_point=stepped_point
-        self.displacement_vector=displacement_vector
-        self.displacement_vector_steps=displacement_vector_steps
+        # self.displacement_vector=displacement_vector
+        # self.displacement_vector_steps=displacement_vector_steps
+        self.displacement_vector3=displacement_vector[:3]
+        self.displacement_vector_steps3=displacement_vector_steps[:3]
+        self.extrusion_displacement_raw = displacement_vector[3:]
+        self.extrusion_displacement_steps_raw = displacement_vector_steps[3:]
 
         #
         # Move distance in XYZAB plane
@@ -310,7 +299,7 @@ class Move(object):
         self.lastMove = None
         self.nextMove = None
 
-        self.eOnly = self.displacement_vector[:3] == 3*[0]
+        self.eOnly = self.displacement_vector3 == 3*[0]
 
         self.moveNumber = 0
 
@@ -324,6 +313,12 @@ class Move(object):
         self.linearTime = 0
         self.deccelTime = 0
 
+    def displacement_vector_raw(self):
+        return VVector(self.displacement_vector3 + self.extrusion_displacement_raw)
+
+    def displacement_vector_steps_raw(self):
+       return self.displacement_vector_steps3 + self.extrusion_displacement_steps_raw 
+
     # [mm/s]
     def getFeedrateV(self, feedrateS = None):
 
@@ -333,7 +328,7 @@ class Move(object):
         assert(feedrateS)
 
         move_seconds = self.distance / feedrateS
-        return self.displacement_vector.scale(1.0 / move_seconds)
+        return self.displacement_vector_raw().scale(1.0 / move_seconds)
 
     # Get the reached speedvector, this is the nominal plateau speed if the move is long enough, else it is 
     # the reached peek speed. Returns a speed vector.
@@ -347,7 +342,7 @@ class Move(object):
     def getAllowedAccelVector(self):
 
         # accelVector = self.vVector().setLength(DEFAULT_ACCELERATION)
-        accelVector = self.displacement_vector._setLength(DEFAULT_ACCELERATION)
+        accelVector = self.displacement_vector_raw()._setLength(DEFAULT_ACCELERATION)
         return accelVector.constrain(DEFAULT_MAX_ACCELERATION) or accelVector
 
     def getAllowedAccel(self):
@@ -409,7 +404,7 @@ class Move(object):
         else:
             print "XYZ move, distance: %.2f, distance: %.2f, longest_axis: %s" % (self.distance, self.distance, dimNames[self.longest_axis])
 
-        print "displacement_vector:", self.displacement_vector, "_steps:", self.displacement_vector_steps
+        print "displacement_vector:", self.displacement_vector_raw(), "_steps:", self.displacement_vector_steps_raw()
         print "feedrate:", self.feedrateS, "[mm/s], nominalVVector:", self.getFeedrateV(), "[mm/s]"
         print ""
 
@@ -527,10 +522,10 @@ class Move(object):
         self.setNominalEndFr(f)
 
     def isHeadMove(self):
-        return self.displacement_vector[X_AXIS] or self.displacement_vector[Y_AXIS] or self.displacement_vector[Z_AXIS]
+        return self.displacement_vector3[X_AXIS] or self.displacement_vector3[Y_AXIS] or self.displacement_vector3[Z_AXIS]
 
     def isExtrudingMove(self, extruder):
-        return self.isHeadMove() and self.displacement_vector[extruder]
+        return self.isHeadMove() and self.extrusion_displacement_raw[extruder-3]
 
     def setDuration(self, accelTime, linearTime, deccelTime):
         self.accelTime = accelTime
@@ -538,21 +533,8 @@ class Move(object):
         self.deccelTime = deccelTime
 
     def getTime(self):
-        t = self.stepData.getTime()
-        # print "AutoTemp: time for move %d:" % self.moveNumber, t
 
-        tx = self.accelTime + self.linearTime + self.deccelTime
-
-        if (abs(t - tx) > 0.025):
-            print "t, tx", t, tx
-            print "ta: ", self.stepData.getAccelTime(), self.accelTime
-            print "tl: ", self.stepData.getLinearTime(), self.linearTime
-            print "tb: ", self.stepData.getDeccelTime(), self.deccelTime
-
-            self.pprint("ERROR")
-            assert(0)
-
-        return tx
+        return self.accelTime + self.linearTime + self.deccelTime
 
     # return a list of binary encoded commands, ready to be send over serial...
     def commands(self):
@@ -656,15 +638,35 @@ class Move(object):
     def isDisjointSteps(self, other, delta=2):
 
         for dim in range(5):
-            if abs(self.displacement_vector_steps[dim]) > delta and abs(other.displacement_vector_steps[dim]) > delta:
+            if abs(self.displacement_vector_steps_raw()[dim]) > delta and abs(other.displacement_vector_steps_raw()[dim]) > delta:
                 return False
         return True
 
-    def getExtrusionVolume(self, extruder, area):
-        return self.displacement_vector[extruder] * area
+    def getAdjustedExtrusionVolume(self, extruder, nozzleProfile, matProfile):
+        return self.displacement_vector_steps_adjusted(nozzleProfile, matProfile)[extruder] * matProfile.getMatArea()
 
-    def adjustExtrusion(self):
-        pass
+    def displacement_vector_steps_adjusted(self, nozzleProfile, matProfile):
+
+        raw = self.displacement_vector_raw()
+
+        if not self.isExtrudingMove(A_AXIS) and not self.isExtrudingMove(B_AXIS):
+            return raw
+
+        extrusionAdjustFactor = nozzleProfile.getExtrusionAdjustFactor()
+        matArea = matProfile.getMatArea()
+        t = self.getTime()
+
+        extrusionRate = (raw[A_AXIS] * matArea) / t
+        # print "extrusionRate:", extrusionRate
+        adjustedRate = extrusionRate + pow(extrusionRate, 2) * extrusionAdjustFactor
+        # print "adjustedRate:", adjustedRate
+        raw[A_AXIS] = (adjustedRate * t) / matArea
+
+        extrusionRate = (raw[B_AXIS] * matArea) / t
+        adjustedRate = extrusionRate + pow(extrusionRate, 2) * extrusionAdjustFactor
+        raw[B_AXIS] = (adjustedRate * t) / matArea
+
+        return raw
 
 
 

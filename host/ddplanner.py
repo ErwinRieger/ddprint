@@ -85,6 +85,8 @@ class MaxExtrusionRate:
         # length of max constant speed:
         reachedESpeed = abs( move.getReachedSpeedV()[util.A_AXIS] ) # [mm/s]
         reachedEExtrusion = reachedESpeed * MatProfile.getMatArea()
+        # Extrusion adjust
+        reachedEExtrusion = reachedEExtrusion + pow(reachedEExtrusion, 2) * NozzleProfile.getExtrusionAdjustFactor()
 
         if reachedEExtrusion > self.maxRate:
 
@@ -465,8 +467,8 @@ class Planner (object):
             #
             # Auto adjust extrusion rate
             #
-            if move.isExtrudingMove(util.A_AXIS):
-                move.adjustExtrusion()
+            # if move.isExtrudingMove(util.A_AXIS):
+                # move.adjustExtrusion(NozzleProfile.getExtrusionAdjustFactor())
 
             self.planSteps(move)
 
@@ -486,10 +488,10 @@ class Planner (object):
 
                     if UseAutoTemp:
                         # Sum up distance
-                        self.pathData.extrusionAmount += move.displacement_vector.len3()
+                        self.pathData.extrusionAmount += move.displacement_vector_raw().len3()
                     else:
                         # Sum extrusion volume
-                        self.pathData.extrusionAmount += move.getExtrusionVolume(util.A_AXIS, MatProfile.getMatArea())
+                        self.pathData.extrusionAmount += move.getAdjustedExtrusionVolume(util.A_AXIS, NozzleProfile, MatProfile)
 
                 self.pathData.atMoves.append(move)
 
@@ -764,11 +766,11 @@ class Planner (object):
 
                 deltaSpeedS = reachedNominalSpeedS - startSpeedS                          # [mm/s]
                 ta = deltaSpeedS / allowedAccel
-                print "ta: ", ta, deltaSpeedS
+                # print "ta: ", ta, deltaSpeedS
 
                 deltaSpeedS = reachedNominalSpeedS - endSpeedS                          # [mm/s]
                 tb = deltaSpeedS / allowedAccel
-                print "tb: ", tb, deltaSpeedS
+                # print "tb: ", tb, deltaSpeedS
 
                 move.setDuration(ta, 0, tb)
 
@@ -779,13 +781,13 @@ class Planner (object):
             # 
 
             if move.isExtrudingMove(util.A_AXIS):
-                print "ta: ", ta, deltaStartSpeedS, sa
-                print "tb: ", tb, deltaEndSpeedS, sb
+                # print "ta: ", ta, deltaStartSpeedS, sa
+                # print "tb: ", tb, deltaEndSpeedS, sb
 
                 nominalSpeed = move.getFeedrateV().len5() # [mm/s]
                 slin = move.distance - (sa+sb)
                 tlin = slin / nominalSpeed
-                print "tlin: ", tlin, slin
+                # print "tlin: ", tlin, slin
                 move.setDuration(ta, tlin, tb)
 
         if debugMoves:
@@ -812,8 +814,9 @@ class Planner (object):
         abs_displacement_vector_steps = []
 
         for i in range(5):
-            dirBits += (move.displacement_vector_steps[i] >= 0) << i
-            abs_displacement_vector_steps.append(abs(move.displacement_vector_steps[i]))
+            dirBits += (move.displacement_vector_steps_raw()[i] >= 0) << i
+            adjustedDisplacement = move.displacement_vector_steps_adjusted(NozzleProfile, MatProfile)
+            abs_displacement_vector_steps.append(abs(adjustedDisplacement[i]))
 
         if dirBits != self.printer.curDirBits:
             move.stepData.setDirBits = True
@@ -826,8 +829,6 @@ class Planner (object):
         #
         # Bresenham's variables
         #
-        # deltaLead = int(abs(move.displacement_vector_steps[leadAxis]))
-        # deltaLead = abs(move.displacement_vector_steps[leadAxis])
         deltaLead = abs_displacement_vector_steps[leadAxis]
         move.stepData.setBresenhamParameters(leadAxis, abs_displacement_vector_steps)
 
@@ -1041,8 +1042,6 @@ class Planner (object):
         #
         # Linear phase
         #
-        print "left linear steps: ", deltaLead-stepNr
-
         timerValue = fTimer / steps_per_second_nominal
         move.stepData.setLinTimer(timerValue)
 

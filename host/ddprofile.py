@@ -169,6 +169,7 @@ class NozzleProfile(ProfileBase):
         self.kExtrusionAdjust = (extrusionRateAdjust/100) / self.netMaxExtrusionRate
         print "kExtrusionAdjust: ", self.kExtrusionAdjust
 
+    
     @classmethod
     def get(cls):
         return cls._single
@@ -193,6 +194,9 @@ class NozzleProfile(ProfileBase):
     def getMaxExtrusionRate(cls):
         return float(cls.getValues()["maxExtrusionRate"])
 
+    @classmethod
+    def getExtrusionAdjustFactor(cls):
+        return cls.get().kExtrusionAdjust
 
 
 
