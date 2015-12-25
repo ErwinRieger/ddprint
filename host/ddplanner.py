@@ -463,13 +463,6 @@ class Planner (object):
             move.sanityCheck(self.jerk)
 
             self.planAcceleration(move)
-
-            #
-            # Auto adjust extrusion rate
-            #
-            # if move.isExtrudingMove(util.A_AXIS):
-                # move.adjustExtrusion(NozzleProfile.getExtrusionAdjustFactor())
-
             self.planSteps(move)
 
             #
