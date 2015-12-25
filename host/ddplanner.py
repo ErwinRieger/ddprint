@@ -63,6 +63,12 @@ if UseExtrusionAutoTemp:
 
 #####################################################################
 #
+# Auto extrusion adjust
+#
+UseExtrusionAdjust = True
+
+#####################################################################
+#
 # Computes some statistics about the used maximal extrusion rates.
 #
 class MaxExtrusionRate:
@@ -456,6 +462,13 @@ class Planner (object):
             move.sanityCheck(self.jerk)
 
             self.planAcceleration(move)
+
+            #
+            # Auto adjust extrusion rate
+            #
+            if move.isExtrudingMove(util.A_AXIS):
+                move.adjustExtrusion()
+
             self.planSteps(move)
 
             #
@@ -468,7 +481,7 @@ class Planner (object):
             # Collect moves if AutoTemp
             #
             if UseAutoTemp or UseExtrusionAutoTemp:
-                if move.isHeadMove() and move.isExtrudingMove(util.A_AXIS):
+                if move.isExtrudingMove(util.A_AXIS):
                     # Collect moves and sum up path time
                     self.pathData.time += move.getTime()
 
@@ -626,7 +639,7 @@ class Planner (object):
 
         move.state = 2
 
-        allowedAccel =  allowedDeccel = move.getAllowedAccel()
+        allowedAccel = allowedDeccel = move.getAllowedAccel()
 
         #
         # Check if the speed difference between startspeed and endspeed can be done with
@@ -659,18 +672,19 @@ class Planner (object):
         # Compute distance to accel from start speed to nominal speed:
         #
 
+        ta = 0.0
         sa = 0.0
         # if move.getStartFr().fr != None:
         startSpeedS = move.getStartFr()
-        deltaSpeedS = move.feedrateS - startSpeedS
+        deltaStartSpeedS = move.feedrateS - startSpeedS
 
-        if deltaSpeedS:
+        if deltaStartSpeedS:
 
-            ta = deltaSpeedS / allowedAccel
-            # print "accel time (for %f mm/s): %f [s]" % (deltaSpeedS, ta)
+            ta = deltaStartSpeedS / allowedAccel
+            # print "accel time (for %f mm/s): %f [s]" % (deltaStartSpeedS, ta)
 
             # debug Check axxis acceleration
-            deltaSpeedV = move.getFeedrateV(deltaSpeedS)
+            deltaSpeedV = move.getFeedrateV(deltaStartSpeedS)
             for dim in range(5):
                 if deltaSpeedV[dim] != 0:
                     dimAccel = deltaSpeedV[dim] / ta
@@ -685,18 +699,19 @@ class Planner (object):
         #
         # Compute distance to deccel from nominal speed to endspeed:
         #
+        tb = 0.0
         sb = 0.0
         # if move.getEndFr().fr != None:
         endSpeedS = move.getEndFr() # [mm/s]
-        deltaSpeedS = move.feedrateS - endSpeedS                          # [mm/s]
+        deltaEndSpeedS = move.feedrateS - endSpeedS                          # [mm/s]
 
-        if deltaSpeedS:
+        if deltaEndSpeedS:
 
-            tb = deltaSpeedS / allowedAccel                          # [s]
-            # print "deccel time (for %f mm/s): %f [s]" % (deltaSpeedS, tb)
+            tb = deltaEndSpeedS / allowedAccel                          # [s]
+            # print "deccel time (for %f mm/s): %f [s]" % (deltaEndSpeedS, tb)
 
             # debug Check axxis acceleration
-            deltaSpeedV = move.getFeedrateV(deltaSpeedS)
+            deltaSpeedV = move.getFeedrateV(deltaEndSpeedS)
             for dim in range(5):
                 if deltaSpeedV[dim] != 0:
                     dimDeccel = deltaSpeedV[dim] / tb  
@@ -746,7 +761,42 @@ class Planner (object):
 
             assert( abs(v - v2) < 0.001)
 
-            move.accelData.reachedovNominalVVector = move.getFeedrateV().scale(v / nominalSpeedS)
+            nominalSpeedV = move.getFeedrateV().scale(v / nominalSpeedS)
+
+            move.accelData.reachedovNominalVVector = nominalSpeedV
+
+            if move.isExtrudingMove(util.A_AXIS):
+                # reachedNominalSpeedS = nominalSpeedV.feedrate3() # [mm/s]
+                reachedNominalSpeedS = nominalSpeedV.len5() # [mm/s]
+
+                deltaSpeedS = reachedNominalSpeedS - startSpeedS                          # [mm/s]
+                ta = deltaSpeedS / allowedAccel
+                print "ta: ", ta, deltaSpeedS
+
+                deltaSpeedS = reachedNominalSpeedS - endSpeedS                          # [mm/s]
+                tb = deltaSpeedS / allowedAccel
+                print "tb: ", tb, deltaSpeedS
+
+                move.setDuration(ta, 0, tb)
+
+        else:
+
+            # 
+            # Strecke reicht aus, um auf nominal speed zu beschleunigen
+            # 
+
+            if move.isExtrudingMove(util.A_AXIS):
+                print "ta: ", ta, deltaStartSpeedS, sa
+                print "tb: ", tb, deltaEndSpeedS, sb
+
+                # nominalSpeed = move.getFeedrateV().feedrate3() # [mm/s]
+                # nominalSpeed = move.getFeedrateV().len5() # [mm/s]
+                nominalSpeed = move.getReachedSpeedV().len5() # [mm/s]
+                # slin = move.move_distance - (sa+sb)
+                slin = move.distance - (sa+sb)
+                tlin = slin / nominalSpeed
+                print "tlin: ", tlin, slin
+                move.setDuration(ta, tlin, tb)
 
         if debugMoves:
             move.pprint("planAcceleration")
@@ -789,43 +839,34 @@ class Planner (object):
         # deltaLead = int(abs(move.displacement_vector_steps[leadAxis]))
         # deltaLead = abs(move.displacement_vector_steps[leadAxis])
         deltaLead = abs_displacement_vector_steps[leadAxis]
+        move.stepData.setBresenhamParameters(leadAxis, abs_displacement_vector_steps)
 
         #
         # Create a list of stepper pulses
         #
-        move.stepData.setBresenhamParameters(leadAxis, abs_displacement_vector_steps)
 
         # debnegtimer
         # nominalSpeed = ( (move.accelData.reachedovNominalVVector or move.vVector())[leadAxis]) # [mm/s]
         # nominalSpeed = abs( (move.accelData.reachedovNominalVVector or move.getFeedrateV())[leadAxis]) # [mm/s]
         nominalSpeed = abs( move.getReachedSpeedV()[leadAxis] ) # [mm/s]
 
-        accel_steps_per_square_second = None
-        deccel_steps_per_square_second = None
-
-        v0 = v1 = nominalSpeed                # [mm/s]
+        # debnegtimer
+        accel = abs(move.getAllowedAccelVector()[leadAxis])
+        accel_steps_per_square_second = accel * steps_per_mm
 
         startSpeed = move.getStartFr()
-        if startSpeed != None: # -->  true
 
-            # debnegtimer
-            # v0 = (startSpeed[leadAxis])                # [mm/s]
-            v0 = abs(move.getFeedrateV(move.getStartFr())[leadAxis])                # [mm/s]
-
-            # debnegtimer
-            accel = abs(move.getAllowedAccelVector()[leadAxis])
-            accel_steps_per_square_second = accel * steps_per_mm
+        # debnegtimer
+        # v0 = (startSpeed[leadAxis])                # [mm/s]
+        v0 = abs(move.getFeedrateV(move.getStartFr())[leadAxis])                # [mm/s]
 
         endSpeed = move.getEndFr()
-        if endSpeed != None: # -->true
 
-            # debnegtimer
-            # v1 = (endSpeed[leadAxis])                # [mm/s]
-            v1 = abs(move.getFeedrateV(move.getEndFr())[leadAxis])                # [mm/s]
+        # debnegtimer
+        # v1 = (endSpeed[leadAxis])                # [mm/s]
+        v1 = abs(move.getFeedrateV(move.getEndFr())[leadAxis])                # [mm/s]
 
-            # debnegtimer
-            deccel = abs(move.getAllowedAccelVector()[leadAxis])
-            deccel_steps_per_square_second = deccel * steps_per_mm
+        # debnegtimer
             
         steps_per_second_0 = steps_per_second = v0 * steps_per_mm
         steps_per_second_nominal = nominalSpeed * steps_per_mm
@@ -850,7 +891,10 @@ class Planner (object):
         # 
         # while v0 and steps_per_second < steps_per_second_nominal:
         # lastTimer = None
-        while steps_per_second < steps_per_second_nominal and stepNr < deltaLead:
+        while steps_per_second < steps_per_second_nominal: #  and stepNr < deltaLead:
+
+            assert(stepNr < deltaLead)
+
             #
             # Compute timer value
             #
@@ -891,11 +935,12 @@ class Planner (object):
         # Benutze als timer wert für die lineare phase den letzen timerwert der
         # beschleunigungsphase falls es diese gab. Sonst:
         # berechne timervalue ausgehend von linear feedrate:
-        if not timerValue:
-            timerValue = fTimer / steps_per_second
+        # if not timerValue:
+            # timerValue = fTimer / steps_per_second
             # dt = 1.0 / steps_per_second
             # print "dt: ", dt*1000000, "[uS]", steps_per_second, "[steps/s], timerValue: ", timerValue
 
+        timerValue = fTimer / steps_per_second_nominal
         move.stepData.setLinTimer(timerValue)
 
         if debugPlot:
@@ -913,11 +958,17 @@ class Planner (object):
         steps_per_second_1 = v1 * steps_per_mm
 
         # lastTimer = None
-        while steps_per_second > steps_per_second_1 and stepNr < deltaLead:
+        while steps_per_second > steps_per_second_1: #  and stepNr < deltaLead:
+
+            if stepNr >= deltaLead:
+                print "stepNr, deltaLead:", stepNr, deltaLead
+
+            assert(stepNr < deltaLead)
+
             #
             # Compute timer value
             #
-            steps_per_second = max(steps_per_second_nominal - tDeccel * deccel_steps_per_square_second, steps_per_second_1)
+            steps_per_second = max(steps_per_second_nominal - tDeccel * accel_steps_per_square_second, steps_per_second_1)
 
             dt = 1.0 / steps_per_second
             timerValue = int(fTimer / steps_per_second)

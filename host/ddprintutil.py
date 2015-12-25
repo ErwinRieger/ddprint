@@ -27,8 +27,8 @@ from ddprintstates import *
 from ddprintconstants import dimNames
 from ddprofile import PrinterProfile, MatProfile
 
-debugMoves = True
 debugMoves = False
+debugMoves = True
 
 ####################################################################################################
 #

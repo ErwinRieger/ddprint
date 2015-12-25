@@ -250,7 +250,8 @@ class StepData:
         return sum(self.accelPulses) / fTimer
 
     def getLinearTime(self):
-        return (self.abs_vector_steps[self.leadAxis] * self.linearTimer) / fTimer
+        # return (self.abs_vector_steps[self.leadAxis] * self.linearTimer) / fTimer
+        return ((self.abs_vector_steps[self.leadAxis] - len(self.accelPulses) - len(self.deccelPulses)) * self.linearTimer) / fTimer
 
     def getDeccelTime(self):
         return sum(self.deccelPulses) / fTimer
@@ -601,7 +602,7 @@ class Move(object):
             print "tb: ", self.stepData.getDeccelTime(), self.deccelTime
 
             self.pprint("ERROR")
-            # assert(0)
+            assert(0)
 
         return tx
 
