@@ -275,7 +275,6 @@ class Move(object):
                  # stepped_point,
                  displacement_vector,
                  displacement_vector_steps,
-                 move_distance,
                  feedrate, # mm/s
                  longest_axis):
 
@@ -285,9 +284,8 @@ class Move(object):
         self.displacement_vector_steps=displacement_vector_steps
 
         #
-        # Move distance in XYZ plane OR extrude distance
+        # Move distance in XYZAB plane
         #
-        self.move_distance=move_distance
         self.distance = displacement_vector.len5()
 
         self.feedrateS = feedrate # mm/s
@@ -407,9 +405,9 @@ class Move(object):
         print "\n------ Move %s, #: %d, '%s' ------" % (title, self.moveNumber, self.comment)
 
         if self.eOnly:
-            print "E-Only move, distance: %.2f, move_distance: %.2f, longest_axis: %s" % (self.distance, self.move_distance, dimNames[self.longest_axis])
+            print "E-Only move, distance: %.2f, distance: %.2f, longest_axis: %s" % (self.distance, self.distance, dimNames[self.longest_axis])
         else:
-            print "XYZ move, distance: %.2f, move_distance: %.2f, longest_axis: %s" % (self.distance, self.move_distance, dimNames[self.longest_axis])
+            print "XYZ move, distance: %.2f, distance: %.2f, longest_axis: %s" % (self.distance, self.distance, dimNames[self.longest_axis])
 
         print "displacement_vector:", self.displacement_vector, "_steps:", self.displacement_vector_steps
         print "feedrate:", self.feedrateS, "[mm/s], nominalVVector:", self.getFeedrateV(), "[mm/s]"

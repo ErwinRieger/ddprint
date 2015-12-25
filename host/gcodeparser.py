@@ -461,23 +461,7 @@ class UM2GcodeParser:
         # Get head move distance:
         move_distance = vectorDistance(curRealPos[:3], newRealPos[:3])
 
-        #If that distance is 0, get move_distance for A/B axis
-        if move_distance == 0:
-
-            """
-            if not eOnlyByGcode:
-                print "XXX e-only move through rounding correction:", comment
-                print "displacement_vector", displacement_vector
-                print "displacement_vector_steps", displacement_vector_steps
-                assert(0)
-            """
-
-            move_distance = max(
-                abs(curRealPos[A_AXIS] - newRealPos[A_AXIS]),
-                abs(curRealPos[B_AXIS] - newRealPos[B_AXIS])
-            )
-
-        else:
+        if move_distance != 0:
 
             assert(not eOnlyByGcode)
 
@@ -497,7 +481,6 @@ class UM2GcodeParser:
         # print "pos:", stepped_point, "[steps]"
         # print "displacement_vector:", displacement_vector, "[mm]"
         # print "dda_speed:", dda_speed, "[uS/step]"
-        # print "move_distance:", move_distance, "[mm]"
         # print "move_minutes:", move_minutes, "[min]"
         # print "feedrate:", feedrate, "[mm/s]"
 
@@ -506,7 +489,6 @@ class UM2GcodeParser:
             # stepped_point=stepped_point,
             displacement_vector=displacement_vector,
             displacement_vector_steps=displacement_vector_steps,
-            move_distance=move_distance,
             feedrate=feedrate, # mm/s
             longest_axis=longest_axis
             ))

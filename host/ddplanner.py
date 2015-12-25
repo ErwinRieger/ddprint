@@ -390,9 +390,7 @@ class Planner (object):
                 return True
 
             # bremsen
-            # minEndSpeed = util.vAccelPerDist(startSpeedS, -allowedAccel, lastMove.e_distance)
-            # minEndSpeed = util.vAccelPerDist(startSpeedS, -allowedAccel, lastMove.move_distance)
-            minEndSpeed = util.vAccelPerDist(startSpeedS, -allowedAccel, lastMove.distance) # distchange
+            minEndSpeed = util.vAccelPerDist(startSpeedS, -allowedAccel, lastMove.distance)
 
             # print "minEndSpeed:", minEndSpeed
 
@@ -488,7 +486,7 @@ class Planner (object):
 
                     if UseAutoTemp:
                         # Sum up distance
-                        self.pathData.extrusionAmount += move.move_distance
+                        self.pathData.extrusionAmount += move.displacement_vector.len3()
                     else:
                         # Sum extrusion volume
                         self.pathData.extrusionAmount += move.getExtrusionVolume(util.A_AXIS, MatProfile.getMatArea())
@@ -594,9 +592,7 @@ class Planner (object):
             endSpeedS = move.getEndFr()
             allowedAccel = move.getAllowedAccel()
 
-            # maxAllowedStartSpeed = util.vAccelPerDist(endSpeedS, allowedAccel, move.e_distance)
-            # maxAllowedStartSpeed = util.vAccelPerDist(endSpeedS, allowedAccel, move.move_distance)
-            maxAllowedStartSpeed = util.vAccelPerDist(endSpeedS, allowedAccel, move.distance) # distchange
+            maxAllowedStartSpeed = util.vAccelPerDist(endSpeedS, allowedAccel, move.distance)
 
             if maxAllowedStartSpeed >= move.getStartFr():
                 # good, move is ok
@@ -663,11 +659,9 @@ class Planner (object):
                 # decceleration
                 sa = util.accelDist(startSpeedS, -allowedAccel, ta)
       
-            # if (sa - move.move_distance) > 0.001:
-            if (sa - move.distance) > 0.001: # distchange
+            if (sa - move.distance) > 0.001:
                 print " 0.5 * %f * pow(%f, 2) + %f * %f" % (allowedAccel, ta, startSpeedS, ta)
-                # print "VStart %f mm/s kann nicht innerhalb von %f mm auf Endgeschwindigkeit %f mm/s gebracht werden!" % (startSpeedS, move.move_distance, endSpeedS)
-                print "VStart %f mm/s kann nicht innerhalb von %f mm auf Endgeschwindigkeit %f mm/s gebracht werden!" % (startSpeedS, move.distance, endSpeedS) # distchange
+                print "VStart %f mm/s kann nicht innerhalb von %f mm auf Endgeschwindigkeit %f mm/s gebracht werden!" % (startSpeedS, move.distance, endSpeedS)
                 print "Dafür werden %f mm benötigt" % sa
                 assert(0)
 
@@ -726,14 +720,13 @@ class Planner (object):
 
         # print "e_distance: %f, sbeschl, sbrems: %f, %f" % (move.e_distance, sa, sb)
 
-        # if move.move_distance < (sa+sb):
-        if move.distance < (sa+sb): # distchange
+        if move.distance < (sa+sb):
 
             #
             # Strecke zu kurz, Trapez nicht möglich, geschwindigkeit muss abgesenkt werden.
             #
             if debugMoves:
-                print "Trapez nicht möglich: s: %f, sbeschl (%f) + sbrems (%f) = %f" % (move.distance, sa, sb, sa+sb) # distchange
+                print "Trapez nicht möglich: s: %f, sbeschl (%f) + sbrems (%f) = %f" % (move.distance, sa, sb, sa+sb)
 
             # ??? 
             assert(sa>0 and sb>0)
@@ -743,10 +736,8 @@ class Planner (object):
             nominalSpeedS = move.feedrateS
 
             # sa = (2 * allowedAccel * move.e_distance - pow(startSpeedS, 2) + pow(endSpeedS, 2)) /(4 * allowedAccel)
-            sa = (2 * allowedAccel * move.distance - pow(startSpeedS, 2) + pow(endSpeedS, 2)) /(4 * allowedAccel) # distchange
-            # sb = move.e_distance - sa
-            # sb = move.move_distance - sa
-            sb = move.distance - sa # distchange
+            sa = (2 * allowedAccel * move.distance - pow(startSpeedS, 2) + pow(endSpeedS, 2)) /(4 * allowedAccel)
+            sb = move.distance - sa
 
             if debugMoves:
                 print "sbeschl, sbrems neu: %f, %f" % (sa, sb)
@@ -794,7 +785,6 @@ class Planner (object):
                 # nominalSpeed = move.getFeedrateV().feedrate3() # [mm/s]
                 # nominalSpeed = move.getFeedrateV().len5() # [mm/s]
                 nominalSpeed = move.getReachedSpeedV().len5() # [mm/s]
-                # slin = move.move_distance - (sa+sb)
                 slin = move.distance - (sa+sb)
                 tlin = slin / nominalSpeed
                 print "tlin: ", tlin, slin
