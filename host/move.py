@@ -63,7 +63,7 @@ class VVector(object):
             return False
 
         for dim in range(5):
-            if not circaf(self[dim] - other[dim], 0, 0.000001):
+            if not circaf(self[dim], other[dim], 0.000001):
                 return False
         return True
 
@@ -518,6 +518,8 @@ class Move(object):
 
         if self.trueEndSpeed:
             return self.trueEndSpeed
+
+        assert(self.nominalEndSpeed != None)
         return self.nominalEndSpeed
 
     def setNominalStartFr(self, fr):

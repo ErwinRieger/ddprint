@@ -47,18 +47,13 @@
 # * davon ausgehend Vsmin und Vsmax des folgemoves usw.
 #
 
-from argparse import Namespace
-
-import threading, time, traceback, logging, pprint, sys, math
-import argparse, struct, collections
+import traceback, logging, pprint, sys
+import argparse
 
 logging.basicConfig(level=logging.DEBUG)
 
 import ddprintutil as util, gcodeparser, packedvalue
-from ddprintutil import X_AXIS, Y_AXIS, vectorAdd, vectorSub, circaf
-from move import VVector, Move
-
-from ddprintconstants import maxTimerValue16, maxTimerValue24, DropSegments
+# from move import Move
 
 from ddprofile import PrinterProfile, MatProfile, NozzleProfile
 from ddplanner import Planner
