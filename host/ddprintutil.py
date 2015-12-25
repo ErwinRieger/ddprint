@@ -131,9 +131,8 @@ def joinSpeed(move1, move2, jerk, min_speeds):
 
         allowedAccel = move1.getAllowedAccel()
 
-        # if move1.vVector().isDisjointV(move2.vVector(), 0.01):
         if move1.getFeedrateV().isDisjointV(move2.getFeedrateV()):
-        # if move1.isDisjointSteps(move2, 5):
+
             if debugMoves:
                 move1.pprint("JoinSpeed - disjoint Move1")
                 move2.pprint("JoinSpeed - disjoint Move2")
@@ -162,6 +161,7 @@ def joinSpeed(move1, move2, jerk, min_speeds):
         if maxEndSpeed < endSpeedS:
 
             if debugMoves:
+                print "math.sqrt( 2 * %f * %f + pow(%f, 2) ) * %f" % (move1.distance, allowedAccel, move1.getStartFr(), RoundSafe)
                 print "Max. reachable endspeed: %.3f < feedrate: %.3f" % (maxEndSpeed, endSpeedS)
 
             endSpeedS = maxEndSpeed
@@ -198,12 +198,6 @@ def joinSpeed(move1, move2, jerk, min_speeds):
 
         if toMuch:
 
-            # angle = endSpeedV.angleBetween(move2.vVector())
-            # assert(angle >= 0)
-            # if angle < 0.01:
-                # # Vektoren sind parallel:
-                # assert(0)
-
             # 
             # Der geschwindigkeitsunterschied mindestens einer achse ist grösser als der 
             # erlaubte jerk fuer diese achse.
@@ -224,8 +218,6 @@ def joinSpeed(move1, move2, jerk, min_speeds):
             # 'jerk' haben.
             #
 
-            # weight = 1.0; # move1.feedrate / move2.feedrate
-
             speedScale = 1.0
             for dim in speedDiff.keys():
                 # print "diff: ", differenceVector[dim], jerk[dim]
@@ -240,70 +232,12 @@ def joinSpeed(move1, move2, jerk, min_speeds):
 
             assert(speedScale <= 1.0)
 
-            """
-            endV = move1.vVector().setLength(endSpeedS * speedScale)
-            startV = move2.vVector().scale(speedScale)
-
-            if abs(endV[move1.longest_axis]) < min_speeds[move1.longest_axis]:
-
-                # Move 1 am schluss zu langsam, move 1 am ende schneller machen, move 2 entsprechend
-                # langsamer starten lassen
-                if debugMoves:
-                    print "end speed to low: ", endV, ", min:", min_speeds
-                    print "startv          : ", startV
-
-                upScale = min_speeds[move1.longest_axis] / abs(endV[move1.longest_axis])
-                downScale = abs(startV[move2.longest_axis]) / min_speeds[move2.longest_axis]
-
-                print "upscale, downscale:", upScale, downScale
-
-                assert (downScale >= upScale)
-
-                move1.setNominalEndFr(endSpeedS * speedScale * upScale)
-                move2.setNominalStartFr(move2.feedrate * speedScale / upScale)
-
-                if debugMoves:
-                    print "end speed to low: ", endV, ", min:", min_speeds
-                    print "startv          : ", startV
-
-            else:
-                print "set endspeed:", endSpeedS * speedScale
-                move1.setNominalEndFr(endSpeedS * speedScale)
-            """
-
             if debugMoves:
-                print "set nominal endspeed:", endSpeedS * speedScale
+                print "set nominal endspeed of move1:", endSpeedS * speedScale
             move1.setNominalEndFr(endSpeedS * speedScale)
 
-            """
-            if abs(startV[move2.longest_axis]) < min_speeds[move2.longest_axis]:
-
-                # Move 2 am anfang zu langsam
-                if debugMoves:
-                    print "start speed to low: ", startV, ", min:", min_speeds
-                    print "endv              : ", endV
-
-                upScale = min_speeds[move2.longest_axis] / abs(startV[move2.longest_axis])
-                downScale = abs(endV[move1.longest_axis]) / min_speeds[move1.longest_axis]
-
-                print "upscale, downscale:", upScale, downScale
-
-                assert (downScale >= upScale)
-
-                move1.setNominalEndFr(endSpeedS * speedScale / upScale)
-                move2.setNominalStartFr(move2.feedrate * speedScale * upScale)
-
-                if debugMoves:
-                    print "start speed to low: ", move2.getStartV(), ", min:", min_speeds
-                    print "endv              : ", move1.getEndV()
-
-            else:
-                print "set start:", move2.feedrate * speedScale
-                move2.setNominalStartFr(move2.feedrate * speedScale)
-            """
-            
             if debugMoves:
-                print "set nominal startspeed:", move2.feedrateS * speedScale
+                print "set nominal startspeed of move2:", move2.feedrateS * speedScale
             move2.setNominalStartFr(move2.feedrateS * speedScale)
 
         else:

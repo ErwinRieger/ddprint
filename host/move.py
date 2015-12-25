@@ -346,54 +346,6 @@ class Move(object):
     def _vDim(self, axis):
         return self.vVector()[axis]
 
-    def notused_addMove(self, move):
-
-
-        # assert(abs(self.dda_speed - move.dda_speed) < 0.001)
-        # self.dda_speed = None # dda_speed is not used
-
-        self.displacement_vector.addVVector(move.displacement_vector)
-        self.displacement_vector_steps = vectorAdd(self.displacement_vector_steps, move.displacement_vector_steps)
-        # self.e_distance += move.e_distance
-        # self.stepped_point = vectorAdd(self.stepped_point, move.stepped_point)
-
-        self.move_distance = calculate_vector_magnitude(self.displacement_vector)
-        #If that distance is 0, get e_distance for A/B axis
-        if self.move_distance == 0:
-            assert(0)
-
-            assert(eOnlyByGcode)
-
-            movee_distance = max(
-                makerbot_driver.Gcode.Utils.calculate_euclidean_distance([curRealPos[3]], [newRealPos[3]]),
-                makerbot_driver.Gcode.Utils.calculate_euclidean_distance([curRealPos[4]], [newRealPos[4]]),
-            )
-
-        self.distance = self.displacement_vector.len5()
-
-        # Recalculate 
-
-        self.longest_axis = None
-        longestAxisStep = 0
-        for dim in range(5):
-            if abs(self.displacement_vector_steps[dim]) > longestAxisStep:
-                self.longest_axis = dim
-                longestAxisStep = abs(self.displacement_vector_steps[dim])
-
-        # return
-
-        if abs(self.feedrateS - move.feedrateS) > 0.001:
-
-            self.feedrateS = makerbot_driver.Gcode.get_safe_feedrate(
-                self.displacement_vector,
-                self.gcodeState.get_axes_values('max_feedrate'),
-                max(self.feedrateS, move.feedrateS)
-            )
-
-        # move_seconds = self.e_distance / self.feedrate
-        # self.nominalVVector = VVector(self.displacement_vector).scale(1.0 / move_seconds)
-
-        
     def getAllowedAccelVector(self):
 
         # accelVector = self.vVector().setLength(DEFAULT_ACCELERATION)
@@ -404,9 +356,6 @@ class Move(object):
 
         accelVector = self.getAllowedAccelVector()
         allowedAccel = accelVector.len5() # always positive
-
-        # print "allowedAccel:", allowedAccel, DEFAULT_ACCELERATION
-        # assert(allowedAccel > 0)
 
         return allowedAccel
 

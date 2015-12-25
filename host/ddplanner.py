@@ -391,7 +391,8 @@ class Planner (object):
 
             # bremsen
             # minEndSpeed = util.vAccelPerDist(startSpeedS, -allowedAccel, lastMove.e_distance)
-            minEndSpeed = util.vAccelPerDist(startSpeedS, -allowedAccel, lastMove.move_distance)
+            # minEndSpeed = util.vAccelPerDist(startSpeedS, -allowedAccel, lastMove.move_distance)
+            minEndSpeed = util.vAccelPerDist(startSpeedS, -allowedAccel, lastMove.distance) # distchange
 
             # print "minEndSpeed:", minEndSpeed
 
@@ -594,7 +595,8 @@ class Planner (object):
             allowedAccel = move.getAllowedAccel()
 
             # maxAllowedStartSpeed = util.vAccelPerDist(endSpeedS, allowedAccel, move.e_distance)
-            maxAllowedStartSpeed = util.vAccelPerDist(endSpeedS, allowedAccel, move.move_distance)
+            # maxAllowedStartSpeed = util.vAccelPerDist(endSpeedS, allowedAccel, move.move_distance)
+            maxAllowedStartSpeed = util.vAccelPerDist(endSpeedS, allowedAccel, move.distance) # distchange
 
             if maxAllowedStartSpeed >= move.getStartFr():
                 # good, move is ok
@@ -660,11 +662,12 @@ class Planner (object):
             else:
                 # decceleration
                 sa = util.accelDist(startSpeedS, -allowedAccel, ta)
-
       
-            # if (sa - move.e_distance) > 0.001:
-            if (sa - move.move_distance) > 0.001:
-                print "VStart %f mm/s kann nicht innerhalb von %f mm auf Endgeschwindigkeit %f mm/s gebracht werden!" % (startSpeedS, move.move_distance, endSpeedS)
+            # if (sa - move.move_distance) > 0.001:
+            if (sa - move.distance) > 0.001: # distchange
+                print " 0.5 * %f * pow(%f, 2) + %f * %f" % (allowedAccel, ta, startSpeedS, ta)
+                # print "VStart %f mm/s kann nicht innerhalb von %f mm auf Endgeschwindigkeit %f mm/s gebracht werden!" % (startSpeedS, move.move_distance, endSpeedS)
+                print "VStart %f mm/s kann nicht innerhalb von %f mm auf Endgeschwindigkeit %f mm/s gebracht werden!" % (startSpeedS, move.distance, endSpeedS) # distchange
                 print "Dafür werden %f mm benötigt" % sa
                 assert(0)
 
@@ -688,7 +691,6 @@ class Planner (object):
             for dim in range(5):
                 if deltaSpeedV[dim] != 0:
                     dimAccel = deltaSpeedV[dim] / ta
-                    # if (dimAccel - DEFAULT_MAX_ACCELERATION[dim]) > 0.001:
                     if (dimAccel / DEFAULT_MAX_ACCELERATION[dim]) > 1.001:
                         print "dim %d verletzt max accel: " % dim, dimAccel, " > ", DEFAULT_MAX_ACCELERATION[dim]
                         assert(0)
@@ -715,7 +717,6 @@ class Planner (object):
             for dim in range(5):
                 if deltaSpeedV[dim] != 0:
                     dimDeccel = deltaSpeedV[dim] / tb  
-                    # if (dimDeccel - DEFAULT_MAX_ACCELERATION[dim]) > 0.001:
                     if (dimDeccel / DEFAULT_MAX_ACCELERATION[dim]) > 1.001:
                         print "dim %d verletzt max accel: " % dim, dimDeccel, " [mm/s] > ", DEFAULT_MAX_ACCELERATION[dim], " [mm/s]"
                         assert(0)
@@ -725,14 +726,14 @@ class Planner (object):
 
         # print "e_distance: %f, sbeschl, sbrems: %f, %f" % (move.e_distance, sa, sb)
 
-        # if move.e_distance < (sa+sb):
-        if move.move_distance < (sa+sb):
+        # if move.move_distance < (sa+sb):
+        if move.distance < (sa+sb): # distchange
 
             #
             # Strecke zu kurz, Trapez nicht möglich, geschwindigkeit muss abgesenkt werden.
             #
             if debugMoves:
-                print "Trapez nicht möglich: s: %f, sbeschl (%f) + sbrems (%f) = %f" % (move.move_distance, sa, sb, sa+sb)
+                print "Trapez nicht möglich: s: %f, sbeschl (%f) + sbrems (%f) = %f" % (move.distance, sa, sb, sa+sb) # distchange
 
             # ??? 
             assert(sa>0 and sb>0)
@@ -742,9 +743,10 @@ class Planner (object):
             nominalSpeedS = move.feedrateS
 
             # sa = (2 * allowedAccel * move.e_distance - pow(startSpeedS, 2) + pow(endSpeedS, 2)) /(4 * allowedAccel)
-            sa = (2 * allowedAccel * move.move_distance - pow(startSpeedS, 2) + pow(endSpeedS, 2)) /(4 * allowedAccel)
+            sa = (2 * allowedAccel * move.distance - pow(startSpeedS, 2) + pow(endSpeedS, 2)) /(4 * allowedAccel) # distchange
             # sb = move.e_distance - sa
-            sb = move.move_distance - sa
+            # sb = move.move_distance - sa
+            sb = move.distance - sa # distchange
 
             if debugMoves:
                 print "sbeschl, sbrems neu: %f, %f" % (sa, sb)
