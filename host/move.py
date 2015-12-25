@@ -22,7 +22,7 @@ import math, struct
 import ddprintcommands
 
 # from ddprintconstants import DEFAULT_MAX_ACCELERATION, DEFAULT_ACCELERATION, fTimer, maxTimerValue16, maxTimerValue24
-from ddprintconstants import maxTimerValue16, maxTimerValue24, dimNames, DEFAULT_ACCELERATION, DEFAULT_MAX_ACCELERATION, fTimer
+from ddprintconstants import maxTimerValue16, maxTimerValue24, DEFAULT_ACCELERATION, DEFAULT_MAX_ACCELERATION, fTimer
 from ddprintutil import X_AXIS, Y_AXIS, Z_AXIS, A_AXIS, B_AXIS,vectorLength, vectorMul, vectorSub, circaf
 from ddprintcommands import CommandNames
 
@@ -227,7 +227,7 @@ class StepData:
 
     def addDeccelPulse(self, timer):
         self.checkTimerValue(timer)
-        self.deccelPulses.append(timer)
+        self.deccelPulses.insert(0, timer)
 
     def setBresenhamParameters(self, leadAxis, abs_vector_steps):
         self.leadAxis = leadAxis
@@ -243,7 +243,6 @@ class StepData:
            "\n  # deccelPulses: %d" % len(self.deccelPulses)
 
     def checkLen(self, deltaLead):
-        # assert((len(self.accelPulses) + len(self.linearPulses) + len(self.deccelPulses)) == deltaLead)
         assert(self.abs_vector_steps[self.leadAxis] - (len(self.accelPulses) + len(self.deccelPulses)) >= 0)
 
 ##################################################
@@ -261,7 +260,7 @@ class Move(object):
                  displacement_vector,
                  displacement_vector_steps,
                  feedrate, # mm/s
-                 longest_axis):
+                 ):
 
         self.comment=comment
         # self.stepped_point=stepped_point
@@ -278,7 +277,6 @@ class Move(object):
         self.distance = displacement_vector.len5()
 
         self.feedrateS = feedrate # mm/s
-        self.longest_axis=longest_axis
 
         # self.gcodeState = state
         # move_seconds = e_distance / feedrate
@@ -400,9 +398,9 @@ class Move(object):
         print "\n------ Move %s, #: %d, '%s' ------" % (title, self.moveNumber, self.comment)
 
         if self.eOnly:
-            print "E-Only move, distance: %.2f, distance: %.2f, longest_axis: %s" % (self.distance, self.distance, dimNames[self.longest_axis])
+            print "E-Only move, distance: %.2f, distance: %.2f" % (self.distance, self.distance, "xxx")
         else:
-            print "XYZ move, distance: %.2f, distance: %.2f, longest_axis: %s" % (self.distance, self.distance, dimNames[self.longest_axis])
+            print "XYZ move, distance: %.2f, distance: %.2f" % (self.distance, self.distance, "xxx")
 
         print "displacement_vector:", self.displacement_vector_raw(), "_steps:", self.displacement_vector_steps_raw()
         print "feedrate:", self.feedrateS, "[mm/s], nominalVVector:", self.getFeedrateV(), "[mm/s]"
@@ -466,38 +464,19 @@ class Move(object):
 
     def setNominalStartFr(self, fr):
 
-        # print "set nom start of move:", self.moveNumber, fr, self.nominalStartSpeed
-        # assert(fr != None)
-
         self.nominalStartSpeed = fr
-
-        # if debugMoves:
-            # print "setNominalStartFr():", abs(self.getStartV()[self.longest_axis]), min_speeds[self.longest_axis]
-            # print "setNominalStartFr():", self.getStartV()
-            # assert( (abs(self.getStartV()[self.longest_axis]) - min_speeds[self.longest_axis]) > -0.01 )
 
     def setNominalEndFr(self, fr):
 
         self.nominalEndSpeed = fr
 
-        # if debugMoves:
-            # print "setNominalEndFr():", abs(self.getEndV()[self.longest_axis]), min_speeds[self.longest_axis]
-            # print "setNominalEndFr():", self.getEndV()
-            # assert( (abs(self.getEndV()[self.longest_axis]) - min_speeds[self.longest_axis]) > -0.01 )
-
     def setTrueStartFr(self, fr):
 
         self.trueStartSpeed = fr
 
-        # if debugMoves:
-            # assert( abs(self.getStartV()[self.longest_axis]) > min_speeds[self.longest_axis] )
-
     def setTrueEndFr(self, fr):
         
         self.trueEndSpeed = fr
-
-        # if debugMoves:
-            # assert( abs(self.getEndV()[self.longest_axis]) > min_speeds[self.longest_axis] )
 
     def getJerkSpeed(self, jerk):
 
@@ -643,9 +622,9 @@ class Move(object):
         return True
 
     def getAdjustedExtrusionVolume(self, extruder, nozzleProfile, matProfile):
-        return self.displacement_vector_steps_adjusted(nozzleProfile, matProfile)[extruder] * matProfile.getMatArea()
+        return self.displacement_vector_adjusted(nozzleProfile, matProfile)[extruder] * matProfile.getMatArea()
 
-    def displacement_vector_steps_adjusted(self, nozzleProfile, matProfile):
+    def displacement_vector_adjusted(self, nozzleProfile, matProfile):
 
         raw = self.displacement_vector_raw()
 
@@ -667,6 +646,30 @@ class Move(object):
         raw[B_AXIS] = (adjustedRate * t) / matArea
 
         return raw
+
+    def displacement_vector_steps_adjusted(self, nozzleProfile, matProfile, printerProfile):
+
+        raw = self.displacement_vector_steps_raw()
+
+        if not self.isExtrudingMove(A_AXIS) and not self.isExtrudingMove(B_AXIS):
+            return raw
+
+        adjusted_displacement = self.displacement_vector_adjusted(nozzleProfile, matProfile)
+
+        raw = raw[:3]
+        raw.append(int(adjusted_displacement[3] * printerProfile.getStepsPerMM(3)))
+        raw.append(int(adjusted_displacement[4] * printerProfile.getStepsPerMM(4)))
+        return raw
+
+
+
+
+
+
+
+
+
+
 
 
 
