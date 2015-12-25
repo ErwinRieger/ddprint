@@ -782,9 +782,7 @@ class Planner (object):
                 print "ta: ", ta, deltaStartSpeedS, sa
                 print "tb: ", tb, deltaEndSpeedS, sb
 
-                # nominalSpeed = move.getFeedrateV().feedrate3() # [mm/s]
-                # nominalSpeed = move.getFeedrateV().len5() # [mm/s]
-                nominalSpeed = move.getReachedSpeedV().len5() # [mm/s]
+                nominalSpeed = move.getFeedrateV().len5() # [mm/s]
                 slin = move.distance - (sa+sb)
                 tlin = slin / nominalSpeed
                 print "tlin: ", tlin, slin

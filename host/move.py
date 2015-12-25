@@ -509,7 +509,6 @@ class Move(object):
         if self.eOnly:
             return min(self.feedrateS, jerk[A_AXIS])
 
-        # modxxx f = self.getFeedrateV().constrain3(jerk).feedrate3()
         fv = self.getFeedrateV()
         v = fv.constrain(jerk)
         if v:
