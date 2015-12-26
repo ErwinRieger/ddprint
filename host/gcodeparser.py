@@ -34,8 +34,10 @@ import ddprintutil as util
 ############################################################################
 # Constants, xxx todo: query from printer and/or profile
 # RetractFeedrate = 25      # mm/s
-RetractFeedrate = 40      # mm/s
-RetractLength = 4.5       # mm
+RetractFeedrate = 40      # mm/s, for 3mm filament 
+RetractLength = 4.5       # mm, for 3mm filament
+RetractFeedrate = 50      # mm/s, for 1.75mm filament
+RetractLength = 5.0       # mm, for 1.75mm filament
 
 # xxx erhöht wegen bowdenzug-spiel am feeder/kopf
 # RetractLength = 6.5       # mm
