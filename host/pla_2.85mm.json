@@ -3,7 +3,7 @@
   "flow"              : 100,
   "hotendBaseTemp"    : 210,
   "hotendMaxTemp"     : 260,
-  "bedTemp"           : 70,
+  "bedTemp"           : 65,
   "bedTempReduced"    : 60,
   "fanPercent"        : 100
 }
