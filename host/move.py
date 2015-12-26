@@ -398,9 +398,9 @@ class Move(object):
         print "\n------ Move %s, #: %d, '%s' ------" % (title, self.moveNumber, self.comment)
 
         if self.eOnly:
-            print "E-Only move, distance: %.2f, distance: %.2f" % (self.distance, self.distance, "xxx")
+            print "E-Only move, distance: %.2f, distance: %.2f" % (self.distance, self.distance)
         else:
-            print "XYZ move, distance: %.2f, distance: %.2f" % (self.distance, self.distance, "xxx")
+            print "XYZ move, distance: %.2f, distance: %.2f" % (self.distance, self.distance)
 
         print "displacement_vector:", self.displacement_vector_raw(), "_steps:", self.displacement_vector_steps_raw()
         print "feedrate:", self.feedrateS, "[mm/s], nominalVVector:", self.getFeedrateV(), "[mm/s]"
