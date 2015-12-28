@@ -85,8 +85,6 @@ class MaxExtrusionRate:
         # length of max constant speed:
         reachedESpeed = abs( move.getReachedSpeedV()[util.A_AXIS] ) # [mm/s]
         reachedEExtrusion = reachedESpeed * MatProfile.getMatArea()
-        # Extrusion adjust
-        reachedEExtrusion = reachedEExtrusion + pow(reachedEExtrusion, 2) * NozzleProfile.getExtrusionAdjustFactor()
 
         if reachedEExtrusion > self.maxRate:
 
@@ -109,10 +107,13 @@ class MaxExtrusionRate:
 
     def printStat(self):
 
+        # Extrusion adjust
+        adjustedExtrusion = self.maxRate + pow(self.maxRate, 2) * NozzleProfile.getExtrusionAdjustFactor()
+
         if self.maxRate:
-            print "Maximal Extrusion Rate (Extruder A): %.1f" % self.maxRate, "mm³/s, move: ",
+            print "Maximal net Extrusion Rate (Extruder A): %.1f mm³/s, adjusted/gross: %.1f mm³/s, move:" % (self.maxRate, adjustedExtrusion)
             self.move.pprint("Max. extrusion Move")
-            print "Max10: ", self.max10
+            print "Net Max10: ", self.max10
             print "Maximal Extrusion Rate (Extruder A) 5 second average: %.1f" % self.maxAvgRate, "mm³/s\n"
 
 #####################################################################
