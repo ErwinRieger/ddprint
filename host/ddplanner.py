@@ -81,6 +81,11 @@ class MaxExtrusionRate:
 
     def stat(self, move):
 
+        # Do not count very small moves, the computation of the extrusion rate is inaccurate because of the
+        # discretization in the gcodeparser (map float values to discrete stepper values).
+        if move.distance3 < 0.1:
+            return 
+
         # Get maximum extrusion rate, take plateau speed into account only
         # length of max constant speed:
         reachedESpeed = abs( move.getReachedSpeedV()[util.A_AXIS] ) # [mm/s]
@@ -286,15 +291,6 @@ class Planner (object):
 
     # Called from gcode parser
     def addMove(self, move):
-        """
-        Queue a position: this function chooses the correct movement command based on the print_to_file_type
-        Moves to a certain position over a given duration with either relative or absolute positioning. 
-        Relative vs. Absolute positioning is done on an axis to axis basis.
-        @param list position: A 5 dimentional position in steps specifying where each axis should move to
-        @param float e_distance: distance in millimeters moved in (x,y,z) space OR if distance(x,y,z) == 0, then max(distance(A),distance(B))
-        @param float feedrate_mm_sec: the actual feedrate in units of millimeters/second
-        @param list relative_axes: Array of axes whose coordinates should be considered relative
-        """
 
         # print "addmove ...", move.comment
         if debugMoves:
@@ -305,7 +301,6 @@ class Planner (object):
         if not self.pathData.path:
 
             # First move of this path, startspeed is jerkspeed
-            move.typ = Move.StartMove
 
             # jerkSpeed = move.vVector().constrain(self.jerk) or move.vVector()
             # move.setNominalStartFr(jerkSpeed)
@@ -331,8 +326,6 @@ class Planner (object):
         lastMove = self.pathData.path[-1]
         lastMove.nextMove = move
         move.lastMove = lastMove
-
-        move.typ = Move.NormalMove
 
         util.joinSpeed(lastMove, move, self.jerk, self.min_speeds)
 
@@ -409,19 +402,13 @@ class Planner (object):
 
     def finishMoves(self):
 
-        # xxx set endspeed
-        # xxx check accel
-
         if self.pathData.path:
 
             # End path
             move = self.pathData.path[-1]
             move.state = 1
-            move.typ |= Move.EndMove
 
             # Finish end move
-            # jerkSpeed = move.vVector().constrain(self.jerk) or move.vVector()
-            # move.setNominalEndFr(jerkSpeed)
             move.setNominalJerkEndSpeed(self.jerk)
 
             if debugMoves:
