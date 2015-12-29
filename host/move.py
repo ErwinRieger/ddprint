@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 #/*
 # This file is part of ddprint - a direct drive 3D printer firmware.
 # 
@@ -21,10 +22,10 @@ import math, struct
 
 import ddprintcommands
 
-# from ddprintconstants import DEFAULT_MAX_ACCELERATION, DEFAULT_ACCELERATION, fTimer, maxTimerValue16, maxTimerValue24
 from ddprintconstants import maxTimerValue16, maxTimerValue24, DEFAULT_ACCELERATION, DEFAULT_MAX_ACCELERATION, fTimer
 from ddprintutil import X_AXIS, Y_AXIS, Z_AXIS, A_AXIS, B_AXIS,vectorLength, vectorMul, vectorSub, circaf
 from ddprintcommands import CommandNames
+from ddprofile import NozzleProfile, MatProfile
 
 ##################################################
 
@@ -96,9 +97,6 @@ class VVector(object):
 
     def _setLength(self, length):
         return self.normalized().mul(length)
-
-    # def setFeedrate(self, v):
-        # self.vv = v
 
     def cosAngle(self, other):
         #
@@ -175,10 +173,7 @@ class VVector(object):
   
 class AccelData:
     def __init__(self):
-        # Erreichbare geschwindigkeit falls kein plateu [xx/min]
-        # self.accelData.reachedFeedrate_xx_min = None
         # Erreichbare geschwindigkeit falls kein plateu [mm/s]
-        # self.accelData.reachedFeedrate_mm_sec = None
         self.reachedovNominalVVector = None
 
     def __repr__(self):
@@ -189,14 +184,11 @@ class AccelData:
 
         return ""
 
-
 class StepData:
 
     def __init__(self):
-        # self.direction = None
         self.accelPulses = []
         self.linearTimer = None
-        # self.lineaPulses = []
         self.deccelPulses = []
         self.setDirBits = False
         self.dirBits = 0
@@ -221,10 +213,6 @@ class StepData:
         self.checkTimerValue(timer, maxTimerValue16)
         self.linearTimer = timer
     
-    # def addLinPulse(self, bits):
-        # assert(bits > 0)
-        # self.linearPulses.append(bits)
-
     def addDeccelPulse(self, timer):
         self.checkTimerValue(timer)
         self.deccelPulses.insert(0, timer)
@@ -249,11 +237,6 @@ class StepData:
 
 class Move(object):
 
-    StartMove = 1
-    NormalMove = 2
-    IsolationMove = 4
-    EndMove = 8
-
     def __init__(self,
                  comment,
                  # stepped_point,
@@ -263,9 +246,6 @@ class Move(object):
                  ):
 
         self.comment=comment
-        # self.stepped_point=stepped_point
-        # self.displacement_vector=displacement_vector
-        # self.displacement_vector_steps=displacement_vector_steps
         self.displacement_vector3=displacement_vector[:3]
         self.displacement_vector_steps3=displacement_vector_steps[:3]
         self.extrusion_displacement_raw = displacement_vector[3:]
@@ -275,20 +255,40 @@ class Move(object):
         # Move distance in XYZAB plane
         #
         self.distance = displacement_vector.len5()
+        #
+        # Move distance in XYZ plane
+        #
+        self.distance3 = displacement_vector.len3()
 
+        # self.eOnly = self.displacement_vector3 == 3*[0]
+        self.eOnly = self.distance3 == 0
+
+        #
+        # Limit feedrate by maximum extrusion rate
+        #
         self.feedrateS = feedrate # mm/s
+        # Do not count very small moves, the computation of the extrusion rate is inaccurate because of the
+        # discretization in the gcodeparser (map float values to discrete stepper values).
+        if self.distance3 >= 0.1 and self.isExtrudingMove(A_AXIS) or self.isExtrudingMove(B_AXIS):
+            matArea = MatProfile.getMatArea()
 
-        # self.gcodeState = state
-        # move_seconds = e_distance / feedrate
-        # self.nominalVVector = VVector(self.displacement_vector).scale(1.0 / move_seconds)
+            assert(not self.eOnly)
+            t = self.distance3 / feedrate
 
-        # 'joindata'
-        # self.joinData = JoinData()
+            extrusionVolume = displacement_vector[A_AXIS] * matArea
+            extrusionRate = extrusionVolume / t
+            # print "extrusionRate:", displacement_vector[A_AXIS], t, extrusionRate
+
+            if extrusionRate > NozzleProfile.getNetMaxExtrusionRate():
+
+                print "Warning, extrusion rate to high: %.1f mm³/s, Move: '%s', len: %.3f., extrusionVolume: %.5f" % (extrusionRate, comment, self.distance3, extrusionVolume)
+                # xxx feedrate adjust disabled
+                ### print "Warning, extrusion rate to high: %.1f mm³/s, reducing to %.1f mm³/s, Move: '%s', len: %.3f., extrusionVolume: %.5f" % (extrusionRate, NozzleProfile.getNetMaxExtrusionRate(), comment, self.distance3, extrusionVolume)
+                ### self.feedrateS = feedrate * (NozzleProfile.getNetMaxExtrusionRate() / extrusionRate)
+                # print "Adjusted feedrate: ", feedrate, self.feedrateS
 
         self.trueStartSpeed = self.nominalStartSpeed = None
         self.trueEndSpeed = self.nominalEndSpeed = None
-
-        # End 'joindata'
 
         self.accelData = AccelData()
 
@@ -297,13 +297,10 @@ class Move(object):
         self.lastMove = None
         self.nextMove = None
 
-        self.eOnly = self.displacement_vector3 == 3*[0]
-
         self.moveNumber = 0
 
         # debug
         self.state = 0 # 1: joined, 2: accel planned, 3: steps planned
-        self.typ = None # 0: StartMove, 1: NormalMove, 2: IsolationMove, 3: EndMove
         self.streamed = False
 
         # Time for the three phases of this move
@@ -322,11 +319,19 @@ class Move(object):
 
         if feedrateS == None:
             feedrateS = self.feedrateS
-        
+       
         assert(feedrateS)
 
-        move_seconds = self.distance / feedrateS
-        return self.displacement_vector_raw().scale(1.0 / move_seconds)
+        if self.eOnly:
+
+            move_seconds = vectorLength(self.extrusion_displacement_raw) / feedrateS
+            return VVector([0.0, 0.0, 0.0] + vectorMul(self.extrusion_displacement_raw, 2 * [1.0 / move_seconds]))
+
+        else:
+
+            # move_seconds = self.distance / feedrateS
+            move_seconds = vectorLength(self.displacement_vector3) / feedrateS
+            return self.displacement_vector_raw().scale(1.0 / move_seconds)
 
     # Get the reached speedvector, this is the nominal plateau speed if the move is long enough, else it is 
     # the reached peek speed. Returns a speed vector.
@@ -352,26 +357,6 @@ class Move(object):
 
     def sanityCheck(self, jerk):
 
-        if self.typ == self.StartMove:
-            pass
-        elif self.typ == self.NormalMove:
-            pass
-        elif self.typ == self.StartMove | self.EndMove:
-            pass
-        elif self.typ == self.NormalMove | self.EndMove:
-             pass
-        elif self.typ == self.IsolationMove | self.StartMove:
-            pass
-        elif self.typ == self.IsolationMove | self.EndMove:
-            pass
-        elif self.typ == self.IsolationMove | self.NormalMove:
-            pass
-        else:
-            print "sanityCheck(): unknown type: 0x%x" % self.typ
-            # assert()
-
-        # self.joinData.sanityCheck()
-
         nextMove = self.nextMove
         dirVE = self.getFeedrateV(self.getEndFr())
         nullV = VVector((0, 0, 0, 0, 0))
@@ -383,18 +368,16 @@ class Move(object):
         else:
 
             # Last move
-            assert(self.typ & Move.EndMove)
             dirVE.checkJerk(nullV, jerk)
 
         if not self.lastMove:
 
             # First move
-            assert(self.typ & Move.StartMove)
             dirVS = self.getFeedrateV(self.getStartFr())
             nullV.checkJerk(dirVS, jerk, "start 0", "#: %d" % self.moveNumber)
 
     def pprint(self, title):
-        # assert(0)
+
         print "\n------ Move %s, #: %d, '%s' ------" % (title, self.moveNumber, self.comment)
 
         if self.eOnly:
@@ -406,23 +389,18 @@ class Move(object):
         print "feedrate:", self.feedrateS, "[mm/s], nominalVVector:", self.getFeedrateV(), "[mm/s]"
         print ""
 
-        # s = self.joinData.__repr__()
-        # if s:
-            # print ""
-            # print s
-
         if self.trueStartSpeed or self.nominalStartSpeed:
             print "\n  Startspeed: ",
             if self.trueStartSpeed != None:
                 print "True: %.3f <= " % self.trueStartSpeed,
-            if self.nominalStartSpeed != None:
+            else:
                 print "Nominal: %.3f" % self.nominalStartSpeed
 
         if self.trueEndSpeed or self.nominalEndSpeed:
             print "\n  Endspeed: ",
             if self.trueEndSpeed != None:
                 print "True: %.3f <= " % self.trueEndSpeed,
-            if self.nominalEndSpeed!= None:
+            else:
                 print "Nominal: %.3f" % self.nominalEndSpeed,
 
 
@@ -434,17 +412,6 @@ class Move(object):
             print ""
             print self.stepData
         print "---------------------"
-
-    def printJoin(self):
-
-        print "nominal v1: ", self.printSpeedVector(self.vVector())
-        if self.joinData.endSpeed:
-            print "    end v1: ", self.printSpeedVector(self.joinData.endSpeed)
-
-        if self.nextMove:
-            if self.nextMove.joinData.startSpeed:
-                print "  start v2: ", self.printSpeedVector(self.nextMove.joinData.startSpeed)
-            print "nominal v2: ", self.printSpeedVector(self.nextMove.vVector())
 
     def getStartFr(self):
 
@@ -520,23 +487,6 @@ class Move(object):
 
         cmds = []
 
-        #if self.stepData.setDirBits:
-            #cmdHex = ddprintcommands.CmdDirBits
-            #cmds.append((chr(cmdHex), chr(self.stepData.dirBits)))
-
-        # debug
-        """
-        struct.pack("<B", self.stepData.leadAxis)
-        struct.pack("<HHHHH", *self.stepData.abs_vector_steps)
-        struct.pack("<H", len(self.stepData.accelPulses))
-        try:
-            struct.pack("<H", self.stepData.linearTimer)
-        except:
-            print "error on: ", self.stepData.linearTimer
-            raise
-        struct.pack("<H", len(self.stepData.deccelPulses))
-        """
-
         payLoad = ""
         cmdOfs = 0
 
@@ -559,13 +509,6 @@ class Move(object):
            (self.stepData.deccelPulses and self.stepData.deccelPulses[-1] > maxTimerValue16):
 
             cmdHex = ddprintcommands.CmdG1_24 + cmdOfs
-
-            """
-            for timer in self.stepData.accelPulses:
-                payLoad += struct.pack("<I", timer)
-            for timer in self.stepData.deccelPulses:
-                payLoad += struct.pack("<I", timer)
-            """
 
             for timer in self.stepData.accelPulses:
                 timerCount = timer / 0xffff
@@ -631,11 +574,19 @@ class Move(object):
         if not self.isExtrudingMove(A_AXIS) and not self.isExtrudingMove(B_AXIS):
             return raw
 
-        extrusionAdjustFactor = nozzleProfile.getExtrusionAdjustFactor()
         matArea = matProfile.getMatArea()
         t = self.getTime()
 
         extrusionRate = (raw[A_AXIS] * matArea) / t
+
+        #
+        # Do not increase extrusion rate if it's already above the limit.
+        #
+        if extrusionRate > nozzleProfile.getNetMaxExtrusionRate():
+            return raw
+
+        extrusionAdjustFactor = nozzleProfile.getExtrusionAdjustFactor()
+
         # print "extrusionRate:", extrusionRate
         adjustedRate = extrusionRate + pow(extrusionRate, 2) * extrusionAdjustFactor
         # print "adjustedRate:", adjustedRate
