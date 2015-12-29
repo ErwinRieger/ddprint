@@ -320,17 +320,6 @@ class UM2GcodeParser:
         # print "g10_retract", values
 
         # Compute retract 
-        """
-        self.addMove(Move(
-                    typ="G10",
-                    stepped_point=None, # stepped_point,
-                    displacement_vector=displacement_vector,
-                    displacement_vector_steps=displacement_vector_steps,
-                    e_distance=e_distance,
-                    feedrate = RetractFeedrate,
-                    ))
-        """
-
         if not self.retracted:
             current_position = self.getRealPos()
             values = {
@@ -464,19 +453,12 @@ class UM2GcodeParser:
             for dim in range(5):
                 assert(circaf(newRealPos[dim] - curRealPos[dim], displacement_vector[dim], 0.000001))
 
-        # feedrate = makerbot_driver.Gcode.get_safe_feedrate(
-        #    displacement_vector,
-        #    self.state.get_axes_values('max_feedrate'),
-        #    feedrate,
-        #)
         feedrateVector = displacement_vector._setLength(feedrate).constrain(self.maxFeedrateVector)
         if feedrateVector:
             feedrate = feedrateVector.len5()
 
         # print "pos:", stepped_point, "[steps]"
         # print "displacement_vector:", displacement_vector, "[mm]"
-        # print "dda_speed:", dda_speed, "[uS/step]"
-        # print "move_minutes:", move_minutes, "[min]"
         # print "feedrate:", feedrate, "[mm/s]"
 
         self.planner.addMove(Move(
@@ -491,9 +473,6 @@ class UM2GcodeParser:
             self.feedrate = feedrate
         # else:
             # print "NOT storing new feedrate of E-Only move '%s'!" % comment
-
-        # self.state.setGcodePosition(newGcodePos)
-        # self.state.setRealPosition(newRealPos)
 
         # print "newGcodePos: ", newGcodePos
         # print "newRealPos: ", newRealPos
