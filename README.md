@@ -30,6 +30,9 @@ Some Features:
 *   EEPROM storage of parameters.
 *   Temperature oversampling.
 *   A simple form of an "AutoTemp" algorithm, the hotend temperature is increased for parts of the model where high printing speeds are reached.
+*   "Extrusion rate adjust" algorithm, to compensate for the feeder slipping on higher extrusion rates using a quadratic function. Thanks to
+    illuminarti for his work on http://www.extrudable.me/2013/04/18/exploring-extrusion-variability-and-limits.
+*   Preprocessor keeps track of the used extrusion rates and emits warnings if they get to high.
 *   PID auto-tuning. Measuring and plotting (gnuplot) of the hotend temperature stepresponse.
 *   Simulator mode for testing/development: Firmware runs as a host-program with serial communication over a ptty device.
 
