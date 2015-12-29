@@ -102,7 +102,10 @@ class MatProfile(ProfileBase):
 
         super(MatProfile, self).__init__(MatProfile, name)
 
+        self.matArea = (math.pi * pow(float(self.values["material_diameter"]), 2)) / 4.0
+
     def override(self, key, value):
+        assert(key != "material_diameter")
         self.values[key] = value
 
     @classmethod
@@ -145,8 +148,8 @@ class MatProfile(ProfileBase):
 
     @classmethod
     def getMatArea(cls):
-        aFilament = (math.pi * pow(cls.getMatDiameter(), 2)) / 4.0
-        return aFilament
+        return cls.get().matArea
+
 
 ####################################################################################################
 #
@@ -197,6 +200,21 @@ class NozzleProfile(ProfileBase):
     @classmethod
     def getExtrusionAdjustFactor(cls):
         return cls.get().kExtrusionAdjust
+
+    @classmethod
+    def getNetMaxExtrusionRate(cls):
+        return cls.get().netMaxExtrusionRate
+
+
+
+
+
+
+
+
+
+
+
 
 
 
