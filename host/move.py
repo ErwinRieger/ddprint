@@ -494,19 +494,32 @@ class Move(object):
             payLoad += struct.pack("<B", self.stepData.dirBits | 0x80)
             cmdOfs = 1
 
-        payLoad += struct.pack("<BIIIIIHHH", 
+        use24Bits = False
+        if (self.stepData.accelPulses and self.stepData.accelPulses[0] > maxTimerValue16) or \
+           (self.stepData.deccelPulses and self.stepData.deccelPulses[-1] > maxTimerValue16):
+            use24Bits = True
+
+        payLoad += struct.pack("<BiiiiiH",
                 self.stepData.leadAxis,
                 self.stepData.abs_vector_steps[0],
                 self.stepData.abs_vector_steps[1],
                 self.stepData.abs_vector_steps[2],
                 self.stepData.abs_vector_steps[3],
                 self.stepData.abs_vector_steps[4],
-                len(self.stepData.accelPulses),
+                len(self.stepData.accelPulses))
+
+        if not use24Bits:
+            if self.isExtrudingMove(A_AXIS):
+                leadFactor = int((self.stepData.abs_vector_steps[self.stepData.leadAxis]*1000) / self.stepData.abs_vector_steps[3])
+                payLoad += struct.pack("<H", leadFactor)
+            else:
+                payLoad += struct.pack("<H", 0)
+
+        payLoad += struct.pack("<HH", 
                 self.stepData.linearTimer,
                 len(self.stepData.deccelPulses))
 
-        if (self.stepData.accelPulses and self.stepData.accelPulses[0] > maxTimerValue16) or \
-           (self.stepData.deccelPulses and self.stepData.deccelPulses[-1] > maxTimerValue16):
+        if use24Bits:
 
             cmdHex = ddprintcommands.CmdG1_24 + cmdOfs
 
