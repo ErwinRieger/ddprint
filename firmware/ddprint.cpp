@@ -141,6 +141,52 @@ extern "C"{
   }
 }
 
+
+/////////////////////////////////////////////////////////////////////////////////////
+//
+
+const uint16_t tempExtrusionRateTable[31] PROGMEM = {
+    /* temp: 210, max extrusion: 4.80 mm³/s, steps/s: 281, steprate: 3553 us, timervalue: */ 7107,
+    /* temp: 212, max extrusion: 5.80 mm³/s, steps/s: 340, steprate: 2941 us, timervalue: */ 5882,
+    /* temp: 214, max extrusion: 6.80 mm³/s, steps/s: 398, steprate: 2508 us, timervalue: */ 5017,
+    /* temp: 216, max extrusion: 7.80 mm³/s, steps/s: 457, steprate: 2187 us, timervalue: */ 4374,
+    /* temp: 218, max extrusion: 8.80 mm³/s, steps/s: 515, steprate: 1938 us, timervalue: */ 3876,
+    /* temp: 220, max extrusion: 9.80 mm³/s, steps/s: 574, steprate: 1740 us, timervalue: */ 3481,
+    /* temp: 222, max extrusion: 10.80 mm³/s, steps/s: 633, steprate: 1579 us, timervalue: */ 3159,
+    /* temp: 224, max extrusion: 11.80 mm³/s, steps/s: 691, steprate: 1445 us, timervalue: */ 2891,
+    /* temp: 226, max extrusion: 12.80 mm³/s, steps/s: 750, steprate: 1332 us, timervalue: */ 2665,
+    /* temp: 228, max extrusion: 13.80 mm³/s, steps/s: 808, steprate: 1236 us, timervalue: */ 2472,
+    /* temp: 230, max extrusion: 14.80 mm³/s, steps/s: 867, steprate: 1152 us, timervalue: */ 2305,
+    /* temp: 232, max extrusion: 15.80 mm³/s, steps/s: 926, steprate: 1079 us, timervalue: */ 2159,
+    /* temp: 234, max extrusion: 16.80 mm³/s, steps/s: 984, steprate: 1015 us, timervalue: */ 2030,
+    /* temp: 236, max extrusion: 17.80 mm³/s, steps/s: 1043, steprate: 958 us, timervalue: */ 1916,
+    /* temp: 238, max extrusion: 18.80 mm³/s, steps/s: 1102, steprate: 907 us, timervalue: */ 1814,
+    /* temp: 240, max extrusion: 19.80 mm³/s, steps/s: 1160, steprate: 861 us, timervalue: */ 1723,
+    /* temp: 242, max extrusion: 20.80 mm³/s, steps/s: 1219, steprate: 820 us, timervalue: */ 1640,
+    /* temp: 244, max extrusion: 21.80 mm³/s, steps/s: 1277, steprate: 782 us, timervalue: */ 1565,
+    /* temp: 246, max extrusion: 22.80 mm³/s, steps/s: 1336, steprate: 748 us, timervalue: */ 1496,
+    /* temp: 248, max extrusion: 23.80 mm³/s, steps/s: 1395, steprate: 716 us, timervalue: */ 1433,
+    /* temp: 250, max extrusion: 24.80 mm³/s, steps/s: 1453, steprate: 687 us, timervalue: */ 1375,
+    /* temp: 252, max extrusion: 25.80 mm³/s, steps/s: 1512, steprate: 661 us, timervalue: */ 1322,
+    /* temp: 254, max extrusion: 26.80 mm³/s, steps/s: 1571, steprate: 636 us, timervalue: */ 1273,
+    /* temp: 256, max extrusion: 27.80 mm³/s, steps/s: 1629, steprate: 613 us, timervalue: */ 1227,
+    /* temp: 258, max extrusion: 28.80 mm³/s, steps/s: 1688, steprate: 592 us, timervalue: */ 1184,
+    /* temp: 260, max extrusion: 29.80 mm³/s, steps/s: 1746, steprate: 572 us, timervalue: */ 1144,
+    /* temp: 262, max extrusion: 30.80 mm³/s, steps/s: 1805, steprate: 553 us, timervalue: */ 1107,
+    /* temp: 264, max extrusion: 31.80 mm³/s, steps/s: 1864, steprate: 536 us, timervalue: */ 1072,
+    /* temp: 266, max extrusion: 32.80 mm³/s, steps/s: 1922, steprate: 520 us, timervalue: */ 1040,
+    /* temp: 268, max extrusion: 33.80 mm³/s, steps/s: 1981, steprate: 504 us, timervalue: */ 1009,
+    /* temp: 270, max extrusion: 34.80 mm³/s, steps/s: 2040, steprate: 490 us, timervalue: */ 980,
+};
+/////////////////////////////////////////////////////////////////////////////////////
+
+
+
+
+
+
+
+
 // xxx move to printer class?
 void kill(const char* msg) {
 
@@ -355,6 +401,28 @@ class SDReader: public Protothread {
 
 };
 
+
+uint16_t STD_max(uint16_t a, uint16_t b) {
+
+    static uint16_t counter = 0;
+
+    if (b > a) {
+
+        if ((counter++ % 100) == 0) {
+            SERIAL_ECHOPGM("Tempspeed ");
+            SERIAL_ECHO(counter);
+            SERIAL_ECHOPGM(", ");
+            SERIAL_ECHO(current_temperature[0]);
+            SERIAL_ECHOPGM(", ");
+            SERIAL_ECHO(a);
+            SERIAL_ECHOPGM(", ");
+            SERIAL_ECHOLN(b);
+        }
+    }
+
+    return STD max(a, b);
+}
+
 static SDReader sDReader;
 
 class FillBufferTask : public Protothread {
@@ -370,6 +438,9 @@ class FillBufferTask : public Protothread {
         uint16_t tLin;
         uint16_t nDeccel;
         int32_t absSteps[5];
+        uint16_t maxTempSpeed;
+            // uint16_t leadFactor;
+            // int16_t curTempIndex;
 
         // Bresenham factors
         int32_t d_axis[5];
@@ -399,6 +470,8 @@ class FillBufferTask : public Protothread {
             int32_t d1;
             int32_t d2;
 
+            uint16_t leadFactor;
+            int16_t curTempIndex;
 
             PT_BEGIN();
 
@@ -518,10 +591,72 @@ class FillBufferTask : public Protothread {
                 nAccel = FromBuf(uint16_t, sDReader.readData);
                 // SERIAL_ECHOLN(nAccel);
 
+                //////////////////////////////////////////////////////
+                sDReader.setBytesToRead2();
+                PT_WAIT_THREAD(sDReader);
+                leadFactor = FromBuf(uint16_t, sDReader.readData);
+
+                if (leadFactor) {
+
+                    // curTempIndex = (int16_t)(current_temperature[0] - 210);
+                    // curTempIndex = (int16_t)(current_temperature[0] - 130);
+                    curTempIndex = (int16_t)(current_temperature[0] - 210) / 2;
+
+                    if (curTempIndex < 0) {
+
+                        maxTempSpeed = ((uint32_t)pgm_read_word(tempExtrusionRateTable+0) * 1000) / leadFactor;
+                    }
+                    else if (curTempIndex > 30) {
+
+                        maxTempSpeed = ((uint32_t)pgm_read_word(tempExtrusionRateTable+30) * 1000) / leadFactor;
+                    }
+                    else {
+#if 0
+                        SERIAL_ECHOPGM(" Tempspeed tindex ");
+                        SERIAL_ECHO(curTempIndex);
+                        SERIAL_ECHOPGM(" tabval ");
+                        SERIAL_ECHOLN(pgm_read_word(tempExtrusionRateTable+curTempIndex));
+#endif
+                        maxTempSpeed = ((uint32_t)pgm_read_word(tempExtrusionRateTable+curTempIndex) * 1000) / leadFactor;
+                    }
+                }
+                else {
+                    maxTempSpeed = 0;
+                }
+
+                // if (leadFactor < 0xffff)
+                    // maxTempSpeed = (uint32_t)(1485 / (leadFactor/10000.0));
+                // printf("tempindex: %d, tabvalue: %d, leadfactor: %.2f, maxTempSpeed: %d\n", curTempIndex, (uint32_t)pgm_read_word(tempExtrusionRateTable+curTempIndex), leadFactor/10000.0, maxTempSpeed);
+
+                //////////////////////////////////////////////////////
+
                 // tLin = sDReader.readPayloadUInt16();
                 sDReader.setBytesToRead2();
                 PT_WAIT_THREAD(sDReader);
+                tLin = STD_max( FromBuf(uint16_t, sDReader.readData), (uint16_t)maxTempSpeed);
+
+#if 0
                 tLin = FromBuf(uint16_t, sDReader.readData);
+                    SERIAL_ECHOPGM("tl ");
+                    SERIAL_ECHO(tLin);
+                    SERIAL_ECHOPGM(" ms  ");
+                    SERIAL_ECHOLN(maxTempSpeed);
+
+                if (maxTempSpeed > tLin) {
+                    SERIAL_ECHOPGM(" Tempspeed tindex ");
+                    SERIAL_ECHO(curTempIndex);
+                    SERIAL_ECHOPGM(" tabval ");
+                    SERIAL_ECHO(pgm_read_word(tempExtrusionRateTable+curTempIndex));
+                    SERIAL_ECHOPGM(" lf ");
+                    SERIAL_ECHO(leadFactor);
+                    SERIAL_ECHOPGM(" tempspd ");
+                    SERIAL_ECHO(maxTempSpeed);
+                    SERIAL_ECHOPGM(" f1 ");
+                    SERIAL_ECHO(((uint32_t)pgm_read_word(tempExtrusionRateTable+curTempIndex) * 1000));
+                    SERIAL_ECHOPGM(" f2 ");
+                    SERIAL_ECHOLN(((uint32_t)pgm_read_word(tempExtrusionRateTable+curTempIndex) * 1000) / leadFactor);
+                }
+#endif
 
                 // nDeccel = sDReader.readPayloadUInt16();
                 sDReader.setBytesToRead2();
@@ -593,7 +728,7 @@ class FillBufferTask : public Protothread {
                         // Acceleration
                         sDReader.setBytesToRead2();
                         PT_WAIT_THREAD(sDReader);
-                        timer = FromBuf(uint16_t, sDReader.readData);
+                        timer = STD_max( FromBuf(uint16_t, sDReader.readData), (uint16_t)maxTempSpeed );
 
                         PT_WAIT_WHILE(stepBuffer.full());
                         if (timer & 0xff00)
@@ -601,12 +736,12 @@ class FillBufferTask : public Protothread {
                         else
                             stepBuffer.push3(cmdDir, stepBits, timer);
                     }
-                    else if ((deltaLead - step) <= nDeccel) {
+                    else if ((deltaLead - step) <= nDeccel) { // TODO: speed up by combining nDeccel and deltaLead to remove subtract
 
                         // Decceleration
                         sDReader.setBytesToRead2();
                         PT_WAIT_THREAD(sDReader);
-                        timer = FromBuf(uint16_t, sDReader.readData);
+                        timer = STD_max( FromBuf(uint16_t, sDReader.readData), (uint16_t)maxTempSpeed );
 
                         PT_WAIT_WHILE(stepBuffer.full());
                         if (timer & 0xff00)
