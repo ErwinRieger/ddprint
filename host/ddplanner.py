@@ -504,6 +504,7 @@ class Planner (object):
                         f = NozzleProfile.getAutoTempFactor(UseExtrusionAutoTemp)
                         # newTemp += min((avgSpeed - ExtrusionAmountLow * pow(NozzleProfile.getSize(), 2)) * f, ATMaxTempIncrease)
                         newTemp += (avgSpeed - extrusionLow) * f
+                        # newTemp *= 1.15 # xxx sync withtemp-speed-adjust
                         newTemp = min(newTemp, MatProfile.getHotendMaxTemp())
 
                     if debugAutoTemp:
