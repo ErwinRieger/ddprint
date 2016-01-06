@@ -512,6 +512,8 @@ def main():
 
     sp = subparsers.add_parser("heatHotend", help=u"Heat up hotend (to clean it, etc).")
 
+    sp = subparsers.add_parser("getFilSensor", help=u"Get current filament position.")
+
     sp = subparsers.add_parser("getPos", help=u"Get current printer and virtual position.")
 
     sp = subparsers.add_parser("getTemps", help=u"Get current temperatures (Bed, Extruder1, [Extruder2]).")
@@ -713,6 +715,12 @@ def main():
 
         util.heatHotend(args, parser)
 
+    elif args.mode == 'getFilSensor':
+
+        printer.commandInit(args)
+        res = printer.query(CmdGetFilSensor)
+        print "Filament pos:", res, "counts %.3f mm" % (res*25.4/500)
+
     elif args.mode == 'getPos':
 
         printer.commandInit(args)
@@ -738,7 +746,7 @@ def main():
     elif args.mode == 'getTemps':
 
         printer.commandInit(args)
-        temps = printer.query(CmdGetTemps)
+        temps = printer.query(CmdGetCurrentTemps)
         print "tempeatures: ", temps
 
     elif args.mode == 'getStatus':

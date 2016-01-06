@@ -219,7 +219,7 @@ SRC = wiring.c \
 	wiring_analog.c wiring_digital.c \
 	wiring_pulse.c \
 	wiring_shift.c WInterrupts.c
-CXXSRC = new.cpp WMath.cpp WString.cpp Print.cpp ddprint.cpp ddprintFw.cpp \
+CXXSRC = filsensor.cpp new.cpp WMath.cpp WString.cpp Print.cpp ddprint.cpp ddprintFw.cpp \
 	MarlinSerial.cpp MarlinSerialFw.cpp Sd2Card.cpp SdBaseFile.cpp SdFatUtil.cpp	\
 	SdFile.cpp SdVolume.cpp eepromSettings.cpp \
 	stepper.cpp temperature.cpp ddtemp.cpp swapdev.cpp
