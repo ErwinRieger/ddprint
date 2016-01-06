@@ -12,6 +12,7 @@ class FilamentSensor {
 
         int32_t lastASteps;
         int32_t lastYPos;
+        uint32_t lastTS;
 
     public:
 
@@ -19,7 +20,7 @@ class FilamentSensor {
 
         float slip;
         // xxx use a better name
-        uint16_t maxTempSpeed;
+        // uint16_t maxTempSpeed;
 
         FilamentSensor();
         void init();

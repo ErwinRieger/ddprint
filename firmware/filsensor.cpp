@@ -27,6 +27,7 @@ FilamentSensor::FilamentSensor() {
     lastASteps = lastYPos = yPos = 0;
     slip = 0.0;
     maxTempSpeed = 0;
+    lastTS = millis();
 
     pinMode(FILSENSSCLK, OUTPUT);
     pinMode(FILSENSSDIO, OUTPUT);
@@ -72,7 +73,9 @@ void FilamentSensor::run() {
         int32_t ds = current_pos_steps[E_AXIS] - lastASteps; // Requested extruded length
 
         if (ds > 72) {
-            
+           
+            uint32_t ts = millis();
+
             int32_t dy = yPos - lastYPos; // Real extruded length
 
             slip = (dy * ASTEPS_PER_COUNT) / ds;
@@ -80,13 +83,16 @@ void FilamentSensor::run() {
 // printf("slip: %d %d %.2f\n", dy, ds, slip);
 printf("slip: %.2f\n", slip);
 
-            if (slip < 0.9) {
+            if (slip < 0.90) {
 
                 SERIAL_ECHO("Slip: ");
                 SERIAL_ECHOLN(slip);
 
-                // 10% slip feedrate:
+                // 10% slip extruder feedrate:
+                // float speed = (ds / AXIS_STEPS_PER_MM_E) / ((ts - lastTS)/1000.0);
+                float speed = (ds * 1000.0) / (AXIS_STEPS_PER_MM_E * (ts - lastTS));
 
+printf("90%% feedrate: %.2f\n", speed);
             }
             else {
                 maxTempSpeed = 0;
@@ -94,6 +100,7 @@ printf("slip: %.2f\n", slip);
 
             lastASteps = current_pos_steps[E_AXIS];
             lastYPos = yPos;
+            lastTS = ts;
         }
     }
 }
