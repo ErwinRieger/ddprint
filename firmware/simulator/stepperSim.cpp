@@ -26,6 +26,8 @@ StepperSim< YMove > ssy(Y_MAX_POS);
 // Start buildplate unten
 StepperSim< ZMove > ssz(Z_MAX_POS);
 
+StepperSim< EMove > sse(0);
+
 #if 0
 template <>
 void checkPos<XMove>(float pos) {

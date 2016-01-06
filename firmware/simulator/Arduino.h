@@ -141,6 +141,6 @@
     // #include <hardware/arduino/cores/arduino/Arduino.h>
     int constrain(int v, int l, int u);
     float constrain(float v, float l, float u);
-
+    void delayMicroseconds(int);
 #endif
 
