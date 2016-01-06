@@ -79,6 +79,8 @@ extern StepperSim< YMove > ssy;
 // Start: buildplate unten (MAX)
 extern StepperSim< ZMove > ssz;
 
+extern StepperSim< EMove > sse;
+
 
 #endif
 
