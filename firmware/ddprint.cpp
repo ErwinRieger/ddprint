@@ -146,42 +146,44 @@ extern "C"{
 }
 
 
+#define USEExtrusionRateTable
+
 /////////////////////////////////////////////////////////////////////////////////////
 #if defined(USEExtrusionRateTable)
-const uint16_t tempExtrusionRateTable[31] PROGMEM = {
+
+const uint16_t tempExtrusionRateTable[31] = {
     /* temp: 210, max extrusion: 4.80 mm³/s, steps/s: 281, steprate: 3553 us, timervalue: */ 7107,
-    /* temp: 212, max extrusion: 5.74 mm³/s, steps/s: 336, steprate: 2971 us, timervalue: */ 5942,
-    /* temp: 214, max extrusion: 6.68 mm³/s, steps/s: 391, steprate: 2552 us, timervalue: */ 5105,
-    /* temp: 216, max extrusion: 7.62 mm³/s, steps/s: 446, steprate: 2237 us, timervalue: */ 4475,
-    /* temp: 218, max extrusion: 8.56 mm³/s, steps/s: 502, steprate: 1991 us, timervalue: */ 3983,
-    /* temp: 220, max extrusion: 9.51 mm³/s, steps/s: 557, steprate: 1794 us, timervalue: */ 3589,
-    /* temp: 222, max extrusion: 10.45 mm³/s, steps/s: 612, steprate: 1632 us, timervalue: */ 3265,
-    /* temp: 224, max extrusion: 11.39 mm³/s, steps/s: 667, steprate: 1497 us, timervalue: */ 2995,
-    /* temp: 226, max extrusion: 12.33 mm³/s, steps/s: 722, steprate: 1383 us, timervalue: */ 2767,
-    /* temp: 228, max extrusion: 13.27 mm³/s, steps/s: 777, steprate: 1285 us, timervalue: */ 2570,
-    /* temp: 230, max extrusion: 14.21 mm³/s, steps/s: 833, steprate: 1200 us, timervalue: */ 2400,
-    /* temp: 232, max extrusion: 15.15 mm³/s, steps/s: 888, steprate: 1125 us, timervalue: */ 2251,
-    /* temp: 234, max extrusion: 16.09 mm³/s, steps/s: 943, steprate: 1059 us, timervalue: */ 2119,
-    /* temp: 236, max extrusion: 17.04 mm³/s, steps/s: 998, steprate: 1001 us, timervalue: */ 2002,
-    /* temp: 238, max extrusion: 17.98 mm³/s, steps/s: 1053, steprate: 948 us, timervalue: */ 1897,
-    /* temp: 240, max extrusion: 18.92 mm³/s, steps/s: 1108, steprate: 901 us, timervalue: */ 1803,
-    /* temp: 242, max extrusion: 19.86 mm³/s, steps/s: 1164, steprate: 859 us, timervalue: */ 1718,
-    /* temp: 244, max extrusion: 20.80 mm³/s, steps/s: 1219, steprate: 820 us, timervalue: */ 1640,
-    /* temp: 246, max extrusion: 21.74 mm³/s, steps/s: 1274, steprate: 784 us, timervalue: */ 1569,
-    /* temp: 248, max extrusion: 22.68 mm³/s, steps/s: 1329, steprate: 752 us, timervalue: */ 1504,
-    /* temp: 250, max extrusion: 23.62 mm³/s, steps/s: 1384, steprate: 722 us, timervalue: */ 1444,
-    /* temp: 252, max extrusion: 24.56 mm³/s, steps/s: 1440, steprate: 694 us, timervalue: */ 1388,
-    /* temp: 254, max extrusion: 25.51 mm³/s, steps/s: 1495, steprate: 668 us, timervalue: */ 1337,
-    /* temp: 256, max extrusion: 26.45 mm³/s, steps/s: 1550, steprate: 645 us, timervalue: */ 1290,
-    /* temp: 258, max extrusion: 27.39 mm³/s, steps/s: 1605, steprate: 622 us, timervalue: */ 1245,
-    /* temp: 260, max extrusion: 28.33 mm³/s, steps/s: 1660, steprate: 602 us, timervalue: */ 1204,
-    /* temp: 262, max extrusion: 29.27 mm³/s, steps/s: 1715, steprate: 582 us, timervalue: */ 1165,
-    /* temp: 264, max extrusion: 30.21 mm³/s, steps/s: 1771, steprate: 564 us, timervalue: */ 1129,
-    /* temp: 266, max extrusion: 31.15 mm³/s, steps/s: 1826, steprate: 547 us, timervalue: */ 1095,
-    /* temp: 268, max extrusion: 32.09 mm³/s, steps/s: 1881, steprate: 531 us, timervalue: */ 1063,
-    /* temp: 270, max extrusion: 33.04 mm³/s, steps/s: 1936, steprate: 516 us, timervalue: */ 1032,
+    /* temp: 212, max extrusion: 5.60 mm³/s, steps/s: 328, steprate: 3046 us, timervalue: */ 6092,
+    /* temp: 214, max extrusion: 6.40 mm³/s, steps/s: 375, steprate: 2665 us, timervalue: */ 5330,
+    /* temp: 216, max extrusion: 7.20 mm³/s, steps/s: 422, steprate: 2369 us, timervalue: */ 4738,
+    /* temp: 218, max extrusion: 8.00 mm³/s, steps/s: 468, steprate: 2132 us, timervalue: */ 4264,
+    /* temp: 220, max extrusion: 8.80 mm³/s, steps/s: 515, steprate: 1938 us, timervalue: */ 3876,
+    /* temp: 222, max extrusion: 9.60 mm³/s, steps/s: 562, steprate: 1776 us, timervalue: */ 3553,
+    /* temp: 224, max extrusion: 10.40 mm³/s, steps/s: 609, steprate: 1640 us, timervalue: */ 3280,
+    /* temp: 226, max extrusion: 11.20 mm³/s, steps/s: 656, steprate: 1523 us, timervalue: */ 3046,
+    /* temp: 228, max extrusion: 12.00 mm³/s, steps/s: 703, steprate: 1421 us, timervalue: */ 2843,
+    /* temp: 230, max extrusion: 12.80 mm³/s, steps/s: 750, steprate: 1332 us, timervalue: */ 2665,
+    /* temp: 232, max extrusion: 13.60 mm³/s, steps/s: 797, steprate: 1254 us, timervalue: */ 2508,
+    /* temp: 234, max extrusion: 14.40 mm³/s, steps/s: 844, steprate: 1184 us, timervalue: */ 2369,
+    /* temp: 236, max extrusion: 15.20 mm³/s, steps/s: 891, steprate: 1122 us, timervalue: */ 2244,
+    /* temp: 238, max extrusion: 16.00 mm³/s, steps/s: 937, steprate: 1066 us, timervalue: */ 2132,
+    /* temp: 240, max extrusion: 16.80 mm³/s, steps/s: 984, steprate: 1015 us, timervalue: */ 2030,
+    /* temp: 242, max extrusion: 17.60 mm³/s, steps/s: 1031, steprate: 969 us, timervalue: */ 1938,
+    /* temp: 244, max extrusion: 18.40 mm³/s, steps/s: 1078, steprate: 927 us, timervalue: */ 1854,
+    /* temp: 246, max extrusion: 19.20 mm³/s, steps/s: 1125, steprate: 888 us, timervalue: */ 1776,
+    /* temp: 248, max extrusion: 20.00 mm³/s, steps/s: 1172, steprate: 852 us, timervalue: */ 1705,
+    /* temp: 250, max extrusion: 20.80 mm³/s, steps/s: 1219, steprate: 820 us, timervalue: */ 1640,
+    /* temp: 252, max extrusion: 21.60 mm³/s, steps/s: 1266, steprate: 789 us, timervalue: */ 1579,
+    /* temp: 254, max extrusion: 22.40 mm³/s, steps/s: 1313, steprate: 761 us, timervalue: */ 1523,
+    /* temp: 256, max extrusion: 23.20 mm³/s, steps/s: 1360, steprate: 735 us, timervalue: */ 1470,
+    /* temp: 258, max extrusion: 24.00 mm³/s, steps/s: 1406, steprate: 710 us, timervalue: */ 1421,
+    /* temp: 260, max extrusion: 24.80 mm³/s, steps/s: 1453, steprate: 687 us, timervalue: */ 1375,
+    /* temp: 262, max extrusion: 25.60 mm³/s, steps/s: 1500, steprate: 666 us, timervalue: */ 1332,
+    /* temp: 264, max extrusion: 26.40 mm³/s, steps/s: 1547, steprate: 646 us, timervalue: */ 1292,
+    /* temp: 266, max extrusion: 27.20 mm³/s, steps/s: 1594, steprate: 627 us, timervalue: */ 1254,
+    /* temp: 268, max extrusion: 28.00 mm³/s, steps/s: 1641, steprate: 609 us, timervalue: */ 1218,
+    /* temp: 270, max extrusion: 28.80 mm³/s, steps/s: 1688, steprate: 592 us, timervalue: */ 1184,
 };
-#endif
 /////////////////////////////////////////////////////////////////////////////////////
 
 
