@@ -35,10 +35,10 @@ DEFS = -D__AVR__ -D__ATTR_PROGMEM__= -DF_CPU=$(F_CPU) -D__OPTIMIZE__ -D__AVR_ATm
 # PROF = -g -pg -DPROFILING -fno-omit-frame-pointer -msoft-float
 # MATHEMUL = -L simulator/libgcc/soft-fp -lsoft-fp
 
-DEFINES = -DDDSim $(PROF) -I./simulator -I.
+DEFINES = -DDDSim $(PROF) -I./simulator -I. -DMOTHERBOARD=${HARDWARE_MOTHERBOARD}
 
-all: temperature.o ddtemp.o ddprint.o ddprintSim.o stepper.o stepperSim.o MarlinSerial.o MarlinSerialSim.o ArduinoSim.o swapdev.o swapdevSim.o eepromSettings.o
-	gcc -g -o sim $(DEFINES) temperature.o ddtemp.o ddprint.o ddprintSim.o MarlinSerial.o MarlinSerialSim.o stepper.o stepperSim.o ArduinoSim.o swapdev.o swapdevSim.o eepromSettings.o -lm -lstdc++ -lpthread $(MATHEMUL)
+all: temperature.o ddtemp.o ddprint.o ddprintSim.o stepper.o stepperSim.o MarlinSerial.o MarlinSerialSim.o ArduinoSim.o swapdev.o swapdevSim.o eepromSettings.o filsensor.o
+	gcc -g -o sim $(DEFINES) temperature.o ddtemp.o ddprint.o ddprintSim.o MarlinSerial.o MarlinSerialSim.o stepper.o stepperSim.o ArduinoSim.o swapdev.o swapdevSim.o eepromSettings.o filsensor.o -lm -lstdc++ -lpthread $(MATHEMUL)
 
 swapdev.o: swapdev.cpp ddprint.h Configuration.h swapdev.h
 	gcc  $(DEFINES)  -fpermissive -Wno-write-strings $(DEFS) -g -c swapdev.cpp 
@@ -108,6 +108,9 @@ tasks.o: tasks.cpp ddprint.h tasks.h
 
 eepromSettings.o: eepromSettings.cpp ddprint.h eepromSettings.h Configuration.h
 	gcc  $(DEFINES)  -fpermissive -Wno-write-strings $(DEFS) -g -c eepromSettings.cpp 
+
+filsensor.o: filsensor.cpp filsensor.h Configuration.h
+	gcc  $(DEFINES)  -fpermissive -Wno-write-strings $(DEFS) -g -c filsensor.cpp 
 
 run: all
 	./sim
