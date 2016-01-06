@@ -31,6 +31,7 @@
 #include "stepper.h"
 #include "swapdev.h"
 #include "eepromSettings.h"
+#include "filsensor.h"
 
 // // USB communication //
 // Startbyte
@@ -99,6 +100,9 @@
     #define CmdExit             160
 #endif
 #define CmdGetStatus            161
+
+// Get raw value of filament sensor pos 
+#define CmdGetFilSensor         162 
 
 #if 0
 #if defined(ExtendedStats)
@@ -266,6 +270,8 @@ void setup() {
 
     if (! swapDev.swapInit())
         kill("SwapDev init error.");
+
+    filamentSensor.init();
 }
 
 // Block-buffered sd read
@@ -1329,6 +1335,13 @@ void Printer::cmdGetStatus() {
     SERIAL_ECHOLNPGM(")");
 }
 
+void Printer::cmdGetFilSensor() {
+
+    // ["state", "t0", "t1", "Swap", "SDReader", "StepBuffer", "StepBufUnderRuns", "targetT1"]
+    SERIAL_ECHOPGM("Res:");
+    SERIAL_ECHOLN(filamentSensor.yPos);
+}
+
 void Printer::dwellStart() {
 
     massert(printerState == StateStart);
@@ -1874,6 +1887,9 @@ class UsbCommand : public Protothread {
                     case CmdGetStatus:
                         printer.cmdGetStatus();
                         break;
+                    case CmdGetFilSensor:
+                        printer.cmdGetFilSensor();
+                        break;
                     #if defined(DDSim)
                     case CmdResetLineNr:
                         break;
@@ -1901,6 +1917,7 @@ FWINLINE void loop() {
     unsigned long ts = millis();
     // Timer for slow running tasks (temp, encoder)
     static unsigned long timer10mS = millis();
+    static unsigned long timer50mS = millis();
     static unsigned long timer100mS = millis();
 
     // if (printer.moveType == Printer::MoveTypeNormal) {
@@ -1963,6 +1980,12 @@ FWINLINE void loop() {
         // Measure temperatures every 10ms (build mean value by OVERSAMPLENR)
         //
         tempControl.Run();
+
+        if ((ts - timer50mS) > 50) { // Every 50 mS
+
+            filamentSensor.run();
+            timer50mS = ts;
+        }
 
         if ((ts - timer100mS) > 100) { // Every 100 mS
 

@@ -73,7 +73,7 @@ public:
         if (initialized)
             return true;
 
-        if (!init(SPI_FULL_SPEED,SDSS)) {
+        if (!init(SPI_FULL_SPEED, SS_PIN)) {
 
             SERIAL_ECHO_START;
             SERIAL_ECHOLNPGM(MSG_SD_INIT_FAIL);

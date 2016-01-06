@@ -52,7 +52,9 @@
 #define E1_ENABLE_PIN       48
 
 #define SDPOWER            -1
-#define SDSS               53
+
+// Chip select SDCard
+// #define SDSS               53
 #define MAX6675_SS         13
 #define LED_PIN            8
 #define FAN_PIN            7
@@ -95,6 +97,13 @@
 #define encrot1 1
 #define encrot2 3
 #define encrot3 2
+
+//
+// Filament sensor pins (half duplex/3wire spi)
+//
+#define FILSENSNCS   65
+#define FILSENSSDIO  66
+#define FILSENSSCLK  67
 
 #endif//MOTHERBOARD == 72
 
