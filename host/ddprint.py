@@ -719,7 +719,7 @@ def main():
 
         printer.commandInit(args)
         res = printer.query(CmdGetFilSensor)
-        print "Filament pos:", res, "counts %.3f mm" % (res*25.4/500)
+        print "Filament pos:", res, "counts %.3f mm" % (res*25.4/1000)
 
     elif args.mode == 'getPos':
 
