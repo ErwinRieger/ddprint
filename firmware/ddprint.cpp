@@ -147,8 +147,7 @@ extern "C"{
 
 
 /////////////////////////////////////////////////////////////////////////////////////
-//
-
+#if defined(USEExtrusionRateTable)
 const uint16_t tempExtrusionRateTable[31] PROGMEM = {
     /* temp: 210, max extrusion: 4.80 mm³/s, steps/s: 281, steprate: 3553 us, timervalue: */ 7107,
     /* temp: 212, max extrusion: 5.74 mm³/s, steps/s: 336, steprate: 2971 us, timervalue: */ 5942,
@@ -182,6 +181,7 @@ const uint16_t tempExtrusionRateTable[31] PROGMEM = {
     /* temp: 268, max extrusion: 32.09 mm³/s, steps/s: 1881, steprate: 531 us, timervalue: */ 1063,
     /* temp: 270, max extrusion: 33.04 mm³/s, steps/s: 1936, steprate: 516 us, timervalue: */ 1032,
 };
+#endif
 /////////////////////////////////////////////////////////////////////////////////////
 
 
@@ -431,6 +431,12 @@ uint16_t STD_max(uint16_t a, uint16_t b) {
 
 static SDReader sDReader;
 
+#if defined(USEExtrusionRateTable)
+    #define MAXTEMPSPEED maxTempSpeed
+#else
+    #define MAXTEMPSPEED filamentSensor.maxTempSpeed
+#endif
+
 class FillBufferTask : public Protothread {
 
         uint8_t cmd;
@@ -444,7 +450,9 @@ class FillBufferTask : public Protothread {
         uint16_t tLin;
         uint16_t nDeccel;
         int32_t absSteps[5];
+#if defined(USEExtrusionRateTable)
         uint16_t maxTempSpeed;
+#endif
             // uint16_t leadFactor;
             // int16_t curTempIndex;
 
@@ -476,8 +484,10 @@ class FillBufferTask : public Protothread {
             int32_t d1;
             int32_t d2;
 
+#if defined(USEExtrusionRateTable)
             uint16_t leadFactor;
             int16_t curTempIndex;
+#endif
 
             PT_BEGIN();
 
@@ -600,8 +610,12 @@ class FillBufferTask : public Protothread {
                 //////////////////////////////////////////////////////
                 sDReader.setBytesToRead2();
                 PT_WAIT_THREAD(sDReader);
-                leadFactor = FromBuf(uint16_t, sDReader.readData);
 
+#if defined(USEExtrusionRateTable)
+                leadFactor = FromBuf(uint16_t, sDReader.readData);
+#endif
+
+#if defined(USEExtrusionRateTable)
                 if (leadFactor) {
 
                     // curTempIndex = (int16_t)(current_temperature[0] - 210);
@@ -629,6 +643,7 @@ class FillBufferTask : public Protothread {
                 else {
                     maxTempSpeed = 0;
                 }
+#endif
 
                 // if (leadFactor < 0xffff)
                     // maxTempSpeed = (uint32_t)(1485 / (leadFactor/10000.0));
@@ -639,7 +654,8 @@ class FillBufferTask : public Protothread {
                 // tLin = sDReader.readPayloadUInt16();
                 sDReader.setBytesToRead2();
                 PT_WAIT_THREAD(sDReader);
-                tLin = STD_max( FromBuf(uint16_t, sDReader.readData), (uint16_t)maxTempSpeed);
+
+                tLin = STD_max( FromBuf(uint16_t, sDReader.readData), MAXTEMPSPEED);
 
 #if 0
                 tLin = FromBuf(uint16_t, sDReader.readData);
@@ -734,7 +750,7 @@ class FillBufferTask : public Protothread {
                         // Acceleration
                         sDReader.setBytesToRead2();
                         PT_WAIT_THREAD(sDReader);
-                        timer = STD_max( FromBuf(uint16_t, sDReader.readData), (uint16_t)maxTempSpeed );
+                        timer = STD_max( FromBuf(uint16_t, sDReader.readData), MAXTEMPSPEED );
 
                         PT_WAIT_WHILE(stepBuffer.full());
                         if (timer & 0xff00)
@@ -747,7 +763,7 @@ class FillBufferTask : public Protothread {
                         // Decceleration
                         sDReader.setBytesToRead2();
                         PT_WAIT_THREAD(sDReader);
-                        timer = STD_max( FromBuf(uint16_t, sDReader.readData), (uint16_t)maxTempSpeed );
+                        timer = STD_max( FromBuf(uint16_t, sDReader.readData), MAXTEMPSPEED );
 
                         PT_WAIT_WHILE(stepBuffer.full());
                         if (timer & 0xff00)
@@ -1917,7 +1933,7 @@ FWINLINE void loop() {
     unsigned long ts = millis();
     // Timer for slow running tasks (temp, encoder)
     static unsigned long timer10mS = millis();
-    static unsigned long timer50mS = millis();
+    // static unsigned long timer50mS = millis();
     static unsigned long timer100mS = millis();
 
     // if (printer.moveType == Printer::MoveTypeNormal) {
@@ -1981,11 +1997,13 @@ FWINLINE void loop() {
         //
         tempControl.Run();
 
+#if 0
         if ((ts - timer50mS) > 50) { // Every 50 mS
 
             filamentSensor.run();
             timer50mS = ts;
         }
+#endif
 
         if ((ts - timer100mS) > 100) { // Every 100 mS
 
@@ -2006,6 +2024,19 @@ FWINLINE void loop() {
                 SERIAL_PROTOCOLLN(sbs);
             }
 
+            // Read filament sensor
+            filamentSensor.run();
+#if 0
+            if (filamentSensor.run()) {
+                //
+                // New filament slip value available
+                //
+            }
+
+            //
+            // 
+            //
+#endif
             timer100mS = ts;
         }
         timer10mS = ts;

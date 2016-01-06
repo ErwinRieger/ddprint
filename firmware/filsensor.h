@@ -10,9 +10,16 @@ class FilamentSensor {
         // unsigned int pullbyte();
         uint8_t pullbyte();
 
+        int32_t lastASteps;
+        int32_t lastYPos;
+
     public:
 
         int32_t yPos;
+
+        float slip;
+        // xxx use a better name
+        uint16_t maxTempSpeed;
 
         FilamentSensor();
         void init();
