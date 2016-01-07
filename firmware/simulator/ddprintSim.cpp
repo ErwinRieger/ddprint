@@ -632,8 +632,8 @@ class FilSensor {
                 if (delta_y > 0) {
                     // simulate slip
                     // estimate speed from OCR1A
-                    float tstep = (float)OCR1A / (F_CPU/8);
-                    float clockrate = 1.0/tstep;
+                    // float tstep = (float)OCR1A / (F_CPU/8);
+                    float clockrate = (float)F_CPU/(8*OCR1A);
                     float speed = clockrate / AXIS_STEPS_PER_MM_X;
                     // float speed = (ediff*1000000) / (ts - lastTime);
 

@@ -5,6 +5,7 @@
 #include "filsensor.h"
 // #include "MarlinSerial.h"
 #include "stepper.h"
+#include "temperature.h"
 
 /*
  * Estimate Polling rate:
@@ -26,25 +27,35 @@ FilamentSensor::FilamentSensor() {
 
     lastASteps = lastYPos = yPos = 0;
     slip = 0.0;
-    maxTempSpeed = 0;
+    // maxTempSpeed = 0;
     lastTS = millis();
 
-    pinMode(FILSENSSCLK, OUTPUT);
-    pinMode(FILSENSSDIO, OUTPUT);
-    pinMode(FILSENSNCS, OUTPUT);
+    // enabled = false;
+    enabled = true;
+
+    // pinMode(FILSENSSCLK, OUTPUT);
+    SET_OUTPUT(FILSENSSCLK);
+    // pinMode(FILSENSSDIO, OUTPUT);
+    SET_OUTPUT(FILSENSSDIO);
+    // pinMode(FILSENSNCS, OUTPUT);
+    SET_OUTPUT(FILSENSNCS);
 }
 
 void FilamentSensor::init() {
 
     mouse_reset();
 
-    SERIAL_ECHO("Filament sensor Prod: ");
+    SERIAL_ECHOPGM("Filament sensor Prod: ");
     SERIAL_ECHOLN((int)readLoc(0x0)); // Product
-    SERIAL_ECHO("Filament sensor Rev: ");
+    SERIAL_ECHOPGM("Filament sensor Rev: ");
     SERIAL_ECHOLN((int)readLoc(0x1)); // Rev
-    SERIAL_ECHO("Filament sensor Control: ");
+    SERIAL_ECHOPGM("Filament sensor Control: ");
     SERIAL_ECHOLN((int)readLoc(0xd));
 }
+
+extern uint16_t tempExtrusionRateTable[];
+#define FTIMER (F_CPU/8.0)
+#define FTIMER1000 (FTIMER/1000.0)
 
 void FilamentSensor::run() {
 
@@ -80,22 +91,69 @@ void FilamentSensor::run() {
 
             slip = (dy * ASTEPS_PER_COUNT) / ds;
 
-// printf("slip: %d %d %.2f\n", dy, ds, slip);
-printf("slip: %.2f\n", slip);
+            // printf("slip: %d %d %.2f\n", dy, ds, slip);
+            printf("slip: %.2f\n", slip);
 
-            if (slip < 0.90) {
+            int16_t curTempIndex = (int16_t)(current_temperature[0] - 210) / 2;
+            if ((curTempIndex >= 0) && (curTempIndex <= 30)) { // xxx 30 hardcoded
 
-                SERIAL_ECHO("Slip: ");
-                SERIAL_ECHOLN(slip);
+                if (enabled && (slip < 0.88)) {
 
-                // 10% slip extruder feedrate:
-                // float speed = (ds / AXIS_STEPS_PER_MM_E) / ((ts - lastTS)/1000.0);
-                float speed = (ds * 1000.0) / (AXIS_STEPS_PER_MM_E * (ts - lastTS));
+                    // Increase table value, decrease allowed speed for this temperature
 
-printf("90%% feedrate: %.2f\n", speed);
+                    uint32_t timerValue = tempExtrusionRateTable[curTempIndex];
+
+                    // 10% slip extruder feedrate:
+                    // float speed = (ds / AXIS_STEPS_PER_MM_E) / ((ts - lastTS)/1000.0);
+                    // float speed = (ds * 1000.0) / (AXIS_STEPS_PER_MM_E * (ts - lastTS));
+
+                    // printf("90%% feedrate: %.2f\n", speed);
+
+                    uint16_t tvnew = (FTIMER * timerValue)/(FTIMER - 0.3*timerValue*AXIS_STEPS_PER_MM_E);
+                    printf("tv++/speed-- for temp %.2f: %d -> %d\n", current_temperature[0], timerValue, tvnew);
+                    // tempExtrusionRateTable[curTempIndex] = tvnew; 
+                    // tempExtrusionRateTable[curTempIndex] = (9*timerValue + tvnew) / 10;
+
+                    SERIAL_ECHOPGM("Slip-: ");
+                    SERIAL_ECHO(slip);
+                    SERIAL_ECHOPGM(", ");
+                    SERIAL_ECHO((uint16_t)current_temperature[0]);
+                    SERIAL_ECHOPGM(", ");
+                    SERIAL_ECHOLN(tempExtrusionRateTable[curTempIndex]);
+
+                    // enabled = false;
+                }
+                else if (enabled && (slip > 0.92)) {
+                    // Decrease table value, increase allowed speed for this temperature
+                    // uint16_t tvnew = (FTIMER * timerValue) / (timerValue*AXIS_STEPS_PER_MM_E + ft);
+                    // uint16_t tvnew = (FTIMER * timerValue)/(0.3*timerValue*AXIS_STEPS_PER_MM_E + FTIMER);
+                    // float speed = (ds * 1000.0) / (AXIS_STEPS_PER_MM_E * (ts - lastTS));
+
+                    uint32_t timerValue = tempExtrusionRateTable[curTempIndex];
+
+                    uint16_t tvnew = (FTIMER1000 * (ts - lastTS)) / ds;
+
+                    if (tvnew < timerValue) {
+
+                        printf("tv--/speed++ for temp %.2f: %d -> %d\n", current_temperature[0], timerValue, tvnew);
+                        // tempExtrusionRateTable[curTempIndex] = (9*timerValue + tvnew) / 10;
+
+                        SERIAL_ECHOPGM("Slip+: ");
+                        SERIAL_ECHO(slip);
+                        SERIAL_ECHOPGM(", ");
+                        SERIAL_ECHO((uint16_t)current_temperature[0]);
+                        SERIAL_ECHOPGM(", ");
+                        SERIAL_ECHOLN(tempExtrusionRateTable[curTempIndex]);
+                    
+                        // enabled = false;
+                    }
+                }
             }
             else {
-                maxTempSpeed = 0;
+                SERIAL_ECHOPGM("Slip-: ");
+                SERIAL_ECHO(slip);
+                SERIAL_ECHOPGM(" T out range: ");
+                SERIAL_ECHOLN(tempExtrusionRateTable[curTempIndex]);
             }
 
             lastASteps = current_pos_steps[E_AXIS];
@@ -110,17 +168,17 @@ void FilamentSensor::mouse_reset(){
   // Initiate chip reset
   WRITE(FILSENSNCS, LOW);
   pushbyte(0x3a | 0x80);
-  delayMicroseconds(100);
+  delayMicroseconds(20);
   pushbyte(0x5a);
-  delayMicroseconds(100);
+  delayMicroseconds(20);
   WRITE(FILSENSNCS, HIGH);
 
   // Set 1000cpi resolution, xxx does not work?
   WRITE(FILSENSNCS, LOW);
   pushbyte(0x0d | 0x80);
-  delayMicroseconds(100);
+  delayMicroseconds(20);
   pushbyte(0x01);
-  delayMicroseconds(100);
+  delayMicroseconds(20);
   WRITE(FILSENSNCS, HIGH);
 }
 
@@ -134,10 +192,13 @@ uint8_t FilamentSensor::readLoc(uint8_t addr){
 }
 
 void FilamentSensor::pushbyte(uint8_t c){
-  pinMode(FILSENSSDIO, OUTPUT);
+  // pinMode(FILSENSSDIO, OUTPUT);
+  SET_OUTPUT(FILSENSSDIO);
   for(unsigned int i=0x80;i;i=i>>1){
     WRITE(FILSENSSCLK, LOW);
     WRITE(FILSENSSDIO, c & i);
+    // wait 120ns, Tsetup
+    delayMicroseconds(1);
     WRITE(FILSENSSCLK, HIGH);
   }
 }
@@ -145,13 +206,17 @@ void FilamentSensor::pushbyte(uint8_t c){
 // unsigned int FilamentSensor::pullbyte(){
 uint8_t FilamentSensor::pullbyte(){
   uint8_t ret=0;
-  pinMode(FILSENSSDIO, INPUT);
+  // pinMode(FILSENSSDIO, INPUT);
+  SET_INPUT(FILSENSSDIO);
   for(unsigned int i=0x80; i>0; i>>=1) {
     WRITE(FILSENSSCLK, LOW);
+    // wait 120ns, Tdly
+    delayMicroseconds(1);
     ret |= i*READ(FILSENSSDIO);
     WRITE(FILSENSSCLK, HIGH);
   }
-  pinMode(FILSENSSDIO, OUTPUT);
+  // pinMode(FILSENSSDIO, OUTPUT);
+  SET_OUTPUT(FILSENSSDIO);
   return(ret);
 }
 

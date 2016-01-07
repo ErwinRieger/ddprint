@@ -103,6 +103,7 @@
 
 // Get raw value of filament sensor pos 
 #define CmdGetFilSensor         162 
+#define CmdGetTempTable         163
 
 #if 0
 #if defined(ExtendedStats)
@@ -151,7 +152,7 @@ extern "C"{
 /////////////////////////////////////////////////////////////////////////////////////
 #if defined(USEExtrusionRateTable)
 
-const uint16_t tempExtrusionRateTable[31] = {
+uint16_t tempExtrusionRateTable[31] = {
     /* temp: 210, max extrusion: 4.80 mm³/s, steps/s: 281, steprate: 3553 us, timervalue: */ 7107,
     /* temp: 212, max extrusion: 5.60 mm³/s, steps/s: 328, steprate: 3046 us, timervalue: */ 6092,
     /* temp: 214, max extrusion: 6.40 mm³/s, steps/s: 375, steprate: 2665 us, timervalue: */ 5330,
@@ -184,6 +185,8 @@ const uint16_t tempExtrusionRateTable[31] = {
     /* temp: 268, max extrusion: 28.00 mm³/s, steps/s: 1641, steprate: 609 us, timervalue: */ 1218,
     /* temp: 270, max extrusion: 28.80 mm³/s, steps/s: 1688, steprate: 592 us, timervalue: */ 1184,
 };
+#endif
+
 /////////////////////////////////////////////////////////////////////////////////////
 
 
@@ -613,6 +616,8 @@ class FillBufferTask : public Protothread {
                 sDReader.setBytesToRead2();
                 PT_WAIT_THREAD(sDReader);
 
+                filamentSensor.enabled = true;
+
 #if defined(USEExtrusionRateTable)
                 leadFactor = FromBuf(uint16_t, sDReader.readData);
 #endif
@@ -626,30 +631,30 @@ class FillBufferTask : public Protothread {
 
                     if (curTempIndex < 0) {
 
-                        maxTempSpeed = ((uint32_t)pgm_read_word(tempExtrusionRateTable+0) * 1000) / leadFactor;
+                        maxTempSpeed = ((uint32_t)tempExtrusionRateTable[0] * 1000) / leadFactor;
                     }
-                    else if (curTempIndex > 30) {
+                    else if (curTempIndex > 30) { // xxx 30 hardcoded
 
-                        maxTempSpeed = ((uint32_t)pgm_read_word(tempExtrusionRateTable+30) * 1000) / leadFactor;
+                        maxTempSpeed = ((uint32_t)tempExtrusionRateTable[30] * 1000) / leadFactor;
                     }
                     else {
 #if 0
                         SERIAL_ECHOPGM(" Tempspeed tindex ");
                         SERIAL_ECHO(curTempIndex);
                         SERIAL_ECHOPGM(" tabval ");
-                        SERIAL_ECHOLN(pgm_read_word(tempExtrusionRateTable+curTempIndex));
+                        SERIAL_ECHOLN(tempExtrusionRateTable[curTempIndex]);
 #endif
-                        maxTempSpeed = ((uint32_t)pgm_read_word(tempExtrusionRateTable+curTempIndex) * 1000) / leadFactor;
+                        maxTempSpeed = ((uint32_t)tempExtrusionRateTable[curTempIndex] * 1000) / leadFactor;
                     }
                 }
                 else {
                     maxTempSpeed = 0;
                 }
 #endif
-
+    
                 // if (leadFactor < 0xffff)
                     // maxTempSpeed = (uint32_t)(1485 / (leadFactor/10000.0));
-                // printf("tempindex: %d, tabvalue: %d, leadfactor: %.2f, maxTempSpeed: %d\n", curTempIndex, (uint32_t)pgm_read_word(tempExtrusionRateTable+curTempIndex), leadFactor/10000.0, maxTempSpeed);
+                // printf("tempindex: %d, tabvalue: %d, leadfactor: %.2f, maxTempSpeed: %d\n", curTempIndex, (uint32_t)tempExtrusionRateTable[curTempIndex], leadFactor/10000.0, maxTempSpeed);
 
                 //////////////////////////////////////////////////////
 
@@ -670,15 +675,15 @@ class FillBufferTask : public Protothread {
                     SERIAL_ECHOPGM(" Tempspeed tindex ");
                     SERIAL_ECHO(curTempIndex);
                     SERIAL_ECHOPGM(" tabval ");
-                    SERIAL_ECHO(pgm_read_word(tempExtrusionRateTable+curTempIndex));
+                    SERIAL_ECHO(tempExtrusionRateTable[curTempIndex]);
                     SERIAL_ECHOPGM(" lf ");
                     SERIAL_ECHO(leadFactor);
                     SERIAL_ECHOPGM(" tempspd ");
                     SERIAL_ECHO(maxTempSpeed);
                     SERIAL_ECHOPGM(" f1 ");
-                    SERIAL_ECHO(((uint32_t)pgm_read_word(tempExtrusionRateTable+curTempIndex) * 1000));
+                    SERIAL_ECHO(((uint32_t)tempExtrusionRateTable[curTempIndex] * 1000));
                     SERIAL_ECHOPGM(" f2 ");
-                    SERIAL_ECHOLN(((uint32_t)pgm_read_word(tempExtrusionRateTable+curTempIndex) * 1000) / leadFactor);
+                    SERIAL_ECHOLN(((uint32_t)tempExtrusionRateTable[curTempIndex] * 1000) / leadFactor);
                 }
 #endif
 
@@ -1360,6 +1365,23 @@ void Printer::cmdGetFilSensor() {
     SERIAL_ECHOLN(filamentSensor.yPos);
 }
 
+void Printer::cmdGetTempTable() {
+
+    uint16_t temp = 210; // xxx fixed
+
+    SERIAL_ECHOPGM("Res:[");
+
+    for (uint8_t i=0; i<31; i++, temp+=2) { // fixed
+
+        SERIAL_ECHOPGM("(");
+        SERIAL_ECHO(temp);
+        SERIAL_ECHOPGM(",");
+        SERIAL_ECHO(tempExtrusionRateTable[i]);
+        SERIAL_ECHOPGM("),");
+    }
+    SERIAL_ECHOLNPGM("]");
+}
+
 void Printer::dwellStart() {
 
     massert(printerState == StateStart);
@@ -1907,6 +1929,9 @@ class UsbCommand : public Protothread {
                         break;
                     case CmdGetFilSensor:
                         printer.cmdGetFilSensor();
+                        break;
+                    case CmdGetTempTable:
+                        printer.cmdGetTempTable();
                         break;
                     #if defined(DDSim)
                     case CmdResetLineNr:
