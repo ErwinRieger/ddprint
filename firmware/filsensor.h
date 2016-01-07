@@ -17,6 +17,7 @@ class FilamentSensor {
     public:
 
         int32_t yPos;
+        bool enabled;
 
         float slip;
         // xxx use a better name
