@@ -518,6 +518,8 @@ def main():
 
     sp = subparsers.add_parser("getTemps", help=u"Get current temperatures (Bed, Extruder1, [Extruder2]).")
 
+    sp = subparsers.add_parser("getTempTable", help=u"Output temperature-speed table.")
+
     sp = subparsers.add_parser("getStatus", help=u"Get current printer status.")
 
     sp = subparsers.add_parser("zRepeatability", help=u"Debug: Move Z to 10 random positions to test repeatability.")
@@ -530,6 +532,9 @@ def main():
 
     sp = subparsers.add_parser("fanspeed", help=u"Set fan speed manually.")
     sp.add_argument("speed", help="Fanspeed 0 - 255.", type=int)
+
+    sp = subparsers.add_parser("testFilSensor", help=u"Debug: move filament manually, output filament sensor measurement.")
+    sp.add_argument("distance", action="store", help="Move-distance (+/-) in mm.", type=float)
 
     args = argParser.parse_args()
     # print "args: ", args
@@ -749,6 +754,12 @@ def main():
         temps = printer.query(CmdGetCurrentTemps)
         print "tempeatures: ", temps
 
+    elif args.mode == 'getTempTable':
+
+        printer.commandInit(args)
+        tempTable = printer.query(CmdGetTempTable)
+        print "tempTable: ", pprint.pprint(tempTable)
+
     elif args.mode == 'getStatus':
 
         printer.commandInit(args)
@@ -782,6 +793,15 @@ def main():
 
         printer.commandInit(args)
         printer.sendCommandParam(CmdFanSpeed, p1=packedvalue.uint8_t(args.speed), wantReply="ok")
+
+    elif args.mode == 'testFilSensor':
+
+        printer.commandInit(args)
+        startPos = printer.query(CmdGetFilSensor)
+        util.manualMove(parser, util.dimIndex['A'], args.distance)
+        endPos = printer.query(CmdGetFilSensor)
+        diff = endPos - startPos
+        print "Filament pos:", startPos, endPos, "counts, difference: %d,  %.3f mm" % (diff, diff*25.4/1000)
 
     elif args.mode == 'test':
 

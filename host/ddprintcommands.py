@@ -82,6 +82,7 @@ CmdGetPos = 159
 CmdExit = 160
 CmdGetStatus = 161
 CmdGetFilSensor = 162 # Get raw value of filament sensor pos
+CmdGetTempTable = 163 # Get raw value of filament sensor pos
 
 #
 #
@@ -163,6 +164,7 @@ CommandNames = {
     CmdExit: "CmdExit",
     CmdGetStatus: "CmdGetStatus",
     CmdGetFilSensor: "CmdGetFilSensor",
+    CmdGetTempTable: "CmdGetTempTable",
 }
 
 
