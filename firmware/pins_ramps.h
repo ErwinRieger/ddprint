@@ -222,9 +222,11 @@
 //
 // Filament sensor pins (half duplex/3wire spi)
 //
-#define FILSENSNCS   59
-#define FILSENSSDIO  63
-#define FILSENSSCLK  64
+#define FILSENSNCS   59 // Analog A5
+// #define FILSENSSDIO  63
+#define FILSENSMISO  50
+#define FILSENSMOSI  51
+#define FILSENSSCLK  52
 
 #endif //MOTHERBOARD == 3 || MOTHERBOARD == 33 || MOTHERBOARD == 34 || MOTHERBOARD == 77
 
