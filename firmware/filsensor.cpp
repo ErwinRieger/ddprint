@@ -50,8 +50,33 @@ void FilamentSensor::init() {
     SERIAL_ECHOLN((int)readLoc(0x0)); // Product
     SERIAL_ECHOPGM("Filament sensor Rev: ");
     SERIAL_ECHOLN((int)readLoc(0x1)); // Rev
-    SERIAL_ECHOPGM("Filament sensor Control: ");
-    SERIAL_ECHOLN((int)readLoc(0xd));
+
+    uint8_t configReg1 = readLoc(0x12);
+    SERIAL_ECHOPGM("Filament sensor config: ");
+    SERIAL_ECHOLN((int)configReg1);
+
+    uint8_t configReg2 = readLoc(0x36);
+    if (configReg2 & 0x10) {
+        SERIAL_ECHOPGM("Sensor config 0x36: ");
+        SERIAL_ECHOLN((int)configReg2);
+    }
+    else {
+
+        switch ((configReg1 & 0x60) >> 5) {
+            case 0x00:
+                SERIAL_ECHOLNPGM("Sensor resolution 400cpi");
+                break;
+            case 0x01:
+                SERIAL_ECHOLNPGM("Sensor resolution 800cpi");
+                break;
+            case 0x02:
+                SERIAL_ECHOLNPGM("Sensor resolution 1200cpi");
+                break;
+            case 0x03:
+                SERIAL_ECHOLNPGM("Sensor resolution 1600cpi");
+                break;
+        }
+    }
 
     SERIAL_ECHOPGM("Register 1A: ");
     SERIAL_ECHOLN((int)readLoc(0x1A));
@@ -79,7 +104,9 @@ void FilamentSensor::init() {
 
 static void spiInit(uint8_t spiRate) {
   // See avr processor documentation
-  SPCR = (1 << SPE) | (1 << MSTR) | (spiRate >> 1);
+  // SPCR = (1 << SPE) | (1 << MSTR) | (spiRate >> 1);
+  SPCR = (1 << SPE) | (1 << MSTR) | (spiRate >> 1) | (1<<CPHA) | (1<<CPOL);
+  // SPCR = (1 << SPE) | (1 << MSTR) | (spiRate >> 1) | (1<<CPOL);
   SPSR = spiRate & 1 || spiRate == 6 ? 0 : 1 << SPI2X;
 }
 
@@ -90,16 +117,16 @@ extern uint16_t tempExtrusionRateTable[];
 
 void FilamentSensor::run() {
 
-    spiInit(6); // scale = pow(2, 3+1), 1Mhz ddd
+    spiInit(6); // scale = pow(2, 3+1), 1Mhz
 
-    massert(readLoc(0x0) == 0x32);
+    massert(readLoc(0x0) == 0x30);
     massert(readLoc(0x1) == 0x3);
-    massert(readLoc(0x0) == ~readLoc(0xfc));
-    massert(readLoc(0x1) == ~readLoc(0xcd));
+    massert(readLoc(0x0)+readLoc(0x3f) == 255);
+    massert(readLoc(0x1)+readLoc(0x3e) == 255);
 
     uint8_t mot = readLoc(0x2);
 
-    if (mot & 0x16) {
+    if (mot & 0x10) {
         SERIAL_ERROR_START;
         SERIAL_ECHOLNPGM("FilSensor: X/Y overflow!");
     }
@@ -108,10 +135,18 @@ void FilamentSensor::run() {
 
         // XXX x_delta must be read also?!
         readLoc(0x3); // X_L
-        uint16_t y = (int8_t)readLoc(0x4);
+        // int16_t y = (int8_t)readLoc(0x4);
+        int16_t y;
+        int16_t yH = y = readLoc(0x4);
 
-        uint16_t xyh = readLoc(0x5); // XY_L
-        y = y + ((int8_t)((xyh & 0xF) << 4))/16; // Y_L
+        int8_t xyh = readLoc(0x5); // XY_L
+        // y = y + ((int8_t)((xyh & 0xF) << 4))/16; // Y_L
+        int8_t yh = xyh << 4;
+        if (yh) {
+            SERIAL_ECHO("YH: ");
+            SERIAL_ECHOLN(yh/16);
+            yH += yh * 16;
+        }
 
 #if 0
         if (y>0)
@@ -120,14 +155,22 @@ void FilamentSensor::run() {
             y -= abs(x);
 #endif
 
-        yPos -= y;
+        if (! yH) return;
+
+        yPos -= yH;
+
+        uint16_t shutter = (readLoc(0x7) << 8) + readLoc(0x8);
 
         // SERIAL_ECHO("X: ");
         // SERIAL_ECHO((int)x);
         SERIAL_ECHO("Squal: ");
         SERIAL_ECHO((int)readLoc(0x6));
+        SERIAL_ECHO(", Shut: ");
+        SERIAL_ECHO(shutter);
         SERIAL_ECHO(", y: ");
         SERIAL_ECHO(y);
+        SERIAL_ECHO(", YH+y: ");
+        SERIAL_ECHO(yH);
         SERIAL_ECHO(", Y: ");
         SERIAL_ECHOLN(yPos);
 
@@ -226,14 +269,16 @@ void writeLoc(uint8_t addr, uint8_t value) {
 
 void FilamentSensor::mouse_reset(){
 
-    spiInit(6); // scale = pow(2, 3+1), 1Mhz ddd
+    spiInit(6); // scale = pow(2, 3+1), 1Mhz
 
     // Initiate chip reset
     writeLoc(0x3a, 0x5a);
-    delay(10); // Wait one frame - how long is a frame?
+    delay(1000); // Wait one frame - how long is a frame?
+
+    // selfTest();
 
     writeLoc(0x2e, 0); // Clear observation register.
-    delay(10); // Wait one frame
+    delay(1000); // Wait one frame
 
     // check observation register, all bits 0-3 must be set.
     uint8_t obs = readLoc(0x2e);
@@ -274,19 +319,19 @@ void FilamentSensor::mouse_reset(){
    
     // writeLoc(0x1C, 0x0);
     // writeLoc(0x1d, 0xFF); // complementary reg of 0x1C
-
+    // writeLoc(0x1C, 0x3f);
+    // writeLoc(0x1d, 0xC0); // complementary reg of 0x1C
+    // writeLoc(0x1C, 0x7f);
+    // writeLoc(0x1d, 0x80); // complementary reg of 0x1C
     writeLoc(0x1C, 0xFF);
     writeLoc(0x1d, 0x0); // complementary reg of 0x1C
 
-#if defined SENSORA5020
-  // Set 1000cpi resolution, xxx does not work?
-  WRITE(FILSENSNCS, LOW);
-  spiSend(0x0d | 0x80);
-  delayMicroseconds(14); // Tsww (30) - 16
-  spiSend(0x01);
-  WRITE(FILSENSNCS, HIGH);
-  delayMicroseconds(12); // Tswr (20) - 8
-#endif
+    // Resolution 400
+    writeLoc(0x12, 0x00);
+    // Resolution 800
+    // writeLoc(0x12, 0x40);
+    // Resolution 1600
+    // writeLoc(0x12, 0x60);
 }
 
 uint8_t FilamentSensor::readLoc(uint8_t addr){
@@ -297,7 +342,30 @@ uint8_t FilamentSensor::readLoc(uint8_t addr){
   delayMicroseconds(4); // Tsrad
   ret=spiRec();
   WRITE(FILSENSNCS, HIGH);
-  delayMicroseconds(50); // dddd
   return(ret);
 }
+
+void FilamentSensor::selfTest(){
+    SERIAL_ECHOLNPGM("Running sensor self test...");
+    writeLoc(0x10, 0x01);
+
+    delay(5000);
+
+    SERIAL_ECHO("CRC0: ");
+    SERIAL_ECHOLN((int)readLoc(0xc));
+    SERIAL_ECHO("CRC1: ");
+    SERIAL_ECHOLN((int)readLoc(0xd));
+    SERIAL_ECHO("CRC2: ");
+    SERIAL_ECHOLN((int)readLoc(0xe));
+    SERIAL_ECHO("CRC3: ");
+    SERIAL_ECHOLN((int)readLoc(0xf));
+
+    massert(readLoc(0xc) == 0xf4);
+    massert(readLoc(0xd) == 0x54);
+    massert(readLoc(0xe) == 0x6d);
+    massert(readLoc(0xf) == 0xeb);
+
+    SERIAL_ECHOLNPGM("sensor self test done");
+}
+
 

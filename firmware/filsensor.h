@@ -27,6 +27,7 @@ class FilamentSensor {
         void init();
         // The polling method
         void run();
+        void selfTest();
 };
 
 extern FilamentSensor filamentSensor;
