@@ -2058,7 +2058,9 @@ FWINLINE void loop() {
             }
 
             // Read filament sensor
-            filamentSensor.run();
+            // static int xc = 0;
+            // if ((xc++ % 5) == 0)
+                filamentSensor.run();
 #if 0
             if (filamentSensor.run()) {
                 //
