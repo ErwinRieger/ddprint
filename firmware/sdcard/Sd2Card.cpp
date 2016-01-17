@@ -207,6 +207,7 @@ uint32_t Sd2Card::cardSize() {
 //------------------------------------------------------------------------------
 void Sd2Card::chipSelectHigh() {
   digitalWrite(chipSelectPin_, HIGH);
+  spiRec(); // Release MISO "The card will release the DataOut line one clock after the CS going high."
 }
 //------------------------------------------------------------------------------
 void Sd2Card::chipSelectLow() {
@@ -214,6 +215,7 @@ void Sd2Card::chipSelectLow() {
   spiInit(spiRate_);
 #endif  // SOFTWARE_SPI
   digitalWrite(chipSelectPin_, LOW);
+  spiRec(); // Activate MISO "The card will resume busy signal (pulling DataOut low) one clock after the falling edge of CS."
 }
 //------------------------------------------------------------------------------
 /** Erase a range of blocks.
@@ -293,7 +295,8 @@ bool Sd2Card::init(uint8_t sckRateID, uint8_t chipSelectPin) {
 
   // set pin modes
   pinMode(chipSelectPin_, OUTPUT);
-  chipSelectHigh();
+  // chipSelectHigh();
+  digitalWrite(chipSelectPin_, HIGH);
   pinMode(SPI_MISO_PIN, INPUT);
   pinMode(SPI_MOSI_PIN, OUTPUT);
   pinMode(SPI_SCK_PIN, OUTPUT);
