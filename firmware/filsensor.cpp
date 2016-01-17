@@ -110,6 +110,17 @@ static void spiInit(uint8_t spiRate) {
   SPSR = spiRate & 1 || spiRate == 6 ? 0 : 1 << SPI2X;
 }
 
+void writeLoc(uint8_t addr, uint8_t value) {
+
+  // Initiate chip reset
+  WRITE(FILSENSNCS, LOW);
+  spiSend(addr | 0x80);
+  delayMicroseconds(14); // Tsww (30) - 16
+  spiSend(value);
+  delayMicroseconds(14); // Tsww (30) - 16
+  WRITE(FILSENSNCS, HIGH);
+}
+
 extern uint16_t tempExtrusionRateTable[];
 #define FTIMER (F_CPU/8.0)
 #define FTIMER1000 (FTIMER/1000.0)
@@ -124,6 +135,17 @@ void FilamentSensor::run() {
     massert(readLoc(0x0)+readLoc(0x3f) == 255);
     massert(readLoc(0x1)+readLoc(0x3e) == 255);
 
+#if 0
+    static uint8_t power = 0;
+    writeLoc(0x1C, power);
+    writeLoc(0x1d, ~power); // complementary reg of 0x1C
+
+    SERIAL_ECHO("power: ");
+    SERIAL_ECHO((int)power);
+    if (power < 255)
+        power++;
+#endif
+
     uint8_t mot = readLoc(0x2);
 
     if (mot & 0x10) {
@@ -133,6 +155,7 @@ void FilamentSensor::run() {
 
     if (mot & 0x80) { // Motion register
 
+#if 0
         // XXX x_delta must be read also?!
         readLoc(0x3); // X_L
         // int16_t y = (int8_t)readLoc(0x4);
@@ -141,11 +164,34 @@ void FilamentSensor::run() {
 
         int8_t xyh = readLoc(0x5); // XY_L
         // y = y + ((int8_t)((xyh & 0xF) << 4))/16; // Y_L
-        int8_t yh = xyh << 4;
+        int16_t yh = xyh << 4;
         if (yh) {
             SERIAL_ECHO("YH: ");
             SERIAL_ECHOLN(yh/16);
             yH += yh * 16;
+        }
+#endif
+
+        static union {
+            struct {
+                uint8_t lo;
+                uint8_t hi;
+            } bytes;
+            int16_t value;
+        } split;
+        // static unsigned char    dx, dy, dxyh;
+
+        // XXX x_delta must be read also?!
+        readLoc(0x3); // X_L
+        // int16_t y = (int8_t)readLoc(0x4);
+        uint8_t y = readLoc(0x4); // Y_L
+        int8_t xyh = readLoc(0x5); // XY_H
+
+        // Compute Delta Y as a 16-bits signed integer
+        split.bytes.lo = y;
+        split.bytes.hi = xyh & 0x0F;
+        if ( split.bytes.hi & 0x08 ) {
+            split.bytes.hi |= 0xF0;             // Sign extension
         }
 
 #if 0
@@ -155,9 +201,9 @@ void FilamentSensor::run() {
             y -= abs(x);
 #endif
 
-        if (! yH) return;
+        if (! split.value) return;
 
-        yPos -= yH;
+        yPos -= split.value;
 
         uint16_t shutter = (readLoc(0x7) << 8) + readLoc(0x8);
 
@@ -168,9 +214,9 @@ void FilamentSensor::run() {
         SERIAL_ECHO(", Shut: ");
         SERIAL_ECHO(shutter);
         SERIAL_ECHO(", y: ");
-        SERIAL_ECHO(y);
-        SERIAL_ECHO(", YH+y: ");
-        SERIAL_ECHO(yH);
+        SERIAL_ECHO((int)y);
+        SERIAL_ECHO(", Y12: ");
+        SERIAL_ECHO(split.value);
         SERIAL_ECHO(", Y: ");
         SERIAL_ECHOLN(yPos);
 
@@ -256,29 +302,18 @@ void FilamentSensor::run() {
     }
 }
 
-void writeLoc(uint8_t addr, uint8_t value) {
-
-  // Initiate chip reset
-  WRITE(FILSENSNCS, LOW);
-  spiSend(addr | 0x80);
-  delayMicroseconds(14); // Tsww (30) - 16
-  spiSend(value);
-  delayMicroseconds(14); // Tsww (30) - 16
-  WRITE(FILSENSNCS, HIGH);
-}
-
 void FilamentSensor::mouse_reset(){
 
     spiInit(6); // scale = pow(2, 3+1), 1Mhz
 
     // Initiate chip reset
     writeLoc(0x3a, 0x5a);
-    delay(1000); // Wait one frame - how long is a frame?
+    delay(10); // Wait one frame - how long is a frame?
 
     // selfTest();
 
     writeLoc(0x2e, 0); // Clear observation register.
-    delay(1000); // Wait one frame
+    delay(10); // Wait one frame
 
     // check observation register, all bits 0-3 must be set.
     uint8_t obs = readLoc(0x2e);
@@ -310,26 +345,33 @@ void FilamentSensor::mouse_reset(){
     // turn on laser
     // writeLoc(0x1a, 0x00);
     // writeLoc(0x1f, 0xC0);
-    writeLoc(0x1a, 0x40);
-    writeLoc(0x1f, 0x80);
+    // writeLoc(0x1a, 0x40); // 2-5 mA
+    // writeLoc(0x1f, 0x80);
     // invalid: writeLoc(0x1a, 0x80);
     // invalid: writeLoc(0x1f, 0x40);
-    // writeLoc(0x1a, 0xC0);
-    // writeLoc(0x1f, 0x00); // complementary reg of 0x1A
+    writeLoc(0x1a, 0xC0); // 4-10 mA
+    writeLoc(0x1f, 0x00); // complementary reg of 0x1A
    
     // writeLoc(0x1C, 0x0);
     // writeLoc(0x1d, 0xFF); // complementary reg of 0x1C
     // writeLoc(0x1C, 0x3f);
     // writeLoc(0x1d, 0xC0); // complementary reg of 0x1C
     // writeLoc(0x1C, 0x7f);
-    // writeLoc(0x1d, 0x80); // complementary reg of 0x1C
-    writeLoc(0x1C, 0xFF);
-    writeLoc(0x1d, 0x0); // complementary reg of 0x1C
+    // writeLoc(0x1d, ~0x7f); // complementary reg of 0x1C
+
+    writeLoc(0x1C, 0x5A);
+    writeLoc(0x1d, ~0x5A); // complementary reg of 0x1C
+
+    // writeLoc(0x1C, 0xFF);
+    // writeLoc(0x1d, 0x0); // complementary reg of 0x1C
+    //
+    // writeLoc(0x1C, 0xdd);
+    // writeLoc(0x1d, 0x22); // complementary reg of 0x1C
 
     // Resolution 400
-    writeLoc(0x12, 0x00);
+    // writeLoc(0x12, 0x00);
     // Resolution 800
-    // writeLoc(0x12, 0x40);
+    writeLoc(0x12, 0x40);
     // Resolution 1600
     // writeLoc(0x12, 0x60);
 }
