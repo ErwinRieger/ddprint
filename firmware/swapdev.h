@@ -26,6 +26,7 @@
 #include "Protothread.h"
 #include "Configuration.h"
 #include "pins.h"
+#include "fastio.h"
 
 #if defined(DDSim)
     #define STD std::
@@ -73,7 +74,7 @@ public:
         if (initialized)
             return true;
 
-        if (!init(SPI_FULL_SPEED, SS_PIN)) {
+        if (!init(SPI_FULL_SPEED, SDSS)) {
 
             SERIAL_ECHO_START;
             SERIAL_ECHOLNPGM(MSG_SD_INIT_FAIL);
@@ -191,133 +192,11 @@ public:
         return readBytes;
     }
 
-    bool _double_block_write_Run() {
-
-        static uint8_t i;
-
-        PT_BEGIN();
-
-        PT_WAIT_UNTIL(busyWriting);
-        busyWriting = true;
-
-        simassert((size % WCMD_BUFFER_SIZE) == 0); // block write after final partial block is invalid
-
-        // ---------------------------------------------------
-        /*
-        #############################################################
-        if (!card.writeStart(bgn, count)) {
-            sdError("Clear FAT/DIR writeStart failed");
-        }
-        #############################################################
-        +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-        // send pre-erase count
-        if (cardAcmd(ACMD23, eraseCount)) {
-            error(SD_CARD_ERROR_ACMD23);
-            goto fail;
-        }
-        +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-        *************************************************************
-        cardCommand(CMD55, 0);
-        cardCommand(cmd, arg);
-        *************************************************************
-        */
-        cardCommand(CMD55, 0);
-        massert( cardCommand(ACMD23, 2) == 0);
-
-        // use address if not SDHC card
-        if (cardCommand(CMD25, writeBlockNumber <<= blockShift)) {
-            error(SD_CARD_ERROR_CMD25);
-            massert(0);
-        }
-
-        // chipSelectHigh();
-
-        // ---------------------------------------------------
-        for (i = 0; i < 2; i++) {
-            /*
-            #############################################################
-            if (!card.writeData(cache.data)) {
-            sdError("Clear FAT/DIR writeData failed");
-            #############################################################
-            +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-            // chipSelectLow();
-            // wait for previous write to finish
-            if (!waitNotBusy(SD_WRITE_TIMEOUT)) goto fail;
-            if (!writeData(WRITE_MULTIPLE_TOKEN, src)) goto fail;
-            chipSelectHigh();
-            return true;
-
-            fail:
-                error(SD_CARD_ERROR_WRITE_MULTIPLE);
-                chipSelectHigh();
-                return false;
-            }
-            +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-            */
-            // if (!waitNotBusy(SD_WRITE_TIMEOUT)) goto fail;
-            PT_WAIT_UNTIL(spiRec() == 0XFF);
-
-            massert( writeData(WRITE_MULTIPLE_TOKEN, writeBuffer + i*512) );
-        }
-        // ---------------------------------------------------
-        /*
-        #############################################################
-        if (!card.writeStop()) {
-                sdError("Clear FAT/DIR writeStop failed");
-        }
-        #############################################################
-        +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-        chipSelectLow();
-        if (!waitNotBusy(SD_WRITE_TIMEOUT)) goto fail;
-        spiSend(STOP_TRAN_TOKEN);
-        if (!waitNotBusy(SD_WRITE_TIMEOUT)) goto fail;
-        chipSelectHigh();
-        return true;
-
-        fail:
-            error(SD_CARD_ERROR_STOP_TRAN);
-            chipSelectHigh();
-            return false;
-        +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-        */
-        // chipSelectLow();
-        // if (!waitNotBusy(SD_WRITE_TIMEOUT)) goto fail;
-        PT_WAIT_UNTIL(spiRec() == 0XFF);
-
-        spiSend(STOP_TRAN_TOKEN);
-        // if (!waitNotBusy(SD_WRITE_TIMEOUT)) goto fail;
-        // chipSelectHigh();
-
-        PT_WAIT_UNTIL(spiRec() == 0XFF);
-
-        chipSelectHigh();
-
-        // ---------------------------------------------------
-
-        //////////////////////////////////////////////////////////////////////////////////          
-
-        size += writePos;
-
-#if defined(HEAVYDEBUG)
-        massert(size == (writeBlockNumber*1024 + writePos));
-#endif
-        // printf("Size: %d bytes\n", size);
-
-        writeBlockNumber += 2;
-        writePos = 0;
-        busyWriting = false;
-
-        PT_RESTART();
-        PT_END();
-    };
-
-    // bool _old_single_block_write_Run() 
     bool Run() {
 
         PT_BEGIN();
 
         PT_WAIT_UNTIL(busyWriting);
-        busyWriting = true;
 
         simassert((size % WCMD_BUFFER_SIZE) == 0); // block write after final partial block is invalid
 
@@ -366,7 +245,7 @@ public:
             // goto fail;
         // }
         // xxx no timeout yet
-        PT_WAIT_UNTIL(spiRec() == 0XFF);
+        PT_WAIT_UNTIL(notBusy());
 
         // response is r2 so get and check two bytes for nonzero
         // xxx cardCommand() does some unneccessary stuff like waitNotBusy();
@@ -396,6 +275,21 @@ public:
         PT_RESTART();
         PT_END();
     };
+
+    bool notBusy() {
+
+        // Check if card is selected
+        if (READ(SDSS)) {
+            chipSelectLow();
+        }
+
+        if (spiRec() == 0XFF) {
+            return true;
+        }
+
+        chipSelectHigh();
+        return false;
+    }
 
 };
 
