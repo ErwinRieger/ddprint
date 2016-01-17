@@ -616,6 +616,7 @@ class FillBufferTask : public Protothread {
                 sDReader.setBytesToRead2();
                 PT_WAIT_THREAD(sDReader);
 
+                // xxx unused:
                 filamentSensor.enabled = true;
 
 #if defined(USEExtrusionRateTable)
@@ -2052,20 +2053,8 @@ FWINLINE void loop() {
             }
 
             // Read filament sensor
-            // static int xc = 0;
-            // if ((xc++ % 5) == 0)
-                filamentSensor.run();
-#if 0
-            if (filamentSensor.run()) {
-                //
-                // New filament slip value available
-                //
-            }
+            filamentSensor.run();
 
-            //
-            // 
-            //
-#endif
             timer100mS = ts;
         }
         timer10mS = ts;
