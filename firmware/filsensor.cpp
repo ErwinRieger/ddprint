@@ -106,7 +106,6 @@ static void spiInit(uint8_t spiRate) {
   // See avr processor documentation
   // SPCR = (1 << SPE) | (1 << MSTR) | (spiRate >> 1);
   SPCR = (1 << SPE) | (1 << MSTR) | (spiRate >> 1) | (1<<CPHA) | (1<<CPOL);
-  // SPCR = (1 << SPE) | (1 << MSTR) | (spiRate >> 1) | (1<<CPOL);
   SPSR = spiRate & 1 || spiRate == 6 ? 0 : 1 << SPI2X;
 }
 
@@ -128,12 +127,14 @@ extern uint16_t tempExtrusionRateTable[];
 
 void FilamentSensor::run() {
 
-    spiInit(6); // scale = pow(2, 3+1), 1Mhz
+    spiInit(3); // scale = pow(2, 3+1), 1Mhz
 
+#if defined(FilSensorDebug)
     massert(readLoc(0x0) == 0x30);
     massert(readLoc(0x1) == 0x3);
     massert(readLoc(0x0)+readLoc(0x3f) == 255);
     massert(readLoc(0x1)+readLoc(0x3e) == 255);
+#endif
 
 #if 0
     static uint8_t power = 0;
@@ -304,7 +305,7 @@ void FilamentSensor::run() {
 
 void FilamentSensor::mouse_reset(){
 
-    spiInit(6); // scale = pow(2, 3+1), 1Mhz
+    spiInit(3); // scale = pow(2, 3+1), 1Mhz
 
     // Initiate chip reset
     writeLoc(0x3a, 0x5a);
