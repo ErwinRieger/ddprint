@@ -70,7 +70,7 @@
 
     #define SDPOWER            -1
     // Chip select SDCard
-    // #define SDSS               53
+    #define SDSS               53
     #define LED_PIN            13
 
     #define FAN_PIN            9 // (Sprinter config)
