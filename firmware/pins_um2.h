@@ -54,7 +54,7 @@
 #define SDPOWER            -1
 
 // Chip select SDCard
-// #define SDSS               53
+#define SDSS               53
 #define MAX6675_SS         13
 #define LED_PIN            8
 #define FAN_PIN            7
