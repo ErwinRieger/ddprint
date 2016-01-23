@@ -33,9 +33,9 @@ FilamentSensor::FilamentSensor() {
     // enabled = false;
     enabled = true;
 
-    SET_INPUT(FILSENSMISO);
-    SET_OUTPUT(FILSENSMOSI);
-    SET_OUTPUT(FILSENSSCLK);
+    // SET_INPUT(FILSENSMISO);
+    // SET_OUTPUT(FILSENSMOSI);
+    // SET_OUTPUT(FILSENSSCLK);
     // Pull high chip select of filament sensor to free the
     // SPI bus (for sdcard).
     SET_OUTPUT(FILSENSNCS);
@@ -59,6 +59,24 @@ void FilamentSensor::init() {
     if (configReg2 & 0x10) {
         SERIAL_ECHOPGM("Sensor config 0x36: ");
         SERIAL_ECHOLN((int)configReg2);
+
+        switch ((configReg2 & 0xf) >> 1) {
+            case 0x01:
+                SERIAL_ECHOLNPGM("Sensor resolution 400cpi");
+                break;
+            case 0x02:
+                SERIAL_ECHOLNPGM("Sensor resolution 800cpi");
+                break;
+            case 0x03:
+                SERIAL_ECHOLNPGM("Sensor resolution 1200cpi");
+                break;
+            case 0x04:
+                SERIAL_ECHOLNPGM("Sensor resolution 1600cpi");
+                break;
+            case 0x05:
+                SERIAL_ECHOLNPGM("Sensor resolution 2000cpi");
+                break;
+        }
     }
     else {
 
@@ -147,31 +165,45 @@ void FilamentSensor::run() {
         power++;
 #endif
 
+#if defined(bust)
+    // burst
+    digitalWrite(NCS, LOW);
+
+    SPI.transfer(0x42);
+    delayMicroseconds(4); // Tsrad
+    uint8_t mot=SPI.transfer(0);
+    delayMicroseconds(4); // Tsrad
+    uint8_t x=SPI.transfer(0);
+    delayMicroseconds(4); // Tsrad
+    uint8_t y=SPI.transfer(0);
+    delayMicroseconds(4); // Tsrad
+    uint8_t xyh=SPI.transfer(0);
+    delayMicroseconds(4); // Tsrad
+    uint8_t squal = SPI.transfer(0);
+    delayMicroseconds(4); // Tsrad
+    uint16_t shutter = (readLoc(0x7) << 8) + readLoc(0x8);
+    // end burst
+
+    digitalWrite(NCS, HIGH);
+#else
     uint8_t mot = readLoc(0x2);
+#endif
 
     if (mot & 0x10) {
         SERIAL_ERROR_START;
         SERIAL_ECHOLNPGM("FilSensor: X/Y overflow!");
     }
 
-    if (mot & 0x80) { // Motion register
-
-#if 0
-        // XXX x_delta must be read also?!
-        readLoc(0x3); // X_L
-        // int16_t y = (int8_t)readLoc(0x4);
-        int16_t y;
-        int16_t yH = y = readLoc(0x4);
-
-        int8_t xyh = readLoc(0x5); // XY_L
-        // y = y + ((int8_t)((xyh & 0xF) << 4))/16; // Y_L
-        int16_t yh = xyh << 4;
-        if (yh) {
-            SERIAL_ECHO("YH: ");
-            SERIAL_ECHOLN(yh/16);
-            yH += yh * 16;
-        }
+#if defined(FilSensorDebug)
+    if (abs(yPos) > 0 and (millis() - lastTS) > 5000) {
+        // xxx debug: use x direction to reset y...
+        Serial.println("\n timeout, yyreset...\n");
+        // xPos = 0;
+        yPos = 0;
+    }
 #endif
+
+    if (mot & 0x80) { // Motion register
 
         static union {
             struct {
@@ -180,13 +212,24 @@ void FilamentSensor::run() {
             } bytes;
             int16_t value;
         } split;
-        // static unsigned char    dx, dy, dxyh;
 
+#if !defined(burst)
         // XXX x_delta must be read also?!
         readLoc(0x3); // X_L
         // int16_t y = (int8_t)readLoc(0x4);
         uint8_t y = readLoc(0x4); // Y_L
         int8_t xyh = readLoc(0x5); // XY_H
+#endif
+
+#if 0 
+        // Compute Delta X as a 16-bits signed integer
+        split.bytes.lo = x;
+        split.bytes.hi = (xyh >> 4) & 0x0F;
+        if ( split.bytes.hi & 0x08 ) {
+            split.bytes.hi |= 0xF0;             // Sign extension
+        }
+        xPos += split.value;
+#endif
 
         // Compute Delta Y as a 16-bits signed integer
         split.bytes.lo = y;
@@ -202,16 +245,22 @@ void FilamentSensor::run() {
             y -= abs(x);
 #endif
 
+        if (abs(split.value) > 0)
+            lastTS = millis();
+
         if (! split.value) return;
 
-        yPos -= split.value;
+        yPos += split.value;
 
+#if !defined(burst)
+        uint8_t squal = readLoc(0x6);
         uint16_t shutter = (readLoc(0x7) << 8) + readLoc(0x8);
+#endif
 
         // SERIAL_ECHO("X: ");
         // SERIAL_ECHO((int)x);
         SERIAL_ECHO("Squal: ");
-        SERIAL_ECHO((int)readLoc(0x6));
+        SERIAL_ECHO((int)squal);
         SERIAL_ECHO(", Shut: ");
         SERIAL_ECHO(shutter);
         SERIAL_ECHO(", y: ");
@@ -219,7 +268,13 @@ void FilamentSensor::run() {
         SERIAL_ECHO(", Y12: ");
         SERIAL_ECHO(split.value);
         SERIAL_ECHO(", Y: ");
-        SERIAL_ECHOLN(yPos);
+        SERIAL_ECHO(yPos);
+        SERIAL_ECHO(", minpix: ");
+        SERIAL_ECHO((int) readLoc(0xb));
+        SERIAL_ECHO(", avgpix: ");
+        SERIAL_ECHO((int)readLoc(0xa) * 1.515);
+        SERIAL_ECHO(", maxpix: ");
+        SERIAL_ECHOLN((int) readLoc(0x9));
 
         int32_t ds = current_pos_steps[E_AXIS] - lastASteps; // Requested extruded length
 
@@ -309,12 +364,12 @@ void FilamentSensor::mouse_reset(){
 
     // Initiate chip reset
     writeLoc(0x3a, 0x5a);
-    delay(10); // Wait one frame - how long is a frame?
+    delay(50); // Wait one frame - how long is a frame?
 
     // selfTest();
 
     writeLoc(0x2e, 0); // Clear observation register.
-    delay(10); // Wait one frame
+    delay(50); // Wait one frame
 
     // check observation register, all bits 0-3 must be set.
     uint8_t obs = readLoc(0x2e);
@@ -343,25 +398,33 @@ void FilamentSensor::mouse_reset(){
     // xiv. Write 0xB9 to register 0x37
     writeLoc(0x37, 0xB9);
 
+    // selfTest();
+
     // turn on laser
-    // writeLoc(0x1a, 0x00);
+    // writeLoc(0x1a, 0x00); // 0.9-3 mA
     // writeLoc(0x1f, 0xC0);
-    // writeLoc(0x1a, 0x40); // 2-5 mA
-    // writeLoc(0x1f, 0x80);
+    writeLoc(0x1a, 0x40); // 2-5 mA
+    writeLoc(0x1f, 0x80);
     // invalid: writeLoc(0x1a, 0x80);
     // invalid: writeLoc(0x1f, 0x40);
-    writeLoc(0x1a, 0xC0); // 4-10 mA
-    writeLoc(0x1f, 0x00); // complementary reg of 0x1A
+    // writeLoc(0x1a, 0xC0); // 4-10 mA
+    // writeLoc(0x1f, 0x00); // complementary reg of 0x1A
    
     // writeLoc(0x1C, 0x0);
     // writeLoc(0x1d, 0xFF); // complementary reg of 0x1C
     // writeLoc(0x1C, 0x3f);
     // writeLoc(0x1d, 0xC0); // complementary reg of 0x1C
+    // writeLoc(0x1C, 0x60);
+    // writeLoc(0x1d, ~0x60); // complementary reg of 0x1C
+    writeLoc(0x1C, 0x7f);
+    writeLoc(0x1d, ~0x7f); // complementary reg of 0x1C
     // writeLoc(0x1C, 0x7f);
     // writeLoc(0x1d, ~0x7f); // complementary reg of 0x1C
 
-    writeLoc(0x1C, 0x5A);
-    writeLoc(0x1d, ~0x5A); // complementary reg of 0x1C
+    // writeLoc(0x1C, 0x5A);
+    // writeLoc(0x1d, ~0x5A); // complementary reg of 0x1C
+    // writeLoc(0x1C, 0x0);
+    // writeLoc(0x1d, ~0x0); // complementary reg of 0x1C 
 
     // writeLoc(0x1C, 0xFF);
     // writeLoc(0x1d, 0x0); // complementary reg of 0x1C
@@ -371,10 +434,14 @@ void FilamentSensor::mouse_reset(){
 
     // Resolution 400
     // writeLoc(0x12, 0x00);
-    // Resolution 800
-    writeLoc(0x12, 0x40);
+    // Resolution 1200
+    // writeLoc(0x12, 0x40);
     // Resolution 1600
     // writeLoc(0x12, 0x60);
+    // Resolution 2000
+    // writeLoc(0x36, 0x1a);
+
+    // selfTest();
 }
 
 uint8_t FilamentSensor::readLoc(uint8_t addr){
