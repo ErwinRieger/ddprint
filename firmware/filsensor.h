@@ -4,11 +4,13 @@
 class FilamentSensor {
 
         void mouse_reset();
+        void snoop_reset();
         // unsigned int readLoc(uint8_t addr);
         uint8_t readLoc(uint8_t addr);
         void pushbyte(uint8_t c);
         // unsigned int pullbyte();
         uint8_t pullbyte();
+        void getYPos();
 
         int32_t lastASteps;
         int32_t lastYPos;
