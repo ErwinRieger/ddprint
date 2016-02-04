@@ -119,7 +119,7 @@ def home(parser, fakeHomingEndstops=False, force=False):
             if not curPosMM.equal(homePosMM, "Z"):
 
                 parser.execute_line("G0 F%d Z%f" % (
-                    PrinterProfile.getMaxFeedrate(Z_AXIS)*60, homePosMM.Z))
+                    PrinterProfile.getMaxFeedrate(util.Z_AXIS)*60, homePosMM.Z))
 
             if not curPosMM.equal(homePosMM, "XY"):
 
