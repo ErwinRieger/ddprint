@@ -27,6 +27,8 @@ FilamentSensor filamentSensor;
 
 FilamentSensor::FilamentSensor() {
 
+    return;
+
     lastASteps = lastYPos = yPos = 0;
     slip = 0.0;
     // maxTempSpeed = 0;
@@ -45,6 +47,8 @@ FilamentSensor::FilamentSensor() {
 }
 
 void FilamentSensor::init() {
+
+    return;
 
     mouse_reset(); // does spiInit()
     // snoop_reset();
