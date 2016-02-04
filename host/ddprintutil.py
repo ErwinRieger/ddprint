@@ -361,12 +361,6 @@ def commonInit(args, parser):
 
 ####################################################################################################
 
-def isHomed(printer):
-    res = printer.query(CmdGetHomed)
-    return res == (1, 1, 1)
-
-####################################################################################################
-
 def getVirtualPos(parser):
 
     planner = parser.planner
@@ -374,7 +368,7 @@ def getVirtualPos(parser):
 
     # Get currend stepped pos
     res = printer.query(CmdGetPos)
-    print "endstop state:", res
+    print "Printer home pos:", res
 
     curPosMM = MyPoint(
         X = res[0] / float(parser.steps_per_mm[0]),
@@ -388,191 +382,6 @@ def getVirtualPos(parser):
     parser.set_position(curPosMM)
 
     return curPosMM
-
-####################################################################################################
-
-def home(parser, fakeHomingEndstops=False, force=False):
-
-    planner = parser.planner
-    printer = planner.printer
-
-    print "*"
-    print "* Start homing..."
-    print "*"
-    if isHomed(printer) and not force:
-        print "Printer is homed already..."
-
-        # Send init command
-        printer.sendPrinterInit()
-
-        # Get current pos from printer and set our virtual pos
-        curPosMM = getVirtualPos(parser)
-
-        (homePosMM, homePosStepped) = planner.getHomePos()
-
-        # Move to home
-        if not curPosMM.equal(homePosMM, "XYZ"):
-
-            #
-            # Z Achse isoliert und als erstes bewegen, um zusammenstoss mit den klammern
-            # der buildplatte oder mit objekten auf der druckplatte zu vermeiden.
-            #
-            if not curPosMM.equal(homePosMM, "Z"):
-
-                parser.execute_line("G0 F%d Z%f" % (
-                    PrinterProfile.getMaxFeedrate(Z_AXIS)*60, homePosMM.Z))
-
-            if not curPosMM.equal(homePosMM, "XY"):
-
-                parser.execute_line("G0 F%d X%f Y%f" % (
-                    PrinterProfile.getMaxFeedrate(X_AXIS)*60, 
-                    homePosMM.X, homePosMM.Y))
-
-            planner.finishMoves()
-            printer.sendCommandParam(CmdMove, p1=MoveTypeNormal, wantReply="ok")
-            printer.sendCommand(CmdEOT, wantReply="ok")
-
-            printer.waitForState(StateIdle, wait=0.1)
-
-            # res = printer.query(CmdGetEndstops)
-            # print "endstop state:", res
-
-        #
-        # Set Virtual E-pos 0:
-        #
-        parser.set_position(homePosMM)
-
-        print "*"
-        print "* Done homing..."
-        print "*"
-        return
-
-    #
-    # Z Achse isoliert und als erstes bewegen, um zusammenstoss mit den klammern
-    # der buildplatte zu vermeiden.
-    #
-    for dim in [Z_AXIS, X_AXIS, Y_AXIS]:
-
-        printer.sendPrinterInit()
-
-        # Send homing moves
-        # xxx create Moves directly
-        parser.set_position(planner.zeroPos)
-        parser.execute_line("G0 F%d %s%f" % (planner.HOMING_FEEDRATE[dim]*60, dimNames[dim], planner.MAX_POS[dim] * planner.HOME_DIR[dim] * 1.25)) # Move towards endstop
-        planner.finishMoves()
-
-        # Send homing command
-        print "---------------- send homing cmd 1 on axis", dimNames[dim]
-        printer.sendCommandParam(CmdMove, p1=MoveTypeHoming, wantReply="ok")
-        printer.sendCommand(CmdEOT, wantReply="ok")
-
-        if fakeHomingEndstops:
-            time.sleep(0.1)
-            printer.sendCommand(CmdDisableStepperIsr, wantReply="ok")
-
-        printer.waitForState(StateIdle, wait=0.1)
-
-        # Check, if enstop was pressed
-        res = printer.query(CmdGetEndstops)
-        print "endstop state:", res
-
-        if res[dim][0] or fakeHomingEndstops:
-            print "Endstop %d hit at position: %d - good" % (dim, res[dim][1])
-        else:
-            print "Error, Endstop %d NOT hit!" % dim
-            assert(0)
-
-        printer.sendPrinterInit()
-
-        parser.set_position(planner.zeroPos)
-        parser.execute_line("G0 F%d %s%f" % (planner.HOMING_FEEDRATE[dim]*60, dimNames[dim], planner.HOME_RETRACT_MM * -1 * planner.HOME_DIR[dim])) # Back off
-        planner.finishMoves()
-
-        # Send homing command
-        print "---------------- send homing cmd 2"
-        printer.sendCommandParam(CmdMove, p1=MoveTypeHoming, wantReply="ok")
-        printer.sendCommand(CmdEOT, wantReply="ok")
-
-        printer.waitForState(StateIdle, wait=0.1)
-
-        # Check, if enstop was opened
-        res = printer.query(CmdGetEndstops)
-        print "endstop state:", res
-
-        if not res[dim][0]:
-            print "Endstop %d opened at position: %d - good" % (dim, res[dim][1])
-        else:
-            print "Error, Endstop %d NOT oken!" % dim
-            assert(0)
-
-        printer.sendPrinterInit()
-
-        parser.set_position(planner.zeroPos)
-        parser.execute_line("G0 F%d %s%f" % (planner.HOMING_FEEDRATE[dim]*60/3, dimNames[dim], planner.HOME_RETRACT_MM*1.5*planner.HOME_DIR[dim])) # Move towards slowly
-        planner.finishMoves()
-
-        # Send homing command
-        print "---------------- send homing cmd 3"
-        printer.sendCommandParam(CmdMove, p1=MoveTypeHoming, wantReply="ok")
-        printer.sendCommand(CmdEOT, wantReply="ok")
-
-        if fakeHomingEndstops:
-            # time.sleep(0.1)
-            printer.sendCommand(CmdDisableStepperIsr, wantReply="ok")
-
-        printer.waitForState(StateIdle, wait=0.1)
-
-        # Check, if enstop was pressed
-        res = printer.query(CmdGetEndstops)
-        print "endstop state:", res
-
-        if res[dim][0] or fakeHomingEndstops:
-            print "Endstop %d hit at position: %d - good" % (dim, res[dim][1])
-        else:
-            print "Error, Endstop %d NOT hit!" % dim
-            assert(0)
-
-        printer.sendPrinterInit()
-
-        parser.set_position(planner.zeroPos)
-        parser.execute_line("G0 F%d %s%f" % (planner.HOMING_FEEDRATE[dim]*60/3, dimNames[dim], planner.HOME_RETRACT_MM * -1 * planner.HOME_DIR[dim])) # Back off
-        planner.finishMoves()
-
-        # Send homing command
-        print "---------------- send homing cmd 4"
-        printer.sendCommandParam(CmdMove, p1=MoveTypeHoming, wantReply="ok")
-        printer.sendCommand(CmdEOT, wantReply="ok")
-
-        printer.waitForState(StateIdle, wait=0.1)
-
-        # Check, if enstop was opened
-        res = printer.query(CmdGetEndstops)
-        print "endstop state:", res
-
-        if not res[dim][0]:
-            print "Endstop %d opened at position: %d - good" % (dim, res[dim][1])
-        else:
-            print "Error, Endstop %d NOT oken!" % dim
-            assert(0)
-
-
-    #
-    # Set position in steps on the printer side and set our 'virtual position':
-    #
-    # xxx set end-of-print retraction e-pos also here?
-    #
-    # parser.set_position(planner.homePosMM)
-    # payload = struct.pack("<iiiii", *planner.homePosStepped)
-    (homePosMM, homePosStepped) = planner.getHomePos()
-    parser.set_position(homePosMM)
-    payload = struct.pack("<iiiii", *homePosStepped)
-    printer.sendCommand(CmdSetHomePos, binPayload=payload, wantReply="ok")
-
-    print "*"
-    print "* Done homing..."
-    # res = printer.query(CmdGetEndstops)
-    # print "endstop state:", res
-    print "*"
 
 ####################################################################################################
 
@@ -647,7 +456,7 @@ def manualMove(parser, axis, distance, absolute=False):
 
     printer.sendPrinterInit()
 
-    assert(isHomed(printer))
+    assert(printer.isHomed())
 
     assert(abs(distance) <= 1000)
 
@@ -1011,7 +820,7 @@ def stopMove(args, parser):
     planner = parser.planner
     printer = planner.printer
 
-    if isHomed(printer):
+    if printer.isHomed():
         parser.reset()
         planner.reset()
         home(parser, args.fakeendstop)

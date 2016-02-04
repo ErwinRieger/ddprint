@@ -460,9 +460,11 @@ class Printer(Serial):
         # Notreached
 
     # Query info from printer
-    def query(self, cmd, binPayload=None):
+    def query(self, cmd, binPayload=None, doLog=True):
 
-        self.gui.logSend("query: ", CommandNames[cmd])
+        if doLog:
+            self.gui.logSend("query: ", CommandNames[cmd])
+
         binary = self.buildBinaryCommand(struct.pack("<B", cmd), binPayload=binPayload);
 
         reply = self.send2(binary, "Res:")
@@ -475,7 +477,7 @@ class Printer(Serial):
 
     def getStatus(self):
         valueNames = ["state", "t0", "t1", "Swap", "SDReader", "StepBuffer", "StepBufUnderRuns", "targetT1"]
-        statusList = self.query(CmdGetStatus)
+        statusList = self.query(CmdGetStatus, doLog=False)
 
         statusDict = {}
         for i in range(len(valueNames)):
@@ -530,6 +532,31 @@ class Printer(Serial):
 
             if temps[heater] <= wait:
                 break
+
+    ####################################################################################################
+
+    def isHomed(self):
+        res = self.query(CmdGetHomed)
+        return res == (1, 1, 1)
+
+    ####################################################################################################
+
+    def endStopTriggered(self, dim, fakeHomingEndstops=False):
+
+        # Check, if enstop was pressed
+        res = self.query(CmdGetEndstops)
+        print "endstop state:", res
+
+        if res[dim][0] or fakeHomingEndstops:
+            print "Endstop %d hit at position: %d" % (dim, res[dim][1])
+            return True
+
+        print "Endstop %d open at position: %d" % (dim, res[dim][1])
+        return False
+
+
+
+
 
 
 

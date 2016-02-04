@@ -869,11 +869,27 @@ Printer::Printer() {
     homed[0] = false;
     homed[1] = false;
     homed[2] = false;
+    swapErased = false;
 };
 
 void Printer::printerInit() {
 
     // XXX handle already running state
+
+    //
+    // Erase sd-swap to speed up block writes.
+    //
+    if (! swapErased) {
+
+        unsigned long eStart = millis();
+        massert(swapDev.erase(0, swapDev.cardSize() - 1));
+        SERIAL_ECHO("erase time ");
+        SERIAL_ECHO(swapDev.cardSize());
+        SERIAL_ECHO(" blocks (mS):");
+        SERIAL_PROTOCOLLN(millis() - eStart);
+
+        swapErased = true;
+    }
 
 //xxxxxxxxxxx
 sDReader.flush();
@@ -881,16 +897,6 @@ fillBufferTask.flush();
 stepBuffer.flush();
 
     swapDev.reset();
-
-    //
-    // Erase sd-swap to speed up block writes.
-    //
-    unsigned long eStart = millis();
-    massert(swapDev.erase(0, swapDev.cardSize() - 1));
-    SERIAL_ECHO("erase time ");
-    SERIAL_ECHO(swapDev.cardSize());
-    SERIAL_ECHO(" blocks (mS):");
-    SERIAL_PROTOCOLLN(millis() - eStart);
 
 #if 0
     if (! card.isOk())

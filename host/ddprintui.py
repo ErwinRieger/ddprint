@@ -25,7 +25,7 @@ logging.basicConfig(filename=datetime.datetime.now().strftime("/tmp/ddprint_%y.%
 
 import npyscreen , time, curses, sys, threading, Queue
 import argparse
-import ddprint, stoppableThread
+import ddprint, stoppableThread, ddhome
 import ddprintutil as util
 
 from serial import SerialException
@@ -336,7 +336,7 @@ class MainForm(npyscreen.Form):
             self.parser.reset()
             self.planner.reset()
 
-            util.home(self.parser, self.args.fakeendstop)
+            ddhome.home(self.parser, self.args.fakeendstop)
             self.printer.sendPrinterInit()
 
             # Send heat up  command
@@ -420,7 +420,7 @@ class MainForm(npyscreen.Form):
             self.printer.coolDown(HeaterEx1)
             self.printer.coolDown(HeaterBed)
 
-            util.home(self.parser, self.args.fakeendstop)
+            ddhome.home(self.parser, self.args.fakeendstop)
 
             self.printer.sendCommand(CmdDisableSteppers, wantReply="ok")
 

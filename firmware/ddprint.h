@@ -114,6 +114,8 @@ class Printer {
 
         bool eotReceived;
         bool homed[3];
+        // We erase entire swapdev (sdcard) to speed up writes.
+        bool swapErased;
 
     public:
 

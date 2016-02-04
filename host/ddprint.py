@@ -52,7 +52,7 @@ import argparse
 
 logging.basicConfig(level=logging.DEBUG)
 
-import ddprintutil as util, gcodeparser, packedvalue
+import ddprintutil as util, gcodeparser, packedvalue, ddhome
 # from move import Move
 
 from ddprofile import PrinterProfile, MatProfile, NozzleProfile
@@ -625,7 +625,7 @@ def main():
         printer.coolDown(HeaterEx1)
         printer.coolDown(HeaterBed)
 
-        util.home(parser, args.fakeendstop)
+        ddhome.home(parser, args.fakeendstop)
 
         printer.sendCommand(CmdDisableSteppers, wantReply="ok")
 
@@ -751,7 +751,7 @@ def main():
     elif args.mode == 'home':
 
         printer.commandInit(args)
-        util.home(parser, args.fakeendstop)
+        ddhome.home(parser, args.fakeendstop)
 
     elif args.mode == 'zRepeatability':
 
