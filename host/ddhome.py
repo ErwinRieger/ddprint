@@ -24,6 +24,7 @@ import struct
 from ddprintcommands import *
 from ddprintstates import *
 from ddprintconstants import dimNames
+from ddprofile import PrinterProfile
 
 # debugMoves = True
 # debugMoves = False
@@ -123,7 +124,7 @@ def home(parser, fakeHomingEndstops=False, force=False):
             if not curPosMM.equal(homePosMM, "XY"):
 
                 parser.execute_line("G0 F%d X%f Y%f" % (
-                    PrinterProfile.getMaxFeedrate(X_AXIS)*60, 
+                    PrinterProfile.getMaxFeedrate(util.X_AXIS)*60, 
                     homePosMM.X, homePosMM.Y))
 
             planner.finishMoves()

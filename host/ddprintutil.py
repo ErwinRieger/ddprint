@@ -20,7 +20,7 @@
 #*/
 
 import struct, time, math, tty, termios, sys, types, json
-import ddprintconstants
+import ddprintconstants, ddhome
 
 from ddprintcommands import *
 from ddprintstates import *
@@ -355,7 +355,7 @@ def commonInit(args, parser):
 
     printer.commandInit(args)
 
-    home(parser, args.fakeendstop)
+    ddhome.home(parser, args.fakeendstop)
 
     printer.sendPrinterInit()
 
@@ -432,7 +432,7 @@ def zRepeatability(parser):
 
     feedrate = PrinterProfile.getMaxFeedrate(Z_AXIS)
 
-    home(parser, args.fakeendstop)
+    ddhome.home(parser, args.fakeendstop)
 
     printer.sendPrinterInit()
 
@@ -570,7 +570,7 @@ def removeFilament(args, parser):
 
     printer.commandInit(args)
 
-    home(parser, args.fakeendstop)
+    ddhome.home(parser, args.fakeendstop)
 
     printer.sendPrinterInit()
 
@@ -635,7 +635,7 @@ def bedLeveling(args, parser):
     payload = struct.pack("<%dpf" % (len("add_homeing_z")+1), "add_homeing_z", 0)
     printer.sendCommand(CmdWriteEepromFloat, binPayload=payload, wantReply="ok")
 
-    home(parser, args.fakeendstop, True)
+    ddhome.home(parser, args.fakeendstop, True)
 
     zFeedrate = PrinterProfile.getMaxFeedrate(Z_AXIS)
     kbd = GetChar("Enter (u)p (d)own (U)p 1mm (D)own 1mm (2-5) Up Xmm (q)uit")
@@ -749,7 +749,7 @@ def bedLeveling(args, parser):
 
     raw_input("\nAdjust right fron buildplate screw and press <Return>\n")
 
-    home(parser, args.fakeendstop)
+    ddhome.home(parser, args.fakeendstop)
 
 ####################################################################################################
 
@@ -823,7 +823,7 @@ def stopMove(args, parser):
     if printer.isHomed():
         parser.reset()
         planner.reset()
-        home(parser, args.fakeendstop)
+        ddhome.home(parser, args.fakeendstop)
 
     printer.sendCommand(CmdStopMove, wantReply="ok")
     printer.sendCommand(CmdDisableSteppers, wantReply="ok")
