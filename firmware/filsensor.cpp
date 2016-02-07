@@ -3,10 +3,13 @@
 
 #include "ddprint.h"
 #include "filsensor.h"
-// #include "MarlinSerial.h"
 #include "stepper.h"
 #include "temperature.h"
 #include "fastio.h"
+
+// #include "adns9800fwa4.h"
+// #include "adns9800fwa5.h"
+#include "adns9800fwa6.h"
 
 /*
  * Estimate Polling rate:
@@ -27,8 +30,6 @@ FilamentSensor filamentSensor;
 
 FilamentSensor::FilamentSensor() {
 
-    return;
-
     lastASteps = lastYPos = yPos = 0;
     slip = 0.0;
     // maxTempSpeed = 0;
@@ -42,22 +43,29 @@ FilamentSensor::FilamentSensor() {
     // SET_OUTPUT(FILSENSSCLK);
     // Pull high chip select of filament sensor to free the
     // SPI bus (for sdcard).
-    SET_OUTPUT(FILSENSNCS);
     WRITE(FILSENSNCS, HIGH);
+    SET_OUTPUT(FILSENSNCS);
+}
+
+static void spiInit(uint8_t spiRate) {
+  // See avr processor documentation
+  SPCR = (1 << SPE) | (1 << MSTR) | (spiRate >> 1) | (1<<CPHA) | (1<<CPOL);
+  SPSR = spiRate & 1 || spiRate == 6 ? 0 : 1 << SPI2X;
 }
 
 void FilamentSensor::init() {
 
-    return;
-
-    mouse_reset(); // does spiInit()
-    // snoop_reset();
+    spiInit(3); // scale = pow(2, 3+1), 1Mhz
 
     SERIAL_ECHOPGM("Filament sensor Prod: ");
-    SERIAL_ECHOLN((int)readLoc(0x0)); // Product
-    SERIAL_ECHOPGM("Filament sensor Rev: ");
-    SERIAL_ECHOLN((int)readLoc(0x1)); // Rev
+    MSerial.println(readLoc(REG_Product_ID), HEX); // Product
 
+    SERIAL_ECHOPGM("Filament sensor Rev: ");
+    MSerial.println(readLoc(REG_Revision_ID), HEX); // Rev
+
+    reset();
+
+    /*
     uint8_t configReg1 = readLoc(0x12);
     SERIAL_ECHOPGM("Filament sensor config: ");
     SERIAL_ECHOLN((int)configReg1);
@@ -117,21 +125,28 @@ void FilamentSensor::init() {
     SERIAL_ECHOPGM("Register MOT: ");
     SERIAL_ECHOLN((int)mot);
 
-    if (mot & 0x4) {
+    if (mot & 0x40) {
         SERIAL_ERROR_START;
         SERIAL_ECHOLNPGM("FilSensor: FAULT!");
     }
-    if ((mot & 0x8) == 0) {
+    if ((mot & 0x20) == 0) {
         SERIAL_ERROR_START;
         SERIAL_ECHOLNPGM("FilSensor: Laser off!");
     }
+    */
 }
 
-static void spiInit(uint8_t spiRate) {
-  // See avr processor documentation
-  // SPCR = (1 << SPE) | (1 << MSTR) | (spiRate >> 1);
-  SPCR = (1 << SPE) | (1 << MSTR) | (spiRate >> 1) | (1<<CPHA) | (1<<CPOL);
-  SPSR = spiRate & 1 || spiRate == 6 ? 0 : 1 << SPI2X;
+uint8_t FilamentSensor::readLoc(uint8_t addr){
+  uint8_t ret=0;
+
+  WRITE(FILSENSNCS, LOW);
+  spiSend(addr);
+  // delayMicroseconds(4); // Tsrad
+  delayMicroseconds(10); // Tsrad
+  ret=spiRec();
+  WRITE(FILSENSNCS, HIGH);
+  delayMicroseconds(10); // Tsrad
+  return(ret);
 }
 
 void writeLoc(uint8_t addr, uint8_t value) {
@@ -139,9 +154,11 @@ void writeLoc(uint8_t addr, uint8_t value) {
   // Initiate chip reset
   WRITE(FILSENSNCS, LOW);
   spiSend(addr | 0x80);
-  delayMicroseconds(14); // Tsww (30) - 16
+  // delayMicroseconds(14); // Tsww (30) - 16
+  delayMicroseconds(20); // Tsww (30) - 16
   spiSend(value);
-  delayMicroseconds(14); // Tsww (30) - 16
+  // delayMicroseconds(14); // Tsww (30) - 16
+  delayMicroseconds(20); // Tsww (30) - 16
   WRITE(FILSENSNCS, HIGH);
 }
 
@@ -151,8 +168,6 @@ extern uint16_t tempExtrusionRateTable[];
 #include <pins_arduino.h>
 
 void FilamentSensor::getYPos() {
-
-    spiInit(3); // scale = pow(2, 3+1), 1Mhz
 
     uint8_t mot = readLoc(0x2);
 
@@ -240,6 +255,8 @@ void FilamentSensor::run() {
 
     if (ds > 72) {
 
+        spiInit(3); // scale = pow(2, 3+1), 1Mhz
+
         getYPos();
 
         uint32_t ts = millis();
@@ -263,15 +280,14 @@ void FilamentSensor::run() {
         lastTS = ts;
         lastASteps = current_pos_steps[E_AXIS];
     }
-    spiInit(3); // scale = pow(2, 3+1), 1Mhz
 
     return;
 
 #if defined(FilSensorDebug)
-    massert(readLoc(0x0) == 0x30);
-    massert(readLoc(0x1) == 0x3);
-    massert(readLoc(0x0)+readLoc(0x3f) == 255);
-    massert(readLoc(0x1)+readLoc(0x3e) == 255);
+    massert(readLoc(REG_Product_ID) == 0x30);
+    massert(readLoc(REG_Revision_ID) == 0x3);
+    massert(readLoc(REG_Product_ID)+readLoc(0x3f) == 255);
+    massert(readLoc(REG_Revision_ID)+readLoc(0x3e) == 255);
 #endif
 
 #if 0
@@ -289,17 +305,17 @@ void FilamentSensor::run() {
     // burst
     digitalWrite(NCS, LOW);
 
-    SPI.transfer(0x42);
+    spiSend(0x42);
     delayMicroseconds(4); // Tsrad
-    uint8_t mot=SPI.transfer(0);
+    uint8_t mot=spiSend(0);
     delayMicroseconds(4); // Tsrad
-    uint8_t x=SPI.transfer(0);
+    uint8_t x=spiSend(0);
     delayMicroseconds(4); // Tsrad
-    uint8_t y=SPI.transfer(0);
+    uint8_t y=spiSend(0);
     delayMicroseconds(4); // Tsrad
-    uint8_t xyh=SPI.transfer(0);
+    uint8_t xyh=spiSend(0);
     delayMicroseconds(4); // Tsrad
-    uint8_t squal = SPI.transfer(0);
+    uint8_t squal = spiSend(0);
     delayMicroseconds(4); // Tsrad
     uint16_t shutter = (readLoc(0x7) << 8) + readLoc(0x8);
     // end burst
@@ -317,7 +333,7 @@ void FilamentSensor::run() {
 #if defined(FilSensorDebug)
     if (abs(yPos) > 0 and (millis() - lastTS) > 5000) {
         // xxx debug: use x direction to reset y...
-        Serial.println("\n timeout, yyreset...\n");
+        MarlinSerial.println("\n timeout, yyreset...\n");
         // xPos = 0;
         yPos = 0;
     }
@@ -484,10 +500,10 @@ void FilamentSensor::run() {
     spiInit(3); // scale = pow(2, 3+1), 1Mhz
 
 #if defined(FilSensorDebug)
-    massert(readLoc(0x0) == 0x30);
-    massert(readLoc(0x1) == 0x3);
-    massert(readLoc(0x0)+readLoc(0x3f) == 255);
-    massert(readLoc(0x1)+readLoc(0x3e) == 255);
+    massert(readLoc(REG_Product_ID) == 0x30);
+    massert(readLoc(REG_Revision_ID) == 0x3);
+    massert(readLoc(REG_Product_ID)+readLoc(0x3f) == 255);
+    massert(readLoc(REG_Revision_ID)+readLoc(0x3e) == 255);
 #endif
 
 #if 0
@@ -505,17 +521,17 @@ void FilamentSensor::run() {
     // burst
     digitalWrite(NCS, LOW);
 
-    SPI.transfer(0x42);
+    spiSend(0x42);
     delayMicroseconds(4); // Tsrad
-    uint8_t mot=SPI.transfer(0);
+    uint8_t mot=spiSend(0);
     delayMicroseconds(4); // Tsrad
-    uint8_t x=SPI.transfer(0);
+    uint8_t x=spiSend(0);
     delayMicroseconds(4); // Tsrad
-    uint8_t y=SPI.transfer(0);
+    uint8_t y=spiSend(0);
     delayMicroseconds(4); // Tsrad
-    uint8_t xyh=SPI.transfer(0);
+    uint8_t xyh=spiSend(0);
     delayMicroseconds(4); // Tsrad
-    uint8_t squal = SPI.transfer(0);
+    uint8_t squal = spiSend(0);
     delayMicroseconds(4); // Tsrad
     uint16_t shutter = (readLoc(0x7) << 8) + readLoc(0x8);
     // end burst
@@ -533,7 +549,7 @@ void FilamentSensor::run() {
 #if defined(FilSensorDebug)
     if (abs(yPos) > 0 and (millis() - lastTS) > 5000) {
         // xxx debug: use x direction to reset y...
-        Serial.println("\n timeout, yyreset...\n");
+        MarlinSerial.println("\n timeout, yyreset...\n");
         // xPos = 0;
         yPos = 0;
     }
@@ -695,171 +711,97 @@ void FilamentSensor::run() {
 }
 #endif
 
-void FilamentSensor::mouse_reset(){
+void FilamentSensor::reset(){
 
-    spiInit(3); // scale = pow(2, 3+1), 1Mhz
+    // ensure that the serial port is reset
+    WRITE(FILSENSNCS, HIGH);
+    WRITE(FILSENSNCS, LOW);
+    WRITE(FILSENSNCS, HIGH);
 
-    // Initiate chip reset
-    writeLoc(0x3a, 0x5a);
-    delay(50); // Wait one frame - how long is a frame?
+    writeLoc(REG_Power_Up_Reset, 0x5a); // force reset
+    delay(50); // wait for it to reboot
 
-    // selfTest();
+    // read registers 0x02 to 0x06 (and discard the data)
+    readLoc(REG_Motion);
+    readLoc(REG_Delta_X_L);
+    readLoc(REG_Delta_X_H);
+    readLoc(REG_Delta_Y_L);
+    readLoc(REG_Delta_Y_H);
 
-    writeLoc(0x2e, 0); // Clear observation register.
-    delay(50); // Wait one frame
+    // upload the firmware
+    // send the firmware to the chip, cf p.18 of the datasheet
+    SERIAL_ECHOPGM("Uploading firmware, # of bytes: ");
+    SERIAL_ECHOLN(sizeof(sromData));
 
-    // check observation register, all bits 0-3 must be set.
-    uint8_t obs = readLoc(0x2e);
-    if ((obs & 0xf) != 0xf) {
-        SERIAL_ERROR_START;
-        SERIAL_ECHOPGM("FilSensor: observation register wrong: ");
-        SERIAL_ECHOLN((int)obs);
+    // set the configuration_IV register in 3k firmware mode
+    writeLoc(REG_Configuration_IV, 0x02); // bit 1 = 1 for 3k mode, other bits are reserved 
+  
+    // write 0x1d in SROM_enable reg for initializing
+    writeLoc(REG_SROM_Enable, 0x1d); 
+  
+    // wait for more than one frame period
+    delay(10); // assume that the frame rate is as low as 100fps... even if it should never be that low
+  
+    // write 0x18 to SROM_enable to start SROM download
+    writeLoc(REG_SROM_Enable, 0x18); 
+  
+    // write the SROM file (=firmware data) 
+    WRITE(FILSENSNCS, LOW);
+    delay(1);
+    spiSend(REG_SROM_Load_Burst | 0x80); // write burst destination adress
+    delayMicroseconds(15);
+
+    // send all bytes of the firmware
+    unsigned char c;
+    for(int i = 0; i < sizeof(sromData); i++) { 
+        c = (unsigned char)pgm_read_byte(sromData + i);
+        spiSend(c);
+        delayMicroseconds(15);
     }
- 
-    // Read from registers 0x02, 0x03, 0x04 and 0x05 
-    for (uint8_t r=0x2; r<0x6; r++)
-        readLoc(r);
+    WRITE(FILSENSNCS, HIGH);
 
-    // viii. Write 0x27 to register 0x3C
-    writeLoc(0x3C, 0x27);
-    // ix. Write 0x0a to register 0x22
-    writeLoc(0x22, 0x0a);
-    // x. Write 0x01 to register 0x21
-    writeLoc(0x21, 0x01);
-    // xi. Write 0x32 to register 0x3C
-    writeLoc(0x3C, 0x32);
-    // xii. Write 0x20 to register 0x23
-    writeLoc(0x23, 0x20);
-    // xiii. Write 0x05 to register 0x3C
-    writeLoc(0x3C, 0x05);
-    // xiv. Write 0xB9 to register 0x37
-    writeLoc(0x37, 0xB9);
-
-    // selfTest();
-
-    // turn on laser
-    // writeLoc(0x1a, 0x00); // 0.9-3 mA
-    // writeLoc(0x1f, 0xC0);
-    writeLoc(0x1a, 0x40); // 2-5 mA
-    writeLoc(0x1f, 0x80);
-    // invalid: writeLoc(0x1a, 0x80);
-    // invalid: writeLoc(0x1f, 0x40);
-    // writeLoc(0x1a, 0xC0); // 4-10 mA
-    // writeLoc(0x1f, 0x00); // complementary reg of 0x1A
-   
-    // writeLoc(0x1C, 0x0);
-    // writeLoc(0x1d, 0xFF); // complementary reg of 0x1C
-    // writeLoc(0x1C, 0x3f);
-    // writeLoc(0x1d, 0xC0); // complementary reg of 0x1C
-    // writeLoc(0x1C, 0x60);
-    // writeLoc(0x1d, ~0x60); // complementary reg of 0x1C
-    // writeLoc(0x1C, 0x7f);
-    // writeLoc(0x1d, ~0x7f); // complementary reg of 0x1C
-    // writeLoc(0x1C, 0x7f);
-    // writeLoc(0x1d, ~0x7f); // complementary reg of 0x1C
-
-    // writeLoc(0x1C, 0x5A);
-    // writeLoc(0x1d, ~0x5A); // complementary reg of 0x1C
-    // writeLoc(0x1C, 0x0);
-    // writeLoc(0x1d, ~0x0); // complementary reg of 0x1C 
-
-    writeLoc(0x1C, 0xFF);
-    writeLoc(0x1d, 0x0); // complementary reg of 0x1C
-    //
-    // writeLoc(0x1C, 0xdd);
-    // writeLoc(0x1d, 0x22); // complementary reg of 0x1C
-
-    // Resolution 400
-    // writeLoc(0x12, 0x00);
-    // Resolution 1200
-    // writeLoc(0x12, 0x40);
-    // Resolution 1600
-    // writeLoc(0x12, 0x60);
-    // Resolution 2000
-    // writeLoc(0x36, 0x1a);
-
-    // selfTest();
-}
-
-void FilamentSensor::snoop_reset(){
-
-    // Initiate chip reset
-    writeLoc(0x3a, 0x5a);
-
-    delay(10); // Wait one frame - how long is a frame?
-
-    writeLoc(0x2e, 0); // Clear observation register.
-    delay(10); // Wait one frame
-
-    // check observation register, all bits 0-3 must be set.
-    uint8_t obs = readLoc(0x2e);
-    if ((obs & 0xf) != 0xf) {
-        SERIAL_ERROR_START;
-        SERIAL_ECHOPGM("FilSensor: observation register wrong: ");
-        SERIAL_ECHOLN((int)obs);
+    delay(1);
+    
+    uint8_t srom_id = readLoc(REG_SROM_ID);
+    SERIAL_ECHOPGM("SROM ID: ");
+    MSerial.println(srom_id, HEX );
+    
+    if (! (srom_id == SROMVER)) {
+        SERIAL_ECHOLNPGM("ADNS9500::sromDownload : the firmware was not successful downloaded");
+        while(1);
     }
 
-    // // viii. Write 0x27 to register 0x3C
-    writeLoc(0x3C, 0x27);
+    // end upload
 
-    // ix. Write 0x10 to register 0x22
-    writeLoc(0x22, 0x10);
+    // fixed frame rate
+    // byte conf = readLoc(REG_Configuration_II);
+    // writeLoc(REG_Configuration_II, conf & 0x08 );
 
-    // xi. Write 0x22 to register 0x3C
-    writeLoc(0x3C, 0x22);
+    // writeLoc(REG_Frame_Period_Max_Bound_Lower, 0xa0 );
+    // writeLoc(REG_Frame_Period_Max_Bound_Upper, 0x0f );
+    // delay(100);
 
-    // xii. Write 0x32 to register 0x3D
-    writeLoc(0x3D, 0x32);
+    //enable laser(bit 0 = 0b), in normal mode (bits 3,2,1 = 000b)
+    // reading the actual value of the register is important because the real
+    // default value is different from what is said in the datasheet, and if you
+    // change the reserved bytes (like by writing 0x00...) it would not work.
+    byte laser_ctrl0 = readLoc(REG_LASER_CTRL0);
+    // MarlinSerial.print("laser vorher : 0x");
+    // MarlinSerial.println(laser_ctrl0, HEX );
+    // writeLoc(REG_LASER_CTRL0, laser_ctrl0 & 0xf0 );
+    writeLoc(REG_LASER_CTRL0, laser_ctrl0 & ~0x1 );
+  
+    // laser_ctrl0 = readLoc(REG_LASER_CTRL0);
+    // MarlinSerial.print("laser nachher : 0x");
+    // MarlinSerial.println(laser_ctrl0, HEX );
 
-    // Read from registers 0x02, 0x03, 0x04 and 0x05 
-    for (uint8_t r=0x2; r<0x6; r++)
-        readLoc(r);
+    // uint8_t b = readLoc(REG_Motion);
+    // if ((b & 0x60) != 0x20) {
+        // MarlinSerial.print("Motion error !: 0x");
+        // MarlinSerial.println(b, HEX );
+    // while(1);
+    // }
 
-    writeLoc(0x1a, 0x40); // 2-5 mA
-    writeLoc(0x1C, 0x80);
-    writeLoc(0x1d, 0x7f); // complementary reg of 0x1C
-    writeLoc(0x1f, 0x80);
-
-    // xiii. Write 0x23 to register 0x34
-    writeLoc(0x34, 0x23);
-
-    // xiv. Write 0x26 to register 0x12
-    writeLoc(0x12, 0x26);
+    SERIAL_ECHOLNPGM("Optical Chip Initialized");
 }
-
-
-uint8_t FilamentSensor::readLoc(uint8_t addr){
-  uint8_t ret=0;
-
-  WRITE(FILSENSNCS, LOW);
-  spiSend(addr);
-  delayMicroseconds(4); // Tsrad
-  ret=spiRec();
-  WRITE(FILSENSNCS, HIGH);
-  return(ret);
-}
-
-void FilamentSensor::selfTest(){
-    SERIAL_ECHOLNPGM("Running sensor self test...");
-    writeLoc(0x10, 0x01);
-
-    delay(5000);
-
-    SERIAL_ECHO("CRC0: ");
-    SERIAL_ECHOLN((int)readLoc(0xc));
-    SERIAL_ECHO("CRC1: ");
-    SERIAL_ECHOLN((int)readLoc(0xd));
-    SERIAL_ECHO("CRC2: ");
-    SERIAL_ECHOLN((int)readLoc(0xe));
-    SERIAL_ECHO("CRC3: ");
-    SERIAL_ECHOLN((int)readLoc(0xf));
-
-    massert(readLoc(0xc) == 0xf4);
-    massert(readLoc(0xd) == 0x54);
-    massert(readLoc(0xe) == 0x6d);
-    massert(readLoc(0xf) == 0xeb);
-
-    SERIAL_ECHOLNPGM("sensor self test done");
-}
-
 
