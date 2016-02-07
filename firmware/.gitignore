@@ -5,3 +5,4 @@ applet*
 tags
 swapfile
 sim.gcode
+build-cli
