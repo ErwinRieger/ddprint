@@ -69,7 +69,7 @@ def homeMove(parser, dim, direction, dist, fakeHomingEndstops, feedRateFactor=1.
     else:
         # Move away from endstop
         # Check, if enstop was released
-        if printer.endStopTriggered(dim, fakeHomingEndstops):
+        if printer.endStopTriggered(dim):
             return False
 
     return True
