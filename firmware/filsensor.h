@@ -48,6 +48,7 @@
 #define REG_Power_Up_Reset                       0x3a
 #define REG_Shutdown                             0x3b
 #define REG_Inverse_Product_ID                   0x3f
+#define REG_Snap_Angle                           0x42
 #define REG_Motion_Burst                         0x50
 #define REG_SROM_Load_Burst                      0x62
 #define REG_Pixel_Burst                          0x64
@@ -61,6 +62,7 @@ class FilamentSensor {
 
         void reset();
         uint8_t readLoc(uint8_t addr);
+        void writeLoc(uint8_t addr, uint8_t value);
         void pushbyte(uint8_t c);
         uint8_t pullbyte();
         void getYPos();

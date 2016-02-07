@@ -4,8 +4,7 @@
 
 #define SROMVER 0xA5
 
-const unsigned char SROMA5[3070] = 
-{
+const unsigned char sromData[] PROGMEM = {
 0x03,
 0xa5,
 0x6d,

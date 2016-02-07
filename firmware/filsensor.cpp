@@ -8,8 +8,8 @@
 #include "fastio.h"
 
 // #include "adns9800fwa4.h"
-// #include "adns9800fwa5.h"
-#include "adns9800fwa6.h"
+#include "adns9800fwa5.h"
+// #include "adns9800fwa6.h"
 
 /*
  * Estimate Polling rate:
@@ -25,6 +25,8 @@
 #define ASTEPS_PER_COUNT (25.4*141/1000.0)
 #define FS_STEPS_PER_MM (800.0/25.4)
 // #define FS_STEPS_PER_MM (1600.0/25.4)
+
+#define FilSensorDebug 1
 
 FilamentSensor filamentSensor;
 
@@ -57,20 +59,36 @@ void FilamentSensor::init() {
 
     spiInit(3); // scale = pow(2, 3+1), 1Mhz
 
-    SERIAL_ECHOPGM("Filament sensor Prod: ");
+    SERIAL_ECHOPGM("Filament sensor Prod: 0x");
     MSerial.println(readLoc(REG_Product_ID), HEX); // Product
 
-    SERIAL_ECHOPGM("Filament sensor Rev: ");
+    SERIAL_ECHOPGM("Filament sensor Rev: 0x");
     MSerial.println(readLoc(REG_Revision_ID), HEX); // Rev
 
     reset();
 
-    /*
-    uint8_t configReg1 = readLoc(0x12);
-    SERIAL_ECHOPGM("Filament sensor config: ");
-    SERIAL_ECHOLN((int)configReg1);
+    uint8_t configReg1 = readLoc(REG_Configuration_I);
+    writeLoc(REG_Configuration_I, (configReg1 & 0xC0) | 22); // resolution: 4400
 
-    uint8_t configReg2 = readLoc(0x36);
+    configReg1 = readLoc(REG_Configuration_I);
+    SERIAL_ECHOPGM("Filament sensor config1: 0x");
+    MSerial.println(configReg1, HEX);
+
+    uint8_t resbits = configReg1 & 0x3f;
+    SERIAL_ECHOPGM("Filament sensor resolution: ");
+    MSerial.println((uint16_t)resbits * 200);
+
+    uint8_t configReg2 = readLoc(REG_Configuration_II);
+    SERIAL_ECHOPGM("Filament sensor config2: 0x");
+    MSerial.println(configReg2, HEX);
+
+    uint8_t snap = readLoc(REG_Snap_Angle);
+    writeLoc(REG_Snap_Angle, snap | 0x80);
+    SERIAL_ECHOPGM("Snap angle register: 0x");
+    MSerial.println(readLoc(REG_Snap_Angle), HEX);
+    return;
+
+    configReg2 = readLoc(0x36);
     if (configReg2 & 0x10) {
         SERIAL_ECHOPGM("Sensor config 0x36: ");
         SERIAL_ECHOLN((int)configReg2);
@@ -133,32 +151,27 @@ void FilamentSensor::init() {
         SERIAL_ERROR_START;
         SERIAL_ECHOLNPGM("FilSensor: Laser off!");
     }
-    */
 }
 
 uint8_t FilamentSensor::readLoc(uint8_t addr){
-  uint8_t ret=0;
 
   WRITE(FILSENSNCS, LOW);
   spiSend(addr);
-  // delayMicroseconds(4); // Tsrad
-  delayMicroseconds(10); // Tsrad
-  ret=spiRec();
+  delayMicroseconds(100); // Tsrad
+
+  uint8_t ret=spiRec();
   WRITE(FILSENSNCS, HIGH);
-  delayMicroseconds(10); // Tsrad
+  delayMicroseconds(20); // Tsrw/Tsrr
   return(ret);
 }
 
-void writeLoc(uint8_t addr, uint8_t value) {
+void FilamentSensor::writeLoc(uint8_t addr, uint8_t value) {
 
-  // Initiate chip reset
   WRITE(FILSENSNCS, LOW);
   spiSend(addr | 0x80);
-  // delayMicroseconds(14); // Tsww (30) - 16
-  delayMicroseconds(20); // Tsww (30) - 16
+
   spiSend(value);
-  // delayMicroseconds(14); // Tsww (30) - 16
-  delayMicroseconds(20); // Tsww (30) - 16
+  delayMicroseconds(100); // Tsww/Tswr 
   WRITE(FILSENSNCS, HIGH);
 }
 
@@ -169,10 +182,11 @@ extern uint16_t tempExtrusionRateTable[];
 
 void FilamentSensor::getYPos() {
 
-    uint8_t mot = readLoc(0x2);
+    uint8_t mot = readLoc(REG_Motion);
 
     if (mot & 0x80) { // Motion register
 
+        /*
         static union {
             struct {
                 uint8_t lo;
@@ -180,13 +194,17 @@ void FilamentSensor::getYPos() {
             } bytes;
             int16_t value;
         } split;
+        */
+
 
 #if !defined(burst)
         // XXX x_delta must be read also?!
-        readLoc(0x3); // X_L
-        // int16_t y = (int8_t)readLoc(0x4);
-        uint8_t y = readLoc(0x4); // Y_L
-        int8_t xyh = readLoc(0x5); // XY_H
+        readLoc(REG_Delta_X_L); // X_L
+        readLoc(REG_Delta_X_H); // X_H
+        uint8_t y = readLoc(REG_Delta_Y_L); // Y_L
+        // int16_t dy = (int16_t)readLoc(REG_Delta_Y_H) << 8; // Y_H
+        int16_t dy;
+        int8_t yh = readLoc(REG_Delta_Y_H);
 #endif
 
 #if 0 
@@ -200,46 +218,44 @@ void FilamentSensor::getYPos() {
 #endif
 
         // Compute Delta Y as a 16-bits signed integer
-        split.bytes.lo = y;
-        split.bytes.hi = xyh & 0x0F;
-        if ( split.bytes.hi & 0x08 ) {
-            split.bytes.hi |= 0xF0;             // Sign extension
-        }
+        // if (y>=0)
+            // dy = ((int16_t)yh << 8) || y;
+        // else
+            // dy = ((int16_t)yh << 8) + y;
 
-#if 0
-        if (y>0)
-            y += abs(x);
-        else if (y<0)
-            y -= abs(x);
-#endif
+        dy = ((int16_t)yh << 8) | y;
 
-        if (! split.value) return;
+        if (! dy) return;
 
-        yPos += split.value;
+        yPos += dy;
 
 #if !defined(burst)
-        uint8_t squal = readLoc(0x6);
-        uint16_t shutter = (readLoc(0x7) << 8) + readLoc(0x8);
+        // uint8_t squal = readLoc(REG_SQUAL);
+        // uint16_t shutter = ((uint16_t)readLoc(REG_Shutter_Upper)<<8) | readLoc(REG_Shutter_Lower);
 #endif
 
         // SERIAL_ECHO("X: ");
         // SERIAL_ECHO((int)x);
-        SERIAL_ECHO("Squal: ");
-        SERIAL_ECHO((int)squal);
-        SERIAL_ECHO(", Shut: ");
-        SERIAL_ECHO(shutter);
-        SERIAL_ECHO(", y: ");
+        // SERIAL_ECHO("Squal: ");
+        // SERIAL_ECHO((int)squal);
+        // SERIAL_ECHO(", Shut: ");
+        // SERIAL_ECHO(shutter);
+        SERIAL_ECHO("yh: ");
+        SERIAL_ECHO((int)yh);
+        SERIAL_ECHO(", yl: ");
         SERIAL_ECHO((int)y);
-        SERIAL_ECHO(", Y12: ");
-        SERIAL_ECHO(split.value);
-        SERIAL_ECHO(", Y: ");
+        SERIAL_ECHO(", dy: ");
+        SERIAL_ECHO(dy);
+        SERIAL_ECHO(", yPos: ");
         SERIAL_ECHO(yPos);
-        SERIAL_ECHO(", minpix: ");
-        SERIAL_ECHO((int) readLoc(0xb));
-        SERIAL_ECHO(", avgpix: ");
-        SERIAL_ECHO((int)readLoc(0xa) * 1.515);
-        SERIAL_ECHO(", maxpix: ");
-        SERIAL_ECHOLN((int) readLoc(0x9));
+        SERIAL_ECHO(", estep: ");
+        SERIAL_ECHOLN(current_pos_steps[E_AXIS]);
+        // SERIAL_ECHO(", minpix: ");
+        // SERIAL_ECHO((int) readLoc(0xb));
+        // SERIAL_ECHO(", avgpix: ");
+        // SERIAL_ECHO((int)readLoc(0xa) * 1.515);
+        // SERIAL_ECHO(", maxpix: ");
+        // SERIAL_ECHOLN((int) readLoc(0x9));
     }
 }
 
@@ -248,12 +264,12 @@ void FilamentSensor::getYPos() {
 //
 void FilamentSensor::run() {
 
-    return;
-
     // Berechne soll flowrate, filamentsensor ist sehr ungenau bei kleiner geschwindigkeit.
     int32_t ds = current_pos_steps[E_AXIS] - lastASteps; // Requested extruded length
 
+#if !defined(FilSensorDebug)
     if (ds > 72) {
+#endif
 
         spiInit(3); // scale = pow(2, 3+1), 1Mhz
 
@@ -279,16 +295,12 @@ void FilamentSensor::run() {
         lastYPos = yPos;
         lastTS = ts;
         lastASteps = current_pos_steps[E_AXIS];
+
+#if !defined(FilSensorDebug)
     }
+#endif
 
     return;
-
-#if defined(FilSensorDebug)
-    massert(readLoc(REG_Product_ID) == 0x30);
-    massert(readLoc(REG_Revision_ID) == 0x3);
-    massert(readLoc(REG_Product_ID)+readLoc(0x3f) == 255);
-    massert(readLoc(REG_Revision_ID)+readLoc(0x3e) == 255);
-#endif
 
 #if 0
     static uint8_t power = 0;
@@ -333,7 +345,7 @@ void FilamentSensor::run() {
 #if defined(FilSensorDebug)
     if (abs(yPos) > 0 and (millis() - lastTS) > 5000) {
         // xxx debug: use x direction to reset y...
-        MarlinSerial.println("\n timeout, yyreset...\n");
+        MSerial.println("\n timeout, yyreset...\n");
         // xPos = 0;
         yPos = 0;
     }
@@ -389,7 +401,7 @@ void FilamentSensor::run() {
         yPos += split.value;
 
 #if !defined(burst)
-        uint8_t squal = readLoc(0x6);
+        uint8_t squal = readLoc(REG_SQUAL);
         uint16_t shutter = (readLoc(0x7) << 8) + readLoc(0x8);
 #endif
 
@@ -605,7 +617,7 @@ void FilamentSensor::run() {
         yPos += split.value;
 
 #if !defined(burst)
-        uint8_t squal = readLoc(0x6);
+        uint8_t squal = readLoc(REG_SQUAL);
         uint16_t shutter = (readLoc(0x7) << 8) + readLoc(0x8);
 #endif
 
@@ -747,7 +759,6 @@ void FilamentSensor::reset(){
   
     // write the SROM file (=firmware data) 
     WRITE(FILSENSNCS, LOW);
-    delay(1);
     spiSend(REG_SROM_Load_Burst | 0x80); // write burst destination adress
     delayMicroseconds(15);
 
