@@ -239,6 +239,13 @@ void Stop(uint8_t reasonNr)
 
 void setup() {
 
+    // Do some minimal SPI init, prevent SPI to go to spi slave mode
+    WRITE(SDSS, HIGH);
+    SET_OUTPUT(SDSS);
+
+    WRITE(FILSENSNCS, HIGH);
+    SET_OUTPUT(FILSENSNCS);
+
     MSerial.begin(BAUDRATE);
     SERIAL_PROTOCOLLNPGM("start");
 
@@ -264,7 +271,6 @@ void setup() {
 
     tp_init();    // Initialize temperature loop
 
-    // plan_init();  // Initialize planner;
     wdt_enable(WDTO_4S);
 
     st_init();    // Initialize stepper, this enables interrupts!
