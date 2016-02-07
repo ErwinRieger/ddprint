@@ -47,7 +47,6 @@
 
 class SDSwap: public Sd2Card, public Protothread {
 
-    bool initialized;
     uint8_t writeBuffer[WCMD_BUFFER_SIZE];
     // Pointer to current write position in writeBuffer
     uint16_t writePos;
@@ -63,16 +62,13 @@ class SDSwap: public Sd2Card, public Protothread {
     uint8_t blockShift;
 
 public:
-    SDSwap(): initialized(false) {
+    SDSwap() {
         SERIAL_PROTOCOLLNPGM("sdstart");
         busyWriting = false;
         reset();
     }
 
     bool swapInit() {
-
-        if (initialized)
-            return true;
 
         if (!init(SPI_FULL_SPEED, SDSS)) {
 
@@ -83,8 +79,7 @@ public:
 
         if (type() == SD_CARD_TYPE_SDHC) {
             blockShift = 0;
-        }
-        else {
+        } else {
             blockShift = 9;
         }
 
@@ -95,8 +90,6 @@ public:
         // }
 
         massert(eraseSingleBlockEnable());
-
-        initialized = true;
 
         return true;
     }
