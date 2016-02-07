@@ -8,8 +8,8 @@
 #include "fastio.h"
 
 // #include "adns9800fwa4.h"
-#include "adns9800fwa5.h"
-// #include "adns9800fwa6.h"
+// #include "adns9800fwa5.h"
+#include "adns9800fwa6.h"
 
 /*
  * Estimate Polling rate:
@@ -86,71 +86,12 @@ void FilamentSensor::init() {
     writeLoc(REG_Snap_Angle, snap | 0x80);
     SERIAL_ECHOPGM("Snap angle register: 0x");
     MSerial.println(readLoc(REG_Snap_Angle), HEX);
-    return;
 
-    configReg2 = readLoc(0x36);
-    if (configReg2 & 0x10) {
-        SERIAL_ECHOPGM("Sensor config 0x36: ");
-        SERIAL_ECHOLN((int)configReg2);
-
-        switch ((configReg2 & 0xf) >> 1) {
-            case 0x01:
-                SERIAL_ECHOLNPGM("Sensor resolution 400cpi");
-                break;
-            case 0x02:
-                SERIAL_ECHOLNPGM("Sensor resolution 800cpi");
-                break;
-            case 0x03:
-                SERIAL_ECHOLNPGM("Sensor resolution 1200cpi");
-                break;
-            case 0x04:
-                SERIAL_ECHOLNPGM("Sensor resolution 1600cpi");
-                break;
-            case 0x05:
-                SERIAL_ECHOLNPGM("Sensor resolution 2000cpi");
-                break;
-        }
-    }
-    else {
-
-        switch ((configReg1 & 0x60) >> 5) {
-            case 0x00:
-                SERIAL_ECHOLNPGM("Sensor resolution 400cpi");
-                break;
-            case 0x01:
-                SERIAL_ECHOLNPGM("Sensor resolution 800cpi");
-                break;
-            case 0x02:
-                SERIAL_ECHOLNPGM("Sensor resolution 1200cpi");
-                break;
-            case 0x03:
-                SERIAL_ECHOLNPGM("Sensor resolution 1600cpi");
-                break;
-        }
-    }
-
-    SERIAL_ECHOPGM("Register 1A: ");
-    SERIAL_ECHOLN((int)readLoc(0x1A));
-    SERIAL_ECHOPGM("Register 1F: ");
-    SERIAL_ECHOLN((int)readLoc(0x1F));
-
-    SERIAL_ECHOPGM("Register 1C: ");
-    SERIAL_ECHOLN((int)readLoc(0x1C));
-    SERIAL_ECHOPGM("Register 1D: ");
-    SERIAL_ECHOLN((int)readLoc(0x1D));
-
-    uint8_t mot = readLoc(0x2);
-    SERIAL_ECHOPGM("Register MOT: ");
-    SERIAL_ECHOLN((int)mot);
-
-    if (mot & 0x40) {
-        SERIAL_ERROR_START;
-        SERIAL_ECHOLNPGM("FilSensor: FAULT!");
-    }
-    if ((mot & 0x20) == 0) {
-        SERIAL_ERROR_START;
-        SERIAL_ECHOLNPGM("FilSensor: Laser off!");
-    }
+    // fixed frame rate
+    // writeLoc(REG_Configuration_II, configReg2 & 0x08 );
+    // writeLoc(REG_Frame_Period_Max_Bound_Lower, 0xa0 );
+    // writeLoc(REG_Frame_Period_Max_Bound_Upper, 0x0f );
+    // delay(10);
 }
 
 uint8_t FilamentSensor::readLoc(uint8_t addr){
