@@ -30,6 +30,7 @@
 #include "SdFatConfig.h"
 #include "Sd2PinMap.h"
 #include "SdInfo.h"
+#include "pins.h"
 
 //------------------------------------------------------------------------------
 // SPI speed is F_CPU/2^(1 + index), 0 <= index <= 6
@@ -131,14 +132,14 @@ uint8_t const SD_CARD_TYPE_SDHC = 3;
 #ifndef SOFTWARE_SPI
 // hardware pin defs
 /** The default chip select pin for the SD card is SS. */
-uint8_t const  SD_CHIP_SELECT_PIN = SS_PIN;
+// uint8_t const  SD_CHIP_SELECT_PIN = SS_PIN;
 // The following three pins must not be redefined for hardware SPI.
 /** SPI Master Out Slave In pin */
-uint8_t const  SPI_MOSI_PIN = MOSI_PIN;
+// uint8_t const  SPI_MOSI_PIN = MOSI_PIN;
 /** SPI Master In Slave Out pin */
-uint8_t const  SPI_MISO_PIN = MISO_PIN;
+// uint8_t const  SPI_MISO_PIN = MISO_PIN;
 /** SPI Clock pin */
-uint8_t const  SPI_SCK_PIN = SCK_PIN;
+// uint8_t const  SPI_SCK_PIN = SCK_PIN;
 
 #else  // SOFTWARE_SPI
 
@@ -185,7 +186,7 @@ class Sd2Card {
    * \return true for success or false for failure.
    */
   bool init(uint8_t sckRateID = SPI_FULL_SPEED,
-    uint8_t chipSelectPin = SD_CHIP_SELECT_PIN);
+    uint8_t chipSelectPin = SDSS);
   bool readBlock(uint32_t block, uint8_t* dst);
   /**
    * Read a card's CID register. The CID contains card identification

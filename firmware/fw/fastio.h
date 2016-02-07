@@ -111,10 +111,10 @@
 #define	TXD					DIO1
 
 // SPI
-#define	SCK					DIO13
-#define	MISO				DIO12
-#define	MOSI				DIO11
-#define	SS					DIO10
+// #define	SCK					DIO13
+// #define	MISO				DIO12
+// #define	MOSI				DIO11
+// #define	SS					DIO10
 
 // TWI (I2C)
 #define	SCL					AIO5
@@ -451,10 +451,10 @@ pins
 #define	TXD1				DIO11
 
 // SPI
-#define	SCK					DIO7
-#define	MISO				DIO6
-#define	MOSI				DIO5
-#define	SS					DIO4
+// #define	SCK					DIO7
+// #define	MISO				DIO6
+// #define	MOSI				DIO5
+// #define	SS					DIO4
 
 // TWI (I2C)
 #define	SCL					DIO16
@@ -949,10 +949,10 @@ pins
 #define	TXD					DIO1
 
 // SPI
-#define	SCK					DIO52
-#define	MISO				DIO50
-#define	MOSI				DIO51
-#define	SS					DIO53
+// #define	SCK					DIO52
+// #define	MISO				DIO50
+// #define	MOSI				DIO51
+// #define	SS					DIO53
 
 // TWI (I2C)
 #define	SCL					DIO21
@@ -1946,10 +1946,10 @@ pins
 
 #if defined (__AVR_AT90USB1287__) || defined (__AVR_AT90USB1286__) || defined (__AVR_AT90USB646__) || defined(__AVR_AT90USB647__)
 // SPI
-#define	SCK					DIO9
-#define	MISO				DIO11
-#define	MOSI				DIO10
-#define	SS					DIO8
+// #define	SCK					DIO9
+// #define	MISO				DIO11
+// #define	MOSI				DIO10
+// #define	SS					DIO8
 
 // change for your board
 #define	DEBUG_LED		DIO31 /* led D5 red */
@@ -2598,10 +2598,10 @@ pins
 #define	TXD					DIO1
 
 // SPI
-#define	SCK					DIO10
-#define	MISO				DIO12
-#define	MOSI				DIO11
-#define	SS					DIO16
+// #define	SCK					DIO10
+// #define	MISO				DIO12
+// #define	MOSI				DIO11
+// #define	SS					DIO16
 
 // TWI (I2C)
 #define	SCL					DIO17

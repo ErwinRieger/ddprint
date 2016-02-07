@@ -47,13 +47,13 @@ struct pin_map_t {
 uint8_t const SDA_PIN = 20;  // D1
 uint8_t const SCL_PIN = 21;  // D0
 
-#undef MOSI_PIN
-#undef MISO_PIN
+// #undef MOSI_PIN
+// #undef MISO_PIN
 // SPI port
-uint8_t const SS_PIN = 53;    // B0
-uint8_t const MOSI_PIN = 51;  // B2
-uint8_t const MISO_PIN = 50;  // B3
-uint8_t const SCK_PIN = 52;   // B1
+// uint8_t const SS_PIN = 53;    // B0
+// uint8_t const MOSI_PIN = 51;  // B2
+// uint8_t const MISO_PIN = 50;  // B3
+// uint8_t const SCK_PIN = 52;   // B1
 
 static const pin_map_t digitalPinMap[] = {
   {&DDRE, &PINE, &PORTE, 0},  // E0  0
