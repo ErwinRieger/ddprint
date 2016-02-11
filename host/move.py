@@ -510,8 +510,8 @@ class Move(object):
 
         if not use24Bits:
             if self.isExtrudingMove(A_AXIS):
-                leadFactor = int((self.stepData.abs_vector_steps[self.stepData.leadAxis]*1000) / self.stepData.abs_vector_steps[3])
-                payLoad += struct.pack("<H", leadFactor)
+                leadFactor = int((self.stepData.abs_vector_steps[self.stepData.leadAxis]*1000) / self.stepData.abs_vector_steps[A_AXIS])
+                payLoad += struct.pack("<H", min(leadFactor, 0xffff))
             else:
                 payLoad += struct.pack("<H", 0)
 
