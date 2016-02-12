@@ -28,10 +28,10 @@
 //
 
 // Factor to compute Extruder steps from filament sensor count
-#define ASTEPS_PER_COUNT (25.4*141/1000.0)
+// #define ASTEPS_PER_COUNT (25.4*141/1000.0)
 
 #if defined(ADNSFS)
-    #define FS_STEPS_PER_MM (800.0/25.4)
+    #define FS_STEPS_PER_MM (8200.0/25.4)
     // #define FS_STEPS_PER_MM (1600.0/25.4)
 #else
     #define FS_STEPS_PER_MM (1024 / (5.5 * M_PI))
@@ -39,176 +39,14 @@
 
 #define FilSensorDebug 1
 
-FilamentSensor filamentSensor;
 
-FilamentSensor::FilamentSensor() {
-
-    slip = 0.0;
-    // maxTempSpeed = 0;
-
-    // enabled = false;
-    enabled = true;
-
-    // Pull high chip select of filament sensor to free the
-    // SPI bus (for sdcard).
-    WRITE(FILSENSNCS, HIGH);
-    SET_OUTPUT(FILSENSNCS);
-
-    init();
-}
-
-void FilamentSensor::init() {
-
-    yPos = 0;
-    lastASteps = current_pos_steps[E_AXIS];
-    lastTS = millis();
-    lastEncoderPos = readEncoderPos();
-}
-
-void FilamentSensor::spiInit(uint8_t spiRate) {
-  // See avr processor documentation
-  SPCR = (1 << SPE) | (1 << MSTR) | (spiRate >> 1) | (1<<CPHA); // Mode 1
-  SPSR = spiRate & 1 || spiRate == 6 ? 0 : 1 << SPI2X;
-}
-
-extern uint16_t tempExtrusionRateTable[];
-#define FTIMER (F_CPU/8.0)
-#define FTIMER1000 (FTIMER/1000.0)
-#include <pins_arduino.h>
-
-uint16_t FilamentSensor::readEncoderPos() {
-
-    //
-    // Read rotary encoder pos (0...1023)
-    //
-    spiInit(3);
-
-    digitalWrite(FILSENSNCS, LOW);
-    delayMicroseconds(1); // Tclkfe
-
-    uint8_t byte1 = spiRec();
-    uint8_t byte2 = spiRec();
-
-    digitalWrite(FILSENSNCS, HIGH);
-  
-    uint16_t pos = (((uint16_t)byte1) << 2) | (byte2 & 0x3);
-
-    /* 
-    MSerial.print("Pos: ");
-    MSerial.print(pos, HEX);
-    MSerial.print(" compens: ");  // should be set
-    MSerial.print(byte2 & 0x20);
-    MSerial.print(" overr: ");    // should be cleared
-    MSerial.print(byte2 & 0x10);
-    MSerial.print(" linalarm: "); // should be cleared
-    MSerial.print(byte2 & 0x8);
-    MSerial.print(" increase: "); // not used
-    MSerial.print(byte2 & 0x4);
-    MSerial.print(" decrease: "); // not used
-    MSerial.print(byte2 & 0x2);
-    MSerial.print(" parity: ");
-    MSerial.println(byte2 & 0x1);
-    MSerial.println("");
-    */
-
-    // XXX use bitpattern to test all relevant bits at once here..
-
-    uint16_t dataWord = (((uint16_t)byte1) << 8) | byte2;
-    uint8_t p = __builtin_parity(dataWord);
-    massert(p == 0);
-
-    return pos;
-}
-
-int16_t FilamentSensor::getDY() {
-
-    uint16_t pos = readEncoderPos();
-
-    int16_t dy = pos - lastEncoderPos; 
-
-    if (dy < -512) {
-        // Überlauf in positiver richtung
-        dy = (1024 - lastEncoderPos) + pos;
-    }
-    else if (dy > 512) {
-        // Überlauf in negativer richtung
-        dy = (pos - 1024) - lastEncoderPos;
-    }
-
-    yPos += dy;
-
-#if 0
-    if (dy) {
-        SERIAL_ECHO(", dy: ");
-        SERIAL_ECHO(dy);
-        SERIAL_ECHO(", yPos: ");
-        SERIAL_ECHO(yPos);
-        SERIAL_ECHO(", estep: ");
-        SERIAL_ECHOLN(current_pos_steps[E_AXIS]);
-    }
-#endif
-
-    lastEncoderPos = pos;
-    return dy;
-}
-
-void FilamentSensor::run() {
-
-    // Berechne soll flowrate, filamentsensor ist sehr ungenau bei kleiner geschwindigkeit.
-    int16_t ds = current_pos_steps[E_AXIS] - lastASteps; // Requested extruded length
-
-    if (ds < 0) {
-
-        // Retraction, reset/sync values
-        // yPos = 0;
-        // lastEncoderPos = readEncoderPos();
-        // lastASteps = current_pos_steps[E_AXIS];
-        // lastTS = millis();
-
-        init();
-    }
-    else {
-
-      if (ds > 72) {
-
-        int16_t dy = getDY(); // Real extruded length 
-
-        uint32_t ts = millis();
-        uint16_t dt = ts - lastTS;
-
-        // float speed = (ds / AXIS_STEPS_PER_MM_E) / ((ts - lastTS)/1000.0);
-        float speed = (ds * 1000.0) / (AXIS_STEPS_PER_MM_E * dt);
-
-        // if (speed > 2) { // ca. 5mm³/s
-            // Berechne ist-flowrate, anhand filamentsensor
-
-            float realSpeed = (dy * 1000.0) / (FS_STEPS_PER_MM * dt);
-
-            SERIAL_ECHO("Flowrate_mm/s: ");
-            SERIAL_ECHO(ts);
-            SERIAL_ECHO(" ");
-            SERIAL_ECHO(speed);
-            SERIAL_ECHO(" ");
-            SERIAL_ECHOLN(realSpeed);
-        // }
-
-        lastTS = ts;
-        lastASteps = current_pos_steps[E_AXIS];
-      }
-    }
-
-    return;
-
-}
-
+FilamentSensorADNS9800 filamentSensor;
 
 #if defined(ADNSFS)
 FilamentSensorADNS9800::FilamentSensorADNS9800() {
 
-    lastASteps = lastYPos = yPos = 0;
     slip = 0.0;
     // maxTempSpeed = 0;
-    lastTS = millis();
 
     // enabled = false;
     enabled = true;
@@ -220,6 +58,8 @@ FilamentSensorADNS9800::FilamentSensorADNS9800() {
     // SPI bus (for sdcard).
     WRITE(FILSENSNCS, HIGH);
     SET_OUTPUT(FILSENSNCS);
+
+    init();
 }
 
 void FilamentSensorADNS9800::spiInit(uint8_t spiRate) {
@@ -230,41 +70,9 @@ void FilamentSensorADNS9800::spiInit(uint8_t spiRate) {
 
 void FilamentSensorADNS9800::init() {
 
-    spiInit(3); // scale = pow(2, 3+1), 1Mhz
-
-    SERIAL_ECHOPGM("Filament sensor Prod: 0x");
-    MSerial.println(readLoc(REG_Product_ID), HEX); // Product
-
-    SERIAL_ECHOPGM("Filament sensor Rev: 0x");
-    MSerial.println(readLoc(REG_Revision_ID), HEX); // Rev
-
-    reset();
-
-    uint8_t configReg1 = readLoc(REG_Configuration_I);
-    writeLoc(REG_Configuration_I, (configReg1 & 0xC0) | 22); // resolution: 4400
-
-    configReg1 = readLoc(REG_Configuration_I);
-    SERIAL_ECHOPGM("Filament sensor config1: 0x");
-    MSerial.println(configReg1, HEX);
-
-    uint8_t resbits = configReg1 & 0x3f;
-    SERIAL_ECHOPGM("Filament sensor resolution: ");
-    MSerial.println((uint16_t)resbits * 200);
-
-    uint8_t configReg2 = readLoc(REG_Configuration_II);
-    SERIAL_ECHOPGM("Filament sensor config2: 0x");
-    MSerial.println(configReg2, HEX);
-
-    uint8_t snap = readLoc(REG_Snap_Angle);
-    writeLoc(REG_Snap_Angle, snap | 0x80);
-    SERIAL_ECHOPGM("Snap angle register: 0x");
-    MSerial.println(readLoc(REG_Snap_Angle), HEX);
-
-    // fixed frame rate
-    // writeLoc(REG_Configuration_II, configReg2 & 0x08 );
-    // writeLoc(REG_Frame_Period_Max_Bound_Lower, 0xa0 );
-    // writeLoc(REG_Frame_Period_Max_Bound_Upper, 0x0f );
-    // delay(10);
+    yPos = 0;
+    lastASteps = current_pos_steps[E_AXIS];
+    lastTS = millis();
 }
 
 uint8_t FilamentSensorADNS9800::readLoc(uint8_t addr){
@@ -339,7 +147,7 @@ int16_t FilamentSensorADNS9800::getDY() {
 
         dy = ((int16_t)yh << 8) | y;
 
-        if (! dy) return;
+        if (! dy) return 0;
 
         yPos += dy;
 
@@ -370,7 +178,11 @@ int16_t FilamentSensorADNS9800::getDY() {
         // SERIAL_ECHO((int)readLoc(0xa) * 1.515);
         // SERIAL_ECHO(", maxpix: ");
         // SERIAL_ECHOLN((int) readLoc(0x9));
+   
+        return dy; 
     }
+
+    return 0;
 }
 
 void FilamentSensorADNS9800::run() {
@@ -378,41 +190,51 @@ void FilamentSensorADNS9800::run() {
     // Berechne soll flowrate, filamentsensor ist sehr ungenau bei kleiner geschwindigkeit.
     int32_t ds = current_pos_steps[E_AXIS] - lastASteps; // Requested extruded length
 
-#if !defined(FilSensorDebug)
-    if (ds > 72) {
-#endif
+    if (ds < 0) {
+
+        // Retraction, reset/sync values
+        // yPos = 0;
+        // lastEncoderPos = readEncoderPos();
+        // lastASteps = current_pos_steps[E_AXIS];
+        // lastTS = millis();
+
+        init();
+    }
+    else {
+
+      if (ds > 72) {
 
         spiInit(3); // scale = pow(2, 3+1), 1Mhz
 
-        getDY();
+        int16_t dy = getDY(); // Real extruded length
 
         uint32_t ts = millis();
+        uint16_t dt = ts - lastTS;
 
         // float speed = (ds / AXIS_STEPS_PER_MM_E) / ((ts - lastTS)/1000.0);
-        float speed = (ds * 1000.0) / (AXIS_STEPS_PER_MM_E * (ts - lastTS));
+        float speed = (ds * 1000.0) / (AXIS_STEPS_PER_MM_E * dt);
 
         if (speed > 2) { // ca. 5mm³/s
             // Berechne ist-flowrate, anhand filamentsensor
-            int32_t dy = yPos - lastYPos; // Real extruded length
 
-            float realSpeed = (dy * 1000.0) / (FS_STEPS_PER_MM * (ts - lastTS));
+            float realSpeed = (dy * 1000.0) / (FS_STEPS_PER_MM * dt);
 
-            SERIAL_ECHO("Flowrate c/m: ");
+            SERIAL_ECHO("Flowrate_mm/s: ");
+            SERIAL_ECHO(ts);
+            SERIAL_ECHO(" ");
             SERIAL_ECHO(speed);
-            SERIAL_ECHO(", ");
+            SERIAL_ECHO(" ");
             SERIAL_ECHOLN(realSpeed);
         }
 
-        lastYPos = yPos;
         lastTS = ts;
         lastASteps = current_pos_steps[E_AXIS];
-
-#if !defined(FilSensorDebug)
+      }
     }
-#endif
 
     return;
 
+#if 0
 #if 0
     static uint8_t power = 0;
     writeLoc(0x1C, power);
@@ -615,6 +437,8 @@ void FilamentSensorADNS9800::run() {
             lastTS = ts;
         }
     }
+#endif
+
 }
 
 #if 0
@@ -836,6 +660,14 @@ void FilamentSensorADNS9800::run() {
 
 void FilamentSensorADNS9800::reset(){
 
+    spiInit(3); // scale = pow(2, 3+1), 1Mhz
+
+    SERIAL_ECHOPGM("Filament sensor Prod: 0x");
+    MSerial.println(readLoc(REG_Product_ID), HEX); // Product
+
+    SERIAL_ECHOPGM("Filament sensor Rev: 0x");
+    MSerial.println(readLoc(REG_Revision_ID), HEX); // Rev
+
     // ensure that the serial port is reset
     WRITE(FILSENSNCS, HIGH);
     WRITE(FILSENSNCS, LOW);
@@ -924,7 +756,199 @@ void FilamentSensorADNS9800::reset(){
     // while(1);
     // }
 
+    uint8_t configReg1 = readLoc(REG_Configuration_I);
+    // writeLoc(REG_Configuration_I, (configReg1 & 0xC0) | 22); // resolution: 4400
+    writeLoc(REG_Configuration_I, (configReg1 & 0xC0) | 41); // resolution: 4400
+
+    configReg1 = readLoc(REG_Configuration_I);
+    SERIAL_ECHOPGM("Filament sensor config1: 0x");
+    MSerial.println(configReg1, HEX);
+
+    uint8_t resbits = configReg1 & 0x3f;
+    SERIAL_ECHOPGM("Filament sensor resolution: ");
+    MSerial.println((uint16_t)resbits * 200);
+
+    uint8_t configReg2 = readLoc(REG_Configuration_II);
+    SERIAL_ECHOPGM("Filament sensor config2: 0x");
+    MSerial.println(configReg2, HEX);
+
+    uint8_t snap = readLoc(REG_Snap_Angle);
+    writeLoc(REG_Snap_Angle, snap | 0x80);
+    SERIAL_ECHOPGM("Snap angle register: 0x");
+    MSerial.println(readLoc(REG_Snap_Angle), HEX);
+
+    // fixed frame rate
+    // writeLoc(REG_Configuration_II, configReg2 & 0x08 );
+    // writeLoc(REG_Frame_Period_Max_Bound_Lower, 0xa0 );
+    // writeLoc(REG_Frame_Period_Max_Bound_Upper, 0x0f );
+    // delay(10);
+
     SERIAL_ECHOLNPGM("Optical Chip Initialized");
 }
+
+#else
+
+FilamentSensor filamentSensor;
+
+FilamentSensor::FilamentSensor() {
+
+    slip = 0.0;
+    // maxTempSpeed = 0;
+
+    // enabled = false;
+    enabled = true;
+
+    // Pull high chip select of filament sensor to free the
+    // SPI bus (for sdcard).
+    WRITE(FILSENSNCS, HIGH);
+    SET_OUTPUT(FILSENSNCS);
+
+    init();
+}
+
+void FilamentSensor::init() {
+
+    yPos = 0;
+    lastASteps = current_pos_steps[E_AXIS];
+    lastTS = millis();
+    lastEncoderPos = readEncoderPos();
+}
+
+void FilamentSensor::spiInit(uint8_t spiRate) {
+  // See avr processor documentation
+  SPCR = (1 << SPE) | (1 << MSTR) | (spiRate >> 1) | (1<<CPHA); // Mode 1
+  SPSR = spiRate & 1 || spiRate == 6 ? 0 : 1 << SPI2X;
+}
+
+extern uint16_t tempExtrusionRateTable[];
+#define FTIMER (F_CPU/8.0)
+#define FTIMER1000 (FTIMER/1000.0)
+#include <pins_arduino.h>
+
+uint16_t FilamentSensor::readEncoderPos() {
+
+    //
+    // Read rotary encoder pos (0...1023)
+    //
+    spiInit(3);
+
+    digitalWrite(FILSENSNCS, LOW);
+    delayMicroseconds(1); // Tclkfe
+
+    uint8_t byte1 = spiRec();
+    uint8_t byte2 = spiRec();
+
+    digitalWrite(FILSENSNCS, HIGH);
+  
+    uint16_t pos = (((uint16_t)byte1) << 2) | (byte2 & 0x3);
+
+    /* 
+    MSerial.print("Pos: ");
+    MSerial.print(pos, HEX);
+    MSerial.print(" compens: ");  // should be set
+    MSerial.print(byte2 & 0x20);
+    MSerial.print(" overr: ");    // should be cleared
+    MSerial.print(byte2 & 0x10);
+    MSerial.print(" linalarm: "); // should be cleared
+    MSerial.print(byte2 & 0x8);
+    MSerial.print(" increase: "); // not used
+    MSerial.print(byte2 & 0x4);
+    MSerial.print(" decrease: "); // not used
+    MSerial.print(byte2 & 0x2);
+    MSerial.print(" parity: ");
+    MSerial.println(byte2 & 0x1);
+    MSerial.println("");
+    */
+
+    // XXX use bitpattern to test all relevant bits at once here..
+
+    uint16_t dataWord = (((uint16_t)byte1) << 8) | byte2;
+    uint8_t p = __builtin_parity(dataWord);
+    massert(p == 0);
+
+    return pos;
+}
+
+int16_t FilamentSensor::getDY() {
+
+    uint16_t pos = readEncoderPos();
+
+    int16_t dy = pos - lastEncoderPos; 
+
+    if (dy < -512) {
+        // Überlauf in positiver richtung
+        dy = (1024 - lastEncoderPos) + pos;
+    }
+    else if (dy > 512) {
+        // Überlauf in negativer richtung
+        dy = (pos - 1024) - lastEncoderPos;
+    }
+
+    yPos += dy;
+
+#if 0
+    if (dy) {
+        SERIAL_ECHO(", dy: ");
+        SERIAL_ECHO(dy);
+        SERIAL_ECHO(", yPos: ");
+        SERIAL_ECHO(yPos);
+        SERIAL_ECHO(", estep: ");
+        SERIAL_ECHOLN(current_pos_steps[E_AXIS]);
+    }
+#endif
+
+    lastEncoderPos = pos;
+    return dy;
+}
+
+void FilamentSensor::run() {
+
+    // Berechne soll flowrate, filamentsensor ist sehr ungenau bei kleiner geschwindigkeit.
+    int16_t ds = current_pos_steps[E_AXIS] - lastASteps; // Requested extruded length
+
+    if (ds < 0) {
+
+        // Retraction, reset/sync values
+        // yPos = 0;
+        // lastEncoderPos = readEncoderPos();
+        // lastASteps = current_pos_steps[E_AXIS];
+        // lastTS = millis();
+
+        init();
+    }
+    else {
+
+      if (ds > 72) {
+
+        int16_t dy = getDY(); // Real extruded length 
+
+        uint32_t ts = millis();
+        uint16_t dt = ts - lastTS;
+
+        // float speed = (ds / AXIS_STEPS_PER_MM_E) / ((ts - lastTS)/1000.0);
+        float speed = (ds * 1000.0) / (AXIS_STEPS_PER_MM_E * dt);
+
+        // if (speed > 2) { // ca. 5mm³/s
+            // Berechne ist-flowrate, anhand filamentsensor
+
+            float realSpeed = (dy * 1000.0) / (FS_STEPS_PER_MM * dt);
+
+            SERIAL_ECHO("Flowrate_mm/s: ");
+            SERIAL_ECHO(ts);
+            SERIAL_ECHO(" ");
+            SERIAL_ECHO(speed);
+            SERIAL_ECHO(" ");
+            SERIAL_ECHOLN(realSpeed);
+        // }
+
+        lastTS = ts;
+        lastASteps = current_pos_steps[E_AXIS];
+      }
+    }
+
+    return;
+
+}
+
 #endif // #if defined(ADNSFS)
 

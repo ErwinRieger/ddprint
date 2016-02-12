@@ -5,6 +5,8 @@
 
 #pragma once
 
+#define ADNSFS
+
 #if defined(ADNSFS)
 //
 // ADNS9800 stuff
@@ -64,7 +66,6 @@
  */
 class FilamentSensorADNS9800 {
 
-        void reset();
         uint8_t readLoc(uint8_t addr);
         void writeLoc(uint8_t addr, uint8_t value);
         uint8_t pullbyte();
@@ -87,10 +88,13 @@ class FilamentSensorADNS9800 {
 
         FilamentSensorADNS9800();
         void init();
+        void reset();
         // The polling method
         void run();
         void selfTest();
 };
+
+extern FilamentSensorADNS9800 filamentSensor;
 
 #else
 
@@ -126,7 +130,7 @@ class FilamentSensor {
         // void selfTest();
 };
 
-#endif // #if defined(ADNSFS)
-
 extern FilamentSensor filamentSensor;
+
+#endif // #if defined(ADNSFS)
 

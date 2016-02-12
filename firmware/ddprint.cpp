@@ -282,6 +282,10 @@ void setup() {
     if (! swapDev.swapInit())
         kill("SwapDev init error.");
 
+#if defined(ADNSFS)
+    filamentSensor.reset();
+#endif
+
     filamentSensor.init();
 }
 
