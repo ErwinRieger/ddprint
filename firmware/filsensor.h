@@ -5,39 +5,7 @@
 
 #pragma once
 
-/*
- * Inteface to a ADNS9800 'Mousesensor'
- */
-class FilamentSensor {
-
-        void getYPos();
-
-        int16_t lastEncoderPos;
-
-        int32_t lastASteps;
-        int32_t lastYPos;
-        uint32_t lastTS;
-
-        void spiInit(uint8_t spiRate);
-        uint16_t readEncoderPos();
-
-    public:
-
-        int32_t yPos;
-        bool enabled;
-
-        float slip;
-        // xxx use a better name
-        // uint16_t maxTempSpeed;
-
-        FilamentSensor();
-        void init();
-        // The polling method
-        void run();
-        // void selfTest();
-};
-
-
+#if defined(ADNSFS)
 //
 // ADNS9800 stuff
 //
@@ -100,10 +68,10 @@ class FilamentSensorADNS9800 {
         uint8_t readLoc(uint8_t addr);
         void writeLoc(uint8_t addr, uint8_t value);
         uint8_t pullbyte();
-        void getYPos();
+        int16_t getDY();
 
         int32_t lastASteps;
-        int32_t lastYPos;
+        // int32_t lastYPos;
         uint32_t lastTS;
 
         void spiInit(uint8_t spiRate);
@@ -123,6 +91,42 @@ class FilamentSensorADNS9800 {
         void run();
         void selfTest();
 };
+
+#else
+
+/*
+ * Inteface to a ADNS9800 'Mousesensor'
+ */
+class FilamentSensor {
+
+        int16_t getDY();
+
+        int16_t lastEncoderPos;
+
+        int32_t lastASteps;
+        // int32_t lastYPos;
+        uint32_t lastTS;
+
+        void spiInit(uint8_t spiRate);
+        uint16_t readEncoderPos();
+
+    public:
+
+        int32_t yPos;
+        bool enabled;
+
+        float slip;
+        // xxx use a better name
+        // uint16_t maxTempSpeed;
+
+        FilamentSensor();
+        void init();
+        // The polling method
+        void run();
+        // void selfTest();
+};
+
+#endif // #if defined(ADNSFS)
 
 extern FilamentSensor filamentSensor;
 

@@ -7,9 +7,11 @@
 #include "temperature.h"
 #include "fastio.h"
 
-// #include "adns9800fwa4.h"
-// #include "adns9800fwa5.h"
-#include "adns9800fwa6.h"
+#if defined(ADNSFS)
+    // #include "adns9800fwa4.h"
+    // #include "adns9800fwa5.h"
+    #include "adns9800fwa6.h"
+#endif
 
 /*
  * Estimate Polling rate:
@@ -27,8 +29,13 @@
 
 // Factor to compute Extruder steps from filament sensor count
 #define ASTEPS_PER_COUNT (25.4*141/1000.0)
-#define FS_STEPS_PER_MM (800.0/25.4)
-// #define FS_STEPS_PER_MM (1600.0/25.4)
+
+#if defined(ADNSFS)
+    #define FS_STEPS_PER_MM (800.0/25.4)
+    // #define FS_STEPS_PER_MM (1600.0/25.4)
+#else
+    #define FS_STEPS_PER_MM (1024 / (5.5 * M_PI))
+#endif
 
 #define FilSensorDebug 1
 
@@ -36,10 +43,8 @@ FilamentSensor filamentSensor;
 
 FilamentSensor::FilamentSensor() {
 
-    lastASteps = lastYPos = yPos = 0;
     slip = 0.0;
     // maxTempSpeed = 0;
-    lastTS = millis();
 
     // enabled = false;
     enabled = true;
@@ -48,10 +53,15 @@ FilamentSensor::FilamentSensor() {
     // SPI bus (for sdcard).
     WRITE(FILSENSNCS, HIGH);
     SET_OUTPUT(FILSENSNCS);
+
+    init();
 }
 
 void FilamentSensor::init() {
 
+    yPos = 0;
+    lastASteps = current_pos_steps[E_AXIS];
+    lastTS = millis();
     lastEncoderPos = readEncoderPos();
 }
 
@@ -110,7 +120,7 @@ uint16_t FilamentSensor::readEncoderPos() {
     return pos;
 }
 
-void FilamentSensor::getYPos() {
+int16_t FilamentSensor::getDY() {
 
     uint16_t pos = readEncoderPos();
 
@@ -125,10 +135,10 @@ void FilamentSensor::getYPos() {
         dy = (pos - 1024) - lastEncoderPos;
     }
 
+    yPos += dy;
+
+#if 0
     if (dy) {
-
-        yPos += dy;
-
         SERIAL_ECHO(", dy: ");
         SERIAL_ECHO(dy);
         SERIAL_ECHO(", yPos: ");
@@ -136,53 +146,63 @@ void FilamentSensor::getYPos() {
         SERIAL_ECHO(", estep: ");
         SERIAL_ECHOLN(current_pos_steps[E_AXIS]);
     }
+#endif
 
     lastEncoderPos = pos;
+    return dy;
 }
 
 void FilamentSensor::run() {
 
     // Berechne soll flowrate, filamentsensor ist sehr ungenau bei kleiner geschwindigkeit.
-    int32_t ds = current_pos_steps[E_AXIS] - lastASteps; // Requested extruded length
+    int16_t ds = current_pos_steps[E_AXIS] - lastASteps; // Requested extruded length
 
-#if !defined(FilSensorDebug)
-    if (ds > 72) {
-#endif
+    if (ds < 0) {
 
+        // Retraction, reset/sync values
+        // yPos = 0;
+        // lastEncoderPos = readEncoderPos();
+        // lastASteps = current_pos_steps[E_AXIS];
+        // lastTS = millis();
 
-        getYPos();
+        init();
+    }
+    else {
+
+      if (ds > 72) {
+
+        int16_t dy = getDY(); // Real extruded length 
 
         uint32_t ts = millis();
+        uint16_t dt = ts - lastTS;
 
         // float speed = (ds / AXIS_STEPS_PER_MM_E) / ((ts - lastTS)/1000.0);
-        float speed = (ds * 1000.0) / (AXIS_STEPS_PER_MM_E * (ts - lastTS));
+        float speed = (ds * 1000.0) / (AXIS_STEPS_PER_MM_E * dt);
 
-        if (speed > 2) { // ca. 5mm³/s
+        // if (speed > 2) { // ca. 5mm³/s
             // Berechne ist-flowrate, anhand filamentsensor
-            int32_t dy = yPos - lastYPos; // Real extruded length
 
-            float realSpeed = (dy * 1000.0) / (FS_STEPS_PER_MM * (ts - lastTS));
+            float realSpeed = (dy * 1000.0) / (FS_STEPS_PER_MM * dt);
 
-            SERIAL_ECHO("Flowrate c/m: ");
+            SERIAL_ECHO("Flowrate_mm/s: ");
+            SERIAL_ECHO(ts);
+            SERIAL_ECHO(" ");
             SERIAL_ECHO(speed);
-            SERIAL_ECHO(", ");
+            SERIAL_ECHO(" ");
             SERIAL_ECHOLN(realSpeed);
-        }
+        // }
 
-        lastYPos = yPos;
         lastTS = ts;
         lastASteps = current_pos_steps[E_AXIS];
-
-#if !defined(FilSensorDebug)
+      }
     }
-#endif
 
     return;
 
 }
 
 
-
+#if defined(ADNSFS)
 FilamentSensorADNS9800::FilamentSensorADNS9800() {
 
     lastASteps = lastYPos = yPos = 0;
@@ -274,7 +294,7 @@ extern uint16_t tempExtrusionRateTable[];
 #define FTIMER1000 (FTIMER/1000.0)
 #include <pins_arduino.h>
 
-void FilamentSensorADNS9800::getYPos() {
+int16_t FilamentSensorADNS9800::getDY() {
 
     uint8_t mot = readLoc(REG_Motion);
 
@@ -364,7 +384,7 @@ void FilamentSensorADNS9800::run() {
 
         spiInit(3); // scale = pow(2, 3+1), 1Mhz
 
-        getYPos();
+        getDY();
 
         uint32_t ts = millis();
 
@@ -906,4 +926,5 @@ void FilamentSensorADNS9800::reset(){
 
     SERIAL_ECHOLNPGM("Optical Chip Initialized");
 }
+#endif // #if defined(ADNSFS)
 

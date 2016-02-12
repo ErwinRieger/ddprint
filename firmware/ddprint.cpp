@@ -1156,6 +1156,8 @@ SERIAL_ECHOLN(sDReader.getBufferPtr());
 
     bufferLow = -1;
 
+    filamentSensor.init();
+
     SERIAL_PROTOCOLLNPGM(MSG_OK);
 }
 
