@@ -297,16 +297,16 @@ bool Sd2Card::init(uint8_t sckRateID, uint8_t chipSelectPin) {
   pinMode(chipSelectPin_, OUTPUT);
   // chipSelectHigh();
   digitalWrite(chipSelectPin_, HIGH);
-  pinMode(SPI_MISO_PIN, INPUT);
-  pinMode(SPI_MOSI_PIN, OUTPUT);
-  pinMode(SPI_SCK_PIN, OUTPUT);
+  pinMode(MISO_PIN, INPUT);
+  pinMode(MOSI_PIN, OUTPUT);
+  pinMode(SCK_PIN, OUTPUT);
 
 #ifndef SOFTWARE_SPI
   // SS must be in output mode even it is not chip select
-  pinMode(SS_PIN, OUTPUT);
+  pinMode(SDSS, OUTPUT);
   // set SS high - may be chip select for another SPI device
 #if SET_SPI_SS_HIGH
-  digitalWrite(SS_PIN, HIGH);
+  digitalWrite(SDSS, HIGH);
 #endif  // SET_SPI_SS_HIGH
   // set SCK rate for initialization commands
   spiRate_ = SPI_SD_INIT_RATE;

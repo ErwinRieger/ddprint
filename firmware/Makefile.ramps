@@ -27,6 +27,6 @@ include /usr/share/arduino/Arduino.mk
 # LOCAL_C_SRCS = $(wildcard ./fw/*.cpp)
 
 # Mega/Ramps board
-CXXFLAGS      = -fno-exceptions -DMOTHERBOARD=33 -I./fw
+CPPFLAGS      +=  -DMOTHERBOARD=33 -I./fw
 # End Mega
 
