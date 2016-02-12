@@ -20,6 +20,10 @@
  * count rate at max extrusion: 20.8 mm/s / 0.0254 mm = 819 counts/s
  * Time for 127 counts at max extrusion: 127 / (819 counts/s) = 155 ms
  */
+//
+// Extruderspeed for 5mm³/s flowrate
+// v5 = 5 / (math.pi/4 * pow(1.75, 2))
+//
 
 // Factor to compute Extruder steps from filament sensor count
 #define ASTEPS_PER_COUNT (25.4*141/1000.0)
@@ -40,6 +44,155 @@ FilamentSensor::FilamentSensor() {
     // enabled = false;
     enabled = true;
 
+    // Pull high chip select of filament sensor to free the
+    // SPI bus (for sdcard).
+    WRITE(FILSENSNCS, HIGH);
+    SET_OUTPUT(FILSENSNCS);
+}
+
+void FilamentSensor::init() {
+
+    lastEncoderPos = readEncoderPos();
+}
+
+void FilamentSensor::spiInit(uint8_t spiRate) {
+  // See avr processor documentation
+  SPCR = (1 << SPE) | (1 << MSTR) | (spiRate >> 1) | (1<<CPHA); // Mode 1
+  SPSR = spiRate & 1 || spiRate == 6 ? 0 : 1 << SPI2X;
+}
+
+extern uint16_t tempExtrusionRateTable[];
+#define FTIMER (F_CPU/8.0)
+#define FTIMER1000 (FTIMER/1000.0)
+#include <pins_arduino.h>
+
+uint16_t FilamentSensor::readEncoderPos() {
+
+    //
+    // Read rotary encoder pos (0...1023)
+    //
+    spiInit(3);
+
+    digitalWrite(FILSENSNCS, LOW);
+    delayMicroseconds(1); // Tclkfe
+
+    uint8_t byte1 = spiRec();
+    uint8_t byte2 = spiRec();
+
+    digitalWrite(FILSENSNCS, HIGH);
+  
+    uint16_t pos = (((uint16_t)byte1) << 2) | (byte2 & 0x3);
+
+    /* 
+    MSerial.print("Pos: ");
+    MSerial.print(pos, HEX);
+    MSerial.print(" compens: ");  // should be set
+    MSerial.print(byte2 & 0x20);
+    MSerial.print(" overr: ");    // should be cleared
+    MSerial.print(byte2 & 0x10);
+    MSerial.print(" linalarm: "); // should be cleared
+    MSerial.print(byte2 & 0x8);
+    MSerial.print(" increase: "); // not used
+    MSerial.print(byte2 & 0x4);
+    MSerial.print(" decrease: "); // not used
+    MSerial.print(byte2 & 0x2);
+    MSerial.print(" parity: ");
+    MSerial.println(byte2 & 0x1);
+    MSerial.println("");
+    */
+
+    // XXX use bitpattern to test all relevant bits at once here..
+
+    uint16_t dataWord = (((uint16_t)byte1) << 8) | byte2;
+    uint8_t p = __builtin_parity(dataWord);
+    massert(p == 0);
+
+    return pos;
+}
+
+void FilamentSensor::getYPos() {
+
+    uint16_t pos = readEncoderPos();
+
+    int16_t dy = pos - lastEncoderPos; 
+
+    if (dy < -512) {
+        // Überlauf in positiver richtung
+        dy = (1024 - lastEncoderPos) + pos;
+    }
+    else if (dy > 512) {
+        // Überlauf in negativer richtung
+        dy = (pos - 1024) - lastEncoderPos;
+    }
+
+    if (dy) {
+
+        yPos += dy;
+
+        SERIAL_ECHO(", dy: ");
+        SERIAL_ECHO(dy);
+        SERIAL_ECHO(", yPos: ");
+        SERIAL_ECHO(yPos);
+        SERIAL_ECHO(", estep: ");
+        SERIAL_ECHOLN(current_pos_steps[E_AXIS]);
+    }
+
+    lastEncoderPos = pos;
+}
+
+void FilamentSensor::run() {
+
+    // Berechne soll flowrate, filamentsensor ist sehr ungenau bei kleiner geschwindigkeit.
+    int32_t ds = current_pos_steps[E_AXIS] - lastASteps; // Requested extruded length
+
+#if !defined(FilSensorDebug)
+    if (ds > 72) {
+#endif
+
+
+        getYPos();
+
+        uint32_t ts = millis();
+
+        // float speed = (ds / AXIS_STEPS_PER_MM_E) / ((ts - lastTS)/1000.0);
+        float speed = (ds * 1000.0) / (AXIS_STEPS_PER_MM_E * (ts - lastTS));
+
+        if (speed > 2) { // ca. 5mm³/s
+            // Berechne ist-flowrate, anhand filamentsensor
+            int32_t dy = yPos - lastYPos; // Real extruded length
+
+            float realSpeed = (dy * 1000.0) / (FS_STEPS_PER_MM * (ts - lastTS));
+
+            SERIAL_ECHO("Flowrate c/m: ");
+            SERIAL_ECHO(speed);
+            SERIAL_ECHO(", ");
+            SERIAL_ECHOLN(realSpeed);
+        }
+
+        lastYPos = yPos;
+        lastTS = ts;
+        lastASteps = current_pos_steps[E_AXIS];
+
+#if !defined(FilSensorDebug)
+    }
+#endif
+
+    return;
+
+}
+
+
+
+FilamentSensorADNS9800::FilamentSensorADNS9800() {
+
+    lastASteps = lastYPos = yPos = 0;
+    slip = 0.0;
+    // maxTempSpeed = 0;
+    lastTS = millis();
+
+    // enabled = false;
+    enabled = true;
+
     // SET_INPUT(FILSENSMISO);
     // SET_OUTPUT(FILSENSMOSI);
     // SET_OUTPUT(FILSENSSCLK);
@@ -49,13 +202,13 @@ FilamentSensor::FilamentSensor() {
     SET_OUTPUT(FILSENSNCS);
 }
 
-static void spiInit(uint8_t spiRate) {
+void FilamentSensorADNS9800::spiInit(uint8_t spiRate) {
   // See avr processor documentation
   SPCR = (1 << SPE) | (1 << MSTR) | (spiRate >> 1) | (1<<CPHA) | (1<<CPOL);
   SPSR = spiRate & 1 || spiRate == 6 ? 0 : 1 << SPI2X;
 }
 
-void FilamentSensor::init() {
+void FilamentSensorADNS9800::init() {
 
     spiInit(3); // scale = pow(2, 3+1), 1Mhz
 
@@ -94,7 +247,7 @@ void FilamentSensor::init() {
     // delay(10);
 }
 
-uint8_t FilamentSensor::readLoc(uint8_t addr){
+uint8_t FilamentSensorADNS9800::readLoc(uint8_t addr){
 
   WRITE(FILSENSNCS, LOW);
   spiSend(addr);
@@ -106,7 +259,7 @@ uint8_t FilamentSensor::readLoc(uint8_t addr){
   return(ret);
 }
 
-void FilamentSensor::writeLoc(uint8_t addr, uint8_t value) {
+void FilamentSensorADNS9800::writeLoc(uint8_t addr, uint8_t value) {
 
   WRITE(FILSENSNCS, LOW);
   spiSend(addr | 0x80);
@@ -121,7 +274,7 @@ extern uint16_t tempExtrusionRateTable[];
 #define FTIMER1000 (FTIMER/1000.0)
 #include <pins_arduino.h>
 
-void FilamentSensor::getYPos() {
+void FilamentSensorADNS9800::getYPos() {
 
     uint8_t mot = readLoc(REG_Motion);
 
@@ -200,10 +353,7 @@ void FilamentSensor::getYPos() {
     }
 }
 
-// Extruderspeed for 5mm³/s flowrate
-// v5 = 5 / (math.pi/4 * pow(1.75, 2))
-//
-void FilamentSensor::run() {
+void FilamentSensorADNS9800::run() {
 
     // Berechne soll flowrate, filamentsensor ist sehr ungenau bei kleiner geschwindigkeit.
     int32_t ds = current_pos_steps[E_AXIS] - lastASteps; // Requested extruded length
@@ -448,7 +598,7 @@ void FilamentSensor::run() {
 }
 
 #if 0
-void FilamentSensor::run() {
+void FilamentSensorADNS9800::run() {
 
     spiInit(3); // scale = pow(2, 3+1), 1Mhz
 
@@ -664,7 +814,7 @@ void FilamentSensor::run() {
 }
 #endif
 
-void FilamentSensor::reset(){
+void FilamentSensorADNS9800::reset(){
 
     // ensure that the serial port is reset
     WRITE(FILSENSNCS, HIGH);
