@@ -8,6 +8,12 @@
 #ifndef CONFIGURATION_H
 #define CONFIGURATION_H
 
+#if MOTHERBOARD == 33
+    #include "Configuration_ramps.h"
+#else
+    #include "Configuration_um2.h"
+#endif
+
 // This configuration file contains the basic settings.
 // Advanced settings can be found in Configuration_adv.h
 // BASIC SETTINGS: select your board type, temperature sensor type, axis scaling, and endstop configuration
@@ -31,27 +37,10 @@
 // #define BAUDRATE 500000
 // #define BAUDRATE 1000000
 
-//// The following define selects which electronics board you have. Please choose the one that matches your setup
-// 72 = Ultiboard v2.0 (includes Ultimaker 2)
-//
-#ifndef MOTHERBOARD
-#define MOTHERBOARD 72
-#endif
-
-// Define this to set a custom name for your generic Mendel,
-// #define CUSTOM_MENDEL_NAME "This Mendel"
-
 // This defines the number of extruders
 #ifndef EXTRUDERS
 #define EXTRUDERS 1
 #endif
-
-//// The following define selects which power supply you have. Please choose the one that matches your setup
-// 1 = ATX
-// 2 = X-Box 360 203Watts (the blue wire connected to PS_ON and the red wire to VCC)
-
-#define POWER_SUPPLY 2
-
 
 //===========================================================================
 //=============================Thermal Settings  ============================
@@ -257,8 +246,10 @@ const bool Z_ENDSTOPS_INVERTING = true; // set to true to invert the logic of th
 #define INVERT_X_DIR true     // for Mendel set to false, for Orca set to true
 #define INVERT_Y_DIR false    // for Mendel set to true, for Orca set to false
 #define INVERT_Z_DIR true     // for Mendel set to false, for Orca set to true
-#define INVERT_E0_DIR false   // for direct drive extruder v9 set to true, for geared extruder set to false
-#define INVERT_E1_DIR true    // for direct drive extruder v9 set to true, for geared extruder set to false
+#if ! defined(INVERT_E0_DIR)
+    #define INVERT_E0_DIR false   // for direct drive extruder v9 set to true, for geared extruder set to false
+#endif
+#define INVERT_E1_DIR false    // for direct drive extruder v9 set to true, for geared extruder set to false
 #define INVERT_E2_DIR false   // for direct drive extruder v9 set to true, for geared extruder set to false
 
 // ENDSTOP SETTINGS:
