@@ -21,11 +21,13 @@
  * Resolution: 25.4mm/1000 = 0.0254mm/count
  * count rate at max extrusion: 20.8 mm/s / 0.0254 mm = 819 counts/s
  * Time for 127 counts at max extrusion: 127 / (819 counts/s) = 155 ms
+ *
+ * Extruderspeed for 5mm³/s flowrate
+ * v5 = 5 / (math.pi/4 * pow(1.75, 2))
+ *
+ * Frequenz e-stepper bei 4mm/s:
+ *  4 * 141 =  564
  */
-//
-// Extruderspeed for 5mm³/s flowrate
-// v5 = 5 / (math.pi/4 * pow(1.75, 2))
-//
 
 // Factor to compute Extruder steps from filament sensor count
 // #define ASTEPS_PER_COUNT (25.4*141/1000.0)
@@ -40,9 +42,11 @@
 #define FilSensorDebug 1
 
 
-FilamentSensorADNS9800 filamentSensor;
 
 #if defined(ADNSFS)
+
+FilamentSensorADNS9800 filamentSensor;
+
 FilamentSensorADNS9800::FilamentSensorADNS9800() {
 
     slip = 0.0;
@@ -904,6 +908,7 @@ int16_t FilamentSensor::getDY() {
 void FilamentSensor::run() {
 
     // Berechne soll flowrate, filamentsensor ist sehr ungenau bei kleiner geschwindigkeit.
+    uint32_t ts = millis();
     int16_t ds = current_pos_steps[E_AXIS] - lastASteps; // Requested extruded length
 
     if (ds < 0) {
@@ -922,10 +927,8 @@ void FilamentSensor::run() {
 
         int16_t dy = getDY(); // Real extruded length 
 
-        uint32_t ts = millis();
         uint16_t dt = ts - lastTS;
 
-        // float speed = (ds / AXIS_STEPS_PER_MM_E) / ((ts - lastTS)/1000.0);
         float speed = (ds * 1000.0) / (AXIS_STEPS_PER_MM_E * dt);
 
         // if (speed > 2) { // ca. 5mm³/s
