@@ -5,7 +5,7 @@
 
 #pragma once
 
-// #define ADNSFS
+#define ADNSFS 1
 
 #if defined(ADNSFS)
 //
