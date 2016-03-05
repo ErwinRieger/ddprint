@@ -32,10 +32,13 @@
 // Factor to compute Extruder steps from filament sensor count
 // #define ASTEPS_PER_COUNT (25.4*141/1000.0)
 
+//#define FSFACTOR 1
+#define FSFACTOR 1.25
+
 #if defined(ADNSFS)
     // #define FS_STEPS_PER_MM (1600.0/25.4)
     // #define FS_STEPS_PER_MM (800.0/25.4)
-    #define FS_STEPS_PER_MM (8200.0/25.4)
+    #define FS_STEPS_PER_MM (8200.0/(25.4 * FSFACTOR))
 #else
     #define FS_STEPS_PER_MM (1024 / (5.5 * M_PI))
 #endif
@@ -79,8 +82,8 @@ void FilamentSensorADNS9800::init() {
     lastASteps = current_pos_steps[E_AXIS];
     lastTS = millis();
 
-    iRAvgS = 0;
-    nRAvgS = 0;
+    // iRAvgS = 0;
+    // nRAvgS = 0;
     iRAvg = 0;
     nRAvg = 0;
 }
@@ -251,6 +254,7 @@ CRITICAL_SECTION_END
         // float speed = (ds / AXIS_STEPS_PER_MM_E) / ((ts - lastTS)/1000.0);
         float speed = (ds * 1000.0) / (AXIS_STEPS_PER_MM_E * dt);
 
+#if 0
         if (speed < 5) {
             iRAvgS = 0;
             nRAvgS = 0;
@@ -274,12 +278,14 @@ CRITICAL_SECTION_END
 #endif
 
         speed = sum / nRAvgS;
+#endif
 
         // if (speed > 2) { // ca. 5mm³/s
             // Berechne ist-flowrate, anhand filamentsensor
 
             float realSpeed = (dy * 1000.0) / (FS_STEPS_PER_MM * dt);
 
+#if 0
         if (realSpeed < 5) {
             iRAvg = 0;
             nRAvg = 0;
@@ -304,15 +310,33 @@ CRITICAL_SECTION_END
 #endif
 
         // realSpeed = sum / nRAvg;
+#endif
+
+        float ratio = realSpeed / speed;
+
+        rAvg[iRAvg++] = ratio;
+        if (iRAvg == RAVGWINDOW)
+            iRAvg = 0;
+
+        if (nRAvg < RAVGWINDOW)
+            nRAvg++;
+
+        float sum = 0;
+        for (int i=0; i<nRAvg; i++)
+            sum += rAvg[i];
+
+        float avgRatio = sum/nRAvg;
 
             SERIAL_ECHO("Flowrate_mm/s: ");
             SERIAL_ECHO(ts);
             SERIAL_ECHO(" ");
             SERIAL_ECHO(speed);
-            // SERIAL_ECHO(" ");
-            // SERIAL_ECHO(realSpeed);
             SERIAL_ECHO(" ");
-            SERIAL_ECHOLN(sum/nRAvg);
+            SERIAL_ECHO(realSpeed);
+            SERIAL_ECHO(" ");
+            SERIAL_ECHO(ratio);
+            SERIAL_ECHO(" ");
+            SERIAL_ECHOLN(avgRatio);
         // }
 // #endif
         lastASteps = astep;
