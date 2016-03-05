@@ -460,6 +460,8 @@ def main():
     # fake endstops with CmdDisableStepperIsr as long we have no real ones
     argParser.add_argument("-F", dest="fakeendstop", action="store", type=bool, help="fake endstops", default=False)
 
+    argParser.add_argument("-fr", dest="feedrate", action="store", type=float, help="Feedrate for move commands.", default=0)
+
     subparsers = argParser.add_subparsers(dest="mode", help='Mode: mon(itor)|print|store|reset|pre(process).')
 
     sp = subparsers.add_parser("autoTune", help=u"Autotune hotend PID values.")
@@ -690,15 +692,16 @@ def main():
         assert(args.axis.upper() in "XYZAB")
 
         printer.commandInit(args)
-        util.manualMove(parser, util.dimIndex[args.axis.upper()], args.distance)
+        axis = util.dimIndex[args.axis.upper()]
+        util.manualMove(parser, axis, args.distance, args.feedrate)
 
     elif args.mode == 'moveabs':
 
         assert(args.axis.upper() in "XYZAB")
 
         printer.commandInit(args)
-
-        util.manualMove(parser, util.dimIndex[args.axis.upper()], args.distance, True)
+        axis = util.dimIndex[args.axis.upper()]
+        util.manualMove(parser, axis, args.distance, args.feedrate, True)
 
     elif args.mode == 'insertFilament':
 
