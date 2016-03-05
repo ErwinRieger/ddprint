@@ -449,7 +449,7 @@ def zRepeatability(parser):
 
 ####################################################################################################
 
-def manualMove(parser, axis, distance, absolute=False):
+def manualMove(parser, axis, distance, feedrate, absolute=False):
 
     planner = parser.planner
     printer = planner.printer
@@ -463,9 +463,9 @@ def manualMove(parser, axis, distance, absolute=False):
     # Get current pos from printer and set our virtual pos
     getVirtualPos(parser)
 
-    feedrate = PrinterProfile.getMaxFeedrate(axis)
+    if not feedrate:
+        feedrate = PrinterProfile.getMaxFeedrate(axis)
 
-    # parser.execute_line("G0 F%d E%f" % (feedrate*60, distance / parser.e_to_filament_length))
     if absolute:
         parser.execute_line("G0 F%d %s%f" % (feedrate*60, dimNames[axis], distance))
     else:
