@@ -114,11 +114,6 @@ void TempControl::init() {
     Ki = es.Ki;
     Kd = es.Kd;
 
-    // xxx
-    Kp = 12.0949;
-    Ki = 1.0370;
-    Kd = 35.2658;
-    
     eSum = 0;
     eAlt = 0;
 
