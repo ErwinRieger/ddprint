@@ -60,6 +60,9 @@
 #define REG_Pixel_Burst                          0x64
 
 
+// Window size running average filament speed
+// #define RAVGWINDOW 3
+#define RAVGWINDOW 3
 
 /*
  * Inteface to a ADNS9800 'Mousesensor'
@@ -76,6 +79,16 @@ class FilamentSensorADNS9800 {
         uint32_t lastTS;
 
         void spiInit(uint8_t spiRate);
+
+        // Running average of stepper
+        float rAvgS[RAVGWINDOW];
+        uint8_t iRAvgS; // index
+        uint8_t nRAvgS; // # of values
+
+        // Running average of filament sensor 
+        float rAvg[RAVGWINDOW];
+        uint8_t iRAvg; // index
+        uint8_t nRAvg; // # of values
 
     public:
 
