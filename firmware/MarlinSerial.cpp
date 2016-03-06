@@ -5,6 +5,8 @@
 * The Origin of this code is Ultimaker2Marlin (https://github.com/Ultimaker/Ultimaker2Marlin).
 ************************************************************************************************/
 
+#include <util/crc16.h>
+
 #include "ddprint.h"
 #include "MarlinSerial.h"
 
@@ -19,43 +21,32 @@ void serialprintPGM(const char *str)
   }
 }
 
-/*
-void MarlinSerial::end()
-{
-  cbi(M_UCSRxB, M_RXENx);
-  cbi(M_UCSRxB, M_TXENx);
-  cbi(M_UCSRxB, M_RXCIEx);
-}
-*/
+uint8_t MarlinSerial::peekN(uint8_t index) {
 
-
-int MarlinSerial::peek(void)
-{
-  if (rx_buffer.head == rx_buffer.tail) {
-    return -1;
-  } else {
-    return rx_buffer.buffer[rx_buffer.tail];
-  }
+    return rx_buffer.buffer[(rx_buffer.tail+index) % RX_BUFFER_SIZE];
 }
 
-int MarlinSerial::serRead(void)
+void MarlinSerial::peekChecksum(uint16_t *checksum, uint8_t count) {
+
+    for (uint8_t i=0; i<count; i++)
+        *checksum = _crc_xmodem_update(*checksum, peekN(i));
+}
+
+uint8_t MarlinSerial::serReadNoCheck(void)
 {
-  // if the head isn't ahead of the tail, we don't have any characters
-  if (rx_buffer.head == rx_buffer.tail) {
-    return -1;
-  } else {
     unsigned char c = rx_buffer.buffer[rx_buffer.tail];
     rx_buffer.tail = (unsigned int)(rx_buffer.tail + 1) % RX_BUFFER_SIZE;
     return c;
-  }
+}
+
+float MarlinSerial::serReadFloat()
+{
+    uint32_t i = (uint32_t)serReadNoCheck() + (((uint32_t)serReadNoCheck())<<8) + (((uint32_t)serReadNoCheck())<<16) + (((uint32_t)serReadNoCheck())<<24);
+    return *(float*)&i;;
 }
 
 void MarlinSerial::flush()
 {
-  // don't reverse this or there may be problems if the RX interrupt
-  // occurs after reading the value of rx_buffer_head but before writing
-  // the value to rx_buffer_tail; the previous value of rx_buffer_head
-  // may be written to rx_buffer_tail, making it appear as if the buffer
   // don't reverse this or there may be problems if the RX interrupt
   // occurs after reading the value of rx_buffer_head but before writing
   // the value to rx_buffer_tail; the previous value of rx_buffer_head

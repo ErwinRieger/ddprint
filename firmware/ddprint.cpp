@@ -33,15 +33,14 @@
 #include "eepromSettings.h"
 #include "filsensor.h"
 
-// // USB communication //
-// Startbyte
+//
+// USB/Seraial communication
+//
+// Startbyte for serial communication
 #define SOH  0x81
 
-//The ASCII buffer for recieving from the serial:
-#define DIRECT_CMD_BUFFER_SIZE 128
 //The ASCII buffer for recieving from SD:
 #define SD_BUFFER_SIZE 512
-
 
 //
 // USB commands
@@ -74,7 +73,7 @@
 
 #define CmdSetHomePos           133
 #define CmdSetTargetTemp        134
-#define CmdWriteEepromFloat     135
+#define CmdWriteEepromFloat     135 // Name max. 63 chars!
 #define CmdEepromFactory        136
 #define CmdFanSpeed             137
 #define CmdStopMove             138
@@ -124,7 +123,10 @@ uint8_t errorFlags = 0;
 
 // Macros to read scalar types from a buffer
 #define FromBuf(typ, adr) ( * ((typ *)(adr)))
-#define CmdParam1(typ, buf) ( FromBuf(typ, buf + 5) )
+#define FromSerBufInt32 ( (int32_t)MSerial.serReadNoCheck() + (((int32_t)MSerial.serReadNoCheck())<<8) + (((int32_t)MSerial.serReadNoCheck())<<16) + (((int32_t)MSerial.serReadNoCheck())<<24) )
+#define FromSerBufUInt32 ( (uint32_t)MSerial.serReadNoCheck() + (((uint32_t)MSerial.serReadNoCheck())<<8) + (((uint32_t)MSerial.serReadNoCheck())<<16) + (((uint32_t)MSerial.serReadNoCheck())<<24) )
+#define FromSerBufUInt16 ( (uint16_t)MSerial.serReadNoCheck() + (((uint16_t)MSerial.serReadNoCheck())<<8) )
+
 
 uint8_t Stopped = 0;
 
@@ -1444,12 +1446,6 @@ class UsbCommand : public Protothread {
         // detect timeout's.
         unsigned long startTS;
 
-        // Poniter to Usb/serial read buffer.
-        // char *buffer;
-        char buffer[DIRECT_CMD_BUFFER_SIZE];
-        // Poniter to SwapDev write buffer.
-        // char *swapBuffer;
-
         // Number of characters read for current command
         uint16_t serial_count;
 
@@ -1465,8 +1461,6 @@ class UsbCommand : public Protothread {
         uint8_t commandByte;
 
         // Computed checksum
-        // uint8_t checksum1;
-        // uint8_t checksum2;
         uint16_t checksum;
 
         // Number of characters we have to read
@@ -1476,53 +1470,24 @@ class UsbCommand : public Protothread {
         uint8_t lenByte2;
 
         UsbCommand() {
-            // cmdState = CmdNone;
-            // buffer = NULL;
-            // len = 0;
-            // packed_count = 0;
             init();
         }
 
         void init() {
             serial_count = 0;
-            // startTS = 0;
             serialNumber = 0;
         }
 
         void reset() {
             serial_count = 0;
 
-            // MSerial.flush();
-
             // Drain usbserial buffers for 50 ms
             unsigned long drainEnd = millis() + 50;
             while (millis() < drainEnd) {
                 if( MSerial.available() ) {
-                    MSerial.serRead();
+                    MSerial.serReadNoCheck();
                 }
             }
-        }
-
-        // Todo: inline this
-        FWINLINE void addCecksumByte(uint8_t b) {
-            /*
-            uint16_t Fletcher16( uint8_t* data, int count )
-            {
-                uint16_t sum1 = 0;
-                uint16_t sum2 = 0;
-                int index;
-                      
-                for( index = 0; index < count; ++index )
-                {
-                sum1 = (sum1 + data[index]) % 255;
-                sum2 = (sum2 + sum1) % 255;
-                }
-                return (sum2 << 8) | sum1;
-            }
-            */
-            // checksum1 = (checksum1 + b) % 255;
-            // checksum2 = (checksum2 + checksum1) % 255;
-            checksum = _crc_xmodem_update(checksum, b);
         }
 
         void rxError(uint8_t e) {
@@ -1617,7 +1582,7 @@ class UsbCommand : public Protothread {
             PT_WAIT_UNTIL( (i = MSerial.available()) );
             
             while ( i ) {
-                c = MSerial.serRead();
+                c = MSerial.serReadNoCheck();
                 if (c == SOH) {
                     break;
                 }
@@ -1631,29 +1596,24 @@ class UsbCommand : public Protothread {
             startTS = millis();
 
             serial_count = 0;
-            // checksum1 = checksum2 = 0;
             checksum = 0;
-            addCecksumByte(SOH);
+            checksum = _crc_xmodem_update(checksum, SOH);
 
             // Read packet number
-            // PT_WAIT_UNTIL( MSerial.available() >= 6); // serial, command, len
-
             PT_WAIT_WHILE( (av = waitForSerial(6)) == NothinAvailable );
             if (av == SerTimeout)
                 PT_RESTART();
 
             // Packet serial number
-            c = MSerial.serRead();
-            addCecksumByte(c);
+            c = MSerial.serReadNoCheck();
+            checksum = _crc_xmodem_update(checksum, c);
 
             // SERIAL_ECHO("serail: ");
             // SERIAL_PROTOCOLLN((uint16_t)c);
 
             // Read command byte
-            // PT_WAIT_UNTIL( MSerial.available() );
-
-            commandByte = MSerial.serRead();
-            addCecksumByte(commandByte);
+            commandByte = MSerial.serReadNoCheck();
+            checksum = _crc_xmodem_update(checksum, commandByte);
 
             // SERIAL_ECHO("command: ");
             // SERIAL_PROTOCOLLN((uint16_t)commandByte);
@@ -1680,24 +1640,21 @@ class UsbCommand : public Protothread {
                     PT_RESTART();   // does a return
                 }
 
-                // buffer[serial_count++] = commandByte;
                 // swapDev.addByte(commandByte);
                 // PT_WAIT_WHILE( swapDev.isBusyWriting() );
 
                 // Read payload length, 2 or 4 bytes
-                // PT_WAIT_UNTIL( MSerial.available() >= 4);
-
-                lenByte1 = MSerial.serRead();
-                addCecksumByte(lenByte1);
+                lenByte1 = MSerial.serReadNoCheck();
+                checksum = _crc_xmodem_update(checksum, lenByte1);
                 payloadLength = lenByte1;
-                // buffer[serial_count++] = c;
+
                 // swapDev.addByte(c);
                 // PT_WAIT_WHILE( swapDev.isBusyWriting() );
 
-                lenByte2 = MSerial.serRead();
-                addCecksumByte(lenByte2);
+                lenByte2 = MSerial.serReadNoCheck();
+                checksum = _crc_xmodem_update(checksum, lenByte2);
                 payloadLength |= (lenByte2 << 8);
-                // // buffer[serial_count++] = c;
+
                 // swapDev.addByte(c);
                 // PT_WAIT_WHILE( swapDev.isBusyWriting() );
 
@@ -1712,17 +1669,15 @@ class UsbCommand : public Protothread {
                     swapDev.addByte(lenByte2);
                     PT_WAIT_WHILE( swapDev.isBusyWriting() );
 
-                    c = MSerial.serRead();
-                    addCecksumByte(c);
+                    c = MSerial.serReadNoCheck();
+                    checksum = _crc_xmodem_update(checksum, c);
                     payloadLength |= (c << 16);
-                    // buffer[serial_count++] = c;
                     swapDev.addByte(c);
                     PT_WAIT_WHILE( swapDev.isBusyWriting() );
 
-                    c = MSerial.serRead();
-                    addCecksumByte(c);
+                    c = MSerial.serReadNoCheck();
+                    checksum = _crc_xmodem_update(checksum, c);
                     payloadLength |= (c << 24);
-                    // buffer[serial_count++] = c;
                     swapDev.addByte(c);
                     PT_WAIT_WHILE( swapDev.isBusyWriting() );
 
@@ -1737,15 +1692,14 @@ class UsbCommand : public Protothread {
 
                     massert (MSerial.getError() == 0);
 
-                    // PT_WAIT_UNTIL( MSerial.available() );
                     PT_WAIT_WHILE( (av = waitForSerial(1)) == NothinAvailable );
                     if (av == SerTimeout) {
                         swapDev.setWritePos(writeBlockNumber, writePos);
                         PT_RESTART();
                     }
 
-                    c = MSerial.serRead();
-                    addCecksumByte(c);
+                    c = MSerial.serReadNoCheck();
+                    checksum = _crc_xmodem_update(checksum, c);
 
                     swapDev.addByte(c);
                     PT_WAIT_WHILE( swapDev.isBusyWriting() );
@@ -1754,21 +1708,18 @@ class UsbCommand : public Protothread {
                 }
 
                 // Read checksum
-                // PT_WAIT_UNTIL( MSerial.available() >= 2);
                 PT_WAIT_WHILE( (av = waitForSerial(2)) == NothinAvailable );
                 if (av == SerTimeout) {
                     swapDev.setWritePos(writeBlockNumber, writePos);
                     PT_RESTART();
                 }
 
-                i = MSerial.serRead();
-                i += MSerial.serRead() << 8;
+                i = MSerial.serReadNoCheck();
+                i += MSerial.serReadNoCheck() << 8;
 
-                // printf("Read %d (+9) bytes, checksum: 0x%x, computed: 0x%x\n", serial_count, i,  (checksum2 << 8) | checksum1);
                 // printf("Read %d (+9) bytes, checksum: 0x%x, computed: 0x%x\n", serial_count, i,  checksum);
 
                 // Check checksum
-                // if (i != ((checksum2 << 8) | checksum1)) {
                 if (i != checksum) {
 
                     // Roll back data store
@@ -1786,8 +1737,6 @@ class UsbCommand : public Protothread {
                 // 
                 // Direct command
                 // 
-                buffer[serial_count++] = commandByte;
-
                 if (commandByte == CmdResetLineNr) {
                     serialNumber = 0;
                 }
@@ -1801,62 +1750,27 @@ class UsbCommand : public Protothread {
 
 
                 // Read payload length, 4 bytes
-                // PT_WAIT_UNTIL( MSerial.available() >= 4);
-
-                c = MSerial.serRead();
-                addCecksumByte(c);
-                buffer[serial_count++] = c;
-
-                c = MSerial.serRead();
-                addCecksumByte(c);
-                buffer[serial_count++] = c;
-
-                c = MSerial.serRead();
-                addCecksumByte(c);
-                buffer[serial_count++] = c;
-
-                c = MSerial.serRead();
-                addCecksumByte(c);
-                buffer[serial_count++] = c;
-
-                payloadLength = FromBuf(uint32_t, buffer + serial_count - 4);
-
-                payloadLength += 5; // for command byte and 4 bytes length
+                MSerial.peekChecksum(&checksum, 4);
+                payloadLength = FromSerBufUInt32;
 
                 // SERIAL_ECHO("commandlen: ");
                 // SERIAL_PROTOCOLLN(payloadLength);
 
-                while ((serial_count < payloadLength) && (serial_count < DIRECT_CMD_BUFFER_SIZE)) {
-
-                    massert (MSerial.getError() == 0);
-
-                    // PT_WAIT_UNTIL( MSerial.available() );
-                    PT_WAIT_WHILE( (av = waitForSerial(1)) == NothinAvailable );
-                    if (av == SerTimeout)
-                        PT_RESTART();
-
-                    c = MSerial.serRead();
-                    addCecksumByte(c);
-
-                    buffer[serial_count % DIRECT_CMD_BUFFER_SIZE] = c;
-
-                    serial_count++;
-                }
-
-                // Read checksum
-                // PT_WAIT_UNTIL( MSerial.available() >= 2);
-                PT_WAIT_WHILE( (av = waitForSerial(2)) == NothinAvailable );
+                // Wait for payload and two checksum bytes
+                PT_WAIT_WHILE( (av = waitForSerial(payloadLength+2)) == NothinAvailable );
                 if (av == SerTimeout)
                     PT_RESTART();
 
-                i = MSerial.serRead();
-                i |= MSerial.serRead() << 8;
+                massert (MSerial.getError() == 0);
 
-                // printf("checksum: 0x%x, computed: 0x%x\n", i,  (checksum2 << 8) | checksum1);
+                MSerial.peekChecksum(&checksum, payloadLength);
+
+                i = MSerial.peekN(payloadLength++);
+                i |= MSerial.peekN(payloadLength) << 8;
+
                 // printf("checksum: 0x%x, computed: 0x%x\n", i,  checksum);
 
                 // Check checksum
-                // if (i != ((checksum2 << 8) | checksum1)) {
                 if (i != checksum) {
 
                     crcError();
@@ -1873,7 +1787,7 @@ class UsbCommand : public Protothread {
                         printer.printerInit();
                         break;
                     case CmdMove: // move
-                        printer.cmdMove((Printer::MoveType)CmdParam1(uint8_t, buffer));
+                        printer.cmdMove((Printer::MoveType)MSerial.serReadNoCheck());
                         break;
                     case CmdEOT: // EOT
                         if (swapDev.getWritePos()) {
@@ -1885,15 +1799,18 @@ class UsbCommand : public Protothread {
                         break;
                     case CmdSetHomePos:
                         printer.setHomePos(
-                                FromBuf(int32_t, buffer + 5),
-                                FromBuf(int32_t, buffer + 5 + sizeof(int32_t)),
-                                FromBuf(int32_t, buffer + 5 + 2*sizeof(int32_t)),
-                                FromBuf(int32_t, buffer + 5 + 3*sizeof(int32_t)),
-                                FromBuf(int32_t, buffer + 5 + 4*sizeof(int32_t)));
+                                FromSerBufInt32,
+                                FromSerBufInt32,
+                                FromSerBufInt32,
+                                FromSerBufInt32,
+                                FromSerBufInt32);
                         break;
                     case CmdWriteEepromFloat: {
-                        uint8_t len = FromBuf(uint8_t, buffer + 5);
-                        writeEepromFloat(buffer + 6, len, FromBuf(float, buffer + 6 + len));
+                        uint8_t len = MSerial.serReadNoCheck();
+                        char name[64];
+                        for (c=0; c<64 && c<len; c++)
+                            name[c] = MSerial.serReadNoCheck();
+                        writeEepromFloat(name, len, MSerial.serReadFloat());
                         }
                         break;
                     case CmdEepromFactory: {
@@ -1918,11 +1835,11 @@ class UsbCommand : public Protothread {
                         dumpEepromSettings();
                         break;
                     case CmdSetTargetTemp:
-                        printer.cmdSetTargetTemp(FromBuf(uint8_t, buffer + 5), FromBuf(uint16_t, buffer + 6));
+                        printer.cmdSetTargetTemp(MSerial.serReadNoCheck(), FromSerBufUInt16);
                         SERIAL_PROTOCOLLNPGM(MSG_OK);
                         break;
                     case CmdFanSpeed:
-                        printer.cmdFanSpeed(FromBuf(uint8_t, buffer + 5));
+                        printer.cmdFanSpeed(MSerial.serReadNoCheck());
                         SERIAL_PROTOCOLLNPGM(MSG_OK);
                         break;
                     case CmdStopMove:
@@ -1930,7 +1847,7 @@ class UsbCommand : public Protothread {
                         break;
 #if defined(PIDAutoTune)
                     case CmdSetHeaterY:
-                        tempControl.setHeaterY(FromBuf(uint8_t, buffer + 5), FromBuf(uint8_t, buffer + 6));
+                        tempControl.setHeaterY(MSerial.serReadNoCheck(), MSerial.serReadNoCheck());
                         SERIAL_PROTOCOLLNPGM(MSG_OK);
                         break;
 #endif
@@ -1960,7 +1877,7 @@ class UsbCommand : public Protothread {
                     case CmdGetTempTable:
                         printer.cmdGetTempTable();
                         break;
-                    #if defined(DDSim)
+#if defined(DDSim)
                     case CmdResetLineNr:
                         break;
                     case CmdExit:
@@ -1969,8 +1886,10 @@ class UsbCommand : public Protothread {
                         break;
                     default:
                         massert(commandByte < 128);
-                    #endif
+#endif
                 }
+
+                MSerial.flush();
 
                 // PT_WAIT_WHILE( swapDev.isWriteBusy() ); wait for writeBlock() completion?
             }

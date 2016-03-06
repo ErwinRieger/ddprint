@@ -98,9 +98,12 @@ class MarlinSerial //: public Stream
   public:
     MarlinSerial();
     void begin(long);
-    void end();
-    int peek(void);
-    int serRead(void);
+    uint8_t peekN(uint8_t index);
+    void  peekChecksum(uint16_t *checksum, uint8_t count);
+
+    uint8_t serReadNoCheck(void);
+    float serReadFloat();
+
     void flush(void);
 
     inline int available(void) {
@@ -127,7 +130,7 @@ class MarlinSerial //: public Stream
     // and reset error status.
     uint8_t getError() {
         uint8_t e = rxerror;
-        rxerror = false;
+        rxerror = 0;
         return e;
     }
 
