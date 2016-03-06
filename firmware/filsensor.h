@@ -62,7 +62,7 @@
 
 // Window size running average filament speed
 // #define RAVGWINDOW 3
-#define RAVGWINDOW 3
+#define RAVGWINDOW 5
 
 
 /*
