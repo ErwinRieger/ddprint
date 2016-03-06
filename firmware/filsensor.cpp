@@ -73,11 +73,13 @@ FilamentSensorADNS9800::FilamentSensorADNS9800() {
     init();
 }
 
+#if ! defined(DDSim)
 void FilamentSensorADNS9800::spiInit(uint8_t spiRate) {
   // See avr processor documentation
   SPCR = (1 << SPE) | (1 << MSTR) | (spiRate >> 1) | (1<<CPHA) | (1<<CPOL); // Mode 3
   SPSR = spiRate & 1 || spiRate == 6 ? 0 : 1 << SPI2X;
 }
+#endif
 
 void FilamentSensorADNS9800::init() {
 
@@ -855,7 +857,7 @@ void FilamentSensorADNS9800::reset(){
     // end upload
 
     // fixed frame rate
-    // byte conf = readLoc(REG_Configuration_II);
+    // uint8_t conf = readLoc(REG_Configuration_II);
     // writeLoc(REG_Configuration_II, conf & 0x08 );
 
     // writeLoc(REG_Frame_Period_Max_Bound_Lower, 0xa0 );
@@ -866,7 +868,7 @@ void FilamentSensorADNS9800::reset(){
     // reading the actual value of the register is important because the real
     // default value is different from what is said in the datasheet, and if you
     // change the reserved bytes (like by writing 0x00...) it would not work.
-    byte laser_ctrl0 = readLoc(REG_LASER_CTRL0);
+    uint8_t laser_ctrl0 = readLoc(REG_LASER_CTRL0);
     // MarlinSerial.print("laser vorher : 0x");
     // MarlinSerial.println(laser_ctrl0, HEX );
     // writeLoc(REG_LASER_CTRL0, laser_ctrl0 & 0xf0 );

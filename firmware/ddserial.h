@@ -89,10 +89,14 @@ class TxBuffer: public Protothread {
 
             while (! empty()) {
 
+#if defined(DDSim)
+                assert(0);
+#else
                 PT_WAIT_UNTIL((UCSR0A) & (1 << UDRE0));
 
                 uint8_t c = pop();
                 UDR0 = c;
+#endif
             }
 
             PT_RESTART();
