@@ -53,7 +53,7 @@ import argparse
 logging.basicConfig(level=logging.DEBUG)
 
 import ddprintutil as util, gcodeparser, packedvalue, ddhome
-# from move import Move
+import ddtest
 
 from ddprofile import PrinterProfile, MatProfile, NozzleProfile
 from ddplanner import Planner
@@ -538,6 +538,9 @@ def main():
     sp = subparsers.add_parser("testFilSensor", help=u"Debug: move filament manually, output filament sensor measurement.")
     sp.add_argument("distance", action="store", help="Move-distance (+/-) in mm.", type=float)
 
+    sp = subparsers.add_parser("calibrateFilSensor", help=u"Debug: helper to determine the ratio of stepper to flowrate sensor.")
+    # sp.add_argument("distance", action="store", help="Move-distance (+/-) in mm.", type=float)
+
     args = argParser.parse_args()
     # print "args: ", args
 
@@ -798,13 +801,10 @@ def main():
         printer.sendCommandParam(CmdFanSpeed, p1=packedvalue.uint8_t(args.speed), wantReply="ok")
 
     elif args.mode == 'testFilSensor':
+        ddtest.testFilSensor(args, parser)
 
-        printer.commandInit(args)
-        startPos = printer.query(CmdGetFilSensor)
-        util.manualMove(parser, util.dimIndex['A'], args.distance)
-        endPos = printer.query(CmdGetFilSensor)
-        diff = endPos - startPos
-        print "Filament pos:", startPos, endPos, "counts, difference: %d,  %.3f mm" % (diff, diff*25.4/1000)
+    elif args.mode == 'calibrateFilSensor':
+        ddtest.calibrateFilSensor(args, parser)
 
     elif args.mode == 'test':
 
