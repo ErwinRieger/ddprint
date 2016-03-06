@@ -449,7 +449,7 @@ def zRepeatability(parser):
 
 ####################################################################################################
 
-def manualMove(parser, axis, distance, feedrate, absolute=False):
+def manualMove(parser, axis, distance, feedrate=0, absolute=False):
 
     planner = parser.planner
     printer = planner.printer
@@ -503,9 +503,9 @@ def insertFilament(args, parser):
             ch = kbd.getc()
 
             print "ch: ", ch
-            if ch == "f":       # filament backwards, 'small' step
+            if ch == "f":       # filament forward, 'small' step
                 aofs += 1
-            elif ch == "F":     # filament backwards, 'big' step
+            elif ch == "F":     # filament forward, 'big' step
                 aofs += 10
             elif ch == "b":     # filament backwards, 'small' step
                 aofs -= 1
