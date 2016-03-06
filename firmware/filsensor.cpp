@@ -39,7 +39,9 @@
     // #define FS_STEPS_PER_MM (1600.0/25.4)
     // #define FS_STEPS_PER_MM (800.0/25.4)
     #define FS_STEPS_PER_MM ((8200.0*FSFACTOR)/25.4)
-#else
+#endif
+
+#if defined(BournsEMS22AFS)
     #define FS_STEPS_PER_MM (1024 / (5.5 * M_PI))
 #endif
 
@@ -922,7 +924,9 @@ void FilamentSensorADNS9800::reset(){
     SERIAL_ECHOLNPGM("Optical Chip Initialized");
 }
 
-#else
+#endif // #if defined(ADNSFS)
+
+#if defined(BournsEMS22AFS)
 
 FilamentSensor filamentSensor;
 
@@ -1116,5 +1120,5 @@ CRITICAL_SECTION_END
 
 }
 
-#endif // #if defined(ADNSFS)
+#endif // #if defined(BournsEMS22AFS)
 

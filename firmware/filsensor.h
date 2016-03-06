@@ -117,10 +117,12 @@ class FilamentSensorADNS9800 {
 
 extern FilamentSensorADNS9800 filamentSensor;
 
-#else
+#endif // #if defined(ADNSFS)
+
+#if defined(BournsEMS22AFS)
 
 /*
- * Inteface to a ADNS9800 'Mousesensor'
+ * Inteface to a Bourns ems22a Rotary Encoder
  */
 class FilamentSensor {
 
@@ -153,5 +155,5 @@ class FilamentSensor {
 
 extern FilamentSensor filamentSensor;
 
-#endif // #if defined(ADNSFS)
+#endif // #if defined(BournsEMS22AFS)
 

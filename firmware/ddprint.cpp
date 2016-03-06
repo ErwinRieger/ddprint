@@ -286,7 +286,9 @@ void setup() {
     filamentSensor.reset();
 #endif
 
+#if defined(ADNSFS) || defined(BournsEMS22AFS)
     filamentSensor.init();
+#endif
 }
 
 // Block-buffered sd read
@@ -1160,7 +1162,9 @@ SERIAL_ECHOLN(sDReader.getBufferPtr());
 
     bufferLow = -1;
 
+#if defined(ADNSFS) || defined(BournsEMS22AFS)
     filamentSensor.init();
+#endif
 
     SERIAL_PROTOCOLLNPGM(MSG_OK);
 }
@@ -1377,12 +1381,14 @@ void Printer::cmdGetStatus() {
     SERIAL_ECHOLNPGM(")");
 }
 
+#if defined(ADNSFS) || defined(BournsEMS22AFS)
 void Printer::cmdGetFilSensor() {
 
     // ["state", "t0", "t1", "Swap", "SDReader", "StepBuffer", "StepBufUnderRuns", "targetT1"]
     SERIAL_ECHOPGM("Res:");
     SERIAL_ECHOLN(filamentSensor.yPos);
 }
+#endif
 
 void Printer::cmdGetTempTable() {
 
@@ -1946,9 +1952,11 @@ class UsbCommand : public Protothread {
                     case CmdGetStatus:
                         printer.cmdGetStatus();
                         break;
+#if defined(ADNSFS) || defined(BournsEMS22AFS)
                     case CmdGetFilSensor:
                         printer.cmdGetFilSensor();
                         break;
+#endif
                     case CmdGetTempTable:
                         printer.cmdGetTempTable();
                         break;
@@ -2043,14 +2051,6 @@ FWINLINE void loop() {
         //
         tempControl.Run();
 
-#if 0
-        if ((ts - timer50mS) > 50) { // Every 50 mS
-
-            filamentSensor.run();
-            timer50mS = ts;
-        }
-#endif
-
         if ((ts - timer100mS) > 100) { // Every 100 mS
 
             // lcd_lib_buttons_update_interrupt();
@@ -2070,8 +2070,10 @@ FWINLINE void loop() {
                 SERIAL_PROTOCOLLN(sbs);
             }
 
+#if defined(ADNSFS) || defined(BournsEMS22AFS)
             // Read filament sensor
             filamentSensor.run();
+#endif
 
             timer100mS = ts;
         }
