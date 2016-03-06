@@ -32,20 +32,21 @@
 // Factor to compute Extruder steps from filament sensor count
 // #define ASTEPS_PER_COUNT (25.4*141/1000.0)
 
-//#define FSFACTOR 1
-#define FSFACTOR 1.25
+// #define FSFACTOR 1
+#define FSFACTOR 0.73
 
 #if defined(ADNSFS)
     // #define FS_STEPS_PER_MM (1600.0/25.4)
     // #define FS_STEPS_PER_MM (800.0/25.4)
-    #define FS_STEPS_PER_MM (8200.0/(25.4 * FSFACTOR))
+    #define FS_STEPS_PER_MM ((8200.0*FSFACTOR)/25.4)
 #else
     #define FS_STEPS_PER_MM (1024 / (5.5 * M_PI))
 #endif
 
+// mm/s, ca. 7.2 mm³/s
+#define FilSensorMinSpeed 3
+
 #define FilSensorDebug 1
-
-
 
 #if defined(ADNSFS)
 
@@ -202,12 +203,12 @@ void FilamentSensorADNS9800::run() {
 
     spiInit(3); // scale = pow(2, 3+1), 1Mhz
 
-CRITICAL_SECTION_START
+// CRITICAL_SECTION_START
     // Berechne soll flowrate, filamentsensor ist sehr ungenau bei kleiner geschwindigkeit.
     uint32_t ts = millis();
     long astep = current_pos_steps[E_AXIS];
     int16_t dy = getDY(); // Real extruded length
-CRITICAL_SECTION_END
+// CRITICAL_SECTION_END
 
     int32_t ds = astep - lastASteps; // Requested extruded length
     if (ds < 0) {
@@ -327,6 +328,7 @@ CRITICAL_SECTION_END
 
         float avgRatio = sum/nRAvg;
 
+        if (speed > 0) {
             SERIAL_ECHO("Flowrate_mm/s: ");
             SERIAL_ECHO(ts);
             SERIAL_ECHO(" ");
@@ -337,6 +339,7 @@ CRITICAL_SECTION_END
             SERIAL_ECHO(ratio);
             SERIAL_ECHO(" ");
             SERIAL_ECHOLN(avgRatio);
+        }
         // }
 // #endif
         lastASteps = astep;
@@ -879,9 +882,9 @@ void FilamentSensorADNS9800::reset(){
     // }
 
     configReg1 = readLoc(REG_Configuration_I);
+    // writeLoc(REG_Configuration_I, (configReg1 & 0xC0) | 18); // resolution: 3600
     // writeLoc(REG_Configuration_I, (configReg1 & 0xC0) | 22); // resolution: 4400
     writeLoc(REG_Configuration_I, (configReg1 & 0xC0) | 41); // resolution: 8200
-    // writeLoc(REG_Configuration_I, (configReg1 & 0xC0) | 18); // resolution: 3600
 
     configReg1 = readLoc(REG_Configuration_I);
     SERIAL_ECHOPGM("Filament sensor config1: 0x");
