@@ -32,6 +32,7 @@
 #include "swapdev.h"
 #include "eepromSettings.h"
 #include "filsensor.h"
+#include "ddserial.h"
 
 //
 // USB/Seraial communication
@@ -1359,6 +1360,7 @@ void Printer::cmdGetPos() {
     SERIAL_ECHOLNPGM(")");
 }
 
+uint16_t waitCount = 0;
 void Printer::cmdGetStatus() {
 
     // ["state", "t0", "t1", "Swap", "SDReader", "StepBuffer", "StepBufUnderRuns", "targetT1"]
@@ -1378,6 +1380,8 @@ void Printer::cmdGetStatus() {
     SERIAL_ECHO((uint16_t)bufferLow);
     SERIAL_ECHOPGM(",");
     SERIAL_ECHO(target_temperature[0]);
+    SERIAL_ECHOPGM(",");
+    SERIAL_ECHO(waitCount);
     SERIAL_ECHOLNPGM(")");
 }
 
@@ -1999,6 +2003,9 @@ FWINLINE void loop() {
 
     // Read usb commands
     usbCommand.Run();
+
+    // Write usb/serial output
+    txBuffer.Run();
 
     /*
     if (printer.moveType == Printer::MoveTypeNone) {

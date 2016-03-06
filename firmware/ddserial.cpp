@@ -1,7 +1,7 @@
 /*
 * This file is part of ddprint - a direct drive 3D printer firmware.
 * 
-* Copyright 2015 erwin.rieger@ibrieger.de
+* Copyright 2016 erwin.rieger@ibrieger.de
 * 
 * ddprint is free software: you can redistribute it and/or modify
 * it under the terms of the GNU General Public License as published by
@@ -17,37 +17,7 @@
 * along with ddprint.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef __mdebug_h__
-#define __mdebug_h__
+#include "ddserial.h"
 
-//
-// Add heavy and time consuming debugging
-//
-#define HEAVYDEBUG 1
-
-#if defined(AVR)
-
-    extern void kill(const char*);
-    #define  massert(expr) { \
-        if (!(expr)) { SERIAL_ERROR_START; SERIAL_ECHO("ASSERTION FAILED " __FILE__ ":"); SERIAL_ECHOLN(__LINE__); kill("ASSERTION"); } }
-    #define printf // 
-
-    // Assertion that is only active in simulation
-    #define simassert(x) 
-
-    #define FWINLINE inline
-
-#else
-
-    #include <assert.h>
-    #define massert assert
-
-    // Assertion that is only active in simulation
-    #define simassert assert
-
-    #define FWINLINE  /* */
-
-#endif
-
-#endif
+TxBuffer txBuffer;
 

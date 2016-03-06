@@ -10,9 +10,6 @@
 #include "ddprint.h"
 #include "MarlinSerial.h"
 
-#define FromSerBufInt32 ( (int32_t)MSerial.serReadNoCheck() + (((int32_t)MSerial.serReadNoCheck())<<8) + (((int32_t)MSerial.serReadNoCheck())<<16) + (((int32_t)MSerial.serReadNoCheck())<<24) )
-#define FromSerBufUInt32 ( (uint32_t)MSerial.serReadNoCheck() + (((uint32_t)MSerial.serReadNoCheck())<<8) + (((uint32_t)MSerial.serReadNoCheck())<<16) + (((uint32_t)MSerial.serReadNoCheck())<<24) )
-
 //things to write to serial from Programmemory. saves 400 to 2k of RAM.
 void serialprintPGM(const char *str)
 {
@@ -62,7 +59,7 @@ int32_t MarlinSerial::serReadInt32()
         return i;
     }
 
-    return FromSerBufInt32;
+    return (int32_t)MSerial.serReadNoCheck() + (((int32_t)MSerial.serReadNoCheck())<<8) + (((int32_t)MSerial.serReadNoCheck())<<16) + (((int32_t)MSerial.serReadNoCheck())<<24);
 }
 
 uint32_t MarlinSerial::serReadUInt32()
@@ -73,7 +70,7 @@ uint32_t MarlinSerial::serReadUInt32()
         return i;
     }
 
-    return FromSerBufUInt32;
+    return (uint32_t)MSerial.serReadNoCheck() + (((uint32_t)MSerial.serReadNoCheck())<<8) + (((uint32_t)MSerial.serReadNoCheck())<<16) + (((uint32_t)MSerial.serReadNoCheck())<<24);
 }
 
 void MarlinSerial::flush()

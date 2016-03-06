@@ -86,11 +86,23 @@ void MarlinSerial::begin(long baud)
   sbi(M_UCSRxB, M_RXCIEx);
 }
 
+extern uint16_t waitCount;
+
+#if 0
 void MarlinSerial::serWrite(uint8_t c) {
 
-    while (!((M_UCSRxA) & (1 << M_UDREx))) ;
+    while (!((M_UCSRxA) & (1 << M_UDREx))) waitCount++;
 
     M_UDRx = c;
+}
+
+#endif
+
+#include "ddserial.h"
+
+void MarlinSerial::serWrite(uint8_t c) {
+
+    txBuffer.pushChar(c);
 }
 
 
