@@ -123,8 +123,6 @@ uint8_t errorFlags = 0;
 
 // Macros to read scalar types from a buffer
 #define FromBuf(typ, adr) ( * ((typ *)(adr)))
-#define FromSerBufInt32 ( (int32_t)MSerial.serReadNoCheck() + (((int32_t)MSerial.serReadNoCheck())<<8) + (((int32_t)MSerial.serReadNoCheck())<<16) + (((int32_t)MSerial.serReadNoCheck())<<24) )
-#define FromSerBufUInt32 ( (uint32_t)MSerial.serReadNoCheck() + (((uint32_t)MSerial.serReadNoCheck())<<8) + (((uint32_t)MSerial.serReadNoCheck())<<16) + (((uint32_t)MSerial.serReadNoCheck())<<24) )
 #define FromSerBufUInt16 ( (uint16_t)MSerial.serReadNoCheck() + (((uint16_t)MSerial.serReadNoCheck())<<8) )
 
 
@@ -1751,7 +1749,7 @@ class UsbCommand : public Protothread {
 
                 // Read payload length, 4 bytes
                 MSerial.peekChecksum(&checksum, 4);
-                payloadLength = FromSerBufUInt32;
+                payloadLength = MSerial.serReadUInt32();
 
                 // SERIAL_ECHO("commandlen: ");
                 // SERIAL_PROTOCOLLN(payloadLength);
@@ -1799,11 +1797,11 @@ class UsbCommand : public Protothread {
                         break;
                     case CmdSetHomePos:
                         printer.setHomePos(
-                                FromSerBufInt32,
-                                FromSerBufInt32,
-                                FromSerBufInt32,
-                                FromSerBufInt32,
-                                FromSerBufInt32);
+                                MSerial.serReadInt32(),
+                                MSerial.serReadInt32(),
+                                MSerial.serReadInt32(),
+                                MSerial.serReadInt32(),
+                                MSerial.serReadInt32());
                         break;
                     case CmdWriteEepromFloat: {
                         uint8_t len = MSerial.serReadNoCheck();

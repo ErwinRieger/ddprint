@@ -10,6 +10,9 @@
 #include "ddprint.h"
 #include "MarlinSerial.h"
 
+#define FromSerBufInt32 ( (int32_t)MSerial.serReadNoCheck() + (((int32_t)MSerial.serReadNoCheck())<<8) + (((int32_t)MSerial.serReadNoCheck())<<16) + (((int32_t)MSerial.serReadNoCheck())<<24) )
+#define FromSerBufUInt32 ( (uint32_t)MSerial.serReadNoCheck() + (((uint32_t)MSerial.serReadNoCheck())<<8) + (((uint32_t)MSerial.serReadNoCheck())<<16) + (((uint32_t)MSerial.serReadNoCheck())<<24) )
+
 //things to write to serial from Programmemory. saves 400 to 2k of RAM.
 void serialprintPGM(const char *str)
 {
@@ -35,14 +38,42 @@ void MarlinSerial::peekChecksum(uint16_t *checksum, uint8_t count) {
 uint8_t MarlinSerial::serReadNoCheck(void)
 {
     unsigned char c = rx_buffer.buffer[rx_buffer.tail];
-    rx_buffer.tail = (unsigned int)(rx_buffer.tail + 1) % RX_BUFFER_SIZE;
+    rx_buffer.tail = (rx_buffer.tail + 1) % RX_BUFFER_SIZE;
     return c;
 }
 
 float MarlinSerial::serReadFloat()
 {
+    if ((rx_buffer.head - rx_buffer.tail) >= 4) {
+        float f = *(float*)(rx_buffer.buffer + rx_buffer.tail);
+        rx_buffer.tail = (rx_buffer.tail + 4) % RX_BUFFER_SIZE;
+        return f;
+    }
+
     uint32_t i = (uint32_t)serReadNoCheck() + (((uint32_t)serReadNoCheck())<<8) + (((uint32_t)serReadNoCheck())<<16) + (((uint32_t)serReadNoCheck())<<24);
     return *(float*)&i;;
+}
+
+int32_t MarlinSerial::serReadInt32()
+{
+    if ((rx_buffer.head - rx_buffer.tail) >= 4) {
+        int32_t i = *(int32_t*)(rx_buffer.buffer + rx_buffer.tail);
+        rx_buffer.tail = (rx_buffer.tail + 4) % RX_BUFFER_SIZE;
+        return i;
+    }
+
+    return FromSerBufInt32;
+}
+
+uint32_t MarlinSerial::serReadUInt32()
+{
+    if ((rx_buffer.head - rx_buffer.tail) >= 4) {
+        uint32_t i = *(uint32_t*)(rx_buffer.buffer + rx_buffer.tail);
+        rx_buffer.tail = (rx_buffer.tail + 4) % RX_BUFFER_SIZE;
+        return i;
+    }
+
+    return FromSerBufUInt32;
 }
 
 void MarlinSerial::flush()

@@ -90,8 +90,6 @@ struct ring_buffer
   int tail;
 };
 
-// extern ring_buffer rx_buffer;
-
 class MarlinSerial //: public Stream
 {
 
@@ -102,12 +100,14 @@ class MarlinSerial //: public Stream
     void  peekChecksum(uint16_t *checksum, uint8_t count);
 
     uint8_t serReadNoCheck(void);
+    int32_t serReadInt32();
+    uint32_t serReadUInt32();
     float serReadFloat();
 
     void flush(void);
 
     inline int available(void) {
-      return (unsigned int)(RX_BUFFER_SIZE + rx_buffer.head - rx_buffer.tail) % RX_BUFFER_SIZE;
+      return (RX_BUFFER_SIZE + rx_buffer.head - rx_buffer.tail) % RX_BUFFER_SIZE;
     }
 
     inline void store_char(unsigned char c);
@@ -198,7 +198,7 @@ extern MarlinSerial MSerial;
 #define SERIAL_ECHOLNPGM(x) SERIAL_PROTOCOLLNPGM(x)
 
 inline void MarlinSerial::store_char(unsigned char c) {
-        int i = (unsigned int)(rx_buffer.head + 1) % RX_BUFFER_SIZE;
+        int i = (rx_buffer.head + 1) % RX_BUFFER_SIZE;
 
         // if we should be storing the received character into the location
         // just before the tail (meaning that the head would advance to the
