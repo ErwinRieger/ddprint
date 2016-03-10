@@ -23,18 +23,13 @@
 // #include "MarlinSerial.h"
 // #include "swapdev.h"
 
-#include "filsensor.h"
 #include "filsensorSim.h"
-
-#if defined(ADNSFS)
-    #include "adns9800fwa6.h"
-#endif
 
 static bool sdChipSelect = true; // high
 extern int sdSpiCommand;
 static int commandBytes = 0;
 extern uint32_t sdWritePos;
-static uint8_t spiRes;
+// static int spiRes = -1;
 
 #define CMD24Byte (CMD24 | 0x40)
 
@@ -72,7 +67,7 @@ uint8_t spiRec() {
 
     if (filSensorSim.isEnabled()) {
         assert(sdChipSelect == true);
-        return spiRes;
+        return filSensorSim.spiRec();
     }
 
     assert(0);
@@ -80,9 +75,9 @@ uint8_t spiRec() {
 
 void spiSend(uint8_t b) {
 
-    static bool spiWrite=false;
-    static uint8_t spiAddress;
-    static int romDownLoad = 0;
+    // static bool spiWrite=false;
+    // static uint8_t spiAddress;
+    // static int romDownLoad = 0;
 
     if (! sdChipSelect) {
 
@@ -111,70 +106,7 @@ void spiSend(uint8_t b) {
 
     if (filSensorSim.isEnabled()) {
         assert(sdChipSelect == true);
-
-        // write = b & 0x80;
-        // spiAddress = b & 0x7f;
-        if (spiWrite) {
-
-            if (romDownLoad--)
-                return;
-
-            switch (spiAddress & 0x7f) {
-                case REG_Power_Up_Reset:
-                case REG_Configuration_IV:
-                    break;
-                case REG_SROM_Enable:
-                    romDownLoad = sizeof(sromData);
-                    break;
-                /*
-                case REG_Revision_ID:
-                    spiRes = 0x3;
-                    break;
-                case REG_Configuration_I:
-                    spiRes = 0x09;
-                    break;
-                case REG_Inverse_Product_ID:
-                    spiRes = ~0x33;
-                    break;
-                    */
-                default:
-                    printf("FilSensor: write to 0x%x not implemented!\n", spiAddress&0x7f);
-                    assert(0);
-            }
-            spiWrite = false;
-        }
-        else if (b & 0x80) {
-            // write
-            spiAddress = b;
-            spiWrite = true;
-        }
-        else {
-            // read
-            switch (b) {
-                case REG_Product_ID:
-                    spiRes = 0x33;
-                    break;
-                case REG_Revision_ID:
-                    spiRes = 0x3;
-                    break;
-                case REG_Configuration_I:
-                    spiRes = 0x09;
-                    break;
-                case REG_Inverse_Product_ID:
-                    spiRes = ~0x33;
-                    break;
-                case REG_Motion:
-                case REG_Delta_X_L:
-                case REG_Delta_X_H:
-                case REG_Delta_Y_L:
-                case REG_Delta_Y_H:
-                    spiRes = 0;
-                    break;
-                default:
-                    printf("FilSensor: read at 0x%x not implemented!\n", b);
-                    assert(0);
-            }
-        }
+        filSensorSim.spiSend(b);
         return;
     }
 

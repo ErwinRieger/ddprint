@@ -24,7 +24,9 @@
 #include <termios.h>
 #include <unistd.h>
 #include <poll.h>
+
 #include "MarlinSerial.h"
+#include "ddserial.h"
 #include "Configuration.h"
 
 extern unsigned long long getTimestamp();
@@ -32,7 +34,7 @@ extern unsigned long long timestamp;
 
 static uint8_t rx_buffer_error = 0;
 // Filedescriptor for serial pseudo tty  
-static int ptty;
+int ptty;
 bool randomSerialError = false;
 
 MarlinSerial::MarlinSerial() {
@@ -166,6 +168,17 @@ void charClock() {
 void MarlinSerial::begin(long) { };
 
 void MarlinSerial::serWrite(uint8_t c) {
-    write(ptty, &c, 1);
+
+    // write(ptty, &c, 1);
+    txBuffer.pushChar(c);
 }
+
+
+
+
+
+
+
+
+
 

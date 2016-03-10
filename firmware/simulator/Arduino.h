@@ -19,7 +19,131 @@
 
 #pragma once
 
-#if defined(DDSim)
+#include <stdio.h>
+#include <fcntl.h>
+#include <stdlib.h>
+#include <stdint.h>
+#include <assert.h>
+#include <unistd.h>
+
+#define    UDRE0       5
+
+class SimRegister
+{
+    public:
+        // int m_nCents;
+        uint8_t value;
+
+    public:
+        SimRegister(uint8_t v=0)
+        {
+            value = v;
+        }
+
+        virtual void set(uint8_t v) {
+           value = v;
+        }
+
+        virtual uint8_t get() {
+           return value;
+        }
+
+        // Copy constructor
+        SimRegister(const SimRegister &cSource)
+        {
+            // m_nCents = cSource.m_nCents;
+            assert(0);
+        }
+#if 0 
+        SimRegister& operator= (const uint8_t &v)
+        {
+            assert(0);
+            set(v);
+            return *this;
+        }
+#endif
+
+        SimRegister& operator= (uint8_t &v)
+        {
+            assert(0);
+            set(v);
+            return *this;
+        }
+
+        operator uint8_t() {
+            return get();
+        }
+};
+
+class RegUCSR0A: public SimRegister {
+
+        bool toggle;
+
+    public:
+
+        RegUCSR0A() {
+            toggle = false;
+        }
+
+        void set(uint8_t v) {
+            assert(0);
+           value = v;
+        }
+
+        uint8_t get() {
+
+            if (toggle) {
+                toggle = false;
+                return 1 << UDRE0;
+            }
+
+            toggle = true;
+            return 0;
+        }
+};
+
+extern int ptty;
+
+class RegUDR0: public SimRegister {
+
+    public:
+#if 0
+        RegUDR& operator= (const RegUDR &v)
+        {
+            assert(0);
+            return *this;
+        }
+#endif
+        RegUDR0& operator= (const SimRegister &v)
+        {
+            // printf("c: %c\n", v.value);
+            write(ptty, &v.value, 1);
+            return *this;
+        }
+
+        void set(uint8_t v) {
+            assert(0);
+           value = v;
+        }
+
+        uint8_t get() {
+            assert(0);
+           return value;
+        }
+#if 0
+        RegUDR& operator= (uint8_t &v)
+        {
+            assert(0);
+            set(v);
+            return *this;
+        }
+#endif
+};
+
+extern RegUCSR0A UCSR0A;
+extern RegUDR0 UDR0;
+
+// #if defined(DDSim)
 
     #include <stdint.h>
 
@@ -151,5 +275,6 @@
     float constrain(float v, float l, float u);
     void delay(int);
     void delayMicroseconds(int);
-#endif
+
+// #endif
 

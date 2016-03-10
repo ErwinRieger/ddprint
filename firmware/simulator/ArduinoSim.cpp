@@ -18,7 +18,10 @@
 */
 
 
-#include <stdint.h>
+#include "Arduino.h"
+
+RegUCSR0A UCSR0A;
+RegUDR0 UDR0;
 
 void cli() {};
 void sei() {};

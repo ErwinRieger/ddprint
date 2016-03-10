@@ -528,7 +528,9 @@ uint8_t READ(int pin) {
                 return 1;
             // case FILSENSSDIO:
             case MISO_PIN:
-                return filSensorSim.readBit();
+                assert(0);
+                // return filSensorSim.readBit();
+                return 0;
         }
         assert(0);
 }
@@ -618,11 +620,13 @@ void WRITE(int pin, uint8_t v) {
                 filSensorSim.enable(v);
                 return;
             case SCK_PIN:
-                filSensorSim.clock(v);
+                assert(0);
+                //filSensorSim.clock(v);
                 return;
             // case FILSENSSDIO:
             case MOSI_PIN:
-                filSensorSim.writeBit(v);
+                assert(0);
+                // filSensorSim.writeBit(v);
                 return;
             case SDSS:
                 // SPI select of sdcard
@@ -710,6 +714,9 @@ void pinMode(int pin, uint8_t m) {
             break;
         case FILSENSNCS:
             printf("Setting FILSENSNCS to mode %d\n", m);
+            break;
+        case PS_ON_PIN:
+            printf("Setting PS_ON_PIN to mode %d\n", m);
             break;
         default:
             assert(0);
