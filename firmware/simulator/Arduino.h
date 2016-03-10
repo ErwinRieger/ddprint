@@ -46,6 +46,12 @@
     #define OCIE1B 2
     #define OCIE3A 0
 
+    #define SPE 0
+    #define MSTR 0
+    #define CPHA 0
+    #define CPOL 0
+    #define SPI2X 0
+
     // #define LCD_ALERTMESSAGEPGM(s) printf(s"\n")
 
     #define PROGMEM /**/
@@ -74,6 +80,8 @@
     extern int TIMSK1;
     extern int TIMSK3;
     extern int OCR3A;
+    extern int SPCR;
+    extern int SPSR;
 
     // For Sd2PinMap.h:
     extern uint8_t DDRA;

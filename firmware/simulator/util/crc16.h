@@ -1,7 +1,9 @@
 
+#include <stdint.h>
+
 #pragma once
 
-uint16_t _crc_xmodem_update (uint16_t crc, uint8_t data) {
+static uint16_t _crc_xmodem_update (uint16_t crc, uint8_t data) {
 
     int i;
     crc = crc ^ ((uint16_t)data << 8);

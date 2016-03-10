@@ -24,6 +24,9 @@
 #include <stdint.h>
 #include <assert.h>
 
+#include "ddprint.h"
+#include "move.h"
+
 #if 0
 template <typename MOVE>
 void checkPos(float pos) {};
