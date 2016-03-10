@@ -73,13 +73,11 @@ FilamentSensorADNS9800::FilamentSensorADNS9800() {
     init();
 }
 
-#if ! defined(DDSim)
 void FilamentSensorADNS9800::spiInit(uint8_t spiRate) {
   // See avr processor documentation
   SPCR = (1 << SPE) | (1 << MSTR) | (spiRate >> 1) | (1<<CPHA) | (1<<CPOL); // Mode 3
   SPSR = spiRate & 1 || spiRate == 6 ? 0 : 1 << SPI2X;
 }
-#endif
 
 void FilamentSensorADNS9800::init() {
 
