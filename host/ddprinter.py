@@ -55,6 +55,13 @@ class FatalPrinterError(Exception):
     def __str__(self):
         return "FatalPrinterError: " + self.msg
 
+class RxChecksumError(Exception):
+    def __init__(self, msg=""):
+        self.msg = msg
+
+    def __str__(self):
+        return "RxChecksumError: " + self.msg
+
 class Printer(Serial):
 
     __single = None 
@@ -152,6 +159,14 @@ class Printer(Serial):
                 if "UNKNOWN COMMAND" in recvLine.upper():
                     raise FatalPrinterError(recvLine)
 
+    def checkErrorResponse(self, respCode, length, payload):
+
+        if respCode == RespUnknownCommand:
+            self.gui.logError("ERROR: RespUnknownCommand '0x%x'" % ord(payload))
+        else:
+            self.gui.logError("ERROR: unknown response code '0x%x'" % respCode)
+            assert(0)
+
     # Read a response from printer, "handle" exceptions
     def safeReadline(self):
 
@@ -187,6 +202,70 @@ class Printer(Serial):
                 return result
 
         # not reached
+
+    def readWithTimeout(self, length):
+
+        res = ""
+
+        while len(res) < length:
+
+            try:
+                c = self.read(length)
+            except SerialException as ex:
+                self.gui.log("Readline() Exception raised:", ex)
+
+                self.rxErrors += 1
+
+                if self.rxErrors >= Printer.maxRXErrors:
+                    self.gui.log("declare line is dead ...")
+                    raise SERIALDISCON
+
+                time.sleep(0.1)
+                continue
+
+            # Receive without error, reset error counter
+            self.rxErrors = 0
+
+            res += c
+
+        for c in res:
+            self.gui.log("c: 0x%x" % ord(c))
+        return res
+
+    def readResponse(self):
+
+        s = self.readWithTimeout(1) # read response code
+        crc = crc16.crc16xmodem(s)
+
+        cmd = ord(s)
+        if cmd == 0x6:
+            print "Got ack"
+            return (cmd, 0, "")
+
+        s = self.readWithTimeout(1) # read length byte
+        crc = crc16.crc16xmodem(s, crc)
+
+        length = ord(s)
+        print "cmd: 0x%x, reading %d bytes" % (cmd, length)
+
+        payload = ""
+        while len(payload) < length:
+
+            s = self.readWithTimeout(length - len(payload)) # read payload
+            crc = crc16.crc16xmodem(s, crc)
+            payload += s
+
+        css = self.readWithTimeout(2)
+        check1 = ord(css[0])
+        check2 = ord(css[1])
+
+        checkSum = check1 + (check2<<8)
+        print "checksum: 0x%x, 0x%x" % (checkSum, crc)
+
+        if checkSum != crc:
+            raise RxChecksumError()
+
+        return (cmd, length, payload)
 
     # Monitor printer responses for a while (wait waitcount * 0.1 seconds)
     def readMore(self, waitcount=100):
@@ -333,10 +412,16 @@ class Printer(Serial):
     def sendBinaryCommand(self, binCmd, wantReply=None, binPayload=None, lineNr=None):
         self.gui.logSend("sendCommand: ", CommandNames[ord(binCmd)])
         binary = self.buildBinaryCommand(binCmd, binPayload, lineNr)
-        self.send2(binary, wantReply)
+        self.send2(binCmd, binary, wantReply)
+
+    def sendBinaryCommandx(self, cmd, wantReply=None, binPayload=None, lineNr=None):
+        self.gui.logSend("sendCommand: ", CommandNames[cmd])
+        binary = self.buildBinaryCommand(struct.pack("<B", cmd), binPayload, lineNr)
+        self.send2(cmd, binary, wantReply)
 
     def sendCommand(self, cmd, wantReply=None, binPayload=None, lineNr=None):
-        self.sendBinaryCommand(struct.pack("<B", cmd), wantReply=wantReply, binPayload=binPayload, lineNr=lineNr)
+        # self.sendBinaryCommand(struct.pack("<B", cmd), wantReply=wantReply, binPayload=binPayload, lineNr=lineNr)
+        self.sendBinaryCommandx(cmd, wantReply=wantReply, binPayload=binPayload, lineNr=lineNr)
 
     def sendCommandParam(self, cmd, wantReply=None, lineNr=None, p1=None, p2=None, p3=None, p4=None):
         self.sendCommandParamV(cmd, wantReply=wantReply, lineNr=lineNr, params=(p1, p2, p3, p4))
@@ -373,13 +458,10 @@ class Printer(Serial):
         time.sleep(0.1)
 
     # Send command or Query info from printer
-    def send2(self, binary, wantReply=None):
+    def send2(self, replyCode, binary, wantReply=None):
 
-        # self.startTime = time.time()
-
-        wantAck = True
-
-        recvPart = None
+        if wantReply:
+            print "XXX ignoring wantreply:", wantReply
 
         # Send cmd/query
         startTime = time.time()
@@ -394,13 +476,16 @@ class Printer(Serial):
             self.send(binary)
         """
 
+        print "waiting for reply code 0x%x" % replyCode
+
         self.send(binary)
 
         # Wait for response, xxx without timeout/retry for now
         while True:
 
             try:
-                recvLine = self.safeReadline()        
+                # recvLine = self.safeReadline()        
+                (cmd, length, payload) = self.readResponse()        
             except SERIALDISCON:
                 self.gui.logError("Line disconnected in send2(), reconnecting!")
                 self.reconnect()
@@ -409,29 +494,19 @@ class Printer(Serial):
                 self.send(binary)
                 continue
 
-            if not recvLine:
-                continue
-
-            if wantAck and recvLine == chr(0x6):
+            if cmd == 0x6:
                 dt = time.time() - startTime
                 n = len(binary)
                 self.gui.logRecv("ACK, Sent %d bytes in %.2f ms, %.2f Kb/s" % (n, dt*1000, n/(dt*1000)))
+                return (cmd, length, payload)
 
-                if not wantReply:
-                    return True
+            if cmd == replyCode:
+                print "got reply:", payload
+                return (cmd, length, payload)
 
-                wantAck = False
-                continue
+            resendCommand = self.checkErrorResponse(cmd, length, payload)
+            # resendCommand = self.checkError(recvLine)
 
-            if recvPart:
-                recvLine = recvPart + recvLine
-                recvPart = None
-
-            if recvLine[-1] != "\n":
-                recvPart = recvLine
-                continue
-
-            resendCommand = self.checkError(recvLine)
             if resendCommand == True:
                 # Command ok without ack
                 if wantReply:
@@ -443,6 +518,10 @@ class Printer(Serial):
                 self.send(resendCommand)
                 continue
 
+            print "unknown reply:", cmd, lenght, payload
+            assert(0)
+
+            """
             if wantReply and recvLine.startswith(wantReply):
                 self.gui.logRecv("Got Required reply: ", recvLine,)
                 assert(not wantAck)
@@ -456,6 +535,7 @@ class Printer(Serial):
                 startTime = time.time()
                 self.send(binary)
                 continue
+            """
 
         # Notreached
 
@@ -467,21 +547,36 @@ class Printer(Serial):
 
         binary = self.buildBinaryCommand(struct.pack("<B", cmd), binPayload=binPayload);
 
-        reply = self.send2(binary, "Res:")
+        reply = self.send2(cmd, binary, "Res:")
 
         if reply == True:
             # Command was ok, but no response due to reconnect, restart query:
             return self.query(cmd, binPayload)
 
-        return eval(reply[4:])
+        # return eval(reply[4:])
+        return reply
 
     def getStatus(self):
+
         valueNames = ["state", "t0", "t1", "Swap", "SDReader", "StepBuffer", "StepBufUnderRuns", "targetT1"]
-        statusList = self.query(CmdGetStatus, doLog=False)
+        # sizeof(uint8_t) +
+        # sizeof(float) +
+        # sizeof(float) +
+        # sizeof(uint32_t) +
+        # sizeof(uint16_t) +
+        # sizeof(uint16_t) +
+        # sizeof(uint16_t) +
+        # sizeof(uint16_t)
+
+        # statusList = self.query(CmdGetStatus, doLog=False)
+        (cmd, length, payload) = self.query(CmdGetStatus, doLog=False)
+
+        tup = struct.unpack("<BffIHHHH", payload)
 
         statusDict = {}
         for i in range(len(valueNames)):
-            statusDict[valueNames[i]] = statusList[i]
+            # statusDict[valueNames[i]] = statusList[i]
+            statusDict[valueNames[i]] = tup[i]
 
         return statusDict
 

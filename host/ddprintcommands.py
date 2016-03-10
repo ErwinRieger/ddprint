@@ -84,30 +84,6 @@ CmdGetStatus = 161
 CmdGetFilSensor = 162 # Get raw value of filament sensor pos
 CmdGetTempTable = 163 # Get raw value of filament sensor pos
 
-#
-#
-#
-#
-#
-# Drucker koordinatensystem:
-# ----------------------------
-#
-# X: positive richtung nach rechts, endstop in MIN richtung
-# Y: positive richtung nach hinten, endstop in MAX richtung
-# Z: positive richtung nach unten, endstop in MAX richtung
-#
-#
-#
-#
-#
-#
-#
-#
-#
-#
-#
-#
-
 CommandNames = {
     CmdNull: "CmdNull",
     CmdG1: "CmdG1",
@@ -166,6 +142,29 @@ CommandNames = {
     CmdGetFilSensor: "CmdGetFilSensor",
     CmdGetTempTable: "CmdGetTempTable",
 }
+
+#
+# Response codes
+#
+RespUnknownCommand =            1
+
+ResponseNames = {
+        RespUnknownCommand: "RespUnknownCommand",
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 ############################################################################

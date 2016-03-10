@@ -39,10 +39,10 @@
   # define ARRAY_BY_EXTRUDERS(v1, v2, v3) { v1 }
 #endif
 
-extern int target_temperature_bed;
+extern uint8_t target_temperature_bed;
 extern float current_temperature_bed;
 
-extern int target_temperature[EXTRUDERS];
+extern uint16_t target_temperature[EXTRUDERS];
 extern float current_temperature[EXTRUDERS];
 
 void disable_heater();

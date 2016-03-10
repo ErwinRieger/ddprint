@@ -44,8 +44,8 @@ extern void kill(const char* msg);
 //===========================================================================
 //=============================public variables============================
 //===========================================================================
-int target_temperature[EXTRUDERS] = { 0 };
-int target_temperature_bed = 0;
+uint16_t target_temperature[EXTRUDERS] = { 0 };
+uint8_t target_temperature_bed = 0;
 
 float current_temperature_bed = 0.0;
 float current_temperature[EXTRUDERS] = { 0.0 };

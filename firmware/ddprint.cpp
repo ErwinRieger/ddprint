@@ -105,6 +105,11 @@
 #define CmdGetFilSensor         162 
 #define CmdGetTempTable         163
 
+//
+// Rsponse types 
+//
+#define RespUnknownCommand      1 // Payload: the unknown command (1 byte)
+
 #if 0
 #if defined(ExtendedStats)
 //
@@ -1369,9 +1374,9 @@ void Printer::cmdGetPos() {
     SERIAL_ECHOLNPGM(")");
 }
 
-uint16_t waitCount = 0;
+// uint16_t waitCount = 0;
 void Printer::cmdGetStatus() {
-
+#if 0
     // ["state", "t0", "t1", "Swap", "SDReader", "StepBuffer", "StepBufUnderRuns", "targetT1"]
     SERIAL_ECHOPGM("Res:(");
     SERIAL_ECHO(printerState);
@@ -1392,6 +1397,29 @@ void Printer::cmdGetStatus() {
     SERIAL_ECHOPGM(",");
     SERIAL_ECHO(waitCount);
     SERIAL_ECHOLNPGM(")");
+#endif
+
+    txBuffer.sendResponseStart(CmdGetStatus,
+            sizeof(uint8_t) +
+            sizeof(float) +
+            sizeof(float) +
+            sizeof(uint32_t) +
+            sizeof(uint16_t) +
+            sizeof(uint16_t) +
+            sizeof(uint16_t) +
+            sizeof(uint16_t)
+            );
+
+    txBuffer.pushCharChecksum(printerState);
+    txBuffer.sendResponseValue(current_temperature_bed);
+    txBuffer.sendResponseValue(current_temperature[0]);
+    txBuffer.sendResponseValue(swapDev.available());
+    txBuffer.sendResponseValue(sDReader.available());
+    txBuffer.sendResponseValue(stepBuffer.byteSize());
+    txBuffer.sendResponseValue((uint16_t)bufferLow);
+    txBuffer.sendResponseValue(target_temperature[0]);
+
+    txBuffer.sendResponseEnd();
 }
 
 #if defined(ADNSFS) || defined(BournsEMS22AFS)
@@ -1439,7 +1467,7 @@ void Printer::dwellEnd() {
 Printer printer;
 
 // Send ascii-ACK 0x6 for accepted usbserial command.
-#define USBACK  { MSerial.serWrite(0x6); }
+// #define USBACK  { MSerial.serWrite(0x6); }
 
 // Structure to store the result of get_command_usb()
 // XXX merge get_command_usb* functions into this
@@ -1741,7 +1769,8 @@ class UsbCommand : public Protothread {
                 }
 
                 serialNumber++;
-                USBACK;
+                // USBACK;
+                txBuffer.sendACK();
             }
             else {
 
@@ -1758,7 +1787,6 @@ class UsbCommand : public Protothread {
                         PT_RESTART();   // does a return
                     }
                 }
-
 
                 // Read payload length, 4 bytes
                 MSerial.peekChecksum(&checksum, 4);
@@ -1790,10 +1818,23 @@ class UsbCommand : public Protothread {
 
                 serialNumber++;
 
-                USBACK;
+                // USBACK;
 
                 // Handle direct command
                 switch (commandByte) {
+                    //
+                    // Commands were we send the acknowledge
+                    //
+                    case CmdResetLineNr:
+                        txBuffer.sendACK();
+                        break;
+                    //
+                    // Commands were the acknowledge ist sent by them self
+                    //
+                    case CmdGetStatus:
+                        printer.cmdGetStatus();
+                        break;
+#if 0
                     case 128: // printerInit
                         printer.printerInit();
                         break;
@@ -1877,9 +1918,6 @@ class UsbCommand : public Protothread {
                     case CmdGetPos:
                         printer.cmdGetPos();
                         break;
-                    case CmdGetStatus:
-                        printer.cmdGetStatus();
-                        break;
 #if defined(ADNSFS) || defined(BournsEMS22AFS)
                     case CmdGetFilSensor:
                         printer.cmdGetFilSensor();
@@ -1889,15 +1927,16 @@ class UsbCommand : public Protothread {
                         printer.cmdGetTempTable();
                         break;
 #if defined(DDSim)
-                    case CmdResetLineNr:
-                        break;
                     case CmdExit:
                         printf("CmdExit received, exiting...\n");
                         exit(0);
                         break;
-                    default:
-                        massert(commandByte < 128);
 #endif
+#endif
+                    default:
+                        // massert(commandByte < 128);
+                        // xxx send unknown command message with command as payload
+                        txBuffer.sendSingleResponse(RespUnknownCommand, commandByte);
                 }
 
                 MSerial.flush();

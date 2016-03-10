@@ -22,6 +22,7 @@
 #include <Arduino.h>
 #include <avr/io.h>
 #include <avr/pgmspace.h>
+#include <util/crc16.h>
 
 #include "Protothread.h"
 // #include "pins.h"
@@ -32,12 +33,16 @@
 #define TxBufferLen  128
 #define TxBufferMask  (TxBufferLen - 1)
 
+// Serial communication ACK
+#define RESPUSBACK 0x6
+
 class TxBuffer: public Protothread {
 
     private:
         uint8_t txBuffer[TxBufferLen];
-
         uint8_t head, tail;
+        // Checksum for response messages
+        uint16_t checksum;
 
     public:
 
@@ -87,7 +92,7 @@ class TxBuffer: public Protothread {
 
             char ch=pgm_read_byte(str);
             while(ch) {
-                sendChar(ch);
+                sendCharUnbuffered(ch);
                 ch = pgm_read_byte(++str);
             }
         }
@@ -95,13 +100,23 @@ class TxBuffer: public Protothread {
         void sendUnbuffered(const char *str) {
 
             while (*str)
-                sendChar(*str++);
+                sendCharUnbuffered(*str++);
         }
 
-        void sendChar(uint8_t c) {
+        void sendCharUnbuffered(uint8_t c) {
 
             while (!((UCSR0A) & (1 << UDRE0)));
             UDR0 = c;
+        }
+
+        void sendACK() {
+
+            if (empty()) {
+                sendCharUnbuffered(RESPUSBACK);
+                return;
+            }
+
+            pushChar(RESPUSBACK);
         }
 
         bool Run() {
@@ -120,6 +135,54 @@ class TxBuffer: public Protothread {
             PT_END();
         }
 
+        void pushCharChecksum(uint8_t c) {
+            checksum = _crc_xmodem_update(checksum, c);
+            pushChar(c);
+        }
+
+        void sendResponseStart(uint8_t respCode, uint8_t length) {
+
+            checksum = 0;
+
+            pushCharChecksum(respCode);
+            pushCharChecksum(length);
+        }
+
+        void sendResponseEnd() {
+
+            printf("chesum: 0x%x\n", checksum);
+            pushChar(checksum & 0xFF);
+            pushChar(checksum >> 8);
+        }
+
+        void sendSingleResponse(uint8_t respCode, uint8_t payload) {
+
+            sendResponseStart(respCode, 1);
+            pushCharChecksum(payload);
+            sendResponseEnd();
+        }
+
+        void sendResponseValue(uint16_t v) {
+
+            pushCharChecksum(*(uint8_t*)&v);
+            pushCharChecksum(*(((uint8_t*)&v)+1));
+        }
+
+        void sendResponseValue(uint32_t v) {
+
+            pushCharChecksum(*(uint8_t*)&v);
+            pushCharChecksum(*(((uint8_t*)&v)+1));
+            pushCharChecksum(*(((uint8_t*)&v)+2));
+            pushCharChecksum(*(((uint8_t*)&v)+3));
+        }
+
+        void sendResponseValue(float v) {
+
+            pushCharChecksum(*(uint8_t*)&v);
+            pushCharChecksum(*(((uint8_t*)&v)+1));
+            pushCharChecksum(*(((uint8_t*)&v)+2));
+            pushCharChecksum(*(((uint8_t*)&v)+3));
+        }
 };
 
 extern TxBuffer txBuffer;
