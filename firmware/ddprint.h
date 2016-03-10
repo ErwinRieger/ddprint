@@ -105,8 +105,10 @@
 extern uint8_t errorFlags;
 
 void kill(const char* msg);
-bool IsStopped();
-void Stop(uint8_t reasonNr);
+void killPGM(const char* msg);
+
+// bool IsStopped();
+// void Stop(uint8_t reasonNr);
 extern void watchdog_reset();
 void setup();
 

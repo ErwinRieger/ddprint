@@ -21,6 +21,7 @@
 
 #include <Arduino.h>
 #include <avr/io.h>
+#include <avr/pgmspace.h>
 
 #include "Protothread.h"
 // #include "pins.h"
@@ -82,6 +83,26 @@ class TxBuffer: public Protothread {
         FWINLINE void pushStr(uint8_t *s) {
         }
 
+        void sendUnbufferedPGM(const char *str) {
+
+            char ch=pgm_read_byte(str);
+            while(ch) {
+                sendChar(ch);
+                ch = pgm_read_byte(++str);
+            }
+        }
+
+        void sendUnbuffered(const char *str) {
+
+            while (*str)
+                sendChar(*str++);
+        }
+
+        void sendChar(uint8_t c) {
+
+            while (!((UCSR0A) & (1 << UDRE0)));
+            UDR0 = c;
+        }
 
         bool Run() {
             
@@ -89,14 +110,10 @@ class TxBuffer: public Protothread {
 
             while (! empty()) {
 
-#if defined(DDSim)
-                assert(0);
-#else
                 PT_WAIT_UNTIL((UCSR0A) & (1 << UDRE0));
 
                 uint8_t c = pop();
                 UDR0 = c;
-#endif
             }
 
             PT_RESTART();

@@ -193,36 +193,44 @@ uint16_t tempExtrusionRateTable[31] = {
 
 
 
+void shutdown() {
 
+    cli(); // Stop interrupts
+    disable_heater();
+    printer.disableSteppers();
 
+#if defined(PS_ON_PIN) && PS_ON_PIN > -1
+    pinMode(PS_ON_PIN,INPUT);
+#endif
+}
 
 
 // xxx move to printer class?
 void kill(const char* msg) {
 
-  cli(); // Stop interrupts
-  disable_heater();
-  printer.disableSteppers();
+    shutdown();
 
-#if defined(PS_ON_PIN) && PS_ON_PIN > -1
-  pinMode(PS_ON_PIN,INPUT);
-#endif
+    txBuffer.sendUnbufferedPGM(PSTR("Error: Printer halted. kill() called, msg: "));
+    txBuffer.sendUnbuffered(msg);
 
-  SERIAL_ERROR_START;
-  SERIAL_ECHO(MSG_ERR_KILLED);
-  SERIAL_ECHOLN(msg);
-  // LCD_ALERTMESSAGEPGM(MSG_KILLED);
-
-  // We hav no suicide-pin
-  // suicide();
-
-  while(1) { /* Intentionally left empty */ } // Wait for reset
+    while(1) { /* Intentionally left empty */ } // Wait for reset
 }
 
-bool IsStopped() { return Stopped; };
+void killPGM(const char* msg) {
+
+    shutdown();
+
+    txBuffer.sendUnbufferedPGM(PSTR("Error: Printer halted. kill() called, msg: "));
+    txBuffer.sendUnbufferedPGM(msg);
+
+    while(1) { /* Intentionally left empty */ } // Wait for reset
+}
+
+// bool IsStopped() { return Stopped; };
 // uint8_t StoppedReason() { return Stopped; };
 
 // xxx move to printer class?
+#if 0
 void Stop(uint8_t reasonNr)
 {
 
@@ -237,6 +245,7 @@ void Stop(uint8_t reasonNr)
     LCD_MESSAGEPGM(MSG_STOPPED);
   }
 }
+#endif
 
 void setup() {
 

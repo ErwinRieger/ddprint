@@ -848,8 +848,7 @@ void FilamentSensorADNS9800::reset(){
     MSerial.println(srom_id, HEX );
     
     if (! (srom_id == SROMVER)) {
-        SERIAL_ECHOLNPGM("ADNS9500::sromDownload : the firmware was not successful downloaded");
-        while(1);
+        kill("ADNS9500 download\n");
     }
 
     // end upload
@@ -880,7 +879,7 @@ void FilamentSensorADNS9800::reset(){
     // if ((b & 0x60) != 0x20) {
         // MarlinSerial.print("Motion error !: 0x");
         // MarlinSerial.println(b, HEX );
-    // while(1);
+    // kill();
     // }
 
     configReg1 = readLoc(REG_Configuration_I);

@@ -30,6 +30,7 @@
 
 // Redundant definitions to avoid include of ddprint.h
 extern void watchdog_reset();
+extern void killPGM(const char *s);
 
 void TempControl::init() {
     //
@@ -192,11 +193,11 @@ void TempControl::heater() {
 
     // Check if temperature is within the correct range
     if(current_temperature[0] < HEATER_0_MINTEMP) {
-        min_temp_error(0);
+        killPGM(PSTR("MINTEMP HEATER 0\n"));
     }
     else {
         if(current_temperature[0] > HEATER_0_MAXTEMP) {
-            max_temp_error(0);
+            killPGM(PSTR("MAXTEMP HEATER 0\n"));
         }
         else {
 #if ! defined(PIDAutoTune)
@@ -280,11 +281,11 @@ void TempControl::heater() {
 
     // Check if temperature is within the correct range
     if(current_temperature_bed < BED_MINTEMP) {
-        bed_min_temp_error();
+        killPGM(PSTR("MINTEMP BED\n"));
     }
     else {
         if(current_temperature_bed > BED_MAXTEMP) {
-            bed_max_temp_error();
+            killPGM(PSTR("MAXTEMP BED\n"));
         }
         else {
             if(current_temperature_bed >= target_temperature_bed)

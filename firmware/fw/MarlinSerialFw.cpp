@@ -92,7 +92,6 @@ extern uint16_t waitCount;
 void MarlinSerial::serWrite(uint8_t c) {
 
     while (!((M_UCSRxA) & (1 << M_UDREx))) waitCount++;
-
     M_UDRx = c;
 }
 

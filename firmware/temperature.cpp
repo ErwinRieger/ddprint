@@ -241,6 +241,7 @@ float analog2tempBed(int raw) {
   #endif
 }
 
+#if 0
 void max_temp_error(uint8_t e) {
   disable_heater();
   if(IsStopped() == false) {
@@ -290,4 +291,4 @@ void bed_min_temp_error(void) {
   Stop(STOP_REASON_MINTEMP_BED);
   #endif
 }
-
+#endif
