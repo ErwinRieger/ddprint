@@ -28,7 +28,7 @@ from move import VVector, Move
 from ddprintconstants import fTimer, dimNames, maxTimerValue24, DEFAULT_MAX_ACCELERATION, DropSegments
 from ddprintutil import Z_AXIS, debugMoves, vectorMul, circaf
 from ddprinter import Printer
-from ddprintcommands import CmdGetEepromSettings, CmdSyncTargetTemp
+from ddprintcommands import CmdSyncTargetTemp
 from ddprintstates import HeaterEx1, HeaterBed
 
 debugPlot = True
@@ -239,7 +239,6 @@ class Planner (object):
         self.syncCommands = collections.defaultdict(list)
         self.partNumber = 1
 
-
     @classmethod
     def get(cls):
         return cls.__single
@@ -247,7 +246,7 @@ class Planner (object):
     def getHomePos(self):
 
         # Get additional z-offset from eeprom
-        add_homeing_z = self.printer.query(CmdGetEepromSettings)['add_homeing'][Z_AXIS]
+        add_homeing_z = self.printer.getAddHomeing()[Z_AXIS]
 
         assert((add_homeing_z <= 0) and (add_homeing_z >= -35))
 
@@ -265,8 +264,8 @@ class Planner (object):
 
         return (homePosMM, homePosStepped)
 
-    def addSynchronizedCommand(self, command, p1=None, p2=None, wantReply=None):
-        self.syncCommands[self.pathData.count+1].append((command, p1, p2, wantReply))
+    def addSynchronizedCommand(self, command, p1=None, p2=None):
+        self.syncCommands[self.pathData.count+1].append((command, p1, p2))
 
     # Called from gcode parser
     def newPart(self, partNumber):
@@ -519,8 +518,7 @@ class Planner (object):
                         self.printer.sendCommandParam(
                             CmdSyncTargetTemp,
                             p1=packedvalue.uint8_t(HeaterEx1),
-                            p2=packedvalue.uint16_t(newTemp),
-                            wantReply=None)
+                            p2=packedvalue.uint16_t(newTemp))
 
                         self.pathData.lastTemp = newTemp
 
@@ -540,11 +538,11 @@ class Planner (object):
         if self.args.mode != "pre":
 
             if move.moveNumber in self.syncCommands:
-                for (cmd, p1, p2, reply) in self.syncCommands[move.moveNumber]:
-                    self.printer.sendCommandParam(cmd, p1=p1, p2=p2, wantReply=reply)
+                for (cmd, p1, p2) in self.syncCommands[move.moveNumber]:
+                    self.printer.sendCommandParam(cmd, p1=p1, p2=p2)
 
             for (cmd, payload) in move.commands():
-                self.printer.sendBinaryCommand(cmd, binPayload=payload)
+                self.printer.sendBinaryCommandx(cmd, binPayload=payload)
 
     #
     # Letzter move in revMoves ist entweder:

@@ -376,7 +376,7 @@ class MainForm(npyscreen.Form):
                         self.printer.heatUp(HeaterEx1, self.mat_t1, wait=self.mat_t1 - 10)
 
                         # Send print command
-                        self.printer.sendCommandParam(CmdMove, p1=MoveTypeNormal, wantReply="ok")
+                        self.printer.sendCommandParam(CmdMove, p1=MoveTypeNormal)
                         printStarted = True
 
                     status = self.printer.getStatus()
@@ -397,7 +397,7 @@ class MainForm(npyscreen.Form):
                 util.endOfPrintLift(self.parser)
 
             self.planner.finishMoves()
-            self.printer.sendCommand(CmdEOT, wantReply="ok")
+            self.printer.sendCommand(CmdEOT)
 
             # XXX start print if less than 1000 lines or temp not yet reached:
             if not printStarted:
@@ -408,7 +408,7 @@ class MainForm(npyscreen.Form):
                 self.printer.heatUp(HeaterEx1, self.mat_t1, wait=self.mat_t1 - 10)
 
                 # Send print command
-                self.printer.sendCommandParam(CmdMove, p1=MoveTypeNormal, wantReply="ok")
+                self.printer.sendCommandParam(CmdMove, p1=MoveTypeNormal)
 
             status = self.printer.getStatus()
             self.guiQueue.put(SyncCall(self.updateStatus, status))
@@ -422,7 +422,7 @@ class MainForm(npyscreen.Form):
 
             ddhome.home(self.parser, self.args.fakeendstop)
 
-            self.printer.sendCommand(CmdDisableSteppers, wantReply="ok")
+            self.printer.sendCommand(CmdDisableSteppers)
 
         except stoppableThread.StopThread:
             # Stop of current action requested

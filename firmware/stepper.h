@@ -60,7 +60,7 @@ extern const int motor_current_setting[3];
 // extern bool abort_on_endstop_hit;
 #endif
 
-extern volatile long current_pos_steps[NUM_AXIS];
+extern volatile int32_t current_pos_steps[NUM_AXIS];
 
 // Initialize and start the stepper motor subsystem
 void st_init();
@@ -153,6 +153,11 @@ inline void st_set_direction(uint8_t dirbits) {
 #define X_ENDSTOP_PRESSED (READ(X_STOP_PIN) != X_ENDSTOPS_INVERTING)
 #define Y_ENDSTOP_PRESSED (READ(Y_STOP_PIN) != Y_ENDSTOPS_INVERTING)
 #define Z_ENDSTOP_PRESSED (READ(Z_STOP_PIN) != Z_ENDSTOPS_INVERTING)
+
+#define X_SW_ENDSTOP_PRESSED ((current_pos_steps[X_AXIS] < X_MIN_POS_STEPS) || (current_pos_steps[X_AXIS] > X_MAX_POS_STEPS))
+#define Y_SW_ENDSTOP_PRESSED ((current_pos_steps[Y_AXIS] < Y_MIN_POS_STEPS) || (current_pos_steps[Y_AXIS] > Y_MAX_POS_STEPS))
+// (current_pos_steps[Z_AXIS] < Z_MIN_POS_STEPS) || (current_pos_steps[Z_AXIS] > printer.z_max_pos_steps)
+#define Z_SW_ENDSTOP_PRESSED ((current_pos_steps[Z_AXIS] < Z_MIN_POS_STEPS) || (current_pos_steps[Z_AXIS] > Z_MAX_POS_STEPS))
 
 template<typename MOVE>
 bool st_endstop_pressed(bool);

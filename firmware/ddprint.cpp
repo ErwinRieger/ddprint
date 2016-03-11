@@ -139,6 +139,15 @@ void shutdown() {
 
 
 // xxx move to printer class?
+void kill() {
+
+    shutdown();
+    while(1) {
+        // Wait for reset
+        txBuffer.Run();
+    }
+}
+
 void kill(const char* msg) {
 
     shutdown();
@@ -146,7 +155,10 @@ void kill(const char* msg) {
     txBuffer.sendUnbufferedPGM(PSTR("Error: Printer halted. kill() called, msg: "));
     txBuffer.sendUnbuffered(msg);
 
-    while(1) { /* Intentionally left empty */ } // Wait for reset
+    while(1) {
+        // Wait for reset
+        txBuffer.Run();
+    }
 }
 
 void killPGM(const char* msg) {
@@ -156,7 +168,10 @@ void killPGM(const char* msg) {
     txBuffer.sendUnbufferedPGM(PSTR("Error: Printer halted. kill() called, msg: "));
     txBuffer.sendUnbufferedPGM(msg);
 
-    while(1) { /* Intentionally left empty */ } // Wait for reset
+    while(1) {
+        // Wait for reset
+        txBuffer.Run();
+    }
 }
 
 // bool IsStopped() { return Stopped; };
@@ -190,23 +205,23 @@ void setup() {
     SET_OUTPUT(FILSENSNCS);
 
     MSerial.begin(BAUDRATE);
-    SERIAL_PROTOCOLLNPGM("start");
+    // SERIAL_PROTOCOLLNPGM("start");
 
-    SERIAL_ECHO_START;
-    SERIAL_ECHOPGM(MSG_FREE_MEMORY);
-    SERIAL_ECHOLN(freeMemory());
-    SERIAL_ECHOPGM("Min/Max steps: X: ");
-    SERIAL_ECHO(X_MIN_POS_STEPS);
-    SERIAL_ECHO(", ");
-    SERIAL_ECHO(X_MAX_POS_STEPS);
-    SERIAL_ECHO("; Y: ");
-    SERIAL_ECHO(Y_MIN_POS_STEPS);
-    SERIAL_ECHO(", ");
-    SERIAL_ECHO(Y_MAX_POS_STEPS);
-    SERIAL_ECHO("; Z: ");
-    SERIAL_ECHO(Z_MIN_POS_STEPS);
-    SERIAL_ECHO(", ");
-    SERIAL_ECHOLN(Z_MAX_POS_STEPS);
+    // SERIAL_ECHO_START;
+    // SERIAL_ECHOPGM(MSG_FREE_MEMORY);
+    // SERIAL_ECHOLN(freeMemory());
+    // SERIAL_ECHOPGM("Min/Max steps: X: ");
+    // SERIAL_ECHO(X_MIN_POS_STEPS);
+    // SERIAL_ECHO(", ");
+    // SERIAL_ECHO(X_MAX_POS_STEPS);
+    // SERIAL_ECHO("; Y: ");
+    // SERIAL_ECHO(Y_MIN_POS_STEPS);
+    // SERIAL_ECHO(", ");
+    // SERIAL_ECHO(Y_MAX_POS_STEPS);
+    // SERIAL_ECHO("; Z: ");
+    // SERIAL_ECHO(Z_MIN_POS_STEPS);
+    // SERIAL_ECHO(", ");
+    // SERIAL_ECHOLN(Z_MAX_POS_STEPS);
 
     // loads data from EEPROM if available else uses defaults (and resets step acceleration rate)
     // Config_RetrieveSettings();
@@ -983,7 +998,7 @@ class FillBufferTask : public Protothread {
 FillBufferTask fillBufferTask;
 
 Printer::Printer() {
-  SERIAL_PROTOCOLLNPGM("printerstart");
+
     printerState = StateIdle;
     moveType = MoveTypeNone;
     homed[0] = false;
@@ -1001,12 +1016,14 @@ void Printer::printerInit() {
     //
     if (! swapErased) {
 
-        unsigned long eStart = millis();
+        // unsigned long eStart = millis();
+
         massert(swapDev.erase(0, swapDev.cardSize() - 1));
-        SERIAL_ECHO("erase time ");
-        SERIAL_ECHO(swapDev.cardSize());
-        SERIAL_ECHO(" blocks (mS):");
-        SERIAL_PROTOCOLLN(millis() - eStart);
+
+        // SERIAL_ECHO("erase time ");
+        // SERIAL_ECHO(swapDev.cardSize());
+        // SERIAL_ECHO(" blocks (mS):");
+        // SERIAL_PROTOCOLLN(millis() - eStart);
 
         swapErased = true;
     }
@@ -1018,24 +1035,12 @@ stepBuffer.flush();
 
     swapDev.reset();
 
-#if 0
-    if (! card.isOk())
-        card.initsd();
-
-    if (card.isFileOpen())
-        card.closefile();
-
-    card.openFile("pagefile.sys", false);
-#endif
-
-    // usbCommand.init();
-
     printerState = StateInit;
     eotReceived = false;
 
     analogWrite(LED_PIN, 255);
 
-    SERIAL_PROTOCOLLNPGM(MSG_OK);
+    // SERIAL_PROTOCOLLNPGM(MSG_OK);
 }
 
 void Printer::cmdEot() {
@@ -1044,7 +1049,7 @@ void Printer::cmdEot() {
 
     eotReceived = true;
 
-    SERIAL_PROTOCOLLNPGM(MSG_OK);
+    // SERIAL_PROTOCOLLNPGM(MSG_OK);
 }
 
 void Printer::cmdMove(MoveType mt) {
@@ -1096,12 +1101,13 @@ void Printer::cmdMove(MoveType mt) {
     enable_e0();
 
     // xxxxxxxxxxxxxx
-SERIAL_ECHOPGM("start: readSwap, size: ");
-SERIAL_ECHO(swapDev.getSize());
-SERIAL_ECHOPGM(", SwapReadPos: ");
-SERIAL_ECHO(swapDev.getReadPos());
-SERIAL_ECHOPGM(", SDRReadPos is: ");
-SERIAL_ECHOLN(sDReader.getBufferPtr());
+    // SERIAL_ECHOPGM("start: readSwap, size: ");
+    // SERIAL_ECHO(swapDev.getSize());
+    // SERIAL_ECHOPGM(", SwapReadPos: ");
+    // SERIAL_ECHO(swapDev.getReadPos());
+    // SERIAL_ECHOPGM(", SDRReadPos is: ");
+    // SERIAL_ECHOLN(sDReader.getBufferPtr());
+    // xxxxxxxxxxxxxx
 
     bufferLow = -1;
 
@@ -1109,22 +1115,23 @@ SERIAL_ECHOLN(sDReader.getBufferPtr());
     filamentSensor.init();
 #endif
 
-    SERIAL_PROTOCOLLNPGM(MSG_OK);
+    // SERIAL_PROTOCOLLNPGM(MSG_OK);
 }
 
-void Printer::setHomePos(
-    int32_t x, int32_t y, int32_t z,
-    int32_t a, int32_t b) {
+void Printer::setHomePos() {
 
     homed[0] = true;
     homed[1] = true;
     homed[2] = true;
 
-    current_pos_steps[X_AXIS] = x;
-    current_pos_steps[Y_AXIS] = y;
-    current_pos_steps[Z_AXIS] = z;
+    current_pos_steps[X_AXIS] = MSerial.serReadInt32();
+    current_pos_steps[Y_AXIS] = MSerial.serReadInt32();
+    current_pos_steps[Z_AXIS] = MSerial.serReadInt32();
 
-    SERIAL_PROTOCOLLNPGM(MSG_OK);
+    // a = MSerial.serReadInt32(),
+    // b = MSerial.serReadInt32());
+
+    // SERIAL_PROTOCOLLNPGM(MSG_OK);
 }
 
 void Printer::cmdSetTargetTemp(uint8_t heater, uint16_t temp) {
@@ -1216,7 +1223,7 @@ void Printer::checkMoveFinished() {
             DISABLE_STEPPER_DRIVER_INTERRUPT();
             DISABLE_STEPPER1_DRIVER_INTERRUPT();
 
-            SERIAL_PROTOCOLLNPGM("Move finished.");
+            // SERIAL_PROTOCOLLNPGM("Move finished.");
 
             // printerState = StateInit;
             printerState = StateIdle;
@@ -1242,7 +1249,6 @@ void Printer::disableSteppers() {
 void Printer::cmdDisableSteppers() {
 
     disableSteppers();
-    SERIAL_PROTOCOLLNPGM(MSG_OK);
 }
 
 void Printer::cmdDisableStepperIsr() {
@@ -1261,6 +1267,7 @@ void Printer::cmdGetState() {
 
 void Printer::cmdGetHomed() {
 
+#if 0
     SERIAL_ECHOPGM("Res:(");
     SERIAL_ECHO(homed[0]);
     SERIAL_ECHOPGM(",");
@@ -1268,10 +1275,16 @@ void Printer::cmdGetHomed() {
     SERIAL_ECHOPGM(",");
     SERIAL_ECHO(homed[2]);
     SERIAL_ECHOLNPGM(")");
+#endif
+
+    txBuffer.sendResponseStart(CmdGetHomed, sizeof(homed));
+    txBuffer.sendResponseValue((uint8_t*)homed, sizeof(homed));
+    txBuffer.sendResponseEnd();
 }
 
 void Printer::cmdGetEndstops() {
 
+#if 0
     SERIAL_ECHOPGM("Res:((");
     SERIAL_ECHO(X_ENDSTOP_PRESSED);
     SERIAL_ECHOPGM(",");
@@ -1285,10 +1298,25 @@ void Printer::cmdGetEndstops() {
     SERIAL_ECHOPGM(",");
     SERIAL_ECHO(current_pos_steps[Z_AXIS]);
     SERIAL_ECHOLNPGM("))");
+#endif
+
+    txBuffer.sendResponseStart(CmdGetEndstops, 3*(sizeof(int32_t)+1));
+
+    txBuffer.pushCharChecksum(X_ENDSTOP_PRESSED);
+    txBuffer.sendResponseValue((int32_t)current_pos_steps[X_AXIS]);
+
+    txBuffer.pushCharChecksum(Y_ENDSTOP_PRESSED);
+    txBuffer.sendResponseValue((int32_t)current_pos_steps[Y_AXIS]);
+
+    txBuffer.pushCharChecksum(Z_ENDSTOP_PRESSED);
+    txBuffer.sendResponseValue((int32_t)current_pos_steps[Z_AXIS]);
+
+    txBuffer.sendResponseEnd();
 }
 
 void Printer::cmdGetPos() {
 
+#if 0
     SERIAL_ECHOPGM("Res:(");
     SERIAL_ECHO(current_pos_steps[X_AXIS]);
     SERIAL_ECHOPGM(",");
@@ -1300,6 +1328,11 @@ void Printer::cmdGetPos() {
     // SERIAL_ECHOPGM(",");
     // SERIAL_ECHO(current_pos_steps[B_AXIS]);
     SERIAL_ECHOLNPGM(")");
+#endif
+
+    txBuffer.sendResponseStart(CmdGetPos, sizeof(current_pos_steps));
+    txBuffer.sendResponseValue((uint8_t*)current_pos_steps, sizeof(current_pos_steps));
+    txBuffer.sendResponseEnd();
 }
 
 // uint16_t waitCount = 0;
@@ -1751,13 +1784,56 @@ class UsbCommand : public Protothread {
                 // Handle direct command
                 switch (commandByte) {
                     //
-                    // Commands were we send the acknowledge
+                    // Simple ack commands, just one byte, no payload
                     //
                     case CmdResetLineNr:
                         txBuffer.sendACK();
                         break;
+                    case CmdEepromFactory: {
+                        EepromSettings es;
+                        defaultEepromSettings(es);
+                        txBuffer.sendACK();
+                        }
+                        break;
+                    case CmdDisableSteppers:
+                        printer.cmdDisableSteppers();
+                        txBuffer.sendACK();
+                        break;
+                    case CmdPrinterInit:
+                        printer.printerInit();
+                        txBuffer.sendACK();
+                        break;
+                    case CmdMove: // move
+                        printer.cmdMove((Printer::MoveType)MSerial.serReadNoCheck());
+                        txBuffer.sendACK();
+                        break;
+                    case CmdEOT: // EOT
+                        if (swapDev.getWritePos()) {
+                            // Save last partial block
+                            // xxx check busy here
+                            swapDev.writeBlock();
+                        }
+                        printer.cmdEot();
+                        txBuffer.sendACK();
+                        break;
+                    case CmdSetHomePos:
+                        //
+                        // Following call does NOT work - oder of argument evaluation
+                        // is not unspecified:
+                        //
+                        /*
+                        printer.setHomePos(
+                                MSerial.serReadInt32(),
+                                MSerial.serReadInt32(),
+                                MSerial.serReadInt32(),
+                                MSerial.serReadInt32(),
+                                MSerial.serReadInt32());
+                        */
+                        printer.setHomePos();
+                        txBuffer.sendACK();
+                        break;
                     //
-                    // Commands were the acknowledge ist sent by them self
+                    // Commands with response payload
                     //
                     case CmdGetStatus:
                         printer.cmdGetStatus();
@@ -1778,43 +1854,18 @@ class UsbCommand : public Protothread {
                     case CmdGetEepromSettings:
                         dumpEepromSettings();
                         break;
-#if 0
-                    case 128: // printerInit
-                        printer.printerInit();
-                        break;
-                    case CmdMove: // move
-                        printer.cmdMove((Printer::MoveType)MSerial.serReadNoCheck());
-                        break;
-                    case CmdEOT: // EOT
-                        if (swapDev.getWritePos()) {
-                            // Save last partial block
-                            // xxx check busy here
-                            swapDev.writeBlock();
-                        }
-                        printer.cmdEot();
-                        break;
-                    case CmdSetHomePos:
-                        printer.setHomePos(
-                                MSerial.serReadInt32(),
-                                MSerial.serReadInt32(),
-                                MSerial.serReadInt32(),
-                                MSerial.serReadInt32(),
-                                MSerial.serReadInt32());
-                        break;
-                    case CmdEepromFactory: {
-                        EepromSettings es;
-                        defaultEepromSettings(es);
-                        SERIAL_PROTOCOLLNPGM(MSG_OK);
-                        }
-                        break;
-                    case CmdGetState:
-                        printer.cmdGetState();
-                        break;
                     case CmdGetHomed:
                         printer.cmdGetHomed();
                         break;
                     case CmdGetEndstops:
                         printer.cmdGetEndstops();
+                        break;
+                    case CmdGetPos:
+                        printer.cmdGetPos();
+                        break;
+#if 0
+                    case CmdGetState:
+                        printer.cmdGetState();
                         break;
                     case CmdSetTargetTemp:
                         printer.cmdSetTargetTemp(MSerial.serReadNoCheck(), FromSerBufUInt16);
@@ -1839,14 +1890,8 @@ class UsbCommand : public Protothread {
                     case CmdGetCurrentTemps:
                         printer.cmdGetCurrentTemps();
                         break;
-                    case CmdDisableSteppers:
-                        printer.cmdDisableSteppers();
-                        break;
                     case CmdDisableStepperIsr:
                         printer.cmdDisableStepperIsr();
-                        break;
-                    case CmdGetPos:
-                        printer.cmdGetPos();
                         break;
 #if defined(ADNSFS) || defined(BournsEMS22AFS)
                     case CmdGetFilSensor:
@@ -1920,28 +1965,37 @@ FWINLINE void loop() {
 
             if (X_ENDSTOP_PRESSED || Y_ENDSTOP_PRESSED || Z_ENDSTOP_PRESSED) {
 
-                SERIAL_ECHOPGM("POS: ");
-                SERIAL_ECHO(current_pos_steps[X_AXIS]);
-                SERIAL_ECHO(", ");
-                SERIAL_ECHO(current_pos_steps[Y_AXIS]);
-                SERIAL_ECHO(", ");
-                SERIAL_ECHOLN(current_pos_steps[Z_AXIS]);
-                kill("Hardware endstop pressed.");
+                // SERIAL_ECHOPGM("POS: ");
+                // SERIAL_ECHO(current_pos_steps[X_AXIS]);
+                // SERIAL_ECHO(", ");
+                // SERIAL_ECHO(current_pos_steps[Y_AXIS]);
+                // SERIAL_ECHO(", ");
+                // SERIAL_ECHOLN(current_pos_steps[Z_AXIS]);
+                txBuffer.sendResponseStart(RespKilled, 1 + 3*(sizeof(int32_t)+1));
+                txBuffer.pushCharChecksum(RespHardwareEndstop);
+                txBuffer.sendResponseValue((uint8_t*)current_pos_steps, 3*sizeof(int32_t));
+                txBuffer.pushCharChecksum(X_ENDSTOP_PRESSED);
+                txBuffer.pushCharChecksum(Y_ENDSTOP_PRESSED);
+                txBuffer.pushCharChecksum(Z_ENDSTOP_PRESSED);
+                txBuffer.sendResponseEnd();
+                kill();
             }
-            else if (
-                (current_pos_steps[X_AXIS] < X_MIN_POS_STEPS) || (current_pos_steps[X_AXIS] > X_MAX_POS_STEPS) ||
-                (current_pos_steps[Y_AXIS] < Y_MIN_POS_STEPS) || (current_pos_steps[Y_AXIS] > Y_MAX_POS_STEPS) ||
-                // (current_pos_steps[Z_AXIS] < Z_MIN_POS_STEPS) || (current_pos_steps[Z_AXIS] > printer.z_max_pos_steps)
-                (current_pos_steps[Z_AXIS] < Z_MIN_POS_STEPS) || (current_pos_steps[Z_AXIS] > Z_MAX_POS_STEPS)
-                ) {
+            else if (X_SW_ENDSTOP_PRESSED || Y_SW_ENDSTOP_PRESSED || Z_SW_ENDSTOP_PRESSED) {
 
-                SERIAL_ECHOPGM("POS: ");
-                SERIAL_ECHO(current_pos_steps[X_AXIS]);
-                SERIAL_ECHO(", ");
-                SERIAL_ECHO(current_pos_steps[Y_AXIS]);
-                SERIAL_ECHO(", ");
-                SERIAL_ECHOLN(current_pos_steps[Z_AXIS]);
-                kill("Software endstop pressed.");
+                // SERIAL_ECHOPGM("POS: ");
+                // SERIAL_ECHO(current_pos_steps[X_AXIS]);
+                // SERIAL_ECHO(", ");
+                // SERIAL_ECHO(current_pos_steps[Y_AXIS]);
+                // SERIAL_ECHO(", ");
+                // SERIAL_ECHOLN(current_pos_steps[Z_AXIS]);
+                txBuffer.sendResponseStart(RespKilled, 1 + 3*(sizeof(int32_t)+1));
+                txBuffer.pushCharChecksum(RespSoftwareEndstop);
+                txBuffer.sendResponseValue((uint8_t*)current_pos_steps, 3*sizeof(int32_t));
+                txBuffer.pushCharChecksum(X_SW_ENDSTOP_PRESSED);
+                txBuffer.pushCharChecksum(Y_SW_ENDSTOP_PRESSED);
+                txBuffer.pushCharChecksum(Z_SW_ENDSTOP_PRESSED);
+                txBuffer.sendResponseEnd();
+                kill();
             }
         }
 

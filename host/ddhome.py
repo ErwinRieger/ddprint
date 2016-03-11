@@ -55,8 +55,8 @@ def homeMove(parser, dim, direction, dist, fakeHomingEndstops, feedRateFactor=1.
     planner.finishMoves()
 
     # Send homing command
-    printer.sendCommandParam(CmdMove, p1=MoveTypeHoming, wantReply="ok")
-    printer.sendCommand(CmdEOT, wantReply="ok")
+    printer.sendCommandParam(CmdMove, p1=MoveTypeHoming)
+    printer.sendCommand(CmdEOT)
 
     printer.waitForState(StateIdle, wait=0.05)
 
@@ -109,6 +109,8 @@ def home(parser, fakeHomingEndstops=False, force=False):
 
         (homePosMM, homePosStepped) = planner.getHomePos()
 
+        print "Printer should be at [mm]: ", homePosMM, ", [steps]: ", homePosStepped
+
         # Move to home
         if not curPosMM.equal(homePosMM, "XYZ"):
 
@@ -128,13 +130,10 @@ def home(parser, fakeHomingEndstops=False, force=False):
                     homePosMM.X, homePosMM.Y))
 
             planner.finishMoves()
-            printer.sendCommandParam(CmdMove, p1=MoveTypeNormal, wantReply="ok")
-            printer.sendCommand(CmdEOT, wantReply="ok")
+            printer.sendCommandParam(CmdMove, p1=MoveTypeNormal)
+            printer.sendCommand(CmdEOT)
 
             printer.waitForState(StateIdle, wait=0.05)
-
-            # res = printer.query(CmdGetEndstops)
-            # print "endstop state:", res
 
         #
         # Set Virtual E-pos 0:
@@ -155,7 +154,7 @@ def home(parser, fakeHomingEndstops=False, force=False):
         # Try fast home if endstop is pressed
         if printer.endStopTriggered(dim, fakeHomingEndstops):
 
-            print "Homing: endstop %d is triggered, trying fast home."
+            print "Homing: endstop %d is triggered, trying fast home." % dim
             if homeBounce(parser, dim, fakeHomingEndstops):
                 continue
 
@@ -163,7 +162,7 @@ def home(parser, fakeHomingEndstops=False, force=False):
         print "Homing: doing short/fast home."
         if homeMove(parser, dim, 1, planner.MAX_POS[dim] / 10.0, fakeHomingEndstops): # Move towards endstop fast
 
-            print "Homing: endstop %d is triggered, trying fast home."
+            print "Homing: endstop %d is triggered, trying fast home." % dim
             if homeBounce(parser, dim, fakeHomingEndstops):
                 continue
 
@@ -187,13 +186,13 @@ def home(parser, fakeHomingEndstops=False, force=False):
     # payload = struct.pack("<iiiii", *planner.homePosStepped)
     (homePosMM, homePosStepped) = planner.getHomePos()
     parser.set_position(homePosMM)
+
+    print "Tell printer its position [steps]:", homePosStepped
     payload = struct.pack("<iiiii", *homePosStepped)
-    printer.sendCommand(CmdSetHomePos, binPayload=payload, wantReply="ok")
+    printer.sendCommand(CmdSetHomePos, binPayload=payload)
 
     print "*"
     print "* Done homing..."
-    # res = printer.query(CmdGetEndstops)
-    # print "endstop state:", res
     print "*"
 
 ####################################################################################################

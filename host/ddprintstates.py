@@ -53,9 +53,13 @@ HeaterEx2 = 2 # Extruder 2
 #
 RespOK =                1 # Command successful
 RespInvalidArgument =   2 
+RespHardwareEndstop =   3 
+RespSoftwareEndstop =   4 
 
 RespCodeNames = {
         RespOK: "RespOK",
-        RespInvalidArgument: "RespInvalidArgument",
+        RespInvalidArgument: "InvalidArgument",
+        RespHardwareEndstop: "HardwareEndstop",
+        RespSoftwareEndstop: "SoftwareEndstop",
 }
 

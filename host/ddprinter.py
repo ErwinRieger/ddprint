@@ -55,6 +55,13 @@ class FatalPrinterError(Exception):
     def __str__(self):
         return "FatalPrinterError: " + self.msg
 
+class RxTimeout(Exception):
+    def __init__(self, msg=""):
+        self.msg = msg
+
+    def __str__(self):
+        return "RxTimeout: " + self.msg
+
 class RxChecksumError(Exception):
     def __init__(self, msg=""):
         self.msg = msg
@@ -101,16 +108,7 @@ class Printer(Serial):
         self.rxErrors = 0
         self.txErrors = 0
 
-        # Timespan where we monitor the serial line after the
-        # print has finished.
-        self.postMonitor = 0
-
         self.startTime = None
-
-        self.wantReply = None
-        self.wantAck = None
-        # Part of a response read from printer
-        self.recvPart = ""
 
         self.curDirBits = 0
 
@@ -163,6 +161,11 @@ class Printer(Serial):
 
         if respCode == RespUnknownCommand:
             self.gui.logError("ERROR: RespUnknownCommand '0x%x'" % ord(payload))
+            assert(0)
+        elif respCode == RespKilled:
+            (reason, x, y, z, xtrig, ytrig, ztrig) = struct.unpack("<BiiiBBB", payload)
+            self.gui.logError("ERROR: PRINTER KILLED! Reason: %s, X: %d, Y: %d, Z: %d, trigger: x: %d, y: %d, z: %d" % (RespCodeNames[reason], x, y, z, xtrig, ytrig, ztrig))
+            assert(0)
         else:
             self.gui.logError("ERROR: unknown response code '0x%x'" % respCode)
             assert(0)
@@ -176,7 +179,6 @@ class Printer(Serial):
 
             try:
                 c = self.read()
-                # self.gui.log("c: ", c)
             except SerialException as ex:
                 self.gui.log("Readline() Exception raised:", ex)
 
@@ -207,6 +209,7 @@ class Printer(Serial):
 
         res = ""
 
+        time = 0
         while len(res) < length:
 
             try:
@@ -224,23 +227,33 @@ class Printer(Serial):
                 continue
 
             # Receive without error, reset error counter
-            self.rxErrors = 0
+            if c:
+                self.rxErrors = 0
+                res += c
 
-            res += c
+            time += self.timeout
 
-        for c in res:
-            self.gui.log("c: 0x%x" % ord(c))
+            if time > 1:
+                print "timeout reading, data read: ", res
+                raise RxTimeout()
+
+        # for c in res:
+            # self.gui.log("c: 0x%x" % ord(c))
         return res
 
-    def readResponse(self):
+    def readResponse(self, nusendCmd):
 
         s = self.readWithTimeout(1) # read response code
-        crc = crc16.crc16xmodem(s)
 
         cmd = ord(s)
         if cmd == 0x6:
-            print "Got ack"
             return (cmd, 0, "")
+
+        # if cmd != sendCmd:
+            # print "unexpected reply: 0x%x" % cmd
+            # return (cmd, 0, "")
+
+        crc = crc16.crc16xmodem(s)
 
         s = self.readWithTimeout(1) # read length byte
         crc = crc16.crc16xmodem(s, crc)
@@ -260,7 +273,7 @@ class Printer(Serial):
         check2 = ord(css[1])
 
         checkSum = check1 + (check2<<8)
-        print "checksum: 0x%x, 0x%x" % (checkSum, crc)
+        # print "checksum: 0x%x, 0x%x" % (checkSum, crc)
 
         if checkSum != crc:
             raise RxChecksumError()
@@ -323,7 +336,7 @@ class Printer(Serial):
     
     def sendPrinterInit(self):
         self.curdirbits = 0
-        self.sendCommand(CmdPrinterInit, wantReply="ok")
+        self.sendCommand(CmdPrinterInit)
 
     # Send a command to the printer, add a newline if 
     # needed.
@@ -333,14 +346,13 @@ class Printer(Serial):
 
         while True:
 
-            self.gui.logSend("\nSending %d bytes: " % len(cmd), cmd[:10].encode("hex"))
+            # self.gui.logSend("\nSending %d bytes: " % len(cmd), cmd[:10].encode("hex"))
             # self.gui.log("serial: ", self.lineNr % 256, ord(cmd[1]))
             try:
                 self.write(cmd)
             except SerialTimeoutException:
                 self.gui.log("Tryed sending %d bytes: " % len(cmd), cmd[:10].encode("hex"))
                 self.gui.log("SerialTimeoutException on send!!!")
-                pass
             except SerialException as ex:
                 self.gui.log("send() Exception raised:", ex)
 
@@ -362,16 +374,6 @@ class Printer(Serial):
         # not reached
 
 
-    def _Fletcher16(self, data):
-        sum1 = 0
-        sum2 = 0
-                          
-        for c in data:
-            sum1 = (sum1 + ord(c)) % 255
-            sum2 = (sum2 + sum1) % 255
-
-        return (sum2 << 8) | sum1
-       
     def buildBinaryCommand(self, binCmd, binPayload=None, lineNr=None):
 
         binary  = struct.pack("<B", SOH)
@@ -393,7 +395,6 @@ class Printer(Serial):
         else:
             binary += struct.pack("<I", 0);
 
-        # checkSum = self.Fletcher16(binary)
         checkSum = crc16.crc16xmodem(binary)
 
         # self.gui.log("checkSum: ", checkSum, "0x%x" % checkSum)
@@ -409,30 +410,27 @@ class Printer(Serial):
 
         return binary
 
-    def sendBinaryCommand(self, binCmd, wantReply=None, binPayload=None, lineNr=None):
-        self.gui.logSend("sendCommand: ", CommandNames[ord(binCmd)])
+    def oldsendBinaryCommand(self, binCmd, binPayload=None, lineNr=None):
         binary = self.buildBinaryCommand(binCmd, binPayload, lineNr)
-        self.send2(binCmd, binary, wantReply)
+        self.send2(binCmd, binary)
 
-    def sendBinaryCommandx(self, cmd, wantReply=None, binPayload=None, lineNr=None):
-        self.gui.logSend("sendCommand: ", CommandNames[cmd])
-        binary = self.buildBinaryCommand(struct.pack("<B", cmd), binPayload, lineNr)
-        return self.send2(cmd, binary, wantReply)
+    def sendBinaryCommandx(self, cmd, binPayload=None, lineNr=None):
+        binary = self.buildBinaryCommand(chr(cmd), binPayload, lineNr)
+        return self.send2(cmd, binary)
 
-    def sendCommand(self, cmd, wantReply=None, binPayload=None, lineNr=None):
-        # self.sendBinaryCommand(struct.pack("<B", cmd), wantReply=wantReply, binPayload=binPayload, lineNr=lineNr)
-        return self.sendBinaryCommandx(cmd, wantReply=wantReply, binPayload=binPayload, lineNr=lineNr)
+    def sendCommand(self, cmd, binPayload=None, lineNr=None):
+        return self.sendBinaryCommandx(cmd, binPayload=binPayload, lineNr=lineNr)
 
-    def sendCommandParam(self, cmd, wantReply=None, lineNr=None, p1=None, p2=None, p3=None, p4=None):
-        self.sendCommandParamV(cmd, wantReply=wantReply, lineNr=lineNr, params=(p1, p2, p3, p4))
+    def sendCommandParam(self, cmd, lineNr=None, p1=None, p2=None, p3=None, p4=None):
+        self.sendCommandParamV(cmd, lineNr=lineNr, params=(p1, p2, p3, p4))
 
-    def sendCommandParamV(self, cmd, params, wantReply=None, lineNr=None):
+    def sendCommandParamV(self, cmd, params, lineNr=None):
         assert(params[0] != None)
         payload = ""
         for p in params:
             if p:
                 payload += p.pack()
-        self.sendCommand(cmd, wantReply=wantReply, binPayload=payload, lineNr=lineNr)
+        self.sendCommand(cmd, binPayload=payload, lineNr=lineNr)
 
     def reconnect(self):
 
@@ -458,10 +456,7 @@ class Printer(Serial):
         time.sleep(0.1)
 
     # Send command or Query info from printer
-    def send2(self, replyCode, binary, wantReply=None):
-
-        if wantReply:
-            print "XXX ignoring wantreply:", wantReply
+    def send2(self, sendCmd, binary):
 
         # Send cmd/query
         startTime = time.time()
@@ -476,16 +471,17 @@ class Printer(Serial):
             self.send(binary)
         """
 
-        print "waiting for reply code 0x%x" % replyCode
-
+        self.gui.logSend("******************* sendCommand *************************+: ", CommandNames[sendCmd])
         self.send(binary)
+
+        print "waiting for reply code 0x%x (or ack)" % sendCmd
 
         # Wait for response, xxx without timeout/retry for now
         while True:
 
             try:
                 # recvLine = self.safeReadline()        
-                (cmd, length, payload) = self.readResponse()        
+                (cmd, length, payload) = self.readResponse(sendCmd)        
             except SERIALDISCON:
                 self.gui.logError("Line disconnected in send2(), reconnecting!")
                 self.reconnect()
@@ -500,7 +496,13 @@ class Printer(Serial):
                 self.gui.logRecv("ACK, Sent %d bytes in %.2f ms, %.2f Kb/s" % (n, dt*1000, n/(dt*1000)))
                 return (cmd, length, payload)
 
-            if cmd == replyCode:
+            if cmd == RespGenericString:
+                print "Got Generic String: '%s'" % payload
+                continue
+
+            print "Got reply 0x%x for 0x%x" % (cmd, sendCmd)
+
+            if cmd == sendCmd:
                 # print "got reply:", payload
                 return (cmd, length, payload)
 
@@ -521,22 +523,6 @@ class Printer(Serial):
             print "unknown reply:", cmd, length, payload
             assert(0)
 
-            """
-            if wantReply and recvLine.startswith(wantReply):
-                self.gui.logRecv("Got Required reply: ", recvLine,)
-                assert(not wantAck)
-                return recvLine
-            else:
-                self.gui.logRecv("Reply: ", recvLine,)
-
-            if (time.time() - startTime) > 2:
-                # Timeout firmware response
-                self.gui.log("Error send Timeout, resending.")
-                startTime = time.time()
-                self.send(binary)
-                continue
-            """
-
         # Notreached
 
     # Query info from printer
@@ -547,13 +533,12 @@ class Printer(Serial):
 
         binary = self.buildBinaryCommand(struct.pack("<B", cmd), binPayload=binPayload);
 
-        reply = self.send2(cmd, binary, "Res:")
+        reply = self.send2(cmd, binary)
 
         if reply == True:
             # Command was ok, but no response due to reconnect, restart query:
             return self.query(cmd, binPayload)
 
-        # return eval(reply[4:])
         return reply
 
     def getStatus(self):
@@ -611,7 +596,7 @@ class Printer(Serial):
     def heatUp(self, heater, temp, wait=None):
 
         payload = struct.pack("<BH", heater, temp) # Parameters: heater, temp
-        self.sendCommand(CmdSetTargetTemp, binPayload=payload, wantReply="ok")
+        self.sendCommand(CmdSetTargetTemp, binPayload=payload)
 
         while wait !=  None:
             time.sleep(2)
@@ -625,7 +610,7 @@ class Printer(Serial):
     def coolDown(self, heater, temp=0, wait=None):
 
         payload = struct.pack("<BH", heater, temp)
-        self.sendCommand(CmdSetTargetTemp, binPayload=payload, wantReply="ok")
+        self.sendCommand(CmdSetTargetTemp, binPayload=payload)
 
         while wait !=  None:
             time.sleep(2)
@@ -637,22 +622,38 @@ class Printer(Serial):
     ####################################################################################################
 
     def isHomed(self):
-        res = self.query(CmdGetHomed)
-        return res == (1, 1, 1)
+
+        (cmd, length, payload) = self.query(CmdGetHomed)
+        tup = struct.unpack("<BBB", payload)
+        return tup == (1, 1, 1)
+
+    ####################################################################################################
+
+    def getPos(self):
+
+        (cmd, length, payload) = self.query(CmdGetPos)
+        tup = struct.unpack("<iiii", payload)
+        return tup
+
+    def getEndstops(self):
+
+        # Check, if enstop was pressed
+        (cmd, length, payload) = self.query(CmdGetEndstops)
+        tup = struct.unpack("<BiBiBi", payload)
+        return tup
 
     ####################################################################################################
 
     def endStopTriggered(self, dim, fakeHomingEndstops=False):
 
         # Check, if enstop was pressed
-        res = self.query(CmdGetEndstops)
-        print "endstop state:", res
+        tup = self.getEndstops()
 
-        if res[dim][0] or fakeHomingEndstops:
-            print "Endstop %d hit at position: %d" % (dim, res[dim][1])
+        if tup[dim*2] or fakeHomingEndstops:
+            print "Endstop %d hit at position: %d" % (dim, tup[dim*2+1])
             return True
 
-        print "Endstop %d open at position: %d" % (dim, res[dim][1])
+        print "Endstop %d open at position: %d" % (dim, tup[dim*2+1])
         return False
 
 

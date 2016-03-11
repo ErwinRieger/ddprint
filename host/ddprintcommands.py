@@ -147,11 +147,14 @@ CommandNames = {
 # Response codes
 #
 RespUnknownCommand =            1
+RespGenericString =             2
+RespKilled =                    3
 
 ResponseNames = {
         RespUnknownCommand: "RespUnknownCommand",
+        RespGenericString: "RespGenericString",
+        RespKilled: "RespKilled",
 }
-
 
 
 

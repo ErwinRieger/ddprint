@@ -30,7 +30,7 @@
   const int motor_current_setting[3] = DEFAULT_PWM_MOTOR_CURRENT;
 #endif
 
-volatile long current_pos_steps[NUM_AXIS] = { 0, 0, 0, 0};
+volatile int32_t current_pos_steps[NUM_AXIS] = { 0, 0, 0, 0};
 StepBuffer stepBuffer;
 
 void digipot_current(uint8_t driver, int current)

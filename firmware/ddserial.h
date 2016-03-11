@@ -51,7 +51,7 @@ class TxBuffer: public Protothread {
         };
 
         FWINLINE uint8_t byteSize() {
-            return (((int16_t)TxBufferLen + head) - tail) % TxBufferLen;
+            return ((TxBufferLen + head) - tail) & TxBufferMask;
         }
 
         FWINLINE bool empty() {
@@ -59,30 +59,32 @@ class TxBuffer: public Protothread {
         }
 
         FWINLINE bool full() {
-            return byteSize() >= (TxBufferLen-10);
+            return byteSize() >= (TxBufferLen-1);
         }
 
         FWINLINE uint8_t pop() {
             uint8_t c = txBuffer[tail];
-            tail = (tail + 1) % TxBufferLen;
+            tail = (tail + 1) & TxBufferMask;
             return c;
         }
 
         FWINLINE void pushChar(uint8_t c) {
 
 #if defined(HEAVYDEBUG)
-            if (full())
+            if (full()) {
+                // xxx send error message
                 return;
-            if (byteSize() == (TxBufferLen-11)) {
-                    txBuffer[head] = '\n';
-                    head = (head + 1) % TxBufferLen;
-                    return;
-                    }
-
+            }
 #endif
 
+            // Don't buffer character if it can be sent directly
+            if (empty() && ((UCSR0A) & (1 << UDRE0))) {
+                UDR0 = c;
+                return;
+            }
+
             txBuffer[head] = c;
-            head = (head + 1) % TxBufferLen;
+            head = (head + 1) & TxBufferMask;
         }
 
         FWINLINE void pushStr(uint8_t *s) {
@@ -110,6 +112,8 @@ class TxBuffer: public Protothread {
         }
 
         void sendACK() {
+            pushChar(RESPUSBACK);
+            return;
 
             if (empty()) {
                 sendCharUnbuffered(RESPUSBACK);
@@ -170,24 +174,22 @@ class TxBuffer: public Protothread {
 
         void sendResponseValue(uint16_t v) {
 
-            pushCharChecksum(*(uint8_t*)&v);
-            pushCharChecksum(*(((uint8_t*)&v)+1));
+            sendResponseValue((uint8_t*)&v, 2);
         }
 
         void sendResponseValue(uint32_t v) {
 
-            pushCharChecksum(*(uint8_t*)&v);
-            pushCharChecksum(*(((uint8_t*)&v)+1));
-            pushCharChecksum(*(((uint8_t*)&v)+2));
-            pushCharChecksum(*(((uint8_t*)&v)+3));
+            sendResponseValue((uint8_t*)&v, 4);
+        }
+
+        void sendResponseValue(int32_t v) {
+
+            sendResponseValue((uint8_t*)&v, 4);
         }
 
         void sendResponseValue(float v) {
 
-            pushCharChecksum(*(uint8_t*)&v);
-            pushCharChecksum(*(((uint8_t*)&v)+1));
-            pushCharChecksum(*(((uint8_t*)&v)+2));
-            pushCharChecksum(*(((uint8_t*)&v)+3));
+            sendResponseValue((uint8_t*)&v, 4);
         }
 
         // Send string, one byte length, then the string

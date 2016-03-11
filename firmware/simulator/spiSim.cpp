@@ -25,7 +25,7 @@
 
 #include "filsensorSim.h"
 
-static bool sdChipSelect = true; // high
+bool sdChipSelect = true; // high
 extern int sdSpiCommand;
 static int commandBytes = 0;
 extern uint32_t sdWritePos;

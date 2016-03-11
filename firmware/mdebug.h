@@ -23,14 +23,13 @@
 //
 // Add heavy and time consuming debugging
 //
-#define HEAVYDEBUG 1
+// #define HEAVYDEBUG 1
 
 #if defined(AVR)
 
     extern void kill(const char*);
     #define  massert(expr) { \
         if (!(expr)) { SERIAL_ERROR_START; SERIAL_ECHO("ASSERTION FAILED " __FILE__ ":"); SERIAL_ECHOLN(__LINE__); kill("ASSERTION"); } }
-    // #define printf /* */
 
     // Assertion that is only active in simulation
     #define simassert(x) 

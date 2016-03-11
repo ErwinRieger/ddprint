@@ -63,7 +63,7 @@ class SDSwap: public Sd2Card, public Protothread {
 
 public:
     SDSwap() {
-        SERIAL_PROTOCOLLNPGM("sdstart");
+        // SERIAL_PROTOCOLLNPGM("sdstart");
         busyWriting = false;
         reset();
     }
@@ -72,8 +72,8 @@ public:
 
         if (!init(SPI_FULL_SPEED, SDSS)) {
 
-            SERIAL_ECHO_START;
-            SERIAL_ECHOLNPGM(MSG_SD_INIT_FAIL);
+            // SERIAL_ECHO_START;
+            // SERIAL_ECHOLNPGM(MSG_SD_INIT_FAIL);
             return false;
         }
 

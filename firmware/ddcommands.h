@@ -50,6 +50,7 @@
 // ----------------------
 //
 
+#define CmdPrinterInit          128
 #define CmdMove                 129
 #define CmdEOT                  130
 #define CmdResetLineNr          131
@@ -91,10 +92,25 @@
 // Response types 
 //
 #define RespUnknownCommand      1 // Payload: the unknown command (1 byte)
+#define RespGenericString       2 // Payload: 'pascal string'
+#define RespKilled              3 // Payload: reason, optional parameters
 
 //
 // Rsponse error codes (payload)
 //
 #define RespOK                  1 // Command successful
 #define RespInvalidArgument     2 // Payload: none
+#define RespHardwareEndstop     3 // Payload: none
+#define RespSoftwareEndstop     4 // Payload: none
+
+
+
+
+
+
+
+
+
+
+
 

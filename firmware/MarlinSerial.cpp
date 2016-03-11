@@ -8,17 +8,22 @@
 #include <util/crc16.h>
 
 #include "ddprint.h"
+#include "ddserial.h"
+#include "ddcommands.h"
 #include "MarlinSerial.h"
 
 //things to write to serial from Programmemory. saves 400 to 2k of RAM.
 void serialprintPGM(const char *str)
 {
-  char ch=pgm_read_byte(str);
-  while(ch)
-  {
-    MSerial.serWrite(ch);
-    ch=pgm_read_byte(++str);
-  }
+    uint8_t len = strlen_P(str);
+    txBuffer.sendResponseStart(RespGenericString, len);
+
+    for (uint8_t i=0; i<len; i++) {
+
+        uint8_t ch=pgm_read_byte(str+i);
+        txBuffer.pushCharChecksum(ch);
+    }
+    txBuffer.sendResponseEnd();
 }
 
 uint8_t MarlinSerial::peekN(uint8_t index) {
@@ -43,11 +48,11 @@ float MarlinSerial::serReadFloat()
 {
     if ((rx_buffer.head - rx_buffer.tail) >= 4) {
         float f = *(float*)(rx_buffer.buffer + rx_buffer.tail);
-        rx_buffer.tail = (rx_buffer.tail + 4) % RX_BUFFER_SIZE;
+        rx_buffer.tail = (rx_buffer.tail + 4) % RX_BUFFER_SIZE; // xxx rx_buffer.tail += 4
         return f;
     }
 
-    uint32_t i = (uint32_t)serReadNoCheck() + (((uint32_t)serReadNoCheck())<<8) + (((uint32_t)serReadNoCheck())<<16) + (((uint32_t)serReadNoCheck())<<24);
+    uint32_t i = serReadNoCheck() + (((uint32_t)serReadNoCheck())<<8) + (((uint32_t)serReadNoCheck())<<16) + (((uint32_t)serReadNoCheck())<<24);
     return *(float*)&i;;
 }
 
@@ -55,22 +60,22 @@ int32_t MarlinSerial::serReadInt32()
 {
     if ((rx_buffer.head - rx_buffer.tail) >= 4) {
         int32_t i = *(int32_t*)(rx_buffer.buffer + rx_buffer.tail);
-        rx_buffer.tail = (rx_buffer.tail + 4) % RX_BUFFER_SIZE;
+        rx_buffer.tail = (rx_buffer.tail + 4) % RX_BUFFER_SIZE;  // xxx rx_buffer.tail += 4 
         return i;
     }
 
-    return (int32_t)MSerial.serReadNoCheck() + (((int32_t)MSerial.serReadNoCheck())<<8) + (((int32_t)MSerial.serReadNoCheck())<<16) + (((int32_t)MSerial.serReadNoCheck())<<24);
+    return MSerial.serReadNoCheck() + (((int32_t)MSerial.serReadNoCheck())<<8) + (((int32_t)MSerial.serReadNoCheck())<<16) + (((int32_t)MSerial.serReadNoCheck())<<24);
 }
 
 uint32_t MarlinSerial::serReadUInt32()
 {
     if ((rx_buffer.head - rx_buffer.tail) >= 4) {
         uint32_t i = *(uint32_t*)(rx_buffer.buffer + rx_buffer.tail);
-        rx_buffer.tail = (rx_buffer.tail + 4) % RX_BUFFER_SIZE;
+        rx_buffer.tail = (rx_buffer.tail + 4) % RX_BUFFER_SIZE;  // xxx rx_buffer.tail += 4 
         return i;
     }
 
-    return (uint32_t)MSerial.serReadNoCheck() + (((uint32_t)MSerial.serReadNoCheck())<<8) + (((uint32_t)MSerial.serReadNoCheck())<<16) + (((uint32_t)MSerial.serReadNoCheck())<<24);
+    return MSerial.serReadNoCheck() + (((uint32_t)MSerial.serReadNoCheck())<<8) + (((uint32_t)MSerial.serReadNoCheck())<<16) + (((uint32_t)MSerial.serReadNoCheck())<<24);
 }
 
 void MarlinSerial::flush()
@@ -82,6 +87,26 @@ void MarlinSerial::flush()
   // were full, not empty.
   rx_buffer.head = rx_buffer.tail;
 }
+
+void MarlinSerial::serWrite(const char *str)
+{
+      // while (*str)
+        // serWrite(*str++);
+        uint8_t len = strlen(str);
+        txBuffer.sendResponseStart(RespGenericString, len+1);
+        txBuffer.sendResponseValue((char*)str, len);
+        txBuffer.sendResponseEnd();
+}
+
+void MarlinSerial::serWrite(const uint8_t *buffer, size_t size)
+{
+      // while (size--)
+        // serWrite(*buffer++);
+    txBuffer.sendResponseStart(RespGenericString, size);
+    txBuffer.sendResponseValue((uint8_t*)buffer, size);
+    txBuffer.sendResponseEnd();
+}
+
 
 void MarlinSerial::print(char c, int base)
 {
@@ -105,6 +130,11 @@ void MarlinSerial::print(unsigned int n, int base)
 
 void MarlinSerial::print(long n, int base)
 {
+#if defined(DDSim)
+    printf("xxx MarlinSerial::print(long n, int base)\n");
+    assert(0);
+#endif
+#if 0
   if (base == 0) {
     serWrite(n);
   } else if (base == 10) {
@@ -116,12 +146,19 @@ void MarlinSerial::print(long n, int base)
   } else {
     printNumber(n, base);
   }
+#endif
 }
 
 void MarlinSerial::print(unsigned long n, int base)
 {
+#if defined(DDSim)
+    printf("xxx  MarlinSerial::print(unsigned long n, int base)\n");
+    assert(0);
+#endif
+#if 0
   if (base == 0) serWrite(n);
   else printNumber(n, base);
+#endif
 }
 
 void MarlinSerial::print(double n, int digits)

@@ -214,7 +214,7 @@ from ddprintcommands import *
 from ddprintstates import *
 
 #
-# Drucker koordinatensystem:
+# Drucker koordinatensystem (UM):
 # ----------------------------
 #
 # X: positive richtung nach rechts, endstop in MIN richtung
@@ -473,8 +473,8 @@ def main():
     sp = subparsers.add_parser("print", help=u"Download and print file at once.")
     sp.add_argument("gfile", help="Input GCode file.")
 
-    sp = subparsers.add_parser("store", help=u"Store file as USB.G on sd-card.")
-    sp.add_argument("gfile", help="Input GCode file.")
+    # sp = subparsers.add_parser("store", help=u"Store file as USB.G on sd-card.")
+    # sp.add_argument("gfile", help="Input GCode file.")
 
     sp = subparsers.add_parser("writeEepromFloat", help=u"Store float value into eeprom.")
     sp.add_argument("name", help="Valuename.")
@@ -513,6 +513,8 @@ def main():
     sp.add_argument("distance", action="store", help="Adjust-distance (+/-) in mm.", type=float)
 
     sp = subparsers.add_parser("heatHotend", help=u"Heat up hotend (to clean it, etc).")
+
+    sp = subparsers.add_parser("getEndstops", help=u"Get current endstop state.")
 
     sp = subparsers.add_parser("getFilSensor", help=u"Get current filament position.")
 
@@ -597,7 +599,7 @@ def main():
                     printer.heatUp(HeaterEx1, t1, wait=0.95 * t1)
 
                     # Send print command
-                    printer.sendCommandParam(CmdMove, p1=MoveTypeNormal, wantReply="ok")
+                    printer.sendCommandParam(CmdMove, p1=MoveTypeNormal)
                     printStarted = True
 
                 else:
@@ -619,7 +621,7 @@ def main():
             util.endOfPrintLift(parser)
 
         planner.finishMoves()
-        printer.sendCommand(CmdEOT, wantReply="ok")
+        printer.sendCommand(CmdEOT)
 
         # XXX start print if less than 1000 lines or temp not yet reached:
         if not printStarted:
@@ -630,7 +632,7 @@ def main():
             printer.heatUp(HeaterEx1, t1, wait=0.95 * t1)
 
             # Send print command
-            printer.sendCommandParam(CmdMove, p1=MoveTypeNormal, wantReply="ok")
+            printer.sendCommandParam(CmdMove, p1=MoveTypeNormal)
 
         printer.waitForState(StateIdle)
 
@@ -639,7 +641,7 @@ def main():
 
         ddhome.home(parser, args.fakeendstop)
 
-        printer.sendCommand(CmdDisableSteppers, wantReply="ok")
+        printer.sendCommand(CmdDisableSteppers)
 
         printer.coolDown(HeaterEx1, wait=150)
         printer.coolDown(HeaterBed, wait=55)
@@ -688,7 +690,7 @@ def main():
     elif args.mode == 'factoryReset':
 
         printer.commandInit(args)
-        printer.sendCommand(CmdEepromFactory, wantReply="ok")
+        printer.sendCommand(CmdEepromFactory)
 
     elif args.mode == 'disableSteppers':
 
@@ -731,6 +733,12 @@ def main():
 
         util.heatHotend(args, parser)
 
+    elif args.mode == 'getEndstops':
+
+        printer.commandInit(args)
+        res = printer.getEndstops()
+        print "Endstop state: ", res
+    
     elif args.mode == 'getFilSensor':
 
         printer.commandInit(args)
@@ -741,7 +749,7 @@ def main():
 
         printer.commandInit(args)
 
-        res = printer.query(CmdGetPos)
+        res = printer.getPos()
 
         curPosMM = util.MyPoint(
             X = res[0] / float(steps_per_mm[0]),
@@ -751,13 +759,11 @@ def main():
             # B = res[4] / float(steps_per_mm[4]),
             )
 
-        print "Printer pos:", curPosMM
-
-        # current_position = parser.state.getRealPosition()
-        # print "Virtual pos: ", current_position
-
         (homePosMM, homePosStepped) = planner.getHomePos()
-        print "Virtual home pos: ", homePosMM
+
+        print "Printer pos [steps]:", res
+        print "Printer pos [mm]:", curPosMM
+        print "Virtual home pos [mm]: ", homePosMM
 
     elif args.mode == 'getTemps':
 
@@ -803,7 +809,7 @@ def main():
     elif args.mode == 'fanspeed':
 
         printer.commandInit(args)
-        printer.sendCommandParam(CmdFanSpeed, p1=packedvalue.uint8_t(args.speed), wantReply="ok")
+        printer.sendCommandParam(CmdFanSpeed, p1=packedvalue.uint8_t(args.speed))
 
     elif args.mode == 'testFilSensor':
         ddtest.testFilSensor(args, parser)
@@ -816,9 +822,9 @@ def main():
         util.commonInit(args, parser)
 
         printer.sendCommandParam(CmdUnknown, p1=packedvalue.uint8_t(0xff))
-        printer.sendCommand(CmdEOT, wantReply="ok")
+        printer.sendCommand(CmdEOT)
 
-        printer.sendCommandParam(CmdMove, p1=MoveTypeNormal, wantReply="ok")
+        printer.sendCommandParam(CmdMove, p1=MoveTypeNormal)
 
         printer.waitForState(StateIdle)
 

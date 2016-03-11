@@ -172,29 +172,6 @@ int16_t FilamentSensorADNS9800::getDY() {
         // uint16_t shutter = ((uint16_t)readLoc(REG_Shutter_Upper)<<8) | readLoc(REG_Shutter_Lower);
 #endif
 
-        // SERIAL_ECHO("X: ");
-        // SERIAL_ECHO((int)x);
-        // SERIAL_ECHO("Squal: ");
-        // SERIAL_ECHO((int)squal);
-        // SERIAL_ECHO(", Shut: ");
-        // SERIAL_ECHO(shutter);
-        // SERIAL_ECHO("yh: ");
-        // SERIAL_ECHO((int)yh);
-        // SERIAL_ECHO(", yl: ");
-        // SERIAL_ECHO((int)y);
-        // SERIAL_ECHO(", dy: ");
-        // SERIAL_ECHO(dy);
-        // SERIAL_ECHO(", yPos: ");
-        // SERIAL_ECHO(yPos);
-        // SERIAL_ECHO(", estep: ");
-        // SERIAL_ECHOLN(current_pos_steps[E_AXIS]);
-        // SERIAL_ECHO(", minpix: ");
-        // SERIAL_ECHO((int) readLoc(0xb));
-        // SERIAL_ECHO(", avgpix: ");
-        // SERIAL_ECHO((int)readLoc(0xa) * 1.515);
-        // SERIAL_ECHO(", maxpix: ");
-        // SERIAL_ECHOLN((int) readLoc(0x9));
-   
         return dy; 
     }
 
@@ -485,7 +462,7 @@ void FilamentSensorADNS9800::run() {
             slip = (dy * ASTEPS_PER_COUNT) / ds;
 
             // printf("slip: %d %d %.2f\n", dy, ds, slip);
-            printf("slip: %.2f\n", slip);
+            // printf("slip: %.2f\n", slip);
 
             int16_t curTempIndex = (int16_t)(current_temperature[0] - 210) / 2;
             if ((curTempIndex >= 0) && (curTempIndex <= 30)) { // xxx 30 hardcoded
@@ -503,7 +480,7 @@ void FilamentSensorADNS9800::run() {
                     // printf("90%% feedrate: %.2f\n", speed);
 
                     uint16_t tvnew = (FTIMER * timerValue)/(FTIMER - 0.3*timerValue*AXIS_STEPS_PER_MM_E);
-                    printf("tv++/speed-- for temp %.2f: %d -> %d\n", current_temperature[0], timerValue, tvnew);
+                    // printf("tv++/speed-- for temp %.2f: %d -> %d\n", current_temperature[0], timerValue, tvnew);
                     // tempExtrusionRateTable[curTempIndex] = tvnew; 
                     // tempExtrusionRateTable[curTempIndex] = (9*timerValue + tvnew) / 10;
 
@@ -528,7 +505,7 @@ void FilamentSensorADNS9800::run() {
 
                     if (tvnew < timerValue) {
 
-                        printf("tv--/speed++ for temp %.2f: %d -> %d\n", current_temperature[0], timerValue, tvnew);
+                        // printf("tv--/speed++ for temp %.2f: %d -> %d\n", current_temperature[0], timerValue, tvnew);
                         // tempExtrusionRateTable[curTempIndex] = (9*timerValue + tvnew) / 10;
 
                         SERIAL_ECHOPGM("Slip+: ");
@@ -703,7 +680,7 @@ void FilamentSensorADNS9800::run() {
             slip = (dy * ASTEPS_PER_COUNT) / ds;
 
             // printf("slip: %d %d %.2f\n", dy, ds, slip);
-            printf("slip: %.2f\n", slip);
+            // printf("slip: %.2f\n", slip);
 
             int16_t curTempIndex = (int16_t)(current_temperature[0] - 210) / 2;
             if ((curTempIndex >= 0) && (curTempIndex <= 30)) { // xxx 30 hardcoded
@@ -721,7 +698,7 @@ void FilamentSensorADNS9800::run() {
                     // printf("90%% feedrate: %.2f\n", speed);
 
                     uint16_t tvnew = (FTIMER * timerValue)/(FTIMER - 0.3*timerValue*AXIS_STEPS_PER_MM_E);
-                    printf("tv++/speed-- for temp %.2f: %d -> %d\n", current_temperature[0], timerValue, tvnew);
+                    // printf("tv++/speed-- for temp %.2f: %d -> %d\n", current_temperature[0], timerValue, tvnew);
                     // tempExtrusionRateTable[curTempIndex] = tvnew; 
                     // tempExtrusionRateTable[curTempIndex] = (9*timerValue + tvnew) / 10;
 
@@ -746,7 +723,7 @@ void FilamentSensorADNS9800::run() {
 
                     if (tvnew < timerValue) {
 
-                        printf("tv--/speed++ for temp %.2f: %d -> %d\n", current_temperature[0], timerValue, tvnew);
+                        // printf("tv--/speed++ for temp %.2f: %d -> %d\n", current_temperature[0], timerValue, tvnew);
                         // tempExtrusionRateTable[curTempIndex] = (9*timerValue + tvnew) / 10;
 
                         SERIAL_ECHOPGM("Slip+: ");
@@ -779,6 +756,7 @@ void FilamentSensorADNS9800::reset(){
 
     spiInit(3); // scale = pow(2, 3+1), 1Mhz
 
+#if 0
     uint8_t productId = readLoc(REG_Product_ID); // Product
     SERIAL_ECHOPGM("Filament sensor Prod: 0x");
     MSerial.println(productId, HEX);
@@ -794,6 +772,7 @@ void FilamentSensorADNS9800::reset(){
     uint8_t configReg1 = readLoc(REG_Configuration_I);
     SERIAL_ECHOPGM("Filament sensor config1: 0x");
     MSerial.println(configReg1, HEX);
+#endif
 
     // ensure that the serial port is reset
     WRITE(FILSENSNCS, HIGH);
@@ -812,8 +791,8 @@ void FilamentSensorADNS9800::reset(){
 
     // upload the firmware
     // send the firmware to the chip, cf p.18 of the datasheet
-    SERIAL_ECHOPGM("Uploading firmware, # of bytes: ");
-    SERIAL_ECHOLN(sizeof(sromData));
+    // SERIAL_ECHOPGM("Uploading firmware, # of bytes: ");
+    // SERIAL_ECHOLN(sizeof(sromData));
 
     // set the configuration_IV register in 3k firmware mode
     writeLoc(REG_Configuration_IV, 0x02); // bit 1 = 1 for 3k mode, other bits are reserved 
@@ -844,8 +823,8 @@ void FilamentSensorADNS9800::reset(){
     delay(1);
     
     uint8_t srom_id = readLoc(REG_SROM_ID);
-    SERIAL_ECHOPGM("SROM ID: ");
-    MSerial.println(srom_id, HEX );
+    // SERIAL_ECHOPGM("SROM ID: ");
+    // MSerial.println(srom_id, HEX );
     
     if (! (srom_id == SROMVER)) {
         kill("ADNS9500 download\n");
@@ -882,11 +861,12 @@ void FilamentSensorADNS9800::reset(){
     // kill();
     // }
 
-    configReg1 = readLoc(REG_Configuration_I);
+    uint8_t configReg1 = readLoc(REG_Configuration_I);
     // writeLoc(REG_Configuration_I, (configReg1 & 0xC0) | 18); // resolution: 3600
     // writeLoc(REG_Configuration_I, (configReg1 & 0xC0) | 22); // resolution: 4400
     writeLoc(REG_Configuration_I, (configReg1 & 0xC0) | 41); // resolution: 8200
 
+#if 0
     configReg1 = readLoc(REG_Configuration_I);
     SERIAL_ECHOPGM("Filament sensor config1: 0x");
     MSerial.println(configReg1, HEX);
@@ -898,11 +878,13 @@ void FilamentSensorADNS9800::reset(){
     uint8_t configReg2 = readLoc(REG_Configuration_II);
     SERIAL_ECHOPGM("Filament sensor config2: 0x");
     MSerial.println(configReg2, HEX);
+#endif
 
     uint8_t snap = readLoc(REG_Snap_Angle);
     writeLoc(REG_Snap_Angle, snap | 0x80);
-    SERIAL_ECHOPGM("Snap angle register: 0x");
-    MSerial.println(readLoc(REG_Snap_Angle), HEX);
+
+    // SERIAL_ECHOPGM("Snap angle register: 0x");
+    // MSerial.println(readLoc(REG_Snap_Angle), HEX);
 
     // fixed frame rate
     // writeLoc(REG_Configuration_II, configReg2 & 0x08 );
@@ -910,17 +892,17 @@ void FilamentSensorADNS9800::reset(){
     // writeLoc(REG_Frame_Period_Max_Bound_Upper, 0x0f );
     // delay(10);
 
-    productId = readLoc(REG_Product_ID); // Product
-    SERIAL_ECHOPGM("Filament sensor Prod: 0x");
-    MSerial.println(productId, HEX);
+    uint8_t productId = readLoc(REG_Product_ID); // Product
+    // SERIAL_ECHOPGM("Filament sensor Prod: 0x");
+    // MSerial.println(productId, HEX);
 
     // Check inverse product id:
-    invProductId = readLoc(REG_Inverse_Product_ID);
-    SERIAL_ECHOPGM("REG_Inverse_Product_ID: 0x");
-    MSerial.println(invProductId, HEX);
+    uint8_t invProductId = readLoc(REG_Inverse_Product_ID);
+    // SERIAL_ECHOPGM("REG_Inverse_Product_ID: 0x");
+    // MSerial.println(invProductId, HEX);
     massert((uint8_t)(~productId) == invProductId);
 
-    SERIAL_ECHOLNPGM("Optical Chip Initialized");
+    // SERIAL_ECHOLNPGM("Optical Chip Initialized");
 }
 
 #endif // #if defined(ADNSFS)

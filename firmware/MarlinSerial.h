@@ -112,7 +112,7 @@ class MarlinSerial //: public Stream
 
     inline void store_char(unsigned char c);
 
-    void serWrite(uint8_t c);
+    // void serWrite(uint8_t c);
 
   private:
     void printNumber(unsigned long, uint8_t);
@@ -134,27 +134,8 @@ class MarlinSerial //: public Stream
         return e;
     }
 
-    inline void serWrite(const char *str)
-    {
-      while (*str)
-        serWrite(*str++);
-    }
-
-
-    inline void serWrite(const uint8_t *buffer, size_t size)
-    {
-      while (size--)
-        serWrite(*buffer++);
-    }
-
-#if 0
-    inline void print(const String &s)
-    {
-      for (int i = 0; i < (int)s.length(); i++) {
-        serWrite(s[i]);
-      }
-    }
-#endif
+    void serWrite(const char *str);
+    void serWrite(const uint8_t *buffer, size_t size);
 
     inline void print(const char *str)
     {
@@ -184,8 +165,8 @@ extern MarlinSerial MSerial;
 
 #define SERIAL_PROTOCOL(x) MSerial.print(x);
 #define SERIAL_PROTOCOLPGM(x) serialprintPGM(PSTR(x));
-#define SERIAL_PROTOCOLLNPGM(x) do{ serialprintPGM(PSTR(x)); MSerial.serWrite('\n');} while(0)
-#define SERIAL_PROTOCOLLN(x) do { MSerial.print(x); MSerial.serWrite('\n');} while(0)
+#define SERIAL_PROTOCOLLNPGM(x) do{ serialprintPGM(PSTR(x)); MSerial.serWrite("\n");} while(0)
+#define SERIAL_PROTOCOLLN(x) do { MSerial.print(x); MSerial.serWrite("\n");} while(0)
 
 #define SERIAL_ECHO_START serialprintPGM(echomagic);
 #define SERIAL_ECHO(x) SERIAL_PROTOCOL(x)

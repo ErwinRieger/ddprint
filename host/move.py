@@ -551,7 +551,7 @@ class Move(object):
         payloadSize = len(payLoad)
         lenPayload = min(payloadSize, 256)
 
-        cmds.append(( chr(cmdHex), payLoad ))
+        cmds.append(( cmdHex, payLoad ))
 
         pos = lenPayload
         payloadSize -= lenPayload
@@ -563,7 +563,7 @@ class Move(object):
 
             payloadBlock = payLoad[pos:pos+lenPayload]
 
-            cmds.append(( chr(ddprintcommands.CmdBlock), payloadBlock ))
+            cmds.append(( ddprintcommands.CmdBlock, payloadBlock ))
 
             pos += lenPayload
             payloadSize -= lenPayload

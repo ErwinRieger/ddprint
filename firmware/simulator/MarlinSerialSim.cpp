@@ -120,10 +120,10 @@ void charClock() {
             printf("client connected\n");
 
             // simulate reset, echo greeting message
-            SERIAL_ECHO_START;
-            SERIAL_ECHOLN("MARLINSIM");
-            SERIAL_ECHO_START;
-            SERIAL_ECHOLN("SD card ok");
+            // SERIAL_ECHO_START;
+            // SERIAL_ECHOLN("MARLINSIM");
+            // SERIAL_ECHO_START;
+            // SERIAL_ECHOLN("SD card ok");
             connected = true;
             nerr = 0;
         }
@@ -167,12 +167,12 @@ void charClock() {
 
 void MarlinSerial::begin(long) { };
 
+#if 0
 void MarlinSerial::serWrite(uint8_t c) {
-
     // write(ptty, &c, 1);
     txBuffer.pushChar(c);
 }
-
+#endif
 
 
 

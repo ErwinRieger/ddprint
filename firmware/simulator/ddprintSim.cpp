@@ -501,6 +501,8 @@ uint16_t pgm_read_word(const void* ptr)
 
 FilSensorSim filSensorSim;
 
+extern bool sdChipSelect;
+
 uint8_t READ(int pin) { 
         switch(pin) {
             case SAFETY_TRIGGERED_PIN:
@@ -531,6 +533,8 @@ uint8_t READ(int pin) {
                 assert(0);
                 // return filSensorSim.readBit();
                 return 0;
+            case SDSS:
+                return sdChipSelect;
         }
         assert(0);
 }

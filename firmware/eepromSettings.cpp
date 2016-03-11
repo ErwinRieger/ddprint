@@ -296,7 +296,7 @@ void dumpEepromSettings(const char* prefix) {
         SERIAL_ECHOLNPGM("Stored settings retrieved");
 #endif
 
-        SERIAL_ECHOLN("}");
+        // SERIAL_ECHOLN("}");
 }
 
 uint8_t writeEepromFloat(char *valueName, uint8_t len, float value) {

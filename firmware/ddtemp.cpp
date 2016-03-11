@@ -235,7 +235,7 @@ void TempControl::heater() {
 
             eAlt = e;
 
-// #ifdef PID_DEBUG
+#ifdef PID_DEBUG
             static int dbgcount=0;
 
             if ((dbgcount++ % 10) == 0) {
@@ -255,7 +255,7 @@ void TempControl::heater() {
                 SERIAL_ECHOLN(pid_output);
             }
 
-// #endif //PID_DEBUG
+#endif //PID_DEBUG
 
             lastPidCompute = ts;
 

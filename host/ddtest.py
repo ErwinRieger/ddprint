@@ -73,8 +73,8 @@ def calibrateFilSensor(args, parser):
         parser.execute_line("G0 F%d %s%f" % (feedrate*60, util.dimNames[util.A_AXIS], apos))
 
     planner.finishMoves()
-    printer.sendCommand(CmdEOT, wantReply="ok")
-    printer.sendCommandParam(CmdMove, p1=MoveTypeNormal, wantReply="ok")
+    printer.sendCommand(CmdEOT)
+    printer.sendCommandParam(CmdMove, p1=MoveTypeNormal)
     printer.waitForState(StateIdle)
 
 
