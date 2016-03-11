@@ -24,6 +24,9 @@
 #include "eepromSettings.h"
 #include "MarlinSerial.h"
 #include "Configuration.h"
+#include "ddcommands.h"
+#include "ddserial.h"
+#include "ddcommands.h"
 
 #define EEPROM_OFFSET ((uint8_t*)100)
 #define EEPROM_VERSION "V11"
@@ -63,9 +66,13 @@ void getEepromVersion() {
     char stored_ver[4];
 
     EEPROM_READ_VAR(i, stored_ver); //read stored version
-    SERIAL_ECHOPGM("Res:'");
-    SERIAL_ECHO(stored_ver);
-    SERIAL_ECHOLN("'");
+    // SERIAL_ECHOPGM("Res:'");
+    // SERIAL_ECHO(stored_ver);
+    // SERIAL_ECHOLN("'");
+    txBuffer.sendResponseStart(CmdGetEepromVersion, 5);
+    txBuffer.pushCharChecksum(RespOK);
+    txBuffer.sendResponseValue(stored_ver, 3);
+    txBuffer.sendResponseEnd();
 }
 
 template <typename ElemType>
@@ -174,6 +181,11 @@ void dumpEepromSettings(const char* prefix) {
 
     getEepromSettings(es);
 
+    txBuffer.sendResponseStart(CmdGetEepromSettings, sizeof(es.add_homeing));
+    txBuffer.sendResponseValue((uint8_t*)es.add_homeing, sizeof(es.add_homeing));
+    txBuffer.sendResponseEnd();
+
+#if 0
     // Eeprom version number matches
 
         SERIAL_ECHO(prefix);
@@ -263,7 +275,7 @@ void dumpEepromSettings(const char* prefix) {
         SERIAL_ECHOPGM(",");
 
         eeDump(es, Kd);
-
+#endif
 #if 0
         // do not need to scale PID values as the values in EEPROM are already scaled
         EEPROM_READ_VAR(i,motor_current_setting);
@@ -287,37 +299,42 @@ void dumpEepromSettings(const char* prefix) {
         SERIAL_ECHOLN("}");
 }
 
-void writeEepromFloat(char *valueName, uint8_t len, float value) {
+uint8_t writeEepromFloat(char *valueName, uint8_t len, float value) {
     
     if (strncmp("add_homeing_z", valueName, len) == 0) {
 
         eeprom_write_float(
             (float*)(EEPROM_OFFSET + offsetof(struct EepromSettings, add_homeing) + (2 * sizeof(float))),
             value);
-        SERIAL_PROTOCOLLNPGM(MSG_OK);
+        // SERIAL_PROTOCOLLNPGM(MSG_OK);
+        return RespOK;
     }
     else if (strncmp("Kp", valueName, len) == 0) {
 
         eeprom_write_float(
             (float*)(EEPROM_OFFSET + offsetof(struct EepromSettings, Kp)), value);
-        SERIAL_PROTOCOLLNPGM(MSG_OK);
+        // SERIAL_PROTOCOLLNPGM(MSG_OK);
+        return RespOK;
     }
     else if (strncmp("Ki", valueName, len) == 0) {
 
         eeprom_write_float(
             (float*)(EEPROM_OFFSET + offsetof(struct EepromSettings, Ki)), value);
-        SERIAL_PROTOCOLLNPGM(MSG_OK);
+        // SERIAL_PROTOCOLLNPGM(MSG_OK);
+        return RespOK;
     }
     else if (strncmp("Kd", valueName, len) == 0) {
 
         eeprom_write_float(
             (float*)(EEPROM_OFFSET + offsetof(struct EepromSettings, Kd)), value);
-        SERIAL_PROTOCOLLNPGM(MSG_OK);
+        // SERIAL_PROTOCOLLNPGM(MSG_OK);
+        return RespOK;
     }
     else {
-        valueName[len] = '\0';
-        SERIAL_ECHOPGM("Error: unknown value name in writeEepromFloat: ");
-        SERIAL_ECHOLN(valueName);
+        // valueName[len] = '\0';
+        // SERIAL_ECHOPGM("Error: unknown value name in writeEepromFloat: ");
+        // SERIAL_ECHOLN(valueName);
+        return RespInvalidArgument;
     }
 }
 

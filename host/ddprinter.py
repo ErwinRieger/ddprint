@@ -417,11 +417,11 @@ class Printer(Serial):
     def sendBinaryCommandx(self, cmd, wantReply=None, binPayload=None, lineNr=None):
         self.gui.logSend("sendCommand: ", CommandNames[cmd])
         binary = self.buildBinaryCommand(struct.pack("<B", cmd), binPayload, lineNr)
-        self.send2(cmd, binary, wantReply)
+        return self.send2(cmd, binary, wantReply)
 
     def sendCommand(self, cmd, wantReply=None, binPayload=None, lineNr=None):
         # self.sendBinaryCommand(struct.pack("<B", cmd), wantReply=wantReply, binPayload=binPayload, lineNr=lineNr)
-        self.sendBinaryCommandx(cmd, wantReply=wantReply, binPayload=binPayload, lineNr=lineNr)
+        return self.sendBinaryCommandx(cmd, wantReply=wantReply, binPayload=binPayload, lineNr=lineNr)
 
     def sendCommandParam(self, cmd, wantReply=None, lineNr=None, p1=None, p2=None, p3=None, p4=None):
         self.sendCommandParamV(cmd, wantReply=wantReply, lineNr=lineNr, params=(p1, p2, p3, p4))
@@ -501,7 +501,7 @@ class Printer(Serial):
                 return (cmd, length, payload)
 
             if cmd == replyCode:
-                print "got reply:", payload
+                # print "got reply:", payload
                 return (cmd, length, payload)
 
             resendCommand = self.checkErrorResponse(cmd, length, payload)
@@ -518,7 +518,7 @@ class Printer(Serial):
                 self.send(resendCommand)
                 continue
 
-            print "unknown reply:", cmd, lenght, payload
+            print "unknown reply:", cmd, length, payload
             assert(0)
 
             """
@@ -579,6 +579,12 @@ class Printer(Serial):
             statusDict[valueNames[i]] = tup[i]
 
         return statusDict
+
+    def getAddHomeing(self):
+
+        (cmd, length, payload) = self.query(CmdGetEepromSettings, doLog=False)
+        tup = struct.unpack("<ffff", payload)
+        return tup
 
     def waitForState(self, destState, wait=1):
 

@@ -480,7 +480,7 @@ def main():
     sp.add_argument("name", help="Valuename.")
     sp.add_argument("value", action="store", type=float, help="value (float).")
 
-    sp = subparsers.add_parser("reset", help=u"Try to stop/reset printer.")
+    # sp = subparsers.add_parser("reset", help=u"Try to stop/reset printer.")
 
     sp = subparsers.add_parser("pre", help=u"Preprocess gcode, for debugging purpose.")
     sp.add_argument("gfile", help="Input GCode file.")
@@ -677,8 +677,13 @@ def main():
     elif args.mode == 'dumpeeprom':
 
         printer.commandInit(args)
-        printer.query(CmdGetEepromVersion)
-        pprint.pprint(printer.query(CmdGetEepromSettings))
+        resp = printer.query(CmdGetEepromVersion)
+        if util.handleGenericResponse(resp):
+            print "Eepromversion: ", util.getResponseString(resp[2], 1)
+
+        # pprint.pprint(printer.query(CmdGetEepromSettings))
+        add_homeing = printer.getAddHomeing()
+        print "add_homeing: ", add_homeing
 
     elif args.mode == 'factoryReset':
 

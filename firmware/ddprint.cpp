@@ -33,82 +33,10 @@
 #include "eepromSettings.h"
 #include "filsensor.h"
 #include "ddserial.h"
-
-//
-// USB/Seraial communication
-//
-// Startbyte for serial communication
-#define SOH  0x81
+#include "ddcommands.h"
 
 //The ASCII buffer for recieving from SD:
 #define SD_BUFFER_SIZE 512
-
-//
-// USB commands
-//
-//
-// Buffered commands:
-// ----------------------
-//
-#define CmdNull            0x0
-// #define CmdDirBits         0x2
-#define CmdSyncFanSpeed    0x3
-#define CmdRaw             0x4
-#define CmdBlock           0x6
-
-#define CmdG1              0x7
-#define CmdDirG1           0x8
-#define CmdG1_24           0x9
-#define CmdDirG1_24        0xa
-#define CmdSyncTargetTemp  0xb
-#define CmdDwellMS         0xc
-
-//
-// Direct commands:
-// ----------------------
-//
-
-#define CmdMove                 129
-#define CmdEOT                  130
-#define CmdResetLineNr          131
-
-#define CmdSetHomePos           133
-#define CmdSetTargetTemp        134
-#define CmdWriteEepromFloat     135 // Name max. 63 chars!
-#define CmdEepromFactory        136
-#define CmdFanSpeed             137
-#define CmdStopMove             138
-
-#if defined(PIDAutoTune)
-    #define CmdSetHeaterY           139
-#endif
-
-#define CmdGetState             150
-#define CmdGetHomed             151
-#define CmdGetEndstops          152
-#define CmdGetEepromVersion     153
-#define CmdGetEepromSettings    154
-
-#define CmdDisableStepperIsr    155
-#define CmdDisableSteppers      156
-
-#define CmdGetCurrentTemps      157
-#define CmdGetTargetTemps       158
-#define CmdGetPos               159
-
-#if defined(DDSim)
-    #define CmdExit             160
-#endif
-#define CmdGetStatus            161
-
-// Get raw value of filament sensor pos 
-#define CmdGetFilSensor         162 
-#define CmdGetTempTable         163
-
-//
-// Rsponse types 
-//
-#define RespUnknownCommand      1 // Payload: the unknown command (1 byte)
 
 #if 0
 #if defined(ExtendedStats)
@@ -282,7 +210,7 @@ void setup() {
 
     // loads data from EEPROM if available else uses defaults (and resets step acceleration rate)
     // Config_RetrieveSettings();
-    dumpEepromSettings("Eeprom:");
+    // dumpEepromSettings("Eeprom:");
 
     tp_init();    // Initialize temperature loop
 
@@ -1834,6 +1762,22 @@ class UsbCommand : public Protothread {
                     case CmdGetStatus:
                         printer.cmdGetStatus();
                         break;
+                    case CmdWriteEepromFloat: {
+                        uint8_t len = MSerial.serReadNoCheck();
+                        char name[64];
+                        for (c=0; c<64 && c<len; c++)
+                            name[c] = MSerial.serReadNoCheck();
+                        txBuffer.sendSimpleResponse(
+                            commandByte,
+                            writeEepromFloat(name, len, MSerial.serReadFloat()));
+                        }
+                        break;
+                    case CmdGetEepromVersion:
+                        getEepromVersion();
+                        break;
+                    case CmdGetEepromSettings:
+                        dumpEepromSettings();
+                        break;
 #if 0
                     case 128: // printerInit
                         printer.printerInit();
@@ -1857,14 +1801,6 @@ class UsbCommand : public Protothread {
                                 MSerial.serReadInt32(),
                                 MSerial.serReadInt32());
                         break;
-                    case CmdWriteEepromFloat: {
-                        uint8_t len = MSerial.serReadNoCheck();
-                        char name[64];
-                        for (c=0; c<64 && c<len; c++)
-                            name[c] = MSerial.serReadNoCheck();
-                        writeEepromFloat(name, len, MSerial.serReadFloat());
-                        }
-                        break;
                     case CmdEepromFactory: {
                         EepromSettings es;
                         defaultEepromSettings(es);
@@ -1879,12 +1815,6 @@ class UsbCommand : public Protothread {
                         break;
                     case CmdGetEndstops:
                         printer.cmdGetEndstops();
-                        break;
-                    case CmdGetEepromVersion:
-                        getEepromVersion();
-                        break;
-                    case CmdGetEepromSettings:
-                        dumpEepromSettings();
                         break;
                     case CmdSetTargetTemp:
                         printer.cmdSetTargetTemp(MSerial.serReadNoCheck(), FromSerBufUInt16);
@@ -1936,7 +1866,7 @@ class UsbCommand : public Protothread {
                     default:
                         // massert(commandByte < 128);
                         // xxx send unknown command message with command as payload
-                        txBuffer.sendSingleResponse(RespUnknownCommand, commandByte);
+                        txBuffer.sendSimpleResponse(RespUnknownCommand, commandByte);
                 }
 
                 MSerial.flush();

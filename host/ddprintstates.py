@@ -46,3 +46,16 @@ MoveTypeForced = packedvalue.uint8_t(3) # Special moves (for e.g. homing), homed
 HeaterBed = 0 # Heated bed
 HeaterEx1 = 1 # Extruder 1
 HeaterEx2 = 2 # Extruder 2
+
+############################################################################
+#
+# Response error codes
+#
+RespOK =                1 # Command successful
+RespInvalidArgument =   2 
+
+RespCodeNames = {
+        RespOK: "RespOK",
+        RespInvalidArgument: "RespInvalidArgument",
+}
+

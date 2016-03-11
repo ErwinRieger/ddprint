@@ -761,7 +761,8 @@ def bedLevelAdjust(args, parser):
     printer.commandInit(args)
 
 
-    add_homeing_z = printer.query(CmdGetEepromSettings)['add_homeing'][Z_AXIS] + args.distance
+    # add_homeing_z = printer.query(CmdGetEepromSettings)['add_homeing'][Z_AXIS] + args.distance
+    add_homeing_z = printer.getAddHomeing()[Z_AXIS] + args.distance
 
     # Store new bedlevel offset in printer eeprom
     payload = struct.pack("<%dpf" % (len("add_homeing_z")+1), "add_homeing_z", add_homeing_z)
@@ -777,7 +778,8 @@ def writeEEpromFloat(args, parser):
     printer.commandInit(args)
 
     payload = struct.pack("<%dpf" % (len(args.name)+1), args.name, args.value)
-    printer.sendCommand(CmdWriteEepromFloat, binPayload=payload, wantReply="ok")
+    resp = printer.sendCommand(CmdWriteEepromFloat, binPayload=payload, wantReply="ok")
+    handleGenericResponse(resp)
 
 ####################################################################################################
 
@@ -1126,8 +1128,6 @@ def zieglerNichols(args, parser):
     # y = Kp * e + Ki * Ta * esum + Kd * (e – ealt)/Ta
 
 ####################################################################################################
-
-
 #
 # Allow comments in json files.
 #
@@ -1145,6 +1145,24 @@ def jsonLoad(f):
 
 ####################################################################################################
 
+def handleGenericResponse(resp):
+    (cmd, l, payload) = resp
+
+    code = ord(payload[0])
+    if code != RespOK:
+        print "Command '%s' returned code '%s'." % (CommandNames[cmd], RespCodeNames[code])
+        return False
+
+    return True
+
+####################################################################################################
+
+def getResponseString(s, offset):
+
+    length = ord(s[offset])
+    return s[offset+1:offset+1+length]
+
+####################################################################################################
 
 
 

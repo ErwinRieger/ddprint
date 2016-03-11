@@ -150,12 +150,18 @@ class TxBuffer: public Protothread {
 
         void sendResponseEnd() {
 
-            printf("chesum: 0x%x\n", checksum);
+            // printf("chesum: 0x%x\n", checksum);
             pushChar(checksum & 0xFF);
             pushChar(checksum >> 8);
         }
 
-        void sendSingleResponse(uint8_t respCode, uint8_t payload) {
+        void sendSimpleResponse(uint8_t respCode) {
+
+            sendResponseStart(respCode, 1);
+            sendResponseEnd();
+        }
+
+        void sendSimpleResponse(uint8_t respCode, uint8_t payload) {
 
             sendResponseStart(respCode, 1);
             pushCharChecksum(payload);
@@ -182,6 +188,21 @@ class TxBuffer: public Protothread {
             pushCharChecksum(*(((uint8_t*)&v)+1));
             pushCharChecksum(*(((uint8_t*)&v)+2));
             pushCharChecksum(*(((uint8_t*)&v)+3));
+        }
+
+        // Send string, one byte length, then the string
+        void sendResponseValue(char *s, uint8_t l) {
+
+            pushCharChecksum(l);
+            for (uint8_t i=0; i<l; i++)
+                pushCharChecksum(s[i]);
+        }
+
+        // Send fixed size blob
+        void sendResponseValue(uint8_t *b, uint8_t l) {
+
+            for (uint8_t i=0; i<l; i++)
+                pushCharChecksum(b[i]);
         }
 };
 

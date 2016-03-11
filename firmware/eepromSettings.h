@@ -62,5 +62,5 @@ void defaultEepromSettings(EepromSettings &es);
 
 void dumpEepromSettings(const char* prefix="Res:");
 
-void writeEepromFloat(char *valueName, uint8_t len, float v);
+uint8_t writeEepromFloat(char *valueName, uint8_t len, float v);
 
