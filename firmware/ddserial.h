@@ -170,6 +170,14 @@ class TxBuffer: public Protothread {
             sendResponseEnd();
         }
 
+        void sendSimpleResponse(uint8_t respCode, uint8_t param1, uint8_t param2) {
+
+            sendResponseStart(respCode, 2);
+            pushCharChecksum(param1);
+            pushCharChecksum(param2);
+            sendResponseEnd();
+        }
+
         void sendResponseValue(uint16_t v) {
 
             sendResponseValue((uint8_t*)&v, 2);

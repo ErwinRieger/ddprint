@@ -177,6 +177,8 @@ void disable_heater()
 // Derived from RepRap FiveD extruder::getTemperature()
 // For hot end temperature measurement.
 float analog2temp(int raw, uint8_t e) {
+
+#if 0
   if(e >= EXTRUDERS)
   {
       SERIAL_ERROR_START;
@@ -184,6 +186,7 @@ float analog2temp(int raw, uint8_t e) {
       SERIAL_ERRORLNPGM(" - Invalid extruder number !");
       kill("Invalid extruder number!");
   }
+#endif
 
   if(heater_ttbl_map[e] != NULL)
   {

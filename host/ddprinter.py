@@ -116,59 +116,47 @@ class Printer(Serial):
     def get(cls):
         return cls.__single
 
+    def commandResend(self, lastLine):
+
+        self.gui.log("Command resend:", recvLine)
+        self.gui.logRecv("RX Error:", recvLine)
+
+        # Wait 0.1 sec, give firmware time to drain buffers
+        time.sleep(0.1)
+
+        if lastLine == (self.lineNr % 256):
+            self.gui.log("Command was sent ok, faking ACK...:", lastLine)
+            # Das ursprünglich gesendete kommando ging zwar duch, danach 
+            # gab es jedoch einen komm. fehler, so dass das ACK nicht mehr
+            # empfangen werden konnte. Desswegen kein resend notwendig, und es
+            # kann so getan werden, als ob ein ACK empfangen wurde.
+            return True
+
+        self.gui.log("Scheduling resend of command:", lastLine)
+        return self.lastCommands[lastLine]
+
     # Check a printer response for an error
-    def checkError(self, recvLine):
-
-        if "Error:" in recvLine and  "Last Line" in recvLine:
-
-            self.gui.log("Error:", recvLine)
-            self.gui.logRecv("Error:", recvLine)
-
-            # Error:Line Number is not Last Line Number+1, Last Line: 9            
-            # Error:checksum mismatch, Last Line: 71388
-            lastLine = int(recvLine[recvLine.index("Error"):].split(":")[2])
-            time.sleep(0.1)
-
-            if lastLine == (self.lineNr % 256):
-                self.gui.log("Command was sent ok, faking ACK...:", lastLine)
-                # Das ursprünglich gesendete kommando ging zwar duch, danach 
-                # gab es jedoch einen komm. fehler, so dass das ACK nicht mehr
-                # empfangen werden konnte. Desswegen kein resend notwendig, und es
-                # kann so getan werden, als ob ein ACK empfangen wurde.
-                return True
-
-            # self.gui.log("Scheduling resend of command:", lastLine+1)
-            self.gui.log("Scheduling resend of command:", lastLine)
-
-            # assert(self.gcodePos == lastLine + 2)
-            # self.gcodePos = lastLine + 1
-
-            # Wait 0.1 sec, give firmware time to drain buffers
-            return self.lastCommands[lastLine]
-
-        for token in ["Error:", "cold extrusion", "SD init fail", "open failed"]:
-            if token in recvLine:
-
-                self.gui.logError("ERROR: reply from printer: '%s'" % recvLine)
-
-                self.readMore(20)
-
-                # self.reset()
-                if "UNKNOWN COMMAND" in recvLine.upper():
-                    raise FatalPrinterError(recvLine)
-
     def checkErrorResponse(self, respCode, length, payload):
 
         if respCode == RespUnknownCommand:
             self.gui.logError("ERROR: RespUnknownCommand '0x%x'" % ord(payload))
-            assert(0)
+            raise FatalPrinterError(ResponseNames[respCode])
         elif respCode == RespKilled:
             (reason, x, y, z, xtrig, ytrig, ztrig) = struct.unpack("<BiiiBBB", payload)
             self.gui.logError("ERROR: PRINTER KILLED! Reason: %s, X: %d, Y: %d, Z: %d, trigger: x: %d, y: %d, z: %d" % (RespCodeNames[reason], x, y, z, xtrig, ytrig, ztrig))
-            assert(0)
+            raise FatalPrinterError(ResponseNames[respCode])
+        elif respCode == RespRXError:
+            (lastLine, flags) = struct.unpack("<BB", payload)
+            return commandResend(lastLine)
+        elif respCode == RespRXCRCError:
+            return commandResend(ord(payload))
+        elif respCode == RespSerNumberError:
+            return commandResend(ord(payload))
+        elif respCode == RespRXTimeoutError:
+            return commandResend(ord(payload))
         else:
             self.gui.logError("ERROR: unknown response code '0x%x'" % respCode)
-            assert(0)
+            raise FatalPrinterError(ResponseNames[respCode])
 
     # Read a response from printer, "handle" exceptions
     def safeReadline(self):
@@ -507,12 +495,9 @@ class Printer(Serial):
                 return (cmd, length, payload)
 
             resendCommand = self.checkErrorResponse(cmd, length, payload)
-            # resendCommand = self.checkError(recvLine)
 
             if resendCommand == True:
                 # Command ok without ack
-                if wantReply:
-                    self.gui.log("Warning: skipping wantReply:", wantReply)
                 return True
             elif resendCommand:
                 # command resend

@@ -132,7 +132,7 @@ void MarlinSerial::serWrite(const uint8_t *buffer, size_t size)
     txBuffer.sendResponseEnd();
 }
 
-
+#if 0
 void MarlinSerial::print(char c, int base)
 {
   print((long) c, base);
@@ -152,7 +152,9 @@ void MarlinSerial::print(unsigned int n, int base)
 {
   print((unsigned long) n, base);
 }
+#endif
 
+#if 0
 void MarlinSerial::print(long n, int base)
 {
 #if defined(DDSim)
@@ -185,7 +187,9 @@ void MarlinSerial::print(unsigned long n, int base)
   else printNumber(n, base);
 #endif
 }
+#endif
 
+#if 0
 void MarlinSerial::print(double n, int digits)
 {
   printFloat(n, digits);
@@ -196,6 +200,7 @@ void MarlinSerial::println(void)
   print('\r');
   print('\n');
 }
+#endif
 
 #if 0
 void MarlinSerial::println(const String &s)
@@ -205,6 +210,7 @@ void MarlinSerial::println(const String &s)
 }
 #endif
 
+#if 0
 void MarlinSerial::println(const char c[])
 {
   print(c);
@@ -310,6 +316,8 @@ void MarlinSerial::printFloat(double number, uint8_t digits)
     remainder -= toPrint;
   }
 }
+#endif
+
 // Preinstantiate Objects //////////////////////////////////////////////////////
 
 

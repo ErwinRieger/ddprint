@@ -117,8 +117,8 @@ class MarlinSerial //: public Stream
     // void serWrite(uint8_t c);
 
   private:
-    void printNumber(unsigned long, uint8_t);
-    void printFloat(double, uint8_t);
+    // void printNumber(unsigned long, uint8_t);
+    // void printFloat(double, uint8_t);
 
     ring_buffer rx_buffer;
 
@@ -143,28 +143,29 @@ class MarlinSerial //: public Stream
     {
       serWrite(str);
     }
-    void print(char, int = BYTE);
-    void print(unsigned char, int = BYTE);
-    void print(int, int = DEC);
-    void print(unsigned int, int = DEC);
-    void print(long, int = DEC);
-    void print(unsigned long, int = DEC);
-    void print(double, int = 2);
+    // void print(char, int = BYTE);
+    // void print(unsigned char, int = BYTE);
+    // void print(int, int = DEC);
+    // void print(unsigned int, int = DEC);
+    // void print(long, int = DEC);
+    // void print(unsigned long, int = DEC);
+    // void print(double, int = 2);
 
     // void println(const String &s);
-    void println(const char[]);
-    void println(char, int = BYTE);
-    void println(unsigned char, int = BYTE);
-    void println(int, int = DEC);
-    void println(unsigned int, int = DEC);
-    void println(long, int = DEC);
-    void println(unsigned long, int = DEC);
-    void println(double, int = 2);
-    void println(void);
+    // void println(const char[]);
+    // void println(char, int = BYTE);
+    // void println(unsigned char, int = BYTE);
+    // void println(int, int = DEC);
+    // void println(unsigned int, int = DEC);
+    // void println(long, int = DEC);
+    // void println(unsigned long, int = DEC);
+    // void println(double, int = 2);
+    // void println(void);
 };
 
 extern MarlinSerial MSerial;
 
+#if 0
 #define SERIAL_PROTOCOL(x) MSerial.print(x);
 #define SERIAL_PROTOCOLPGM(x) serialprintPGM(PSTR(x));
 #define SERIAL_PROTOCOLLNPGM(x) do{ serialprintPGM(PSTR(x)); MSerial.serWrite("\n");} while(0)
@@ -179,6 +180,7 @@ extern MarlinSerial MSerial;
 #define SERIAL_ERRORLN(x) SERIAL_PROTOCOLLN(x)
 #define SERIAL_ECHOLN(x) SERIAL_PROTOCOLLN(x)
 #define SERIAL_ECHOLNPGM(x) SERIAL_PROTOCOLLNPGM(x)
+#endif
 
 inline void MarlinSerial::store_char(unsigned char c) {
         int i = (rx_buffer.head + 1) & RX_BUFFER_MASK;

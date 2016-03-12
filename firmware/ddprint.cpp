@@ -524,6 +524,7 @@ class FillBufferTask : public Protothread {
                     goto HandleCmdDwellMS;
 
                 default:
+#if 0
                     SERIAL_ECHOPGM("Error: UNKNOWN command byte: ");
                     SERIAL_ECHO((int)cmd);
                     SERIAL_ECHOPGM(", Swapsize: ");
@@ -532,7 +533,13 @@ class FillBufferTask : public Protothread {
                     SERIAL_ECHO(swapDev.getReadPos());
                     SERIAL_ECHOPGM(", SDRReadPos+5 is: ");
                     SERIAL_ECHOLN(sDReader.getBufferPtr());
-                    kill("Unknown command.");
+#endif
+
+                    txBuffer.sendResponseStart(RespKilled, 2);
+                    txBuffer.pushCharChecksum(RespUnknownBCommand);
+                    txBuffer.pushCharChecksum(cmd);
+                    txBuffer.sendResponseEnd();
+                    kill();
             }
 
             // XXX use template to merge CmdG1 and CmdG1_24
@@ -1417,9 +1424,10 @@ void Printer::cmdGetStatus() {
 #if defined(ADNSFS) || defined(BournsEMS22AFS)
 void Printer::cmdGetFilSensor() {
 
-    // ["state", "t0", "t1", "Swap", "SDReader", "StepBuffer", "StepBufUnderRuns", "targetT1"]
+#if 0
     SERIAL_ECHOPGM("Res:");
     SERIAL_ECHOLN(filamentSensor.yPos);
+#endif
 }
 #endif
 
@@ -1427,6 +1435,7 @@ void Printer::cmdGetTempTable() {
 
     uint16_t temp = 210; // xxx fixed
 
+#if 0
     SERIAL_ECHOPGM("Res:[");
 
     for (uint8_t i=0; i<31; i++, temp+=2) { // fixed
@@ -1438,6 +1447,7 @@ void Printer::cmdGetTempTable() {
         SERIAL_ECHOPGM("),");
     }
     SERIAL_ECHOLNPGM("]");
+#endif
 }
 
 void Printer::dwellStart() {
@@ -1523,13 +1533,16 @@ class UsbCommand : public Protothread {
 
         void rxError(uint8_t e) {
 
+            /*
             SERIAL_ERROR_START;
             SERIAL_PROTOCOLPGM("RX err(");
             SERIAL_ERROR(e);
             SERIAL_PROTOCOLPGM(") Last Line:");
             // SERIAL_ERRORLN(serialNumber);
             MSerial.println(serialNumber, DEC);
+            */
 
+            txBuffer.sendSimpleResponse(RespRXError, serialNumber, e);
             reset();
             // #if defined(ExtendedStats)
                 // errorFlags |= EFRXError;
@@ -1538,11 +1551,14 @@ class UsbCommand : public Protothread {
 
         void crcError() {
 
+            /*
             SERIAL_ERROR_START;
             SERIAL_PROTOCOLPGM("CRC err Last Line:");
             // SERIAL_ERRORLN(serialNumber);
             MSerial.println(serialNumber, DEC);
+            */
 
+            txBuffer.sendSimpleResponse(RespRXCRCError, serialNumber);
             reset();
             // #if defined(ExtendedStats)
                 // errorFlags |= EFRXError;
@@ -1551,11 +1567,14 @@ class UsbCommand : public Protothread {
 
         void serialNumberError() {
 
+            /*
             SERIAL_ERROR_START;
             SERIAL_PROTOCOLPGM("SerialNumber err Last Line:");
             // SERIAL_ERRORLN(serialNumber);
             MSerial.println(serialNumber, DEC);
+            */
 
+            txBuffer.sendSimpleResponse(RespSerNumberError, serialNumber);
             reset();
             // #if defined(ExtendedStats)
                 // errorFlags |= EFRXError;
@@ -1581,10 +1600,13 @@ class UsbCommand : public Protothread {
             }
 
             if ((ts - startTS) > 2500) {
+                /*
                 SERIAL_ERROR_START;
                 SERIAL_PROTOCOLPGM("RX Timeout Last Line:");
                 MSerial.println(serialNumber, DEC);
+                */
 
+                txBuffer.sendSimpleResponse(RespRXCRCError, serialNumber);
                 reset();
                 return SerTimeout;
             }
@@ -1957,8 +1979,6 @@ class UsbCommand : public Protothread {
                         break;
 #endif
                     default:
-                        // massert(commandByte < 128);
-                        // xxx send unknown command message with command as payload
                         txBuffer.sendSimpleResponse(RespUnknownCommand, commandByte);
                 }
 
@@ -1993,13 +2013,14 @@ FWINLINE void loop() {
                 swapDev.available()) {
 
                 printer.bufferLow++;
-
+                /*
                 SERIAL_ECHO("BUFLOW:");
                 SERIAL_PROTOCOL(printer.bufferLow);
                 SERIAL_PROTOCOL(" SWP:");
                 SERIAL_PROTOCOL(swapDev.available());
                 SERIAL_PROTOCOL(" SDR:");
                 SERIAL_PROTOCOLLN(sDReader.available());
+                */
             }
         }
     }

@@ -149,11 +149,19 @@ CommandNames = {
 RespUnknownCommand =            1
 RespGenericString =             2
 RespKilled =                    3
+RespRXError =                   4 # Payload: serialNumber (last line), errorflags
+RespRXCRCError =                5 # Payload: serialNumber (last line)
+RespSerNumberError =            6 # Payload: serialNumber (last line)
+RespRXTimeoutError =            7 # Payload: serialNumber (last line)
 
 ResponseNames = {
         RespUnknownCommand: "RespUnknownCommand",
         RespGenericString: "RespGenericString",
         RespKilled: "RespKilled",
+        RespRXError: "RespRXError",
+        RespRXCRCError: "RespRXCRCError",
+        RespSerNumberError: "RespSerNumberError",
+        RespRXTimeoutError: "RespRXTimeoutError",
 }
 
 

@@ -91,9 +91,13 @@
 //
 // Response types 
 //
-#define RespUnknownCommand      1 // Payload: the unknown command (1 byte)
+#define RespUnknownCommand      1 // Unknown Direct Command, Payload: the unknown command (1 byte)
 #define RespGenericString       2 // Payload: 'pascal string'
 #define RespKilled              3 // Payload: reason, optional parameters
+#define RespRXError             4 // Payload: serialNumber (last line), errorflags
+#define RespRXCRCError          5 // Payload: serialNumber (last line)
+#define RespSerNumberError      6 // Payload: serialNumber (last line)
+#define RespRXTimeoutError      7 // Payload: serialNumber (last line)
 
 //
 // Rsponse error codes (payload)
@@ -102,6 +106,7 @@
 #define RespInvalidArgument     2 // Payload: none
 #define RespHardwareEndstop     3 // Payload: none
 #define RespSoftwareEndstop     4 // Payload: none
+#define RespUnknownBCommand     5 // Unknown Buffered Command, payload: the command
 
 
 

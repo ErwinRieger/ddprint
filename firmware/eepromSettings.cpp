@@ -75,6 +75,7 @@ void getEepromVersion() {
     txBuffer.sendResponseEnd();
 }
 
+#if 0
 template <typename ElemType>
 void dumpArray(ElemType *array, uint8_t len) {
     SERIAL_ECHOPGM("(");
@@ -121,11 +122,12 @@ void eeDumpValue(int32_t *array, uint8_t len) {
 
 #define eeDump(s, member) {  \
   SERIAL_ECHOPGM("'" #member "':"); \
-  eeDumpValue(s . member, sizeof(s . member)); } \
+  eeDumpValue(s . member, sizeof(s . member)); }
+#endif
 
 void defaultEepromSettings(EepromSettings &es) {
 
-    SERIAL_ECHOLN("defaultEepromSettings(): initializing eeprom.");
+    // SERIAL_ECHOLN("defaultEepromSettings(): initializing eeprom.");
 
     EepromSettings defaultSettings = {
         /* stored_ver */ EEPROM_VERSION,

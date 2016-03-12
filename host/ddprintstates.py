@@ -55,11 +55,13 @@ RespOK =                1 # Command successful
 RespInvalidArgument =   2 
 RespHardwareEndstop =   3 
 RespSoftwareEndstop =   4 
+RespUnknownBCommand =   5
 
 RespCodeNames = {
         RespOK: "RespOK",
         RespInvalidArgument: "InvalidArgument",
         RespHardwareEndstop: "HardwareEndstop",
         RespSoftwareEndstop: "SoftwareEndstop",
+        RespUnknownBCommand: "RespUnknownBCommand",
 }
 
