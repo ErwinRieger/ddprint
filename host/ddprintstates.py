@@ -57,6 +57,11 @@ RespHardwareEndstop =   3
 RespSoftwareEndstop =   4 
 RespUnknownBCommand =   5
 RespAssertion       =   6
+RespADNS9800Init    =   7
+RespSDInit          =   8
+RespSDError         =   9
+RespMinTemp         =  10
+RespMaxTemp         =  11
 
 RespCodeNames = {
         RespOK: "RespOK",
@@ -65,5 +70,15 @@ RespCodeNames = {
         RespSoftwareEndstop: "SoftwareEndstop",
         RespUnknownBCommand: "RespUnknownBCommand",
         RespAssertion: "RespAssertion",
+        RespADNS9800Init: "RespADNS9800Init",
+        RespSDInit: "RespSDInit",
+        RespSDError: "RespSDError",
+        RespMinTemp: "RespMinTemp",
+        RespMaxTemp: "RespMaxTemp",
 }
+
+
+
+
+
 

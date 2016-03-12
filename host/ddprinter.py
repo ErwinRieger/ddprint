@@ -230,7 +230,7 @@ class Printer(Serial):
 
             time += self.timeout
 
-            if time > 1:
+            if time > 5:
                 print "timeout reading, data read: ", res
                 raise RxTimeout()
 
