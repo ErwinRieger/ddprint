@@ -321,7 +321,7 @@ CXX     = $(AVR_TOOLS_PATH)/avr-g++
 OBJCOPY = $(AVR_TOOLS_PATH)/avr-objcopy
 OBJDUMP = $(AVR_TOOLS_PATH)/avr-objdump
 AR      = $(AVR_TOOLS_PATH)/avr-ar
-SIZE    = $(AVR_TOOLS_PATH)/avr-size
+SIZE    = $(AVR_TOOLS_PATH)/avr-size -C --mcu=$(MCU)
 NM      = $(AVR_TOOLS_PATH)/avr-nm
 REMOVE  = rm -f
 MV      = mv -f
@@ -476,7 +476,7 @@ AVRDUDE_ISP_OPTS = -P $(ISP_PORT) $(ISP_PROG)
 # Explicit targets start here
 #
 
-all: 		$(OBJDIR) $(TARGET_HEX)
+all: 		$(OBJDIR) $(TARGET_HEX) size
 
 $(OBJDIR):
 		mkdir $(OBJDIR)
@@ -524,8 +524,8 @@ clean:
 depends:	$(DEPS)
 		cat $(DEPS) > $(DEP_FILE)
 
-size:		$(OBJDIR) $(TARGET_HEX)
-		$(SIZE) $(TARGET_HEX)
+size:		$(OBJDIR) $(TARGET_ELF)
+		$(SIZE) $(TARGET_ELF)
 
 show_boards:	
 		$(PARSE_BOARD) --boards
