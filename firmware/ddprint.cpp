@@ -58,9 +58,7 @@ uint8_t errorFlags = 0;
 // Macros to read scalar types from a buffer
 #define FromBuf(typ, adr) ( * ((typ *)(adr)))
 
-
-uint8_t Stopped = 0;
-
+// uint8_t Stopped = 0;
 
 extern "C"{
   extern unsigned int __bss_end;
@@ -123,9 +121,8 @@ uint16_t tempExtrusionRateTable[31] = {
 /////////////////////////////////////////////////////////////////////////////////////
 
 
-
-
-void shutdown() {
+// xxx move to printer class?
+void kill() {
 
     cli(); // Stop interrupts
     disable_heater();
@@ -134,13 +131,7 @@ void shutdown() {
 #if defined(PS_ON_PIN) && PS_ON_PIN > -1
     pinMode(PS_ON_PIN,INPUT);
 #endif
-}
 
-
-// xxx move to printer class?
-void kill() {
-
-    shutdown();
     while(1) {
         // Wait for reset
         txBuffer.Run();
@@ -148,6 +139,8 @@ void kill() {
 }
 
 void mAssert(uint16_t line, char* file) {
+
+    txBuffer.flush();
 
     txBuffer.sendResponseStart(RespKilled, 1+strlen(file));
     txBuffer.sendResponseValue(line);
@@ -1050,6 +1043,8 @@ void Printer::cmdMove(MoveType mt) {
 
     massert(mt != MoveTypeNone);
     massert(printerState == StateInit);
+
+massert(txBuffer.empty());
 
     printerState = StateStart;
     moveType = mt;
@@ -1974,7 +1969,6 @@ FWINLINE void loop() {
     // static unsigned long timer50mS = millis();
     static unsigned long timer100mS = millis();
 
-    // if (printer.moveType == Printer::MoveTypeNormal) {
     if (printer.printerState == Printer::StateStart) {
 
         if (printer.bufferLow == -1) {
@@ -2082,49 +2076,10 @@ FWINLINE void loop() {
     // Write usb/serial output
     txBuffer.Run();
 
-    /*
-    if (printer.moveType == Printer::MoveTypeNone) {
-        // Handle swapfile writing
-        swapDev.Run();
-    }
-    else {
-*/
-        // If printing, then read steps from the sd buffer and push it to
-        // the print buffer.
-        fillBufferTask.Run();
-        swapDev.Run();
-#if 0
-        /*
-        // Handle swapfile writing
-        if ((swapDev.available() < 10240) || (sDReader.available() > 400))
-        */
-        if (swapDev.isBusyWriting() || (swapDev.available() < 10240)) {
-            swapDev.Run();
-        }
-        else if (swapDev.isBusyWriting() && (stepBuffer.timeSum >= 500000)) {
-            swapDev.Run();
-            SERIAL_ECHO("BT:");
-            SERIAL_PROTOCOL(stepBuffer.timeSum);
-            SERIAL_PROTOCOL(" SWP:");
-            SERIAL_PROTOCOL(swapDev.available());
-            SERIAL_PROTOCOL(" SDR:");
-            SERIAL_PROTOCOL(sDReader.available());
-            SERIAL_PROTOCOL(" SB:");
-            SERIAL_PROTOCOLLN((uint16_t)stepBuffer.byteSize());
-        }
-        /*
-        else {
-            SERIAL_ECHO("NW:");
-            SERIAL_PROTOCOL(" SWP:");
-            SERIAL_PROTOCOL(swapDev.available());
-            SERIAL_PROTOCOL(" SDR:");
-            SERIAL_PROTOCOLLN(sDReader.available());
-        }
-        */
-#endif
-        /*
-    }
-*/
+    // If printing, then read steps from the sd buffer and push it to
+    // the print buffer.
+    fillBufferTask.Run();
+    swapDev.Run();
 
     // Check swap dev error
     if (swapDev.errorCode()) {

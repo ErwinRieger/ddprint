@@ -177,6 +177,10 @@ class TxBuffer: public Protothread {
             for (uint8_t i=0; i<l; i++)
                 pushCharChecksum(b[i]);
         }
+
+        void flush() {
+            head = tail;
+        }
 };
 
 extern TxBuffer txBuffer;

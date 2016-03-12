@@ -25,7 +25,7 @@ void mAssert(uint16_t line, char* file);
 //
 // Add heavy and time consuming debugging
 //
-// #define HEAVYDEBUG 1
+#define HEAVYDEBUG 1
 
 #if defined(AVR)
 
