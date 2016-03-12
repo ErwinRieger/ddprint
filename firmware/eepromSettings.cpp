@@ -66,9 +66,7 @@ void getEepromVersion() {
     char stored_ver[4];
 
     EEPROM_READ_VAR(i, stored_ver); //read stored version
-    // SERIAL_ECHOPGM("Res:'");
-    // SERIAL_ECHO(stored_ver);
-    // SERIAL_ECHOLN("'");
+
     txBuffer.sendResponseStart(CmdGetEepromVersion, 5);
     txBuffer.pushCharChecksum(RespOK);
     txBuffer.sendResponseValue(stored_ver, 3);
@@ -308,34 +306,27 @@ uint8_t writeEepromFloat(char *valueName, uint8_t len, float value) {
         eeprom_write_float(
             (float*)(EEPROM_OFFSET + offsetof(struct EepromSettings, add_homeing) + (2 * sizeof(float))),
             value);
-        // SERIAL_PROTOCOLLNPGM(MSG_OK);
         return RespOK;
     }
     else if (strncmp("Kp", valueName, len) == 0) {
 
         eeprom_write_float(
             (float*)(EEPROM_OFFSET + offsetof(struct EepromSettings, Kp)), value);
-        // SERIAL_PROTOCOLLNPGM(MSG_OK);
         return RespOK;
     }
     else if (strncmp("Ki", valueName, len) == 0) {
 
         eeprom_write_float(
             (float*)(EEPROM_OFFSET + offsetof(struct EepromSettings, Ki)), value);
-        // SERIAL_PROTOCOLLNPGM(MSG_OK);
         return RespOK;
     }
     else if (strncmp("Kd", valueName, len) == 0) {
 
         eeprom_write_float(
             (float*)(EEPROM_OFFSET + offsetof(struct EepromSettings, Kd)), value);
-        // SERIAL_PROTOCOLLNPGM(MSG_OK);
         return RespOK;
     }
     else {
-        // valueName[len] = '\0';
-        // SERIAL_ECHOPGM("Error: unknown value name in writeEepromFloat: ");
-        // SERIAL_ECHOLN(valueName);
         return RespInvalidArgument;
     }
 }

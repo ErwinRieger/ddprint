@@ -15,6 +15,12 @@ uint8_t MarlinSerial::peekN(uint8_t index) {
 
 void MarlinSerial::peekChecksum(uint16_t *checksum, uint8_t count) {
 
+    if ((rx_buffer.head - rx_buffer.tail) >= count) {
+        for (uint8_t i=0; i<count; i++)
+            *checksum = _crc_xmodem_update(*checksum, rx_buffer.buffer[rx_buffer.tail+i]);
+        return;
+    }
+
     for (uint8_t i=0; i<count; i++)
         *checksum = _crc_xmodem_update(*checksum, peekN(i));
 }

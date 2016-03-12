@@ -59,17 +59,6 @@
 #define M_USARTx_RX_vect SERIAL_REGNAME(USART,SERIAL_PORT,_RX_vect)
 #define M_U2Xx SERIAL_REGNAME(U2X,SERIAL_PORT,)
 
-
-#if 0
-#define MSG_OK "ok"
-
-#define DEC 10
-#define HEX 16
-#define OCT 8
-#define BIN 2
-#define BYTE 0
-#endif
-
 // Define constants and variables for buffering incoming serial data.  We're
 // using a ring buffer (I think), in which rx_buffer_head is the index of the
 // location to which to write the next incoming character and rx_buffer_tail

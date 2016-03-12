@@ -109,6 +109,10 @@
 #define RespUnknownBCommand     5 // Unknown Buffered Command, payload: the command
 #define RespAssertion           6 // payload: line, file
 #define RespADNS9800Init        7 // 
+#define RespSDInit              8 // 
+#define RespSDError             9 // 
+#define RespMinTemp            10 // 
+#define RespMaxTemp            11 // 
 
 
 

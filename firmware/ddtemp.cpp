@@ -25,12 +25,13 @@
 #include "thermistortables.h"
 #include "eepromSettings.h"
 #include "Configuration.h"
-#include "MarlinSerial.h"
+#include "ddserial.h"
+#include "ddcommands.h"
 #include "fastio.h"
 
 // Redundant definitions to avoid include of ddprint.h
 extern void watchdog_reset();
-extern void killPGM(const char *s);
+extern void kill();
 
 void TempControl::init() {
     //
@@ -193,11 +194,13 @@ void TempControl::heater() {
 
     // Check if temperature is within the correct range
     if(current_temperature[0] < HEATER_0_MINTEMP) {
-        killPGM(PSTR("MINTEMP HEATER 0\n"));
+        txBuffer.sendSimpleResponse(RespKilled, RespMinTemp, 1);
+        kill();
     }
     else {
         if(current_temperature[0] > HEATER_0_MAXTEMP) {
-            killPGM(PSTR("MAXTEMP HEATER 0\n"));
+            txBuffer.sendSimpleResponse(RespKilled, RespMaxTemp, 1);
+            kill();
         }
         else {
 #if ! defined(PIDAutoTune)
@@ -281,11 +284,13 @@ void TempControl::heater() {
 
     // Check if temperature is within the correct range
     if(current_temperature_bed < BED_MINTEMP) {
-        killPGM(PSTR("MINTEMP BED\n"));
+        txBuffer.sendSimpleResponse(RespKilled, RespMinTemp, 0);
+        kill();
     }
     else {
         if(current_temperature_bed > BED_MAXTEMP) {
-            killPGM(PSTR("MAXTEMP BED\n"));
+            txBuffer.sendSimpleResponse(RespKilled, RespMaxTemp, 0);
+            kill();
         }
         else {
             if(current_temperature_bed >= target_temperature_bed)

@@ -147,34 +147,6 @@ void kill() {
     }
 }
 
-// xxx remove
-void kill(const char* msg) {
-
-    shutdown();
-
-    txBuffer.sendUnbufferedPGM(PSTR("Error: Printer halted. kill() called, msg: "));
-    txBuffer.sendUnbuffered(msg);
-
-    while(1) {
-        // Wait for reset
-        txBuffer.Run();
-    }
-}
-
-// xxx remove
-void killPGM(const char* msg) {
-
-    shutdown();
-
-    txBuffer.sendUnbufferedPGM(PSTR("Error: Printer halted. kill() called, msg: "));
-    txBuffer.sendUnbufferedPGM(msg);
-
-    while(1) {
-        // Wait for reset
-        txBuffer.Run();
-    }
-}
-
 void mAssert(uint16_t line, char* file) {
 
     txBuffer.sendResponseStart(RespKilled, 1+strlen(file));
@@ -247,8 +219,10 @@ void setup() {
 
     // lcd_init();
 
-    if (! swapDev.swapInit())
-        kill("SwapDev init error.");
+    if (! swapDev.swapInit()) {
+        txBuffer.sendSimpleResponse(RespKilled, RespSDInit);
+        kill();
+    }
 
 #if defined(ADNSFS)
     filamentSensor.reset();
@@ -1058,8 +1032,6 @@ stepBuffer.flush();
     eotReceived = false;
 
     analogWrite(LED_PIN, 255);
-
-    // SERIAL_PROTOCOLLNPGM(MSG_OK);
 }
 
 void Printer::cmdEot() {
@@ -1067,8 +1039,6 @@ void Printer::cmdEot() {
     massert(printerState >= StateInit);
 
     eotReceived = true;
-
-    // SERIAL_PROTOCOLLNPGM(MSG_OK);
 }
 
 void Printer::cmdMove(MoveType mt) {
@@ -1133,8 +1103,6 @@ void Printer::cmdMove(MoveType mt) {
 #if defined(ADNSFS) || defined(BournsEMS22AFS)
     filamentSensor.init();
 #endif
-
-    // SERIAL_PROTOCOLLNPGM(MSG_OK);
 }
 
 void Printer::setHomePos(int32_t x, int32_t y, int32_t z) {
@@ -1146,8 +1114,6 @@ void Printer::setHomePos(int32_t x, int32_t y, int32_t z) {
     current_pos_steps[X_AXIS] = x;
     current_pos_steps[Y_AXIS] = y;
     current_pos_steps[Z_AXIS] = z;
-
-    // SERIAL_PROTOCOLLNPGM(MSG_OK);
 }
 
 void Printer::cmdSetTargetTemp(uint8_t heater, uint16_t temp) {
@@ -1181,9 +1147,6 @@ void Printer::cmdStopMove() {
     stepBuffer.flush();
 
     cmdFanSpeed(0);
-
-    // SERIAL_PROTOCOLLNPGM("Move stopped.");
-    // SERIAL_PROTOCOLLNPGM(MSG_OK);
 }
 
 void Printer::cmdGetTargetTemps() {
@@ -2165,7 +2128,8 @@ FWINLINE void loop() {
 
     // Check swap dev error
     if (swapDev.errorCode()) {
-        kill("SwapDev error.");
+        txBuffer.sendSimpleResponse(RespKilled, RespSDError);
+        kill();
     }
 }
 

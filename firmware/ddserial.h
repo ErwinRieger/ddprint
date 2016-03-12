@@ -69,10 +69,7 @@ class TxBuffer: public Protothread {
         FWINLINE void pushChar(uint8_t c) {
 
 #if defined(HEAVYDEBUG)
-            if (full()) {
-                // xxx send error message
-                return;
-            }
+            massert(! full());
 #endif
 
             // Don't buffer character if it can be sent directly
@@ -85,39 +82,7 @@ class TxBuffer: public Protothread {
             head = (head + 1) & TxBufferMask;
         }
 
-        FWINLINE void pushStr(uint8_t *s) {
-        }
-
-        void sendUnbufferedPGM(const char *str) {
-
-            char ch=pgm_read_byte(str);
-            while(ch) {
-                sendCharUnbuffered(ch);
-                ch = pgm_read_byte(++str);
-            }
-        }
-
-        void sendUnbuffered(const char *str) {
-
-            while (*str)
-                sendCharUnbuffered(*str++);
-        }
-
-        void sendCharUnbuffered(uint8_t c) {
-
-            while (!((UCSR0A) & (1 << UDRE0)));
-            UDR0 = c;
-        }
-
         void sendACK() {
-            pushChar(RESPUSBACK);
-            return;
-
-            if (empty()) {
-                sendCharUnbuffered(RESPUSBACK);
-                return;
-            }
-
             pushChar(RESPUSBACK);
         }
 
