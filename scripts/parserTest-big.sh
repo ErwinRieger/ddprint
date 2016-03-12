@@ -1,4 +1,4 @@
-./test.sh \
+exec $(dirname $0)/parserTest.sh \
     ~/elektronik/3dmodels/downloads/20140926_Marvin_KeyChain.gcode \
     ~/elektronik/3dmodels/downloads/UltimakerRobot_support.gcode \
     /home/erwin/elektronik/3dmodels/um/halter_um2_frontscheibe/halter.gcode \
