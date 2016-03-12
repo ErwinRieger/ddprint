@@ -118,8 +118,8 @@ class Printer(Serial):
 
     def commandResend(self, lastLine):
 
-        self.gui.log("Command resend:", recvLine)
-        self.gui.logRecv("RX Error:", recvLine)
+        self.gui.log("Command resend:", lastLine)
+        self.gui.logRecv("RX Error:", lastLine)
 
         # Wait 0.1 sec, give firmware time to drain buffers
         time.sleep(0.1)
@@ -156,13 +156,13 @@ class Printer(Serial):
             raise FatalPrinterError(ResponseNames[respCode])
         elif respCode == RespRXError:
             (lastLine, flags) = struct.unpack("<BB", payload)
-            return commandResend(lastLine)
+            return self.commandResend(lastLine)
         elif respCode == RespRXCRCError:
-            return commandResend(ord(payload))
+            return self.commandResend(ord(payload))
         elif respCode == RespSerNumberError:
-            return commandResend(ord(payload))
+            return self.commandResend(ord(payload))
         elif respCode == RespRXTimeoutError:
-            return commandResend(ord(payload))
+            return self.commandResend(ord(payload))
         else:
             self.gui.logError("ERROR: unknown response code '0x%x'" % respCode)
             raise FatalPrinterError(ResponseNames[respCode])
@@ -205,12 +205,11 @@ class Printer(Serial):
     def readWithTimeout(self, length):
 
         res = ""
-
         time = 0
         while len(res) < length:
 
             try:
-                c = self.read(length)
+                c = self.read(length - len(res))
             except SerialException as ex:
                 self.gui.log("Readline() Exception raised:", ex)
 
@@ -231,7 +230,7 @@ class Printer(Serial):
             time += self.timeout
 
             if time > 5:
-                print "timeout reading, data read: ", res
+                print "timeout reading, data read: %d bytes, '%s'" % (len(res), res)
                 raise RxTimeout()
 
         # for c in res:
@@ -256,16 +255,13 @@ class Printer(Serial):
         crc = crc16.crc16xmodem(s, crc)
 
         length = ord(s)
-        print "cmd: 0x%x, reading %d bytes" % (cmd, length)
+        print "cmd: 0x%x, read %d b" % (cmd, length)
 
-        payload = ""
-        while len(payload) < length:
-
-            s = self.readWithTimeout(length - len(payload)) # read payload
-            crc = crc16.crc16xmodem(s, crc)
-            payload += s
+        payload = self.readWithTimeout(length) # read payload
+        crc = crc16.crc16xmodem(payload, crc)
 
         css = self.readWithTimeout(2)
+
         check1 = ord(css[0])
         check2 = ord(css[1])
 
@@ -538,16 +534,7 @@ class Printer(Serial):
     def getStatus(self):
 
         valueNames = ["state", "t0", "t1", "Swap", "SDReader", "StepBuffer", "StepBufUnderRuns", "targetT1"]
-        # sizeof(uint8_t) +
-        # sizeof(float) +
-        # sizeof(float) +
-        # sizeof(uint32_t) +
-        # sizeof(uint16_t) +
-        # sizeof(uint16_t) +
-        # sizeof(uint16_t) +
-        # sizeof(uint16_t)
 
-        # statusList = self.query(CmdGetStatus, doLog=False)
         (cmd, length, payload) = self.query(CmdGetStatus, doLog=False)
 
         tup = struct.unpack("<BffIHHHH", payload)
@@ -568,9 +555,13 @@ class Printer(Serial):
     def waitForState(self, destState, wait=1):
 
         status = self.getStatus()
+
         while status['state'] != destState:
             time.sleep(wait)
+            # try:
             status = self.getStatus()
+            # except RxTimeout:
+                # print "GetStatus raised RxTimeout error!"
 
     def stateMoving(self, status=None):
 
