@@ -6,6 +6,8 @@
 #include "stepper.h"
 #include "temperature.h"
 #include "fastio.h"
+#include "ddserial.h"
+#include "ddcommands.h"
 
 #if defined(ADNSFS)
     // #include "adns9800fwa4.h"
@@ -829,7 +831,8 @@ void FilamentSensorADNS9800::reset(){
     // MSerial.println(srom_id, HEX );
     
     if (! (srom_id == SROMVER)) {
-        kill("ADNS9500 download\n");
+        txBuffer.sendSimpleResponse(RespKilled, RespADNS9800Init);
+        kill();
     }
 
     // end upload

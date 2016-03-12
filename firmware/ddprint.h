@@ -38,6 +38,7 @@
     #include <assert.h>
 #endif
 
+#if 0
 #define MSG_FREE_MEMORY " Free Memory: "
 #define MSG_ERR_STOPPED "Printer stopped due to errors. Fix the error and use M999 to restart. (Temperature is reset. Set it after restarting)"
 #define MSG_STOPPED "STOPPED. "
@@ -48,7 +49,7 @@
 #define MSG_SD_WRITE_TO_FILE "Writing to file: "
 #define MSG_ERR_KILLED "Printer halted. kill() called, msg: "
 #define MSG_KILLED "KILLED. "
-
+#endif
 
 #define LCD_MESSAGEPGM(x) SERIAL_PROTOCOLLNPGM(x)
 #define lcd_setstatus(message) SERIAL_PROTOCOLLN(message)
@@ -104,8 +105,9 @@
 
 extern uint8_t errorFlags;
 
-void kill(const char* msg);
-void killPGM(const char* msg);
+void kill();
+// void kill(const char* msg);
+// void killPGM(const char* msg);
 
 // bool IsStopped();
 // void Stop(uint8_t reasonNr);

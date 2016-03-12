@@ -32,10 +32,7 @@
 #include "ddprint.h"
 #include "MarlinSerial.h"
 
-//#elif defined(SIG_USART_RECV)
 #if defined(M_USARTx_RX_vect)
-  // fixed by Mark Sproul this is on the 644/644p
-  //SIGNAL(SIG_USART_RECV)
   SIGNAL(M_USARTx_RX_vect)
   {
 
@@ -85,27 +82,5 @@ void MarlinSerial::begin(long baud)
   sbi(M_UCSRxB, M_TXENx);
   sbi(M_UCSRxB, M_RXCIEx);
 }
-
-extern uint16_t waitCount;
-
-#if 0
-void MarlinSerial::serWrite(uint8_t c) {
-
-    while (!((M_UCSRxA) & (1 << M_UDREx))) waitCount++;
-    M_UDRx = c;
-}
-
-#endif
-
-#include "ddserial.h"
-
-void MarlinSerial::serWrite(uint8_t c) {
-
-    txBuffer.pushChar(c);
-}
-
-
-
-
 
 

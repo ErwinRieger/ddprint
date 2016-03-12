@@ -20,6 +20,8 @@
 #ifndef __mdebug_h__
 #define __mdebug_h__
 
+void mAssert(uint16_t line, char* file);
+
 //
 // Add heavy and time consuming debugging
 //
@@ -29,7 +31,7 @@
 
     extern void kill(const char*);
     #define  massert(expr) { \
-        if (!(expr)) { SERIAL_ERROR_START; SERIAL_ECHO("ASSERTION FAILED " __FILE__ ":"); SERIAL_ECHOLN(__LINE__); kill("ASSERTION"); } }
+        if (!(expr)) mAssert(__LINE__, __FILE__); }
 
     // Assertion that is only active in simulation
     #define simassert(x) 

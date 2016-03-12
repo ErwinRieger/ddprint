@@ -107,6 +107,8 @@
 #define RespHardwareEndstop     3 // Payload: none
 #define RespSoftwareEndstop     4 // Payload: none
 #define RespUnknownBCommand     5 // Unknown Buffered Command, payload: the command
+#define RespAssertion           6 // payload: line, file
+#define RespADNS9800Init        7 // 
 
 
 

@@ -147,6 +147,7 @@ void kill() {
     }
 }
 
+// xxx remove
 void kill(const char* msg) {
 
     shutdown();
@@ -160,6 +161,7 @@ void kill(const char* msg) {
     }
 }
 
+// xxx remove
 void killPGM(const char* msg) {
 
     shutdown();
@@ -171,6 +173,15 @@ void killPGM(const char* msg) {
         // Wait for reset
         txBuffer.Run();
     }
+}
+
+void mAssert(uint16_t line, char* file) {
+
+    txBuffer.sendResponseStart(RespKilled, 1+strlen(file));
+    txBuffer.sendResponseValue(line);
+    txBuffer.sendResponseValue(file, strlen(file));
+    txBuffer.sendResponseEnd();
+    kill();
 }
 
 // bool IsStopped() { return Stopped; };

@@ -56,6 +56,7 @@ RespInvalidArgument =   2
 RespHardwareEndstop =   3 
 RespSoftwareEndstop =   4 
 RespUnknownBCommand =   5
+RespAssertion       =   6
 
 RespCodeNames = {
         RespOK: "RespOK",
@@ -63,5 +64,6 @@ RespCodeNames = {
         RespHardwareEndstop: "HardwareEndstop",
         RespSoftwareEndstop: "SoftwareEndstop",
         RespUnknownBCommand: "RespUnknownBCommand",
+        RespAssertion: "RespAssertion",
 }
 

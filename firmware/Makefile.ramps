@@ -3,6 +3,8 @@ ARDUINO_DIR  = /usr/share/arduino
 
 TARGET       = firmware.ramps
 
+OBJDIR := build.ramps
+
 # Uno board
 # BOARD_TAG    = uno
 # End Uno
@@ -22,9 +24,7 @@ AVRDUDE = $(ARDUINO_DIR)/hardware/tools/avrdude
 AVRDUDE_ARD_BAUDRATE = 115200
 AVRDUDE_ARD_EXTRAOPTS = -D 
 
-include /usr/share/arduino/Arduino.mk
-
-# LOCAL_C_SRCS = $(wildcard ./fw/*.cpp)
+include ./Arduino.mk
 
 # Mega/Ramps board
 CPPFLAGS      +=  -DMOTHERBOARD=33 -I./fw

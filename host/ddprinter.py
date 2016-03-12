@@ -142,8 +142,17 @@ class Printer(Serial):
             self.gui.logError("ERROR: RespUnknownCommand '0x%x'" % ord(payload))
             raise FatalPrinterError(ResponseNames[respCode])
         elif respCode == RespKilled:
-            (reason, x, y, z, xtrig, ytrig, ztrig) = struct.unpack("<BiiiBBB", payload)
-            self.gui.logError("ERROR: PRINTER KILLED! Reason: %s, X: %d, Y: %d, Z: %d, trigger: x: %d, y: %d, z: %d" % (RespCodeNames[reason], x, y, z, xtrig, ytrig, ztrig))
+            reason = ord(payload[0])
+            if reason in [HardwareEndstop, SoftwareEndstop]:
+                (x, y, z, xtrig, ytrig, ztrig) = struct.unpack("<BiiiBBB", payload[1:])
+                self.gui.logError("ERROR: PRINTER KILLED! Reason: %s, X: %d, Y: %d, Z: %d, trigger: x: %d, y: %d, z: %d" % (RespCodeNames[reason], x, y, z, xtrig, ytrig, ztrig))
+            elif reason == RespUnknownBCommand:
+                self.gui.logError("ERROR: PRINTER KILLED! Reason: %s, command: 0x%x" % ord(payload))
+            elif reason == RespAssertion:
+                (line, filename) = struct.unpack("<Hp", payload[1:])
+                self.gui.logError("ERROR: PRINTER KILLED! Reason: %s, Line: %d, File: %s" % (RespCodeNames[reason], line, filename))
+            else:
+                self.gui.logError("ERROR: PRINTER KILLED! Reason: %s")
             raise FatalPrinterError(ResponseNames[respCode])
         elif respCode == RespRXError:
             (lastLine, flags) = struct.unpack("<BB", payload)
