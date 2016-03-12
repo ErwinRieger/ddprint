@@ -74,7 +74,7 @@ def calibrateFilSensor(args, parser):
 
     planner.finishMoves()
     printer.sendCommand(CmdEOT)
-    printer.sendCommandParam(CmdMove, p1=MoveTypeNormal)
+    printer.sendCommandParamV(CmdMove, [MoveTypeNormal])
     printer.waitForState(StateIdle)
 
 

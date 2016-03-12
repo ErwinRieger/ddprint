@@ -376,7 +376,7 @@ class MainForm(npyscreen.Form):
                         self.printer.heatUp(HeaterEx1, self.mat_t1, wait=self.mat_t1 - 10)
 
                         # Send print command
-                        self.printer.sendCommandParam(CmdMove, p1=MoveTypeNormal)
+                        self.printer.sendCommandParamV(CmdMove, [MoveTypeNormal])
                         printStarted = True
 
                     status = self.printer.getStatus()
@@ -408,7 +408,7 @@ class MainForm(npyscreen.Form):
                 self.printer.heatUp(HeaterEx1, self.mat_t1, wait=self.mat_t1 - 10)
 
                 # Send print command
-                self.printer.sendCommandParam(CmdMove, p1=MoveTypeNormal)
+                self.printer.sendCommandParamV(CmdMove, [MoveTypeNormal])
 
             status = self.printer.getStatus()
             self.guiQueue.put(SyncCall(self.updateStatus, status))

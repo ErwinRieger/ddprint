@@ -515,10 +515,9 @@ class Planner (object):
                     if newTemp != self.pathData.lastTemp and self.args.mode != "pre":
 
                         # Schedule target temp command
-                        self.printer.sendCommandParam(
+                        self.printer.sendCommandParamV(
                             CmdSyncTargetTemp,
-                            p1=packedvalue.uint8_t(HeaterEx1),
-                            p2=packedvalue.uint16_t(newTemp))
+                            [packedvalue.uint8_t(HeaterEx1), packedvalue.uint16_t(newTemp)])
 
                         self.pathData.lastTemp = newTemp
 
@@ -539,10 +538,10 @@ class Planner (object):
 
             if move.moveNumber in self.syncCommands:
                 for (cmd, p1, p2) in self.syncCommands[move.moveNumber]:
-                    self.printer.sendCommandParam(cmd, p1=p1, p2=p2)
+                    self.printer.sendCommandParamV(cmd, [p1, p2])
 
             for (cmd, payload) in move.commands():
-                self.printer.sendBinaryCommandx(cmd, binPayload=payload)
+                self.printer.sendCommand(cmd, binPayload=payload)
 
     #
     # Letzter move in revMoves ist entweder:

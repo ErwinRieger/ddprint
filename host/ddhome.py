@@ -55,7 +55,7 @@ def homeMove(parser, dim, direction, dist, fakeHomingEndstops, feedRateFactor=1.
     planner.finishMoves()
 
     # Send homing command
-    printer.sendCommandParam(CmdMove, p1=MoveTypeHoming)
+    printer.sendCommandParamV(CmdMove, [MoveTypeHoming])
     printer.sendCommand(CmdEOT)
 
     printer.waitForState(StateIdle, wait=0.05)
@@ -130,7 +130,7 @@ def home(parser, fakeHomingEndstops=False, force=False):
                     homePosMM.X, homePosMM.Y))
 
             planner.finishMoves()
-            printer.sendCommandParam(CmdMove, p1=MoveTypeNormal)
+            printer.sendCommandParamV(CmdMove, [MoveTypeNormal])
             printer.sendCommand(CmdEOT)
 
             printer.waitForState(StateIdle, wait=0.05)

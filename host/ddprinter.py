@@ -130,7 +130,7 @@ class Printer(Serial):
             # gab es jedoch einen komm. fehler, so dass das ACK nicht mehr
             # empfangen werden konnte. Desswegen kein resend notwendig, und es
             # kann so getan werden, als ob ein ACK empfangen wurde.
-            return True
+            return ResendWasOK
 
         self.gui.log("Scheduling resend of command:", lastLine)
         return self.lastCommands[lastLine]
@@ -139,31 +139,52 @@ class Printer(Serial):
     def checkErrorResponse(self, respCode, length, payload):
 
         if respCode == RespUnknownCommand:
+
             self.gui.logError("ERROR: RespUnknownCommand '0x%x'" % ord(payload))
             raise FatalPrinterError(ResponseNames[respCode])
+
         elif respCode == RespKilled:
+
             reason = ord(payload[0])
             if reason in [HardwareEndstop, SoftwareEndstop]:
+
                 (x, y, z, xtrig, ytrig, ztrig) = struct.unpack("<BiiiBBB", payload[1:])
                 self.gui.logError("ERROR: PRINTER KILLED! Reason: %s, X: %d, Y: %d, Z: %d, trigger: x: %d, y: %d, z: %d" % (RespCodeNames[reason], x, y, z, xtrig, ytrig, ztrig))
+
             elif reason == RespUnknownBCommand:
+
                 self.gui.logError("ERROR: PRINTER KILLED! Reason: %s, command: 0x%x" % ord(payload))
+
             elif reason == RespAssertion:
+
                 (line, filename) = struct.unpack("<Hp", payload[1:])
                 self.gui.logError("ERROR: PRINTER KILLED! Reason: %s, Line: %d, File: %s" % (RespCodeNames[reason], line, filename))
+
             else:
+
                 self.gui.logError("ERROR: PRINTER KILLED! Reason: %s")
+
             raise FatalPrinterError(ResponseNames[respCode])
+
         elif respCode == RespRXError:
+
             (lastLine, flags) = struct.unpack("<BB", payload)
             return self.commandResend(lastLine)
+
         elif respCode == RespRXCRCError:
+
             return self.commandResend(ord(payload))
+
         elif respCode == RespSerNumberError:
+
             return self.commandResend(ord(payload))
+
         elif respCode == RespRXTimeoutError:
+
             return self.commandResend(ord(payload))
+
         else:
+
             self.gui.logError("ERROR: unknown response code '0x%x'" % respCode)
             raise FatalPrinterError(ResponseNames[respCode])
 
@@ -315,7 +336,7 @@ class Printer(Serial):
         # Read left over garbage
         recvLine = self.safeReadline()        
         while recvLine:
-            self.gui.logRecv("Initial read: ", recvLine)
+            self.gui.logRecv("Initial read: '%s'" % recvLine)
             self.gui.logRecv(recvLine.encode("hex"), "\n")
             recvLine = self.safeReadline()        
 
@@ -366,8 +387,9 @@ class Printer(Serial):
 
         # not reached
 
-
     def buildBinaryCommand(self, binCmd, binPayload=None, lineNr=None):
+
+        assert(lineNr == None)
 
         binary  = struct.pack("<B", SOH)
         binary += struct.pack("<B", self.lineNr % 256)
@@ -403,27 +425,40 @@ class Printer(Serial):
 
         return binary
 
-    def oldsendBinaryCommand(self, binCmd, binPayload=None, lineNr=None):
-        binary = self.buildBinaryCommand(binCmd, binPayload, lineNr)
-        self.send2(binCmd, binary)
+    # def sendBinaryCommandx(self, cmd, binPayload=None, lineNr=None):
+        # binary = self.buildBinaryCommand(chr(cmd), binPayload, lineNr)
+        # self.send2(cmd, binary)
 
-    def sendBinaryCommandx(self, cmd, binPayload=None, lineNr=None):
-        binary = self.buildBinaryCommand(chr(cmd), binPayload, lineNr)
-        return self.send2(cmd, binary)
+    def sendCommand(self, cmd, binPayload=None): # , lineNr=None):
+        # self.sendBinaryCommandx(cmd, binPayload=binPayload, lineNr=lineNr)
+        binary = self.buildBinaryCommand(chr(cmd), binPayload) # , lineNr)
+        self.send2(cmd, binary)
 
-    def sendCommand(self, cmd, binPayload=None, lineNr=None):
-        return self.sendBinaryCommandx(cmd, binPayload=binPayload, lineNr=lineNr)
+    def sendCommandParamV(self, cmd, params): # , lineNr=None):
 
-    def sendCommandParam(self, cmd, lineNr=None, p1=None, p2=None, p3=None, p4=None):
-        self.sendCommandParamV(cmd, lineNr=lineNr, params=(p1, p2, p3, p4))
-
-    def sendCommandParamV(self, cmd, params, lineNr=None):
         assert(params[0] != None)
         payload = ""
         for p in params:
             if p:
                 payload += p.pack()
-        self.sendCommand(cmd, binPayload=payload, lineNr=lineNr)
+        self.sendCommand(cmd, binPayload=payload) # , lineNr=lineNr)
+
+    # Query info from printer, use this to receive returned data, use [sendBinaryCommandx, sendCommand, sendCommandParamV] for 
+    # 'write only' commands.
+    def query(self, cmd, binPayload=None, doLog=True):
+
+        if doLog:
+            self.gui.logSend("query: ", CommandNames[cmd])
+
+        binary = self.buildBinaryCommand(struct.pack("<B", cmd), binPayload=binPayload);
+
+        reply = self.send2(cmd, binary)
+
+        if reply == ResendWasOK:
+            # Command was ok, but no response due to reconnect, restart query:
+            return self.query(cmd, binPayload)
+
+        return reply
 
     def reconnect(self):
 
@@ -483,6 +518,12 @@ class Printer(Serial):
                 self.send(binary)
                 continue
 
+            except RxTimeout:
+                self.gui.logError("RxTimeout, resending command!")
+                startTime = time.time()
+                self.send(binary)
+                continue
+
             if cmd == 0x6:
                 dt = time.time() - startTime
                 n = len(binary)
@@ -501,10 +542,13 @@ class Printer(Serial):
 
             resendCommand = self.checkErrorResponse(cmd, length, payload)
 
-            if resendCommand == True:
+            if resendCommand == ResendWasOk:
+
                 # Command ok without ack
-                return True
+                return ResendWasOk
+
             elif resendCommand:
+
                 # command resend
                 startTime = time.time()
                 self.send(resendCommand)
@@ -514,22 +558,6 @@ class Printer(Serial):
             assert(0)
 
         # Notreached
-
-    # Query info from printer
-    def query(self, cmd, binPayload=None, doLog=True):
-
-        if doLog:
-            self.gui.logSend("query: ", CommandNames[cmd])
-
-        binary = self.buildBinaryCommand(struct.pack("<B", cmd), binPayload=binPayload);
-
-        reply = self.send2(cmd, binary)
-
-        if reply == True:
-            # Command was ok, but no response due to reconnect, restart query:
-            return self.query(cmd, binPayload)
-
-        return reply
 
     def getStatus(self):
 

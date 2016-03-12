@@ -449,7 +449,7 @@ def zRepeatability(parser):
         parser.execute_line("G0 F%d Z%f" % (feedrate*60, random.randint(20, 150)))
 
     planner.finishMoves()
-    printer.sendCommandParam(CmdMove, p1=MoveTypeNormal)
+    printer.sendCommandParamV(CmdMove, [MoveTypeNormal])
     printer.sendCommand(CmdEOT)
 
     printer.waitForState(StateIdle)
@@ -484,7 +484,7 @@ def manualMove(parser, axis, distance, feedrate=0, absolute=False):
     printer.sendCommand(CmdEOT)
     # time.sleep(1)
 
-    printer.sendCommandParam(CmdMove, p1=MoveTypeNormal)
+    printer.sendCommandParamV(CmdMove, [MoveTypeNormal])
 
     printer.waitForState(StateIdle)
 
@@ -525,7 +525,7 @@ def insertFilament(args, parser):
             parser.execute_line("G0 F%d A%f" % (5*60, aofs))
 
             planner.finishMoves()
-            printer.sendCommandParam(CmdMove, p1=MoveTypeNormal)
+            printer.sendCommandParamV(CmdMove, [MoveTypeNormal])
             printer.sendCommand(CmdEOT)
             printer.waitForState(StateIdle, wait=0.1)
 
@@ -537,7 +537,7 @@ def insertFilament(args, parser):
 
     planner.finishMoves()
 
-    printer.sendCommandParam(CmdMove, p1=MoveTypeNormal)
+    printer.sendCommandParamV(CmdMove, [MoveTypeNormal])
     printer.sendCommand(CmdEOT)
 
     printer.waitForState(StateIdle)
@@ -561,7 +561,7 @@ def insertFilament(args, parser):
     parser.execute_line("G10")
     planner.finishMoves()
 
-    printer.sendCommandParam(CmdMove, p1=MoveTypeNormal)
+    printer.sendCommandParamV(CmdMove, [MoveTypeNormal])
     printer.sendCommand(CmdEOT)
 
     printer.waitForState(StateIdle)
@@ -591,7 +591,7 @@ def removeFilament(args, parser):
 
     planner.finishMoves()
 
-    printer.sendCommandParam(CmdMove, p1=MoveTypeNormal)
+    printer.sendCommandParamV(CmdMove, [MoveTypeNormal])
     printer.sendCommand(CmdEOT)
 
     printer.waitForState(StateIdle)
@@ -621,7 +621,7 @@ def retract(args, parser, doCooldown = True):
 
     planner.finishMoves()
 
-    printer.sendCommandParam(CmdMove, p1=MoveTypeNormal)
+    printer.sendCommandParamV(CmdMove, [MoveTypeNormal])
     printer.sendCommand(CmdEOT)
 
     printer.waitForState(StateIdle)
@@ -680,7 +680,7 @@ def bedLeveling(args, parser):
             parser.execute_line("G0 F%d Z%f" % (zFeedrate*60, zofs))
 
             planner.finishMoves()
-            printer.sendCommandParam(CmdMove, p1=MoveTypeNormal)
+            printer.sendCommandParamV(CmdMove, [MoveTypeNormal])
             printer.sendCommand(CmdEOT)
 
             printer.waitForState(StateIdle, wait=0.1)
@@ -695,7 +695,7 @@ def bedLeveling(args, parser):
     parser.execute_line("G0 F%d X%f Y%f Z%f" % (feedrate*60, planner.X_MAX_POS/2, planner.Y_MAX_POS - 10, planner.HEAD_HEIGHT))
 
     planner.finishMoves()
-    printer.sendCommandParam(CmdMove, p1=MoveTypeNormal)
+    printer.sendCommandParamV(CmdMove, [MoveTypeNormal])
     printer.sendCommand(CmdEOT)
 
     printer.waitForState(StateIdle, wait=0.1)
@@ -733,7 +733,7 @@ def bedLeveling(args, parser):
     parser.execute_line("G0 F%d Z0.1" % (zFeedrate*60))
 
     planner.finishMoves()
-    printer.sendCommandParam(CmdMove, p1=MoveTypeNormal)
+    printer.sendCommandParamV(CmdMove, [MoveTypeNormal])
     printer.sendCommand(CmdEOT)
 
     printer.waitForState(StateIdle, wait=0.1)
@@ -749,7 +749,7 @@ def bedLeveling(args, parser):
     parser.execute_line("G0 F%d Z0.1" % (zFeedrate*60))
 
     planner.finishMoves()
-    printer.sendCommandParam(CmdMove, p1=MoveTypeNormal)
+    printer.sendCommandParamV(CmdMove, [MoveTypeNormal])
     printer.sendCommand(CmdEOT)
 
     printer.waitForState(StateIdle, wait=0.1)
@@ -785,7 +785,7 @@ def writeEEpromFloat(args, parser):
     printer.commandInit(args)
 
     payload = struct.pack("<%dpf" % (len(args.name)+1), args.name, args.value)
-    resp = printer.sendCommand(CmdWriteEepromFloat, binPayload=payload)
+    resp = printer.query(CmdWriteEepromFloat, binPayload=payload)
     handleGenericResponse(resp)
 
 ####################################################################################################
@@ -871,7 +871,7 @@ def execSingleGcode(parser, gcode):
     parser.execute_line(gcode)
     planner.finishMoves()
 
-    printer.sendCommandParam(CmdMove, p1=MoveTypeNormal)
+    printer.sendCommandParamV(CmdMove, [MoveTypeNormal])
     printer.sendCommand(CmdEOT)
 
     printer.waitForState(StateIdle)
@@ -910,7 +910,7 @@ def stepResponse(args, parser):
     def stopHeater():
         payload = struct.pack("<BH", HeaterEx1, 0) # Parameters: heater, temp
         printer.sendCommand(CmdSetTargetTemp, binPayload=payload)
-        printer.sendCommandParam(CmdFanSpeed, p1=packedvalue.uint8_t(0))
+        printer.sendCommandParamV(CmdFanSpeed, [packedvalue.uint8_t(0)])
 
     # Destination temperature
     tDest = 200
@@ -933,7 +933,7 @@ def stepResponse(args, parser):
     print "Starting input step to %d °" % tDest
     payload = struct.pack("<BH", HeaterEx1, tDest) # Parameters: heater, temp
     printer.sendCommand(CmdSetTargetTemp, binPayload=payload)
-    printer.sendCommandParam(CmdFanSpeed, p1=packedvalue.uint8_t(100))
+    printer.sendCommandParamV(CmdFanSpeed, [packedvalue.uint8_t(100)])
 
     timeStart = time.time()
     status = printer.getStatus()
@@ -1002,7 +1002,7 @@ def zieglerNichols(args, parser):
     def stopHeater():
         payload = struct.pack("<BB", HeaterEx1, 0) # heater, pwmvalue
         printer.sendCommand(CmdSetHeaterY, binPayload=payload)
-        printer.sendCommandParam(CmdFanSpeed, p1=packedvalue.uint8_t(0))
+        printer.sendCommandParamV(CmdFanSpeed, [packedvalue.uint8_t(0)])
 
     f = open("stepresponse.gnuplot", "w")
     # f.write("set xyplane 0\n")
@@ -1019,7 +1019,7 @@ def zieglerNichols(args, parser):
     Xo = 128
 
     print "Starting input step"
-    printer.sendCommandParam(CmdFanSpeed, p1=packedvalue.uint8_t(100))
+    printer.sendCommandParamV(CmdFanSpeed, [packedvalue.uint8_t(100)])
     payload = struct.pack("<BB", HeaterEx1, Xo) # heater, pwmvalue
     printer.sendCommand(CmdSetHeaterY, binPayload=payload)
 

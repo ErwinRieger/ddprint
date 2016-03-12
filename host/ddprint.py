@@ -599,7 +599,7 @@ def main():
                     printer.heatUp(HeaterEx1, t1, wait=0.95 * t1)
 
                     # Send print command
-                    printer.sendCommandParam(CmdMove, p1=MoveTypeNormal)
+                    printer.sendCommandParamV(CmdMove, [MoveTypeNormal])
                     printStarted = True
 
                 else:
@@ -632,7 +632,7 @@ def main():
             printer.heatUp(HeaterEx1, t1, wait=0.95 * t1)
 
             # Send print command
-            printer.sendCommandParam(CmdMove, p1=MoveTypeNormal)
+            printer.sendCommandParamV(CmdMove, [MoveTypeNormal])
 
         printer.waitForState(StateIdle)
 
@@ -808,7 +808,7 @@ def main():
     elif args.mode == 'fanspeed':
 
         printer.commandInit(args)
-        printer.sendCommandParam(CmdFanSpeed, p1=packedvalue.uint8_t(args.speed))
+        printer.sendCommandParamV(CmdFanSpeed, [packedvalue.uint8_t(args.speed)])
 
     elif args.mode == 'testFilSensor':
         ddtest.testFilSensor(args, parser)
@@ -820,10 +820,10 @@ def main():
 
         util.commonInit(args, parser)
 
-        printer.sendCommandParam(CmdUnknown, p1=packedvalue.uint8_t(0xff))
+        printer.sendCommandParamV(CmdUnknown, [packedvalue.uint8_t(0xff)])
         printer.sendCommand(CmdEOT)
 
-        printer.sendCommandParam(CmdMove, p1=MoveTypeNormal)
+        printer.sendCommandParamV(CmdMove, [MoveTypeNormal])
 
         printer.waitForState(StateIdle)
 
