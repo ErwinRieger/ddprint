@@ -147,8 +147,7 @@ class Printer {
         void cmdMove(MoveType);
         void cmdEot();
         void cmdHome();
-        // void setHomePos( int32_t x, int32_t y, int32_t z, int32_t a, int32_t b);
-        void setHomePos();
+        void setHomePos( int32_t x, int32_t y, int32_t z /*, int32_t a, int32_t b*/);
         void cmdSetTargetTemp(uint8_t heater, uint16_t temp);
         void checkMoveFinished();
         void disableSteppers();

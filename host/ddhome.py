@@ -109,7 +109,7 @@ def home(parser, fakeHomingEndstops=False, force=False):
 
         (homePosMM, homePosStepped) = planner.getHomePos()
 
-        print "Printer should be at [mm]: ", homePosMM, ", [steps]: ", homePosStepped
+        # print "Printer should be at [mm]: ", homePosMM, ", [steps]: ", homePosStepped
 
         # Move to home
         if not curPosMM.equal(homePosMM, "XYZ"):
@@ -187,7 +187,7 @@ def home(parser, fakeHomingEndstops=False, force=False):
     (homePosMM, homePosStepped) = planner.getHomePos()
     parser.set_position(homePosMM)
 
-    print "Tell printer its position [steps]:", homePosStepped
+    # print "Tell printer its position [steps]:", homePosStepped
     payload = struct.pack("<iiiii", *homePosStepped)
     printer.sendCommand(CmdSetHomePos, binPayload=payload)
 

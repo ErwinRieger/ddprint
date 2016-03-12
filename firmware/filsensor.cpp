@@ -307,6 +307,7 @@ void FilamentSensorADNS9800::run() {
 
         float avgRatio = sum/nRAvg;
 
+        /*
         if (speed > 0) {
             SERIAL_ECHO("Flowrate_mm/s: ");
             SERIAL_ECHO(ts);
@@ -319,6 +320,7 @@ void FilamentSensorADNS9800::run() {
             SERIAL_ECHO(" ");
             SERIAL_ECHOLN(avgRatio);
         }
+        */
         // }
 // #endif
         lastASteps = astep;

@@ -57,7 +57,6 @@ uint8_t errorFlags = 0;
 
 // Macros to read scalar types from a buffer
 #define FromBuf(typ, adr) ( * ((typ *)(adr)))
-#define FromSerBufUInt16 ( (uint16_t)MSerial.serReadNoCheck() + (((uint16_t)MSerial.serReadNoCheck())<<8) )
 
 
 uint8_t Stopped = 0;
@@ -385,10 +384,11 @@ class SDReader: public Protothread {
 
 uint16_t STD_max(uint16_t a, uint16_t b) {
 
-    static uint16_t counter = 0;
+    // static uint16_t counter = 0;
 
     if (b > a) {
 
+#if 0
         if ((counter++ % 100) == 0) {
             SERIAL_ECHOPGM("Tempspeed ");
             SERIAL_ECHO(counter);
@@ -399,6 +399,7 @@ uint16_t STD_max(uint16_t a, uint16_t b) {
             SERIAL_ECHOPGM(", ");
             SERIAL_ECHOLN(b);
         }
+#endif
     }
 
     return STD max(a, b);
@@ -1118,18 +1119,15 @@ void Printer::cmdMove(MoveType mt) {
     // SERIAL_PROTOCOLLNPGM(MSG_OK);
 }
 
-void Printer::setHomePos() {
-
+void Printer::setHomePos(int32_t x, int32_t y, int32_t z) {
+         
     homed[0] = true;
     homed[1] = true;
     homed[2] = true;
 
-    current_pos_steps[X_AXIS] = MSerial.serReadInt32();
-    current_pos_steps[Y_AXIS] = MSerial.serReadInt32();
-    current_pos_steps[Z_AXIS] = MSerial.serReadInt32();
-
-    // a = MSerial.serReadInt32(),
-    // b = MSerial.serReadInt32());
+    current_pos_steps[X_AXIS] = x;
+    current_pos_steps[Y_AXIS] = y;
+    current_pos_steps[Z_AXIS] = z;
 
     // SERIAL_PROTOCOLLNPGM(MSG_OK);
 }
@@ -1166,12 +1164,13 @@ void Printer::cmdStopMove() {
 
     cmdFanSpeed(0);
 
-    SERIAL_PROTOCOLLNPGM("Move stopped.");
-    SERIAL_PROTOCOLLNPGM(MSG_OK);
+    // SERIAL_PROTOCOLLNPGM("Move stopped.");
+    // SERIAL_PROTOCOLLNPGM(MSG_OK);
 }
 
 void Printer::cmdGetTargetTemps() {
 
+#if 0
     SERIAL_ECHOPGM("Res:(");
     SERIAL_ECHO(target_temperature_bed);
     SERIAL_ECHOPGM(",");
@@ -1181,10 +1180,25 @@ void Printer::cmdGetTargetTemps() {
     SERIAL_ECHO(target_temperature[1]);
 #endif
     SERIAL_ECHOLNPGM(")");
+#endif
+
+#if EXTRUDERS == 1
+    txBuffer.sendResponseStart(CmdGetTargetTemps, 1 + sizeof(uint16_t));
+#else
+    txBuffer.sendResponseStart(CmdGetTargetTemps, 1 + 2*sizeof(uint16_t));
+#endif
+
+    txBuffer.pushCharChecksum(target_temperature_bed);
+    txBuffer.sendResponseValue(target_temperature[0]);
+#if EXTRUDERS > 1
+    txBuffer.sendResponseValue(target_temperature[1]);
+#endif
+    txBuffer.sendResponseEnd();
 }
 
 void Printer::cmdGetCurrentTemps() {
 
+#if 0
     SERIAL_ECHOPGM("Res:(");
     SERIAL_ECHO(current_temperature_bed);
     SERIAL_ECHOPGM(",");
@@ -1194,6 +1208,20 @@ void Printer::cmdGetCurrentTemps() {
     SERIAL_ECHO(current_temperature[1]);
 #endif
     SERIAL_ECHOLNPGM(")");
+#endif
+
+#if EXTRUDERS == 1
+    txBuffer.sendResponseStart(CmdGetCurrentTemps, 2*sizeof(float));
+#else
+    txBuffer.sendResponseStart(CmdGetCurrentTemps, 3*sizeof(float));
+#endif
+
+    txBuffer.sendResponseValue(current_temperature_bed);
+    txBuffer.sendResponseValue(current_temperature[0]);
+#if EXTRUDERS > 1
+    txBuffer.sendResponseValue(current_temperature[1]);
+#endif
+    txBuffer.sendResponseEnd();
 }
 
 void Printer::checkMoveFinished() {
@@ -1251,6 +1279,8 @@ void Printer::cmdDisableSteppers() {
     disableSteppers();
 }
 
+#if 0
+// Currently not used:
 void Printer::cmdDisableStepperIsr() {
 
     DISABLE_STEPPER_DRIVER_INTERRUPT();
@@ -1264,6 +1294,7 @@ void Printer::cmdGetState() {
     SERIAL_ECHOPGM("Res:");
     SERIAL_ECHOLN(printerState);
 }
+#endif
 
 void Printer::cmdGetHomed() {
 
@@ -1829,7 +1860,28 @@ class UsbCommand : public Protothread {
                                 MSerial.serReadInt32(),
                                 MSerial.serReadInt32());
                         */
-                        printer.setHomePos();
+                        {
+                            int32_t x = MSerial.serReadInt32();
+                            int32_t y = MSerial.serReadInt32();
+                            int32_t z = MSerial.serReadInt32();
+                            printer.setHomePos(x, y, z);
+                            txBuffer.sendACK();
+                        }
+                        break;
+                    case CmdSetTargetTemp:
+                        {
+                            uint8_t heater = MSerial.serReadNoCheck();
+                            uint16_t temp = MSerial.serReadUInt16();
+                            printer.cmdSetTargetTemp(heater, temp);
+                            txBuffer.sendACK();
+                        }
+                        break;
+                    case CmdStopMove:
+                        printer.cmdStopMove();
+                        txBuffer.sendACK();
+                        break;
+                    case CmdFanSpeed:
+                        printer.cmdFanSpeed(MSerial.serReadNoCheck());
                         txBuffer.sendACK();
                         break;
                     //
@@ -1863,36 +1915,31 @@ class UsbCommand : public Protothread {
                     case CmdGetPos:
                         printer.cmdGetPos();
                         break;
-#if 0
-                    case CmdGetState:
-                        printer.cmdGetState();
-                        break;
-                    case CmdSetTargetTemp:
-                        printer.cmdSetTargetTemp(MSerial.serReadNoCheck(), FromSerBufUInt16);
-                        SERIAL_PROTOCOLLNPGM(MSG_OK);
-                        break;
-                    case CmdFanSpeed:
-                        printer.cmdFanSpeed(MSerial.serReadNoCheck());
-                        SERIAL_PROTOCOLLNPGM(MSG_OK);
-                        break;
-                    case CmdStopMove:
-                        printer.cmdStopMove();
-                        break;
-#if defined(PIDAutoTune)
-                    case CmdSetHeaterY:
-                        tempControl.setHeaterY(MSerial.serReadNoCheck(), MSerial.serReadNoCheck());
-                        SERIAL_PROTOCOLLNPGM(MSG_OK);
-                        break;
-#endif
                     case CmdGetTargetTemps:
                         printer.cmdGetTargetTemps();
                         break;
                     case CmdGetCurrentTemps:
                         printer.cmdGetCurrentTemps();
                         break;
+
+#if 0
+// Currently not used:
+                    case CmdGetState:
+                        printer.cmdGetState();
+                        break;
                     case CmdDisableStepperIsr:
                         printer.cmdDisableStepperIsr();
                         break;
+#endif
+
+#if 0
+#if defined(PIDAutoTune)
+                    case CmdSetHeaterY:
+// xxx order of evaluation
+                        tempControl.setHeaterY(MSerial.serReadNoCheck(), MSerial.serReadNoCheck());
+                        SERIAL_PROTOCOLLNPGM(MSG_OK);
+                        break;
+#endif
 #if defined(ADNSFS) || defined(BournsEMS22AFS)
                     case CmdGetFilSensor:
                         printer.cmdGetFilSensor();
@@ -1901,12 +1948,13 @@ class UsbCommand : public Protothread {
                     case CmdGetTempTable:
                         printer.cmdGetTempTable();
                         break;
+#endif
+
 #if defined(DDSim)
                     case CmdExit:
                         printf("CmdExit received, exiting...\n");
                         exit(0);
                         break;
-#endif
 #endif
                     default:
                         // massert(commandByte < 128);
@@ -1915,8 +1963,6 @@ class UsbCommand : public Protothread {
                 }
 
                 MSerial.flush();
-
-                // PT_WAIT_WHILE( swapDev.isWriteBusy() ); wait for writeBlock() completion?
             }
 
             PT_RESTART();
@@ -2015,13 +2061,15 @@ FWINLINE void loop() {
             tempControl.heater();
 
             printer.checkMoveFinished();
-                            
+
+            /*            
             uint16_t sbs = stepBuffer.byteSize();
             if (sbs && sbs<512) {
 
                 SERIAL_ECHO("buflen: ");
                 SERIAL_PROTOCOLLN(sbs);
             }
+            */
 
 #if defined(ADNSFS) || defined(BournsEMS22AFS)
             // Read filament sensor

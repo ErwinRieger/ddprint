@@ -28,7 +28,7 @@ void serialprintPGM(const char *str)
 
 uint8_t MarlinSerial::peekN(uint8_t index) {
 
-    return rx_buffer.buffer[(rx_buffer.tail+index) % RX_BUFFER_SIZE];
+    return rx_buffer.buffer[(rx_buffer.tail+index) & RX_BUFFER_MASK];
 }
 
 void MarlinSerial::peekChecksum(uint16_t *checksum, uint8_t count) {
@@ -40,7 +40,7 @@ void MarlinSerial::peekChecksum(uint16_t *checksum, uint8_t count) {
 uint8_t MarlinSerial::serReadNoCheck(void)
 {
     unsigned char c = rx_buffer.buffer[rx_buffer.tail];
-    rx_buffer.tail = (rx_buffer.tail + 1) % RX_BUFFER_SIZE;
+    rx_buffer.tail = (rx_buffer.tail + 1) & RX_BUFFER_MASK;
     return c;
 }
 
@@ -48,34 +48,59 @@ float MarlinSerial::serReadFloat()
 {
     if ((rx_buffer.head - rx_buffer.tail) >= 4) {
         float f = *(float*)(rx_buffer.buffer + rx_buffer.tail);
-        rx_buffer.tail = (rx_buffer.tail + 4) % RX_BUFFER_SIZE; // xxx rx_buffer.tail += 4
+        rx_buffer.tail += 4;
         return f;
     }
 
-    uint32_t i = serReadNoCheck() + (((uint32_t)serReadNoCheck())<<8) + (((uint32_t)serReadNoCheck())<<16) + (((uint32_t)serReadNoCheck())<<24);
+    uint8_t  b1 = serReadNoCheck();
+    uint32_t b2 = serReadNoCheck();
+    uint32_t b3 = serReadNoCheck();
+    uint32_t b4 = serReadNoCheck();
+    uint32_t i = (b4<<24) + (b3<<16) + (b2<<8) + b1;
     return *(float*)&i;;
+}
+
+uint16_t MarlinSerial::serReadUInt16()
+{
+    if ((rx_buffer.head - rx_buffer.tail) >= 4) {
+        int32_t i = *(int32_t*)(rx_buffer.buffer + rx_buffer.tail);
+        rx_buffer.tail += 4;
+        return i;
+    }
+
+    uint8_t  b1 = serReadNoCheck();
+    uint16_t b2 = serReadNoCheck();
+    return (b2<<8) + b1;
 }
 
 int32_t MarlinSerial::serReadInt32()
 {
     if ((rx_buffer.head - rx_buffer.tail) >= 4) {
         int32_t i = *(int32_t*)(rx_buffer.buffer + rx_buffer.tail);
-        rx_buffer.tail = (rx_buffer.tail + 4) % RX_BUFFER_SIZE;  // xxx rx_buffer.tail += 4 
+        rx_buffer.tail += 4;
         return i;
     }
 
-    return MSerial.serReadNoCheck() + (((int32_t)MSerial.serReadNoCheck())<<8) + (((int32_t)MSerial.serReadNoCheck())<<16) + (((int32_t)MSerial.serReadNoCheck())<<24);
+    int8_t  b1 = serReadNoCheck();
+    int32_t b2 = serReadNoCheck();
+    int32_t b3 = serReadNoCheck();
+    int32_t b4 = serReadNoCheck();
+    return (b4<<24) + (b3<<16) + (b2<<8) + b1;
 }
 
 uint32_t MarlinSerial::serReadUInt32()
 {
     if ((rx_buffer.head - rx_buffer.tail) >= 4) {
         uint32_t i = *(uint32_t*)(rx_buffer.buffer + rx_buffer.tail);
-        rx_buffer.tail = (rx_buffer.tail + 4) % RX_BUFFER_SIZE;  // xxx rx_buffer.tail += 4 
+        rx_buffer.tail += 4;
         return i;
     }
 
-    return MSerial.serReadNoCheck() + (((uint32_t)MSerial.serReadNoCheck())<<8) + (((uint32_t)MSerial.serReadNoCheck())<<16) + (((uint32_t)MSerial.serReadNoCheck())<<24);
+    uint8_t  b1 = serReadNoCheck();
+    uint32_t b2 = serReadNoCheck();
+    uint32_t b3 = serReadNoCheck();
+    uint32_t b4 = serReadNoCheck();
+    return (b4<<24) + (b3<<16) + (b2<<8) + b1;
 }
 
 void MarlinSerial::flush()

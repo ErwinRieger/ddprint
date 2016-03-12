@@ -69,12 +69,12 @@ CmdStopMove = 138
 CmdSetHeaterY = 139
 
 # Getters, they return a string of the form "ret: <expr>"
-CmdGetState = 150
+# currently not used: CmdGetState = 150
 CmdGetHomed = 151
 CmdGetEndstops = 152   # Get endstop state and pos
 CmdGetEepromVersion = 153
 CmdGetEepromSettings = 154
-CmdDisableStepperIsr = 155
+# currently not used: CmdDisableStepperIsr = 155
 CmdDisableSteppers = 156
 CmdGetCurrentTemps = 157
 CmdGetTargetTemps = 158
@@ -127,12 +127,12 @@ CommandNames = {
     CmdRaw: "CmdRaw",
     
     # Getters, they return a string of the form "ret: <expr>"
-    CmdGetState: "CmdGetState",
+    # currently not used: CmdGetState: "CmdGetState",
     CmdGetHomed: "CmdGetHomed",
     CmdGetEndstops: "CmdGetEndstops",
     CmdGetEepromVersion: "CmdGetEepromVersion",
     CmdGetEepromSettings: "CmdGetEepromSettings",
-    CmdDisableStepperIsr: "CmdDisableStepperIsr",
+    # currently not used: CmdDisableStepperIsr: "CmdDisableStepperIsr",
     CmdDisableSteppers: "CmdDisableSteppers",
     CmdGetCurrentTemps: "CmdGetCurrentTemps",
     CmdGetTargetTemps: "CmdGetTargetTemps",

@@ -457,7 +457,7 @@ def main():
 
     argParser.add_argument("-np", dest="noPrime", action="store_const", const=True, help="Debug: don't prime nozzle, to test extrusion-less moves.")
 
-    # fake endstops with CmdDisableStepperIsr as long we have no real ones
+    # fake endstops as long we have no real ones
     argParser.add_argument("-F", dest="fakeendstop", action="store", type=bool, help="fake endstops", default=False)
 
     argParser.add_argument("-fr", dest="feedrate", action="store", type=float, help="Feedrate for move commands.", default=0)
@@ -518,7 +518,7 @@ def main():
 
     sp = subparsers.add_parser("getFilSensor", help=u"Get current filament position.")
 
-    sp = subparsers.add_parser("getPos", help=u"Get current printer and virtual position.")
+    sp = subparsers.add_parser("getpos", help=u"Get current printer and virtual position.")
 
     sp = subparsers.add_parser("getTemps", help=u"Get current temperatures (Bed, Extruder1, [Extruder2]).")
 
@@ -648,7 +648,7 @@ def main():
 
         printer.readMore()
 
-        ### xxx profiling
+        ### Simulator/profiling
         ### printer.sendCommand(CmdExit)
 
     elif args.mode == "pre":
@@ -745,7 +745,7 @@ def main():
         res = printer.query(CmdGetFilSensor)
         print "Filament pos:", res, "counts %.3f mm" % (res*25.4/1000)
 
-    elif args.mode == 'getPos':
+    elif args.mode == 'getpos':
 
         printer.commandInit(args)
 
@@ -768,8 +768,7 @@ def main():
     elif args.mode == 'getTemps':
 
         printer.commandInit(args)
-        temps = printer.query(CmdGetCurrentTemps)
-        print "tempeatures: ", temps
+        printer.getTemps()
 
     elif args.mode == 'getTempTable':
 

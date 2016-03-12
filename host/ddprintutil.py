@@ -336,14 +336,21 @@ class GetChar:
     def __init__(self, msg):
         self.msg = msg
         self.fd = sys.stdin.fileno()
-        self.old = termios.tcgetattr(self.fd)
+        try:
+            self.old = termios.tcgetattr(self.fd)
+        except termios.error:
+            self.old = None
 
     def getc(self):
 
         print self.msg
-        tty.setcbreak(self.fd)
+        try:
+            tty.setcbreak(self.fd)
+        except termios.error:
+            self.old = None
         ch = sys.stdin.read(1)
-        termios.tcsetattr(self.fd, termios.TCSADRAIN, self.old)
+        if self.old:
+            termios.tcsetattr(self.fd, termios.TCSADRAIN, self.old)
         return ch
 
 ####################################################################################################

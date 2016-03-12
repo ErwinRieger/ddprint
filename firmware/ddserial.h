@@ -25,8 +25,6 @@
 #include <util/crc16.h>
 
 #include "Protothread.h"
-// #include "pins.h"
-// #include "move.h"
 #include "mdebug.h"
 
 // Size of tx buffer in bytes, must be a power of 2:

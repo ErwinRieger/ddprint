@@ -77,6 +77,7 @@
 // #define RX_BUFFER_SIZE 128
 // #define RX_BUFFER_SIZE 1024
 #define RX_BUFFER_SIZE 512
+#define RX_BUFFER_MASK (RX_BUFFER_SIZE - 1)
 
 const char errormagic[] PROGMEM ="Error:";
 const char echomagic[] PROGMEM ="echo:";
@@ -86,8 +87,8 @@ void serialprintPGM(const char *str);
 struct ring_buffer
 {
   unsigned char buffer[RX_BUFFER_SIZE];
-  int head;
-  int tail;
+  int16_t head;
+  int16_t tail;
 };
 
 class MarlinSerial //: public Stream
@@ -100,6 +101,7 @@ class MarlinSerial //: public Stream
     void  peekChecksum(uint16_t *checksum, uint8_t count);
 
     uint8_t serReadNoCheck(void);
+    uint16_t serReadUInt16();
     int32_t serReadInt32();
     uint32_t serReadUInt32();
     float serReadFloat();
@@ -107,7 +109,7 @@ class MarlinSerial //: public Stream
     void flush(void);
 
     inline int available(void) {
-      return (RX_BUFFER_SIZE + rx_buffer.head - rx_buffer.tail) % RX_BUFFER_SIZE;
+      return (RX_BUFFER_SIZE + rx_buffer.head - rx_buffer.tail) & RX_BUFFER_MASK;
     }
 
     inline void store_char(unsigned char c);
@@ -179,7 +181,7 @@ extern MarlinSerial MSerial;
 #define SERIAL_ECHOLNPGM(x) SERIAL_PROTOCOLLNPGM(x)
 
 inline void MarlinSerial::store_char(unsigned char c) {
-        int i = (rx_buffer.head + 1) % RX_BUFFER_SIZE;
+        int i = (rx_buffer.head + 1) & RX_BUFFER_MASK;
 
         // if we should be storing the received character into the location
         // just before the tail (meaning that the head would advance to the

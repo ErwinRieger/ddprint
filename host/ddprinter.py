@@ -585,9 +585,18 @@ class Printer(Serial):
 
         return status['state'] == StateStart or status['state'] == StateDwell
 
-    def getTemps(self):
-        temps = self.query(CmdGetCurrentTemps)
-        targetTemps = self.query(CmdGetTargetTemps)
+    def getTemps(self, ):
+        (cmd, length, payload) = self.query(CmdGetCurrentTemps)
+        if length == 8:
+            temps = struct.unpack("<ff", payload)
+        else:
+            temps = struct.unpack("<fff", payload)
+
+        (cmd, length, payload) = self.query(CmdGetTargetTemps)
+        if length == 3:
+            targetTemps = struct.unpack("<BH", payload)
+        else:
+            targetTemps = struct.unpack("<BHH", payload)
         self.gui.tempCb(temps[0], temps[1], targetTemps[1])
         return temps
 
