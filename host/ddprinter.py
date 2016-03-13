@@ -119,7 +119,6 @@ class Printer(Serial):
     def commandResend(self, lastLine):
 
         self.gui.log("Command resend:", lastLine)
-        self.gui.logRecv("RX Error:", lastLine)
 
         # Wait 0.1 sec, give firmware time to drain buffers
         time.sleep(0.1)
@@ -146,7 +145,7 @@ class Printer(Serial):
         elif respCode == RespKilled:
 
             reason = ord(payload[0])
-            if reason in [HardwareEndstop, SoftwareEndstop]:
+            if reason in [RespHardwareEndstop, RespSoftwareEndstop]:
 
                 (x, y, z, xtrig, ytrig, ztrig) = struct.unpack("<BiiiBBB", payload[1:])
                 self.gui.logError("ERROR: PRINTER KILLED! Reason: %s, X: %d, Y: %d, Z: %d, trigger: x: %d, y: %d, z: %d" % (RespCodeNames[reason], x, y, z, xtrig, ytrig, ztrig))
@@ -169,21 +168,38 @@ class Printer(Serial):
         elif respCode == RespRXError:
 
             (lastLine, flags) = struct.unpack("<BB", payload)
+
+            flagstr = ""
+            if flags & 0x10:
+                flagstr += "FrameError "
+            if flags & 0x8:
+                flagstr += "Overrun  "
+            if flags & 0x4:
+                flagstr += "Parity  "
+
+            # flags: M_UCSRxA & 0x1C;
+            self.gui.logRecv("RespRXError: LastLine %d, flags: 0x%x (%s)" % (lastLine, flags, flagstr))
             return self.commandResend(lastLine)
 
         elif respCode == RespRXCRCError:
 
-            return self.commandResend(ord(payload))
+            lastLine = ord(payload)
+            self.gui.logRecv("RespRXCRCError:", lastLine)
+            return self.commandResend(lastLine)
 
         elif respCode == RespSerNumberError:
 
-            return self.commandResend(ord(payload))
+            lastLine = ord(payload)
+            self.gui.logRecv("RespSerNumberError:", lastLine)
+            return self.commandResend(lastLine)
 
         elif respCode == RespRXTimeoutError:
 
-            return self.commandResend(ord(payload))
+            lastLine = ord(payload)
+            self.gui.logRecv("RespRXTimeoutError:", lastLine)
+            return self.commandResend(lastLine)
 
-        else:
+        elif respCode < 128: # Buffered commands send ACK
 
             self.gui.logError("ERROR: unknown response code '0x%x'" % respCode)
             raise FatalPrinterError(ResponseNames[respCode])
@@ -263,8 +279,8 @@ class Printer(Serial):
         s = self.readWithTimeout(1) # read response code
 
         cmd = ord(s)
-        if cmd == 0x6:
-            return (cmd, 0, "")
+        # if cmd == 0x6:
+            # return (cmd, 0, "")
 
         # if cmd != sendCmd:
             # print "unexpected reply: 0x%x" % cmd
@@ -290,6 +306,20 @@ class Printer(Serial):
         # print "checksum: 0x%x, 0x%x" % (checkSum, crc)
 
         if checkSum != crc:
+            print "RxChecksumError, payload: %s" % payload.encode("hex")
+            # Drain input
+            try:
+                s = self.read()
+                print "RxChecksumError, drain input: %s" % s.encode("hex")
+            except SerialException:
+                pass
+
+            while s:
+                try:
+                    s = self.read()
+                    print "drain input: %s" % s.encode("hex")
+                except SerialException:
+                    pass
             raise RxChecksumError()
 
         return (cmd, length, payload)
@@ -425,15 +455,13 @@ class Printer(Serial):
 
         return binary
 
-    # def sendBinaryCommandx(self, cmd, binPayload=None, lineNr=None):
-        # binary = self.buildBinaryCommand(chr(cmd), binPayload, lineNr)
-        # self.send2(cmd, binary)
-
+    # Use qury() if you need the result of the command
     def sendCommand(self, cmd, binPayload=None): # , lineNr=None):
-        # self.sendBinaryCommandx(cmd, binPayload=binPayload, lineNr=lineNr)
+
         binary = self.buildBinaryCommand(chr(cmd), binPayload) # , lineNr)
         self.send2(cmd, binary)
 
+    # Use qury() if you need the result of the command
     def sendCommandParamV(self, cmd, params): # , lineNr=None):
 
         assert(params[0] != None)
@@ -443,8 +471,9 @@ class Printer(Serial):
                 payload += p.pack()
         self.sendCommand(cmd, binPayload=payload) # , lineNr=lineNr)
 
-    # Query info from printer, use this to receive returned data, use [sendBinaryCommandx, sendCommand, sendCommandParamV] for 
+    # Query info from printer, use this to receive returned data, use [sendCommand, sendCommandParamV] for 
     # 'write only' commands.
+    # Note: Commands must be 'restartable' without sideeffects (see commandResend(), ResendWasOK)
     def query(self, cmd, binPayload=None, doLog=True):
 
         if doLog:
@@ -499,7 +528,7 @@ class Printer(Serial):
             self.send(binary)
         """
 
-        self.gui.logSend("******************* sendCommand *************************+: ", CommandNames[sendCmd])
+        self.gui.logSend("*** sendCommand *** ", CommandNames[sendCmd])
         self.send(binary)
 
         print "waiting for reply code 0x%x (or ack)" % sendCmd
@@ -524,28 +553,28 @@ class Printer(Serial):
                 self.send(binary)
                 continue
 
+            except RxChecksumError:
+                self.gui.logError("RxChecksumError, resending command!")
+                startTime = time.time()
+                self.send(binary)
+                continue
+
             if cmd == 0x6:
                 dt = time.time() - startTime
                 n = len(binary)
                 self.gui.logRecv("ACK, Sent %d bytes in %.2f ms, %.2f Kb/s" % (n, dt*1000, n/(dt*1000)))
                 return (cmd, length, payload)
 
-            if cmd == RespGenericString:
-                print "Got Generic String: '%s'" % payload
-                continue
-
-            print "Got reply 0x%x for 0x%x" % (cmd, sendCmd)
-
-            if cmd == sendCmd:
-                # print "got reply:", payload
-                return (cmd, length, payload)
+            # if cmd == RespGenericString:
+                # print "Got Generic String: '%s'" % payload
+                # continue
 
             resendCommand = self.checkErrorResponse(cmd, length, payload)
 
-            if resendCommand == ResendWasOk:
+            if resendCommand == ResendWasOK:
 
                 # Command ok without ack
-                return ResendWasOk
+                return ResendWasOK
 
             elif resendCommand:
 
@@ -553,6 +582,12 @@ class Printer(Serial):
                 startTime = time.time()
                 self.send(resendCommand)
                 continue
+
+            print "Got reply 0x%x for 0x%x" % (cmd, sendCmd)
+
+            if cmd == sendCmd:
+                # print "got reply:", payload
+                return (cmd, length, payload)
 
             print "unknown reply:", cmd, length, payload
             assert(0)

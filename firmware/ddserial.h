@@ -32,7 +32,7 @@
 #define TxBufferMask  (TxBufferLen - 1)
 
 // Serial communication ACK
-#define RESPUSBACK 0x6
+#define xRESPUSBACK 0x6
 
 class TxBuffer: public Protothread {
 
@@ -82,8 +82,9 @@ class TxBuffer: public Protothread {
             head = (head + 1) & TxBufferMask;
         }
 
-        void sendACK() {
-            pushChar(RESPUSBACK);
+        FWINLINE void sendACK() {
+            // pushChar(xRESPUSBACK);
+            sendSimpleResponse(xRESPUSBACK);
         }
 
         bool Run() {
@@ -124,7 +125,7 @@ class TxBuffer: public Protothread {
 
         void sendSimpleResponse(uint8_t respCode) {
 
-            sendResponseStart(respCode, 1);
+            sendResponseStart(respCode, 0);
             sendResponseEnd();
         }
 

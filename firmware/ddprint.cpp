@@ -1437,9 +1437,6 @@ void Printer::dwellEnd() {
 
 Printer printer;
 
-// Send ascii-ACK 0x6 for accepted usbserial command.
-// #define USBACK  { MSerial.serWrite(0x6); }
-
 // Structure to store the result of get_command_usb()
 // XXX merge get_command_usb* functions into this
 class UsbCommand : public Protothread {
