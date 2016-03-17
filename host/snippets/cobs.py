@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-import sys, struct, crc16
+import sys, struct, crc16, cStringIO
 
 LenLen = 2
 
@@ -12,7 +12,7 @@ LenLen = 2
 #       B ..., Commandbyte [1...255]
 #       H ..., länge payload "n" PLUS 1 -> N = n+1, n = N-1
 LenHeader =          1+1+1+LenLen+1+2
-nmax =               256 - LenHeader # = 256 - 8 = 248
+LenCobs =               256 - LenHeader # = 256 - 8 = 248
 #   n * B ..., Payload, aufgeteilt in COBS codeblocks
 #       B ..., Checksum code
 #       H ..., Checksum 16 bit
@@ -20,7 +20,7 @@ nmax =               256 - LenHeader # = 256 - 8 = 248
 #
 #
 #
-# nmax = 248
+# LenCobs = 248
 
 # kodierung checksum, checksum code
 #
@@ -41,13 +41,38 @@ nmax =               256 - LenHeader # = 256 - 8 = 248
 
 nullByte = chr(0)
 
-def encodeCobs(data, maxlen):
+def encodeCobs(stream, blockLen):
 
-    pos = 0
+    fpos = stream.tell()
+    stream.seek(fpos+blockLen-1)
+
+    lastByte = stream.read(1)
+
+    stream.seek(fpos)
+
+    if not lastByte:
+        data = stream.read()
+
+        size = len(data)
+        if size == 0:
+            return None
+
+        lastByte = data[-1]
+
+        if lastByte != nullByte:
+            size = len(data)-1
+    else:
+
+        size = blockLen
+
+        if lastByte != nullByte:
+            size = blockLen-1
+
+        data = stream.read(size)
+
     cobsBody = ""
     cobsResult = ""
-    datalen = maxlen
-    while pos < maxlen:
+    for pos in range(size):
 
         if data[pos] == nullByte:
             # print "found 0 at", pos, len(cobsBody)
@@ -55,24 +80,21 @@ def encodeCobs(data, maxlen):
             cobsResult += cobsBody
             cobsBody = ""
 
-            # if pos == maxlen-1:
+            # if pos == size-1:
                 # print "last byte is a nullbyte, good"
         else:
-            if pos == maxlen-1:
+            cobsBody += data[pos]
+            if pos == size-1:
                 # Letzes byte, add ONE byte overhead
                 # print "last byte is not a nullbyte, adding 0xff codeblock"
                 cobsResult += chr(0xff)
                 cobsResult += cobsBody
-                if pos < (nmax-1):
-                    cobsResult += data[pos]
-                else:
-                    datalen -= 1
-            else:
-                cobsBody += data[pos]
 
-        pos += 1
+    return cobsResult
 
-    return (cobsResult, datalen)
+def encodeCobsString(s, blockLen=LenCobs):
+    s = cStringIO.StringIO(s)
+    return encodeCobs(s, blockLen)
 
 def encodePacket(linenr, cmd, packetSize, payload):
 
@@ -89,9 +111,8 @@ def encodePacket(linenr, cmd, packetSize, payload):
     result += payload
     checksum = crc16.crc16xmodem(payload, checksum)
 
-    cflags = 0x1
     # print "cflags, c1: 0x%x, 0x%x" % (cflags, checksum)
-
+    cflags = 0x1
     if checksum == 0:
         cflags = 0x4
         checksum = 0x0101
@@ -107,8 +128,6 @@ def encodePacket(linenr, cmd, packetSize, payload):
     result += struct.pack("<BH", cflags, checksum)
 
     return result
-
-out = open("/tmp/cobs.out", "w")
 
 def decodePacket(packet):
 
@@ -179,58 +198,51 @@ def decodeCobs(data, l):
 
     return result
 
-blob = sys.stdin.read(nmax)
+# blob = sys.stdin.read(10000)
 
-size = len(blob)
-start = 0
+# size = len(blob)
+# start = 0
 
-linenr = 1
-cmd = 1
+if __name__ == "__main__":
 
-while size:
-
-    # print
-
-    packetSize = min(size, nmax)
-
-    # packet = encodeCobs(linenr, cmd, blob[start:start+packetSize], packetSize)
-    (cobs, datalen) = encodeCobs(blob[start:start+packetSize], packetSize)
-    cl = len(cobs)
-    # print "len cobs block: ", cl, "datalen: ", datalen
-    assert(cl <= nmax)
-
-    packet = encodePacket(linenr, cmd, cl, cobs)
-    cp = len(packet)
-    # print "len cobs packet: ", cp
-    assert(cp <= 256)
-
-    # decode
-    (line, c, l, data) = decodePacket(packet)
-    assert(line == linenr)
-    assert(c == cmd)
-
-    # print "cobs len: ", cl, l, len(data)
-    assert(len(data) == cl)
-
-    encodedBlob = decodeCobs(data, l)
-
-    # print "len blob, encodedBlob:", datalen, len(encodedBlob)
-    assert(blob[:datalen] == encodedBlob)
-
-    out.write(encodedBlob)
-    # end decode
-
-    cmd = 2
-    linenr = ((linenr+1) % 256) + 1
-
-    if datalen < packetSize:
-        blob = blob[-1] + sys.stdin.read(nmax-1)
-    else:
-        blob = sys.stdin.read(nmax)
-
-    size = len(blob)
+    linenr = 1
+    cmd = 1
+    inp = open(sys.argv[1])
+    out = open("/tmp/cobs.out", "w")
 
 
+    while True:
 
+        cobs = encodeCobs(inp, LenCobs)
 
+        if not cobs:
+            # done
+            break
+
+        cl = len(cobs)
+        print "len cobs block: ", cl
+        assert(cl <= LenCobs)
+
+        packet = encodePacket(linenr, cmd, cl, cobs)
+        cp = len(packet)
+        print "len entire packet: ", cp
+        assert(cp <= 256)
+
+        # decode
+        (line, c, l, data) = decodePacket(packet)
+        assert(line == linenr)
+        assert(c == cmd)
+
+        print "cobs len: ", cl, l, len(data)
+        assert(len(data) == cl)
+
+        encodedBlob = decodeCobs(data, l)
+
+        print "len encodedBlob:", len(encodedBlob)
+
+        out.write(encodedBlob)
+        # end decode
+
+        cmd = 2
+        linenr = ((linenr+1) % 256) + 1
 
