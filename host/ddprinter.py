@@ -32,7 +32,7 @@
 #
 import time, struct, crc16
 import list_ports
-import dddumbui
+import dddumbui, cobs
 
 from serial import Serial, SerialException, SerialTimeoutException
 from ddprintcommands import *
@@ -42,7 +42,8 @@ from ddprintstates import *
 #
 # Constants
 #
-SOH = 0x81
+# SOH = 0x81
+SOH = 0x0 # COBs
 ############################################################################
 
 class SERIALDISCON(SerialException):
@@ -123,7 +124,7 @@ class Printer(Serial):
         # Wait 0.1 sec, give firmware time to drain buffers
         time.sleep(0.1)
 
-        if lastLine == (self.lineNr % 256):
+        if lastLine == (self.lineNr % 255):
             self.gui.log("Command was sent ok, faking ACK...:", lastLine)
             # Das ursprünglich gesendete kommando ging zwar duch, danach 
             # gab es jedoch einen komm. fehler, so dass das ACK nicht mehr
@@ -147,12 +148,12 @@ class Printer(Serial):
             reason = ord(payload[0])
             if reason in [RespHardwareEndstop, RespSoftwareEndstop]:
 
-                (x, y, z, xtrig, ytrig, ztrig) = struct.unpack("<BiiiBBB", payload[1:])
+                (x, y, z, xtrig, ytrig, ztrig) = struct.unpack("<iiiBBB", payload[1:])
                 self.gui.logError("ERROR: PRINTER KILLED! Reason: %s, X: %d, Y: %d, Z: %d, trigger: x: %d, y: %d, z: %d" % (RespCodeNames[reason], x, y, z, xtrig, ytrig, ztrig))
 
             elif reason == RespUnknownBCommand:
 
-                self.gui.logError("ERROR: PRINTER KILLED! Reason: %s, command: 0x%x" % ord(payload))
+                self.gui.logError("ERROR: PRINTER KILLED! Reason: %s, command: 0x%x" % (RespCodeNames[reason], ord(payload[1])))
 
             elif reason == RespAssertion:
 
@@ -390,8 +391,6 @@ class Printer(Serial):
 
         while True:
 
-            # self.gui.logSend("\nSending %d bytes: " % len(cmd), cmd[:10].encode("hex"))
-            # self.gui.log("serial: ", self.lineNr % 256, ord(cmd[1]))
             try:
                 self.write(cmd)
             except SerialTimeoutException:
@@ -417,17 +416,31 @@ class Printer(Serial):
 
         # not reached
 
-    def buildBinaryCommand(self, binCmd, binPayload=None, lineNr=None):
+    def buildBinaryCommand(self, binCmd, binPayload=None):
 
-        assert(lineNr == None)
+        payloadSize = 0
+        if binPayload:
+            payloadSize = len(binPayload)
+            # print "Send payload: %s" % binPayload.encode("hex")
+            print "Send payload: ", payloadSize, cobs.LenCobs
+            assert(payloadSize <= cobs.LenCobs)
 
+        #
+        # Not block: SOH(1) line(1) cmd(1) size(4) [ data ] chksum(2) -> max payload = 254 (COBS) - 9 = 245
+        # Block:     SOH(1) line(1) cmd(1) size(2) [ data ] chksum(2)
+        #
         binary  = struct.pack("<B", SOH)
-        binary += struct.pack("<B", self.lineNr % 256)
-        binary += binCmd
 
+        lineNr = (self.lineNr % 255)
+        header = struct.pack("<BBH", lineNr+1, binCmd, payloadSize+0x101)
+
+        binary += header
+        checksum = crc16.crc16xmodem(header)
+
+        """
+        body += binCmd
         if binPayload:
 
-            payloadSize = lenPayload = len(binPayload)
 
             lenFmt = "<H"
             if ord(binCmd) != CmdBlock:
@@ -435,41 +448,59 @@ class Printer(Serial):
                 lenFmt = "<I"
                 lenPayload = min(payloadSize, 256)
 
-            binary += struct.pack(lenFmt, payloadSize)
-            binary += binPayload[:lenPayload]
+            body += struct.pack(lenFmt, payloadSize)
+            body += binPayload[:lenPayload]
         else:
-            binary += struct.pack("<I", 0);
+            body += struct.pack("<I", 0);
+        """
 
-        checkSum = crc16.crc16xmodem(binary)
+        if binPayload:
+            binary += binPayload
+            checksum = crc16.crc16xmodem(binPayload, checksum)
+
+        # print "cflags, c1: 0x%x, 0x%x" % (cflags, checksum)
+        cflags = 0x1
+        if checksum == 0:
+            cflags = 0x4
+            checksum = 0x0101
+        elif (checksum & 0xFF00) == 0:
+            cflags = 0x2
+            checksum = 0x0100 | (checksum & 0xFf)
+        elif (checksum & 0x00FF) == 0:
+            cflags = 0x3
+            checksum = 0x0001 | (checksum & 0xFF00)
 
         # self.gui.log("checkSum: ", checkSum, "0x%x" % checkSum)
-        binary += struct.pack("<H", checkSum)
+        binary += struct.pack("<BH", cflags, checksum)
 
         # Store for later possible command resend
-        self.lastCommands[self.lineNr % 256] = binary
+        self.lastCommands[lineNr] = binary
 
-        if lineNr != None:
-            self.lineNr = lineNr
-        else:
-            self.lineNr += 1
+        self.lineNr += 1
 
         return binary
 
     # Use qury() if you need the result of the command
-    def sendCommand(self, cmd, binPayload=None): # , lineNr=None):
+    def sendCommand(self, cmd, binPayload=None):
 
-        binary = self.buildBinaryCommand(chr(cmd), binPayload) # , lineNr)
+        cobsBlock = binPayload and cobs.encodeCobsString(binPayload)
+        self.sendCommandC(cmd, cobsBlock)
+
+    # Use qury() if you need the result of the command
+    def sendCommandC(self, cmd, cobsBlock):
+
+        binary = self.buildBinaryCommand(cmd, cobsBlock)
         self.send2(cmd, binary)
 
     # Use qury() if you need the result of the command
-    def sendCommandParamV(self, cmd, params): # , lineNr=None):
+    def sendCommandParamV(self, cmd, params):
 
         assert(params[0] != None)
         payload = ""
         for p in params:
             if p:
                 payload += p.pack()
-        self.sendCommand(cmd, binPayload=payload) # , lineNr=lineNr)
+        self.sendCommand(cmd, binPayload=payload)
 
     # Query info from printer, use this to receive returned data, use [sendCommand, sendCommandParamV] for 
     # 'write only' commands.
@@ -479,7 +510,8 @@ class Printer(Serial):
         if doLog:
             self.gui.logSend("query: ", CommandNames[cmd])
 
-        binary = self.buildBinaryCommand(struct.pack("<B", cmd), binPayload=binPayload);
+        cobsBlock = binPayload and cobs.encodeCobsString(binPayload)
+        binary = self.buildBinaryCommand(cmd, cobsBlock)
 
         reply = self.send2(cmd, binary)
 
@@ -529,6 +561,7 @@ class Printer(Serial):
         """
 
         self.gui.logSend("*** sendCommand *** ", CommandNames[sendCmd])
+        print "send: ", binary.encode("hex")
         self.send(binary)
 
         print "waiting for reply code 0x%x (or ack)" % sendCmd
@@ -559,9 +592,9 @@ class Printer(Serial):
                 self.send(binary)
                 continue
 
+            n = len(binary)
+            dt = time.time() - startTime
             if cmd == 0x6:
-                dt = time.time() - startTime
-                n = len(binary)
                 self.gui.logRecv("ACK, Sent %d bytes in %.2f ms, %.2f Kb/s" % (n, dt*1000, n/(dt*1000)))
                 return (cmd, length, payload)
 
@@ -583,7 +616,7 @@ class Printer(Serial):
                 self.send(resendCommand)
                 continue
 
-            print "Got reply 0x%x for 0x%x" % (cmd, sendCmd)
+            self.gui.logRecv("ACK (0x%x/0x%x), Sent %d bytes in %.2f ms, %.2f Kb/s" % (cmd, sendCmd, n, dt*1000, n/(dt*1000)))
 
             if cmd == sendCmd:
                 # print "got reply:", payload

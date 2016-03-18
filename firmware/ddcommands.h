@@ -22,8 +22,9 @@
 //
 // USB/Seraial communication
 //
-// Startbyte for serial communication
-#define SOH  0x81
+// Startbyte of datablock for serial communication
+// #define SOH  0x81
+#define SOH  0x0
 
 //
 // USB commands

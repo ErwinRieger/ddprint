@@ -41,7 +41,7 @@ MarlinSerial::MarlinSerial() {
 
     printf("new MarlinSerial\n");
 
-    rx_buffer.head = rx_buffer.tail = rxerror = 0;
+    rxBuffer.head = rxBuffer.tail = rxerror = 0;
 
     ptty = open("/dev/ptmx", O_RDWR | O_NOCTTY | O_NONBLOCK);
     if (ptty == -1) {
@@ -156,7 +156,7 @@ void charClock() {
             }
             fifo[fifoFill++] = rxChar;
             */
-            if (MSerial.available() == (RX_BUFFER_SIZE-1)) {
+            if (MSerial._available() == (RX_BUFFER_SIZE-1)) {
                 printf("serial overflow maxread: %d, nread: %d\n", maxread, nread);
                 assert(0);
             }

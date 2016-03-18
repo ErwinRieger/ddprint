@@ -540,8 +540,8 @@ class Planner (object):
                 for (cmd, p1, p2) in self.syncCommands[move.moveNumber]:
                     self.printer.sendCommandParamV(cmd, [p1, p2])
 
-            for (cmd, payload) in move.commands():
-                self.printer.sendCommand(cmd, binPayload=payload)
+            for (cmd, cobsBlock) in move.commands():
+                self.printer.sendCommandC(cmd, cobsBlock)
 
     #
     # Letzter move in revMoves ist entweder:

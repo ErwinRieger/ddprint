@@ -74,6 +74,7 @@ class TxBuffer: public Protothread {
 
             // Don't buffer character if it can be sent directly
             if (empty() && ((UCSR0A) & (1 << UDRE0))) {
+                // printf("Send: 0x%x\n", c);
                 UDR0 = c;
                 return;
             }
@@ -96,6 +97,7 @@ class TxBuffer: public Protothread {
                 PT_WAIT_UNTIL((UCSR0A) & (1 << UDRE0));
 
                 uint8_t c = pop();
+                // printf("Send: 0x%x\n", c);
                 UDR0 = c;
             }
 

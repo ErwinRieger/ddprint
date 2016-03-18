@@ -78,29 +78,53 @@ struct ring_buffer
 class MarlinSerial //: public Stream
 {
 
+  private:
+
+    ring_buffer rxBuffer;
+
+    // Length of current cobs code block
+    int16_t cobsCodeLen;
+    // Length of entire cobs block
+    // uint8_t cobsLen;
+    // Index into current cobs code block
+    // uint8_t cobsIndex;
+    bool atBlock;
+
+    void atCobsBlock();
+    uint8_t getCobsByte();
+
   public:
     MarlinSerial();
+
     void begin(long);
     uint8_t peekN(uint8_t index);
     void  peekChecksum(uint16_t *checksum, uint8_t count);
 
-    uint8_t serReadNoCheck(void);
+    void cobsInit(uint16_t payloadLength);
+
+    uint8_t serReadNoCheck(void) { simassert(0); }
+
+    uint8_t readNoCheckNoCobs(void);
+    uint16_t readUInt16NoCheckNoCobs();
+
+    uint8_t readNoCheckCobs(void);
+    float readFloatNoCheckCobs();
+
     uint16_t serReadUInt16();
-    int32_t serReadInt32();
+    int32_t readInt32NoCheckCobs();
     uint32_t serReadUInt32();
-    float serReadFloat();
+
+    uint16_t tellN(uint8_t n) { return (rxBuffer.tail + n) & RX_BUFFER_MASK; }
+    uint16_t getRXTail() { return rxBuffer.tail; }
 
     void flush(void);
+    void flush(uint8_t);
 
-    inline int available(void) {
-      return (RX_BUFFER_SIZE + rx_buffer.head - rx_buffer.tail) & RX_BUFFER_MASK;
+    inline int _available(void) {
+      return (RX_BUFFER_SIZE + rxBuffer.head - rxBuffer.tail) & RX_BUFFER_MASK;
     }
 
     inline void store_char(unsigned char c);
-
-  private:
-
-    ring_buffer rx_buffer;
 
   public:
 
@@ -119,15 +143,15 @@ class MarlinSerial //: public Stream
 extern MarlinSerial MSerial;
 
 inline void MarlinSerial::store_char(unsigned char c) {
-        int i = (rx_buffer.head + 1) & RX_BUFFER_MASK;
+        int i = (rxBuffer.head + 1) & RX_BUFFER_MASK;
 
         // if we should be storing the received character into the location
         // just before the tail (meaning that the head would advance to the
         // current location of the tail), we're about to overflow the buffer
         // and so we don't write the character or advance the head.
-        if (i != rx_buffer.tail) {
-            rx_buffer.buffer[rx_buffer.head] = c;
-            rx_buffer.head = i;
+        if (i != rxBuffer.tail) {
+            rxBuffer.buffer[rxBuffer.head] = c;
+            rxBuffer.head = i;
         }
         else {
             massert(0);

@@ -20,7 +20,7 @@
 
 import math, struct
 
-import ddprintcommands
+import ddprintcommands, cobs, cStringIO
 
 from ddprintconstants import maxTimerValue16, maxTimerValue24, DEFAULT_ACCELERATION, DEFAULT_MAX_ACCELERATION, fTimer
 from ddprintutil import X_AXIS, Y_AXIS, Z_AXIS, A_AXIS, B_AXIS,vectorLength, vectorMul, vectorSub, circaf
@@ -545,11 +545,29 @@ class Move(object):
             for timer in self.stepData.deccelPulses:
                 payLoad += struct.pack("<H", timer)
 
+
+        stream = cStringIO.StringIO(payLoad)
+
+        cobsBlock = cobs.encodeCobs(stream)
+        cmds.append(( cmdHex, cobsBlock ))
+
+        while True:
+
+            cobsBlock = cobs.encodeCobs(stream)
+
+            if not cobsBlock:
+                return cmds
+
+            cmds.append(( ddprintcommands.CmdBlock, cobsBlock ))
+
+        # Not reached
+
+        # XXXXXXXXXXX unused
         #
-        # Create 256 byte blocks
+        # Create 245 (COBS) byte blocks
         #
         payloadSize = len(payLoad)
-        lenPayload = min(payloadSize, 256)
+        lenPayload = min(payloadSize, 245)
 
         cmds.append(( cmdHex, payLoad ))
 
@@ -559,7 +577,7 @@ class Move(object):
         while payloadSize:
 
             # print "payloadSize: ", len(payLoad), ", left: ", payloadSize
-            lenPayload = min(payloadSize, 256)
+            lenPayload = min(payloadSize, 245)
 
             payloadBlock = payLoad[pos:pos+lenPayload]
 

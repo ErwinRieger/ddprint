@@ -10,7 +10,7 @@ LenLen = 2
 # [     B 0x1, SOH
 #       B ..., Command counter [1...255]
 #       B ..., Commandbyte [1...255]
-#       H ..., länge payload "n" PLUS 1 -> N = n+1, n = N-1
+#       H ..., länge payload "n" PLUS 0x101 -> N = n+0x101, n = N-0x101
 LenHeader =          1+1+1+LenLen+1+2
 LenCobs =               256 - LenHeader # = 256 - 8 = 248
 #   n * B ..., Payload, aufgeteilt in COBS codeblocks
@@ -41,7 +41,7 @@ LenCobs =               256 - LenHeader # = 256 - 8 = 248
 
 nullByte = chr(0)
 
-def encodeCobs(stream, blockLen):
+def encodeCobs(stream, blockLen=LenCobs):
 
     fpos = stream.tell()
     stream.seek(fpos+blockLen-1)
@@ -57,10 +57,9 @@ def encodeCobs(stream, blockLen):
         if size == 0:
             return None
 
-        lastByte = data[-1]
-
-        if lastByte != nullByte:
-            size = len(data)-1
+        # lastByte = data[-1]
+        # if lastByte != nullByte:
+            # size = len(data)-1
     else:
 
         size = blockLen
@@ -75,26 +74,30 @@ def encodeCobs(stream, blockLen):
     for pos in range(size):
 
         if data[pos] == nullByte:
-            # print "found 0 at", pos, len(cobsBody)
+            print "found 0 at", pos, len(cobsBody)
             cobsResult += chr(len(cobsBody)+1)
             cobsResult += cobsBody
             cobsBody = ""
 
-            # if pos == size-1:
-                # print "last byte is a nullbyte, good"
+            if pos == size-1:
+                print "last byte is a nullbyte, good"
         else:
             cobsBody += data[pos]
             if pos == size-1:
                 # Letzes byte, add ONE byte overhead
-                # print "last byte is not a nullbyte, adding 0xff codeblock"
+                print "last byte is not a nullbyte, adding 0xff codeblock"
                 cobsResult += chr(0xff)
                 cobsResult += cobsBody
+
+        # print "cobs: %s" % cobsResult.encode("hex")
 
     return cobsResult
 
 def encodeCobsString(s, blockLen=LenCobs):
     s = cStringIO.StringIO(s)
-    return encodeCobs(s, blockLen)
+    s = encodeCobs(s, blockLen)
+    # print "encoded: %s" % s.encode("hex")
+    return s
 
 def encodePacket(linenr, cmd, packetSize, payload):
 
@@ -103,7 +106,7 @@ def encodePacket(linenr, cmd, packetSize, payload):
     
     result = nullByte
 
-    header = struct.pack("<BBH", linenr, cmd, packetSize+1)
+    header = struct.pack("<BBH", linenr, cmd, packetSize+0x101)
 
     result += header
     checksum = crc16.crc16xmodem(header)
@@ -143,7 +146,7 @@ def decodePacket(packet):
     ofs += 1
 
     # n = ord(packet[3]) - 1
-    n = struct.unpack("<H", packet[ofs:ofs+LenLen])[0] - 1
+    n = struct.unpack("<H", packet[ofs:ofs+LenLen])[0] - 0x101
     ofs += LenLen
 
     # print "line, cmd, n:", line, cmd, n
@@ -236,11 +239,11 @@ if __name__ == "__main__":
         print "cobs len: ", cl, l, len(data)
         assert(len(data) == cl)
 
-        encodedBlob = decodeCobs(data, l)
+        decodedBlob = decodeCobs(data, l)
 
-        print "len encodedBlob:", len(encodedBlob)
+        print "len decodedBlob:", len(decodedBlob)
 
-        out.write(encodedBlob)
+        out.write(decodedBlob)
         # end decode
 
         cmd = 2
