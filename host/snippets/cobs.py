@@ -32,16 +32,20 @@ LenCobs =               256 - LenHeader # = 256 - 8 = 248
 
 nullByte = chr(0)
 
-def encodeCobs(stream, blockLen=LenCobs):
+def xencodeCobs(stream, blockLen=LenCobs):
 
     fpos = stream.tell()
     stream.seek(fpos+blockLen-1)
 
     lastByte = stream.read(1)
+    part = False
 
     stream.seek(fpos)
 
     if not lastByte:
+
+        assert(0)
+
         data = stream.read()
 
         size = len(data)
@@ -51,6 +55,9 @@ def encodeCobs(stream, blockLen=LenCobs):
         # lastByte = data[-1]
         # if lastByte != nullByte:
             # size = len(data)-1
+
+        part = True
+
     else:
 
         size = blockLen
@@ -71,23 +78,118 @@ def encodeCobs(stream, blockLen=LenCobs):
             cobsBody = ""
 
             if pos == size-1:
-                print "last byte is a nullbyte, good"
+                print "last byte is a nullbyte"
         else:
             cobsBody += data[pos]
             if pos == size-1:
                 # Letzes byte, add ONE byte overhead
                 print "last byte is not a nullbyte, adding 0xff codeblock"
-                cobsResult += chr(0xff)
+                # cobsResult += chr(0xff)
+                cobsResult += chr(len(cobsBody)+1)
                 cobsResult += cobsBody
 
         # print "cobs: %s" % cobsResult.encode("hex")
 
     # xxx debug
-    if len(cobsResult) != blockLen:
+    if not part and len(cobsResult) != blockLen:
         print "Error, cobs encoded block %d bytes instead of %d." % (len(cobsResult), blockLen)
         print "data: ", len(data), data.encode("hex")
         print "cobs: ", len(cobsResult), cobsResult.encode("hex")
         assert(0)
+
+    return cobsResult
+
+def encodeCobs(stream, blockLen=LenCobs):
+
+    cobsBody = ""
+    cobsResult = ""
+
+    data = stream.read(blockLen-1)
+    if not data:
+        return None
+
+    fpos = stream.tell()
+
+    lastByte1 = data[-1]
+
+    lastByte2 = stream.read(1)
+
+    if lastByte2 == nullByte:
+        print "long packet ending in 0 -> result is long, no overhead"
+
+        data += lastByte2
+        for c in data:
+            if c == nullByte:
+                cobsResult += chr(len(cobsBody)+1)
+                cobsResult += cobsBody
+                cobsBody = ""
+            else:
+                cobsBody += c
+
+        assert(len(cobsResult) <= blockLen)
+        assert(len(cobsResult) == len(data))
+        return cobsResult
+
+    # short block, push back lastByte2
+    stream.seek(fpos)
+
+    if lastByte1 == nullByte:
+        print "short packet ends with 0 -> result is short, no overhead"
+
+        for c in data:
+            if c == nullByte:
+                cobsResult += chr(len(cobsBody)+1)
+                cobsResult += cobsBody
+                cobsBody = ""
+            else:
+                cobsBody += c
+
+        assert(len(cobsResult) <= blockLen-1)
+        assert(len(cobsResult) == len(data))
+        return cobsResult
+
+    print "short packet does not end with 0 -> result is long, one byte overhead"
+
+    size = len(data)+1
+    for pos in range(size):
+
+        if pos==size-1:
+            cobsResult += chr(0xff)
+            cobsResult += cobsBody
+        elif data[pos] == nullByte:
+            # print "found 0 at", pos, len(cobsBody)
+            cobsResult += chr(len(cobsBody)+1)
+            cobsResult += cobsBody
+            cobsBody = ""
+        else:
+            cobsBody += data[pos]
+
+    assert(len(cobsResult) <= blockLen)
+    assert(len(cobsResult) == len(data)+1)
+    return cobsResult
+
+    assert(0)
+
+    if data[-1] != nullByte:
+        size += 1
+
+
+    for pos in range(size):
+
+        if pos==size-1 or data[pos] == nullByte:
+            # print "found 0 at", pos, len(cobsBody)
+            cobsResult += chr(len(cobsBody)+1)
+            cobsResult += cobsBody
+            cobsBody = ""
+        else:
+            cobsBody += data[pos]
+
+    # xxx debug
+    # if len(cobsResult) != len(data)+1:
+        # print "Error, cobs encoded block %d bytes instead of %d." % (len(cobsResult), blockLen)
+        # print "data: ", len(data), data.encode("hex")
+        # print "cobs: ", len(cobsResult), cobsResult.encode("hex")
+        # assert(0)
 
     return cobsResult
 
@@ -97,14 +199,14 @@ def encodeCobsString(s, blockLen=LenCobs):
     # print "encoded: %s" % s.encode("hex")
     return s
 
-def encodePacket(linenr, cmd, packetSize, payload):
+def encodePacket(linenr, cmd, payload):
 
     assert(linenr > 0)
     assert(cmd > 0)
     
     result = nullByte
 
-    header = struct.pack("<BBH", linenr, cmd, packetSize+0x101)
+    header = struct.pack("<BBH", linenr, cmd, len(payload)+0x101)
 
     result += header
     checksum = crc16.crc16xmodem(header)
@@ -178,24 +280,26 @@ def decodePacket(packet):
 
     return (line, cmd, n, result)
 
-def decodeCobs(data, l):
+def decodeCobs(data):
 
     result = ""
 
     pos = 0
-    while pos < l:
+    while pos < len(data):
         cobsCode = ord(data[pos])
         pos += 1
-        # if cobsCode == 0xff:
-            # cobsCode = (l - pos) + 1
         for i in range(cobsCode-1):
-            if pos < l:
+            if pos < len(data):
                 result += data[pos]
                 pos += 1
             else:
-                break
-        if cobsCode != 0xff:
-            result += nullByte
+                # break
+                return result
+
+        # if pos < l:
+            # result += nullByte
+        # if cobsCode != 0xff:
+        result += nullByte
 
     return result
 
@@ -206,11 +310,62 @@ def decodeCobs(data, l):
 
 if __name__ == "__main__":
 
+    # Case 1, long packet, ends with 0
+    s = (LenCobs-1)*" " + nullByte
+    stream = cStringIO.StringIO(s)
+
+    cobs = encodeCobs(stream, LenCobs)
+    assert(len(cobs) == LenCobs)
+    decodedBlob = decodeCobs(cobs)
+
+    assert(s == decodedBlob)
+
+    # Case 2, short packet, ends with 0
+    s = (LenCobs-2)*" " + nullByte + " "
+    stream = cStringIO.StringIO(s)
+
+    cobs = encodeCobs(stream, LenCobs)
+    assert(len(cobs) == LenCobs-1)
+    decodedBlob = decodeCobs(cobs)
+
+    assert(s[:-1] == decodedBlob)
+
+    # Case 3, short packet, does not end with 0
+    s = (LenCobs)*" "
+    stream = cStringIO.StringIO(s)
+
+    cobs = encodeCobs(stream, LenCobs)
+    assert(len(cobs) == LenCobs)
+    decodedBlob = decodeCobs(cobs)
+
+    # print "s   : ", len(s), s.encode("hex")
+    # print "deco: ", len(decodedBlob), decodedBlob.encode("hex")
+
+    #######################
+    # send:  000508f901029f03a80f010101010101010101010101010101010103aa04010253ffaa0476042304e003a9037a0352032e030f03f302da02c302af029c028a027a026b025d025002440239022e0223021a0211020802ff01f801f001e901e201db01d501cf01c901c301be01b801b301ae01aa01a501a1019c019801940190018c018901850181017e017b017701740171016e016b0168016601630160015e015b0159015601540151014f014d014b01480146014401420140013e013c013a013901370135013301310130012e012c012b0129012801260124012301220120011f011d011c011a01190118011601150114011301110110010f010e010d016357
+    # send:  000606f80118010b010a010901080107010601050104010301020101010301ff02fe02fd02fc02fb02fa02f902f802f702f602f502f402f302f202f202f102f002ef02ee02ed02ed02ec02eb02ea02ea02e902e802e702e602e602e502e402e402e302e202e102e102e002df02df02de02dd02dd02dc02db02db02da02da02d902d802d802d702d702d602d502d502d402d402d302d202d202d102d102d002d002cf02cf02ce02ce02cd02cd02cc02cb02cb02ca02ca02c902c902c902c802c802c702c702c602c602c502c502c402c402c302c302c202c202c202c102c102c002c002bf02bf02bf02be02be02bd02bd02bc02bc02bc02bb02bb02bb015532
+    # send:  000706f90102ba02ba02b902b902b902b802b802b702b702b702b602b602b602b502b502b502b402b402b302b302b302b202b202b202b102b102b102b002b002b002af02af02af02ae02ae02ae02ad02ad02ad02ad02ac02ac02ac02ab02ab02ab02aa02aa02aa02aa02a902a902a902a802a802a802a702a702a702a702a602a602a602a602a502a502a502a402a402a402a402a302a302a302a302a202a202a202a202a102a102a102a102a002a002a002a0029f029f029f029f029e029e029e029e029d029d029d029d029c029c029c029c029c029b029b029b029b029a029a029a029a0299029902990299029902980298029802980298029702970125be
+
+    s="18010b010a010901080107010601050104010301020101010301ff02fe02fd02fc02fb02fa02f902f802f702f602f502f402f302f202f202f102f002ef02ee02ed02ed02ec02eb02ea02ea02e902e802e702e602e602e502e402e402e302e202e102e102e002df02df02de02dd02dd02dc02db02db02da02da02d902d802d802d702d702d602d502d502d402d402d302d202d202d102d102d002d002cf02cf02ce02ce02cd02cd02cc02cb02cb02ca02ca02c902c902c902c802c802c702c702c602c602c502c502c402c402c302c302c202c202c202c102c102c002c002bf02bf02bf02be02be02bd02bd02bc02bc02bc02bb02bb02bb"
+    decodedBlob = decodeCobs(s.decode("hex"))
+
+    print "s :", s
+    print "sd:", decodedBlob.encode("hex")
+
+    s="02ba02ba02b902b902b902b802b802b702b702b702b602b602b602b502b502b502b402b402b302b302b302b202b202b202b102b102b102b002b002b002af02af02af02ae02ae02ae02ad02ad02ad02ad02ac02ac02ac02ab02ab02ab02aa02aa02aa02aa02a902a902a902a802a802a802a702a702a702a702a602a602a602a602a502a502a502a402a402a402a402a302a302a302a302a202a202a202a202a102a102a102a102a002a002a002a0029f029f029f029f029e029e029e029e029d029d029d029d029c029c029c029c029c029b029b029b029b029a029a029a029a029902990299029902990298029802980298029802970297"
+    decodedBlob = decodeCobs(s.decode("hex"))
+
+    print "s :", s
+    print "sd:", decodedBlob.encode("hex")
+
+    sys.exit(0)
+    #######################
+    assert(s[:-1] == decodedBlob)
+
     linenr = 1
     cmd = 1
     inp = open(sys.argv[1])
     out = open("/tmp/cobs.out", "w")
-
 
     while True:
 
@@ -224,7 +379,7 @@ if __name__ == "__main__":
         # print "len cobs block: ", cl
         assert(cl <= LenCobs)
 
-        packet = encodePacket(linenr, cmd, cl, cobs)
+        packet = encodePacket(linenr, cmd, cobs)
         cp = len(packet)
         # print "len entire packet: ", cp
         assert(cp <= 256)
@@ -237,7 +392,9 @@ if __name__ == "__main__":
         # print "cobs len: ", cl, l, len(data)
         assert(len(data) == cl)
 
-        decodedBlob = decodeCobs(data, l)
+        decodedBlob = decodeCobs(data)
+
+        assert(len(decodedBlob) <= LenCobs)
 
         # print "len decodedBlob:", len(decodedBlob)
 
@@ -246,4 +403,14 @@ if __name__ == "__main__":
 
         cmd = 2
         linenr = ((linenr+1) % 256) + 1
+
+
+
+
+
+
+
+
+
+
 

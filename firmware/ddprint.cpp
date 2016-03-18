@@ -1473,6 +1473,10 @@ class UsbCommand : public Protothread {
         // Number of characters we have to read
         uint32_t payloadLength;
 
+// xxx debug
+//
+        uint8_t pli;
+
         uint8_t lenByte1;
         uint8_t lenByte2;
         
@@ -1554,6 +1558,11 @@ class UsbCommand : public Protothread {
         // Check if serial chars are available.
         //
         FWINLINE SerAvailableState waitForSerial(uint8_t nChars) {
+
+            static bool print=true;
+if (print)
+    printf("wait for data, len: 0x%x\n", nChars);
+print=false;
 // XXXXXXXXXXx assert(nChars)
 //
             //
@@ -1566,10 +1575,12 @@ class UsbCommand : public Protothread {
 
             if (MSerial._available() >= nChars) {
                 startTS = ts; // reset timeout 
+print=true;
                 return CharsAvailable;
             }
 
-            if ((ts - startTS) > 2500) {
+            // if ((ts - startTS) > 2500) {
+            if ((ts - startTS) > 5000) {
                 /*
                 SERIAL_ERROR_START;
                 SERIAL_PROTOCOLPGM("RX Timeout Last Line:");
@@ -1578,6 +1589,7 @@ class UsbCommand : public Protothread {
 
                 txBuffer.sendSimpleResponse(RespRXTimeoutError, serialNumber);
                 reset();
+print=true;
                 return SerTimeout;
             }
 
@@ -1678,6 +1690,7 @@ class UsbCommand : public Protothread {
                 /// // Read payload length, 2 or 4 bytes
                 // Read payload length 2 bytes
                 lenByte1 = MSerial.readNoCheckNoCobs();
+                assert(lenByte1);
                 checksum = _crc_xmodem_update(checksum, lenByte1);
                 lenByte1 -= 0x01;
                 payloadLength = lenByte1;
@@ -1686,6 +1699,7 @@ class UsbCommand : public Protothread {
                 // PT_WAIT_WHILE( swapDev.isBusyWriting() );
 
                 lenByte2 = MSerial.readNoCheckNoCobs();
+                assert(lenByte2);
                 checksum = _crc_xmodem_update(checksum, lenByte2);
                 lenByte2 -= 0x01;
                 payloadLength |= (lenByte2 << 8);
@@ -1718,10 +1732,12 @@ class UsbCommand : public Protothread {
 #endif
                     // xxx fill 4 bytes len
                     swapDev.addByte(0);
+                    PT_WAIT_WHILE( swapDev.isBusyWriting() );
+
                     swapDev.addByte(0);
+                    PT_WAIT_WHILE( swapDev.isBusyWriting() );
 
                     payloadLength = STD min(payloadLength, (uint32_t)256);
-
                 }
 
                 // SERIAL_ECHO("commandlen: ");
@@ -1744,9 +1760,9 @@ class UsbCommand : public Protothread {
                 tell = MSerial.tellN(payloadLength); // xxx assume payloadLength >= 1, needed for while loop below, can't use (MSerial.getRXTail() < tell) expression there
 
                 // Tell RxBuffer that it's pointing to the beginning of a COBS block
-                if (payloadLength)
+                if (payloadLength) // xxx needed?
                     MSerial.cobsInit(payloadLength);
-
+pli=0;
                 // while (serial_count < payloadLength) 
                 while (MSerial.getRXTail() != tell) {
 
@@ -1761,12 +1777,19 @@ class UsbCommand : public Protothread {
                     // c = MSerial.readNoCheckNoCobs();
                     c = MSerial.readNoCheckCobs();
                     // checksum = _crc_xmodem_update(checksum, c);
-
+printf("de-cops: %d/%d, ci: %d, 0x%x\n", pli++, payloadLength, MSerial.cobsCodeLen, c);
                     swapDev.addByte(c);
                     PT_WAIT_WHILE( swapDev.isBusyWriting() );
 
                     // serial_count++;
                 }
+
+if (MSerial.cobsCodeLen == 0) {
+                    c = MSerial.readNoCheckCobs();
+printf("de-cops: %d/%d, ci: %d, 0x%x\n", pli++, payloadLength, MSerial.cobsCodeLen, c);
+                    swapDev.addByte(c);
+                    PT_WAIT_WHILE( swapDev.isBusyWriting() );
+}
 
                 // Read checksum
                 // PT_WAIT_WHILE( (av = waitForSerial(2)) == NothinAvailable );
@@ -1796,6 +1819,8 @@ class UsbCommand : public Protothread {
                 else
                     serialNumber++;
 
+                massert(((tell+3) & RX_BUFFER_MASK) == MSerial.getRXTail());
+
                 // USBACK;
                 txBuffer.sendACK();
             }
@@ -1818,9 +1843,12 @@ class UsbCommand : public Protothread {
                 // Read payload length, 4 bytes
                 // MSerial.peekChecksum(&checksum, 4);
                 MSerial.peekChecksum(&checksum, 2);
-                payloadLength = MSerial.readUInt16NoCheckNoCobs() - 0x101;
+                i = MSerial.readUInt16NoCheckNoCobs();
 
-printf("wait for payload len: 0x%x\n", payloadLength);
+                assert(((i&0xff)!=0) && ((i&0xff00)!=0));
+
+                payloadLength = i-0x0101;
+
                 // SERIAL_ECHO("commandlen: ");
                 // SERIAL_PROTOCOLLN(payloadLength);
 
@@ -1921,8 +1949,8 @@ printf("wait for payload len: 0x%x\n", payloadLength);
                         break;
                     case CmdSetTargetTemp:
                         {
-                            uint8_t heater = MSerial.serReadNoCheck();
-                            uint16_t temp = MSerial.serReadUInt16();
+                            uint8_t heater = MSerial.readNoCheckCobs();
+                            uint16_t temp = MSerial.readUInt16NoCheckCobs();
                             printer.cmdSetTargetTemp(heater, temp);
                             txBuffer.sendACK();
                         }
@@ -1932,7 +1960,7 @@ printf("wait for payload len: 0x%x\n", payloadLength);
                         txBuffer.sendACK();
                         break;
                     case CmdFanSpeed:
-                        printer.cmdFanSpeed(MSerial.serReadNoCheck());
+                        printer.cmdFanSpeed(MSerial.readNoCheckCobs());
                         txBuffer.sendACK();
                         break;
                     //
@@ -1987,7 +2015,7 @@ printf("wait for payload len: 0x%x\n", payloadLength);
 #if defined(PIDAutoTune)
                     case CmdSetHeaterY:
 // xxx order of evaluation
-                        tempControl.setHeaterY(MSerial.serReadNoCheck(), MSerial.serReadNoCheck());
+                        tempControl.setHeaterY(MSerial.readNoCheckCobs(), MSerial.readNoCheckCobs());
                         SERIAL_PROTOCOLLNPGM(MSG_OK);
                         break;
 #endif

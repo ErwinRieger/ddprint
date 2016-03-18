@@ -243,7 +243,7 @@ class Printer(Serial):
     def readWithTimeout(self, length):
 
         res = ""
-        time = 0
+        timeout = 0
         while len(res) < length:
 
             try:
@@ -265,9 +265,9 @@ class Printer(Serial):
                 self.rxErrors = 0
                 res += c
 
-            time += self.timeout
+            timeout += self.timeout
 
-            if time > 5:
+            if timeout > 5:
                 print "timeout reading, data read: %d bytes, '%s'" % (len(res), res)
                 raise RxTimeout()
 

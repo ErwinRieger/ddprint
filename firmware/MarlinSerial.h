@@ -82,10 +82,11 @@ class MarlinSerial //: public Stream
 
     ring_buffer rxBuffer;
 
+  public: // xxxxxxxxxxxx debug
     // Length of current cobs code block
     int16_t cobsCodeLen;
     // Length of entire cobs block
-    // uint8_t cobsLen;
+    uint8_t cobsLen;
     // Index into current cobs code block
     // uint8_t cobsIndex;
     bool atBlock;
@@ -108,6 +109,7 @@ class MarlinSerial //: public Stream
     uint16_t readUInt16NoCheckNoCobs();
 
     uint8_t readNoCheckCobs(void);
+    uint16_t readUInt16NoCheckCobs();
     float readFloatNoCheckCobs();
 
     uint16_t serReadUInt16();

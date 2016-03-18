@@ -5,6 +5,9 @@
 * The Origin of this code is Ultimaker2Marlin (https://github.com/Ultimaker/Ultimaker2Marlin).
 ************************************************************************************************/
 
+// xxx
+#include <stdio.h>
+
 #include <util/crc16.h>
 #include "MarlinSerial.h"
 
@@ -25,9 +28,9 @@ void MarlinSerial::peekChecksum(uint16_t *checksum, uint8_t count) {
         *checksum = _crc_xmodem_update(*checksum, peekN(i));
 }
 
-void MarlinSerial::cobsInit(uint16_t nu_payloadLength) {
+void MarlinSerial::cobsInit(uint16_t payloadLength) {
 
-    // cobsLen = payloadLength;
+    cobsLen = payloadLength;
     // cobsIndex = 0;
 
     atCobsBlock();
@@ -45,7 +48,7 @@ void MarlinSerial::atCobsBlock() {
     //
     //
     // cobsCodeLen = readNoCheckNoCobs() - 1;
-    atBlock = true;
+    // atBlock = true;
     cobsCodeLen = -1;
 }
 
@@ -73,6 +76,7 @@ uint8_t MarlinSerial::readNoCheckCobs(void)
     }
 #endif
 
+// #if 0
     if (cobsCodeLen == -1) {
         cobsCodeLen = readNoCheckNoCobs() - 1;
     }
@@ -80,6 +84,19 @@ uint8_t MarlinSerial::readNoCheckCobs(void)
         cobsCodeLen = -1;
         return 0;
     }
+// #endif
+
+    cobsLen--;
+
+    assert(cobsLen >= 0);
+
+#if 0
+    if (cobsCodeLen == 0) {
+        if (cobsLen)
+            atCobsBlock();
+        return 0;
+    }
+#endif
 
     cobsCodeLen--;
     // cobsIndex++;
@@ -93,6 +110,8 @@ uint8_t MarlinSerial::readNoCheckNoCobs(void)
 {
     unsigned char c = rxBuffer.buffer[rxBuffer.tail];
     rxBuffer.tail = (rxBuffer.tail + 1) & RX_BUFFER_MASK;
+
+    printf("Read '0x%x', size %d bytes\n", c, _available());
     return c;
 }
 
@@ -117,9 +136,9 @@ float MarlinSerial::readFloatNoCheckCobs()
 uint16_t MarlinSerial::readUInt16NoCheckNoCobs()
 {
 
-    if ((rxBuffer.head - rxBuffer.tail) >= 4) {
-        int32_t i = *(int32_t*)(rxBuffer.buffer + rxBuffer.tail);
-        rxBuffer.tail += 4;
+    if ((rxBuffer.head - rxBuffer.tail) >= 2) {
+        uint16_t i = *(uint16_t*)(rxBuffer.buffer + rxBuffer.tail);
+        rxBuffer.tail += 2;
         return i;
     }
 
@@ -128,13 +147,28 @@ uint16_t MarlinSerial::readUInt16NoCheckNoCobs()
     return (b2<<8) + b1;
 }
 
+uint16_t MarlinSerial::readUInt16NoCheckCobs()
+{
+/*
+    if ((rxBuffer.head - rxBuffer.tail) >= 2) {
+        uint16_t i = *(uint16_t*)(rxBuffer.buffer + rxBuffer.tail);
+        rxBuffer.tail += 2;
+        return i;
+    }
+*/
+
+    uint8_t  b1 = readNoCheckCobs();
+    uint16_t b2 = readNoCheckCobs();
+    return (b2<<8) + b1;
+}
+
 uint16_t MarlinSerial::serReadUInt16()
 {
     simassert(0);
 #if 0
-    if ((rx_buffer.head - rx_buffer.tail) >= 4) {
-        int32_t i = *(int32_t*)(rx_buffer.buffer + rx_buffer.tail);
-        rx_buffer.tail += 4;
+    if ((rx_buffer.head - rx_buffer.tail) >= 2) {
+        uint16_t i = *(int16_t*)(rx_buffer.buffer + rx_buffer.tail);
+        rx_buffer.tail += 2;
         return i;
     }
 #endif
@@ -181,6 +215,7 @@ uint32_t MarlinSerial::serReadUInt32()
 
 void MarlinSerial::flush(uint8_t n) {
     rxBuffer.tail = (rxBuffer.tail + n) & RX_BUFFER_MASK;
+    printf("Flush %d, size %d\n", n, _available());
 }
 
 void MarlinSerial::flush()
@@ -191,6 +226,7 @@ void MarlinSerial::flush()
   // may be written to rx_buffer_tail, making it appear as if the buffer
   // were full, not empty.
   rxBuffer.head = rxBuffer.tail;
+  printf("Flush, size %d\n", _available());
 }
 
 // Preinstantiate Objects //////////////////////////////////////////////////////

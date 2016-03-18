@@ -141,7 +141,7 @@ void charClock() {
 
         for (int i=0; i<nread; i++) {
 
-            int rxChar = buf[i];
+            unsigned char rxChar = buf[i];
 
             // printf("serial read: '0x%x'\n", rxChar);
 
@@ -161,6 +161,8 @@ void charClock() {
                 assert(0);
             }
             MSerial.store_char(rxChar);
+
+            // printf("Stored : '0x%x', size %d bytes\n", rxChar, MSerial._available());
         }
     }
 }
