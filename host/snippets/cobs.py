@@ -30,15 +30,6 @@ LenCobs =               256 - LenHeader # = 256 - 8 = 248
 # 0x4: (0, 0) -> (1, 1)
 #
 
-
-# Optimiert:
-#
-# Paketgrösse insgesamt max. 256 bytes
-# [ B 0x0, SOH
-#   B    , anz. lbytes länge [1..4]
-#   
-#
-
 nullByte = chr(0)
 
 def encodeCobs(stream, blockLen=LenCobs):
@@ -74,7 +65,7 @@ def encodeCobs(stream, blockLen=LenCobs):
     for pos in range(size):
 
         if data[pos] == nullByte:
-            print "found 0 at", pos, len(cobsBody)
+            # print "found 0 at", pos, len(cobsBody)
             cobsResult += chr(len(cobsBody)+1)
             cobsResult += cobsBody
             cobsBody = ""
@@ -90,6 +81,13 @@ def encodeCobs(stream, blockLen=LenCobs):
                 cobsResult += cobsBody
 
         # print "cobs: %s" % cobsResult.encode("hex")
+
+    # xxx debug
+    if len(cobsResult) != blockLen:
+        print "Error, cobs encoded block %d bytes instead of %d." % (len(cobsResult), blockLen)
+        print "data: ", len(data), data.encode("hex")
+        print "cobs: ", len(cobsResult), cobsResult.encode("hex")
+        assert(0)
 
     return cobsResult
 
@@ -223,12 +221,12 @@ if __name__ == "__main__":
             break
 
         cl = len(cobs)
-        print "len cobs block: ", cl
+        # print "len cobs block: ", cl
         assert(cl <= LenCobs)
 
         packet = encodePacket(linenr, cmd, cl, cobs)
         cp = len(packet)
-        print "len entire packet: ", cp
+        # print "len entire packet: ", cp
         assert(cp <= 256)
 
         # decode
@@ -236,12 +234,12 @@ if __name__ == "__main__":
         assert(line == linenr)
         assert(c == cmd)
 
-        print "cobs len: ", cl, l, len(data)
+        # print "cobs len: ", cl, l, len(data)
         assert(len(data) == cl)
 
         decodedBlob = decodeCobs(data, l)
 
-        print "len decodedBlob:", len(decodedBlob)
+        # print "len decodedBlob:", len(decodedBlob)
 
         out.write(decodedBlob)
         # end decode
