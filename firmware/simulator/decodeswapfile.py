@@ -61,8 +61,9 @@ while True:
 
     readPos += 1
 
-    l = decodeUInt32(inFile)
-    print "Packet Len read: ", l
+    # l = decodeUInt32(inFile)
+    # l = decodeUInt8(inFile)
+    # print "Packet Len read: ", l
 
     ll = 0
     if cmd == CmdDirG1:
@@ -120,10 +121,10 @@ while True:
         print "n-deccel:", nd
         ll += 2 + nd*2
 
-        print "ll: ", l, ll
+        # print "ll: ", l, ll
         # assert(l == ll)
-        if l != ll:
-            print "Packet length doesn't match data length!", l, ll
+        # if l != ll:
+            # print "Packet length doesn't match data length!", l, ll
 
         tn = None
         for i in range(na):
