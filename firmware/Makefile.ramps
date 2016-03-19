@@ -15,7 +15,7 @@ MCU = atmega2560
 AVRDUDE_ARD_PROGRAMMER = wiring
 # End Mega
 
-ARDUINO_LIBS = SPI fw sdcard
+ARDUINO_LIBS = SPI fw sdcard LiquidCrystal
 USER_LIB_PATH = .
 
 ARDUINO_PORT = /dev/ttyACM0
