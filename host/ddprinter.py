@@ -138,12 +138,13 @@ class Printer(Serial):
         return self.lastCommands[lastLine]
 
     # Check a printer response for an error
-    def checkErrorResponse(self, respCode, length, payload):
+    def checkErrorResponse(self, respCode, length, payload, handleError=True):
 
         if respCode == RespUnknownCommand:
 
             self.gui.logError("ERROR: RespUnknownCommand '0x%x'" % ord(payload))
-            raise FatalPrinterError(ResponseNames[respCode])
+            if handleError:
+                raise FatalPrinterError(ResponseNames[respCode])
 
         elif respCode == RespKilled:
 
@@ -164,9 +165,10 @@ class Printer(Serial):
 
             else:
 
-                self.gui.logError("ERROR: PRINTER KILLED! Reason: %s")
+                self.gui.logError("ERROR: PRINTER KILLED! Reason: %s" % RespCodeNames[reason])
 
-            raise FatalPrinterError(ResponseNames[respCode])
+            if handleError:
+                raise FatalPrinterError(ResponseNames[respCode])
 
         elif respCode == RespRXError:
 
@@ -182,30 +184,35 @@ class Printer(Serial):
 
             # flags: M_UCSRxA & 0x1C;
             self.gui.logRecv("RespRXError: LastLine %d, flags: 0x%x (%s)" % (lastLine, flags, flagstr))
-            return self.commandResend(lastLine)
+            if handleError:
+                return self.commandResend(lastLine)
 
         elif respCode == RespRXCRCError:
 
             lastLine = ord(payload)
             self.gui.logRecv("RespRXCRCError:", lastLine)
-            return self.commandResend(lastLine)
+            if handleError:
+                return self.commandResend(lastLine)
 
         elif respCode == RespSerNumberError:
 
             lastLine = ord(payload)
             self.gui.logRecv("RespSerNumberError:", lastLine)
-            return self.commandResend(lastLine)
+            if handleError:
+                return self.commandResend(lastLine)
 
         elif respCode == RespRXTimeoutError:
 
             lastLine = ord(payload)
             self.gui.logRecv("RespRXTimeoutError:", lastLine)
-            return self.commandResend(lastLine)
+            if handleError:
+                return self.commandResend(lastLine)
 
-        elif respCode < 128: # Buffered commands send ACK
+        elif respCode < 128: # Range of errorcodes
 
             self.gui.logError("ERROR: unknown response code '0x%x'" % respCode)
-            raise FatalPrinterError(ResponseNames[respCode])
+            if handleError:
+                raise FatalPrinterError(ResponseNames[respCode])
 
     # Read a response from printer, "handle" exceptions
     def safeReadline(self):
@@ -277,7 +284,7 @@ class Printer(Serial):
             # self.gui.log("c: 0x%x" % ord(c))
         return res
 
-    def readResponse(self, nusendCmd):
+    def readResponse(self):
 
         s = self.readWithTimeout(1) # read response code
 
@@ -560,7 +567,7 @@ class Printer(Serial):
 
             try:
                 # recvLine = self.safeReadline()        
-                (cmd, length, payload) = self.readResponse(sendCmd)        
+                (cmd, length, payload) = self.readResponse()        
             except SERIALDISCON:
                 self.gui.logError("Line disconnected in send2(), reconnecting!")
                 self.reconnect()
