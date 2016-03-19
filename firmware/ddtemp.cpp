@@ -28,6 +28,7 @@
 #include "ddserial.h"
 #include "ddcommands.h"
 #include "fastio.h"
+#include "ddlcd.h"
 
 // Redundant definitions to avoid include of ddprint.h
 extern void watchdog_reset();
@@ -194,11 +195,13 @@ void TempControl::heater() {
 
     // Check if temperature is within the correct range
     if(current_temperature[0] < HEATER_0_MINTEMP) {
+        LCDMSGKILL(RespMinTemp, 1, current_temperature[0]);
         txBuffer.sendSimpleResponse(RespKilled, RespMinTemp, 1);
         kill();
     }
     else {
         if(current_temperature[0] > HEATER_0_MAXTEMP) {
+            LCDMSGKILL(RespMaxTemp, 1, current_temperature[0]);
             txBuffer.sendSimpleResponse(RespKilled, RespMaxTemp, 1);
             kill();
         }
@@ -284,11 +287,13 @@ void TempControl::heater() {
 
     // Check if temperature is within the correct range
     if(current_temperature_bed < BED_MINTEMP) {
+        LCDMSGKILL(RespMinTemp, 0, current_temperature_bed);
         txBuffer.sendSimpleResponse(RespKilled, RespMinTemp, 0);
         kill();
     }
     else {
         if(current_temperature_bed > BED_MAXTEMP) {
+            LCDMSGKILL(RespMaxTemp, 0, current_temperature_bed);
             txBuffer.sendSimpleResponse(RespKilled, RespMaxTemp, 0);
             kill();
         }

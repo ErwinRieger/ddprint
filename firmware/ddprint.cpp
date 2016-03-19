@@ -34,6 +34,7 @@
 #include "filsensor.h"
 #include "ddserial.h"
 #include "ddcommands.h"
+#include "ddlcd.h"
 
 //The ASCII buffer for recieving from SD:
 #define SD_BUFFER_SIZE 512
@@ -140,9 +141,11 @@ void kill() {
 
 void mAssert(uint16_t line, char* file) {
 
-    txBuffer.flush();
+    LCDMSGKILL(RespAssertion, line, file);
 
-    txBuffer.sendResponseStart(RespKilled, 1+strlen(file));
+    txBuffer.flush();
+    txBuffer.sendResponseStart(RespKilled, sizeof(uint8_t)+sizeof(uint16_t)+sizeof(uint8_t)+strlen(file));
+    txBuffer.pushCharChecksum(RespAssertion);
     txBuffer.sendResponseValue(line);
     txBuffer.sendResponseValue(file, strlen(file));
     txBuffer.sendResponseEnd();
@@ -210,9 +213,14 @@ void setup() {
 
     analogWrite(LED_PIN, 255 * 0.5);
 
-    // lcd_init();
+    #if defined(REPRAP_DISCOUNT_SMART_CONTROLLER)
+    lcd.begin(20, 4);
+    lcd.print("OK");
+    #endif
+    
 
     if (! swapDev.swapInit()) {
+        LCDMSGKILL(RespSDInit, "swapDev.swapInit()", "");
         txBuffer.sendSimpleResponse(RespKilled, RespSDInit);
         kill();
     }
@@ -513,6 +521,7 @@ class FillBufferTask : public Protothread {
                     SERIAL_ECHOLN(sDReader.getBufferPtr());
 #endif
 
+                    LCDMSGKILL(RespUnknownBCommand, cmd, "");
                     txBuffer.sendResponseStart(RespKilled, 2);
                     txBuffer.pushCharChecksum(RespUnknownBCommand);
                     txBuffer.pushCharChecksum(cmd);
@@ -1044,8 +1053,6 @@ void Printer::cmdMove(MoveType mt) {
     massert(mt != MoveTypeNone);
     massert(printerState == StateInit);
 
-massert(txBuffer.empty());
-
     printerState = StateStart;
     moveType = mt;
 
@@ -1471,7 +1478,7 @@ class UsbCommand : public Protothread {
 
 // xxx debug
 //
-        uint8_t pli;
+        /////////7 uint8_t pli;
 
         uint8_t lenByte1;
         uint8_t lenByte2;
@@ -1739,13 +1746,12 @@ massert(lenByte1);
                 // Debug, must be called before cobsInit() since this consumes the first byte of
                 // the payload.
 simassert(payloadLength > 0);
-                tell = MSerial.tellN(payloadLength); // xxx assume payloadLength >= 1, needed for while loop below, can't use (MSerial.getRXTail() < tell) expression there
+                tell = MSerial.tellN(payloadLength+3); // xxx assume payloadLength >= 1, needed for while loop below, can't use (MSerial.getRXTail() < tell) expression there
 
                 // Tell RxBuffer that it's pointing to the beginning of a COBS block
                 if (payloadLength) // xxx needed?
                     MSerial.cobsInit(payloadLength);
-pli=0;
-                // while (MSerial.getRXTail() != tell) {
+/////////7 pli=0;
                 while (MSerial.cobsAvailable()) {
 
                     // massert (MSerial.getError() == 0);
@@ -1800,7 +1806,7 @@ printf("de-cops: %d/%d, ci: %d, 0x%x\n", pli++, payloadLength, MSerial.cobsCodeL
                 if (serialNumber==0)
                     serialNumber = 1;
 
-                massert(((tell+3) & RX_BUFFER_MASK) == MSerial.getRXTail());
+                massert((tell & RX_BUFFER_MASK) == MSerial.getRXTail());
 
                 // USBACK;
                 txBuffer.sendACK();
@@ -2109,6 +2115,7 @@ FWINLINE void loop() {
                 // SERIAL_ECHO(current_pos_steps[Y_AXIS]);
                 // SERIAL_ECHO(", ");
                 // SERIAL_ECHOLN(current_pos_steps[Z_AXIS]);
+                LCDMSGKILL(RespHardwareEndstop, "", "");
                 txBuffer.sendResponseStart(RespKilled, 1 + 3*(sizeof(int32_t)+1));
                 txBuffer.pushCharChecksum(RespHardwareEndstop);
                 txBuffer.sendResponseValue((uint8_t*)current_pos_steps, 3*sizeof(int32_t));
@@ -2126,6 +2133,7 @@ FWINLINE void loop() {
                 // SERIAL_ECHO(current_pos_steps[Y_AXIS]);
                 // SERIAL_ECHO(", ");
                 // SERIAL_ECHOLN(current_pos_steps[Z_AXIS]);
+                LCDMSGKILL(RespSoftwareEndstop, "", "");
                 txBuffer.sendResponseStart(RespKilled, 1 + 3*(sizeof(int32_t)+1));
                 txBuffer.pushCharChecksum(RespSoftwareEndstop);
                 txBuffer.sendResponseValue((uint8_t*)current_pos_steps, 3*sizeof(int32_t));
@@ -2186,7 +2194,8 @@ FWINLINE void loop() {
 
     // Check swap dev error
     if (swapDev.errorCode()) {
-        txBuffer.sendSimpleResponse(RespKilled, RespSDError);
+        LCDMSGKILL(RespSDError, swapDev.errorCode(), "");
+        txBuffer.sendSimpleResponse(RespKilled, RespSDError, swapDev.errorCode());
         kill();
     }
 }

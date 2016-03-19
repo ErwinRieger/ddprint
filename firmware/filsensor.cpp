@@ -8,6 +8,7 @@
 #include "fastio.h"
 #include "ddserial.h"
 #include "ddcommands.h"
+#include "ddlcd.h"
 
 #if defined(ADNSFS)
     // #include "adns9800fwa4.h"
@@ -830,7 +831,8 @@ void FilamentSensorADNS9800::reset(){
     // SERIAL_ECHOPGM("SROM ID: ");
     // MSerial.println(srom_id, HEX );
     
-    if (! (srom_id == SROMVER)) {
+    if (srom_id != SROMVER) {
+        LCDMSGKILL(RespKilled, "srom_id != SROMVER", "");
         txBuffer.sendSimpleResponse(RespKilled, RespADNS9800Init);
         kill();
     }

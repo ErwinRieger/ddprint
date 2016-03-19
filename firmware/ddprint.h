@@ -51,8 +51,8 @@
 #define MSG_KILLED "KILLED. "
 #endif
 
-#define LCD_MESSAGEPGM(x) SERIAL_PROTOCOLLNPGM(x)
-#define lcd_setstatus(message) SERIAL_PROTOCOLLN(message)
+// #define LCD_MESSAGEPGM(x) SERIAL_PROTOCOLLNPGM(x)
+// #define lcd_setstatus(message) SERIAL_PROTOCOLLN(message)
 // #if defined(MarlinFw)
     // #define LCD_ALERTMESSAGEPGM(s) SERIAL_PROTOCOLLNPGM(s)
 // #endif
