@@ -358,7 +358,6 @@ if __name__ == "__main__":
     print "s :", s
     print "sd:", decodedBlob.encode("hex")
 
-    sys.exit(0)
     #######################
     assert(s[:-1] == decodedBlob)
 
