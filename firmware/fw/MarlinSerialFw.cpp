@@ -47,7 +47,7 @@
 
 MarlinSerial::MarlinSerial()
 {
-    rx_buffer.head = rx_buffer.tail = rxerror = 0;
+    rxBuffer.head = rxBuffer.tail = rxerror = 0;
 }
 
 // Public Methods //////////////////////////////////////////////////////////////
