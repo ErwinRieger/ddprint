@@ -1553,10 +1553,6 @@ class UsbCommand : public Protothread {
         //
         FWINLINE SerAvailableState waitForSerial(uint8_t nChars) {
 
-            static bool print=true;
-if (print)
-    printf("wait for data, len: 0x%x\n", nChars);
-print=false;
 // XXXXXXXXXXx assert(nChars)
 //
             //
@@ -1569,7 +1565,6 @@ print=false;
 
             if (MSerial._available() >= nChars) {
                 startTS = ts; // reset timeout 
-print=true;
                 return CharsAvailable;
             }
 
@@ -1583,7 +1578,6 @@ print=true;
 
                 txBuffer.sendSimpleResponse(RespRXTimeoutError, serialNumber);
                 reset();
-print=true;
                 return SerTimeout;
             }
 
@@ -1751,7 +1745,8 @@ simassert(payloadLength > 0);
                 if (payloadLength) // xxx needed?
                     MSerial.cobsInit(payloadLength);
 pli=0;
-                while (MSerial.getRXTail() != tell) {
+                // while (MSerial.getRXTail() != tell) {
+                while (MSerial.cobsAvailable()) {
 
                     // massert (MSerial.getError() == 0);
 
@@ -1764,17 +1759,19 @@ pli=0;
                     // c = MSerial.readNoCheckNoCobs();
                     c = MSerial.readNoCheckCobs();
                     // checksum = _crc_xmodem_update(checksum, c);
-printf("de-cops: %d/%d, ci: %d, 0x%x\n", pli++, payloadLength, MSerial.cobsCodeLen, c);
+// printf("de-cops: %d/%d, ci: %d, 0x%x\n", pli++, payloadLength, MSerial.cobsCodeLen, c);
                     swapDev.addByte(c);
                     PT_WAIT_WHILE( swapDev.isBusyWriting() );
                 }
 
+#if 0
 if (MSerial.cobsCodeLen == 0) {
                     c = MSerial.readNoCheckCobs();
 printf("de-cops: %d/%d, ci: %d, 0x%x\n", pli++, payloadLength, MSerial.cobsCodeLen, c);
                     swapDev.addByte(c);
                     PT_WAIT_WHILE( swapDev.isBusyWriting() );
 }
+#endif
 
                 // Read checksum
                 // PT_WAIT_WHILE( (av = waitForSerial(2)) == NothinAvailable );

@@ -82,14 +82,10 @@ class MarlinSerial //: public Stream
 
     ring_buffer rxBuffer;
 
-  public: // xxxxxxxxxxxx debug
+    // Length of cobs block payload
+    uint8_t cobsLen;
     // Length of current cobs code block
     int16_t cobsCodeLen;
-    // Length of entire cobs block
-    uint8_t cobsLen;
-    // Index into current cobs code block
-    // uint8_t cobsIndex;
-    bool atBlock;
 
     void atCobsBlock();
     uint8_t getCobsByte();
@@ -102,6 +98,7 @@ class MarlinSerial //: public Stream
     void  peekChecksum(uint16_t *checksum, uint8_t count);
 
     void cobsInit(uint16_t payloadLength);
+    bool cobsAvailable() { return (cobsLen > 0) || (cobsCodeLen == 1); }
 
     uint8_t serReadNoCheck(void) { simassert(0); }
 

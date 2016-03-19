@@ -31,75 +31,27 @@ void MarlinSerial::peekChecksum(uint16_t *checksum, uint8_t count) {
 void MarlinSerial::cobsInit(uint16_t payloadLength) {
 
     cobsLen = payloadLength;
-    // cobsIndex = 0;
-
     atCobsBlock();
 }
 
 void MarlinSerial::atCobsBlock() {
-
-    // cobsCodeLen = rxBuffer.buffer[rxBuffer.tail];;
-    // if (cobsCodeLen == 0xff)
-        // cobsCodeLen = cobsLen;
-
-    // cobsIndex++;
-    //
-    //
-    //
-    //
-    // cobsCodeLen = readNoCheckNoCobs() - 1;
-    // atBlock = true;
-    cobsCodeLen = -1;
+    cobsCodeLen = 0;
 }
 
 uint8_t MarlinSerial::readNoCheckCobs(void)
 {
-#if 0
-    if (cobsIndex == cobsCodeLen) {
+
+    if (cobsCodeLen == 0) {
+        cobsLen--;
+        cobsCodeLen = readNoCheckNoCobs();
+    }
+    if (cobsCodeLen == 1) {
         atCobsBlock();
         return 0;
     }
-    else if (cobsIndex == cobsLen) {
-        simassert(0);
-    }
-#endif
-#if 0
-    if (atBlock) {
-        cobsCodeLen = readNoCheckNoCobs() - 1;
-        if (cobsCodeLen == 0) {
-            atCobsBlock();
-            return 0;
-        }
-        else {
-            atBlock = false;
-        }
-    }
-#endif
-
-// #if 0
-    if (cobsCodeLen == -1) {
-        cobsCodeLen = readNoCheckNoCobs() - 1;
-    }
-    if (cobsCodeLen == 0) {
-        cobsCodeLen = -1;
-        return 0;
-    }
-// #endif
 
     cobsLen--;
-
-    assert(cobsLen >= 0);
-
-#if 0
-    if (cobsCodeLen == 0) {
-        if (cobsLen)
-            atCobsBlock();
-        return 0;
-    }
-#endif
-
     cobsCodeLen--;
-    // cobsIndex++;
 
     uint8_t c = readNoCheckNoCobs();
     simassert(c);
@@ -110,8 +62,6 @@ uint8_t MarlinSerial::readNoCheckNoCobs(void)
 {
     unsigned char c = rxBuffer.buffer[rxBuffer.tail];
     rxBuffer.tail = (rxBuffer.tail + 1) & RX_BUFFER_MASK;
-
-    printf("Read '0x%x', size %d bytes\n", c, _available());
     return c;
 }
 
@@ -215,7 +165,6 @@ uint32_t MarlinSerial::serReadUInt32()
 
 void MarlinSerial::flush(uint8_t n) {
     rxBuffer.tail = (rxBuffer.tail + n) & RX_BUFFER_MASK;
-    printf("Flush %d, size %d\n", n, _available());
 }
 
 void MarlinSerial::flush()
@@ -226,7 +175,6 @@ void MarlinSerial::flush()
   // may be written to rx_buffer_tail, making it appear as if the buffer
   // were full, not empty.
   rxBuffer.head = rxBuffer.tail;
-  printf("Flush, size %d\n", _available());
 }
 
 // Preinstantiate Objects //////////////////////////////////////////////////////
