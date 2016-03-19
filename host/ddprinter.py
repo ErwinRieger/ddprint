@@ -160,7 +160,9 @@ class Printer(Serial):
 
             elif reason == RespAssertion:
 
-                (line, filename) = struct.unpack("<Hp", payload[1:])
+                # Useless python struct 'p' format...
+                (line, slen) = struct.unpack("<HB", payload[1:4])
+                filename = payload[4:4+slen]
                 self.gui.logError("ERROR: PRINTER KILLED! Reason: %s, Line: %d, File: %s" % (RespCodeNames[reason], line, filename))
 
             else:
