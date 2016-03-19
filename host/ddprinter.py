@@ -438,27 +438,10 @@ class Printer(Serial):
         #
         binary  = struct.pack("<B", SOH)
 
-        header = struct.pack("<BBH", self.lineNr, binCmd, payloadSize+0x101)
+        header = struct.pack("<BBB", self.lineNr, binCmd, payloadSize+0x01)
 
         binary += header
         checksum = crc16.crc16xmodem(header)
-
-        """
-        body += binCmd
-        if binPayload:
-
-
-            lenFmt = "<H"
-            if ord(binCmd) != CmdBlock:
-
-                lenFmt = "<I"
-                lenPayload = min(payloadSize, 256)
-
-            body += struct.pack(lenFmt, payloadSize)
-            body += binPayload[:lenPayload]
-        else:
-            body += struct.pack("<I", 0);
-        """
 
         if binPayload:
             binary += binPayload
