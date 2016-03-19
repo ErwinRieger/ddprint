@@ -458,7 +458,8 @@ def main():
     argParser.add_argument("-np", dest="noPrime", action="store_const", const=True, help="Debug: don't prime nozzle, to test extrusion-less moves.")
 
     # fake endstops as long we have no real ones
-    argParser.add_argument("-F", dest="fakeendstop", action="store", type=bool, help="fake endstops", default=False)
+    argParser.add_argument("-F", dest="fakeendstop", action="store", type=bool, help="Debug: fake endstops", default=False)
+    argParser.add_argument("-nc", dest="noCoolDown", action="store", type=bool, help="Debug: don't wait for heater cool down after print.", default=False)
 
     argParser.add_argument("-fr", dest="feedrate", action="store", type=float, help="Feedrate for move commands.", default=0)
 
@@ -643,8 +644,9 @@ def main():
 
         printer.sendCommand(CmdDisableSteppers)
 
-        printer.coolDown(HeaterEx1, wait=150)
-        printer.coolDown(HeaterBed, wait=55)
+        if not args.noCoolDown:
+            printer.coolDown(HeaterEx1, wait=150)
+            printer.coolDown(HeaterBed, wait=55)
 
         printer.readMore()
 
