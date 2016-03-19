@@ -101,7 +101,9 @@ class Printer(Serial):
         self.gcodeData = None
         # self.gcodePos = 0
 
-        self.lineNr = 0
+        # Command sequence number [1..255]
+        self.lineNr = 1
+
         # The last (max. 256) commands sent, for command re-send
         self.lastCommands = {}
 
@@ -124,7 +126,7 @@ class Printer(Serial):
         # Wait 0.1 sec, give firmware time to drain buffers
         time.sleep(0.1)
 
-        if lastLine == (self.lineNr % 255):
+        if lastLine == self.lineNr:
             self.gui.log("Command was sent ok, faking ACK...:", lastLine)
             # Das ursprünglich gesendete kommando ging zwar duch, danach 
             # gab es jedoch einen komm. fehler, so dass das ACK nicht mehr
@@ -376,9 +378,14 @@ class Printer(Serial):
         self.resetLineNumber()
 
     def resetLineNumber(self):
-        self.lineNr = 0
+        self.lineNr = 1
         self.sendCommand(CmdResetLineNr)
-    
+   
+    def incLineNumber(self):
+        self.lineNr += 1
+        if self.lineNr == 256:
+            self.lineNr = 1
+
     def sendPrinterInit(self):
         self.curdirbits = 0
         self.sendCommand(CmdPrinterInit)
@@ -431,8 +438,7 @@ class Printer(Serial):
         #
         binary  = struct.pack("<B", SOH)
 
-        lineNr = (self.lineNr % 255)
-        header = struct.pack("<BBH", lineNr+1, binCmd, payloadSize+0x101)
+        header = struct.pack("<BBH", self.lineNr, binCmd, payloadSize+0x101)
 
         binary += header
         checksum = crc16.crc16xmodem(header)
@@ -474,9 +480,9 @@ class Printer(Serial):
         binary += struct.pack("<BH", cflags, checksum)
 
         # Store for later possible command resend
-        self.lastCommands[lineNr] = binary
+        self.lastCommands[self.lineNr] = binary
 
-        self.lineNr += 1
+        self.incLineNumber()
 
         return binary
 

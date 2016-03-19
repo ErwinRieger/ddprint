@@ -1453,11 +1453,7 @@ class UsbCommand : public Protothread {
         // detect timeout's.
         unsigned long startTS;
 
-        // Number of characters read for current command
-        // uint16_t serial_count;
-
-        // Command serial number
-        // unsigned long serialNumber;
+        // Command serial number [1..255]
         uint8_t serialNumber;
 
         // Filepos where we store the current command, for
@@ -1487,12 +1483,10 @@ class UsbCommand : public Protothread {
         }
 
         void init() {
-            // serial_count = 0;
-            serialNumber = 0;
+            serialNumber = 1;
         }
 
         void reset() {
-            // serial_count = 0;
 
             // Drain usbserial buffers for 50 ms
             unsigned long drainEnd = millis() + 50;
@@ -1630,7 +1624,6 @@ print=true;
 
             startTS = millis();
 
-            // serial_count = 0;
             checksum = 0;
             // checksum = _crc_xmodem_update(checksum, SOH);
 
@@ -1643,13 +1636,6 @@ print=true;
             // Packet serial number
             c = MSerial.readNoCheckNoCobs();
             checksum = _crc_xmodem_update(checksum, c);
-
-            if (c == SOH) {
-                printf("ERROR: serial number is 0!!!\n");
-                PT_RESTART();   // does a return
-            }
-
-            c--;
 
             // SERIAL_ECHO("serail: ");
             // SERIAL_PROTOCOLLN((uint16_t)c);
@@ -1690,7 +1676,8 @@ print=true;
                 /// // Read payload length, 2 or 4 bytes
                 // Read payload length 2 bytes
                 lenByte1 = MSerial.readNoCheckNoCobs();
-                assert(lenByte1);
+// xxxx
+massert(lenByte1);
                 checksum = _crc_xmodem_update(checksum, lenByte1);
                 lenByte1 -= 0x01;
                 payloadLength = lenByte1;
@@ -1699,7 +1686,8 @@ print=true;
                 // PT_WAIT_WHILE( swapDev.isBusyWriting() );
 
                 lenByte2 = MSerial.readNoCheckNoCobs();
-                assert(lenByte2);
+// xxxx
+massert(lenByte2);
                 checksum = _crc_xmodem_update(checksum, lenByte2);
                 lenByte2 -= 0x01;
                 payloadLength |= (lenByte2 << 8);
@@ -1763,7 +1751,6 @@ print=true;
                 if (payloadLength) // xxx needed?
                     MSerial.cobsInit(payloadLength);
 pli=0;
-                // while (serial_count < payloadLength) 
                 while (MSerial.getRXTail() != tell) {
 
                     // massert (MSerial.getError() == 0);
@@ -1780,8 +1767,6 @@ pli=0;
 printf("de-cops: %d/%d, ci: %d, 0x%x\n", pli++, payloadLength, MSerial.cobsCodeLen, c);
                     swapDev.addByte(c);
                     PT_WAIT_WHILE( swapDev.isBusyWriting() );
-
-                    // serial_count++;
                 }
 
 if (MSerial.cobsCodeLen == 0) {
@@ -1814,10 +1799,9 @@ printf("de-cops: %d/%d, ci: %d, 0x%x\n", pli++, payloadLength, MSerial.cobsCodeL
                 }
 
                 // Successfully received command, increment command counter
-                if (serialNumber==254)
-                    serialNumber = 0;
-                else
-                    serialNumber++;
+                serialNumber++;
+                if (serialNumber==0)
+                    serialNumber = 1;
 
                 massert(((tell+3) & RX_BUFFER_MASK) == MSerial.getRXTail());
 
@@ -1830,7 +1814,7 @@ printf("de-cops: %d/%d, ci: %d, 0x%x\n", pli++, payloadLength, MSerial.cobsCodeL
                 // Direct command
                 // 
                 if (commandByte == CmdResetLineNr) {
-                    serialNumber = 0;
+                    serialNumber = 1;
                 }
                 else {
                     if (c != serialNumber) {
@@ -1845,7 +1829,8 @@ printf("de-cops: %d/%d, ci: %d, 0x%x\n", pli++, payloadLength, MSerial.cobsCodeL
                 MSerial.peekChecksum(&checksum, 2);
                 i = MSerial.readUInt16NoCheckNoCobs();
 
-                assert(((i&0xff)!=0) && ((i&0xff00)!=0));
+// xxxx
+massert(((i&0xff)!=0) && ((i&0xff00)!=0));
 
                 payloadLength = i-0x0101;
 
@@ -1870,10 +1855,9 @@ printf("de-cops: %d/%d, ci: %d, 0x%x\n", pli++, payloadLength, MSerial.cobsCodeL
                     PT_RESTART();   // does a return
 
                 // Successfully received command, increment command counter
-                if (serialNumber==254)
-                    serialNumber = 0;
-                else
-                    serialNumber++;
+                serialNumber++;
+                if (serialNumber==0)
+                    serialNumber = 1;
 
                 // USBACK;
 
