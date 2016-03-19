@@ -57,7 +57,7 @@ import ddtest
 
 from ddprofile import PrinterProfile, MatProfile, NozzleProfile
 from ddplanner import Planner
-from ddprinter import Printer
+from ddprinter import Printer, RxTimeout
 
 #
 # todo check max move length (max_length_steps)
@@ -467,9 +467,11 @@ def main():
 
     sp = subparsers.add_parser("autoTune", help=u"Autotune hotend PID values.")
 
+    sp = subparsers.add_parser("binmon", help=u"Monitor serial printer interface (binary responses).")
+
     sp = subparsers.add_parser("changenozzle", help=u"Heat hotend and change nozzle.")
 
-    sp = subparsers.add_parser("mon", help=u"Monitor serial printer interface.")
+    sp = subparsers.add_parser("mon", help=u"Monitor serial printer interface (asci).")
 
     sp = subparsers.add_parser("print", help=u"Download and print file at once.")
     sp.add_argument("gfile", help="Input GCode file.")
@@ -558,6 +560,19 @@ def main():
     elif args.mode == 'changenozzle':
 
         util.changeNozzle(args, parser)
+
+    elif args.mode == "binmon":
+        printer.initSerial(args.device, args.baud)
+        while True:
+            try:
+                (cmd, length, payload) = printer.readResponse()        
+            except RxTimeout:
+                pass
+            else:
+                print "Response cmd    :", cmd
+                print "Response len    :", length
+                print "Response payload:", payload.encode("hex")
+                printer.checkErrorResponse(cmd, length, payload, False)
 
     elif args.mode == 'print':
 
@@ -673,7 +688,7 @@ def main():
 
         planner.finishMoves()
 
-    elif args.mode == 'mon':
+    elif args.mode == "mon":
         printer.initSerial(args.device, args.baud)
         while True:
             printer.readMore()
