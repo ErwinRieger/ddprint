@@ -556,35 +556,9 @@ class Move(object):
             cobsBlock = cobs.encodeCobs(stream)
 
             if not cobsBlock:
-                return cmds
+                break
 
             cmds.append(( ddprintcommands.CmdBlock, cobsBlock ))
-
-        # Not reached
-
-        # XXXXXXXXXXX unused
-        #
-        # Create 245 (COBS) byte blocks
-        #
-        payloadSize = len(payLoad)
-        lenPayload = min(payloadSize, 245)
-
-        cmds.append(( cmdHex, payLoad ))
-
-        pos = lenPayload
-        payloadSize -= lenPayload
-
-        while payloadSize:
-
-            # print "payloadSize: ", len(payLoad), ", left: ", payloadSize
-            lenPayload = min(payloadSize, 245)
-
-            payloadBlock = payLoad[pos:pos+lenPayload]
-
-            cmds.append(( ddprintcommands.CmdBlock, payloadBlock ))
-
-            pos += lenPayload
-            payloadSize -= lenPayload
 
         return cmds
 
