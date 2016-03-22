@@ -382,6 +382,9 @@ class Printer(Serial):
             self.gui.logRecv(recvLine.encode("hex"), "\n")
             recvLine = self.safeReadline()        
 
+        print "Bootloader wait..."
+        time.sleep(1)
+
     def commandInit(self, args):
         self.initSerial(args.device, args.baud)
         self.resetLineNumber()
