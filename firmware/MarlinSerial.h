@@ -30,6 +30,7 @@
 
 #include <stdint.h>
 #include "mdebug.h"
+#include "ddmacro.h"
 
 #if !defined(SERIAL_PORT)
 #define SERIAL_PORT 0
@@ -84,6 +85,8 @@ class MarlinSerial //: public Stream
 
     // Length of cobs block payload
     uint8_t cobsLen;
+
+  public: //XXXXXXXXXXXXX
     // Length of current cobs code block
     int16_t cobsCodeLen;
 
@@ -99,6 +102,7 @@ class MarlinSerial //: public Stream
 
     void cobsInit(uint16_t payloadLength);
     bool cobsAvailable() { return (cobsLen > 0) || (cobsCodeLen == 1); }
+    // bool cobsAvailable() { return cobsLen > 0; }
 
     uint8_t serReadNoCheck(void) { simassert(0); }
 
@@ -113,14 +117,14 @@ class MarlinSerial //: public Stream
     int32_t readInt32NoCheckCobs();
     uint32_t serReadUInt32();
 
-    uint16_t tellN(uint8_t n) { return (rxBuffer.tail + n) & RX_BUFFER_MASK; }
-    uint16_t getRXTail() { return rxBuffer.tail; }
+    uint16_t tellN(uint8_t n) { CRITICAL_SECTION_START; uint16_t res = (rxBuffer.tail + n) & RX_BUFFER_MASK; CRITICAL_SECTION_END; return res; }
+    uint16_t getRXTail() { CRITICAL_SECTION_START; uint16_t res = rxBuffer.tail; CRITICAL_SECTION_END; return res; }
 
     void flush(void);
     void flush(uint8_t);
 
     inline int _available(void) {
-      return (RX_BUFFER_SIZE + rxBuffer.head - rxBuffer.tail) & RX_BUFFER_MASK;
+      CRITICAL_SECTION_START; uint16_t res = (RX_BUFFER_SIZE + rxBuffer.head - rxBuffer.tail) & RX_BUFFER_MASK; CRITICAL_SECTION_END; return res;
     }
 
     inline void store_char(unsigned char c);

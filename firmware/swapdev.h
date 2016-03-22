@@ -22,11 +22,12 @@
 #include <Arduino.h>
 
 #include "sdcard/Sd2Card.h"
-#include "MarlinSerial.h"
+// #include "MarlinSerial.h"
 #include "Protothread.h"
 #include "Configuration.h"
 #include "pins.h"
 #include "fastio.h"
+#include "mdebug.h"
 
 #if defined(DDSim)
     #define STD std::
