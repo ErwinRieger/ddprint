@@ -244,6 +244,7 @@ extern RegUDR0 UDR0;
     extern uint8_t DDRL;
     extern uint8_t PINL;
     extern uint8_t PORTL;
+    extern uint8_t SREG;
 
 
     //extern uint8_t MCUSR;

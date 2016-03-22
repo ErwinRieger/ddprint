@@ -27,6 +27,7 @@ void cli() {};
 void sei() {};
 void delayMicroseconds(int) { }
 
+uint8_t SREG=0;
 uint8_t DDRA = 0;
 uint8_t PINA = 0;
 uint8_t PORTA = 0;
