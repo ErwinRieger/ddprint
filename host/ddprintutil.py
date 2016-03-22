@@ -785,7 +785,6 @@ def writeEEpromFloat(args, parser):
     printer.commandInit(args)
 
     payload = struct.pack("<%dpf" % (len(args.name)+1), args.name, args.value)
-    print "strlen:", len(args.name), len(payload)
     resp = printer.query(CmdWriteEepromFloat, binPayload=payload)
     handleGenericResponse(resp)
 
