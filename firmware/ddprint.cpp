@@ -1983,11 +1983,11 @@ massert(MSerial._available() == 0);
                     case CmdWriteEepromFloat: {
                         massert(MSerial._available()); uint8_t len = MSerial.readNoCheckCobs();
                         char name[64];
-                        for (c=0; c<64 && c<len; c++)
+                        for (c=0; c<64 && c<len; c++) {
                             massert(MSerial._available()); name[c] = MSerial.readNoCheckCobs();
-                        txBuffer.sendSimpleResponse(
-                            commandByte,
-                            writeEepromFloat(name, len, MSerial.readFloatNoCheckCobs()));
+                        }
+                        float value = MSerial.readFloatNoCheckCobs();
+                        txBuffer.sendSimpleResponse(commandByte, writeEepromFloat(name, len, value));
                         }
                         break;
                     case CmdGetEepromVersion:
