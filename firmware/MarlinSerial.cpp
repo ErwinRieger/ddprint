@@ -13,7 +13,7 @@
 
 uint8_t MarlinSerial::peekN(uint8_t index) {
 
-    CRITICAL_SECTION_START; uint8_t res = rxBuffer.buffer[(rxBuffer.tail+index) & RX_BUFFER_MASK]; CRITICAL_SECTION_END; return res;
+    return rxBuffer.buffer[(uint16_t)(rxBuffer.tail+index) & RX_BUFFER_MASK];
 }
 
 void MarlinSerial::peekChecksum(uint16_t *checksum, uint8_t count) {
@@ -71,12 +71,9 @@ uint8_t MarlinSerial::readNoCheckCobs(void)
 
 uint8_t MarlinSerial::readNoCheckNoCobs(void)
 {
-//xxx
-massert(_available());
-CRITICAL_SECTION_START;
     unsigned char c = rxBuffer.buffer[rxBuffer.tail];
-    rxBuffer.tail = (rxBuffer.tail + 1) & RX_BUFFER_MASK;
-    CRITICAL_SECTION_END; return c;
+    rxBuffer.tail = rxBuffer.tail + 1;
+    return c;
 }
 
 float MarlinSerial::readFloatNoCheckCobs()
@@ -179,19 +176,17 @@ uint32_t MarlinSerial::serReadUInt32()
 }
 
 void MarlinSerial::flush(uint8_t n) {
-    CRITICAL_SECTION_START;
-    rxBuffer.tail = (rxBuffer.tail + n) & RX_BUFFER_MASK; CRITICAL_SECTION_END;
+    rxBuffer.tail = (uint16_t)(rxBuffer.tail + n) & RX_BUFFER_MASK;
 }
 
 void MarlinSerial::flush()
 {
-    CRITICAL_SECTION_START;
   // don't reverse this or there may be problems if the RX interrupt
   // occurs after reading the value of rx_buffer_head but before writing
   // the value to rx_buffer_tail; the previous value of rx_buffer_head
   // may be written to rx_buffer_tail, making it appear as if the buffer
   // were full, not empty.
-  rxBuffer.head = rxBuffer.tail; CRITICAL_SECTION_END;
+  rxBuffer.head = rxBuffer.tail;
 }
 
 // Preinstantiate Objects //////////////////////////////////////////////////////

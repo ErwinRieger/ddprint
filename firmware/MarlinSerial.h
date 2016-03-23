@@ -64,16 +64,15 @@
 // using a ring buffer (I think), in which rx_buffer_head is the index of the
 // location to which to write the next incoming character and rx_buffer_tail
 // is the index of the location from which to read.
-// #define RX_BUFFER_SIZE 128
-// #define RX_BUFFER_SIZE 1024
-#define RX_BUFFER_SIZE 512
+#define RX_BUFFER_SIZE 256
+// #define RX_BUFFER_SIZE 512
 #define RX_BUFFER_MASK (RX_BUFFER_SIZE - 1)
 
 struct ring_buffer
 {
   unsigned char buffer[RX_BUFFER_SIZE];
-  int16_t head;
-  int16_t tail;
+  uint8_t head;
+  uint8_t tail;
 };
 
 class MarlinSerial //: public Stream
@@ -117,14 +116,14 @@ class MarlinSerial //: public Stream
     int32_t readInt32NoCheckCobs();
     uint32_t serReadUInt32();
 
-    uint16_t tellN(uint8_t n) { CRITICAL_SECTION_START; uint16_t res = (rxBuffer.tail + n) & RX_BUFFER_MASK; CRITICAL_SECTION_END; return res; }
-    uint16_t getRXTail() { CRITICAL_SECTION_START; uint16_t res = rxBuffer.tail; CRITICAL_SECTION_END; return res; }
+    uint8_t tellN(uint8_t n) { return rxBuffer.tail + n; }
+    uint8_t getRXTail() { return rxBuffer.tail; }
 
     void flush(void);
     void flush(uint8_t);
 
-    inline int _available(void) {
-      CRITICAL_SECTION_START; uint16_t res = (RX_BUFFER_SIZE + rxBuffer.head - rxBuffer.tail) & RX_BUFFER_MASK; CRITICAL_SECTION_END; return res;
+    inline uint8_t _available(void) {
+      return ((uint16_t)(RX_BUFFER_SIZE + rxBuffer.head) - rxBuffer.tail) & RX_BUFFER_MASK;
     }
 
     inline void store_char(unsigned char c);
@@ -146,7 +145,7 @@ class MarlinSerial //: public Stream
 extern MarlinSerial MSerial;
 
 inline void MarlinSerial::store_char(unsigned char c) {
-        int i = (rxBuffer.head + 1) & RX_BUFFER_MASK;
+        uint8_t i = (rxBuffer.head + 1) & RX_BUFFER_MASK;
 
         // if we should be storing the received character into the location
         // just before the tail (meaning that the head would advance to the
