@@ -1783,9 +1783,6 @@ simassert(payloadLength > 0);
                         // PT_RESTART();
                     // }
 
-                    // c = MSerial.readNoCheckNoCobs();
-                    if (MSerial.cobsCodeLen!=1)
-                        massert(MSerial._available());
                     c = MSerial.readNoCheckCobs();
 
                     // checksum = _crc_xmodem_update(checksum, c);
@@ -1832,7 +1829,7 @@ printf("de-cops: %d/%d, ci: %d, 0x%x\n", pli++, payloadLength, MSerial.cobsCodeL
                     serialNumber = 1;
 
                 MSerial.flush(3); // consume checksum flags and checksum
-                massert((tell & RX_BUFFER_MASK) == MSerial.getRXTail());
+                massert(tell == MSerial.getRXTail());
 
                 // USBACK;
                 txBuffer.sendACK();

@@ -66,7 +66,7 @@
 // is the index of the location from which to read.
 #define RX_BUFFER_SIZE 256
 // #define RX_BUFFER_SIZE 512
-#define RX_BUFFER_MASK (RX_BUFFER_SIZE - 1)
+// #define RX_BUFFER_MASK (RX_BUFFER_SIZE - 1)
 
 struct ring_buffer
 {
@@ -85,12 +85,10 @@ class MarlinSerial //: public Stream
     // Length of cobs block payload
     uint8_t cobsLen;
 
-  public: //XXXXXXXXXXXXX
     // Length of current cobs code block
     int16_t cobsCodeLen;
 
     void atCobsBlock();
-    uint8_t getCobsByte();
 
   public:
     MarlinSerial();
@@ -101,7 +99,6 @@ class MarlinSerial //: public Stream
 
     void cobsInit(uint16_t payloadLength);
     bool cobsAvailable() { return (cobsLen > 0) || (cobsCodeLen == 1); }
-    // bool cobsAvailable() { return cobsLen > 0; }
 
     uint8_t serReadNoCheck(void) { simassert(0); }
 
@@ -123,7 +120,7 @@ class MarlinSerial //: public Stream
     void flush(uint8_t);
 
     inline uint8_t _available(void) {
-      return ((uint16_t)(RX_BUFFER_SIZE + rxBuffer.head) - rxBuffer.tail) & RX_BUFFER_MASK;
+      return (uint16_t)(RX_BUFFER_SIZE + rxBuffer.head) - rxBuffer.tail;
     }
 
     inline void store_char(unsigned char c);
@@ -145,7 +142,7 @@ class MarlinSerial //: public Stream
 extern MarlinSerial MSerial;
 
 inline void MarlinSerial::store_char(unsigned char c) {
-        uint8_t i = (rxBuffer.head + 1) & RX_BUFFER_MASK;
+        uint8_t i = rxBuffer.head + 1;
 
         // if we should be storing the received character into the location
         // just before the tail (meaning that the head would advance to the
