@@ -1618,7 +1618,7 @@ class UsbCommand : public Protothread {
             PT_WAIT_UNTIL( (i = MSerial._available()) );
             
             while ( i ) {
-                massert(MSerial._available()); c = MSerial.readNoCheckNoCobs();
+                c = MSerial.readNoCheckNoCobs();
                 if (c == SOH) {
                     break;
                 }
@@ -1642,14 +1642,14 @@ class UsbCommand : public Protothread {
                 PT_RESTART();
 
             // Packet serial number
-            massert(MSerial._available()); c = MSerial.readNoCheckNoCobs();
+            c = MSerial.readNoCheckNoCobs();
             checksum = _crc_xmodem_update(checksum, c);
 
             // SERIAL_ECHO("serail: ");
             // SERIAL_PROTOCOLLN((uint16_t)c);
 
             // Read command byte
-            massert(MSerial._available()); commandByte = MSerial.readNoCheckNoCobs();
+            commandByte = MSerial.readNoCheckNoCobs();
             checksum = _crc_xmodem_update(checksum, commandByte);
 
             // SERIAL_ECHO("command: ");
@@ -1683,9 +1683,8 @@ class UsbCommand : public Protothread {
 
                 /// // Read payload length, 2 or 4 bytes
                 // Read payload length 2 bytes
-                massert(MSerial._available()); lenByte1 = MSerial.readNoCheckNoCobs();
-// xxxx
-massert(lenByte1);
+                lenByte1 = MSerial.readNoCheckNoCobs();
+
                 checksum = _crc_xmodem_update(checksum, lenByte1);
                 payloadLength = lenByte1 - 1;
 
@@ -1764,14 +1763,11 @@ massert(lenByte1);
                     PT_WAIT_WHILE( swapDev.isBusyWriting() );
                 }
 
-                // Debug, must be called before cobsInit() since this consumes the first byte of
-                // the payload.
-simassert(payloadLength > 0);
                 tell = MSerial.tellN(payloadLength+3); // xxx assume payloadLength >= 1, needed for while loop below, can't use (MSerial.getRXTail() < tell) expression there
 
                 // Tell RxBuffer that it's pointing to the beginning of a COBS block
-                if (payloadLength) // xxx needed?
-                    MSerial.cobsInit(payloadLength);
+                MSerial.cobsInit(payloadLength);
+
 /////////7 pli=0;
                 while (MSerial.cobsAvailable()) {
 
@@ -1807,10 +1803,6 @@ printf("de-cops: %d/%d, ci: %d, 0x%x\n", pli++, payloadLength, MSerial.cobsCodeL
                     // PT_RESTART();
                 // }
 #if 0
-                massert(MSerial._available()); flags = MSerial.readNoCheckNoCobs();
-                massert(MSerial._available()); cs1 = MSerial.readNoCheckNoCobs();
-                massert(MSerial._available()); cs2 = MSerial.readNoCheckNoCobs();
-
                 if (! checkCrc(flags, cs1, cs2, checksum)) {
 //
 // XXXXXXXXXXXX rollback not needed if checksum is peeked !!!!!
@@ -1833,7 +1825,6 @@ printf("de-cops: %d/%d, ci: %d, 0x%x\n", pli++, payloadLength, MSerial.cobsCodeL
 
                 // USBACK;
                 txBuffer.sendACK();
-massert(MSerial._available() == 0);
             }
             else {
 
@@ -1856,7 +1847,7 @@ massert(MSerial._available() == 0);
                 // MSerial.peekChecksum(&checksum, 2);
                 // i = MSerial.readUInt16NoCheckNoCobs();
                 MSerial.peekChecksum(&checksum, 1);
-                massert(MSerial._available()); payloadLength = MSerial.readNoCheckNoCobs() - 1;
+                payloadLength = MSerial.readNoCheckNoCobs() - 1;
 
                 // SERIAL_ECHO("commandlen: ");
                 // SERIAL_PROTOCOLLN(payloadLength);
@@ -1883,15 +1874,10 @@ massert(MSerial._available() == 0);
                 if (serialNumber==0)
                     serialNumber = 1;
 
-                // USBACK;
-
-                // Debug, must be called before cobsInit() since this consumes the first byte of
-                // the payload.
                 tell = MSerial.tellN(payloadLength+3);
 
                 // Tell RxBuffer that it's pointing to the beginning of a COBS block
-                if (payloadLength)
-                    MSerial.cobsInit(payloadLength);
+                MSerial.cobsInit(payloadLength);
 
                 // Handle direct command
                 switch (commandByte) {
@@ -1916,8 +1902,7 @@ massert(MSerial._available() == 0);
                         txBuffer.sendACK();
                         break;
                     case CmdMove: // move
-                        // printer.cmdMove((Printer::MoveType)MSerial.serReadNoCheck());
-                        massert(MSerial._available()); printer.cmdMove((Printer::MoveType)MSerial.readNoCheckCobs());
+                        printer.cmdMove((Printer::MoveType)MSerial.readNoCheckCobs());
                         txBuffer.sendACK();
                         break;
                     case CmdEOT: // EOT
@@ -1957,7 +1942,7 @@ massert(MSerial._available() == 0);
                         break;
                     case CmdSetTargetTemp:
                         {
-                            massert(MSerial._available()); uint8_t heater = MSerial.readNoCheckCobs();
+                            uint8_t heater = MSerial.readNoCheckCobs();
                             uint16_t temp = MSerial.readUInt16NoCheckCobs();
                             printer.cmdSetTargetTemp(heater, temp);
                             txBuffer.sendACK();
@@ -1968,7 +1953,7 @@ massert(MSerial._available() == 0);
                         txBuffer.sendACK();
                         break;
                     case CmdFanSpeed:
-                        massert(MSerial._available()); printer.cmdFanSpeed(MSerial.readNoCheckCobs());
+                        printer.cmdFanSpeed(MSerial.readNoCheckCobs());
                         txBuffer.sendACK();
                         break;
                     //
@@ -1978,10 +1963,10 @@ massert(MSerial._available() == 0);
                         printer.cmdGetStatus();
                         break;
                     case CmdWriteEepromFloat: {
-                        massert(MSerial._available()); uint8_t len = MSerial.readNoCheckCobs();
+                        uint8_t len = MSerial.readNoCheckCobs();
                         char name[64];
                         for (c=0; c<64 && c<len; c++) {
-                            massert(MSerial._available()); name[c] = MSerial.readNoCheckCobs();
+                            name[c] = MSerial.readNoCheckCobs();
                         }
                         float value = MSerial.readFloatNoCheckCobs();
                         txBuffer.sendSimpleResponse(commandByte, writeEepromFloat(name, len, value));
@@ -2049,7 +2034,6 @@ massert(MSerial._available() == 0);
 
                 MSerial.flush(3); // consume checksum flags and checksum
                 massert(tell == MSerial.getRXTail());
-massert(MSerial._available() == 0);
             }
 
             PT_RESTART();
