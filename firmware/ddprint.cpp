@@ -1470,11 +1470,6 @@ class UsbCommand : public Protothread {
         // Command serial number [1..255]
         uint8_t serialNumber;
 
-        // Filepos where we store the current command, for
-        // rollback.
-        uint32_t writeBlockNumber;
-        uint16_t writePos;
-
         uint8_t commandByte;
 
         // Computed checksum
@@ -1482,10 +1477,6 @@ class UsbCommand : public Protothread {
 
         // Number of characters we have to read
         uint8_t payloadLength;
-
-// xxx debug
-//
-        /////////7 uint8_t pli;
 
         uint8_t lenByte1;
         uint8_t lenByte2;
@@ -1567,8 +1558,6 @@ class UsbCommand : public Protothread {
         //
         FWINLINE SerAvailableState waitForSerial(uint8_t nChars) {
 
-// XXXXXXXXXXx assert(nChars)
-//
             //
             // If a serial char gets lost, we have a deadlock situation: Firmware waits
             // for more characters to arrive and host application waits for
@@ -1632,11 +1621,8 @@ class UsbCommand : public Protothread {
             startTS = millis();
 
             checksum = 0;
-            // checksum = _crc_xmodem_update(checksum, SOH);
 
             // Read packet number, command and payload length
-            // PT_WAIT_WHILE( (av = waitForSerial(6)) == NothinAvailable );
-            // PT_WAIT_WHILE( (av = waitForSerial(4)) == NothinAvailable );
             PT_WAIT_WHILE( (av = waitForSerial(3)) == NothinAvailable );
             if (av == SerTimeout)
                 PT_RESTART();
@@ -1645,101 +1631,28 @@ class UsbCommand : public Protothread {
             c = MSerial.readNoCheckNoCobs();
             checksum = _crc_xmodem_update(checksum, c);
 
-            // SERIAL_ECHO("serail: ");
-            // SERIAL_PROTOCOLLN((uint16_t)c);
-
             // Read command byte
             commandByte = MSerial.readNoCheckNoCobs();
             checksum = _crc_xmodem_update(checksum, commandByte);
-
-            // SERIAL_ECHO("command: ");
-            // SERIAL_PROTOCOLLN((uint16_t)commandByte);
 
             if (commandByte < 128) {
 
                 //
                 // Buffered command
                 //
-
-                // Get current write pos for possible data rollback
-                writeBlockNumber = swapDev.getWriteBlockNumber();
-                writePos = swapDev.getWritePos();
-
                 if (c != serialNumber) {
-
-                    //
-                    // xxx rollback not needed here, we have not added any
-                    // data yet.
-                    //
-                    // Roll back data store
-                    // swapDev.setWritePos(writeBlockNumber, writePos);
 
                     serialNumberError();
                     PT_RESTART();   // does a return
                 }
 
-                // swapDev.addByte(commandByte);
-                // PT_WAIT_WHILE( swapDev.isBusyWriting() );
-
-                /// // Read payload length, 2 or 4 bytes
                 // Read payload length 2 bytes
                 lenByte1 = MSerial.readNoCheckNoCobs();
 
                 checksum = _crc_xmodem_update(checksum, lenByte1);
                 payloadLength = lenByte1 - 1;
 
-                // swapDev.addByte(c);
-                // PT_WAIT_WHILE( swapDev.isBusyWriting() );
-
-                // lenByte2 = MSerial.readNoCheckNoCobs();
-// // xxxx
-// massert(lenByte2);
-                // checksum = _crc_xmodem_update(checksum, lenByte2);
-                // lenByte2 -= 0x01;
-                // payloadLength |= (lenByte2 << 8);
-
-                // swapDev.addByte(c);
-                // PT_WAIT_WHILE( swapDev.isBusyWriting() );
-
-                // if (commandByte != CmdBlock) {
-
-                    // swapDev.addByte(commandByte);
-                    // PT_WAIT_WHILE( swapDev.isBusyWriting() );
-
-                    // swapDev.addByte(lenByte1);
-                    // PT_WAIT_WHILE( swapDev.isBusyWriting() );
-
-                    // swapDev.addByte(lenByte2);
-                    // PT_WAIT_WHILE( swapDev.isBusyWriting() );
-#if 0
-                    c = MSerial.readNoCheckNoCobs();
-                    checksum = _crc_xmodem_update(checksum, c);
-                    payloadLength |= (c << 16);
-                    swapDev.addByte(c);
-                    PT_WAIT_WHILE( swapDev.isBusyWriting() );
-
-                    c = MSerial.readNoCheckNoCobs();
-                    checksum = _crc_xmodem_update(checksum, c);
-                    payloadLength |= (c << 24);
-                    swapDev.addByte(c);
-                    PT_WAIT_WHILE( swapDev.isBusyWriting() );
-#endif
-                    // xxx fill 4 bytes len
-                    // swapDev.addByte(0);
-                    // PT_WAIT_WHILE( swapDev.isBusyWriting() );
-
-                    // swapDev.addByte(0);
-                    // PT_WAIT_WHILE( swapDev.isBusyWriting() );
-
-                    // payloadLength = STD min(payloadLength, (uint32_t)256);
-                // }
-
-                // SERIAL_ECHO("commandlen: ");
-                // SERIAL_PROTOCOLLN(commandLength);
-                // printf("reading %d (+9/+7) bytes\n", payloadLength);
-
                 // Wait for payload, checksum flags and two checksum bytes
-                // PT_WAIT_WHILE( (av = waitForSerial(payloadLength+2)) == NothinAvailable );
                 PT_WAIT_WHILE( (av = waitForSerial(payloadLength+3)) == NothinAvailable );
                 if (av == SerTimeout)
                     PT_RESTART();
@@ -1753,7 +1666,6 @@ class UsbCommand : public Protothread {
                 cs2 = MSerial.peekN(payloadLength+2);
 
                 if (! checkCrc(flags, cs1, cs2, checksum)) {
-                    // swapDev.setWritePos(writeBlockNumber, writePos);
                     PT_RESTART();   // does a return
                 }
 
@@ -1763,57 +1675,18 @@ class UsbCommand : public Protothread {
                     PT_WAIT_WHILE( swapDev.isBusyWriting() );
                 }
 
-                tell = MSerial.tellN(payloadLength+3); // xxx assume payloadLength >= 1, needed for while loop below, can't use (MSerial.getRXTail() < tell) expression there
+                tell = MSerial.tellN(payloadLength+3); // Debug
 
                 // Tell RxBuffer that it's pointing to the beginning of a COBS block
                 MSerial.cobsInit(payloadLength);
 
-/////////7 pli=0;
                 while (MSerial.cobsAvailable()) {
 
-                    // massert (MSerial.getError() == 0);
-
-                    // PT_WAIT_WHILE( (av = waitForSerial(1)) == NothinAvailable );
-                    // if (av == SerTimeout) {
-                        // swapDev.setWritePos(writeBlockNumber, writePos);
-                        // PT_RESTART();
-                    // }
-
                     c = MSerial.readNoCheckCobs();
 
-                    // checksum = _crc_xmodem_update(checksum, c);
-// printf("de-cops: %d/%d, ci: %d, 0x%x\n", pli++, payloadLength, MSerial.cobsCodeLen, c);
                     swapDev.addByte(c);
                     PT_WAIT_WHILE( swapDev.isBusyWriting() );
                 }
-
-#if 0
-if (MSerial.cobsCodeLen == 0) {
-                    c = MSerial.readNoCheckCobs();
-printf("de-cops: %d/%d, ci: %d, 0x%x\n", pli++, payloadLength, MSerial.cobsCodeLen, c);
-                    swapDev.addByte(c);
-                    PT_WAIT_WHILE( swapDev.isBusyWriting() );
-}
-#endif
-
-                // Read checksum
-                // PT_WAIT_WHILE( (av = waitForSerial(2)) == NothinAvailable );
-                // if (av == SerTimeout) {
-                    // swapDev.setWritePos(writeBlockNumber, writePos);
-                    // PT_RESTART();
-                // }
-#if 0
-                if (! checkCrc(flags, cs1, cs2, checksum)) {
-//
-// XXXXXXXXXXXX rollback not needed if checksum is peeked !!!!!
-//
-//
-                    // Roll back data store
-                    swapDev.setWritePos(writeBlockNumber, writePos);
-
-                    PT_RESTART();   // does a return
-                }
-#endif
 
                 // Successfully received command, increment command counter
                 serialNumber++;
@@ -1821,7 +1694,7 @@ printf("de-cops: %d/%d, ci: %d, 0x%x\n", pli++, payloadLength, MSerial.cobsCodeL
                     serialNumber = 1;
 
                 MSerial.flush(3); // consume checksum flags and checksum
-                massert(tell == MSerial.getRXTail());
+                massert(tell == MSerial.getRXTail()); // Debug
 
                 // USBACK;
                 txBuffer.sendACK();
@@ -1842,18 +1715,11 @@ printf("de-cops: %d/%d, ci: %d, 0x%x\n", pli++, payloadLength, MSerial.cobsCodeL
                     }
                 }
 
-                // Read payload length, 4 bytes
-                // MSerial.peekChecksum(&checksum, 4);
-                // MSerial.peekChecksum(&checksum, 2);
-                // i = MSerial.readUInt16NoCheckNoCobs();
+                // Read payload length, 1 byte
                 MSerial.peekChecksum(&checksum, 1);
                 payloadLength = MSerial.readNoCheckNoCobs() - 1;
 
-                // SERIAL_ECHO("commandlen: ");
-                // SERIAL_PROTOCOLLN(payloadLength);
-
                 // Wait for payload, checksum flags and two checksum bytes
-                // PT_WAIT_WHILE( (av = waitForSerial(payloadLength+2)) == NothinAvailable );
                 PT_WAIT_WHILE( (av = waitForSerial(payloadLength+3)) == NothinAvailable );
                 if (av == SerTimeout)
                     PT_RESTART();
@@ -1874,7 +1740,7 @@ printf("de-cops: %d/%d, ci: %d, 0x%x\n", pli++, payloadLength, MSerial.cobsCodeL
                 if (serialNumber==0)
                     serialNumber = 1;
 
-                tell = MSerial.tellN(payloadLength+3);
+                tell = MSerial.tellN(payloadLength+3); // Debug
 
                 // Tell RxBuffer that it's pointing to the beginning of a COBS block
                 MSerial.cobsInit(payloadLength);
@@ -2033,7 +1899,7 @@ printf("de-cops: %d/%d, ci: %d, 0x%x\n", pli++, payloadLength, MSerial.cobsCodeL
                 }
 
                 MSerial.flush(3); // consume checksum flags and checksum
-                massert(tell == MSerial.getRXTail());
+                massert(tell == MSerial.getRXTail()); // Debug
             }
 
             PT_RESTART();
@@ -2043,16 +1909,12 @@ printf("de-cops: %d/%d, ci: %d, 0x%x\n", pli++, payloadLength, MSerial.cobsCodeL
         // Check checksum, do errorhandling if mismatch
         bool checkCrc(uint8_t flags, uint8_t cs1, uint8_t cs2, uint16_t computedCrc) {
 
-// printf("flags: 0x%x\n", flags);
-
             // 
             //  0x1: (x, y) -> (x, y)
             //  0x2: (0, y) -> (1, y)
             //  0x3: (x, 0) -> (x, 1)
             //  0x4: (0, 0) -> (1, 1)
             // 
-// printf("Checksum read : 0x%x\n", cs1 | (cs2<<8));
-
             switch (flags) {
                     case 0x2:
                         cs2 &= ~0x1;
