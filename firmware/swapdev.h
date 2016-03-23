@@ -95,7 +95,7 @@ public:
         return true;
     }
 
-    FWINLINE uint32_t getWriteBlockNumber() { return writeBlockNumber; }
+    // FWINLINE uint32_t getWriteBlockNumber() { return writeBlockNumber; }
     FWINLINE uint16_t getWritePos() { return writePos; }
 
     FWINLINE uint32_t getReadPos() { return readPos; }
@@ -131,6 +131,7 @@ public:
             writeBlock();
     }
 
+#if 0
     void setWritePos(uint32_t wbn, uint16_t writePos_) {
 
         if (wbn != writeBlockNumber) {
@@ -154,6 +155,7 @@ public:
 
         size = wbn << 9;
     }
+#endif
 
     //------------------------------------------------------------------------------
     FWINLINE void writeBlock() {
