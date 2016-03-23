@@ -14,13 +14,6 @@ uint8_t MarlinSerial::peekN(uint8_t index) {
 }
 
 void MarlinSerial::peekChecksum(uint16_t *checksum, uint8_t count) {
-#if 0
-    if ((rxBuffer.head - rxBuffer.tail) >= count) {
-        for (uint8_t i=0; i<count; i++)
-            *checksum = _crc_xmodem_update(*checksum, rxBuffer.buffer[rxBuffer.tail+i]);
-        return;
-    }
-#endif
 
     for (uint8_t i=0; i<count; i++)
         *checksum = _crc_xmodem_update(*checksum, peekN(i));
@@ -36,7 +29,6 @@ void MarlinSerial::atCobsBlock() {
     cobsCodeLen = 0;
 }
 
-//  bool cobsAvailable() { return (cobsLen > 0) || (cobsCodeLen == 1); }
 uint8_t MarlinSerial::readNoCheckCobs(void)
 {
 
@@ -75,13 +67,6 @@ uint8_t MarlinSerial::readNoCheckNoCobs(void)
 
 float MarlinSerial::readFloatNoCheckCobs()
 {
-#if 0
-    if ((rx_buffer.head - rx_buffer.tail) >= 4) {
-        float f = *(float*)(rx_buffer.buffer + rx_buffer.tail);
-        rx_buffer.tail += 4;
-        return f;
-    }
-#endif
 
     uint8_t  b1 = readNoCheckCobs();
     uint32_t b2 = readNoCheckCobs();
@@ -93,13 +78,12 @@ float MarlinSerial::readFloatNoCheckCobs()
 
 uint16_t MarlinSerial::readUInt16NoCheckNoCobs()
 {
-#if 0
+
     if ((rxBuffer.head - rxBuffer.tail) >= 2) {
         uint16_t i = *(uint16_t*)(rxBuffer.buffer + rxBuffer.tail);
         rxBuffer.tail += 2;
         return i;
     }
-#endif
 
     uint8_t  b1 = readNoCheckNoCobs();
     uint16_t b2 = readNoCheckNoCobs();
@@ -108,13 +92,6 @@ uint16_t MarlinSerial::readUInt16NoCheckNoCobs()
 
 uint16_t MarlinSerial::readUInt16NoCheckCobs()
 {
-/*
-    if ((rxBuffer.head - rxBuffer.tail) >= 2) {
-        uint16_t i = *(uint16_t*)(rxBuffer.buffer + rxBuffer.tail);
-        rxBuffer.tail += 2;
-        return i;
-    }
-*/
 
     uint8_t  b1 = readNoCheckCobs();
     uint16_t b2 = readNoCheckCobs();
@@ -124,13 +101,6 @@ uint16_t MarlinSerial::readUInt16NoCheckCobs()
 uint16_t MarlinSerial::serReadUInt16()
 {
     simassert(0);
-#if 0
-    if ((rx_buffer.head - rx_buffer.tail) >= 2) {
-        uint16_t i = *(int16_t*)(rx_buffer.buffer + rx_buffer.tail);
-        rx_buffer.tail += 2;
-        return i;
-    }
-#endif
 
     uint8_t  b1 = serReadNoCheck();
     uint16_t b2 = serReadNoCheck();
@@ -139,13 +109,6 @@ uint16_t MarlinSerial::serReadUInt16()
 
 int32_t MarlinSerial::readInt32NoCheckCobs()
 {
-#if 0
-    if ((rx_buffer.head - rx_buffer.tail) >= 4) {
-        int32_t i = *(int32_t*)(rx_buffer.buffer + rx_buffer.tail);
-        rx_buffer.tail += 4;
-        return i;
-    }
-#endif
 
     int8_t  b1 = readNoCheckCobs();
     int32_t b2 = readNoCheckCobs();
@@ -157,13 +120,6 @@ int32_t MarlinSerial::readInt32NoCheckCobs()
 uint32_t MarlinSerial::serReadUInt32()
 {
     simassert(0);
-#if 0
-    if ((rx_buffer.head - rx_buffer.tail) >= 4) {
-        uint32_t i = *(uint32_t*)(rx_buffer.buffer + rx_buffer.tail);
-        rx_buffer.tail += 4;
-        return i;
-    }
-#endif
 
     uint8_t  b1 = serReadNoCheck();
     uint32_t b2 = serReadNoCheck();
@@ -173,7 +129,7 @@ uint32_t MarlinSerial::serReadUInt32()
 }
 
 void MarlinSerial::flush(uint8_t n) {
-    // rxBuffer.tail = (uint16_t)(rxBuffer.tail + n) & RX_BUFFER_MASK;
+
     rxBuffer.tail = rxBuffer.tail + n;
 }
 
