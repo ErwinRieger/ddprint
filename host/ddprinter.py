@@ -301,7 +301,7 @@ class Printer(Serial):
         crc = crc16.crc16xmodem(s, crc)
 
         length = ord(s) - 1
-        print "cmd: 0x%x, read %d b" % (cmd, length)
+        self.gui.logRecv("Response 0x%x, reading %d b" % (cmd, length))
 
         payload = ""
         if length:
