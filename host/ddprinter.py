@@ -288,37 +288,38 @@ class Printer(Serial):
 
     def readResponse(self):
 
+        s = self.readWithTimeout(1) # SOH
+# xxx loop til 0x0 found
+        assert(s == cobs.nullByte)
+
         s = self.readWithTimeout(1) # read response code
+        crc = crc16.crc16xmodem(s)
 
         cmd = ord(s)
-        # if cmd == 0x6:
-            # return (cmd, 0, "")
-
-        # if cmd != sendCmd:
-            # print "unexpected reply: 0x%x" % cmd
-            # return (cmd, 0, "")
-
-        crc = crc16.crc16xmodem(s)
 
         s = self.readWithTimeout(1) # read length byte
         crc = crc16.crc16xmodem(s, crc)
 
-        length = ord(s)
+        length = ord(s) - 1
         print "cmd: 0x%x, read %d b" % (cmd, length)
 
-        payload = self.readWithTimeout(length) # read payload
-        crc = crc16.crc16xmodem(payload, crc)
+        payload = ""
+        if length:
+            payload = self.readWithTimeout(length) # read payload
+            crc = crc16.crc16xmodem(payload, crc)
 
-        css = self.readWithTimeout(2)
+        (cflags, checkSum) = struct.unpack("<BH", self.readWithTimeout(3))
 
-        check1 = ord(css[0])
-        check2 = ord(css[1])
-
-        checkSum = check1 + (check2<<8)
-        # print "checksum: 0x%x, 0x%x" % (checkSum, crc)
+        if cflags == 0x2:
+            checkSum -= 0x100;
+        elif cflags == 0x3:
+            checkSum -= 0x01;
+        elif cflags == 0x4:
+            checkSum -= 0x101;
 
         if checkSum != crc:
             print "RxChecksumError, payload: %s" % payload.encode("hex")
+            """
             # Drain input
             try:
                 s = self.read()
@@ -332,8 +333,12 @@ class Printer(Serial):
                     print "drain input: %s" % s.encode("hex")
                 except SerialException:
                     pass
+            """
             raise RxChecksumError()
 
+        # Decode COBS encode payload
+        payload = cobs.decodeCobs(payload)
+        # Todo: remove length from result tuple, its not useful
         return (cmd, length, payload)
 
     # Monitor printer responses for a while (wait waitcount * 0.1 seconds)
@@ -441,7 +446,7 @@ class Printer(Serial):
         if binPayload:
             payloadSize = len(binPayload)
             # print "Send payload: %s" % binPayload.encode("hex")
-            print "Send payload: ", payloadSize, cobs.LenCobs
+            # print "Send payload: ", payloadSize, cobs.LenCobs
             assert(payloadSize <= cobs.LenCobs)
 
         #
@@ -561,11 +566,11 @@ class Printer(Serial):
             self.send(binary)
         """
 
-        self.gui.logSend("*** sendCommand *** ", CommandNames[sendCmd])
-        print "send: ", binary.encode("hex")
+        self.gui.logSend("*** sendCommand %s (0x%x) *** " % (CommandNames[sendCmd], sendCmd))
+        # print "send: ", binary.encode("hex")
         self.send(binary)
 
-        print "waiting for reply code 0x%x (or ack)" % sendCmd
+        # print "Waiting for reply code 0x%x (or ack)" % sendCmd
 
         # Wait for response, xxx without timeout/retry for now
         while True:
@@ -669,7 +674,7 @@ class Printer(Serial):
 
     def getTemps(self, ):
         (cmd, length, payload) = self.query(CmdGetCurrentTemps)
-        if length == 8:
+        if len(payload) == 8:
             temps = struct.unpack("<ff", payload)
         else:
             temps = struct.unpack("<fff", payload)
