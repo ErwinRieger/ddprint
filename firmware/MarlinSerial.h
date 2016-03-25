@@ -64,9 +64,14 @@
 // using a ring buffer (I think), in which rx_buffer_head is the index of the
 // location to which to write the next incoming character and rx_buffer_tail
 // is the index of the location from which to read.
+//
+// Size of tx buffer in bytes
+// Note: Using a buffer size of 256 bytes has two big advantages:
+//  * The head and tail pointers simply wrap around, no bitmasks or
+//     modulo operations are needed.
+//  * The head and tail operations are atomic, so no critical sections
+//     are needed.
 #define RX_BUFFER_SIZE 256
-// #define RX_BUFFER_SIZE 512
-// #define RX_BUFFER_MASK (RX_BUFFER_SIZE - 1)
 
 struct ring_buffer
 {
