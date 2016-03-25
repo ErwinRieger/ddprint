@@ -1149,7 +1149,7 @@ def jsonLoad(f):
     for l in f.readlines():
         l = l.strip()
         if l.startswith("#"):
-            print "skip comment:", l
+            # print "skip comment:", l
             continue
         s += l
 
