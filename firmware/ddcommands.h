@@ -64,7 +64,7 @@
 #define CmdStopMove             138
 
 #if defined(PIDAutoTune)
-    #define CmdSetHeaterY           139
+    #define CmdSetHeaterY       139
 #endif
 
 #define CmdGetState             150
@@ -93,7 +93,7 @@
 // Response types 
 //
 #define RespUnknownCommand      1 // Unknown Direct Command, Payload: the unknown command (1 byte)
-// #define RespGenericString       2 // Payload: 'pascal string'
+// #define RespGenericString    2 // Payload: 'pascal string'
 #define RespKilled              3 // Payload: reason, optional parameters
 #define RespRXError             4 // Payload: serialNumber (last line), errorflags
 #define RespRXCRCError          5 // Payload: serialNumber (last line)
