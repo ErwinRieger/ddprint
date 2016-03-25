@@ -151,10 +151,10 @@ void mAssert(uint16_t line, char* file) {
     LCDMSGKILL(RespAssertion, line, file);
 
     txBuffer.flush();
-    txBuffer.sendResponseStart(RespKilled, sizeof(uint8_t)+sizeof(uint16_t)+sizeof(uint8_t)+strlen(file));
-    txBuffer.pushCharChecksum(RespAssertion);
+    txBuffer.sendResponseStart(RespKilled);
+    txBuffer.sendResponseUint8(RespAssertion);
     txBuffer.sendResponseValue(line);
-    txBuffer.sendResponseValue(file, strlen(file));
+    txBuffer.sendResponseString(file, strlen(file));
     txBuffer.sendResponseEnd();
     kill();
 }
@@ -529,9 +529,9 @@ class FillBufferTask : public Protothread {
 #endif
 
                     LCDMSGKILL(RespUnknownBCommand, cmd, "");
-                    txBuffer.sendResponseStart(RespKilled, 2);
-                    txBuffer.pushCharChecksum(RespUnknownBCommand);
-                    txBuffer.pushCharChecksum(cmd);
+                    txBuffer.sendResponseStart(RespKilled);
+                    txBuffer.sendResponseUint8(RespUnknownBCommand);
+                    txBuffer.sendResponseUint8(cmd);
                     txBuffer.sendResponseEnd();
                     kill();
             }
@@ -1173,12 +1173,12 @@ void Printer::cmdGetTargetTemps() {
 #endif
 
 #if EXTRUDERS == 1
-    txBuffer.sendResponseStart(CmdGetTargetTemps, 1 + sizeof(uint16_t));
+    txBuffer.sendResponseStart(CmdGetTargetTemps);
 #else
-    txBuffer.sendResponseStart(CmdGetTargetTemps, 1 + 2*sizeof(uint16_t));
+    txBuffer.sendResponseStart(CmdGetTargetTemps);
 #endif
 
-    txBuffer.pushCharChecksum(target_temperature_bed);
+    txBuffer.sendResponseUint8(target_temperature_bed);
     txBuffer.sendResponseValue(target_temperature[0]);
 #if EXTRUDERS > 1
     txBuffer.sendResponseValue(target_temperature[1]);
@@ -1201,9 +1201,9 @@ void Printer::cmdGetCurrentTemps() {
 #endif
 
 #if EXTRUDERS == 1
-    txBuffer.sendResponseStart(CmdGetCurrentTemps, 2*sizeof(float));
+    txBuffer.sendResponseStart(CmdGetCurrentTemps);
 #else
-    txBuffer.sendResponseStart(CmdGetCurrentTemps, 3*sizeof(float));
+    txBuffer.sendResponseStart(CmdGetCurrentTemps);
 #endif
 
     txBuffer.sendResponseValue(current_temperature_bed);
@@ -1298,7 +1298,7 @@ void Printer::cmdGetHomed() {
     SERIAL_ECHOLNPGM(")");
 #endif
 
-    txBuffer.sendResponseStart(CmdGetHomed, sizeof(homed));
+    txBuffer.sendResponseStart(CmdGetHomed);
     txBuffer.sendResponseValue((uint8_t*)homed, sizeof(homed));
     txBuffer.sendResponseEnd();
 }
@@ -1321,15 +1321,15 @@ void Printer::cmdGetEndstops() {
     SERIAL_ECHOLNPGM("))");
 #endif
 
-    txBuffer.sendResponseStart(CmdGetEndstops, 3*(sizeof(int32_t)+1));
+    txBuffer.sendResponseStart(CmdGetEndstops);
 
-    txBuffer.pushCharChecksum(X_ENDSTOP_PRESSED);
+    txBuffer.sendResponseUint8(X_ENDSTOP_PRESSED);
     txBuffer.sendResponseValue((int32_t)current_pos_steps[X_AXIS]);
 
-    txBuffer.pushCharChecksum(Y_ENDSTOP_PRESSED);
+    txBuffer.sendResponseUint8(Y_ENDSTOP_PRESSED);
     txBuffer.sendResponseValue((int32_t)current_pos_steps[Y_AXIS]);
 
-    txBuffer.pushCharChecksum(Z_ENDSTOP_PRESSED);
+    txBuffer.sendResponseUint8(Z_ENDSTOP_PRESSED);
     txBuffer.sendResponseValue((int32_t)current_pos_steps[Z_AXIS]);
 
     txBuffer.sendResponseEnd();
@@ -1351,7 +1351,7 @@ void Printer::cmdGetPos() {
     SERIAL_ECHOLNPGM(")");
 #endif
 
-    txBuffer.sendResponseStart(CmdGetPos, sizeof(current_pos_steps));
+    txBuffer.sendResponseStart(CmdGetPos);
     txBuffer.sendResponseValue((uint8_t*)current_pos_steps, sizeof(current_pos_steps));
     txBuffer.sendResponseEnd();
 }
@@ -1381,18 +1381,9 @@ void Printer::cmdGetStatus() {
     SERIAL_ECHOLNPGM(")");
 #endif
 
-    txBuffer.sendResponseStart(CmdGetStatus,
-            sizeof(uint8_t) +
-            sizeof(float) +
-            sizeof(float) +
-            sizeof(uint32_t) +
-            sizeof(uint16_t) +
-            sizeof(uint16_t) +
-            sizeof(uint16_t) +
-            sizeof(uint16_t)
-            );
+    txBuffer.sendResponseStart(CmdGetStatus);
 
-    txBuffer.pushCharChecksum(printerState);
+    txBuffer.sendResponseUint8(printerState);
     txBuffer.sendResponseValue(current_temperature_bed);
     txBuffer.sendResponseValue(current_temperature[0]);
     txBuffer.sendResponseValue(swapDev.available());
@@ -1492,7 +1483,8 @@ class UsbCommand : public Protothread {
         }
 
         void reset() {
-
+// xxx
+return;
             // Drain usbserial buffers for 50 ms
             unsigned long drainEnd = millis() + 50;
             while (millis() < drainEnd) {
@@ -1988,12 +1980,12 @@ FWINLINE void loop() {
                 // SERIAL_ECHO(", ");
                 // SERIAL_ECHOLN(current_pos_steps[Z_AXIS]);
                 LCDMSGKILL(RespHardwareEndstop, "", "");
-                txBuffer.sendResponseStart(RespKilled, 1 + 3*(sizeof(int32_t)+1));
-                txBuffer.pushCharChecksum(RespHardwareEndstop);
+                txBuffer.sendResponseStart(RespKilled);
+                txBuffer.sendResponseUint8(RespHardwareEndstop);
                 txBuffer.sendResponseValue((uint8_t*)current_pos_steps, 3*sizeof(int32_t));
-                txBuffer.pushCharChecksum(X_ENDSTOP_PRESSED);
-                txBuffer.pushCharChecksum(Y_ENDSTOP_PRESSED);
-                txBuffer.pushCharChecksum(Z_ENDSTOP_PRESSED);
+                txBuffer.sendResponseUint8(X_ENDSTOP_PRESSED);
+                txBuffer.sendResponseUint8(Y_ENDSTOP_PRESSED);
+                txBuffer.sendResponseUint8(Z_ENDSTOP_PRESSED);
                 txBuffer.sendResponseEnd();
                 kill();
             }
@@ -2006,12 +1998,12 @@ FWINLINE void loop() {
                 // SERIAL_ECHO(", ");
                 // SERIAL_ECHOLN(current_pos_steps[Z_AXIS]);
                 LCDMSGKILL(RespSoftwareEndstop, "", "");
-                txBuffer.sendResponseStart(RespKilled, 1 + 3*(sizeof(int32_t)+1));
-                txBuffer.pushCharChecksum(RespSoftwareEndstop);
+                txBuffer.sendResponseStart(RespKilled);
+                txBuffer.sendResponseUint8(RespSoftwareEndstop);
                 txBuffer.sendResponseValue((uint8_t*)current_pos_steps, 3*sizeof(int32_t));
-                txBuffer.pushCharChecksum(X_SW_ENDSTOP_PRESSED);
-                txBuffer.pushCharChecksum(Y_SW_ENDSTOP_PRESSED);
-                txBuffer.pushCharChecksum(Z_SW_ENDSTOP_PRESSED);
+                txBuffer.sendResponseUint8(X_SW_ENDSTOP_PRESSED);
+                txBuffer.sendResponseUint8(Y_SW_ENDSTOP_PRESSED);
+                txBuffer.sendResponseUint8(Z_SW_ENDSTOP_PRESSED);
                 txBuffer.sendResponseEnd();
                 kill();
             }
