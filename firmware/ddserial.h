@@ -57,7 +57,7 @@ class TxBuffer: public Protothread {
 
         int16_t cf, csh, csl;
 
-        FWINLINE void _pushCharNoChecksumNoCobs(uint8_t c) {
+        FWINLINE void pushByte(uint8_t c) {
 
 #if defined(HEAVYDEBUG)
             massert(! full());
@@ -66,12 +66,12 @@ class TxBuffer: public Protothread {
             txBuffer[head++] = c;
         }
 
-        FWINLINE void pushCharNoChecksumCobs(uint8_t c) {
+        FWINLINE void pushCharCobs(uint8_t c) {
 
             if (cobsStart == -1) {
                 // printf("start cobs at %d\n", head);
                 cobsStart = head;
-                _pushCharNoChecksumNoCobs(0x1);
+                pushByte(0x1);
                 txBuffer[lenIndex] += 1;
             }
 
@@ -83,7 +83,7 @@ class TxBuffer: public Protothread {
 
             // printf("add '0x%x' at %d\n", c, head);
             txBuffer[cobsStart] += 1;
-            _pushCharNoChecksumNoCobs(c);
+            pushByte(c);
             txBuffer[lenIndex] += 1;
         }
 
@@ -187,10 +187,10 @@ class TxBuffer: public Protothread {
             // Init cobs encoder
             cobsStart = -1;
 
-            _pushCharNoChecksumNoCobs(0x0); // SOH
-            _pushCharNoChecksumNoCobs(respCode);
+            pushByte(0x0); // SOH
+            pushByte(respCode);
             lenIndex = head;
-            _pushCharNoChecksumNoCobs(1);
+            pushByte(1);
         }
 
         void sendResponseEnd() {
@@ -227,7 +227,7 @@ class TxBuffer: public Protothread {
         }
 
         void sendResponseUint8(uint8_t v) {
-            pushCharNoChecksumCobs(v);
+            pushCharCobs(v);
         }
 
         void sendResponseValue(uint16_t v) {
