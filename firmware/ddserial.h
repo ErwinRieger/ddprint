@@ -27,11 +27,13 @@
 #include "Protothread.h"
 #include "mdebug.h"
 
-// XXXX use 256 byts for simpler ringbuffer handling...
-
-// Size of tx buffer in bytes, must be a power of 2:
-#define TxBufferLen  128
-#define TxBufferMask  (TxBufferLen - 1)
+// Size of tx buffer in bytes
+// Note: Using a buffer size of 256 bytes has two big advantages:
+//  * The head and tail pointers simply wrap around, no bitmasks or
+//     modulo operations are needed.
+//  * The head and tail operations are atomic, so no critical sections
+//     are needed.
+#define TxBufferLen  256
 
 // Serial communication ACK
 #define RESPUSBACK 0x6
@@ -42,6 +44,7 @@ class TxBuffer: public Protothread {
     private:
         uint8_t txBuffer[TxBufferLen];
         uint8_t head, tail;
+
         // Checksum for response messages
         uint16_t checksum;
         // Number of (cobs encoded) messages in buffer
@@ -60,8 +63,7 @@ class TxBuffer: public Protothread {
             massert(! full());
 #endif
 
-            txBuffer[head] = c;
-            head = (head + 1) & TxBufferMask;
+            txBuffer[head++] = c;
         }
 
         FWINLINE void pushCharNoChecksumCobs(uint8_t c) {
@@ -86,9 +88,7 @@ class TxBuffer: public Protothread {
         }
 
         FWINLINE uint8_t pop() {
-            uint8_t c = txBuffer[tail];
-            tail = (tail + 1) & TxBufferMask;
-            return c;
+            return txBuffer[tail++];
         }
 
         FWINLINE uint8_t peek() {
@@ -97,7 +97,6 @@ class TxBuffer: public Protothread {
 
 
     public:
-/// xxx same as rxbuffer
         TxBuffer() {
             head = tail = 0;
             nMessages = 0;
@@ -105,7 +104,7 @@ class TxBuffer: public Protothread {
         };
 
         FWINLINE uint8_t byteSize() {
-            return ((TxBufferLen + head) - tail) & TxBufferMask;
+            return (uint16_t)(TxBufferLen + head) - tail;
         }
 
         FWINLINE bool empty() {
@@ -140,7 +139,7 @@ class TxBuffer: public Protothread {
                     PT_WAIT_UNTIL((UCSR0A) & (1 << UDRE0));
                     UDR0 = charToSend;
 
-                    tail = (tail + 1) & TxBufferMask;
+                    tail++;
 
                     checksum = _crc_xmodem_update(checksum, charToSend);
 
