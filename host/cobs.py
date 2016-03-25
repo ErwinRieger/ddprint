@@ -2,25 +2,27 @@
 
 import sys, struct, crc16, cStringIO
 
-LenLen = 2
+LenLen = 1
 LenHeader =          1+1+1+LenLen+1+2
 LenCobs =               256 - LenHeader # = 256 - 8 = 248
 
 #
 # Paketgrösse insgesamt max. 256 bytes
-# [     B 0x1, SOH
+# [
+#       B 0x1, SOH
 #       B ..., Command counter [1...255]
 #       B ..., Commandbyte [1...255]
-#       H ..., länge payload "n" PLUS 0x101 -> N = n+0x101, n = N-0x101
+#       B ..., länge payload "n" PLUS 0x01 -> N = n+0x101, n = N-0x101
 #   n * B ..., Payload, aufgeteilt in COBS codeblocks
 #       B ..., Checksum code
 #       H ..., Checksum 16 bit
-#
+# ]
 #
 #
 #
 
-# kodierung checksum, checksum code
+#
+# Kodierung checksum, checksum code (bytes dürfen nicht 0 sein):
 #
 # 0x1: (x, y) -> (x, y)
 # 0x2: (0, y) -> (1, y)
@@ -108,11 +110,12 @@ def decodeCobs(data):
     result = ""
 
     pos = 0
-    while pos < len(data):
+    l = len(data)
+    while pos < l:
         cobsCode = ord(data[pos])
         pos += 1
         for i in range(cobsCode-1):
-            if pos < len(data):
+            if pos < l:
                 result += data[pos]
                 pos += 1
             else:
@@ -125,4 +128,20 @@ def decodeCobs(data):
         result += nullByte
 
     return result
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
