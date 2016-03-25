@@ -67,9 +67,9 @@ void getEepromVersion() {
 
     EEPROM_READ_VAR(i, stored_ver); //read stored version
 
-    txBuffer.sendResponseStart(CmdGetEepromVersion, 5);
-    txBuffer.pushCharChecksum(RespOK);
-    txBuffer.sendResponseValue(stored_ver, 3);
+    txBuffer.sendResponseStart(CmdGetEepromVersion);
+    txBuffer.sendResponseUint8(RespOK);
+    txBuffer.sendResponseString(stored_ver, 3);
     txBuffer.sendResponseEnd();
 }
 
@@ -181,7 +181,7 @@ void dumpEepromSettings(const char* prefix) {
 
     getEepromSettings(es);
 
-    txBuffer.sendResponseStart(CmdGetEepromSettings, sizeof(es.add_homeing));
+    txBuffer.sendResponseStart(CmdGetEepromSettings);
     txBuffer.sendResponseValue((uint8_t*)es.add_homeing, sizeof(es.add_homeing));
     txBuffer.sendResponseEnd();
 
