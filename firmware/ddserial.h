@@ -27,12 +27,15 @@
 #include "Protothread.h"
 #include "mdebug.h"
 
+// XXXX use 256 byts for simpler ringbuffer handling...
+
 // Size of tx buffer in bytes, must be a power of 2:
 #define TxBufferLen  128
 #define TxBufferMask  (TxBufferLen - 1)
 
 // Serial communication ACK
-#define xRESPUSBACK 0x6
+#define RESPUSBACK 0x6
+
 
 class TxBuffer: public Protothread {
 
@@ -41,11 +44,64 @@ class TxBuffer: public Protothread {
         uint8_t head, tail;
         // Checksum for response messages
         uint16_t checksum;
+        // Number of (cobs encoded) messages in buffer
+        uint8_t nMessages;
+
+        uint8_t charToSend;
+        // Start pos of cobs block, -1 if no cobs block started yet
+        int16_t cobsStart;
+        uint8_t lenIndex;
+
+        int16_t cf, csh, csl;
+
+        FWINLINE void _pushCharNoChecksumNoCobs(uint8_t c) {
+
+#if defined(HEAVYDEBUG)
+            massert(! full());
+#endif
+
+            txBuffer[head] = c;
+            head = (head + 1) & TxBufferMask;
+        }
+
+        FWINLINE void pushCharNoChecksumCobs(uint8_t c) {
+
+            if (cobsStart == -1) {
+                // printf("start cobs at %d\n", head);
+                cobsStart = head;
+                _pushCharNoChecksumNoCobs(0x1);
+                txBuffer[lenIndex] += 1;
+            }
+
+            if (c == 0) {
+                // printf("end 0 at %d\n", head);
+                cobsStart = -1;
+                return;
+            }
+
+            // printf("add '0x%x' at %d\n", c, head);
+            txBuffer[cobsStart] += 1;
+            _pushCharNoChecksumNoCobs(c);
+            txBuffer[lenIndex] += 1;
+        }
+
+        FWINLINE uint8_t pop() {
+            uint8_t c = txBuffer[tail];
+            tail = (tail + 1) & TxBufferMask;
+            return c;
+        }
+
+        FWINLINE uint8_t peek() {
+            return txBuffer[tail];
+        }
+
 
     public:
-
+/// xxx same as rxbuffer
         TxBuffer() {
             head = tail = 0;
+            nMessages = 0;
+            cobsStart = -1;
         };
 
         FWINLINE uint8_t byteSize() {
@@ -60,90 +116,119 @@ class TxBuffer: public Protothread {
             return byteSize() >= (TxBufferLen-1);
         }
 
-        FWINLINE uint8_t pop() {
-            uint8_t c = txBuffer[tail];
-            tail = (tail + 1) & TxBufferMask;
-            return c;
-        }
-
-        FWINLINE void pushChar(uint8_t c) {
-
-#if defined(HEAVYDEBUG)
-            massert(! full());
-#endif
-
-            // Don't buffer character if it can be sent directly
-            if (empty() && ((UCSR0A) & (1 << UDRE0))) {
-                // printf("Send: 0x%x\n", c);
-                UDR0 = c;
-                return;
-            }
-
-            txBuffer[head] = c;
-            head = (head + 1) & TxBufferMask;
-        }
-
         FWINLINE void sendACK() {
-            // pushChar(xRESPUSBACK);
-            sendSimpleResponse(xRESPUSBACK);
+            sendSimpleResponse(RESPUSBACK);
         }
 
         bool Run() {
             
             PT_BEGIN();
 
-            while (! empty()) {
+            while (nMessages) {
 
                 PT_WAIT_UNTIL((UCSR0A) & (1 << UDRE0));
+                charToSend = pop();
+                UDR0 = charToSend;
 
-                uint8_t c = pop();
-                // printf("Send: 0x%x\n", c);
-                UDR0 = c;
+                simassert(charToSend == 0);
+
+                checksum = 0;
+
+                charToSend = peek();
+                while (charToSend) {
+
+                    PT_WAIT_UNTIL((UCSR0A) & (1 << UDRE0));
+                    UDR0 = charToSend;
+
+                    tail = (tail + 1) & TxBufferMask;
+
+                    checksum = _crc_xmodem_update(checksum, charToSend);
+
+                    charToSend = peek();
+                }
+
+                csh = checksum >> 8;
+                csl = checksum & 0xFF;
+                cf = 0x1;
+
+                if (checksum == 0) {
+                    cf = 0x4;
+                    csh += 0x1;
+                    csl += 0x1;
+                }
+                else if (csh == 0) {
+                    cf = 0x2;
+                    csh += 0x1;
+                }
+                else  { // csl == 0
+                    cf = 0x3;
+                    csl += 0x1;
+                }
+
+                PT_WAIT_UNTIL((UCSR0A) & (1 << UDRE0));
+                UDR0 = cf;
+
+                PT_WAIT_UNTIL((UCSR0A) & (1 << UDRE0));
+                UDR0 = csl;
+
+                PT_WAIT_UNTIL((UCSR0A) & (1 << UDRE0));
+                UDR0 = csh;
+
+                nMessages--;
+                // Init cobs encoder
+                cobsStart = -1;
             }
 
             PT_RESTART();
             PT_END();
         }
 
-        void pushCharChecksum(uint8_t c) {
-            checksum = _crc_xmodem_update(checksum, c);
-            pushChar(c);
-        }
+        void sendResponseStart(uint8_t respCode) {
 
-        void sendResponseStart(uint8_t respCode, uint8_t length) {
+            // Init cobs encoder
+            cobsStart = -1;
 
-            checksum = 0;
-
-            pushCharChecksum(respCode);
-            pushCharChecksum(length);
+            _pushCharNoChecksumNoCobs(0x0); // SOH
+            _pushCharNoChecksumNoCobs(respCode);
+            lenIndex = head;
+            _pushCharNoChecksumNoCobs(1);
         }
 
         void sendResponseEnd() {
 
-            // printf("chesum: 0x%x\n", checksum);
-            pushChar(checksum & 0xFF);
-            pushChar(checksum >> 8);
+            if (cobsStart != -1) {
+                // Cobs block does not end with 0x0, mark block as a
+                // 'maximum length code block'.
+                txBuffer[cobsStart] = 0xff;
+            }
+
+            txBuffer[head] = 0x0; // Terminate loop in Run() if last response in buffer
+            nMessages++;
         }
 
         void sendSimpleResponse(uint8_t respCode) {
 
-            sendResponseStart(respCode, 0);
+            sendResponseStart(respCode);
             sendResponseEnd();
         }
 
         void sendSimpleResponse(uint8_t respCode, uint8_t payload) {
 
-            sendResponseStart(respCode, 1);
-            pushCharChecksum(payload);
+            sendResponseStart(respCode);
+            sendResponseUint8(payload);
             sendResponseEnd();
         }
 
         void sendSimpleResponse(uint8_t respCode, uint8_t param1, uint8_t param2) {
 
-            sendResponseStart(respCode, 2);
-            pushCharChecksum(param1);
-            pushCharChecksum(param2);
+            sendResponseStart(respCode);
+            sendResponseUint8(param1);
+            sendResponseUint8(param2);
             sendResponseEnd();
+        }
+
+        void sendResponseUint8(uint8_t v) {
+            pushCharNoChecksumCobs(v);
         }
 
         void sendResponseValue(uint16_t v) {
@@ -167,21 +252,22 @@ class TxBuffer: public Protothread {
         }
 
         // Send string, one byte length, then the string
-        void sendResponseValue(char *s, uint8_t l) {
+        void sendResponseString(char *s, uint8_t l) {
 
-            pushCharChecksum(l);
+            sendResponseUint8(l);
             for (uint8_t i=0; i<l; i++)
-                pushCharChecksum(s[i]);
+                sendResponseUint8(s[i]);
         }
 
         // Send fixed size blob
         void sendResponseValue(uint8_t *b, uint8_t l) {
 
             for (uint8_t i=0; i<l; i++)
-                pushCharChecksum(b[i]);
+                sendResponseUint8(b[i]);
         }
 
         void flush() {
+            nMessages = 0;
             head = tail;
         }
 };
