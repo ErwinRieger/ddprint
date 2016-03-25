@@ -48,7 +48,8 @@ def encodeCobs(stream, blockLen=LenCobs):
     lastByte2 = stream.read(1)
 
     if lastByte2 == nullByte:
-        print "Cobs packet ends in 0 -> no overhead"
+
+        # print "Cobs packet ends in 0 -> no overhead"
 
         data += lastByte2
         for c in data:
@@ -67,7 +68,8 @@ def encodeCobs(stream, blockLen=LenCobs):
     stream.seek(fpos)
 
     if lastByte1 == nullByte:
-        print "Cobs packet ends with 0 -> no overhead"
+
+        # print "Cobs packet ends with 0 -> no overhead"
 
         for c in data:
             if c == nullByte:
@@ -81,7 +83,7 @@ def encodeCobs(stream, blockLen=LenCobs):
         assert(len(cobsResult) == len(data))
         return cobsResult
 
-    print "Cobs packet does not end with 0 -> one byte overhead"
+    # print "Cobs packet does not end with 0 -> one byte overhead"
 
     size = len(data)+1
     for pos in range(size):
