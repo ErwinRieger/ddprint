@@ -203,6 +203,7 @@ class MainForm(npyscreen.Form):
         parser.add_argument("-b", dest="baud", action="store", type=int, help="Baudrate, default 115200.", default=115200)
         parser.add_argument("-f", dest="file", action="store", type=str, help="Gcode to print")
         parser.add_argument("-F", dest="fakeendstop", action="store", type=bool, help="fake endstops", default=False)
+        parser.add_argument("-nc", dest="noCoolDown", action="store", type=bool, help="Debug: don't wait for heater cool down after print.", default=False)
         parser.add_argument("-t0", dest="t0", action="store", type=int, help="Temp 0 (heated bed), default comes from mat. profile.")
         parser.add_argument("-t1", dest="t1", action="store", type=int, help="Temp 1 (hotend 1), default comes from mat. profile.")
         parser.add_argument("-mat", dest="mat", action="store", help="Name of material profile to use [pla, abs...], default is pla.", default="pla_3mm")
