@@ -41,7 +41,7 @@ MarlinSerial::MarlinSerial() {
 
     printf("new MarlinSerial\n");
 
-    rxBuffer.head = rxBuffer.tail = rxerror = 0;
+    head = tail = 0;
 
     ptty = open("/dev/ptmx", O_RDWR | O_NOCTTY | O_NONBLOCK);
     if (ptty == -1) {
@@ -74,39 +74,15 @@ MarlinSerial::MarlinSerial() {
     close(tmp);
 };
 
-void charClock() {
+void *serialThread(void * data) {
 
     static bool connected = false;
     static int nerr = 0;
     char buf[1024];
 
-    float delta = getTimestamp() - timestamp;
+    static unsigned long long timestamp = getTimestamp();
 
-    // 10 bits brauchen 10/Baudrate sekunden 
-    // Berechne anzahl zeichen die seit dem letzten read empfangen
-    // worden sein könten:
-    int maxread = (delta*BAUDRATE/10000000);
-    if (maxread == 0)
-        maxread ++;
-
-#if 0
-    if (randomSerialError) {
-
-        unsigned long long delta = getTimestamp() - timestamp;
-
-        // 10 bits brauchen 87uS bei 115200 baud
-        // berechne anzahl zeichen die seit dem letzten read empfangen
-        // worden sein könten:
-        maxread = delta / 90;
-        if (maxread == 0)
-            maxread ++;
-    }
-    else {
-        maxread = 3 - fifoFill;
-    }
-#endif
-
-    // printf("delta: %f us, maxread: %d\n", delta, maxread);
+  while (true) {
 
     struct pollfd pfd = { .fd = ptty, .events = POLLHUP };
     poll(&pfd, 1, 0 /* or other small timeout */);
@@ -135,6 +111,17 @@ void charClock() {
         }
     }
 
+    float delta = getTimestamp() - timestamp;
+
+    // 10 bits brauchen 10/Baudrate sekunden 
+    // Berechne anzahl zeichen die seit dem letzten read empfangen
+    // worden sein könten:
+    int maxread = std::min((int)(delta*BAUDRATE/10000000), 1024);
+    if (maxread == 0)
+        maxread ++;
+
+    // printf("delta: %f us, maxread: %d\n", delta, maxread);
+
     ssize_t nread = read(ptty, buf, maxread);
 
     if (nread > 0) {
@@ -145,26 +132,35 @@ void charClock() {
 
             // printf("serial read: '0x%x'\n", rxChar);
 
-            /*
-            if (fifoFill == 3) {
-                printf("serial overflow maxread: %d, nread: %d\n", maxread, nread);
-                // set error bits in 80% of the cases, else let the
-                // other error detecting mechanisms come into play
-                if (drand48() > 0.20)
-                    rx_buffer_error = 0x8; // SET DOR0A bit, data overrun
-                break;
-            }
-            fifo[fifoFill++] = rxChar;
-            */
             if (MSerial._available() == (RX_BUFFER_SIZE-1)) {
                 printf("serial overflow maxread: %d, nread: %d\n", maxread, nread);
                 assert(0);
             }
-            MSerial.store_char(rxChar);
+    
+            if (randomSerialError) {
+                if (drand48() < 0.00001) {
+                    printf("simulate rx error...\n");
+                    rxChar = timestamp & 0xff;
+                    MSerial.store_char(rxChar);
+                }
+                else if (drand48() < 0.00001) {
+                    printf("simulate missing byte rx error...\n");
+                }
+                else {
+                    MSerial.store_char(rxChar);
+                }
+            }
+            else {
+                MSerial.store_char(rxChar);
+            }
 
             // printf("Stored : '0x%x', size %d bytes\n", rxChar, MSerial._available());
         }
     }
+
+    timestamp = getTimestamp();
+    usleep(1000);
+  }
 }
 
 void MarlinSerial::begin(long) { };
