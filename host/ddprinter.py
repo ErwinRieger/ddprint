@@ -278,7 +278,7 @@ class Printer(Serial):
 
             timeout += self.timeout
 
-            if timeout > 5:
+            if timeout > 3:
                 print "timeout reading, data read: %d bytes, '%s'" % (len(res), res)
                 raise RxTimeout()
 
@@ -566,7 +566,7 @@ class Printer(Serial):
             self.send(binary)
         """
 
-        self.gui.logSend("*** sendCommand %s (0x%x) *** " % (CommandNames[sendCmd], sendCmd))
+        self.gui.logSend("*** sendCommand %s (0x%x, len: %d) *** " % (CommandNames[sendCmd], sendCmd, len(binary)))
         # print "send: ", binary.encode("hex")
         self.send(binary)
 
