@@ -131,6 +131,7 @@ class TxBuffer: public Protothread {
 
                 simassert(charToSend == 0);
 
+                // printf("payload: ");
                 checksum = 0;
 
                 charToSend = peek();
@@ -139,12 +140,16 @@ class TxBuffer: public Protothread {
                     PT_WAIT_UNTIL((UCSR0A) & (1 << UDRE0));
                     UDR0 = charToSend;
 
+                    // printf("%02x", charToSend);
+
                     tail++;
 
                     checksum = _crc_xmodem_update(checksum, charToSend);
 
                     charToSend = peek();
                 }
+
+                // printf(" checksum fw: 0x%x\n", checksum);
 
                 csh = checksum >> 8;
                 csl = checksum & 0xFF;
@@ -159,10 +164,12 @@ class TxBuffer: public Protothread {
                     cf = 0x2;
                     csh += 0x1;
                 }
-                else  { // csl == 0
+                else if  (csl == 0) {
                     cf = 0x3;
                     csl += 0x1;
                 }
+
+                // printf(" checksum flags: 0x%x\n", cf);
 
                 PT_WAIT_UNTIL((UCSR0A) & (1 << UDRE0));
                 UDR0 = cf;
