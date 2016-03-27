@@ -38,6 +38,7 @@ void mAssert(uint16_t line, char* file);
 
     #define FWINLINE inline
 
+    #define printf ERROR_PRINTF_USED
 #else
 
     #include <assert.h>
