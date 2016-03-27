@@ -120,7 +120,14 @@ inline void MarlinSerial::store_char(unsigned char c) {
             flush0();
         }
         else {
-            massert(head < 255);
+            if (head == 0) {
+                // Lost SOH
+                flush0();
+                buffer[head++] = 0x0;
+            }
+            else {
+                massert(head < 255);
+            }
         }
 
         buffer[head++] = c;
