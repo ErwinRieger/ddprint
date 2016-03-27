@@ -26,10 +26,10 @@ LenCobs =               255 - LenHeader
 #
 # Kodierung checksum, checksum code (bytes dürfen nicht 0 sein):
 #
-# 0x1: (x, y) -> (x, y)
-# 0x2: (0, y) -> (1, y)
-# 0x3: (x, 0) -> (x, 1)
-# 0x4: (0, 0) -> (1, 1)
+# 0x1: high und lowbyte sind != 0: (x, y) -> (x, y)
+# 0x2: highbyte ist 0            : (0, y) -> (1, y)
+# 0x3: lowbyte ist 0             : (x, 0) -> (x, 1)
+# 0x4: high und lowbyte sind 0   : (0, 0) -> (1, 1)
 #
 
 nullByte = chr(0)
