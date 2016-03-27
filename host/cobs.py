@@ -4,7 +4,9 @@ import sys, struct, crc16, cStringIO
 
 LenLen = 1
 LenHeader =          1+1+1+LenLen+1+2
-LenCobs =               256 - LenHeader # = 256 - 8 = 248
+# Rxbuffer in firmare is 256 bytes, but for simpler index handling
+# we use only 255 bytes of it.
+LenCobs =               255 - LenHeader
 
 #
 # Paketgrösse insgesamt max. 256 bytes
