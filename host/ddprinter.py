@@ -292,15 +292,14 @@ class Printer(Serial):
 # xxx loop til 0x0 found
         assert(s == cobs.nullByte)
 
-        s = self.readWithTimeout(1) # read response code
-        crc = crc16.crc16xmodem(s)
+        rc = self.readWithTimeout(1) # read response code
+        crc = crc16.crc16xmodem(rc)
+        cmd = ord(rc)
 
-        cmd = ord(s)
+        l = self.readWithTimeout(1) # read length byte
+        crc = crc16.crc16xmodem(l, crc)
 
-        s = self.readWithTimeout(1) # read length byte
-        crc = crc16.crc16xmodem(s, crc)
-
-        length = ord(s) - 1
+        length = ord(l) - 1
         self.gui.logRecv("Response 0x%x, reading %d b" % (cmd, length))
 
         payload = ""
@@ -318,7 +317,7 @@ class Printer(Serial):
             checkSum -= 0x101;
 
         if checkSum != crc:
-            print "RxChecksumError, payload: %s" % payload.encode("hex")
+            print "RxChecksumError our: 0x%x, fw: 0x%x, payload: %s, cflags: 0x%x" % (crc, checkSum, (rc + l + payload).encode("hex"), cflags)
             """
             # Drain input
             try:
