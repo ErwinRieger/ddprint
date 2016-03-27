@@ -36,8 +36,8 @@
   SIGNAL(M_USARTx_RX_vect)
   {
 
-    // Check error status bits for frame-/overrun- and parity error
-    MSerial.rxerror |= M_UCSRxA & 0x1C;
+    // // Check error status bits for frame-/overrun- and parity error
+    // MSerial.rxerror |= M_UCSRxA & 0x1C;
     unsigned char c  =  M_UDRx;
     MSerial.store_char(c);
   }
@@ -47,7 +47,7 @@
 
 MarlinSerial::MarlinSerial()
 {
-    rxBuffer.head = rxBuffer.tail = rxerror = 0;
+    head = tail; //  = rxerror = 0;
 }
 
 // Public Methods //////////////////////////////////////////////////////////////
