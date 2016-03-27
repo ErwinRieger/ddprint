@@ -138,7 +138,7 @@ void kill() {
     pinMode(PS_ON_PIN,INPUT);
 #endif
 
-    // printDebugInfo();
+    printDebugInfo();
 
     while(1) {
         // Wait for reset
@@ -1552,24 +1552,12 @@ class UsbCommand : public Protothread {
 
             uint8_t e, c, flags, cs1, cs2;
 
-            uint8_t i;
             SerAvailableState av;
 
             // Read startbyte
-            PT_WAIT_UNTIL( (i = MSerial._available()) );
+            PT_WAIT_UNTIL( MSerial._available() );
+            PT_WAIT_UNTIL( MSerial.readNoCheckNoCobs() == SOH );
             
-            while ( i ) {
-                c = MSerial.readNoCheckNoCobs();
-                if (c == SOH) {
-                    break;
-                }
-                i--;
-            }
-
-            if (c != SOH) {
-                PT_RESTART();   // does a return
-            }
-
             startTS = millis();
 
             checksum = 0;
@@ -1640,12 +1628,11 @@ class UsbCommand : public Protothread {
                 if (serialNumber==0)
                     serialNumber = 1;
 
-                // MSerial.flush(3); // consume checksum flags and checksum
-                // MSerial.flush0(); // consume checksum flags and checksum
-
 #if defined(HEAVYDEBUG)
                 massert(MSerial._available() == 3);
 #endif
+
+                MSerial.flush0(); // clear rx buffer
 
                 // USBACK;
                 txBuffer.sendACK();
@@ -1846,12 +1833,11 @@ class UsbCommand : public Protothread {
                         txBuffer.sendSimpleResponse(RespUnknownCommand, commandByte);
                 }
 
-                // MSerial.flush(3); // consume checksum flags and checksum
-                // MSerial.flush0(); // consume checksum flags and checksum
-
 #if defined(HEAVYDEBUG)
                 massert(MSerial._available() == 3);
 #endif
+
+                MSerial.flush0(); // clear rx buffer
             }
 
             PT_RESTART();
@@ -2038,9 +2024,11 @@ void printDebugInfo() {
 
     lcd.setCursor(0, 3); lcd.print("stb:"); lcd.print(stepBuffer.byteSize());
 
-    while(1) {
+    // Wait 100 s before reboot
+    for (int i=0; i<100000; i++) {
         txBuffer.Run();
         watchdog_reset();
+        delay(1);
     }
 #endif
 }
