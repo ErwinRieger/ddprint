@@ -60,32 +60,17 @@
 #define M_USARTx_RX_vect SERIAL_REGNAME(USART,SERIAL_PORT,_RX_vect)
 #define M_U2Xx SERIAL_REGNAME(U2X,SERIAL_PORT,)
 
-// Define constants and variables for buffering incoming serial data.  We're
-// using a ring buffer (I think), in which rx_buffer_head is the index of the
-// location to which to write the next incoming character and rx_buffer_tail
-// is the index of the location from which to read.
-//
 // Size of tx buffer in bytes
-// Note: Using a buffer size of 256 bytes has two big advantages:
-//  * The head and tail pointers simply wrap around, no bitmasks or
-//     modulo operations are needed.
-//  * The head and tail operations are atomic, so no critical sections
-//     are needed.
 #define RX_BUFFER_SIZE 256
-
-struct ring_buffer
-{
-  unsigned char buffer[RX_BUFFER_SIZE];
-  uint8_t head;
-  uint8_t tail;
-};
 
 class MarlinSerial //: public Stream
 {
 
   private:
 
-    ring_buffer rxBuffer;
+    unsigned char buffer[RX_BUFFER_SIZE];
+    uint8_t head;
+    uint8_t tail;
 
     // Length of cobs block payload
     uint8_t cobsLen;
@@ -114,57 +99,36 @@ class MarlinSerial //: public Stream
     uint16_t readUInt16NoCheckCobs();
     float readFloatNoCheckCobs();
 
-    uint16_t serReadUInt16();
     int32_t readInt32NoCheckCobs();
-    uint32_t serReadUInt32();
 
-    uint8_t tellN(uint8_t n) { return rxBuffer.tail + n; }
-    uint8_t getRXTail() { return rxBuffer.tail; }
-
-    void flush(void);
-    void flush(uint8_t);
+    inline void flush0(void) {
+        head = tail = 0;
+    }
 
     inline uint8_t _available(void) {
-      return (uint16_t)(RX_BUFFER_SIZE + rxBuffer.head) - rxBuffer.tail;
+      return head - tail;
     }
 
     inline void store_char(unsigned char c);
-
-  public:
-
-    // Bitmask of usart error status bits (frame-/overrun- or parity error)
-    uint8_t rxerror;
-
-    // Return bitmask of usart error status bits (frame-/overrun- or parity error)
-    // and reset error status.
-    uint8_t getError() {
-        uint8_t e = rxerror;
-        rxerror = 0;
-        return e;
-    }
 };
 
 extern MarlinSerial MSerial;
 
 inline void MarlinSerial::store_char(unsigned char c) {
-        uint8_t i = rxBuffer.head + 1;
 
-        // if we should be storing the received character into the location
-        // just before the tail (meaning that the head would advance to the
-        // current location of the tail), we're about to overflow the buffer
-        // and so we don't write the character or advance the head.
-        if (i != rxBuffer.tail) {
-            rxBuffer.buffer[rxBuffer.head] = c;
-            rxBuffer.head = i;
+        if (c == 0x0) { // SOH
+            flush0();
         }
         else {
-            massert(0);
+            massert(head < 255);
         }
+
+        buffer[head++] = c;
     }
 
 
-#if defined(DDSim)
-    #include "MarlinSerialSim.h"
-#endif
+
+
+
 
 

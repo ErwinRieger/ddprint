@@ -10,7 +10,7 @@
 
 uint8_t MarlinSerial::peekN(uint8_t index) {
 
-    return rxBuffer.buffer[(uint8_t)(rxBuffer.tail+index)]; // Why is this uint8 cast needed?
+    return buffer[tail+index];
 }
 
 void MarlinSerial::peekChecksum(uint16_t *checksum, uint8_t count) {
@@ -60,9 +60,8 @@ uint8_t MarlinSerial::readNoCheckCobs(void)
 
 uint8_t MarlinSerial::readNoCheckNoCobs(void)
 {
-    unsigned char c = rxBuffer.buffer[rxBuffer.tail];
-    rxBuffer.tail = rxBuffer.tail + 1;
-    return c;
+
+    return buffer[tail++];
 }
 
 float MarlinSerial::readFloatNoCheckCobs()
@@ -79,15 +78,9 @@ float MarlinSerial::readFloatNoCheckCobs()
 uint16_t MarlinSerial::readUInt16NoCheckNoCobs()
 {
 
-    if ((rxBuffer.head - rxBuffer.tail) >= 2) {
-        uint16_t i = *(uint16_t*)(rxBuffer.buffer + rxBuffer.tail);
-        rxBuffer.tail += 2;
-        return i;
-    }
-
-    uint8_t  b1 = readNoCheckNoCobs();
-    uint16_t b2 = readNoCheckNoCobs();
-    return (b2<<8) + b1;
+    uint16_t i = *(uint16_t*)(buffer + tail);
+    tail += 2;
+    return i;
 }
 
 uint16_t MarlinSerial::readUInt16NoCheckCobs()
@@ -95,15 +88,6 @@ uint16_t MarlinSerial::readUInt16NoCheckCobs()
 
     uint8_t  b1 = readNoCheckCobs();
     uint16_t b2 = readNoCheckCobs();
-    return (b2<<8) + b1;
-}
-
-uint16_t MarlinSerial::serReadUInt16()
-{
-    simassert(0);
-
-    uint8_t  b1 = serReadNoCheck();
-    uint16_t b2 = serReadNoCheck();
     return (b2<<8) + b1;
 }
 
@@ -115,32 +99,6 @@ int32_t MarlinSerial::readInt32NoCheckCobs()
     int32_t b3 = readNoCheckCobs();
     int32_t b4 = readNoCheckCobs();
     return (b4<<24) + (b3<<16) + (b2<<8) + b1;
-}
-
-uint32_t MarlinSerial::serReadUInt32()
-{
-    simassert(0);
-
-    uint8_t  b1 = serReadNoCheck();
-    uint32_t b2 = serReadNoCheck();
-    uint32_t b3 = serReadNoCheck();
-    uint32_t b4 = serReadNoCheck();
-    return (b4<<24) + (b3<<16) + (b2<<8) + b1;
-}
-
-void MarlinSerial::flush(uint8_t n) {
-
-    rxBuffer.tail = rxBuffer.tail + n;
-}
-
-void MarlinSerial::flush()
-{
-  // don't reverse this or there may be problems if the RX interrupt
-  // occurs after reading the value of rx_buffer_head but before writing
-  // the value to rx_buffer_tail; the previous value of rx_buffer_head
-  // may be written to rx_buffer_tail, making it appear as if the buffer
-  // were full, not empty.
-  rxBuffer.head = rxBuffer.tail;
 }
 
 // Preinstantiate Objects //////////////////////////////////////////////////////
