@@ -46,7 +46,7 @@ unsigned long long getTimestamp() {
     return tv.tv_sec * 1000000 + tv.tv_usec;
 }
 
-unsigned long long timestamp;
+static unsigned long long timestamp;
 static unsigned long long lastTempIRQ;
 static unsigned long long lastHeater;
 
@@ -65,18 +65,14 @@ static bool wdEnabled = true;
 
 extern void loop();
 extern bool randomSerialError;
-extern void charClock();
 static bool reset_button_press = false;
 
 void *isrThread(void *data);
-// static void checkPrintFinished();
+void *serialThread(void *data);
 
 int printStarted = 0;
 
 pthread_t tids;
-
-// unsigned char block_buffer_head = 0;
-// unsigned char block_buffer_tail = 0;
 
 bool headHeaterOn = false;
 int heaterADC = 250;
@@ -138,8 +134,9 @@ main(int argc, char** argv) {
 
     printf("usage:\n");
     printf("%s -p<filename>: print file (sdread mode)\n", argv[0]);
-    printf("%s -l: run normal loop(), process serial commands)\n", argv[0]);
-    printf("%s -w: disable watchdog (for gdb)\n", argv[0]);
+    printf("%s -l: run normal loop(), process serial commands).\n", argv[0]);
+    printf("%s -w: disable watchdog (for gdb).\n", argv[0]);
+    printf("%s -r: generate random serial errors.\n", argv[0]);
 
     char ch;
     char * filename = NULL;
@@ -181,6 +178,7 @@ main(int argc, char** argv) {
 #endif
 
         assert(pthread_create(&tids, NULL, isrThread, (void *) NULL) == 0);
+        assert(pthread_create(&tids, NULL, serialThread, (void *) NULL) == 0);
 
         setup();
 
@@ -282,7 +280,6 @@ main(int argc, char** argv) {
                         // printf("r: %.5f\n", r);
                         usleep(250000 * r);
                     }
-                    charClock();
                 }
 
                 if (printStarted==2) {
@@ -304,9 +301,6 @@ main(int argc, char** argv) {
                             printf("\n\nSerial errors encountered: 0x%x\n\n", errorFlags);
                     // }
                 }
-
-                // checkPrintFinished();
-
 
                 i++;
         }
@@ -457,7 +451,7 @@ void *isrThread(void * data) {
             // Write gcode simulation output
             if ((fabs(lastPosX - ssx.pos) > 1) || (fabs(lastPosY -ssy.pos) > 1) || (fabs(lastPosZ - ssz.pos) >= 0.1)) {
 
-                char buf[64];
+                char buf[128];
 
                 sprintf(buf, "G1 X%.1f Y%.1f Z%.1f\n", ssx.pos, ssy.pos, ssz.pos);
 
