@@ -27,12 +27,12 @@
 
 #include "MarlinSerial.h"
 #include "ddserial.h"
+#include "ddcommands.h"
 #include "Configuration.h"
 
 extern unsigned long long getTimestamp();
 extern unsigned long long timestamp;
 
-static uint8_t rx_buffer_error = 0;
 // Filedescriptor for serial pseudo tty  
 int ptty;
 bool randomSerialError = false;
@@ -138,21 +138,20 @@ void *serialThread(void * data) {
             }
     
             if (randomSerialError) {
-                if (drand48() < 0.00001) {
+                if ((rxChar == SOH) && (drand48() < 0.001)) {
+                    printf("simulate SOH error...\n");
+                    rxChar = 0xff;
+                }
+                else if (drand48() < 0.00001) {
                     printf("simulate rx error...\n");
                     rxChar = timestamp & 0xff;
-                    MSerial.store_char(rxChar);
                 }
                 else if (drand48() < 0.00001) {
                     printf("simulate missing byte rx error...\n");
-                }
-                else {
-                    MSerial.store_char(rxChar);
+                    continue;
                 }
             }
-            else {
-                MSerial.store_char(rxChar);
-            }
+            MSerial.store_char(rxChar);
 
             // printf("Stored : '0x%x', size %d bytes\n", rxChar, MSerial._available());
         }
