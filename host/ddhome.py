@@ -26,9 +26,6 @@ from ddprintstates import *
 from ddprintconstants import dimNames
 from ddprofile import PrinterProfile
 
-# debugMoves = True
-# debugMoves = False
-
 import ddprintutil as util
 
 ####################################################################################################

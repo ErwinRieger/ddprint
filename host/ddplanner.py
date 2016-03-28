@@ -25,17 +25,12 @@ import ddprintutil as util, dddumbui, packedvalue
 from ddprofile import PrinterProfile, MatProfile, NozzleProfile
 from move import VVector, Move
 
-from ddprintconstants import fTimer, dimNames, maxTimerValue24, DEFAULT_MAX_ACCELERATION, DropSegments
-from ddprintutil import Z_AXIS, debugMoves, vectorMul, circaf
+from ddprintconstants import *
+from ddconfig import *
+from ddprintutil import Z_AXIS, vectorMul, circaf
 from ddprinter import Printer
 from ddprintcommands import CmdSyncTargetTemp
 from ddprintstates import HeaterEx1, HeaterBed
-
-debugPlot = True
-debugPlot = False
-
-debugAutoTemp = False
-debugAutoTemp = True
 
 # Debug object
 class StreamedMove:
@@ -52,20 +47,10 @@ errorMove = StreamedMove()
 ATInterval = 5 # [s]
 # ATMaxTempIncrease = 50
 
-# UseAutoTemp = True
-UseAutoTemp = False
-UseExtrusionAutoTemp = True
-
 # Headspeed/extrusionspeed where autotemp increase starts
 ExtrusionAmountLow = 30 # [mm/s] for a 1mm nozzle
 if UseExtrusionAutoTemp:
     ExtrusionAmountLow = 7.5 # [mm³/s] for a 1mm nozzle
-
-#####################################################################
-#
-# Auto extrusion adjust
-#
-# UseExtrusionAdjust = True
 
 #####################################################################
 #

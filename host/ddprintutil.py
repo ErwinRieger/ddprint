@@ -24,35 +24,20 @@ import ddprintconstants, ddhome
 
 from ddprintcommands import *
 from ddprintstates import *
-from ddprintconstants import dimNames
-from ddprofile import PrinterProfile, MatProfile
-
-debugMoves = True
-debugMoves = False
+from ddprintconstants import *
+from ddconfig import *
+from ddprofile import PrinterProfile, MatProfile, NozzleProfile
 
 ####################################################################################################
 #
 # Constants, some are printer specific.
 #
-X_AXIS = 0
-Y_AXIS = 1
-Z_AXIS = 2
-A_AXIS = 3
-B_AXIS = 4
-
 
 # UM2:
 FILAMENT_REVERSAL_LENGTH = 750
 
 # To prevent false assertions because of rounding errors
 RoundSafe = 0.995
-
-####################################################################################################
-#
-# Generic Constants
-#
-dimIndex = { "X": 0, "Y": 1, "Z": 2, "A": 3, "B": 4 }
-
 
 ####################################################################################################
 def vectorAdd(v1, v2):
@@ -363,7 +348,7 @@ def commonInit(args, parser):
     printer.commandInit(args)
 
     ddhome.home(parser, args.fakeendstop)
-
+    downloadTempTable(printer)
     printer.sendPrinterInit()
 
 ####################################################################################################
@@ -1177,6 +1162,42 @@ def getResponseString(s, offset):
 ####################################################################################################
 
 
+def downloadTempTable(printer):
+
+    payload = struct.pack("<B", NExtrusionLimit)
+
+    baseTemp = ExtrusionLimitBaseTemp
+
+    area04 = pow(0.4, 2)*math.pi/4
+
+    extrusionLow = MatProfile.getBaseExtrusionRate() * (NozzleProfile.getArea() / area04)
+
+    f = NozzleProfile.getAutoTempFactor(UseExtrusionAutoTemp)
+
+    mmpermm3 = 1 / MatProfile.getMatArea()
+
+    spm = PrinterProfile.getStepsPerMM(A_AXIS)
+
+    print "Downloading TempTable:"
+    for i in range(NExtrusionLimit):
+
+        t = baseTemp + i*2
+
+        dspeed = i*2 / f
+        speed = extrusionLow + dspeed
+
+        steprate = speed * mmpermm3 * spm
+        tvs = 1.0/steprate
+        timerValue = int(fTimer / steprate)
+
+        print "    Temp: %d, max extrusion: %.2f mm³/s, steps/s: %d, steprate: %d us, timervalue: %d" % (t, speed, int(steprate), int(tvs*1000000), timerValue)
+        payload += struct.pack("<H", timerValue)
+
+    resp = printer.query(CmdSetTempTable, binPayload=payload)
+    assert(handleGenericResponse(resp))
+
+
+####################################################################################################
 
 
 

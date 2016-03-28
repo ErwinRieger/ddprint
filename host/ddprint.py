@@ -224,8 +224,6 @@ from ddprintstates import *
 
 ############################################################################
 # Constants
-# NullVector = 5*[0]
-# SOH = 0x81
 ############################################################################
 
 def plotArrow(f, v, startv, color="blue"):
@@ -790,7 +788,7 @@ def main():
     elif args.mode == 'getTempTable':
 
         printer.commandInit(args)
-        tempTable = printer.query(CmdGetTempTable)
+        tempTable = printer.getTempTable()
         print "tempTable: ", pprint.pprint(tempTable)
 
     elif args.mode == 'getStatus':
@@ -835,15 +833,8 @@ def main():
 
     elif args.mode == 'test':
 
-        util.commonInit(args, parser)
-
-        printer.sendCommandParamV(CmdUnknown, [packedvalue.uint8_t(0xff)])
-        printer.sendCommand(CmdEOT)
-
-        printer.sendCommandParamV(CmdMove, [MoveTypeNormal])
-
-        printer.waitForState(StateIdle)
-
+        printer.commandInit(args)
+        util.downloadTempTable(printer)
         printer.readMore()
 
     elif args.mode == "writeEepromFloat":

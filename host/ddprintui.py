@@ -338,6 +338,7 @@ class MainForm(npyscreen.Form):
             self.planner.reset()
 
             ddhome.home(self.parser, self.args.fakeendstop)
+            util.downloadTempTable(self.printer)
             self.printer.sendPrinterInit()
 
             # Send heat up  command

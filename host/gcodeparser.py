@@ -26,8 +26,9 @@ from ddprofile import MatProfile, PrinterProfile
 from ddplanner import Planner
 from ddprintcommands import CmdSyncFanSpeed, CmdUnknown, CmdDwellMS
 from ddprintconstants import dimNames
+from ddconfig import *
 from move import VVector, Move
-from ddprintutil import A_AXIS, B_AXIS, debugMoves, vectorDistance, circaf
+from ddprintutil import A_AXIS, B_AXIS, vectorDistance, circaf
 
 import ddprintutil as util
 
@@ -42,10 +43,6 @@ RetractLength = 5.0       # mm, for 1.75mm filament
 # xxx erhöht wegen bowdenzug-spiel am feeder/kopf
 # RetractLength = 6.5       # mm
 
-# Temporarily increased retractlength to fix 'retraction blobs'
-RetractLength = 5.0       # mm
-
-# MATERIAL_DIAMETER = 2.9 # [mm]
 ############################################################################
 
 # Get layer number from cura gcode comment

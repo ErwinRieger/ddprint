@@ -87,39 +87,58 @@ extern "C"{
 /////////////////////////////////////////////////////////////////////////////////////
 #if defined(USEExtrusionRateTable)
 
-uint16_t tempExtrusionRateTable[31] = {
-    /* temp: 210, max extrusion: 4.80 mm³/s, steps/s: 281, steprate: 3553 us, timervalue: */ 7107,
-    /* temp: 212, max extrusion: 5.60 mm³/s, steps/s: 328, steprate: 3046 us, timervalue: */ 6092,
-    /* temp: 214, max extrusion: 6.40 mm³/s, steps/s: 375, steprate: 2665 us, timervalue: */ 5330,
-    /* temp: 216, max extrusion: 7.20 mm³/s, steps/s: 422, steprate: 2369 us, timervalue: */ 4738,
-    /* temp: 218, max extrusion: 8.00 mm³/s, steps/s: 468, steprate: 2132 us, timervalue: */ 4264,
-    /* temp: 220, max extrusion: 8.80 mm³/s, steps/s: 515, steprate: 1938 us, timervalue: */ 3876,
-    /* temp: 222, max extrusion: 9.60 mm³/s, steps/s: 562, steprate: 1776 us, timervalue: */ 3553,
-    /* temp: 224, max extrusion: 10.40 mm³/s, steps/s: 609, steprate: 1640 us, timervalue: */ 3280,
-    /* temp: 226, max extrusion: 11.20 mm³/s, steps/s: 656, steprate: 1523 us, timervalue: */ 3046,
-    /* temp: 228, max extrusion: 12.00 mm³/s, steps/s: 703, steprate: 1421 us, timervalue: */ 2843,
-    /* temp: 230, max extrusion: 12.80 mm³/s, steps/s: 750, steprate: 1332 us, timervalue: */ 2665,
-    /* temp: 232, max extrusion: 13.60 mm³/s, steps/s: 797, steprate: 1254 us, timervalue: */ 2508,
-    /* temp: 234, max extrusion: 14.40 mm³/s, steps/s: 844, steprate: 1184 us, timervalue: */ 2369,
-    /* temp: 236, max extrusion: 15.20 mm³/s, steps/s: 891, steprate: 1122 us, timervalue: */ 2244,
-    /* temp: 238, max extrusion: 16.00 mm³/s, steps/s: 937, steprate: 1066 us, timervalue: */ 2132,
-    /* temp: 240, max extrusion: 16.80 mm³/s, steps/s: 984, steprate: 1015 us, timervalue: */ 2030,
-    /* temp: 242, max extrusion: 17.60 mm³/s, steps/s: 1031, steprate: 969 us, timervalue: */ 1938,
-    /* temp: 244, max extrusion: 18.40 mm³/s, steps/s: 1078, steprate: 927 us, timervalue: */ 1854,
-    /* temp: 246, max extrusion: 19.20 mm³/s, steps/s: 1125, steprate: 888 us, timervalue: */ 1776,
-    /* temp: 248, max extrusion: 20.00 mm³/s, steps/s: 1172, steprate: 852 us, timervalue: */ 1705,
-    /* temp: 250, max extrusion: 20.80 mm³/s, steps/s: 1219, steprate: 820 us, timervalue: */ 1640,
-    /* temp: 252, max extrusion: 21.60 mm³/s, steps/s: 1266, steprate: 789 us, timervalue: */ 1579,
-    /* temp: 254, max extrusion: 22.40 mm³/s, steps/s: 1313, steprate: 761 us, timervalue: */ 1523,
-    /* temp: 256, max extrusion: 23.20 mm³/s, steps/s: 1360, steprate: 735 us, timervalue: */ 1470,
-    /* temp: 258, max extrusion: 24.00 mm³/s, steps/s: 1406, steprate: 710 us, timervalue: */ 1421,
-    /* temp: 260, max extrusion: 24.80 mm³/s, steps/s: 1453, steprate: 687 us, timervalue: */ 1375,
-    /* temp: 262, max extrusion: 25.60 mm³/s, steps/s: 1500, steprate: 666 us, timervalue: */ 1332,
-    /* temp: 264, max extrusion: 26.40 mm³/s, steps/s: 1547, steprate: 646 us, timervalue: */ 1292,
-    /* temp: 266, max extrusion: 27.20 mm³/s, steps/s: 1594, steprate: 627 us, timervalue: */ 1254,
-    /* temp: 268, max extrusion: 28.00 mm³/s, steps/s: 1641, steprate: 609 us, timervalue: */ 1218,
-    /* temp: 270, max extrusion: 28.80 mm³/s, steps/s: 1688, steprate: 592 us, timervalue: */ 1184,
+// Number of entries in table
+#define NExtrusionLimit 40
+#define ExtrusionLimitBaseTemp 190
+
+//
+// Limit extrusion rate by the hotend temperature. This is the initial table
+// with no real limitations. The pertinent values are downloaded by the host
+// software before print.
+//
+uint16_t tempExtrusionRateTable[NExtrusionLimit] = {
+    /* temp: 190, max extrusion: 4.80 mm³/s, steps/s: 281, steprate: 3553 us, timervalue: */ 7107,
+    /* temp: 192, max extrusion: 5.80 mm³/s, steps/s: 340, steprate: 2941 us, timervalue: */ 5882,
+    /* temp: 194, max extrusion: 6.80 mm³/s, steps/s: 398, steprate: 2508 us, timervalue: */ 5017,
+    /* temp: 196, max extrusion: 7.80 mm³/s, steps/s: 457, steprate: 2187 us, timervalue: */ 4374,
+    /* temp: 198, max extrusion: 8.80 mm³/s, steps/s: 515, steprate: 1938 us, timervalue: */ 3876,
+    /* temp: 200, max extrusion: 9.80 mm³/s, steps/s: 574, steprate: 1740 us, timervalue: */ 3481,
+    /* temp: 202, max extrusion: 10.80 mm³/s, steps/s: 633, steprate: 1579 us, timervalue: */ 3159,
+    /* temp: 204, max extrusion: 11.80 mm³/s, steps/s: 691, steprate: 1445 us, timervalue: */ 2891,
+    /* temp: 206, max extrusion: 12.80 mm³/s, steps/s: 750, steprate: 1332 us, timervalue: */ 2665,
+    /* temp: 208, max extrusion: 13.80 mm³/s, steps/s: 808, steprate: 1236 us, timervalue: */ 2472,
+    /* temp: 210, max extrusion: 14.80 mm³/s, steps/s: 867, steprate: 1152 us, timervalue: */ 2305,
+    /* temp: 212, max extrusion: 15.80 mm³/s, steps/s: 926, steprate: 1079 us, timervalue: */ 2159,
+    /* temp: 214, max extrusion: 16.80 mm³/s, steps/s: 984, steprate: 1015 us, timervalue: */ 2030,
+    /* temp: 216, max extrusion: 17.80 mm³/s, steps/s: 1043, steprate: 958 us, timervalue: */ 1916,
+    /* temp: 218, max extrusion: 18.80 mm³/s, steps/s: 1102, steprate: 907 us, timervalue: */ 1814,
+    /* temp: 220, max extrusion: 19.80 mm³/s, steps/s: 1160, steprate: 861 us, timervalue: */ 1723,
+    /* temp: 222, max extrusion: 20.80 mm³/s, steps/s: 1219, steprate: 820 us, timervalue: */ 1640,
+    /* temp: 224, max extrusion: 21.80 mm³/s, steps/s: 1277, steprate: 782 us, timervalue: */ 1565,
+    /* temp: 226, max extrusion: 22.80 mm³/s, steps/s: 1336, steprate: 748 us, timervalue: */ 1496,
+    /* temp: 228, max extrusion: 23.80 mm³/s, steps/s: 1395, steprate: 716 us, timervalue: */ 1433,
+    /* temp: 230, max extrusion: 24.80 mm³/s, steps/s: 1453, steprate: 687 us, timervalue: */ 1375,
+    /* temp: 232, max extrusion: 25.80 mm³/s, steps/s: 1512, steprate: 661 us, timervalue: */ 1322,
+    /* temp: 234, max extrusion: 26.80 mm³/s, steps/s: 1571, steprate: 636 us, timervalue: */ 1273,
+    /* temp: 236, max extrusion: 27.80 mm³/s, steps/s: 1629, steprate: 613 us, timervalue: */ 1227,
+    /* temp: 238, max extrusion: 28.80 mm³/s, steps/s: 1688, steprate: 592 us, timervalue: */ 1184,
+    /* temp: 240, max extrusion: 29.80 mm³/s, steps/s: 1746, steprate: 572 us, timervalue: */ 1144,
+    /* temp: 242, max extrusion: 30.80 mm³/s, steps/s: 1805, steprate: 553 us, timervalue: */ 1107,
+    /* temp: 244, max extrusion: 31.80 mm³/s, steps/s: 1864, steprate: 536 us, timervalue: */ 1072,
+    /* temp: 246, max extrusion: 32.80 mm³/s, steps/s: 1922, steprate: 520 us, timervalue: */ 1040,
+    /* temp: 248, max extrusion: 33.80 mm³/s, steps/s: 1981, steprate: 504 us, timervalue: */ 1009,
+    /* temp: 250, max extrusion: 34.80 mm³/s, steps/s: 2040, steprate: 490 us, timervalue: */ 980,
+    /* temp: 252, max extrusion: 35.80 mm³/s, steps/s: 2098, steprate: 476 us, timervalue: */ 953,
+    /* temp: 254, max extrusion: 36.80 mm³/s, steps/s: 2157, steprate: 463 us, timervalue: */ 927,
+    /* temp: 256, max extrusion: 37.80 mm³/s, steps/s: 2215, steprate: 451 us, timervalue: */ 902,
+    /* temp: 258, max extrusion: 38.80 mm³/s, steps/s: 2274, steprate: 439 us, timervalue: */ 879,
+    /* temp: 260, max extrusion: 39.80 mm³/s, steps/s: 2333, steprate: 428 us, timervalue: */ 857,
+    /* temp: 262, max extrusion: 40.80 mm³/s, steps/s: 2391, steprate: 418 us, timervalue: */ 836,
+    /* temp: 264, max extrusion: 41.80 mm³/s, steps/s: 2450, steprate: 408 us, timervalue: */ 816,
+    /* temp: 266, max extrusion: 42.80 mm³/s, steps/s: 2508, steprate: 398 us, timervalue: */ 797,
+    /* temp: 268, max extrusion: 43.80 mm³/s, steps/s: 2567, steprate: 389 us, timervalue: */ 778,
 };
+
 #endif
 
 /////////////////////////////////////////////////////////////////////////////////////
@@ -374,30 +393,6 @@ class SDReader: public Protothread {
 
 };
 
-
-uint16_t STD_max(uint16_t a, uint16_t b) {
-
-    // static uint16_t counter = 0;
-
-    if (b > a) {
-
-#if 0
-        if ((counter++ % 100) == 0) {
-            SERIAL_ECHOPGM("Tempspeed ");
-            SERIAL_ECHO(counter);
-            SERIAL_ECHOPGM(", ");
-            SERIAL_ECHO(current_temperature[0]);
-            SERIAL_ECHOPGM(", ");
-            SERIAL_ECHO(a);
-            SERIAL_ECHOPGM(", ");
-            SERIAL_ECHOLN(b);
-        }
-#endif
-    }
-
-    return STD max(a, b);
-}
-
 static SDReader sDReader;
 
 #if defined(USEExtrusionRateTable)
@@ -593,72 +588,36 @@ class FillBufferTask : public Protothread {
 
 #if defined(USEExtrusionRateTable)
                 leadFactor = FromBuf(uint16_t, sDReader.readData);
-#endif
 
-#if defined(USEExtrusionRateTable)
                 if (leadFactor) {
 
-                    // curTempIndex = (int16_t)(current_temperature[0] - 210);
-                    // curTempIndex = (int16_t)(current_temperature[0] - 130);
-                    curTempIndex = (int16_t)(current_temperature[0] - 210) / 2;
+                    curTempIndex = (int16_t)(current_temperature[0] - ExtrusionLimitBaseTemp) / 2;
 
                     if (curTempIndex < 0) {
 
                         maxTempSpeed = ((uint32_t)tempExtrusionRateTable[0] * 1000) / leadFactor;
                     }
-                    else if (curTempIndex > 30) { // xxx 30 hardcoded
+                    else if (curTempIndex >= NExtrusionLimit) {
 
-                        maxTempSpeed = ((uint32_t)tempExtrusionRateTable[30] * 1000) / leadFactor;
+                        maxTempSpeed = ((uint32_t)tempExtrusionRateTable[NExtrusionLimit-1] * 1000) / leadFactor;
                     }
                     else {
-#if 0
-                        SERIAL_ECHOPGM(" Tempspeed tindex ");
-                        SERIAL_ECHO(curTempIndex);
-                        SERIAL_ECHOPGM(" tabval ");
-                        SERIAL_ECHOLN(tempExtrusionRateTable[curTempIndex]);
-#endif
+
                         maxTempSpeed = ((uint32_t)tempExtrusionRateTable[curTempIndex] * 1000) / leadFactor;
                     }
                 }
                 else {
+
                     maxTempSpeed = 0;
                 }
 #endif
     
-                // if (leadFactor < 0xffff)
-                    // maxTempSpeed = (uint32_t)(1485 / (leadFactor/10000.0));
-                // printf("tempindex: %d, tabvalue: %d, leadfactor: %.2f, maxTempSpeed: %d\n", curTempIndex, (uint32_t)tempExtrusionRateTable[curTempIndex], leadFactor/10000.0, maxTempSpeed);
-
                 //////////////////////////////////////////////////////
 
-                // tLin = sDReader.readPayloadUInt16();
                 sDReader.setBytesToRead2();
                 PT_WAIT_THREAD(sDReader);
 
-                tLin = STD_max( FromBuf(uint16_t, sDReader.readData), MAXTEMPSPEED);
-
-#if 0
-                tLin = FromBuf(uint16_t, sDReader.readData);
-                    SERIAL_ECHOPGM("tl ");
-                    SERIAL_ECHO(tLin);
-                    SERIAL_ECHOPGM(" ms  ");
-                    SERIAL_ECHOLN(maxTempSpeed);
-
-                if (maxTempSpeed > tLin) {
-                    SERIAL_ECHOPGM(" Tempspeed tindex ");
-                    SERIAL_ECHO(curTempIndex);
-                    SERIAL_ECHOPGM(" tabval ");
-                    SERIAL_ECHO(tempExtrusionRateTable[curTempIndex]);
-                    SERIAL_ECHOPGM(" lf ");
-                    SERIAL_ECHO(leadFactor);
-                    SERIAL_ECHOPGM(" tempspd ");
-                    SERIAL_ECHO(maxTempSpeed);
-                    SERIAL_ECHOPGM(" f1 ");
-                    SERIAL_ECHO(((uint32_t)tempExtrusionRateTable[curTempIndex] * 1000));
-                    SERIAL_ECHOPGM(" f2 ");
-                    SERIAL_ECHOLN(((uint32_t)tempExtrusionRateTable[curTempIndex] * 1000) / leadFactor);
-                }
-#endif
+                tLin = STD max ( FromBuf(uint16_t, sDReader.readData), MAXTEMPSPEED);
 
                 // nDeccel = sDReader.readPayloadUInt16();
                 sDReader.setBytesToRead2();
@@ -730,7 +689,7 @@ class FillBufferTask : public Protothread {
                         // Acceleration
                         sDReader.setBytesToRead2();
                         PT_WAIT_THREAD(sDReader);
-                        timer = STD_max( FromBuf(uint16_t, sDReader.readData), MAXTEMPSPEED );
+                        timer = STD max ( FromBuf(uint16_t, sDReader.readData), MAXTEMPSPEED );
 
                         PT_WAIT_WHILE(stepBuffer.full());
                         if (timer & 0xff00)
@@ -743,7 +702,7 @@ class FillBufferTask : public Protothread {
                         // Decceleration
                         sDReader.setBytesToRead2();
                         PT_WAIT_THREAD(sDReader);
-                        timer = STD_max( FromBuf(uint16_t, sDReader.readData), MAXTEMPSPEED );
+                        timer = STD max ( FromBuf(uint16_t, sDReader.readData), MAXTEMPSPEED );
 
                         PT_WAIT_WHILE(stepBuffer.full());
                         if (timer & 0xff00)
@@ -1407,21 +1366,31 @@ void Printer::cmdGetFilSensor() {
 
 void Printer::cmdGetTempTable() {
 
-    uint16_t temp = 210; // xxx fixed
+    txBuffer.sendResponseStart(CmdGetTempTable);
 
-#if 0
-    SERIAL_ECHOPGM("Res:[");
+    txBuffer.sendResponseUint8(NExtrusionLimit);
 
-    for (uint8_t i=0; i<31; i++, temp+=2) { // fixed
-
-        SERIAL_ECHOPGM("(");
-        SERIAL_ECHO(temp);
-        SERIAL_ECHOPGM(",");
-        SERIAL_ECHO(tempExtrusionRateTable[i]);
-        SERIAL_ECHOPGM("),");
+    for (uint8_t i=0; i<NExtrusionLimit; i++) {
+        txBuffer.sendResponseValue(tempExtrusionRateTable[i]);
     }
-    SERIAL_ECHOLNPGM("]");
-#endif
+
+    txBuffer.sendResponseEnd();
+}
+
+void Printer::cmdSetTempTable() {
+
+    uint8_t len = MSerial.readNoCheckCobs();
+    if (len != NExtrusionLimit) {
+
+        txBuffer.sendSimpleResponse(CmdSetTempTable, RespInvalidArgument);
+        return;
+    }
+
+    for (uint8_t i=0; i<NExtrusionLimit; i++) {
+        tempExtrusionRateTable[i] = MSerial.readUInt16NoCheckCobs();
+    }
+
+    txBuffer.sendSimpleResponse(CmdSetTempTable, RespOK);
 }
 
 void Printer::dwellStart() {
@@ -1680,6 +1649,10 @@ class UsbCommand : public Protothread {
                 // Tell RxBuffer that it's pointing to the beginning of a COBS block
                 MSerial.cobsInit(payloadLength);
 
+#if defined(HEAVYDEBUG)
+                uint8_t bytesLeft = 3;
+#endif
+
                 // Handle direct command
                 switch (commandByte) {
                     //
@@ -1757,6 +1730,7 @@ class UsbCommand : public Protothread {
                         printer.cmdFanSpeed(MSerial.readNoCheckCobs());
                         txBuffer.sendACK();
                         break;
+
                     //
                     // Commands with response payload
                     //
@@ -1794,6 +1768,12 @@ class UsbCommand : public Protothread {
                     case CmdGetCurrentTemps:
                         printer.cmdGetCurrentTemps();
                         break;
+                    case CmdGetTempTable:
+                        printer.cmdGetTempTable();
+                        break;
+                    case CmdSetTempTable:
+                        printer.cmdSetTempTable();
+                        break;
 
 #if 0
 // Currently not used:
@@ -1818,9 +1798,6 @@ class UsbCommand : public Protothread {
                         printer.cmdGetFilSensor();
                         break;
 #endif
-                    case CmdGetTempTable:
-                        printer.cmdGetTempTable();
-                        break;
 #endif
 
 #if defined(DDSim)
@@ -1831,11 +1808,14 @@ class UsbCommand : public Protothread {
 #endif
                     default:
                         txBuffer.sendSimpleResponse(RespUnknownCommand, commandByte);
+                        #if defined(HEAVYDEBUG)
+                        bytesLeft = MSerial._available();
+                        #endif
                 }
 
-#if defined(HEAVYDEBUG)
-                massert(MSerial._available() == 3);
-#endif
+                #if defined(HEAVYDEBUG)
+                massert(MSerial._available() == bytesLeft);
+                #endif
 
                 MSerial.flush0(); // clear rx buffer
             }

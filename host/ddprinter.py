@@ -36,14 +36,13 @@ import dddumbui, cobs
 
 from serial import Serial, SerialException, SerialTimeoutException
 from ddprintcommands import *
+from ddprintconstants import *
 from ddprintstates import *
 
 ############################################################################
 #
 # Constants
 #
-# SOH = 0x81
-SOH = 0x0 # COBs
 ############################################################################
 
 class SERIALDISCON(SerialException):
@@ -627,7 +626,7 @@ class Printer(Serial):
                 # print "got reply:", payload
                 return (cmd, length, payload)
 
-            print "unknown reply:", cmd, length, payload
+            print "unknown reply: 0x%x" % cmd, length, payload
             assert(0)
 
         # Notreached
@@ -730,6 +729,8 @@ class Printer(Serial):
         tup = struct.unpack("<iiii", payload)
         return tup
 
+    ####################################################################################################
+
     def getEndstops(self):
 
         # Check, if enstop was pressed
@@ -750,6 +751,27 @@ class Printer(Serial):
 
         print "Endstop %d open at position: %d" % (dim, tup[dim*2+1])
         return False
+
+    ####################################################################################################
+
+    def getTempTable(self):
+
+        (cmd, length, payload) = self.query(CmdGetTempTable)
+        l = ord(payload[0])
+        fmt = "<" + l*"H"
+        return struct.unpack(fmt, payload[1:])
+
+    ####################################################################################################
+
+
+
+
+
+
+
+
+
+
 
 
 

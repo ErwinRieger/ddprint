@@ -150,6 +150,10 @@ class MatProfile(ProfileBase):
     def getMatArea(cls):
         return cls.get().matArea
 
+    @classmethod
+    def getBaseExtrusionRate(cls):
+        return float(cls.getValues()["baseExtrusionRate"])
+
 
 ####################################################################################################
 #
@@ -204,6 +208,10 @@ class NozzleProfile(ProfileBase):
     @classmethod
     def getNetMaxExtrusionRate(cls):
         return cls.get().netMaxExtrusionRate
+
+    @classmethod
+    def getArea(cls):
+        return (math.pi/4) * pow(cls.getSize(), 2)
 
 
 

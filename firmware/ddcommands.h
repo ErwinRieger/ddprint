@@ -87,7 +87,8 @@
 
 // Get raw value of filament sensor pos 
 #define CmdGetFilSensor         162 
-#define CmdGetTempTable         163
+#define CmdGetTempTable         163 // ExtrusionLimit: get tempTable
+#define CmdSetTempTable         164 // ExtrusionLimit: set tempTable
 
 //
 // Response types 

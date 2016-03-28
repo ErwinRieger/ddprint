@@ -57,11 +57,31 @@ maxTimerValue16 = pow(2, 16)
 maxTimerValue24 = pow(2, 24)
 
 ############################################################################
+#
+# Axes
+#
+X_AXIS = 0
+Y_AXIS = 1
+Z_AXIS = 2
+A_AXIS = 3
+B_AXIS = 4
+
 dimNames = ["X", "Y", "Z", "A", "B"]
 
+dimIndex = { "X": 0, "Y": 1, "Z": 2, "A": 3, "B": 4 }
 
+############################################################################
+#
+# Cobs encoding
+#
+SOH = 0x0 # COBS encoding
 
-
+############################################################################
+#
+# Extrusion limit, tempTable
+#
+NExtrusionLimit = 40
+ExtrusionLimitBaseTemp = 190
 
 
 

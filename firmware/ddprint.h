@@ -157,6 +157,7 @@ class Printer {
         void cmdGetStatus();
         void cmdGetFilSensor();
         void cmdGetTempTable();
+        void cmdSetTempTable();
         void dwellStart();
         void dwellEnd();
 };
