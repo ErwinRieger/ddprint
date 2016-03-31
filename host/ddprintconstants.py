@@ -81,7 +81,7 @@ SOH = 0x0 # COBS encoding
 # Extrusion limit, tempTable
 #
 NExtrusionLimit = 40
-ExtrusionLimitBaseTemp = 190
+# ExtrusionLimitBaseTemp = 190
 
 
 

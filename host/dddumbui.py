@@ -46,6 +46,8 @@ class DumbGui:
         # print("tempCb: ", t0, t1)
         logging.info("tempCb: %s %s/%s", str(t0), str(t1), str(targetT1))
 
+    def statusCb(self, status):
+        print "statusCb: ", status
 
 
 

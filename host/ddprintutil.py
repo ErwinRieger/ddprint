@@ -1166,7 +1166,7 @@ def downloadTempTable(printer):
 
     payload = struct.pack("<B", NExtrusionLimit)
 
-    baseTemp = ExtrusionLimitBaseTemp
+    baseTemp = MatProfile.getHotendBaseTemp()
 
     area04 = pow(0.4, 2)*math.pi/4
 

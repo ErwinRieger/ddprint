@@ -633,17 +633,18 @@ class Printer(Serial):
 
     def getStatus(self):
 
-        valueNames = ["state", "t0", "t1", "Swap", "SDReader", "StepBuffer", "StepBufUnderRuns", "targetT1"]
+        valueNames = ["state", "t0", "t1", "Swap", "SDReader", "StepBuffer", "StepBufUnderRuns", "targetT1", "extrusionRate", "extruderSlip"]
 
         (cmd, length, payload) = self.query(CmdGetStatus, doLog=False)
 
-        tup = struct.unpack("<BffIHHHH", payload)
+        tup = struct.unpack("<BffIHHHHff", payload)
 
         statusDict = {}
         for i in range(len(valueNames)):
             # statusDict[valueNames[i]] = statusList[i]
             statusDict[valueNames[i]] = tup[i]
 
+        self.gui.statusCb(statusDict)
         return statusDict
 
     def getAddHomeing(self):

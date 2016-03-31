@@ -151,6 +151,13 @@ class MainForm(npyscreen.Form):
         self.errors = self.add(npyscreen.TitleFixedText, name = "Errors:", relx=int(w*1.5), rely=rely, use_two_lines=False, begin_entry_at=8) 
         # self.errors.editable = False
 
+        rely += 1
+        self.extRate = self.add(npyscreen.TitleFixedText, name = "Extrusion Rate       :", relx=w, rely=rely, use_two_lines=False,
+            begin_entry_at=23, width = w/2) 
+        self.extRate.editable = False
+        self.extSlip = self.add(npyscreen.TitleFixedText, name = "E-Slip:", relx=int(w*1.5), rely=rely, use_two_lines=False, begin_entry_at=8) 
+        self.extSlip.editable = False
+
         #
         # Left side log window - the communication log
         #
@@ -246,8 +253,9 @@ class MainForm(npyscreen.Form):
                         workDone = True
 
                     if time.time() - self.lastUpdate > 2.5:
-                        status = self.printer.getStatus()
-                        self.guiQueue.put(SyncCall(self.updateStatus, status))
+                        # status = self.printer.getStatus()
+                        # self.guiQueue.put(SyncCall(self.updateStatus, status))
+                        self.printer.getStatus()
 
                         workDone = True
                         self.lastUpdate = time.time()
@@ -283,6 +291,11 @@ class MainForm(npyscreen.Form):
         self.sbSisze.update()
         self.underrun.set_value( "%8s" % str(status["StepBufUnderRuns"]))
         self.underrun.update()
+
+        self.extRate.set_value( "%8.1f" % status["extrusionRate"])
+        self.extRate.update()
+        self.extSlip.set_value( "%8.2f" % status["extruderSlip"])
+        self.extSlip.update()
         # self.display()
 
     def display(self, clear=False):
@@ -382,7 +395,7 @@ class MainForm(npyscreen.Form):
                         printStarted = True
 
                     status = self.printer.getStatus()
-                    self.guiQueue.put(SyncCall(self.updateStatus, status))
+                    # self.guiQueue.put(SyncCall(self.updateStatus, status))
                     if printStarted and not self.printer.stateMoving(status):
                         break
 
@@ -413,11 +426,11 @@ class MainForm(npyscreen.Form):
                 self.printer.sendCommandParamV(CmdMove, [MoveTypeNormal])
 
             status = self.printer.getStatus()
-            self.guiQueue.put(SyncCall(self.updateStatus, status))
+            # self.guiQueue.put(SyncCall(self.updateStatus, status))
             while status['state'] != StateIdle:
                 time.sleep(2)
                 status = self.printer.getStatus()
-                self.guiQueue.put(SyncCall(self.updateStatus, status))
+                # self.guiQueue.put(SyncCall(self.updateStatus, status))
 
             self.printer.coolDown(HeaterEx1)
             self.printer.coolDown(HeaterBed)
@@ -490,6 +503,9 @@ class MainForm(npyscreen.Form):
     def tempCb(self, t0=None, t1=None, targetT1=None):
         logging.info("tempCb: %s %s %s", str(t0), str(t1), str(targetT1))
         self.guiQueue.put(SyncCall(self.updateTemps, t0, t1, targetT1))
+
+    def statusCb(self, status):
+        self.guiQueue.put(SyncCall(self.updateStatus, status))
 
 # class TestApp(npyscreen.NPSApp): 
 # class TestApp(npyscreen.NPSAppManaged): 
