@@ -5,7 +5,9 @@
 
 #pragma once
 
-#define ADNSFS 1
+#if defined(ADNSFS) || defined(BournsEMS22AFS)
+    #define HASFILAMENTSENSOR
+#endif
 
 #if defined(ADNSFS)
 //
@@ -70,39 +72,38 @@
  */
 class FilamentSensorADNS9800 {
 
-        uint8_t readLoc(uint8_t addr);
-        void writeLoc(uint8_t addr, uint8_t value);
-        uint8_t pullbyte();
-        int16_t getDY();
-
         int32_t lastASteps;
-        // int32_t lastYPos;
         uint32_t lastTS;
 
-        void spiInit(uint8_t spiRate);
+        // Running average of stepper speed
+        float rAvgS[RAVGWINDOW];
+
+        // Running average measured filament speed
+        float rAvg[RAVGWINDOW];
+        uint8_t iRAvg; // index
+        uint8_t nRAvg; // # of values
 
 #if 0
-        // Running average of stepper
-        float rAvgS[RAVGWINDOW];
-        uint8_t iRAvgS; // index
-        uint8_t nRAvgS; // # of values
-
-        // Running average of filament sensor 
+        // Running average of speed difference
         float rAvg[RAVGWINDOW];
         uint8_t iRAvg; // index
         uint8_t nRAvg; // # of values
 #endif
 
-        // Running average of speed difference
-        float rAvg[RAVGWINDOW];
-        uint8_t iRAvg; // index
-        uint8_t nRAvg; // # of values
+        void spiInit(uint8_t spiRate);
+        uint8_t readLoc(uint8_t addr);
+        void writeLoc(uint8_t addr, uint8_t value);
+        uint8_t pullbyte();
+        int16_t getDY();
 
     public:
 
         int32_t yPos;
-        bool enabled;
+        // bool enabled;
 
+        // Measured filament speed [mm/s]
+        float realSpeed;
+        // Ratio of Measured filament speed to stepper speed
         float slip;
         // xxx use a better name
         // uint16_t maxTempSpeed;
@@ -140,7 +141,7 @@ class FilamentSensor {
     public:
 
         int32_t yPos;
-        bool enabled;
+        // bool enabled;
 
         float slip;
         // xxx use a better name

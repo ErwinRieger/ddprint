@@ -255,7 +255,7 @@ void setup() {
     filamentSensor.reset();
 #endif
 
-#if defined(ADNSFS) || defined(BournsEMS22AFS)
+#if defined(HASFILAMENTSENSOR)
     filamentSensor.init();
 #endif
 }
@@ -582,9 +582,6 @@ class FillBufferTask : public Protothread {
                 //////////////////////////////////////////////////////
                 sDReader.setBytesToRead2();
                 PT_WAIT_THREAD(sDReader);
-
-                // xxx unused:
-                filamentSensor.enabled = true;
 
 #if defined(USEExtrusionRateTable)
                 leadFactor = FromBuf(uint16_t, sDReader.readData);
@@ -1068,7 +1065,7 @@ void Printer::cmdMove(MoveType mt) {
 
     bufferLow = -1;
 
-#if defined(ADNSFS) || defined(BournsEMS22AFS)
+#if defined(HASFILAMENTSENSOR)
     filamentSensor.init();
 #endif
 }
@@ -1351,10 +1348,19 @@ void Printer::cmdGetStatus() {
     txBuffer.sendResponseValue((uint16_t)bufferLow);
     txBuffer.sendResponseValue(target_temperature[0]);
 
+    // Flowrate sensor
+#if defined(HASFILAMENTSENSOR)
+    txBuffer.sendResponseValue(filamentSensor.realSpeed);
+    txBuffer.sendResponseValue(filamentSensor.slip);
+#else
+    txBuffer.sendResponseValue(0.0f);
+    txBuffer.sendResponseValue(0.0f);
+#endif
+
     txBuffer.sendResponseEnd();
 }
 
-#if defined(ADNSFS) || defined(BournsEMS22AFS)
+#if defined(HASFILAMENTSENSOR)
 void Printer::cmdGetFilSensor() {
 
 #if 0
@@ -1793,7 +1799,7 @@ class UsbCommand : public Protothread {
                         SERIAL_PROTOCOLLNPGM(MSG_OK);
                         break;
 #endif
-#if defined(ADNSFS) || defined(BournsEMS22AFS)
+#if defined(HASFILAMENTSENSOR)
                     case CmdGetFilSensor:
                         printer.cmdGetFilSensor();
                         break;
@@ -1961,7 +1967,7 @@ FWINLINE void loop() {
             }
             */
 
-#if defined(ADNSFS) || defined(BournsEMS22AFS)
+#if defined(HASFILAMENTSENSOR)
             // Read filament sensor
             filamentSensor.run();
 #endif

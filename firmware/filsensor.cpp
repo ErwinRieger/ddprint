@@ -59,11 +59,7 @@ FilamentSensorADNS9800 filamentSensor;
 
 FilamentSensorADNS9800::FilamentSensorADNS9800() {
 
-    slip = 0.0;
     // maxTempSpeed = 0;
-
-    // enabled = false;
-    enabled = true;
 
     // SET_INPUT(FILSENSMISO);
     // SET_OUTPUT(FILSENSMOSI);
@@ -88,10 +84,11 @@ void FilamentSensorADNS9800::init() {
     lastASteps = current_pos_steps[E_AXIS];
     lastTS = millis();
 
-    // iRAvgS = 0;
-    // nRAvgS = 0;
     iRAvg = 0;
     nRAvg = 0;
+
+    slip = 0.0;
+    realSpeed = 0.0;
 }
 
 uint8_t FilamentSensorADNS9800::readLoc(uint8_t addr){
@@ -185,95 +182,36 @@ void FilamentSensorADNS9800::run() {
 
     spiInit(3); // scale = pow(2, 3+1), 1Mhz
 
-// CRITICAL_SECTION_START
     // Berechne soll flowrate, filamentsensor ist sehr ungenau bei kleiner geschwindigkeit.
     uint32_t ts = millis();
     long astep = current_pos_steps[E_AXIS];
     int16_t dy = getDY(); // Real extruded length
-// CRITICAL_SECTION_END
 
     int32_t ds = astep - lastASteps; // Requested extruded length
     if (ds < 0) {
 
         // Retraction, reset/sync values
-        // yPos = 0;
-        // lastEncoderPos = readEncoderPos();
-        // lastASteps = astep;
-        // lastTS = millis();
-
         init();
         // clear x/y register
         getDY();
     }
     else {
 
-#if 0
-        SERIAL_ECHO("DS, DY: ");
-        SERIAL_ECHO(ts);
-        SERIAL_ECHO(" ");
-        SERIAL_ECHO(ds); SERIAL_ECHO(" ");
-        SERIAL_ECHOLN(dy);
-#endif
-
-#if 0
-        SERIAL_ECHO("DS, DY: ");
-        SERIAL_ECHO(ts);
-        SERIAL_ECHO(" ");
-        SERIAL_ECHO(astep);
-        SERIAL_ECHO(" ");
-        SERIAL_ECHOLN(yPos);
-#endif
-
-// #if 0
-      // if (ds > 72) {
-
-        // spiInit(3); // scale = pow(2, 3+1), 1Mhz
-
-        // int16_t dy = getDY(); // Real extruded length
-
-        // uint32_t ts = millis();
         uint16_t dt = ts - lastTS;
 
-        // float speed = (ds / AXIS_STEPS_PER_MM_E) / ((ts - lastTS)/1000.0);
         float speed = (ds * 1000.0) / (AXIS_STEPS_PER_MM_E * dt);
-
-#if 0
-        if (speed < 5) {
-            iRAvgS = 0;
-            nRAvgS = 0;
-        }
-
-        rAvgS[iRAvgS++] = speed;
-        if (iRAvgS == RAVGWINDOW)
-            iRAvgS = 0;
-
-        if (nRAvgS < RAVGWINDOW)
-            nRAvgS++;
-
-        float sum = 0;
-        for (int i=0; i<nRAvgS; i++)
-            sum += rAvgS[i];
-#if 0
-        if (sum == 0) {
-            iRAvgS = 0;
-            nRAvgS = 0;
-        }
-#endif
-
-        speed = sum / nRAvgS;
-#endif
 
         // if (speed > 2) { // ca. 5mm³/s
             // Berechne ist-flowrate, anhand filamentsensor
 
-            float realSpeed = (dy * 1000.0) / (FS_STEPS_PER_MM * dt);
+        realSpeed = (dy * 1000.0) / (FS_STEPS_PER_MM * dt);
 
-#if 0
         if (realSpeed < 5) {
             iRAvg = 0;
             nRAvg = 0;
         }
 
+        rAvgS[iRAvg] = speed;
         rAvg[iRAvg++] = realSpeed;
         if (iRAvg == RAVGWINDOW)
             iRAvg = 0;
@@ -281,53 +219,22 @@ void FilamentSensorADNS9800::run() {
         if (nRAvg < RAVGWINDOW)
             nRAvg++;
 
+        float sum = 0;
+        for (int i=0; i<nRAvg; i++)
+            sum += rAvgS[i];
+        speed = sum / nRAvg;
+
         sum = 0;
         for (int i=0; i<nRAvg; i++)
             sum += rAvg[i];
+        realSpeed = sum / nRAvg;
 
-#if 0
-        if (sum == 0) {
-            iRAvg = 0;
-            nRAvg = 0;
-        }
-#endif
+        if (speed)
+            slip = realSpeed / speed;
+        else
+            slip = 0.0;
 
-        // realSpeed = sum / nRAvg;
-#endif
-
-        float ratio = realSpeed / speed;
-
-        rAvg[iRAvg++] = ratio;
-        if (iRAvg == RAVGWINDOW)
-            iRAvg = 0;
-
-        if (nRAvg < RAVGWINDOW)
-            nRAvg++;
-
-        float sum = 0;
-        for (int i=0; i<nRAvg; i++)
-            sum += rAvg[i];
-
-        float avgRatio = sum/nRAvg;
-
-        /*
-        if (speed > 0) {
-            SERIAL_ECHO("Flowrate_mm/s: ");
-            SERIAL_ECHO(ts);
-            SERIAL_ECHO(" ");
-            SERIAL_ECHO(speed);
-            SERIAL_ECHO(" ");
-            SERIAL_ECHO(realSpeed);
-            SERIAL_ECHO(" ");
-            SERIAL_ECHO(ratio);
-            SERIAL_ECHO(" ");
-            SERIAL_ECHOLN(avgRatio);
-        }
-        */
-        // }
-// #endif
         lastASteps = astep;
-      // }
     }
 
     lastTS = ts;
