@@ -33,17 +33,6 @@ from ddprintutil import A_AXIS, B_AXIS, vectorDistance, circaf
 import ddprintutil as util
 
 ############################################################################
-# Constants, xxx todo: query from printer and/or profile
-# RetractFeedrate = 25      # mm/s
-RetractFeedrate = 40      # mm/s, for 3mm filament 
-RetractLength = 4.5       # mm, for 3mm filament
-RetractFeedrate = 50      # mm/s, for 1.75mm filament
-RetractLength = 5.0       # mm, for 1.75mm filament
-
-# xxx erhöht wegen bowdenzug-spiel am feeder/kopf
-# RetractLength = 6.5       # mm
-
-############################################################################
 
 # Get layer number from cura gcode comment
 def getCuraLayer(line):
@@ -320,8 +309,8 @@ class UM2GcodeParser:
         if not self.retracted:
             current_position = self.getRealPos()
             values = {
-                    "F": RetractFeedrate,
-                    "A": current_position[A_AXIS] - RetractLength,
+                    "F": PrinterProfile.getRetractFeedrate(),
+                    "A": current_position[A_AXIS] - PrinterProfile.getRetractLength(),
                     }
             self.g0("G10", values)
             self.retracted = True
@@ -332,8 +321,8 @@ class UM2GcodeParser:
         if self.retracted:
             current_position = self.getRealPos()
             values = {
-                    "F": RetractFeedrate,
-                    "A": current_position[A_AXIS] + RetractLength,
+                    "F": PrinterProfile.getRetractFeedrate(),
+                    "A": current_position[A_AXIS] + PrinterProfile.getRetractLength(),
                     }
             self.g0("G11", values)
             self.retracted = False

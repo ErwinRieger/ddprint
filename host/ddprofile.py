@@ -89,6 +89,14 @@ class PrinterProfile(ProfileBase):
     def getMaxFeedrateVector(cls):
         return map(lambda d: cls.getMaxFeedrate(d), range(5))
 
+    @classmethod
+    def getRetractFeedrate(cls):
+        return cls.getValues()["RetractFeedrate"]
+
+    @classmethod
+    def getRetractLength(cls):
+        return cls.getValues()["RetractLength"]
+
 ####################################################################################################
 #
 # Material profile, singleton

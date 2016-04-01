@@ -39,7 +39,13 @@
       "steps_per_mm"  : 141,
       "jerk"          : 5
     }
-  }
+  },
+  # 3 mm filament, [mm/s]
+  "RetractFeedrate"  : 40,
+  "RetractLength"  : 4.5,
+  # 1.75 mm filament [mm/s]
+  "RetractFeedrate"  : 50,
+  "RetractLength"  : 5.0
 }
 
 
