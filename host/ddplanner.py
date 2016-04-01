@@ -47,11 +47,6 @@ errorMove = StreamedMove()
 ATInterval = 5 # [s]
 # ATMaxTempIncrease = 50
 
-# Headspeed/extrusionspeed where autotemp increase starts
-ExtrusionAmountLow = 30 # [mm/s] for a 1mm nozzle
-if UseExtrusionAutoTemp:
-    ExtrusionAmountLow = 7.5 # [mm³/s] for a 1mm nozzle
-
 #####################################################################
 #
 # Computes some statistics about the used maximal extrusion rates.
@@ -214,6 +209,13 @@ class Planner (object):
         #
 
         self.plotfile = None
+
+        # Headspeed/extrusionspeed where autotemp increase starts
+        self.ExtrusionAmountLow = 30 # [mm/s] for a 1mm nozzle
+        if UseExtrusionAutoTemp:
+            # self.ExtrusionAmountLow = 7.5 # [mm³/s] for a 1mm nozzle
+            area04 = pow(0.4, 2)*math.pi/4
+            self.ExtrusionAmountLow = MatProfile.getBaseExtrusionRate() * (NozzleProfile.getArea() / area04)
 
         self.reset()
 
@@ -483,11 +485,11 @@ class Planner (object):
                     # UseAutoTemp: Adjust temp between Tbase and HotendMaxTemp, if speed is greater than 20 mm/s
                     # UseExtrusionAutoTemp: Adjust temp between Tbase and HotendMaxTemp, if speed is greater than 5 mm³/s
                     newTemp = MatProfile.getHotendBaseTemp() # Extruder 1 temp
-                    extrusionLow = ExtrusionAmountLow * pow(NozzleProfile.getSize(), 2)
-                    if avgSpeed > extrusionLow:
+                    # extrusionLow = self.ExtrusionAmountLow * pow(NozzleProfile.getSize(), 2)
+                    if avgSpeed > self.ExtrusionAmountLow:
                         f = NozzleProfile.getAutoTempFactor(UseExtrusionAutoTemp)
-                        # newTemp += min((avgSpeed - ExtrusionAmountLow * pow(NozzleProfile.getSize(), 2)) * f, ATMaxTempIncrease)
-                        newTemp += (avgSpeed - extrusionLow) * f
+                        # newTemp += min((avgSpeed - self.ExtrusionAmountLow * pow(NozzleProfile.getSize(), 2)) * f, ATMaxTempIncrease)
+                        newTemp += (avgSpeed - self.ExtrusionAmountLow) * f
                         # newTemp *= 1.15 # xxx sync withtemp-speed-adjust
                         newTemp = min(newTemp, MatProfile.getHotendMaxTemp())
 
