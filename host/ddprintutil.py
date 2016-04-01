@@ -585,6 +585,9 @@ def removeFilament(args, parser):
     t1 = MatProfile.getHotendBaseTemp()
     printer.heatUp(HeaterEx1, t1, wait=t1 - 5)
 
+    # Etwas vorwärts um den retract-pfropfen einzuschmelzen
+    manualMove(parser, A_AXIS, PrinterProfile.getRetractLength() + 5, 5)
+
     manualMove(parser, A_AXIS, -1.3*FILAMENT_REVERSAL_LENGTH)
 
     if not args.noCoolDown:
