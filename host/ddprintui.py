@@ -152,11 +152,11 @@ class MainForm(npyscreen.Form):
         # self.errors.editable = False
 
         rely += 1
-        self.extRate = self.add(npyscreen.TitleFixedText, name = "Extruder Speed/Rate  :", relx=w, rely=rely, use_two_lines=False,
+        self.extRate = self.add(npyscreen.TitleFixedText, name = "Extrusion Rate A/T   :", relx=w, rely=rely, use_two_lines=False,
             begin_entry_at=23, width = w/2) 
         self.extRate.editable = False
-        self.extSlip = self.add(npyscreen.TitleFixedText, name = "E-Slip:", relx=int(w*1.5), rely=rely, use_two_lines=False, begin_entry_at=8) 
-        self.extSlip.editable = False
+        self.extGrip = self.add(npyscreen.TitleFixedText, name = "E-Grip:", relx=int(w*1.5), rely=rely, use_two_lines=False, begin_entry_at=8) 
+        self.extGrip.editable = False
 
         #
         # Left side log window - the communication log
@@ -292,20 +292,21 @@ class MainForm(npyscreen.Form):
         self.underrun.set_value( "%8s" % str(status["StepBufUnderRuns"]))
         self.underrun.update()
 
-        es = status["extrusionRate"]
-        er = es * MatProfile.getMatArea()
-        esl = status["extruderSlip"]
+        st = status["targetExtrusionSpeed"] * 0.4
+        sa = status["actualExtrusionSpeed"] * 0.4
 
-        ershould = "----"
-        if esl:
-            ershould = "%4.1f" % er/esl
+        grip = 100.0
+        if st:
+            grip = (sa*100.0) / st
 
-        self.extRate.set_value( "%8.1f / %4.1f (%s)" % (es, er, ershould) )
+        rt = st * MatProfile.getMatArea()
+        ra = sa * MatProfile.getMatArea()
+
+        self.extRate.set_value( "%8.1f / %4.1f" % (ra, rt) )
         self.extRate.update()
 
-        self.extSlip.set_value( "%8.2f" % esl )
-        self.extSlip.update()
-        # self.display()
+        self.extGrip.set_value( "%4.1f %%" % grip )
+        self.extGrip.update()
 
     def display(self, clear=False):
 
