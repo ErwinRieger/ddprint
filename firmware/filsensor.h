@@ -10,6 +10,20 @@
 #endif
 
 #if defined(ADNSFS)
+
+    // #define FSFACTOR 1
+    #define FSFACTOR 0.73
+
+    // #define FS_STEPS_PER_MM (1600.0/25.4)
+    // #define FS_STEPS_PER_MM (800.0/25.4)
+    #define FS_STEPS_PER_MM ((8200.0*FSFACTOR)/25.4)
+#endif
+
+#if defined(BournsEMS22AFS)
+    #define FS_STEPS_PER_MM (1024 / (5.5 * M_PI))
+#endif
+
+#if defined(ADNSFS)
 //
 // ADNS9800 stuff
 //
@@ -76,10 +90,13 @@ class FilamentSensorADNS9800 {
         uint32_t lastTS;
 
         // Running average of stepper speed
-        float rAvgS[RAVGWINDOW];
+        // float rAvgS[RAVGWINDOW];
+        int16_t rAvgS[RAVGWINDOW];
 
         // Running average measured filament speed
-        float rAvg[RAVGWINDOW];
+        // float rAvg[RAVGWINDOW];
+        int16_t rAvg[RAVGWINDOW];
+
         uint8_t iRAvg; // index
         uint8_t nRAvg; // # of values
 
@@ -96,17 +113,19 @@ class FilamentSensorADNS9800 {
         uint8_t pullbyte();
         int16_t getDY();
 
+        // Ratio of Measured filament speed to stepper speed [0.5%]
+        uint8_t grip;
     public:
 
         int32_t yPos;
         // bool enabled;
 
         // Measured filament speed [mm/s]
-        float realSpeed;
-        // Ratio of Measured filament speed to stepper speed
-        float slip;
+        // float realSpeed;
         // xxx use a better name
         // uint16_t maxTempSpeed;
+        int8_t targetSpeed;
+        int8_t actualSpeed;
 
         FilamentSensorADNS9800();
         void init();
@@ -118,7 +137,7 @@ class FilamentSensorADNS9800 {
 
 extern FilamentSensorADNS9800 filamentSensor;
 
-#endif // #if defined(ADNSFS)
+#endif // #if defgrip(ADNSFS)
 
 #if defined(BournsEMS22AFS)
 
@@ -143,7 +162,7 @@ class FilamentSensor {
         int32_t yPos;
         // bool enabled;
 
-        float slip;
+        float slip; // xxx rename to grip
         // xxx use a better name
         // uint16_t maxTempSpeed;
 

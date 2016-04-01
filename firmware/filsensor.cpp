@@ -35,19 +35,6 @@
 // Factor to compute Extruder steps from filament sensor count
 // #define ASTEPS_PER_COUNT (25.4*141/1000.0)
 
-// #define FSFACTOR 1
-#define FSFACTOR 0.73
-
-#if defined(ADNSFS)
-    // #define FS_STEPS_PER_MM (1600.0/25.4)
-    // #define FS_STEPS_PER_MM (800.0/25.4)
-    #define FS_STEPS_PER_MM ((8200.0*FSFACTOR)/25.4)
-#endif
-
-#if defined(BournsEMS22AFS)
-    #define FS_STEPS_PER_MM (1024 / (5.5 * M_PI))
-#endif
-
 // mm/s, ca. 7.2 mm³/s
 #define FilSensorMinSpeed 3
 
@@ -87,8 +74,9 @@ void FilamentSensorADNS9800::init() {
     iRAvg = 0;
     nRAvg = 0;
 
-    slip = 0.0;
-    realSpeed = 0.0;
+    grip = 200;
+    targetSpeed = 0;
+    actualSpeed = 0;
 }
 
 uint8_t FilamentSensorADNS9800::readLoc(uint8_t addr){
@@ -124,44 +112,17 @@ int16_t FilamentSensorADNS9800::getDY() {
 
     if (mot & 0x80) { // Motion register
 
-        /*
-        static union {
-            struct {
-                uint8_t lo;
-                uint8_t hi;
-            } bytes;
-            int16_t value;
-        } split;
-        */
-
-
 #if !defined(burst)
         // XXX x_delta must be read also?!
         readLoc(REG_Delta_X_L); // X_L
         readLoc(REG_Delta_X_H); // X_H
+
         uint8_t y = readLoc(REG_Delta_Y_L); // Y_L
-        // int16_t dy = (int16_t)readLoc(REG_Delta_Y_H) << 8; // Y_H
-        int16_t dy;
         int8_t yh = readLoc(REG_Delta_Y_H);
+
 #endif
 
-#if 0 
-        // Compute Delta X as a 16-bits signed integer
-        split.bytes.lo = x;
-        split.bytes.hi = (xyh >> 4) & 0x0F;
-        if ( split.bytes.hi & 0x08 ) {
-            split.bytes.hi |= 0xF0;             // Sign extension
-        }
-        xPos += split.value;
-#endif
-
-        // Compute Delta Y as a 16-bits signed integer
-        // if (y>=0)
-            // dy = ((int16_t)yh << 8) || y;
-        // else
-            // dy = ((int16_t)yh << 8) + y;
-
-        dy = ((int16_t)yh << 8) | y;
+        int16_t dy = ((int16_t)yh << 8) | y;
 
         if (! dy) return 0;
 
@@ -185,9 +146,11 @@ void FilamentSensorADNS9800::run() {
     // Berechne soll flowrate, filamentsensor ist sehr ungenau bei kleiner geschwindigkeit.
     uint32_t ts = millis();
     long astep = current_pos_steps[E_AXIS];
-    int16_t dy = getDY(); // Real extruded length
 
-    int32_t ds = astep - lastASteps; // Requested extruded length
+    int16_t dy = getDY(); // Real extruded length
+    int16_t ds = astep - lastASteps; // Requested extruded length
+
+#if 0
     if (ds < 0) {
 
         // Retraction, reset/sync values
@@ -196,23 +159,24 @@ void FilamentSensorADNS9800::run() {
         getDY();
     }
     else {
+#endif
 
         uint16_t dt = ts - lastTS;
 
-        float speed = (ds * 1000.0) / (AXIS_STEPS_PER_MM_E * dt);
+        // targetSpeed = (ds * 2500) / (AXIS_STEPS_PER_MM_E * dt);
 
-        // if (speed > 2) { // ca. 5mm³/s
+        // if (targetSpeed > 2) { // ca. 5mm³/s
             // Berechne ist-flowrate, anhand filamentsensor
 
-        realSpeed = (dy * 1000.0) / (FS_STEPS_PER_MM * dt);
+        // actualSpeed = (dy * 2500) / (FS_STEPS_PER_MM * dt);
 
-        if (realSpeed < 5) {
+        if ((ds <= 0) || (dy <= 0)) {
             iRAvg = 0;
             nRAvg = 0;
         }
 
-        rAvgS[iRAvg] = speed;
-        rAvg[iRAvg++] = realSpeed;
+        rAvgS[iRAvg] = ds;
+        rAvg[iRAvg++] = dy;
 
         if (iRAvg == RAVGWINDOW)
             iRAvg = 0;
@@ -220,24 +184,28 @@ void FilamentSensorADNS9800::run() {
         if (nRAvg < RAVGWINDOW)
             nRAvg++;
 
-        float ssum = 0;
-        float rsum = 0;
+        int32_t ssum = 0;
+        int32_t rsum = 0;
         for (int i=0; i<nRAvg; i++) {
             ssum += rAvgS[i];
             rsum += rAvg[i];
         }
 
-        speed = ssum / nRAvg;
-        realSpeed = rsum / nRAvg;
+        // i8          = int         / int
+        targetSpeed = (ssum*2500) / ((int32_t)nRAvg * AXIS_STEPS_PER_MM_E * dt);
 
-        if (speed)
-            slip = realSpeed / speed;
+        // i8          = int         / float
+        actualSpeed = (rsum*2500) / (nRAvg * FS_STEPS_PER_MM * dt);
+
+        if (targetSpeed)
+            grip = (actualSpeed*200) / targetSpeed;
         else
-            slip = 0.0;
-
-        lastASteps = astep;
+            grip = 200;
+#if 0
     }
+#endif
 
+    lastASteps = astep;
     lastTS = ts;
     return;
 
@@ -828,7 +796,7 @@ FilamentSensor filamentSensor;
 
 FilamentSensor::FilamentSensor() {
 
-    slip = 0.0;
+    grip = 200;
     // maxTempSpeed = 0;
 
     // enabled = false;
@@ -997,14 +965,14 @@ CRITICAL_SECTION_END
         // if (speed > 2) { // ca. 5mm³/s
             // Berechne ist-flowrate, anhand filamentsensor
 
-            float realSpeed = (dy * 1000.0) / (FS_STEPS_PER_MM * dt);
+            float actualSpeed = (dy * 1000.0) / (FS_STEPS_PER_MM * dt);
 
             SERIAL_ECHO("Flowrate_mm/s: ");
             SERIAL_ECHO(ts);
             SERIAL_ECHO(" ");
             SERIAL_ECHO(speed);
             SERIAL_ECHO(" ");
-            SERIAL_ECHOLN(realSpeed);
+            SERIAL_ECHOLN(actualSpeed);
         // }
 #endif
         lastTS = ts;
