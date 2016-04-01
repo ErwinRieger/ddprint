@@ -157,7 +157,7 @@ void kill() {
     pinMode(PS_ON_PIN,INPUT);
 #endif
 
-    printDebugInfo();
+    // printDebugInfo();
 
     while(1) {
         // Wait for reset

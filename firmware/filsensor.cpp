@@ -213,21 +213,22 @@ void FilamentSensorADNS9800::run() {
 
         rAvgS[iRAvg] = speed;
         rAvg[iRAvg++] = realSpeed;
+
         if (iRAvg == RAVGWINDOW)
             iRAvg = 0;
 
         if (nRAvg < RAVGWINDOW)
             nRAvg++;
 
-        float sum = 0;
-        for (int i=0; i<nRAvg; i++)
-            sum += rAvgS[i];
-        speed = sum / nRAvg;
+        float ssum = 0;
+        float rsum = 0;
+        for (int i=0; i<nRAvg; i++) {
+            ssum += rAvgS[i];
+            rsum += rAvg[i];
+        }
 
-        sum = 0;
-        for (int i=0; i<nRAvg; i++)
-            sum += rAvg[i];
-        realSpeed = sum / nRAvg;
+        speed = ssum / nRAvg;
+        realSpeed = rsum / nRAvg;
 
         if (speed)
             slip = realSpeed / speed;
