@@ -152,7 +152,7 @@ class MainForm(npyscreen.Form):
         # self.errors.editable = False
 
         rely += 1
-        self.extRate = self.add(npyscreen.TitleFixedText, name = "Extrusion Rate       :", relx=w, rely=rely, use_two_lines=False,
+        self.extRate = self.add(npyscreen.TitleFixedText, name = "Extruder Speed/Rate  :", relx=w, rely=rely, use_two_lines=False,
             begin_entry_at=23, width = w/2) 
         self.extRate.editable = False
         self.extSlip = self.add(npyscreen.TitleFixedText, name = "E-Slip:", relx=int(w*1.5), rely=rely, use_two_lines=False, begin_entry_at=8) 
@@ -292,9 +292,18 @@ class MainForm(npyscreen.Form):
         self.underrun.set_value( "%8s" % str(status["StepBufUnderRuns"]))
         self.underrun.update()
 
-        self.extRate.set_value( "%8.1f" % status["extrusionRate"])
+        es = status["extrusionRate"]
+        er = es * MatProfile.getMatArea()
+        esl = status["extruderSlip"]
+
+        ershould = "----"
+        if esl:
+            ershould = "%4.1f" % er/esl
+
+        self.extRate.set_value( "%8.1f / %4.1f (%s)" % (es, er, ershould) )
         self.extRate.update()
-        self.extSlip.set_value( "%8.2f" % status["extruderSlip"])
+
+        self.extSlip.set_value( "%8.2f" % esl )
         self.extSlip.update()
         # self.display()
 
