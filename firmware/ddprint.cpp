@@ -1350,11 +1350,11 @@ void Printer::cmdGetStatus() {
 
     // Flowrate sensor
 #if defined(HASFILAMENTSENSOR)
-    txBuffer.sendResponseValue(filamentSensor.realSpeed);
-    txBuffer.sendResponseValue(filamentSensor.slip);
+    txBuffer.sendResponseInt8(filamentSensor.targetSpeed);
+    txBuffer.sendResponseInt8(filamentSensor.actualSpeed);
 #else
-    txBuffer.sendResponseValue(0.0f);
-    txBuffer.sendResponseValue(0.0f);
+    txBuffer.sendResponseInt8(0);
+    txBuffer.sendResponseInt8(0);
 #endif
 
     txBuffer.sendResponseEnd();
