@@ -76,8 +76,10 @@ class Printer(Serial):
     # endStoreToken = "Done saving"
     # Number of rx errors till we assume the
     # line is dead.
-    maxRXErrors = 10
-    maxTXErrors = 10
+    # maxRXErrors = 10
+    maxRXErrors = 3
+    # maxTXErrors = 10
+    maxTXErrors = 3
 
     def __init__(self, gui=None):
 
@@ -95,11 +97,6 @@ class Printer(Serial):
 
         self.usbId = None
 
-        self.lastSend = 0
-
-        self.gcodeData = None
-        # self.gcodePos = 0
-
         # Command sequence number [1..255]
         self.lineNr = 1
 
@@ -114,24 +111,30 @@ class Printer(Serial):
 
         self.curDirBits = 0
 
+        # xxx
+        # self.gentimeout = True
+
     @classmethod
     def get(cls):
         return cls.__single
 
     def commandResend(self, lastLine):
 
-        self.gui.log("Command resend:", lastLine)
+        self.gui.log("Command resend, self.lineNr: %d, lastLine: %d" % (self.lineNr, lastLine))
 
         # Wait 0.1 sec, give firmware time to drain buffers
         time.sleep(0.1)
 
-        if lastLine == self.lineNr:
+        if self.lineNr == lastLine:
+
             self.gui.log("Command was sent ok, faking ACK...:", lastLine)
             # Das ursprünglich gesendete kommando ging zwar duch, danach 
             # gab es jedoch einen komm. fehler, so dass das ACK nicht mehr
             # empfangen werden konnte. Desswegen kein resend notwendig, und es
             # kann so getan werden, als ob ein ACK empfangen wurde.
             return ResendWasOK
+        # elif self.lineNr > lastLine:
+        # elif self.lineNr < lastLine:
 
         self.gui.log("Scheduling resend of command:", lastLine)
         return self.lastCommands[lastLine]
@@ -367,6 +370,10 @@ class Printer(Serial):
         self.writeTimeout = 10
         self.open()
 
+        if not self.usbId:
+            print "Initial bootloader wait..."
+            time.sleep(1)
+
         # Store usb information for later re-connection even if device
         # name has changed:
         comports = list_ports.comports()
@@ -385,9 +392,6 @@ class Printer(Serial):
             self.gui.logRecv(recvLine.encode("hex"), "\n")
             recvLine = self.safeReadline()        
 
-        print "Bootloader wait..."
-        time.sleep(1)
-
     def commandInit(self, args):
         self.initSerial(args.device, args.baud)
         self.resetLineNumber()
@@ -401,6 +405,11 @@ class Printer(Serial):
         if self.lineNr == 256:
             self.lineNr = 1
 
+    def prevLineNumber(self):
+        if self.lineNr == 1:
+            return 255
+        return self.lineNr-1
+
     def sendPrinterInit(self):
         self.curdirbits = 0
         self.sendCommand(CmdPrinterInit)
@@ -409,12 +418,18 @@ class Printer(Serial):
     # needed.
     def send(self, cmd):
 
-        # assert(len(cmd) <= 521)
-
         while True:
 
             try:
                 self.write(cmd)
+                """
+                self.write(cmd[:5])
+                if self.gentimeout:
+                    print "timeout"
+                    time.sleep(2.5)
+                    self.gentimeout = False
+                self.write(cmd[5:])
+                """
             except SerialTimeoutException:
                 self.gui.log("Tryed sending %d bytes: " % len(cmd), cmd[:10].encode("hex"))
                 self.gui.log("SerialTimeoutException on send!!!")
@@ -564,7 +579,7 @@ class Printer(Serial):
             self.send(binary)
         """
 
-        self.gui.logSend("*** sendCommand %s (0x%x, len: %d) *** " % (CommandNames[sendCmd], sendCmd, len(binary)))
+        self.gui.logSend("*** sendCommand %s (0x%x, len: %d, seq: %d) *** " % (CommandNames[sendCmd], sendCmd, len(binary), self.prevLineNumber()))
         # print "send: ", binary.encode("hex")
         self.send(binary)
 
