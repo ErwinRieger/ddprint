@@ -94,6 +94,11 @@
   #define disable_e0() /* nothing */
 #endif
 
+// Number of entries in ExtrusionRateLimit table
+#define NExtrusionLimit 40
+extern uint16_t tempExtrusionRateTable[];
+extern uint16_t extrusionLimitBaseTemp;
+
 extern uint8_t errorFlags;
 
 void kill();
@@ -163,6 +168,68 @@ class Printer {
 };
 
 extern Printer printer;
+
+
+class FillBufferTask : public Protothread {
+
+        uint8_t cmd;
+        uint8_t cmdDir;
+        uint8_t stepBits;
+        uint8_t timerLoop;
+        uint16_t timer;
+
+        uint16_t nAccel;
+        uint8_t leadAxis;
+        uint16_t tLin;
+        uint16_t nDeccel;
+        int32_t absSteps[5];
+#if defined(USEExtrusionRateTable)
+        uint16_t maxTempSpeed;
+#endif
+            // uint16_t leadFactor;
+            // int16_t curTempIndex;
+
+        // Bresenham factors
+        int32_t d_axis[5];
+        int32_t d1_axis[5];
+        int32_t d2_axis[5];
+
+        int32_t deltaLead, step;
+
+        // Hotend target temp for CmdSyncTargetTemp
+        uint8_t targetHeater;
+        uint16_t targetTemp;
+
+        unsigned long dwellEnd;
+
+        bool cmdSync;
+
+    public:
+        FillBufferTask() {
+            cmdDir = 0;
+            cmdSync = false;
+        }
+
+        bool Run();
+
+        void sync() {
+            cmdSync = false;
+        }
+
+        bool synced() {
+            return cmdSync;
+        }
+
+        void flush() {
+            step = deltaLead;
+            cmdSync = false;
+            Restart();
+        }
+};
+
+extern FillBufferTask fillBufferTask;
+
+
 
 
 
