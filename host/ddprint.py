@@ -515,6 +515,8 @@ def main():
 
     sp = subparsers.add_parser("heatHotend", help=u"Heat up hotend (to clean it, etc).")
 
+    sp = subparsers.add_parser("genTempTable", help=u"Generate extrusion rate limit table.")
+
     sp = subparsers.add_parser("getEndstops", help=u"Get current endstop state.")
 
     sp = subparsers.add_parser("getFilSensor", help=u"Get current filament position.")
@@ -748,6 +750,10 @@ def main():
 
         util.heatHotend(args, parser)
 
+    elif args.mode == 'genTempTable':
+
+        util.genTempTable(printer)
+
     elif args.mode == 'getEndstops':
 
         printer.commandInit(args)
@@ -788,8 +794,9 @@ def main():
     elif args.mode == 'getTempTable':
 
         printer.commandInit(args)
-        tempTable = printer.getTempTable()
+        (baseTemp, tempTable) = printer.getTempTable()
         print "tempTable: ", pprint.pprint(tempTable)
+        util.printTempTable(printer, baseTemp, tempTable)
 
     elif args.mode == 'getStatus':
 
