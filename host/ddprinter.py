@@ -773,9 +773,11 @@ class Printer(Serial):
     def getTempTable(self):
 
         (cmd, length, payload) = self.query(CmdGetTempTable)
-        l = ord(payload[0])
+        basetemp = struct.unpack("<H", payload[:2])[0]
+
+        l = ord(payload[2])
         fmt = "<" + l*"H"
-        return struct.unpack(fmt, payload[1:])
+        return (basetemp, struct.unpack(fmt, payload[3:]))
 
     ####################################################################################################
 
