@@ -29,3 +29,6 @@
 // Use Bourns ems22a Rotary Encoder as a flowrate sensor
 // #define BournsEMS22AFS 1 
 
+#define USEExtrusionRateTable
+
+
