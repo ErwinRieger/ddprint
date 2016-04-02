@@ -1165,9 +1165,7 @@ def getResponseString(s, offset):
 ####################################################################################################
 
 
-def downloadTempTable(printer):
-
-    payload = struct.pack("<B", NExtrusionLimit)
+def genTempTable(printer):
 
     baseTemp = MatProfile.getHotendBaseTemp()
 
@@ -1178,10 +1176,15 @@ def downloadTempTable(printer):
     f = NozzleProfile.getAutoTempFactor(UseExtrusionAutoTemp)
 
     mmpermm3 = 1 / MatProfile.getMatArea()
-
     spm = PrinterProfile.getStepsPerMM(A_AXIS)
 
-    print "Downloading TempTable:"
+    of = open("/tmp/temptable0.txt", "w")
+    of.write("# xxx mat, nozzle, settings...\n")
+    of.write("# basetemp: %d, autoTempFactor: %f\n" % (baseTemp, f))
+    of.write("# temp rate steprate timer\n")
+
+    print "TempTable (basetemp: %d):" % baseTemp
+    table = []
     for i in range(NExtrusionLimit):
 
         t = baseTemp + i*2
@@ -1193,9 +1196,56 @@ def downloadTempTable(printer):
         tvs = 1.0/steprate
         timerValue = int(fTimer / steprate)
 
-        print "    Temp: %d, max extrusion: %.2f mm³/s, steps/s: %d, steprate: %d us, timervalue: %d" % (t, speed, int(steprate), int(tvs*1000000), timerValue)
-        payload += struct.pack("<H", timerValue)
+        print "    Temp: %d, max extrusion: %.1f mm³/s, steps/s: %d, steprate: %d us, timervalue: %d" % (t, speed, int(steprate), int(tvs*1000000), timerValue)
+        table.append(timerValue)
 
+        of.write("%d %4.1f %d %d\n" % (t, speed, int(steprate), timerValue))
+
+    of.close()
+
+    return (baseTemp, table)
+
+####################################################################################################
+
+def printTempTable(printer, temp, tempTable):
+
+    of = open("/tmp/temptable_printer.txt", "w")
+    of.write("# xxx mat, nozzle, settings...\n")
+    of.write("# basetemp: %d, autoTempFactor: %f\n" % (temp, 0))
+    of.write("# temp rate steprate timer\n")
+
+    print "TempTable (basetemp: %d):" % temp
+
+    mmpermm3 = 1 / MatProfile.getMatArea()
+    spm = PrinterProfile.getStepsPerMM(A_AXIS)
+
+    for timerValue in tempTable:
+
+        steprate = fTimer / timerValue
+
+        speed = (steprate / spm) / mmpermm3
+
+        print "    Temp: %d, max extrusion: %.1f mm³/s, steps/s: %d, timervalue: %d" % (temp, speed, int(steprate), timerValue)
+
+        of.write("%d %4.1f %d %d\n" % (temp, speed, int(steprate), timerValue))
+
+        temp += 2
+
+    of.close()
+
+####################################################################################################
+
+def downloadTempTable(printer):
+
+
+    (baseTemp, table) = genTempTable(printer)
+
+    payload = struct.pack("<HB", baseTemp, NExtrusionLimit)
+
+    print "Downloading TempTable..."
+
+    for timerValue in table:
+        payload += struct.pack("<H", timerValue)
     resp = printer.query(CmdSetTempTable, binPayload=payload)
     assert(handleGenericResponse(resp))
 
