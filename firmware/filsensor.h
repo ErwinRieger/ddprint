@@ -114,7 +114,7 @@ class FilamentSensorADNS9800 {
         int16_t getDY();
 
         // Ratio of Measured filament speed to stepper speed [0.5%]
-        uint8_t grip;
+        // uint8_t grip;
     public:
 
         int32_t yPos;

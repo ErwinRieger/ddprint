@@ -82,14 +82,10 @@ extern "C"{
 }
 
 
-#define USEExtrusionRateTable
-
 /////////////////////////////////////////////////////////////////////////////////////
 #if defined(USEExtrusionRateTable)
 
-// Number of entries in table
-#define NExtrusionLimit 40
-#define ExtrusionLimitBaseTemp 190
+uint16_t extrusionLimitBaseTemp = 190;
 
 //
 // Limit extrusion rate by the hotend temperature. This is the initial table
@@ -401,46 +397,7 @@ static SDReader sDReader;
     #define MAXTEMPSPEED filamentSensor.maxTempSpeed
 #endif
 
-class FillBufferTask : public Protothread {
-
-        uint8_t cmd;
-        uint8_t cmdDir;
-        uint8_t stepBits;
-        uint8_t timerLoop;
-        uint16_t timer;
-
-        uint16_t nAccel;
-        uint8_t leadAxis;
-        uint16_t tLin;
-        uint16_t nDeccel;
-        int32_t absSteps[5];
-#if defined(USEExtrusionRateTable)
-        uint16_t maxTempSpeed;
-#endif
-            // uint16_t leadFactor;
-            // int16_t curTempIndex;
-
-        // Bresenham factors
-        int32_t d_axis[5];
-        int32_t d1_axis[5];
-        int32_t d2_axis[5];
-
-        int32_t deltaLead, step;
-
-        // Hotend target temp for CmdSyncTargetTemp
-        uint8_t targetHeater;
-        uint16_t targetTemp;
-
-        unsigned long dwellEnd;
-
-        // StepBlock stepBlock;
-
-    public:
-        FillBufferTask() {
-            cmdDir = 0;
-        }
-
-        bool Run() {
+bool FillBufferTask::Run() {
 
             uint8_t i;
 
@@ -450,7 +407,7 @@ class FillBufferTask : public Protothread {
 
 #if defined(USEExtrusionRateTable)
             uint16_t leadFactor;
-            int16_t curTempIndex;
+            // int16_t curTempIndex;
 #endif
 
             PT_BEGIN();
@@ -486,14 +443,12 @@ class FillBufferTask : public Protothread {
             switch (cmd) {
 
                 case CmdG1:
-                    // stepBlock.cmdDirBits &= ~0x80; // clear set-direction bit
                     goto HandleCmdG1;
 
                 case CmdDirG1:
                     goto HandleCmdDirG1;
 
                 case CmdG1_24:
-                    // stepBlock.cmdDirBits &= ~0x80; // clear set-direction bit
                     goto HandleCmdG1_24;
 
                 case CmdDirG1_24:
@@ -543,6 +498,8 @@ class FillBufferTask : public Protothread {
 
                 // SERIAL_ECHOLNPGM("C1");
 
+                cmdSync = true;
+
                 //
                 // Read index of lead axis
                 //
@@ -588,7 +545,7 @@ class FillBufferTask : public Protothread {
 
                 if (leadFactor) {
 
-                    curTempIndex = (int16_t)(current_temperature[0] - ExtrusionLimitBaseTemp) / 2;
+                    int16_t curTempIndex = (current_temperature[0] - extrusionLimitBaseTemp) / 2;
 
                     if (curTempIndex < 0) {
 
@@ -888,22 +845,6 @@ class FillBufferTask : public Protothread {
                 }
                 PT_RESTART();
 
-#if 0
-            HandleCmdDirBits:
-
-                // SERIAL_ECHOLNPGM("C2");
-
-                // stepBlock.data.dir.dirBits = sDReader.readPayload1();
-                sDReader.setBytesToRead1();
-                PT_WAIT_THREAD(sDReader);
-
-                stepBlock.data.dir.dirBits = *sDReader.readData;
-
-                PT_WAIT_WHILE(stepBuffer.full());
-                stepBuffer.push(stepBlock);
-
-                PT_RESTART();
-#endif
             HandleCmdSyncFanSpeed:
 
                 // SERIAL_ECHOLNPGM("C3");
@@ -947,11 +888,6 @@ class FillBufferTask : public Protothread {
             PT_END(); // Not reached
         }
 
-        void flush() {
-            step = deltaLead;
-            Restart();
-        }
-};
 
 FillBufferTask fillBufferTask;
 
@@ -1374,6 +1310,8 @@ void Printer::cmdGetTempTable() {
 
     txBuffer.sendResponseStart(CmdGetTempTable);
 
+    txBuffer.sendResponseValue(extrusionLimitBaseTemp);
+
     txBuffer.sendResponseUint8(NExtrusionLimit);
 
     for (uint8_t i=0; i<NExtrusionLimit; i++) {
@@ -1384,6 +1322,8 @@ void Printer::cmdGetTempTable() {
 }
 
 void Printer::cmdSetTempTable() {
+
+    extrusionLimitBaseTemp = MSerial.readUInt16NoCheckCobs();
 
     uint8_t len = MSerial.readNoCheckCobs();
     if (len != NExtrusionLimit) {

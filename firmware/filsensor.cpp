@@ -74,7 +74,7 @@ void FilamentSensorADNS9800::init() {
     iRAvg = 0;
     nRAvg = 0;
 
-    grip = 200;
+    // grip = 200;
     targetSpeed = 0;
     actualSpeed = 0;
 }
@@ -101,9 +101,7 @@ void FilamentSensorADNS9800::writeLoc(uint8_t addr, uint8_t value) {
   WRITE(FILSENSNCS, HIGH);
 }
 
-extern uint16_t tempExtrusionRateTable[];
 #define FTIMER (F_CPU/8.0)
-#define FTIMER1000 (FTIMER/1000.0)
 #include <pins_arduino.h>
 
 int16_t FilamentSensorADNS9800::getDY() {
@@ -150,488 +148,81 @@ void FilamentSensorADNS9800::run() {
     int16_t dy = getDY(); // Real extruded length
     int16_t ds = astep - lastASteps; // Requested extruded length
 
-#if 0
-    if (ds < 0) {
+    uint16_t dt = ts - lastTS;
 
-        // Retraction, reset/sync values
-        init();
-        // clear x/y register
-        getDY();
+    if ((ds <= 0) || (dy <= 0)) {
+        iRAvg = 0;
+        nRAvg = 0;
     }
-    else {
-#endif
 
-        uint16_t dt = ts - lastTS;
+    rAvgS[iRAvg] = ds;
+    rAvg[iRAvg++] = dy;
 
-        // targetSpeed = (ds * 2500) / (AXIS_STEPS_PER_MM_E * dt);
+    if (iRAvg == RAVGWINDOW)
+        iRAvg = 0;
 
-        // if (targetSpeed > 2) { // ca. 5mm³/s
-            // Berechne ist-flowrate, anhand filamentsensor
+    if (nRAvg < RAVGWINDOW)
+        nRAvg++;
 
-        // actualSpeed = (dy * 2500) / (FS_STEPS_PER_MM * dt);
-
-        if ((ds <= 0) || (dy <= 0)) {
-            iRAvg = 0;
-            nRAvg = 0;
-        }
-
-        rAvgS[iRAvg] = ds;
-        rAvg[iRAvg++] = dy;
-
-        if (iRAvg == RAVGWINDOW)
-            iRAvg = 0;
-
-        if (nRAvg < RAVGWINDOW)
-            nRAvg++;
-
-        int32_t ssum = 0;
-        int32_t rsum = 0;
-        for (int i=0; i<nRAvg; i++) {
-            ssum += rAvgS[i];
-            rsum += rAvg[i];
-        }
-
-        // i8          = int         / int
-        targetSpeed = (ssum*2500) / ((int32_t)nRAvg * AXIS_STEPS_PER_MM_E * dt);
-
-        // i8          = int         / float
-        actualSpeed = (rsum*2500) / (nRAvg * FS_STEPS_PER_MM * dt);
-
-        if (targetSpeed)
-            grip = (actualSpeed*200) / targetSpeed;
-        else
-            grip = 200;
-#if 0
+    int32_t ssum = 0;
+    int32_t rsum = 0;
+    for (int i=0; i<nRAvg; i++) {
+        ssum += rAvgS[i];
+        rsum += rAvg[i];
     }
-#endif
+
+    // i8          = int         / int
+    targetSpeed = (ssum*2500) / ((int32_t)nRAvg * AXIS_STEPS_PER_MM_E * dt);
+
+    // i8          = int         / float
+    actualSpeed = (rsum*2500) / (nRAvg * FS_STEPS_PER_MM * dt);
+
+    // if ((targetSpeed > 7.5) && fillBufferTask.synced() && stepBuffer.synced()) { // 3mm/s bzw. 7.2mm³/s
+    if ((actualSpeed > 7.5) && fillBufferTask.synced() && stepBuffer.synced()) { // 3mm/s bzw. 7.2mm³/s
+
+        uint8_t grip = (actualSpeed*100) / targetSpeed;
+        if (grip < 70) {
+            // printf("grip < 75: %d, %4.1f %4.1f\n", grip, actualSpeed*0.4, targetSpeed*0.4);
+
+            int16_t curTempIndex = (int16_t)(current_temperature[0] - extrusionLimitBaseTemp) / 2;
+            if ((curTempIndex > 0) && (curTempIndex < NExtrusionLimit)) {
+
+                // printf("found temptable index: %d\n", curTempIndex);
+
+                // Increase table values, decrease allowed speed for this and the following temperaturew
+                // //////////////////////////////////////////
+                uint16_t prev_old_timer = tempExtrusionRateTable[curTempIndex-1];
+                uint16_t prev_old_rate = FTIMER / prev_old_timer;
+                uint16_t prev_new_rate = prev_old_rate;
+
+                while (curTempIndex < NExtrusionLimit) {
+
+                    uint16_t this_old_timer = tempExtrusionRateTable[curTempIndex];
+                    uint16_t this_old_rate = FTIMER / this_old_timer;
+
+                    uint16_t new_dy = (this_old_rate - prev_old_rate) * 0.9; // xxx arbitrary
+
+                    uint16_t this_new_rate = prev_new_rate + new_dy;
+
+                    // printf("adjust rate: %d -> %d\n", this_old_rate, this_new_rate);
+
+                    tempExtrusionRateTable[curTempIndex] = FTIMER / this_new_rate;
+
+                    prev_old_rate = this_old_rate;
+                    prev_new_rate = this_new_rate;
+
+                    curTempIndex++;
+                }
+
+                fillBufferTask.sync();
+                stepBuffer.sync();
+            }
+        }
+    }
 
     lastASteps = astep;
     lastTS = ts;
-    return;
-
-#if 0
-#if 0
-    static uint8_t power = 0;
-    writeLoc(0x1C, power);
-    writeLoc(0x1d, ~power); // complementary reg of 0x1C
-
-    SERIAL_ECHO("power: ");
-    SERIAL_ECHO((int)power);
-    if (power < 255)
-        power++;
-#endif
-
-#if defined(bust)
-    // burst
-    digitalWrite(NCS, LOW);
-
-    spiSend(0x42);
-    delayMicroseconds(4); // Tsrad
-    uint8_t mot=spiSend(0);
-    delayMicroseconds(4); // Tsrad
-    uint8_t x=spiSend(0);
-    delayMicroseconds(4); // Tsrad
-    uint8_t y=spiSend(0);
-    delayMicroseconds(4); // Tsrad
-    uint8_t xyh=spiSend(0);
-    delayMicroseconds(4); // Tsrad
-    uint8_t squal = spiSend(0);
-    delayMicroseconds(4); // Tsrad
-    uint16_t shutter = (readLoc(0x7) << 8) + readLoc(0x8);
-    // end burst
-
-    digitalWrite(NCS, HIGH);
-#else
-    uint8_t mot = readLoc(0x2);
-#endif
-
-    if (mot & 0x10) {
-        SERIAL_ERROR_START;
-        SERIAL_ECHOLNPGM("FilSensor: X/Y overflow!");
-    }
-
-#if defined(FilSensorDebug)
-    if (abs(yPos) > 0 and (millis() - lastTS) > 5000) {
-        // xxx debug: use x direction to reset y...
-        MSerial.println("\n timeout, yyreset...\n");
-        // xPos = 0;
-        yPos = 0;
-    }
-#endif
-
-    if (mot & 0x80) { // Motion register
-
-        static union {
-            struct {
-                uint8_t lo;
-                uint8_t hi;
-            } bytes;
-            int16_t value;
-        } split;
-
-#if !defined(burst)
-        // XXX x_delta must be read also?!
-        readLoc(0x3); // X_L
-        // int16_t y = (int8_t)readLoc(0x4);
-        uint8_t y = readLoc(0x4); // Y_L
-        int8_t xyh = readLoc(0x5); // XY_H
-#endif
-
-#if 0 
-        // Compute Delta X as a 16-bits signed integer
-        split.bytes.lo = x;
-        split.bytes.hi = (xyh >> 4) & 0x0F;
-        if ( split.bytes.hi & 0x08 ) {
-            split.bytes.hi |= 0xF0;             // Sign extension
-        }
-        xPos += split.value;
-#endif
-
-        // Compute Delta Y as a 16-bits signed integer
-        split.bytes.lo = y;
-        split.bytes.hi = xyh & 0x0F;
-        if ( split.bytes.hi & 0x08 ) {
-            split.bytes.hi |= 0xF0;             // Sign extension
-        }
-
-#if 0
-        if (y>0)
-            y += abs(x);
-        else if (y<0)
-            y -= abs(x);
-#endif
-
-        if (abs(split.value) > 0)
-            lastTS = millis();
-
-        if (! split.value) return;
-
-        yPos += split.value;
-
-#if !defined(burst)
-        uint8_t squal = readLoc(REG_SQUAL);
-        uint16_t shutter = (readLoc(0x7) << 8) + readLoc(0x8);
-#endif
-
-        // SERIAL_ECHO("X: ");
-        // SERIAL_ECHO((int)x);
-        SERIAL_ECHO("Squal: ");
-        SERIAL_ECHO((int)squal);
-        SERIAL_ECHO(", Shut: ");
-        SERIAL_ECHO(shutter);
-        SERIAL_ECHO(", y: ");
-        SERIAL_ECHO((int)y);
-        SERIAL_ECHO(", Y12: ");
-        SERIAL_ECHO(split.value);
-        SERIAL_ECHO(", Y: ");
-        SERIAL_ECHO(yPos);
-        SERIAL_ECHO(", minpix: ");
-        SERIAL_ECHO((int) readLoc(0xb));
-        SERIAL_ECHO(", avgpix: ");
-        SERIAL_ECHO((int)readLoc(0xa) * 1.515);
-        SERIAL_ECHO(", maxpix: ");
-        SERIAL_ECHOLN((int) readLoc(0x9));
-
-        int32_t ds = current_pos_steps[E_AXIS] - lastASteps; // Requested extruded length
-
-        if (ds > 72) {
-           
-            uint32_t ts = millis();
-
-            int32_t dy = yPos - lastYPos; // Real extruded length
-
-            slip = (dy * ASTEPS_PER_COUNT) / ds;
-
-            // printf("slip: %d %d %.2f\n", dy, ds, slip);
-            // printf("slip: %.2f\n", slip);
-
-            int16_t curTempIndex = (int16_t)(current_temperature[0] - 210) / 2;
-            if ((curTempIndex >= 0) && (curTempIndex <= 30)) { // xxx 30 hardcoded
-
-                if (enabled && (slip < 0.88)) {
-
-                    // Increase table value, decrease allowed speed for this temperature
-
-                    uint32_t timerValue = tempExtrusionRateTable[curTempIndex];
-
-                    // 10% slip extruder feedrate:
-                    // float speed = (ds / AXIS_STEPS_PER_MM_E) / ((ts - lastTS)/1000.0);
-                    // float speed = (ds * 1000.0) / (AXIS_STEPS_PER_MM_E * (ts - lastTS));
-
-                    // printf("90%% feedrate: %.2f\n", speed);
-
-                    uint16_t tvnew = (FTIMER * timerValue)/(FTIMER - 0.3*timerValue*AXIS_STEPS_PER_MM_E);
-                    // printf("tv++/speed-- for temp %.2f: %d -> %d\n", current_temperature[0], timerValue, tvnew);
-                    // tempExtrusionRateTable[curTempIndex] = tvnew; 
-                    // tempExtrusionRateTable[curTempIndex] = (9*timerValue + tvnew) / 10;
-
-                    SERIAL_ECHOPGM("Slip-: ");
-                    SERIAL_ECHO(slip);
-                    SERIAL_ECHOPGM(", ");
-                    SERIAL_ECHO((uint16_t)current_temperature[0]);
-                    SERIAL_ECHOPGM(", ");
-                    SERIAL_ECHOLN(tempExtrusionRateTable[curTempIndex]);
-
-                    // enabled = false;
-                }
-                else if (enabled && (slip > 0.92)) {
-                    // Decrease table value, increase allowed speed for this temperature
-                    // uint16_t tvnew = (FTIMER * timerValue) / (timerValue*AXIS_STEPS_PER_MM_E + ft);
-                    // uint16_t tvnew = (FTIMER * timerValue)/(0.3*timerValue*AXIS_STEPS_PER_MM_E + FTIMER);
-                    // float speed = (ds * 1000.0) / (AXIS_STEPS_PER_MM_E * (ts - lastTS));
-
-                    uint32_t timerValue = tempExtrusionRateTable[curTempIndex];
-
-                    uint16_t tvnew = (FTIMER1000 * (ts - lastTS)) / ds;
-
-                    if (tvnew < timerValue) {
-
-                        // printf("tv--/speed++ for temp %.2f: %d -> %d\n", current_temperature[0], timerValue, tvnew);
-                        // tempExtrusionRateTable[curTempIndex] = (9*timerValue + tvnew) / 10;
-
-                        SERIAL_ECHOPGM("Slip+: ");
-                        SERIAL_ECHO(slip);
-                        SERIAL_ECHOPGM(", ");
-                        SERIAL_ECHO((uint16_t)current_temperature[0]);
-                        SERIAL_ECHOPGM(", ");
-                        SERIAL_ECHOLN(tempExtrusionRateTable[curTempIndex]);
-                    
-                        // enabled = false;
-                    }
-                }
-            }
-            else {
-                SERIAL_ECHOPGM("Slip-: ");
-                SERIAL_ECHO(slip);
-                SERIAL_ECHOPGM(" T out range: ");
-                SERIAL_ECHOLN(tempExtrusionRateTable[curTempIndex]);
-            }
-
-            lastASteps = current_pos_steps[E_AXIS];
-            lastYPos = yPos;
-            lastTS = ts;
-        }
-    }
-#endif
-
 }
-
-#if 0
-void FilamentSensorADNS9800::run() {
-
-    spiInit(3); // scale = pow(2, 3+1), 1Mhz
-
-#if defined(FilSensorDebug)
-    massert(readLoc(REG_Product_ID) == 0x30);
-    massert(readLoc(REG_Revision_ID) == 0x3);
-    massert(readLoc(REG_Product_ID)+readLoc(0x3f) == 255);
-    massert(readLoc(REG_Revision_ID)+readLoc(0x3e) == 255);
-#endif
-
-#if 0
-    static uint8_t power = 0;
-    writeLoc(0x1C, power);
-    writeLoc(0x1d, ~power); // complementary reg of 0x1C
-
-    SERIAL_ECHO("power: ");
-    SERIAL_ECHO((int)power);
-    if (power < 255)
-        power++;
-#endif
-
-#if defined(bust)
-    // burst
-    digitalWrite(NCS, LOW);
-
-    spiSend(0x42);
-    delayMicroseconds(4); // Tsrad
-    uint8_t mot=spiSend(0);
-    delayMicroseconds(4); // Tsrad
-    uint8_t x=spiSend(0);
-    delayMicroseconds(4); // Tsrad
-    uint8_t y=spiSend(0);
-    delayMicroseconds(4); // Tsrad
-    uint8_t xyh=spiSend(0);
-    delayMicroseconds(4); // Tsrad
-    uint8_t squal = spiSend(0);
-    delayMicroseconds(4); // Tsrad
-    uint16_t shutter = (readLoc(0x7) << 8) + readLoc(0x8);
-    // end burst
-
-    digitalWrite(NCS, HIGH);
-#else
-    uint8_t mot = readLoc(0x2);
-#endif
-
-    if (mot & 0x10) {
-        SERIAL_ERROR_START;
-        SERIAL_ECHOLNPGM("FilSensor: X/Y overflow!");
-    }
-
-#if defined(FilSensorDebug)
-    if (abs(yPos) > 0 and (millis() - lastTS) > 5000) {
-        // xxx debug: use x direction to reset y...
-        MarlinSerial.println("\n timeout, yyreset...\n");
-        // xPos = 0;
-        yPos = 0;
-    }
-#endif
-
-    if (mot & 0x80) { // Motion register
-
-        static union {
-            struct {
-                uint8_t lo;
-                uint8_t hi;
-            } bytes;
-            int16_t value;
-        } split;
-
-#if !defined(burst)
-        // XXX x_delta must be read also?!
-        readLoc(0x3); // X_L
-        // int16_t y = (int8_t)readLoc(0x4);
-        uint8_t y = readLoc(0x4); // Y_L
-        int8_t xyh = readLoc(0x5); // XY_H
-#endif
-
-#if 0 
-        // Compute Delta X as a 16-bits signed integer
-        split.bytes.lo = x;
-        split.bytes.hi = (xyh >> 4) & 0x0F;
-        if ( split.bytes.hi & 0x08 ) {
-            split.bytes.hi |= 0xF0;             // Sign extension
-        }
-        xPos += split.value;
-#endif
-
-        // Compute Delta Y as a 16-bits signed integer
-        split.bytes.lo = y;
-        split.bytes.hi = xyh & 0x0F;
-        if ( split.bytes.hi & 0x08 ) {
-            split.bytes.hi |= 0xF0;             // Sign extension
-        }
-
-#if 0
-        if (y>0)
-            y += abs(x);
-        else if (y<0)
-            y -= abs(x);
-#endif
-
-        if (abs(split.value) > 0)
-            lastTS = millis();
-
-        if (! split.value) return;
-
-        yPos += split.value;
-
-#if !defined(burst)
-        uint8_t squal = readLoc(REG_SQUAL);
-        uint16_t shutter = (readLoc(0x7) << 8) + readLoc(0x8);
-#endif
-
-        // SERIAL_ECHO("X: ");
-        // SERIAL_ECHO((int)x);
-        SERIAL_ECHO("Squal: ");
-        SERIAL_ECHO((int)squal);
-        SERIAL_ECHO(", Shut: ");
-        SERIAL_ECHO(shutter);
-        SERIAL_ECHO(", y: ");
-        SERIAL_ECHO((int)y);
-        SERIAL_ECHO(", Y12: ");
-        SERIAL_ECHO(split.value);
-        SERIAL_ECHO(", Y: ");
-        SERIAL_ECHO(yPos);
-        SERIAL_ECHO(", minpix: ");
-        SERIAL_ECHO((int) readLoc(0xb));
-        SERIAL_ECHO(", avgpix: ");
-        SERIAL_ECHO((int)readLoc(0xa) * 1.515);
-        SERIAL_ECHO(", maxpix: ");
-        SERIAL_ECHOLN((int) readLoc(0x9));
-
-        int32_t ds = current_pos_steps[E_AXIS] - lastASteps; // Requested extruded length
-
-        if (ds > 72) {
-           
-            uint32_t ts = millis();
-
-            int32_t dy = yPos - lastYPos; // Real extruded length
-
-            slip = (dy * ASTEPS_PER_COUNT) / ds;
-
-            // printf("slip: %d %d %.2f\n", dy, ds, slip);
-            // printf("slip: %.2f\n", slip);
-
-            int16_t curTempIndex = (int16_t)(current_temperature[0] - 210) / 2;
-            if ((curTempIndex >= 0) && (curTempIndex <= 30)) { // xxx 30 hardcoded
-
-                if (enabled && (slip < 0.88)) {
-
-                    // Increase table value, decrease allowed speed for this temperature
-
-                    uint32_t timerValue = tempExtrusionRateTable[curTempIndex];
-
-                    // 10% slip extruder feedrate:
-                    // float speed = (ds / AXIS_STEPS_PER_MM_E) / ((ts - lastTS)/1000.0);
-                    // float speed = (ds * 1000.0) / (AXIS_STEPS_PER_MM_E * (ts - lastTS));
-
-                    // printf("90%% feedrate: %.2f\n", speed);
-
-                    uint16_t tvnew = (FTIMER * timerValue)/(FTIMER - 0.3*timerValue*AXIS_STEPS_PER_MM_E);
-                    // printf("tv++/speed-- for temp %.2f: %d -> %d\n", current_temperature[0], timerValue, tvnew);
-                    // tempExtrusionRateTable[curTempIndex] = tvnew; 
-                    // tempExtrusionRateTable[curTempIndex] = (9*timerValue + tvnew) / 10;
-
-                    SERIAL_ECHOPGM("Slip-: ");
-                    SERIAL_ECHO(slip);
-                    SERIAL_ECHOPGM(", ");
-                    SERIAL_ECHO((uint16_t)current_temperature[0]);
-                    SERIAL_ECHOPGM(", ");
-                    SERIAL_ECHOLN(tempExtrusionRateTable[curTempIndex]);
-
-                    // enabled = false;
-                }
-                else if (enabled && (slip > 0.92)) {
-                    // Decrease table value, increase allowed speed for this temperature
-                    // uint16_t tvnew = (FTIMER * timerValue) / (timerValue*AXIS_STEPS_PER_MM_E + ft);
-                    // uint16_t tvnew = (FTIMER * timerValue)/(0.3*timerValue*AXIS_STEPS_PER_MM_E + FTIMER);
-                    // float speed = (ds * 1000.0) / (AXIS_STEPS_PER_MM_E * (ts - lastTS));
-
-                    uint32_t timerValue = tempExtrusionRateTable[curTempIndex];
-
-                    uint16_t tvnew = (FTIMER1000 * (ts - lastTS)) / ds;
-
-                    if (tvnew < timerValue) {
-
-                        // printf("tv--/speed++ for temp %.2f: %d -> %d\n", current_temperature[0], timerValue, tvnew);
-                        // tempExtrusionRateTable[curTempIndex] = (9*timerValue + tvnew) / 10;
-
-                        SERIAL_ECHOPGM("Slip+: ");
-                        SERIAL_ECHO(slip);
-                        SERIAL_ECHOPGM(", ");
-                        SERIAL_ECHO((uint16_t)current_temperature[0]);
-                        SERIAL_ECHOPGM(", ");
-                        SERIAL_ECHOLN(tempExtrusionRateTable[curTempIndex]);
-                    
-                        // enabled = false;
-                    }
-                }
-            }
-            else {
-                SERIAL_ECHOPGM("Slip-: ");
-                SERIAL_ECHO(slip);
-                SERIAL_ECHOPGM(" T out range: ");
-                SERIAL_ECHOLN(tempExtrusionRateTable[curTempIndex]);
-            }
-
-            lastASteps = current_pos_steps[E_AXIS];
-            lastYPos = yPos;
-            lastTS = ts;
-        }
-    }
-}
-#endif
 
 void FilamentSensorADNS9800::reset(){
 
@@ -796,7 +387,7 @@ FilamentSensor filamentSensor;
 
 FilamentSensor::FilamentSensor() {
 
-    grip = 200;
+    // grip = 200;
     // maxTempSpeed = 0;
 
     // enabled = false;
@@ -824,9 +415,7 @@ void FilamentSensor::spiInit(uint8_t spiRate) {
   SPSR = spiRate & 1 || spiRate == 6 ? 0 : 1 << SPI2X;
 }
 
-extern uint16_t tempExtrusionRateTable[];
 #define FTIMER (F_CPU/8.0)
-#define FTIMER1000 (FTIMER/1000.0)
 #include <pins_arduino.h>
 
 uint16_t FilamentSensor::readEncoderPos() {
