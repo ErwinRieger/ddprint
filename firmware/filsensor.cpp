@@ -172,17 +172,17 @@ void FilamentSensorADNS9800::run() {
     }
 
     // i8          = int         / int
-    targetSpeed = (ssum*2500) / ((int32_t)nRAvg * AXIS_STEPS_PER_MM_E * dt);
+    targetSpeed = (ssum*100000) / ((int32_t)nRAvg * AXIS_STEPS_PER_MM_E * dt);
 
     // i8          = int         / float
-    actualSpeed = (rsum*2500) / (nRAvg * FS_STEPS_PER_MM * dt);
+    actualSpeed = (rsum*100000) / (nRAvg * FS_STEPS_PER_MM * dt);
 
-    // if ((targetSpeed > 7.5) && fillBufferTask.synced() && stepBuffer.synced()) { // 3mm/s bzw. 7.2mm³/s
-    if ((actualSpeed > 7.5) && fillBufferTask.synced() && stepBuffer.synced()) { // 3mm/s bzw. 7.2mm³/s
+    if ((actualSpeed > 300) && fillBufferTask.synced() && stepBuffer.synced()) { // 3mm/s bzw. 7.2mm³/s
 
         uint8_t grip = (actualSpeed*100) / targetSpeed;
-        if (grip < 70) {
-            // printf("grip < 75: %d, %4.1f %4.1f\n", grip, actualSpeed*0.4, targetSpeed*0.4);
+
+        if ((grip > 0) && (grip < 50)) {
+            // printf("grip < 75: %d, %4.1f %4.1f\n", grip, actualSpeed*100, targetSpeed*0.4);
 
             int16_t curTempIndex = (int16_t)(current_temperature[0] - extrusionLimitBaseTemp) / 2;
             if ((curTempIndex > 0) && (curTempIndex < NExtrusionLimit)) {
@@ -200,7 +200,7 @@ void FilamentSensorADNS9800::run() {
                     uint16_t this_old_timer = tempExtrusionRateTable[curTempIndex];
                     uint16_t this_old_rate = FTIMER / this_old_timer;
 
-                    uint16_t new_dy = (this_old_rate - prev_old_rate) * 0.9; // xxx arbitrary
+                    uint16_t new_dy = (this_old_rate - prev_old_rate) * 0.95; // xxx arbitrary
 
                     uint16_t this_new_rate = prev_new_rate + new_dy;
 
