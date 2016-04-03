@@ -246,6 +246,11 @@ class TxBuffer: public Protothread {
             sendResponseValue((uint8_t*)&v, 2);
         }
 
+        void sendResponseInt16(int16_t v) {
+
+            sendResponseValue((uint8_t*)&v, 2);
+        }
+
         void sendResponseValue(uint32_t v) {
 
             sendResponseValue((uint8_t*)&v, 4);
