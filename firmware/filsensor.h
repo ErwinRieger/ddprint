@@ -120,12 +120,10 @@ class FilamentSensorADNS9800 {
         int32_t yPos;
         // bool enabled;
 
-        // Measured filament speed [mm/s]
-        // float realSpeed;
-        // xxx use a better name
-        // uint16_t maxTempSpeed;
-        int8_t targetSpeed;
-        int8_t actualSpeed;
+        // Measured stepper speed [0.01 mm/s]
+        int16_t targetSpeed;
+        // Measured filament speed [0.01 mm/s]
+        int16_t actualSpeed;
 
         FilamentSensorADNS9800();
         void init();
