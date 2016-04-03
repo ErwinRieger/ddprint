@@ -652,12 +652,18 @@ class Printer(Serial):
 
         (cmd, length, payload) = self.query(CmdGetStatus, doLog=False)
 
-        tup = struct.unpack("<BffIHHHHbb", payload)
+        tup = struct.unpack("<BffIHHHHHH", payload)
 
         statusDict = {}
         for i in range(len(valueNames)):
-            # statusDict[valueNames[i]] = statusList[i]
-            statusDict[valueNames[i]] = tup[i]
+
+            valueName = valueNames[i]
+
+            if valueName in ["targetExtrusionSpeed", "actualExtrusionSpeed"]:
+                statusDict[valueName] = tup[i] * 0.01
+                continue
+
+            statusDict[valueName] = tup[i]
 
         self.gui.statusCb(statusDict)
         return statusDict

@@ -292,8 +292,8 @@ class MainForm(npyscreen.Form):
         self.underrun.set_value( "%8s" % str(status["StepBufUnderRuns"]))
         self.underrun.update()
 
-        st = status["targetExtrusionSpeed"] * 0.4
-        sa = status["actualExtrusionSpeed"] * 0.4
+        st = status["targetExtrusionSpeed"]
+        sa = status["actualExtrusionSpeed"]
 
         grip = 100.0
         if st:
