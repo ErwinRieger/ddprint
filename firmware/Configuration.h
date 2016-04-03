@@ -38,9 +38,7 @@
 // #define BAUDRATE 1000000
 
 // This defines the number of extruders
-#ifndef EXTRUDERS
 #define EXTRUDERS 1
-#endif
 
 //===========================================================================
 //=============================Thermal Settings  ============================
