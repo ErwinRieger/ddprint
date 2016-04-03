@@ -47,8 +47,8 @@ extern void kill(const char* msg);
 uint16_t target_temperature[EXTRUDERS] = { 0 };
 uint8_t target_temperature_bed = 0;
 
-float current_temperature_bed = 0.0;
-float current_temperature[EXTRUDERS] = { 0.0 };
+float current_temperature_bed = BED_MINTEMP;
+float current_temperature[EXTRUDERS] = ARRAY_BY_EXTRUDERS(HEATER_1_MINTEMP, HEATER_2_MINTEMP, HEATER_3_MINTEMP);
 
 static const void *heater_ttbl_map[EXTRUDERS] = ARRAY_BY_EXTRUDERS(
         (void *)HEATER_0_TEMPTABLE, (void *)HEATER_1_TEMPTABLE, (void *)HEATER_2_TEMPTABLE );
@@ -58,14 +58,6 @@ static const uint8_t heater_ttbllen_map[EXTRUDERS] = ARRAY_BY_EXTRUDERS(
 
 void tp_init()
 {
-
-  #if 0
-  // Finish init of mult extruder arrays
-  for(int e = 0; e < EXTRUDERS; e++) {
-    // populate with the first value
-    maxttemp[e] = maxttemp[0];
-  }
-  #endif
 
   #if defined(HEATER_0_PIN) && (HEATER_0_PIN > -1)
     SET_OUTPUT(HEATER_0_PIN);
