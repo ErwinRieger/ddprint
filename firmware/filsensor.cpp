@@ -142,18 +142,26 @@ void FilamentSensorADNS9800::run() {
     spiInit(3); // scale = pow(2, 3+1), 1Mhz
 
     // Berechne soll flowrate, filamentsensor ist sehr ungenau bei kleiner geschwindigkeit.
-    uint32_t ts = millis();
+
     long astep = current_pos_steps[E_AXIS];
+    uint32_t ts = millis();
 
-    int16_t dy = getDY(); // Real extruded length
     int16_t ds = astep - lastASteps; // Requested extruded length
+    int16_t dy = getDY(); // Real extruded length
 
-    uint16_t dt = ts - lastTS;
+#if 0
+    if (ds < 0) {
 
-    if ((ds <= 0) || (dy <= 0)) {
         iRAvg = 0;
         nRAvg = 0;
+
+        lastASteps = astep;
+        lastTS = ts;
+        return;
     }
+#endif
+
+    uint16_t dt = ts - lastTS;
 
     rAvgS[iRAvg] = ds;
     rAvg[iRAvg++] = dy;
@@ -171,23 +179,31 @@ void FilamentSensorADNS9800::run() {
         rsum += rAvg[i];
     }
 
-    // i8          = int         / int
+    // i16          = int         / int
     targetSpeed = (ssum*100000) / ((int32_t)nRAvg * AXIS_STEPS_PER_MM_E * dt);
 
-    // i8          = int         / float
+    // i16          = int         / float
     actualSpeed = (rsum*100000) / (nRAvg * FS_STEPS_PER_MM * dt);
 
     if ((actualSpeed > 300) && fillBufferTask.synced() && stepBuffer.synced()) { // 3mm/s bzw. 7.2mm³/s
 
-        uint8_t grip = (actualSpeed*100) / targetSpeed;
+        int16_t grip = ((int32_t)actualSpeed*100) / targetSpeed;
 
         if ((grip > 0) && (grip < 50)) {
+
             // printf("grip < 75: %d, %4.1f %4.1f\n", grip, actualSpeed*100, targetSpeed*0.4);
 
             int16_t curTempIndex = (int16_t)(current_temperature[0] - extrusionLimitBaseTemp) / 2;
             if ((curTempIndex > 0) && (curTempIndex < NExtrusionLimit)) {
 
                 // printf("found temptable index: %d\n", curTempIndex);
+                txBuffer.sendResponseStart(RespUnsolicitedMsg);
+                txBuffer.sendResponseUint8(ExtrusionLimitDbg);
+                txBuffer.sendResponseInt16(curTempIndex);
+                txBuffer.sendResponseInt16(actualSpeed);
+                txBuffer.sendResponseInt16(targetSpeed);
+                txBuffer.sendResponseInt16(grip);
+                txBuffer.sendResponseEnd();
 
                 // Increase table values, decrease allowed speed for this and the following temperaturew
                 // //////////////////////////////////////////
