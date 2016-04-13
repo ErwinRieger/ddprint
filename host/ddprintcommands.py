@@ -156,6 +156,7 @@ RespRXCRCError =                5 # Payload: serialNumber (last line)
 RespACK =                       6 #
 RespSerNumberError =            7 # Payload: serialNumber (last line)
 RespRXTimeoutError =            8 # Payload: serialNumber (last line)
+RespUnsolicitedMsg =            9 # Payload: message type, params
 
 ResponseNames = {
         RespUnknownCommand: "RespUnknownCommand",
@@ -166,6 +167,7 @@ ResponseNames = {
         RespACK: "RespACK",
         RespSerNumberError: "RespSerNumberError",
         RespRXTimeoutError: "RespRXTimeoutError",
+        RespUnsolicitedMsg: "RespUnsolicitedMsg",
 }
 
 

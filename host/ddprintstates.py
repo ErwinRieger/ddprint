@@ -82,7 +82,11 @@ RespCodeNames = {
         RespMaxTemp: "RespMaxTemp",
 }
 
-
+############################################################################
+#
+# Unsolicited message types
+#
+ExtrusionLimitDbg = 0x0
 
 
 
