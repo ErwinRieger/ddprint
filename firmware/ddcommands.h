@@ -101,6 +101,7 @@
 #define RespACK                 6 // 
 #define RespSerNumberError      7 // Payload: serialNumber (last line)
 #define RespRXTimeoutError      8 // Payload: serialNumber (last line)
+#define RespUnsolicitedMsg      9 // Payload: message type, params
 
 //
 // Rsponse error codes (payload)
@@ -117,7 +118,10 @@
 #define RespMinTemp            10 // 
 #define RespMaxTemp            11 // 
 
-
+//
+// Unsolicited message types
+//
+#define ExtrusionLimitDbg       0x0
 
 
 
