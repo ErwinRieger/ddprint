@@ -218,6 +218,23 @@ class Printer(Serial):
             if handleError:
                 raise FatalPrinterError(ResponseNames[respCode])
 
+    # Check a printer response for an error
+    def handleUnsolicitedMsg(self, respCode, payload):
+
+        if respCode == RespUnsolicitedMsg:
+
+            msgType = ord(payload[0])
+            self.gui.logRecv("RespUnsolicitedMsg:", msgType)
+
+            if msgType == ExtrusionLimitDbg:
+                (tempIndex, actSpeed, targetSpeed, grip) = struct.unpack("<hhhh", payload[1:])
+                self.gui.logRecv("Limit extrusion index: %d, act: %d, target: %d, grip: %d" % (tempIndex, actSpeed, targetSpeed, grip))
+
+            return True # consume message
+
+        return False # continue message processing
+
+
     # Read a response from printer, "handle" exceptions
     def safeReadline(self):
 
@@ -621,6 +638,9 @@ class Printer(Serial):
                 # print "Got Generic String: '%s'" % payload
                 # continue
 
+            if self.handleUnsolicitedMsg(cmd, payload):
+                continue
+
             resendCommand = self.checkErrorResponse(cmd, length, payload)
 
             if resendCommand == ResendWasOK:
@@ -652,7 +672,10 @@ class Printer(Serial):
 
         (cmd, length, payload) = self.query(CmdGetStatus, doLog=False)
 
-        tup = struct.unpack("<BffIHHHHHH", payload)
+        tup = struct.unpack("<BffIHHHHhh", payload)
+
+        # xxx debug
+        print "statusTuple:", tup
 
         statusDict = {}
         for i in range(len(valueNames)):
@@ -664,6 +687,9 @@ class Printer(Serial):
                 continue
 
             statusDict[valueName] = tup[i]
+
+        # xxx debug
+        print "statusDict:", statusDict
 
         self.gui.statusCb(statusDict)
         return statusDict
