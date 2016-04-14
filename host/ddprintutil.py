@@ -757,7 +757,7 @@ def bedLevelAdjust(args, parser):
 
     printer.commandInit(args)
 
-    add_homeing_z = printer.getAddHomeing()[Z_AXIS] + args.distance
+    add_homeing_z = printer.getAddHomeing_z() + args.distance
 
     # Store new bedlevel offset in printer eeprom
     payload = struct.pack("<%dpf" % (len("add_homeing_z")+1), "add_homeing_z", add_homeing_z)

@@ -233,7 +233,7 @@ class Planner (object):
     def getHomePos(self):
 
         # Get additional z-offset from eeprom
-        add_homeing_z = self.printer.getAddHomeing()[Z_AXIS]
+        add_homeing_z = self.printer.getAddHomeing_z()
 
         assert((add_homeing_z <= 0) and (add_homeing_z >= -35))
 

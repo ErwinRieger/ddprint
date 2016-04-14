@@ -700,9 +700,9 @@ def main():
         if util.handleGenericResponse(resp):
             print "Eepromversion: ", util.getResponseString(resp[2], 1)
 
-        # pprint.pprint(printer.query(CmdGetEepromSettings))
-        add_homeing = printer.getAddHomeing()
-        print "add_homeing: ", add_homeing
+        settingsDict = printer.getEepromSettings()
+        print "eepromSettings: ",
+        pprint.pprint(settingsDict)
 
     elif args.mode == 'factoryReset':
 

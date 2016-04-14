@@ -674,9 +674,6 @@ class Printer(Serial):
 
         tup = struct.unpack("<BffIHHHHhh", payload)
 
-        # xxx debug
-        print "statusTuple:", tup
-
         statusDict = {}
         for i in range(len(valueNames)):
 
@@ -694,11 +691,22 @@ class Printer(Serial):
         self.gui.statusCb(statusDict)
         return statusDict
 
-    def getAddHomeing(self):
+    def getEepromSettings(self):
 
         (cmd, length, payload) = self.query(CmdGetEepromSettings, doLog=False)
-        tup = struct.unpack("<ffff", payload)
-        return tup
+        tup = struct.unpack("<fffffff", payload)
+        valueNames = ["add_homeing_x", "add_homeing_y", "add_homeing_z", "add_homeing_e", "Kp", "Ki", "Kd"]
+
+        settingsDict = {}
+        for i in range(len(valueNames)):
+            valueName = valueNames[i]
+            settingsDict[valueName] = tup[i]
+
+        return settingsDict
+
+    def getAddHomeing_z(self):
+
+        return getEepromSettings["add_homeing_z"]
 
     def waitForState(self, destState, wait=1):
 
