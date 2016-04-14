@@ -183,6 +183,9 @@ void dumpEepromSettings(const char* prefix) {
 
     txBuffer.sendResponseStart(CmdGetEepromSettings);
     txBuffer.sendResponseValue((uint8_t*)es.add_homeing, sizeof(es.add_homeing));
+    txBuffer.sendResponseValue(es.Kp);
+    txBuffer.sendResponseValue(es.Ki);
+    txBuffer.sendResponseValue(es.Kd);
     txBuffer.sendResponseEnd();
 
 #if 0
