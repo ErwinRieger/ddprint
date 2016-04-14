@@ -155,7 +155,7 @@
 // so you shouldn't use it unless you are OK with PWM on your bed.  (see the comment on enabling PIDTEMPBED)
 #define MAX_BED_POWER 255 // limits duty cycle to bed; 255=full current
 
-#ifdef PIDTEMPBED
+// #ifdef PIDTEMPBED
 //120v 250W silicone heater into 4mm borosilicate (MendelMax 1.5+)
 //from FOPDT model - kp=.39 Tp=405 Tdead=66, Tc set to 79.2, aggressive factor of .15 (vs .1, 1, 10)
 //    #define  DEFAULT_bedKp 50.00
@@ -169,12 +169,12 @@
 //    #define  DEFAULT_bedKd 1675.16
 
 //Ultimaker2
-    #define  DEFAULT_bedKp 124.55
-    #define  DEFAULT_bedKi 23.46
-    #define  DEFAULT_bedKd 165.29
+// #define  DEFAULT_bedKp 124.55
+// #define  DEFAULT_bedKi 23.46
+// #define  DEFAULT_bedKd 165.29
 
 // FIND YOUR OWN: "M303 E-1 C8 S90" to run autotune on the bed at 90 degreesC for 8 cycles.
-#endif // PIDTEMPBED
+// #endif // PIDTEMPBED
 
 
 
