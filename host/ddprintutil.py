@@ -993,7 +993,8 @@ def zieglerNichols(args, parser):
     def stopHeater():
         payload = struct.pack("<BB", HeaterEx1, 0) # heater, pwmvalue
         printer.sendCommand(CmdSetHeaterY, binPayload=payload)
-        printer.sendCommandParamV(CmdFanSpeed, [packedvalue.uint8_t(0)])
+        # Keep fans running for faster cooldown...
+        # printer.sendCommandParamV(CmdFanSpeed, [packedvalue.uint8_t(0)])
 
     f = open("stepresponse.gnuplot", "w")
     # f.write("set xyplane 0\n")
@@ -1005,9 +1006,11 @@ def zieglerNichols(args, parser):
 
     printer.commandInit(args)
 
-    tmax = 240
+    tmax = 250
 
-    Xo = 128
+    # Eingangssprung, nicht die volle leistung, da sonst die temperatur am ende
+    # der sprungantwort zu hoch wird.
+    Xo = 100.0
 
     print "Starting input step"
     printer.sendCommandParamV(CmdFanSpeed, [packedvalue.uint8_t(100)])
@@ -1033,7 +1036,7 @@ def zieglerNichols(args, parser):
     while abs((aAvg/nAvg)) > 0.02:
 
         if lastTemp > tmax:
-            print "Error, max temp (%d) reached: " % tmax, lastTemp
+            print "Error, max temp (%d) reached (you should decrease Xo): " % tmax, lastTemp
             stopHeater()
             return
 
@@ -1111,17 +1114,22 @@ def zieglerNichols(args, parser):
     f.write("%f %f\n" % (T, Mu))
     f.write("e\n")
 
-    Ko = (Xo * T) / (Mu * Tdead)
-    print "Ko: ", Ko
+    # Ko = (Xo * T) / (Mu * Tdead)
+    # print "Ko: ", Ko
+
+    Ks = Mu / Xo
+    # Ko = Ks * T / Tdead
+    # print "Ks, Ko: ", Ks, Ko
+    print "Ks: ", Ks
 
     # Kc or Kp
-    Kc = 1.2 * Ko
+    Kc = (1.2 / Ks) * (T / Tdead)
     # Ti or Tn (Nachstellzeit)
     Ti = 2 * Tdead
     # Td or Tv (Vorhaltezeit)
     Td = 0.5 * Tdead
 
-    print "Kc: %7.4f, Ki: %7.4f, Kd: %7.4f" % (Kc, Kc/Ti, Kc*Td)
+    print "Kp %7.4f, Ki: %7.4f, Kd: %7.4f" % (Kc, Kc/Ti, Kc*Td)
 
     # Ki = Kp/Tn
     # Kd = Kp·Tv
