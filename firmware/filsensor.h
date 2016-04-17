@@ -11,12 +11,11 @@
 
 #if defined(ADNSFS)
 
-    // #define FSFACTOR 1
-    #define FSFACTOR 0.73
+    // #define FSFACTOR 0.73
+    // #define FS_STEPS_PER_MM ((8200.0*FSFACTOR)/25.4)
 
-    // #define FS_STEPS_PER_MM (1600.0/25.4)
-    // #define FS_STEPS_PER_MM (800.0/25.4)
-    #define FS_STEPS_PER_MM ((8200.0*FSFACTOR)/25.4)
+    // calibrateFilSensor
+    #define FS_STEPS_PER_MM 265.0
 #endif
 
 #if defined(BournsEMS22AFS)
