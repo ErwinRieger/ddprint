@@ -706,7 +706,7 @@ class Printer(Serial):
 
     def getAddHomeing_z(self):
 
-        return getEepromSettings["add_homeing_z"]
+        return self.getEepromSettings()["add_homeing_z"]
 
     def waitForState(self, destState, wait=1):
 
@@ -820,6 +820,29 @@ class Printer(Serial):
         return (basetemp, struct.unpack(fmt, payload[3:]))
 
     ####################################################################################################
+
+    def getFilSensor(self):
+
+        (cmd, length, payload) = self.query(CmdGetFilSensor)
+        return struct.unpack("<i", payload)[0]
+
+    ####################################################################################################
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
