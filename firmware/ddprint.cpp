@@ -1299,10 +1299,9 @@ void Printer::cmdGetStatus() {
 #if defined(HASFILAMENTSENSOR)
 void Printer::cmdGetFilSensor() {
 
-#if 0
-    SERIAL_ECHOPGM("Res:");
-    SERIAL_ECHOLN(filamentSensor.yPos);
-#endif
+    txBuffer.sendResponseStart(CmdGetFilSensor);
+    txBuffer.sendResponseValue(filamentSensor.yPos);
+    txBuffer.sendResponseEnd();
 }
 #endif
 
@@ -1676,6 +1675,17 @@ class UsbCommand : public Protothread {
                         printer.cmdFanSpeed(MSerial.readNoCheckCobs());
                         txBuffer.sendACK();
                         break;
+#if defined(PIDAutoTune)
+                    case CmdSetHeaterY:
+                        {
+                            uint8_t heater = MSerial.readNoCheckCobs();
+                            uint8_t pwmValue = MSerial.readNoCheckCobs();
+                            tempControl.setHeaterY(heater, pwmValue);
+                            txBuffer.sendACK();
+                        }
+                        break;
+#endif
+
 
                     //
                     // Commands with response payload
@@ -1720,6 +1730,12 @@ class UsbCommand : public Protothread {
                     case CmdSetTempTable:
                         printer.cmdSetTempTable();
                         break;
+#if defined(HASFILAMENTSENSOR)
+                    case CmdGetFilSensor:
+                        printer.cmdGetFilSensor();
+                        break;
+#endif
+
 
 #if 0
 // Currently not used:
@@ -1729,21 +1745,6 @@ class UsbCommand : public Protothread {
                     case CmdDisableStepperIsr:
                         printer.cmdDisableStepperIsr();
                         break;
-#endif
-
-#if 0
-#if defined(PIDAutoTune)
-                    case CmdSetHeaterY:
-// xxx order of evaluation
-                        tempControl.setHeaterY(MSerial.readNoCheckCobs(), MSerial.readNoCheckCobs());
-                        SERIAL_PROTOCOLLNPGM(MSG_OK);
-                        break;
-#endif
-#if defined(HASFILAMENTSENSOR)
-                    case CmdGetFilSensor:
-                        printer.cmdGetFilSensor();
-                        break;
-#endif
 #endif
 
 #if defined(DDSim)
