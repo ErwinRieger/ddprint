@@ -24,7 +24,8 @@
 # Some seldom used functions, needed only if the hardware of the printer is modified.
 #
 
-import ddhome, ddprintutil as util
+import ddhome, ddprintutil as util, time
+from ddprofile import PrinterProfile
 from ddprinter import Printer
 from ddprintcommands import *
 from ddprintstates import *
@@ -54,29 +55,45 @@ def calibrateFilSensor(args, parser):
 
     printer.commandInit(args)
 
-    # ddhome.home(parser, args.fakeendstop)
+    steps_per_mm = PrinterProfile.getStepsPerMMVector()[util.A_AXIS]
 
-    printer.sendPrinterInit()
+    # ddhome.home(parser, args.fakeendstop)
 
     current_position = parser.getRealPos()
     apos = current_position[util.A_AXIS]
 
-    # ramp up speed from 1mm/s to 13mm/s, that is about 2.5 to 31 mm³/s flowrate
-    for feedrate in range(13):
+    fsstepsum = 0
+    distsum = 0
 
-        feedrate += 1
+    # ramp up speed from 3mm/s to 13mm/s, that is about 7.2 to 31 mm³/s flowrate (1.75mm filament)
+    for feedrate in range(11):
+
+        feedrate += 3
 
         # choose length of move to get about 25 points per feedrate step
         distance = 2.5 * feedrate
 
         apos += distance
+
+        printer.sendPrinterInit()
+
         parser.execute_line("G0 F%d %s%f" % (feedrate*60, util.dimNames[util.A_AXIS], apos))
 
-    planner.finishMoves()
-    printer.sendCommand(CmdEOT)
-    printer.sendCommandParamV(CmdMove, [MoveTypeNormal])
-    printer.waitForState(StateIdle)
+        planner.finishMoves()
+        printer.sendCommand(CmdEOT)
+        printer.sendCommandParamV(CmdMove, [MoveTypeNormal])
+        printer.waitForState(StateIdle)
+
+        time.sleep(0.25)
+
+        fssteps = printer.getFilSensor()
+
+        print "Speed: %d, dist: %.2f, FSsteps: %d, fssteps/mm: %.4f" % (feedrate, distance, fssteps, fssteps/distance)
+
+        distsum += distance
+        fsstepsum += fssteps
 
 
+    print "Average fssteps/mm: %.4f" % (fsstepsum/distsum)
 
 
