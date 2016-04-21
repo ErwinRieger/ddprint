@@ -95,7 +95,7 @@ def decodePacket(packet, decodePacketNr=True):
 
 if __name__ == "__main__":
 
-
+    """
     s="00a116010955557a4155557a41010101010101010101010101035fd2"
     print "Decoding packet: ", s
     (line, cmd, n, data) = decodePacket(s.decode("hex"), False)
@@ -104,6 +104,7 @@ if __name__ == "__main__":
     print "payload decoded:", data.encode("hex")
     print "tup: ", struct.unpack("<BffIHHHH", data)
     sys.exit(0)
+    """
 
     # Case 1, long packet, ends with 0
     s = (LenCobs-1)*" " + nullByte
@@ -150,6 +151,11 @@ if __name__ == "__main__":
     s="02ba02ba02b902b902b902b802b802b702b702b702b602b602b602b502b502b502b402b402b302b302b302b202b202b202b102b102b102b002b002b002af02af02af02ae02ae02ae02ad02ad02ad02ad02ac02ac02ac02ab02ab02ab02aa02aa02aa02aa02a902a902a902a802a802a802a702a702a702a702a602a602a602a602a502a502a502a402a402a402a402a302a302a302a302a202a202a202a202a102a102a102a102a002a002a002a0029f029f029f029f029e029e029e029e029d029d029d029d029c029c029c029c029c029b029b029b029b029a029a029a029a029902990299029902990298029802980298029802970297"
     decodedBlob = decodeCobs(s.decode("hex"))
 
+    print "s :", s
+    print "sd:", decodedBlob.encode("hex")
+
+    s="0101ff01"
+    decodedBlob = decodeCobs(s.decode("hex"))
     print "s :", s
     print "sd:", decodedBlob.encode("hex")
 
