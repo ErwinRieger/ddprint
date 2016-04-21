@@ -516,7 +516,7 @@ def insertFilament(args, parser):
 
     commonInit(args, parser)
 
-    # Move to mid-front
+    # Move to mid-position
     feedrate = PrinterProfile.getMaxFeedrate(X_AXIS)
     parser.execute_line("G0 F%d X%f Y%f" % (feedrate*60, planner.MAX_POS[X_AXIS]/2, planner.MAX_POS[Y_AXIS]/2))
 
@@ -567,7 +567,7 @@ def removeFilament(args, parser):
 
     printer.sendPrinterInit()
 
-    # Move to mid-front
+    # Move to mid-position
     # MAX_POS = (X_MAX_POS, Y_MAX_POS, Z_MAX_POS)
     # feedrate = PrinterProfile.getMaxFeedrate(Z_AXIS)
     # parser.execute_line("G0 F%d Z%f" % (feedrate*60, MAX_POS[Z_AXIS]))
@@ -1178,7 +1178,6 @@ def genTempTable(printer):
     baseTemp = MatProfile.getHotendBaseTemp()
 
     area04 = pow(0.4, 2)*math.pi/4
-
     extrusionLow = MatProfile.getBaseExtrusionRate() * (NozzleProfile.getArea() / area04)
 
     f = NozzleProfile.getAutoTempFactor(UseExtrusionAutoTemp)
@@ -1260,8 +1259,143 @@ def downloadTempTable(printer):
 
 ####################################################################################################
 
+#
+# * set temp t
+# * set flowrate 7 (bzw. feedrate dazu)
+# * schleife:
+#   + extrude xxx cm filament
+#   + get measured filament value
+#   + compute ratio
+#   + plot values
+#   + break if ratio < 0.8
+# * if temp < 250: set next temp and repeat
+#
+def measureTempFlowrateCurve(args, parser):
+
+    fssteps_per_mm = 265.0 # xxx hardcoded, get from profile or printer...
+
+    planner = parser.planner
+    printer = planner.printer
+
+    printer.commandInit(args)
+
+    ddhome.home(parser, args.fakeendstop)
+
+    # Disable flowrate limit
+    printer.sendCommandParamV(CmdEnableFRLimit, [packedvalue.uint8_t(0)])
+
+    # Move to mid-position
+    printer.sendPrinterInit()
+    feedrate = PrinterProfile.getMaxFeedrate(X_AXIS)
+    parser.execute_line("G0 F%d X%f Y%f" % (feedrate*60, planner.MAX_POS[X_AXIS]/2, planner.MAX_POS[Y_AXIS]/2))
+
+    planner.finishMoves()
+
+    printer.sendCommandParamV(CmdMove, [MoveTypeNormal])
+    printer.sendCommand(CmdEOT)
+
+    printer.waitForState(StateIdle)
+
+    current_position = parser.getRealPos()
+    apos = current_position[A_AXIS]
+
+    t1 = MatProfile.getHotendBaseTemp() # start temperature
+    area04 = pow(0.4, 2)*math.pi/4
+    flowrate = MatProfile.getBaseExtrusionRate() * (NozzleProfile.getArea() / area04)
+    aFilament = MatProfile.getMatArea()
+
+    f = open("temp-flowrate-curve.gnuplot", "w")
+    f.write("set grid\nset yrange [0:35]\n")
+    f.write("plot \"-\" using 1:2 with linespoints title \"Target Flowrate\", \\\n")
+    f.write("     \"-\" using 1:3 with linespoints title \"Actual Flowrate\", \\\n")
+    f.write("     \"-\" using 1:3 with linespoints smooth bezier title \"Actual Flowrate smooth\";\n")
+    dataSet = []
+
+    printer.sendCommandParamV(CmdFanSpeed, [packedvalue.uint8_t(100)])
+
+    retracted = False
+
+    while t1 <= 260:
+
+        print "Heating:", t1
+        printer.heatUp(HeaterEx1, t1, wait=t1)
+
+        # time.sleep(10) # temp settle
+        wait = 5
+        while wait:
+            time.sleep(1)
+            temps = printer.getTemps()
+            if abs(t1 - int(temps[HeaterEx1])) <= 1:
+                wait -= 1
+            else:
+                wait = 5
+            print "temp wait: ", wait
+
+        flowrate -= 1
+
+        ratio = 1.0
+
+        while ratio >= 0.9:
+
+            feedrate = flowrate / aFilament
+            # distance = 5 * feedrate # xxx
+            distance = 50
+
+            apos += distance
+
+            print "Feedrate for flowrate:", feedrate, flowrate
+
+            printer.sendPrinterInit()
+
+            if retracted:
+                parser.execute_line("G11")
+            parser.execute_line("G0 F%d %s%f" % (feedrate*60, dimNames[A_AXIS], apos))
+            parser.execute_line("G10")
+            planner.finishMoves()
+            printer.sendCommand(CmdEOT)
+            printer.sendCommandParamV(CmdMove, [MoveTypeNormal])
+            printer.waitForState(StateIdle)
+
+            time.sleep(0.25)
+
+            fssteps = printer.getFilSensor()
+            fsdist = fssteps / fssteps_per_mm
+
+            ratio = fsdist / distance
+
+            actualFlowrate = flowrate * ratio
+
+            print "t1, flowrate, fsdist, distance, ratio:",  t1, flowrate, fsdist, distance, ratio
+
+            flowrate += 1
+            retracted = True
+
+        print "Feeder grip:",  t1, flowrate-1, ratio
+        dataStr = "%f %f %.2f %.3f\n" % (t1, flowrate - 1, actualFlowrate, ratio)
+        f.write(dataStr)
+        f.flush()
+
+        dataSet.append(dataStr)
+
+        t1 += 2 # next temp
+
+    f.write("E")
+    for dataStr in dataSet:
+        f.write(dataStr)
+    f.write("E")
+    for dataStr in dataSet:
+        f.write(dataStr)
+    f.write("E")
+    f.close()
+
+    printer.coolDown(HeaterEx1)
+    # Enable flowrate limit
+    printer.sendCommandParamV(CmdEnableFRLimit, [packedvalue.uint8_t(1)])
+
+    # print "Average fssteps/mm: %.4f" % (fsstepsum/distsum)
 
 
+####################################################################################################
 
 
 

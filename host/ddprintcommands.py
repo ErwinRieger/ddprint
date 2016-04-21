@@ -84,6 +84,7 @@ CmdGetStatus = 161
 CmdGetFilSensor = 162 # Get raw value of filament sensor pos
 CmdGetTempTable = 163 # ExtrusionLimit: get tempTable 
 CmdSetTempTable = 164 # ExtrusionLimit: set tempTable
+CmdEnableFRLimit = 165 # Enable/disable flowrate limit
 
 CommandNames = {
     CmdNull: "CmdNull",
@@ -143,6 +144,7 @@ CommandNames = {
     CmdGetFilSensor: "CmdGetFilSensor",
     CmdGetTempTable: "CmdGetTempTable",
     CmdSetTempTable: "CmdSetTempTable",
+    CmdEnableFRLimit: "CmdEnableFRLimit",
 }
 
 #

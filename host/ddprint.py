@@ -496,6 +496,8 @@ def main():
 
     sp = subparsers.add_parser("home", help=u"Home the printer.")
 
+    sp = subparsers.add_parser("measureTempFlowrateCurve", help=u"Determine temperature/flowrate characteristic.")
+
     sp = subparsers.add_parser("moverel", help=u"Debug: Move axis manually, relative coords.")
     sp.add_argument("axis", help="Axis (XYZAB).", type=str)
     sp.add_argument("distance", action="store", help="Move-distance (+/-) in mm.", type=float)
@@ -713,6 +715,10 @@ def main():
 
         printer.commandInit(args)
         printer.sendCommand(CmdDisableSteppers)
+
+    elif args.mode == 'measureTempFlowrateCurve':
+
+        util.measureTempFlowrateCurve(args, parser)
 
     elif args.mode == 'moverel':
 
