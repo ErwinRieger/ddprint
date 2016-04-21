@@ -140,7 +140,7 @@ class Printer(Serial):
         return self.lastCommands[lastLine]
 
     # Check a printer response for an error
-    def checkErrorResponse(self, respCode, length, payload, handleError=True):
+    def checkErrorResponse(self, respCode, payload, handleError=True):
 
         if respCode == RespUnknownCommand:
 
@@ -356,8 +356,7 @@ class Printer(Serial):
 
         # Decode COBS encode payload
         payload = cobs.decodeCobs(payload)
-        # Todo: remove length from result tuple, its not useful
-        return (cmd, length, payload)
+        return (cmd, payload)
 
     # Monitor printer responses for a while (wait waitcount * 0.1 seconds)
     def readMore(self, waitcount=100):
@@ -607,7 +606,7 @@ class Printer(Serial):
 
             try:
                 # recvLine = self.safeReadline()        
-                (cmd, length, payload) = self.readResponse()        
+                (cmd, payload) = self.readResponse()        
             except SERIALDISCON:
                 self.gui.logError("Line disconnected in send2(), reconnecting!")
                 self.reconnect()
@@ -632,7 +631,7 @@ class Printer(Serial):
             dt = time.time() - startTime
             if cmd == 0x6:
                 self.gui.logRecv("ACK, Sent %d bytes in %.2f ms, %.2f Kb/s" % (n, dt*1000, n/(dt*1000)))
-                return (cmd, length, payload)
+                return (cmd, payload)
 
             # if cmd == RespGenericString:
                 # print "Got Generic String: '%s'" % payload
@@ -641,7 +640,7 @@ class Printer(Serial):
             if self.handleUnsolicitedMsg(cmd, payload):
                 continue
 
-            resendCommand = self.checkErrorResponse(cmd, length, payload)
+            resendCommand = self.checkErrorResponse(cmd, payload)
 
             if resendCommand == ResendWasOK:
 
@@ -659,9 +658,9 @@ class Printer(Serial):
 
             if cmd == sendCmd:
                 # print "got reply:", payload
-                return (cmd, length, payload)
+                return (cmd, payload)
 
-            print "unknown reply: 0x%x" % cmd, length, payload
+            print "unknown reply: 0x%x" % cmd, payload
             assert(0)
 
         # Notreached
@@ -670,7 +669,7 @@ class Printer(Serial):
 
         valueNames = ["state", "t0", "t1", "Swap", "SDReader", "StepBuffer", "StepBufUnderRuns", "targetT1", "targetExtrusionSpeed", "actualExtrusionSpeed"]
 
-        (cmd, length, payload) = self.query(CmdGetStatus, doLog=False)
+        (cmd, payload) = self.query(CmdGetStatus, doLog=False)
 
         tup = struct.unpack("<BffIHHHHhh", payload)
 
@@ -693,7 +692,7 @@ class Printer(Serial):
 
     def getEepromSettings(self):
 
-        (cmd, length, payload) = self.query(CmdGetEepromSettings, doLog=False)
+        (cmd, payload) = self.query(CmdGetEepromSettings, doLog=False)
         tup = struct.unpack("<fffffff", payload)
         valueNames = ["add_homeing_x", "add_homeing_y", "add_homeing_z", "add_homeing_e", "Kp", "Ki", "Kd"]
 
@@ -727,17 +726,19 @@ class Printer(Serial):
         return status['state'] == StateStart or status['state'] == StateDwell
 
     def getTemps(self):
-        (cmd, length, payload) = self.query(CmdGetCurrentTemps)
+
+        (cmd, payload) = self.query(CmdGetCurrentTemps)
         if len(payload) == 8:
             temps = struct.unpack("<ff", payload)
         else:
             temps = struct.unpack("<fff", payload)
 
-        (cmd, length, payload) = self.query(CmdGetTargetTemps)
-        if length == 3:
+        (cmd, payload) = self.query(CmdGetTargetTemps)
+        if len(payload) == 3:
             targetTemps = struct.unpack("<BH", payload)
         else:
             targetTemps = struct.unpack("<BHH", payload)
+
         self.gui.tempCb(temps[0], temps[1], targetTemps[1])
         return temps
 
@@ -773,7 +774,7 @@ class Printer(Serial):
 
     def isHomed(self):
 
-        (cmd, length, payload) = self.query(CmdGetHomed)
+        (cmd, payload) = self.query(CmdGetHomed)
         tup = struct.unpack("<BBB", payload)
         return tup == (1, 1, 1)
 
@@ -781,7 +782,7 @@ class Printer(Serial):
 
     def getPos(self):
 
-        (cmd, length, payload) = self.query(CmdGetPos)
+        (cmd, payload) = self.query(CmdGetPos)
         tup = struct.unpack("<iiii", payload)
         return tup
 
@@ -790,7 +791,7 @@ class Printer(Serial):
     def getEndstops(self):
 
         # Check, if enstop was pressed
-        (cmd, length, payload) = self.query(CmdGetEndstops)
+        (cmd, payload) = self.query(CmdGetEndstops)
         tup = struct.unpack("<BiBiBi", payload)
         return tup
 
@@ -812,7 +813,7 @@ class Printer(Serial):
 
     def getTempTable(self):
 
-        (cmd, length, payload) = self.query(CmdGetTempTable)
+        (cmd, payload) = self.query(CmdGetTempTable)
         basetemp = struct.unpack("<H", payload[:2])[0]
 
         l = ord(payload[2])
@@ -823,7 +824,7 @@ class Printer(Serial):
 
     def getFilSensor(self):
 
-        (cmd, length, payload) = self.query(CmdGetFilSensor)
+        (cmd, payload) = self.query(CmdGetFilSensor)
         return struct.unpack("<i", payload)[0]
 
     ####################################################################################################

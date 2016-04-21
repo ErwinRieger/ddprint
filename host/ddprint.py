@@ -567,14 +567,13 @@ def main():
         printer.initSerial(args.device, args.baud)
         while True:
             try:
-                (cmd, length, payload) = printer.readResponse()        
+                (cmd, payload) = printer.readResponse()        
             except RxTimeout:
                 pass
             else:
                 print "Response cmd    :", cmd
-                print "Response len    :", length
                 print "Response payload:", payload.encode("hex")
-                printer.checkErrorResponse(cmd, length, payload, False)
+                printer.checkErrorResponse(cmd, payload, False)
 
     elif args.mode == 'print':
 
@@ -700,7 +699,7 @@ def main():
         printer.commandInit(args)
         resp = printer.query(CmdGetEepromVersion)
         if util.handleGenericResponse(resp):
-            print "Eepromversion: ", util.getResponseString(resp[2], 1)
+            print "Eepromversion: ", util.getResponseString(resp[1], 1)
 
         settingsDict = printer.getEepromSettings()
         print "eepromSettings: ",

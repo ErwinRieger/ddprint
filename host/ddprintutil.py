@@ -450,18 +450,19 @@ def manualMove(parser, axis, distance, feedrate=0, absolute=False):
 
     assert(printer.isHomed())
 
-    assert(abs(distance) <= 1000)
-
     # Get current pos from printer and set our virtual pos
     getVirtualPos(parser)
 
     if not feedrate:
         feedrate = PrinterProfile.getMaxFeedrate(axis)
 
+    current_position = parser.getRealPos()
     if absolute:
+        d = distance - current_position[A_AXIS] 
+        assert(abs(d) <= 1000)
         parser.execute_line("G0 F%d %s%f" % (feedrate*60, dimNames[axis], distance))
     else:
-        current_position = parser.getRealPos()
+        assert(abs(distance) <= 1000)
         parser.execute_line("G0 F%d %s%f" % (feedrate*60, dimNames[axis], current_position[axis] + distance))
 
     planner.finishMoves()
@@ -1154,7 +1155,7 @@ def jsonLoad(f):
 ####################################################################################################
 
 def handleGenericResponse(resp):
-    (cmd, l, payload) = resp
+    (cmd, payload) = resp
 
     code = ord(payload[0])
     if code != RespOK:

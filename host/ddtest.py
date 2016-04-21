@@ -36,9 +36,9 @@ def testFilSensor(args, parser):
     printer = planner.printer
 
     printer.commandInit(args)
-    startPos = printer.query(CmdGetFilSensor)
+    startPos = printer.getFilSensor()
     util.manualMove(parser, util.dimIndex['A'], args.distance)
-    endPos = printer.query(CmdGetFilSensor)
+    endPos = printer.getFilSensor()
     diff = endPos - startPos
     print "Filament pos:", startPos, endPos, "counts, difference: %d,  %.3f mm" % (diff, diff*25.4/1000)
 
