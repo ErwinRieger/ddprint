@@ -89,6 +89,7 @@
 #define CmdGetFilSensor         162 
 #define CmdGetTempTable         163 // ExtrusionLimit: get tempTable
 #define CmdSetTempTable         164 // ExtrusionLimit: set tempTable
+#define CmdEnableFRLimit        165 // Enable/disable flowrate limit
 
 //
 // Response types 

@@ -114,10 +114,11 @@ class FilamentSensorADNS9800 {
 
         // Ratio of Measured filament speed to stepper speed [0.5%]
         // uint8_t grip;
+        bool enabled;
+
     public:
 
         int32_t yPos;
-        // bool enabled;
 
         // Measured stepper speed [0.01 mm/s]
         int16_t targetSpeed;
@@ -130,6 +131,8 @@ class FilamentSensorADNS9800 {
         // The polling method
         void run();
         void selfTest();
+
+        void enable(bool flag) { enabled = flag; }
 };
 
 extern FilamentSensorADNS9800 filamentSensor;

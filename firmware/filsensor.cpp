@@ -56,6 +56,8 @@ FilamentSensorADNS9800::FilamentSensorADNS9800() {
     WRITE(FILSENSNCS, HIGH);
     SET_OUTPUT(FILSENSNCS);
 
+    enabled = true;
+
     init();
 }
 
@@ -185,7 +187,7 @@ void FilamentSensorADNS9800::run() {
     // i16          = int         / float
     actualSpeed = (rsum*100000) / (nRAvg * FS_STEPS_PER_MM * dt);
 
-    if ((actualSpeed > 300) && fillBufferTask.synced() && stepBuffer.synced()) { // 3mm/s bzw. 7.2mm³/s
+    if (enabled && (actualSpeed > 300) && fillBufferTask.synced() && stepBuffer.synced()) { // 3mm/s bzw. 7.2mm³/s
 
         int16_t grip = ((int32_t)actualSpeed*100) / targetSpeed;
 

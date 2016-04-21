@@ -1064,11 +1064,7 @@ void Printer::cmdGetTargetTemps() {
     SERIAL_ECHOLNPGM(")");
 #endif
 
-#if EXTRUDERS == 1
     txBuffer.sendResponseStart(CmdGetTargetTemps);
-#else
-    txBuffer.sendResponseStart(CmdGetTargetTemps);
-#endif
 
     txBuffer.sendResponseUint8(target_temperature_bed);
     txBuffer.sendResponseValue(target_temperature[0]);
@@ -1683,6 +1679,12 @@ class UsbCommand : public Protothread {
                             tempControl.setHeaterY(heater, pwmValue);
                             txBuffer.sendACK();
                         }
+                        break;
+#endif
+#if defined(HASFILAMENTSENSOR)
+                    case CmdEnableFRLimit:
+                        filamentSensor.enable(MSerial.readNoCheckCobs());
+                        txBuffer.sendACK();
                         break;
 #endif
 
