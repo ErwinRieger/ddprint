@@ -1,0 +1,8 @@
+
+{
+  # Material legt erst bei 215 grad so richtig los, 215 grad ist auch
+  # die vom hersteller empfolene drucktemperatur.
+  "hotendBaseTemp"    : 215
+}
+
+
