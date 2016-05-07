@@ -1392,13 +1392,6 @@ class UsbCommand : public Protothread {
 
         void crcError() {
 
-            /*
-            SERIAL_ERROR_START;
-            SERIAL_PROTOCOLPGM("CRC err Last Line:");
-            // SERIAL_ERRORLN(serialNumber);
-            MSerial.println(serialNumber, DEC);
-            */
-
             txBuffer.sendSimpleResponse(RespRXCRCError, serialNumber);
             reset();
             // #if defined(ExtendedStats)
@@ -1407,13 +1400,6 @@ class UsbCommand : public Protothread {
         }
 
         void serialNumberError() {
-
-            /*
-            SERIAL_ERROR_START;
-            SERIAL_PROTOCOLPGM("SerialNumber err Last Line:");
-            // SERIAL_ERRORLN(serialNumber);
-            MSerial.println(serialNumber, DEC);
-            */
 
             txBuffer.sendSimpleResponse(RespSerNumberError, serialNumber);
             reset();
@@ -1432,6 +1418,8 @@ class UsbCommand : public Protothread {
             // for more characters to arrive and host application waits for
             // the acknowledge of the last sent command.
             //
+            // To prevent this we implement a timeout here.
+            //
 
             unsigned long ts = millis();
 
@@ -1441,11 +1429,6 @@ class UsbCommand : public Protothread {
             }
 
             if ((ts - startTS) > 2500) {
-                /*
-                SERIAL_ERROR_START;
-                SERIAL_PROTOCOLPGM("RX Timeout Last Line:");
-                MSerial.println(serialNumber, DEC);
-                */
 
                 txBuffer.sendSimpleResponse(RespRXTimeoutError, serialNumber);
                 reset();
@@ -1552,6 +1535,7 @@ class UsbCommand : public Protothread {
                 // 
                 // Direct command
                 // 
+#if 0
                 if (commandByte == CmdResetLineNr) {
                     serialNumber = 1;
                 }
@@ -1561,6 +1545,13 @@ class UsbCommand : public Protothread {
                         serialNumberError();
                         PT_RESTART();   // does a return
                     }
+                }
+#endif
+
+                if ((c != serialNumber) && (commandByte != CmdResetLineNr)) {
+
+                    serialNumberError();
+                    PT_RESTART();   // does a return
                 }
 
                 // Read payload length 1 byte
@@ -1581,6 +1572,11 @@ class UsbCommand : public Protothread {
 
                 if (! checkCrc(flags, cs1, cs2, checksum))
                     PT_RESTART();   // does a return
+
+                // Handle ResetLineNr command, set command counter
+                if (commandByte == CmdResetLineNr) {
+                    serialNumber = 1;
+                }
 
                 // Successfully received command, increment command counter
                 serialNumber++;
