@@ -1,9 +1,6 @@
 {
     "size" : 0.8,
-    "autoTempFactor" : 0.5,
-    "extrusionAutoTempFactor" : 2.5,
-    # "extrusionAutoTempFactor" : 2.25,
-    # "extrusionAutoTempFactor" : 2.0,
+    # nun im mat profile: "extrusionAutoTempFactor" : 2.5,
     # Max extrusion rate that can be done with this nozzle [mm³]
     "maxExtrusionRate" : 30.0,
     # Add up to extrusionAdjust percent to the extrusion [%]

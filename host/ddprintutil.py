@@ -1181,7 +1181,7 @@ def genTempTable(printer):
     area04 = pow(0.4, 2)*math.pi/4
     extrusionLow = MatProfile.getBaseExtrusionRate() * (NozzleProfile.getArea() / area04)
 
-    f = NozzleProfile.getAutoTempFactor(UseExtrusionAutoTemp)
+    f = MatProfile.getAutoTempFactor()
 
     mmpermm3 = 1 / MatProfile.getMatArea()
     spm = PrinterProfile.getStepsPerMM(A_AXIS)
@@ -1272,6 +1272,9 @@ def downloadTempTable(printer):
 # * if temp < 250: set next temp and repeat
 #
 def measureTempFlowrateCurve(args, parser):
+
+    print "XXX add fitting..."
+    assert(0)
 
     fssteps_per_mm = 265.0 # xxx hardcoded, get from profile or printer...
 
@@ -1380,13 +1383,13 @@ def measureTempFlowrateCurve(args, parser):
 
         t1 += 2 # next temp
 
-    f.write("E")
+    f.write("E\n")
     for dataStr in dataSet:
         f.write(dataStr)
-    f.write("E")
+    f.write("E\n")
     for dataStr in dataSet:
         f.write(dataStr)
-    f.write("E")
+    f.write("E\n")
     f.close()
 
     printer.coolDown(HeaterEx1)

@@ -36,8 +36,6 @@ debugAutoTemp = True
 #
 # AutoTemp algorithm
 #
-# UseAutoTemp = True
-UseAutoTemp = False
 UseExtrusionAutoTemp = True
 
 #####################################################################

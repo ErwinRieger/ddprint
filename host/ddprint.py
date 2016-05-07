@@ -416,7 +416,7 @@ def initParser(args, mode=None, gui=None):
     # Create printer profile singleton instance
     PrinterProfile(printerProfileName)
     # Create material profile singleton instance
-    mat = MatProfile(args.mat)
+    mat = MatProfile(args.mat, args.smat)
 
     # Overwrite settings from profile with command line arguments:
     if args.t0:
@@ -450,7 +450,8 @@ def main():
     argParser.add_argument("-t0", dest="t0", action="store", type=int, help="Temp 0 (heated bed), default comes from mat. profile.")
     argParser.add_argument("-t1", dest="t1", action="store", type=int, help="Temp 1 (hotend 1), default comes from mat. profile.")
 
-    argParser.add_argument("-mat", dest="mat", action="store", help="Name of material profile to use [pla, abs...], default is pla.", default="pla_3mm")
+    argParser.add_argument("-mat", dest="mat", action="store", help="Name of generic material profile to use [pla, abs...], default is pla.", default="pla_1.75mm")
+    argParser.add_argument("-smat", dest="smat", action="store", help="Name of specific material profile to use.")
     argParser.add_argument("-noz", dest="nozzle", action="store", help="Name of nozzle profile to use [nozzle40, nozzle80...], default is nozzle40.", default="nozzle40")
 
     argParser.add_argument("-np", dest="noPrime", action="store_const", const=True, help="Debug: don't prime nozzle, to test extrusion-less moves.")

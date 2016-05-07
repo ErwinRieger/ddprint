@@ -111,7 +111,7 @@ class PathData (object):
         self.count = -1
 
         # AutoTemp
-        if UseAutoTemp or UseExtrusionAutoTemp:
+        if UseExtrusionAutoTemp:
 
             # Time needed to complete the moves, extruding moves only
             self.time = 0
@@ -296,7 +296,7 @@ class Planner (object):
             # self.prepareMoveEnd(move)
             self.pathData.path.append(move)
 
-            if UseAutoTemp or UseExtrusionAutoTemp:
+            if UseExtrusionAutoTemp:
                 self.pathData.time = 0 # Reset path time
                 self.pathData.extrusionAmount = 0
                 self.pathData.lastTemp = MatProfile.getHotendBaseTemp()
@@ -448,17 +448,13 @@ class Planner (object):
             #
             # Collect moves if AutoTemp
             #
-            if UseAutoTemp or UseExtrusionAutoTemp:
+            if UseExtrusionAutoTemp:
                 if move.isExtrudingMove(util.A_AXIS):
                     # Collect moves and sum up path time
                     self.pathData.time += move.getTime()
 
-                    if UseAutoTemp:
-                        # Sum up distance
-                        self.pathData.extrusionAmount += move.displacement_vector_raw().len3()
-                    else:
-                        # Sum extrusion volume
-                        self.pathData.extrusionAmount += move.getAdjustedExtrusionVolume(util.A_AXIS, NozzleProfile, MatProfile)
+                    # Sum extrusion volume
+                    self.pathData.extrusionAmount += move.getAdjustedExtrusionVolume(util.A_AXIS, NozzleProfile, MatProfile)
 
                 self.pathData.atMoves.append(move)
 
@@ -472,7 +468,7 @@ class Planner (object):
             move.lastMove = errorMove
             move.nextMove = errorMove
         
-        if UseAutoTemp or UseExtrusionAutoTemp:
+        if UseExtrusionAutoTemp:
 
             if self.pathData.time >= ATInterval or finish:
 
@@ -487,7 +483,7 @@ class Planner (object):
                     newTemp = MatProfile.getHotendBaseTemp() # Extruder 1 temp
                     # extrusionLow = self.ExtrusionAmountLow * pow(NozzleProfile.getSize(), 2)
                     if avgSpeed > self.ExtrusionAmountLow:
-                        f = NozzleProfile.getAutoTempFactor(UseExtrusionAutoTemp)
+                        f = MatProfile.getAutoTempFactor()
                         # newTemp += min((avgSpeed - self.ExtrusionAmountLow * pow(NozzleProfile.getSize(), 2)) * f, ATMaxTempIncrease)
                         newTemp += (avgSpeed - self.ExtrusionAmountLow) * f
                         # newTemp *= 1.15 # xxx sync withtemp-speed-adjust

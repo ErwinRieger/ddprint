@@ -17,7 +17,7 @@
 # along with ddprint.  If not, see <http://www.gnu.org/licenses/>.
 #*/
 
-import math
+import math, os
 import ddprintutil as util
 
 from ddprintconstants import dimNames
@@ -29,19 +29,23 @@ from ddprintconstants import dimNames
 ####################################################################################################
 class ProfileBase(object):
 
-    def __init__(self, cls, name):
+    def __init__(self, cls, name, specificName=""):
 
         if cls._single:
             raise RuntimeError('A ' + str(cls) + ' instance already exists')
 
         self.name = name
 
-        try:
-            f = open(name + ".json")
-        except IOError:
-            f = open(name)
+        f = self.openJson(name)
 
         self.values = util.jsonLoad(f)
+
+        # Let specific profile overwrite values from a generic profile
+        if specificName:
+            f = self.openJson(specificName)
+            specificValues = util.jsonLoad(f)
+            for k in specificValues.keys():
+                self.values[k] = specificValues[k]
 
         cls._single = self
 
@@ -51,6 +55,35 @@ class ProfileBase(object):
         except KeyError:
             print "\nERROR: Profile ", self.name, " does not conain key:", valueName, "\n"
             raise
+
+    def openJson(self, name):
+
+        try:
+            f = open(name + ".json")
+            return f
+        except IOError:
+            pass
+
+        try:
+            f = open(name)
+            return f
+        except IOError:
+            pass
+
+        try:
+            f = open(os.path.join("mat-profiles", name) + ".json")
+            return f
+        except IOError:
+            pass
+
+        try:
+            f = open(os.path.join("mat-profiles", name))
+            return f
+        except IOError:
+            pass
+
+        print "\nERROR: Profile ", name, " not found"
+        assert(0)
 
 ####################################################################################################
 #
@@ -106,9 +139,9 @@ class MatProfile(ProfileBase):
 
     _single = None 
 
-    def __init__(self, name):
+    def __init__(self, name, smatName):
 
-        super(MatProfile, self).__init__(MatProfile, name)
+        super(MatProfile, self).__init__(MatProfile, name, smatName)
 
         self.matArea = (math.pi * pow(float(self.values["material_diameter"]), 2)) / 4.0
 
@@ -162,6 +195,10 @@ class MatProfile(ProfileBase):
     def getBaseExtrusionRate(cls):
         return float(cls.getValues()["baseExtrusionRate"])
 
+    @classmethod
+    def getAutoTempFactor(cls):
+
+        return float(cls.getValues()["extrusionAutoTempFactor"])
 
 ####################################################################################################
 #
@@ -192,14 +229,6 @@ class NozzleProfile(ProfileBase):
     @classmethod
     def getValues(cls):
         return cls.get().values
-
-    @classmethod
-    def getAutoTempFactor(cls, useExtrusionAutoTemp):
-
-        if useExtrusionAutoTemp:
-            return float(cls.getValues()["extrusionAutoTempFactor"])
-
-        return float(cls.getValues()["autoTempFactor"])
 
     @classmethod
     def getSize(cls):
