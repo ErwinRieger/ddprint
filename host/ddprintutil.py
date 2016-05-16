@@ -1273,8 +1273,11 @@ def downloadTempTable(printer):
 #
 def measureTempFlowrateCurve(args, parser):
 
-    print "XXX add fitting..."
-    assert(0)
+    def writeDataSet(f, dataSet):
+        for dataStr in dataSet:
+            f.write(dataStr)
+            f.write("\n")
+        f.write("E\n")
 
     fssteps_per_mm = 265.0 # xxx hardcoded, get from profile or printer...
 
@@ -1309,17 +1312,29 @@ def measureTempFlowrateCurve(args, parser):
     aFilament = MatProfile.getMatArea()
 
     f = open("temp-flowrate-curve.gnuplot", "w")
-    f.write("set grid\nset yrange [0:35]\n")
-    f.write("plot \"-\" using 1:2 with linespoints title \"Target Flowrate\", \\\n")
-    f.write("     \"-\" using 1:3 with linespoints title \"Actual Flowrate\", \\\n")
-    f.write("     \"-\" using 1:3 with linespoints smooth bezier title \"Actual Flowrate smooth\";\n")
+
+    f.write("""
+
+set grid
+set yrange [0:35]
+
+# Startwert steigung
+a=0.5
+
+# Startwert y-achse
+b=5
+f(x)=b+a*(x-%d)
+
+fit f(x) "-" using 1:3 noerror via a,b\n""" % t1)
+
+    
     dataSet = []
 
     printer.sendCommandParamV(CmdFanSpeed, [packedvalue.uint8_t(100)])
 
     retracted = False
 
-    while t1 <= 260:
+    while t1 <= MatProfile.getHotendMaxTemp():
 
         print "Heating:", t1
         printer.heatUp(HeaterEx1, t1, wait=t1)
@@ -1375,8 +1390,8 @@ def measureTempFlowrateCurve(args, parser):
             retracted = True
 
         print "Feeder grip:",  t1, flowrate-1, ratio
-        dataStr = "%f %f %.2f %.3f\n" % (t1, flowrate - 1, actualFlowrate, ratio)
-        f.write(dataStr)
+        dataStr = "%f %f %.2f %.3f" % (t1, flowrate - 1, actualFlowrate, ratio)
+        f.write(dataStr + "\n")
         f.flush()
 
         dataSet.append(dataStr)
@@ -1384,12 +1399,17 @@ def measureTempFlowrateCurve(args, parser):
         t1 += 2 # next temp
 
     f.write("E\n")
-    for dataStr in dataSet:
-        f.write(dataStr)
-    f.write("E\n")
-    for dataStr in dataSet:
-        f.write(dataStr)
-    f.write("E\n")
+
+    f.write("""
+plot "-" using 1:2 with linespoints title "Target Flowrate", \\
+     "-" using 1:3 with linespoints title "Actual Flowrate", \\
+     "-" using 1:3 with linespoints smooth bezier title "Actual Flowrate smooth", \\
+     f(x) title sprintf("y=B+A*x, A=%.2f, B=%.1f, TempFactor 1/A: %.2f", a, b, 1/a)\n""")
+
+    writeDataSet(f, dataSet)
+    writeDataSet(f, dataSet)
+    writeDataSet(f, dataSet)
+
     f.close()
 
     printer.coolDown(HeaterEx1)
