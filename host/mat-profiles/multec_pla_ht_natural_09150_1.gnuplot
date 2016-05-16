@@ -1,7 +1,10 @@
 set grid
 set yrange [0:35]
 
-a=0.4
+# Startwert steigung
+a=0.5
+
+# Startwert y-achse
 b=5
 f(x)=b+a*(x-205)
 
