@@ -1311,6 +1311,14 @@ def measureTempFlowrateCurve(args, parser):
     flowrate = MatProfile.getBaseExtrusionRate() * (NozzleProfile.getArea() / area04)
     aFilament = MatProfile.getMatArea()
 
+    print "t1: ", t1
+    print "flowrate: ", flowrate
+    print "aFilament: ", aFilament
+    print "feedrate: ", flowrate / aFilament
+
+    # xxx todo if using small nozzles
+    assert(flowrate > 2)
+
     f = open("temp-flowrate-curve.gnuplot", "w")
 
     f.write("""
