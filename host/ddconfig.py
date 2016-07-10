@@ -23,7 +23,7 @@
 # Enable Debugging
 #
 debugMoves = True
-debugMoves = False
+# debugMoves = False
 
 debugPlot = True
 debugPlot = False
@@ -37,18 +37,19 @@ debugAutoTemp = True
 # AutoTemp algorithm
 #
 UseExtrusionAutoTemp = True
+UseExtrusionAutoTemp = False
 
 #####################################################################
 #
 # Auto extrusion adjust, always enabled
 #
-# UseExtrusionAdjust = True
+############### xxx not used??? UseExtrusionAdjust = True
 
 #####################################################################
 #
 # Limit extrusion by hotend temperature in the firmware
 #
-UseExtrusionLimit = True
+# xxx not used??? UseExtrusionLimit = True
 
 
 

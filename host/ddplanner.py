@@ -24,7 +24,6 @@ import math, collections
 import ddprintutil as util, dddumbui, packedvalue
 from ddprofile import PrinterProfile, MatProfile, NozzleProfile
 from move import VVector, Move
-
 from ddprintconstants import *
 from ddconfig import *
 from ddprintutil import Z_AXIS, vectorMul, circaf
@@ -130,6 +129,41 @@ class PathData (object):
         self.count += 1
         return self.count
 
+#####################################################################
+"""
+class LayerMoves (object):
+
+    def __init__(self):
+
+        self.height = 0.0
+        self.path = []
+
+        xxx
+        self.count = -1
+
+        # AutoTemp
+        if UseExtrusionAutoTemp:
+
+            # Time needed to complete the moves, extruding moves only
+            self.time = 0
+            # Head move distance sum or extrusion volume, extruding moves only
+            self.extrusionAmount = 0
+            self.lastTemp = 0
+
+        # Moves collected in the ATInterval
+        self.atMoves = []
+
+        # Some statistics
+        self.maxExtrusionRate = MaxExtrusionRate()
+        xxx
+
+    # # Number of moves
+    # def incCount(self):
+        # self.count += 1
+        # return self.count
+"""
+#####################################################################
+
 class Planner (object):
 
     __single = None 
@@ -161,13 +195,13 @@ class Planner (object):
         self.zeroPos = util.MyPoint()
 
         # Lowest allowed speed in mm/s for every dimension
-        self.min_speeds = 5 * [0]
-        for dim in range(5):
-            # vmin = (fTimer / maxTimerValue) / steps_per_mm
-            if PrinterProfile.getStepsPerMM(dim):
-                self.min_speeds[dim] = float(fTimer) / (maxTimerValue24 * PrinterProfile.getStepsPerMM(dim))
+        # xxx used? self.min_speeds = 5 * [0]
+        # xxx used? for dim in range(5):
+            # xxx used? # vmin = (fTimer / maxTimerValue) / steps_per_mm
+            # xxx used? if PrinterProfile.getStepsPerMM(dim):
+                # xxx used? self.min_speeds[dim] = float(fTimer) / (maxTimerValue24 * PrinterProfile.getStepsPerMM(dim))
 
-        self.gui.log( "min speeds: ", self.min_speeds)
+        # xxx used? self.gui.log( "min speeds: ", self.min_speeds)
 
         #
         # Constants, xxx todo: query from printer and/or profile
@@ -217,11 +251,24 @@ class Planner (object):
             area04 = pow(0.4, 2)*math.pi/4
             self.ExtrusionAmountLow = MatProfile.getBaseExtrusionRate() * (NozzleProfile.getArea() / area04)
 
+        #
+        # Extruder advance, max allowed X/Y acceleration for the given E-Jerk
+        #
+        # dvin = dvout + ka * acceleration [ m/s + s * m/s² = m/s ]
+        #
+        kAdv = 0.035 # [s]
+        kAdv = 0.005 # [s]
+        # self.advAccel = ((sel.jerk[A_AXIS] / 1000.0) / kAdv) * 1000
+        self.advAccel = self.jerk[A_AXIS] / kAdv
+
+        print "ADV: max acceleration in X/Y plane:", self.advAccel, " [mm/s²]"
+
         self.reset()
 
     def reset(self):
 
         self.pathData = PathData()
+        # self.layerMoves = LayerMoves()
 
         self.syncCommands = collections.defaultdict(list)
         self.partNumber = 1
@@ -278,66 +325,130 @@ class Planner (object):
     # Called from gcode parser
     def addMove(self, move):
 
+        move.moveNumber = self.pathData.incCount()
+
         # print "addmove ...", move.comment
         if debugMoves:
             print "***** Start addMove() *****"
+            move.pprint("AddMove")
 
-        move.moveNumber = self.pathData.incCount()
+        # if move.isZMove():
+            # assert(0)
 
-        if not self.pathData.path:
+        if not move.isPrintMove():
 
-            # First move of this path, startspeed is jerkspeed
-
-            # jerkSpeed = move.vVector().constrain(self.jerk) or move.vVector()
-            # move.setNominalStartFr(jerkSpeed)
-
-            move.setNominalJerkStartSpeed(self.jerk)
-
-            # self.prepareMoveEnd(move)
-            self.pathData.path.append(move)
-
-            if UseExtrusionAutoTemp:
-                self.pathData.time = 0 # Reset path time
-                self.pathData.extrusionAmount = 0
-                self.pathData.lastTemp = MatProfile.getHotendBaseTemp()
+            if self.pathData.path:
+                #
+                # Finisch preceding printmoves.
+                #
+                self.planPath(self.pathData.path)
+                self.pathData.path = []
 
             #
-            # Zum end-speed können wir nichts sagen, da der nächste move noch nicht
-            # bekannt ist.
+            # Do a simple path planning for traveling moves:
+            # * start/stop at jerk/2
+            # * don't jonin moves 
+            # * don't do advance
             #
+            self.planTravelMove(move)
             if debugMoves:
                 print "***** End addMove() *****"
             return
-
-        lastMove = self.pathData.path[-1]
-        lastMove.nextMove = move
-        move.lastMove = lastMove
-
-        util.joinSpeed(lastMove, move, self.jerk, self.min_speeds)
 
         self.pathData.path.append(move)
 
-        if len(self.pathData.path) < 3:
-            # Wir brauchen mind. 3 moves um einen 'PathBlock' zu bilden
-            if debugMoves:
-                print "***** End addMove() *****"
-            return
-
-        if self.isIsolationMove(lastMove):
-
-            l = len(self.pathData.path) 
-            pathBlock = self.pathData.path[:l-2]
-
-            if debugMoves:
-                print "Move #:", lastMove.moveNumber, " is a isolation move."
-                print "Streaming block of moves, len: %d/%d" % (len(pathBlock), l), ", blocks: ", pathBlock[0].moveNumber, " - ", pathBlock[-1].moveNumber
-
-            self.streamMoves(pathBlock)
-            del self.pathData.path[:l-2]
-            assert(len(self.pathData.path) == 2)
+        if self.pathData.path:
+            lastMove = self.pathData.path[-1]
+            lastMove.nextMove = move
+            move.lastMove = lastMove
 
         if debugMoves:
             print "***** End addMove() *****"
+        
+
+    def planTravelMove(self, move):
+
+            move.state = 1
+
+            move.setNominalJerkStartSpeed(self.jerk.scale(0.5))
+            move.setNominalJerkEndSpeed(self.jerk.scale(0.5))
+
+            move.sanityCheck(self.jerk)
+
+            if debugMoves:
+                print "Streaming travel-move:", move.moveNumber
+
+            self.planAcceleration(move)
+            self.planSteps(move)
+
+            self.streamMove(move)
+
+            move.streamed = True
+
+    def planPath(self, path):
+
+        if debugMoves:
+            print "***** Start planPath() *****"
+
+        # First move of this path, startspeed is jerkspeed/2
+        # path[0].setNominalJerkStartSpeed(self.jerk.scale(0.5))
+        # Last move of this path, ensdpeed is jerkspeed/2
+        # path[-1].setNominalJerkEndSpeed(self.jerk.scale(0.5))
+
+        # First move
+        path[0].setNominalStartFr(0.0)
+        # Last move
+        path[-1].setNominalEndFr(0.0)
+
+        if UseExtrusionAutoTemp:
+            self.pathData.time = 0 # Reset path time
+            self.pathData.extrusionAmount = 0
+            self.pathData.lastTemp = MatProfile.getHotendBaseTemp()
+
+        lastMove = path[0]
+
+        # Step 1: join moves forward
+        for move in path[1:]:
+            util.joinSpeed(lastMove, move, self.jerk, self.advAccel)
+            lastMove = move
+
+        # Step 2: join moves backwards
+        self.joinMovesBwd(path, self.advAccel)
+
+        # Step 3: handle extruder advance
+        #
+        # 3 verschiedene phasen der kopfgeschwindigkeit zu betrachten: 
+        #   * konstante geschwindigkeit: kein advance, extruder bewegt sich analog zum druckkopf
+        #   * beschleunigte bewegung: geschwindigkeit des extruders macht sprung und läuft dann parallel zum druckkopf,
+        #     höhe des sprungs ist abhängig von der beschleunigung (d.h. von der steilheit der rampe).
+        #   * jerk: E macht sprung, dieser besteht aus zwei komponenten:
+        #     + sprung um druck an die neue geschwindigkeit anzupassen
+        #     + sprung für die ggf. folgende rampe
+        #
+        #
+        # xxx Advanced E macht einen sprung bei einer rampe der ausgangsbewegung.
+        # xxx Das heisst, jerk ist ein problem FALLS es E betrifft, jerk in X oder Y richtung ist ok falls die gesamt-
+        #     feedrate keinen sprung macht und somit E keinen sprung macht.
+        # xxx Das heisst auch, dass ein pfad bei feedrate 0 beginnen und aufhören muss.
+        # xxx Was machen wir mit dem 'temp-feedrate-limit' algorithmus?
+        #   --> die firmware muss die entsprechenden e-jumps für die entspannung des filaments vorziehen
+        #   --> in einem ersten schritt implementieren wir den advance ohne die temp-limit funktion.
+        #
+        #
+        #
+        #
+        #
+        #
+        #
+
+        # for move in path[1:]:
+            # util.xxx(lastMove, move, self.jerk, self.min_speeds)
+            # lastMove = move
+
+        assert(0); # self.streamMoves(path)
+
+        if debugMoves:
+            print "***** End planPath() *****"
 
     def isIsolationMove(self, lastMove):
 
@@ -390,6 +501,8 @@ class Planner (object):
 
         if self.pathData.path:
 
+            assert(0)
+
             # End path
             move = self.pathData.path[-1]
             move.state = 1
@@ -428,7 +541,7 @@ class Planner (object):
 
         #################################################################################
         # Backwards move planning
-        self.joinMovesBwd(moves)
+        # self.joinMovesBwd(moves)
         #################################################################################
 
         for move in moves:
@@ -442,7 +555,7 @@ class Planner (object):
             #
             # Collect some statistics
             #
-            if move.isHeadMove():
+            if move.isPrintMove():
                 self.pathData.maxExtrusionRate.stat(move)
 
             #
@@ -533,10 +646,10 @@ class Planner (object):
     #   * der move vor dem "isolation move", in diesem falle ist endspeed noch nicht 
     #     gesetzt, aber die min/max grenzen
     #
-    def joinMovesBwd(self, moves):
+    def old_joinMovesBwd(self, moves):
 
         if debugMoves:
-            print "***** Start joinMovesBwd() *****"
+            print "***** Start old_joinMovesBwd() *****"
 
         index = len(moves) - 1
         # index = len(moves) - 2
@@ -547,7 +660,7 @@ class Planner (object):
             index -= 1
 
             if debugMoves: 
-                move.pprint("joinMovesBwd")
+                move.pprint("old_joinMovesBwd")
 
             # Check, if breaking between startspeed and endspeed of
             # move is possible with the given acceleration and within the 
@@ -565,6 +678,76 @@ class Planner (object):
             if debugMoves: 
                 print "Startspeed of %.5f is to high to reach the desired endspeed." % move.getStartFr()
                 print "Max. allowed startspeed: %.5f." % maxAllowedStartSpeed
+
+            if move.lastMove:
+
+                #
+                # Adjust endspeed of the previous move, also.
+                #
+
+                factor = maxAllowedStartSpeed / move.getStartFr()
+                # print "factor: ", factor
+                # Adjust endspeed of last move:
+          
+                assert(factor < 1)
+
+                if move.lastMove.streamed:
+                    move.lastMove.pprint("error-streamed")
+
+                assert( not move.lastMove.streamed )
+
+                # XXX einfacher algo, kann man das besser machen (z.b. mit jerk-berechnung,
+                # vector subtraktion oder so?)
+                move.lastMove.setTrueEndFr(move.lastMove.getEndFr() * factor)
+
+            # Adjust startspeed of this move:
+            move.setTrueStartFr(maxAllowedStartSpeed)
+
+        if debugMoves:
+            print "***** End old_joinMovesBwd() *****"
+
+    #
+    # xxx
+    # Letzter move in revMoves ist entweder:
+    #   * letzer move des pfades, in dem fall ist endspeed bereits berechnet
+    #     und gleich jerkspeed.
+    #   * der move vor dem "isolation move", in diesem falle ist endspeed noch nicht 
+    #     gesetzt, aber die min/max grenzen
+    #
+    def joinMovesBwd(self, moves, advAccel):
+
+        if debugMoves:
+            print "***** Start joinMovesBwd() *****"
+
+        index = len(moves) - 1
+        while index >= 0:
+
+            move = moves[index]
+            index -= 1
+
+            if debugMoves: 
+                move.pprint("joinMovesBwd")
+
+            # Check, if breaking between startspeed and endspeed of
+            # move is possible with the given acceleration and within the 
+            # given distance:
+
+            endSpeedS = move.getEndFr()
+            # allowedAccel = move.getAllowedAccel()
+
+            maxAllowedStartSpeed = util.vAccelPerDist(endSpeedS, advAccel, move.distance)
+
+            # print "joinMovesBwd, startspeed, max startspeed: ", move.getStartFr(), maxAllowedStartSpeed
+
+            if maxAllowedStartSpeed >= move.getStartFr():
+                # good, move is ok
+                continue
+
+            if debugMoves: 
+                print "Startspeed of %.5f is to high to reach the desired endspeed." % move.getStartFr()
+                print "Max. allowed startspeed: %.5f." % maxAllowedStartSpeed
+
+            assert(0)
 
             if move.lastMove:
 
@@ -742,7 +925,7 @@ class Planner (object):
             # Strecke reicht aus, um auf nominal speed zu beschleunigen
             # 
 
-            if move.isExtrudingMove(util.A_AXIS):
+            if move.isPrintMove():
                 # print "ta: ", ta, deltaStartSpeedS, sa
                 # print "tb: ", tb, deltaEndSpeedS, sb
 

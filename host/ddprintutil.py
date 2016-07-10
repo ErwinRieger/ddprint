@@ -109,14 +109,98 @@ def vAccelPerDist(v0, a, s):
 
 ####################################################################################################
 
-def joinSpeed(move1, move2, jerk, min_speeds):
+def joinSpeed(move1, move2, jerk, advAccel):
 
         if debugMoves:
             print "***** Start joinSpeed() *****"
+            move1.pprint("JoinSpeed - Move1")
+            move2.pprint("JoinSpeed - Move2")
+
+        endSpeedS = move1.feedrateS
+        # endSpeedV = move1.getFeedrateV()
+
+        # Compute max reachable endspeed of move1
+        maxEndSpeed = vAccelPerDist(move1.getStartFr(), advAccel, move1.distance) * RoundSafe
+
+        if maxEndSpeed < endSpeedS:
+
+            assert(0);
+
+            if debugMoves:
+                print "math.sqrt( 2 * %f * %f + pow(%f, 2) ) * %f" % (move1.distance, advAccel, move1.getStartFr(), RoundSafe)
+                print "Max. reachable endspeed: %.3f < feedrate: %.3f" % (maxEndSpeed, endSpeedS)
+
+            endSpeedS = maxEndSpeed
+            # endSpeedV = move1.getFeedrateV(maxEndSpeed)
+
+        print "e-feedrate 1: ", move1.getFeedrateV()[A_AXIS]
+        print "e-feedrate 2: ", move2.getFeedrateV()[A_AXIS]
+
+        #
+        # Compare E-speed of moves
+        #
+        if circaf(move1.getFeedrateV()[A_AXIS], move2.getFeedrateV()[A_AXIS], 0.01):
+            assert(0);
+            return
+       
+        avgESpeed = (move1.getFeedrateV()[A_AXIS]+move2.getFeedrateV()[A_AXIS])/2
+
+        print "avgESpeed: ", avgESpeed
+
+        speedScale1 = avgESpeed / move1.getFeedrateV()[A_AXIS]
+        speedScale2 = avgESpeed / move2.getFeedrateV()[A_AXIS]
+
+        print "scaling 1/2: ", speedScale1, speedScale2
+
+        # XXX This can increase the feedrate ABOVE the feddrate given in gcode!
+        endSpeedS = endSpeedS * speedScale1
+        startSpeedS = move2.feedrateS * speedScale2
+
+        # move1.setNominalEndFr(endSpeedS)
+        # move2.setNominalStartFr(startSpeedS)
+
+        # move1.pprint("Move1, e-adjusted")
+        # move2.pprint("Move2, e-adjusted")
+
+        endSpeedV = move1.getFeedrateV(endSpeedS)
+        startSpeedV = move2.getFeedrateV(startSpeedS)
+
+        print "end   speedV move1, e-adjusted:", endSpeedV
+        print "start speedV move2, e-adjusted:", startSpeedV
+
+        #
+        # Prüfe jerk in X/Y ebene:
+        #
+        differenceVector = endSpeedV.subVVector(startSpeedV)
+        print "differenceVector, jerk:", differenceVector, jerk
+        if abs(differenceVector[X_AXIS]) > jerk[X_AXIS]:
+            assert(0);
+
+        if abs(differenceVector[Y_AXIS]) > jerk[Y_AXIS]:
+            assert(0);
+
+        move1.setNominalEndFr(endSpeedS)
+        move2.setNominalStartFr(startSpeedS)
+
+        if debugMoves:
+            print "***** End joinSpeed() *****"
+            move1.pprint("Move1, e-adjusted")
+            move2.pprint("Move2, e-adjusted")
+
+        return
+
+
+
+
+
+
+
 
         allowedAccel = move1.getAllowedAccel()
 
         if move1.getFeedrateV().isDisjointV(move2.getFeedrateV()):
+
+            assert(0)
 
             if debugMoves:
                 move1.pprint("JoinSpeed - disjoint Move1")
@@ -150,7 +234,6 @@ def joinSpeed(move1, move2, jerk, min_speeds):
                 print "Max. reachable endspeed: %.3f < feedrate: %.3f" % (maxEndSpeed, endSpeedS)
 
             endSpeedS = maxEndSpeed
-
             endSpeedV = move1.getFeedrateV(maxEndSpeed)
 
         nomFeedrateVMove2 = move2.getFeedrateV()

@@ -27,6 +27,17 @@ from ddprintutil import X_AXIS, Y_AXIS, Z_AXIS, A_AXIS, B_AXIS,vectorLength, vec
 from ddprintcommands import CommandNames
 from ddprofile import NozzleProfile, MatProfile
 
+
+##################################################
+# Move types.
+# Printing move, X/Y move in combination with extrusion A/B
+MoveTypePrint = 0
+# Traveling move,
+# * X/Y move without extrusion A/B
+# * Z move
+# * Extrusion A/B only move
+MoveTypeTravel = 1
+
 ##################################################
 
 class VVector(object):
@@ -267,12 +278,13 @@ class Move(object):
         # Limit feedrate by maximum extrusion rate
         #
         self.feedrateS = feedrate # mm/s
+
         # Do not count very small moves, the computation of the extrusion rate is inaccurate because of the
         # discretization in the gcodeparser (map float values to discrete stepper values).
-        if self.distance3 >= 0.1 and self.isExtrudingMove(A_AXIS) or self.isExtrudingMove(B_AXIS):
+        if self.isPrintMove() and self.distance3 >= 0.1:
+
             matArea = MatProfile.getMatArea()
 
-            assert(not self.eOnly)
             t = self.distance3 / feedrate
 
             extrusionVolume = displacement_vector[A_AXIS] * matArea
@@ -380,10 +392,10 @@ class Move(object):
 
         print "\n------ Move %s, #: %d, '%s' ------" % (title, self.moveNumber, self.comment)
 
-        if self.eOnly:
-            print "E-Only move, distance: %.2f, distance: %.2f" % (self.distance, self.distance)
+        if self.isPrintMove():
+            print "Print-move, distance: %.2f" % self.distance
         else:
-            print "XYZ move, distance: %.2f, distance: %.2f" % (self.distance, self.distance)
+            print "Travel-move, distance: %.2f" % self.distance
 
         print "displacement_vector:", self.displacement_vector_raw(), "_steps:", self.displacement_vector_steps_raw()
         print "feedrate:", self.feedrateS, "[mm/s], nominalVVector:", self.getFeedrateV(), "[mm/s]"
@@ -467,11 +479,45 @@ class Move(object):
         f = self.getJerkSpeed(jerk)
         self.setNominalEndFr(f)
 
-    def isHeadMove(self):
+    #####################################################################################################################################################
+    # Move-type, Matrix aller möglichen kombinationen:
+    # X Y Z E Movetype
+    # - - - - --------
+    # 1 0 0 0 travel
+    # 0 1 0 0 travel
+    # 1 1 0 0 travel
+    # 0 0 1 0 travel
+    # 1 0 1 0 travel
+    # 0 1 1 0 travel
+    # 1 1 1 0 travel
+    # 0 0 0 1 travel
+    # 1 0 0 1 print
+    # 0 1 0 1 print
+    # 1 1 0 1 print
+    # 0 0 1 1 invalid
+    # 1 0 1 1 invalid
+    # 0 1 1 1 invalid
+    # 1 1 1 1 invalid
+    #
+    def _isHeadMove(self):
         return self.displacement_vector3[X_AXIS] or self.displacement_vector3[Y_AXIS] or self.displacement_vector3[Z_AXIS]
 
-    def isExtrudingMove(self, extruder):
-        return self.isHeadMove() and self.extrusion_displacement_raw[extruder-3]
+    def _isExtrudingMove(self, extruder):
+        return self._isHeadMove() and self.extrusion_displacement_raw[extruder-3]
+
+    def _isZMove(self):
+        return self.displacement_vector3[Z_AXIS]
+
+    def isPrintMove(self):
+
+        printMove = self._isHeadMove() and (self._isExtrudingMove(A_AXIS) or self._isExtrudingMove(B_AXIS))
+
+        if printMove:
+            assert(not self._isZMove())
+
+        return printMove
+
+    #####################################################################################################################################################
 
     def setDuration(self, accelTime, linearTime, deccelTime):
         self.accelTime = accelTime
@@ -607,7 +653,7 @@ class Move(object):
 
         raw = self.displacement_vector_steps_raw()
 
-        if not self.isExtrudingMove(A_AXIS) and not self.isExtrudingMove(B_AXIS):
+        if not self.isPrintMove():
             return raw
 
         adjusted_displacement = self.displacement_vector_adjusted(nozzleProfile, matProfile)
