@@ -20,12 +20,13 @@
 
 ############################################################################
 # X, Y, Z, (A/B/E) maximum acceleration.
-DEFAULT_MAX_ACCELERATION = [9000, 9000, 100, 10000, 10000] # [ mm/s^s ]
+# DEFAULT_MAX_ACCELERATION = [9000, 9000, 100, 10000, 10000] # [ mm/s^s ]
+ren_DEFAULT_MAX_ACCELERATION = [9000, 9000, 100, 10000, 10000] # [ mm/s^s ]
 
 #define DEFAULT_ACCELERATION          3000    // X, Y, Z and E max acceleration in mm/s^2 for printing moves
 #define DEFAULT_RETRACT_ACCELERATION  3000   // X, Y, Z and E max acceleration in mm/s^2 for retracts
-DEFAULT_ACCELERATION =         3000    # X, Y, Z and E max acceleration in mm/s^2 for printing moves
-DEFAULT_RETRACT_ACCELERATION = 3000    # E max acceleration in mm/s^2 for retracts
+# DEFAULT_ACCELERATION =         3000    # X, Y, Z and E max acceleration in mm/s^2 for printing moves
+# DEFAULT_RETRACT_ACCELERATION = 3000    # E max acceleration in mm/s^2 for retracts
 
 # const unsigned int dropsegments=5; //everything with less than this number of steps will be ignored as move and joined with the next movement
 DropSegments = 5          # steps

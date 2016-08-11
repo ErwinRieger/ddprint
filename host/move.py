@@ -22,7 +22,8 @@ import math, struct
 
 import ddprintcommands, cobs, cStringIO
 
-from ddprintconstants import maxTimerValue16, maxTimerValue24, DEFAULT_ACCELERATION, DEFAULT_MAX_ACCELERATION, fTimer
+# from ddprintconstants import maxTimerValue16, maxTimerValue24, DEFAULT_ACCELERATION, DEFAULT_MAX_ACCELERATION, fTimer
+from ddprintconstants import maxTimerValue16, maxTimerValue24, fTimer
 from ddprintutil import X_AXIS, Y_AXIS, Z_AXIS, A_AXIS, B_AXIS,vectorLength, vectorMul, vectorSub, circaf
 from ddprintcommands import CommandNames
 from ddprofile import NozzleProfile, MatProfile
@@ -332,7 +333,8 @@ class Move(object):
         if feedrateS == None:
             feedrateS = self.feedrateS
        
-        assert(feedrateS)
+        if feedrateS == 0:
+            return VVector([0.0, 0.0, 0.0, 0.0, 0.0])
 
         if self.eOnly:
 
@@ -354,13 +356,13 @@ class Move(object):
     def _vDim(self, axis):
         return self.vVector()[axis]
 
-    def getAllowedAccelVector(self):
+    def old_getAllowedAccelVector(self):
 
         # accelVector = self.vVector().setLength(DEFAULT_ACCELERATION)
         accelVector = self.displacement_vector_raw()._setLength(DEFAULT_ACCELERATION)
         return accelVector.constrain(DEFAULT_MAX_ACCELERATION) or accelVector
 
-    def getAllowedAccel(self):
+    def old_getAllowedAccel(self):
 
         accelVector = self.getAllowedAccelVector()
         allowedAccel = accelVector.len5() # always positive
@@ -374,8 +376,16 @@ class Move(object):
         nullV = VVector((0, 0, 0, 0, 0))
 
         if nextMove:
+
             nextDirVS = nextMove.getFeedrateV(nextMove.getStartFr())
             dirVE.checkJerk(nextDirVS, jerk, "#: %d" % self.moveNumber, "#: %d" % nextMove.moveNumber)
+
+            eJerk = dirVE[A_AXIS] - nextDirVS[A_AXIS]
+            if not abs(eJerk) < 0.01:
+           
+                print "Error, E-AXIS jerk: ", eJerk
+                nextMove.pprint("sanityCheck() - nextMove")
+                assert(0)
 
         else:
 
