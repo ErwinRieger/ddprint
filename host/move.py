@@ -22,9 +22,8 @@ import math, struct
 
 import ddprintcommands, cobs, cStringIO
 
-# from ddprintconstants import maxTimerValue16, maxTimerValue24, DEFAULT_ACCELERATION, DEFAULT_MAX_ACCELERATION, fTimer
-from ddprintconstants import maxTimerValue16, maxTimerValue24, fTimer
-from ddprintutil import X_AXIS, Y_AXIS, Z_AXIS, A_AXIS, B_AXIS,vectorLength, vectorMul, vectorSub, circaf
+from ddprintconstants import maxTimerValue16, maxTimerValue24, fTimer, MAX_ACCELERATION, MAX_AXIS_ACCELERATION
+from ddprintutil import X_AXIS, Y_AXIS, Z_AXIS, A_AXIS, B_AXIS,vectorLength, vectorMul, vectorSub, circaf, sign
 from ddprintcommands import CommandNames
 from ddprofile import NozzleProfile, MatProfile
 
@@ -139,6 +138,9 @@ class VVector(object):
 
     mul = scale
 
+    def div(self, other):
+        return VVector(vectorDiv(self.vv, other.vv))
+
     def normalized(self):
         length = self.len5()
         assert(length)
@@ -184,7 +186,9 @@ class VVector(object):
         return True
   
 class AccelData:
+
     def __init__(self):
+
         # Erreichbare geschwindigkeit falls kein plateu [mm/s]
         self.reachedovNominalVVector = None
 
@@ -356,15 +360,14 @@ class Move(object):
     def _vDim(self, axis):
         return self.vVector()[axis]
 
-    def old_getAllowedAccelVector(self):
+    def getMaxAllowedAccelVector(self):
 
-        # accelVector = self.vVector().setLength(DEFAULT_ACCELERATION)
-        accelVector = self.displacement_vector_raw()._setLength(DEFAULT_ACCELERATION)
-        return accelVector.constrain(DEFAULT_MAX_ACCELERATION) or accelVector
+        accelVector = self.displacement_vector_raw()._setLength(MAX_ACCELERATION)
+        return accelVector.constrain(MAX_AXIS_ACCELERATION) or accelVector
 
-    def old_getAllowedAccel(self):
+    def getMaxAllowedAccel(self):
 
-        accelVector = self.getAllowedAccelVector()
+        accelVector = self.getMaxAllowedAccelVector()
         allowedAccel = accelVector.len5() # always positive
 
         return allowedAccel
@@ -372,8 +375,14 @@ class Move(object):
     def sanityCheck(self, jerk):
 
         nextMove = self.nextMove
-        dirVE = self.getFeedrateV(self.getEndFr())
+        dirSS = self.getStartFr()
+        dirSE = self.getEndFr()
+        dirVS = self.getFeedrateV(dirSS)
+        dirVE = self.getFeedrateV(dirSE)
         nullV = VVector((0, 0, 0, 0, 0))
+
+        if dirSS and dirSE:
+            assert(sign(dirSS) == sign(dirSE))
 
         if nextMove:
 
@@ -395,7 +404,6 @@ class Move(object):
         if not self.lastMove:
 
             # First move
-            dirVS = self.getFeedrateV(self.getStartFr())
             nullV.checkJerk(dirVS, jerk, "start 0", "#: %d" % self.moveNumber)
 
     def pprint(self, title):
@@ -415,24 +423,29 @@ class Move(object):
             print "\n  Startspeed: ",
             if self.trueStartSpeed != None:
                 print "True: %.3f <= " % self.trueStartSpeed,
-            else:
-                print "Nominal: %.3f" % self.nominalStartSpeed
+            if self.nominalStartSpeed != None:
+                print "Nominal: %.3f" % self.nominalStartSpeed,
+            print ", Start ESpeed: %.3f" % self.getFeedrateV(self.getStartFr())[A_AXIS],
 
         if self.trueEndSpeed or self.nominalEndSpeed:
+
             print "\n  Endspeed: ",
             if self.trueEndSpeed != None:
                 print "True: %.3f <= " % self.trueEndSpeed,
-            else:
+            if self.nominalEndSpeed != None:
                 print "Nominal: %.3f" % self.nominalEndSpeed,
+            print ",   End ESpeed: %.3f" % self.getFeedrateV(self.getEndFr())[A_AXIS],
 
 
         if self.state > 1:
             print ""
             print self.accelData
-
-        if self.state > 2:
+        elif self.state > 2:
             print ""
             print self.stepData
+        else:
+            print ""
+
         print "---------------------"
 
     def getStartFr(self):

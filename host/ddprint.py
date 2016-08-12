@@ -53,7 +53,7 @@ import argparse
 logging.basicConfig(level=logging.DEBUG)
 
 import ddprintutil as util, gcodeparser, packedvalue, ddhome
-import ddtest
+import ddtest, ddadvance
 
 from ddprofile import PrinterProfile, MatProfile, NozzleProfile
 from ddplanner import Planner

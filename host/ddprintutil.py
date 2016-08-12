@@ -20,7 +20,7 @@
 #*/
 
 import struct, time, math, tty, termios, sys, types, json
-import ddprintconstants, ddhome
+import ddprintconstants, ddhome, ddadvance
 
 from ddprintcommands import *
 from ddprintstates import *
@@ -38,6 +38,10 @@ FILAMENT_REVERSAL_LENGTH = 750
 
 # To prevent false assertions because of rounding errors
 RoundSafe = 0.995
+
+####################################################################################################
+def sign(x):
+    return math.copysign(1, x)
 
 ####################################################################################################
 def vectorAdd(v1, v2):
@@ -71,6 +75,15 @@ def vectorMul(v1, v2):
     product = []
     for i in range(len(v2)):
         product.append(v1[i] * v2[i])
+
+    return product
+
+####################################################################################################
+def vectorDiv(v1, v2):
+
+    product = []
+    for i in range(len(v2)):
+        product.append(v1[i] / v2[i])
 
     return product
 
@@ -139,10 +152,97 @@ def joinSpeed(move1, move2, jerk, advAccel):
         #
         # Compare E-speed of moves
         #
-        if circaf(move1.getFeedrateV()[A_AXIS], move2.getFeedrateV()[A_AXIS], 0.01):
-            assert(0);
+        if circaf(move1.getFeedrateV()[A_AXIS], move2.getFeedrateV()[A_AXIS], ddadvance.AdvanceMinE):
+
+            # E-speed difference is small enough, check X/Y jerk
+            endSpeedV = move1.getFeedrateV(endSpeedS)
+            nomFeedrateVMove2 = move2.getFeedrateV()
+            differenceVector = endSpeedV.subVVector(nomFeedrateVMove2)
+            print "differenceVector, jerk:", differenceVector, jerk
+
+##################
+            # old joinspeed
+
+            #
+            # Join in bezug auf den maximalen jerk aller achsen betrachten:
+            #
+            speedDiff = {}
+            toMuch = False
+            for dim in range(2):
+
+                vdim = nomFeedrateVMove2[dim]
+
+                # Speed difference from start speed to theoretical max speed for axis
+                vdiff = vdim - endSpeedV[dim]
+
+                vdiffAbs = abs(vdiff)
+
+                dimJerk = jerk[dim]
+
+                if vdiffAbs > dimJerk: 
+                    toMuch = True
+
+                if vdiffAbs > 1:
+                    speedDiff[dim] = (vdiff, vdiffAbs)
+
+            if debugMoves:
+                print "speedDiff:", speedDiff
+
+            if toMuch:
+
+                # 
+                # Der geschwindigkeitsunterschied mindestens einer achse ist grösser als der 
+                # erlaubte jerk fuer diese achse.
+                # 
+                # Man könnte auch sagen: der "geschwindigkeits knick" ist zu gross. 
+                # 
+                # Letzter step muss also am ende gebremst werden und dieser step muss mit
+                # entsprechend kleiner geschwindigkeit gestartet werden.
+                #
+                # Abbremsen auf 0 geht auf jeden fall, aber ist auch eine höhere
+                # jerk geschwindigkeit möglich? Bzw. wie kann diese berechnet werden?
+                # 
+                # 
+
+                #
+                # Skalierungsfaktor berechnen um den die beiden geschwindigkeiten
+                # reduziert werden müssen, damit sie nur noch einen unterschied von
+                # 'jerk' haben.
+                #
+
+                speedScale = 1.0
+                for dim in speedDiff.keys():
+                    # print "diff: ", differenceVector[dim], jerk[dim]
+                    if abs(differenceVector[dim]) > jerk[dim]:
+                        # print "mindiff: ", dimNames[dim], differenceVector[dim], jerk[dim]
+                        speedScale = min(speedScale, jerk[dim] / abs(differenceVector[dim]))
+
+                if debugMoves:
+                    move1.pprint("JoinSpeed - Move1")
+                    move2.pprint("JoinSpeed - Move2")
+                    print "speedScale: ", speedScale # , weight
+
+                assert(speedScale <= 1.0)
+
+                if debugMoves:
+                    print "set nominal endspeed of move1:", endSpeedS * speedScale
+                move1.setNominalEndFr(endSpeedS * speedScale)
+
+                if debugMoves:
+                    print "set nominal startspeed of move2:", move2.feedrateS * speedScale
+                move2.setNominalStartFr(move2.feedrateS * speedScale)
+
+            else:
+
+                if debugMoves:
+                    print "Doing a full speed join between move %d and %d" % (move1.moveNumber, move2.moveNumber)
+
+                move1.setNominalEndFr(endSpeedS)
+                move2.setNominalStartFr(move2.feedrateS)
+
+##################
             return
-       
+     
         avgESpeed = (move1.getFeedrateV()[A_AXIS]+move2.getFeedrateV()[A_AXIS])/2
 
         print "avgESpeed: ", avgESpeed
