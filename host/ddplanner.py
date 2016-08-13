@@ -68,7 +68,7 @@ class MaxExtrusionRate:
 
         # Get maximum extrusion rate, take plateau speed into account only
         # length of max constant speed:
-        reachedESpeed = abs( move.getReachedSpeedV()[A_AXIS] ) # [mm/s]
+        reachedESpeed = abs( move.getReachedFeedrateV()[A_AXIS] ) # [mm/s]
         reachedEExtrusion = reachedESpeed * MatProfile.getMatArea()
 
         if reachedEExtrusion > self.maxRate:
@@ -828,9 +828,9 @@ class Planner (object):
         #
 
         # debnegtimer
-        nominalSpeed = abs( move.getReachedSpeedV()[leadAxis] ) # [mm/s]
+        nominalSpeed = abs( move.getReachedFeedrateV()[leadAxis] ) # [mm/s]
 
-        reachedSpeedV = move.getReachedSpeedV()
+        reachedSpeedV = move.getReachedFeedrateV()
         reachedSpeedFr = reachedSpeedV.len5()
 
         # advance

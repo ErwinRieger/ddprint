@@ -352,11 +352,11 @@ class Move(object):
             return self.displacement_vector_raw().scale(1.0 / move_seconds)
 
     def getReachedFr(self):
-        return self.getReachedSpeedV().len3()
+        return self.getReachedFeedrateV().len3()
 
     # Get the reached speedvector, this is the nominal plateau speed if the move is long enough, else it is 
     # the reached peek speed. Returns a speed vector.
-    def getReachedSpeedV(self):
+    def getReachedFeedrateV(self):
         return self.accelData.reachedovNominalVVector or self.getFeedrateV()
 
     # [mm/s]
@@ -463,6 +463,9 @@ class Move(object):
         assert(self.nominalStartSpeed != None)
         return self.nominalStartSpeed
 
+    def getStartFeedrateV(self):
+        return self.getFeedrateV(self.getStartFr())
+
     def getEndFr(self):
 
         if self.trueEndSpeed:
@@ -470,6 +473,9 @@ class Move(object):
 
         assert(self.nominalEndSpeed != None)
         return self.nominalEndSpeed
+
+    def getEndFeedrateV(self):
+        return self.getFeedrateV(self.getEndFr())
 
     def setNominalStartFr(self, fr):
 

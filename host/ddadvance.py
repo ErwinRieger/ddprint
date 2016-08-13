@@ -28,160 +28,68 @@ import ddprintutil as util
 import math
 
 
-
+if debugPlot:
+    import matplotlib.pyplot as plt 
+    from matplotlib import collections as mc
 
 # Minimum E velocity difference at move start/end for advance
 AdvanceMinE = 0.1 # [mm/s]
 
-
-
-"""
-import math, collections
-
-import ddprintutil as util, dddumbui, packedvalue
-from move import VVector, Move
-from ddconfig import *
-from ddprintutil import Z_AXIS, vectorMul, circaf
-from ddprinter import Printer
-from ddprintcommands import CmdSyncTargetTemp
-from ddprintstates import HeaterEx1, HeaterBed
-
-# Debug object
-class StreamedMove:
-        pass
-errorMove = StreamedMove()
-
-#####################################################################
-#
-# "AutoTemp" constants
-#
-# Don't adjust hotend temperature on every move, collect moves for
-# ATInterval time and compute/set the temp for that interval.
-#
-ATInterval = 5 # [s]
-# ATMaxTempIncrease = 50
-
-#####################################################################
-#
-# Computes some statistics about the used maximal extrusion rates.
-#
-class MaxExtrusionRate:
-    def __init__(self):
-        self.maxRate = 0
-        self.move = None
-        self.max10 = []
-
-        self.maxAvgRate = 0
-
-    def stat(self, move):
-
-        # Do not count very small moves, the computation of the extrusion rate is inaccurate because of the
-        # discretization in the gcodeparser (map float values to discrete stepper values).
-        if move.distance3 < 0.1:
-            return 
-
-        # Get maximum extrusion rate, take plateau speed into account only
-        # length of max constant speed:
-        reachedESpeed = abs( move.getReachedSpeedV()[A_AXIS] ) # [mm/s]
-        reachedEExtrusion = reachedESpeed * MatProfile.getMatArea()
-
-        if reachedEExtrusion > self.maxRate:
-
-            # print "New max reachedEExtrusion: ", reachedEExtrusion, "mm³/s"
-
-            self.maxRate = reachedEExtrusion
-            self.move = move
-
-            self.max10.append(reachedEExtrusion)
-            if len(self.max10) > 10:
-                self.max10 = self.max10[1:]
-
-    def avgStat(self, maxAvgRate):
-
-        if maxAvgRate > self.maxAvgRate:
-
-            # print "New max avg reachedEExtrusion: ", maxAvgRate, "mm³/s"
-
-            self.maxAvgRate = maxAvgRate
-
-    def printStat(self):
-
-        # Extrusion adjust
-        adjustedExtrusion = self.maxRate + pow(self.maxRate, 2) * NozzleProfile.getExtrusionAdjustFactor()
-
-        if self.maxRate:
-            print "Maximal net Extrusion Rate (Extruder A): %.1f mm³/s, adjusted/gross: %.1f mm³/s, move:" % (self.maxRate, adjustedExtrusion)
-            self.move.pprint("Max. extrusion Move")
-            print "Net Max10: ", self.max10
-            print "Maximal Extrusion Rate (Extruder A) 5 second average: %.1f" % self.maxAvgRate, "mm³/s\n"
-
 #####################################################################
 
-class PathData (object):
-
-    def __init__(self):
-
-        self.path = []
-        self.count = -1
-
-        # AutoTemp
-        if UseExtrusionAutoTemp:
-
-            # Time needed to complete the moves, extruding moves only
-            self.time = 0
-            # Head move distance sum or extrusion volume, extruding moves only
-            self.extrusionAmount = 0
-            self.lastTemp = 0
-
-        # Moves collected in the ATInterval
-        self.atMoves = []
-
-        # Some statistics
-        self.maxExtrusionRate = MaxExtrusionRate()
-
-    # Number of moves
-    def incCount(self):
-        self.count += 1
-        return self.count
-"""
-
-#####################################################################
 class DebugPlot (object):
 
     def __init__(self, n):
 
         self.plottime = 1
-        self.trigger = 0
-        self.plotfile=open("/tmp/ddpath_%04d.ascii" % n, "w")
-        self.plotfile.write("#time trig vXY vExt\n")
-        self.plotfile.write("0 0 0 0\n");
+        self.eplottime = 1
 
-        self.values = { 
-                "trigger": 0,
-                "vXY": 0,
-                "vExt": 0,
-                }
+        fig, self.ax = plt.subplots()
+        self.ax.set_xlim(-1, 10) 
+        self.ax.set_ylim(0, 2) 
+
+        self.xylines = []
+        self.colors = []
+        self.segcol = ["green", "blue", "red"]
+        self.elines = []
 
     def newMove(self):
 
-        self.write()
-        self.trigger = (self.trigger+1) % 2
-        self.write()
+        plt.axvline(self.plottime, color="yellow")
+        self.colors += self.segcol
 
-    def write(self, dt=0.000001, vXY = None, vExt = None):
+    def xySegment(self, dt, vXY1, vXY2 = None):
 
-        if vXY:
-            self.values["vXY"] = vXY
+        if vXY2 == None:
+            vXY2 = vXY1
 
-        if vExt:
-            self.values["vExt"] = vXY
-
-        self.plotfile.write("%.4f %d %.3f %.3f\n" % (self.plottime, self.trigger*25, self.values["vXY"], self.values["vExt"]))
-
+        self.xylines.append(((self.plottime, vXY1), (self.plottime+dt, vXY2)))
         self.plottime += dt
 
+    def eSegment(self, dt, vE1, vE2 = None):
+
+        if vE2 == None:
+            vE2 = vE1
+
+        self.elines.append(((self.eplottime, vE1), (self.eplottime+dt, vE2)))
+        self.eplottime += dt
+
     def close(self):
-        self.plotfile.close()
+
+        # self.plotfile.close()
+        lc = mc.LineCollection(self.xylines, colors=self.colors, linewidths=2)
+        self.ax.add_collection(lc)
+
+        lc = mc.LineCollection(self.elines, colors=self.colors, linewidths=2)
+        self.ax.add_collection(lc)
+
+        self.ax.autoscale()
+        self.ax.margins(0.1)
+
+        while True:
+            plt.pause(0.05)
+
+
 
 #####################################################################
 
@@ -192,87 +100,6 @@ class Advance (object):
     def __init__(self, planner): # , args, gui=None):
 
         self.planner = planner
-
-        """
-        if Planner.__single:
-            raise RuntimeError('A Planner already exists')
-
-        Planner.__single = self
-
-        if gui:
-            self.gui = gui
-        else:
-            self.gui = dddumbui.DumbGui()
-
-        self.args = args
-
-        self.printer = Printer.get()
-        # self.parser = UM2GcodeParser.get()
-
-        jerk = []
-        for dim in dimNames:
-            jerk.append(PrinterProfile.getValues()['axes'][dim]['jerk'])
-
-        self.jerk = VVector(jerk)
-        self.gui.log("Jerk vector: ", self.jerk)
-
-        self.zeroPos = util.MyPoint()
-
-        # Lowest allowed speed in mm/s for every dimension
-        # xxx used? self.min_speeds = 5 * [0]
-        # xxx used? for dim in range(5):
-            # xxx used? # vmin = (fTimer / maxTimerValue) / steps_per_mm
-            # xxx used? if PrinterProfile.getStepsPerMM(dim):
-                # xxx used? self.min_speeds[dim] = float(fTimer) / (maxTimerValue24 * PrinterProfile.getStepsPerMM(dim))
-
-        # xxx used? self.gui.log( "min speeds: ", self.min_speeds)
-
-        #
-        # Constants, xxx todo: query from printer and/or profile
-        #
-        self.HOMING_FEEDRATE = [100, 100, 40]  # set the homing speeds (mm/s) 
-        self.HOME_RETRACT_MM = 7               # [mm]
-
-
-        # ENDSTOP SETTINGS:
-        # Sets direction of endstops when homing; 1=MAX, -1=MIN
-        self.X_HOME_DIR = -1
-        self.Y_HOME_DIR = 1
-        self.Z_HOME_DIR = 1
-        self.HOME_DIR = (self.X_HOME_DIR, self.Y_HOME_DIR, self.Z_HOME_DIR)
-
-        # XXX defined in profile !!!
-        # Travel limits after homing
-        self.X_MIN_POS = 0
-        self.X_MAX_POS = 225.0 # 230.0
-        # X_MIN_POS = 0
-        self.Y_MAX_POS = 225.0 # 230.0
-        # Y_MIN_POS = 0
-        # self.Z_MAX_POS = 229.0 # 230.0 // Dauerdruckplatte hat 5mm im vergleich zur glassplatte 4mm
-        self.Z_MAX_POS = 212.25 # solex nozzle
-        # Z_MIN_POS = 0
-        self.MAX_POS = (self.X_MAX_POS, self.Y_MAX_POS, self.Z_MAX_POS)
-
-        # Bed leveling constants
-        self.LEVELING_OFFSET = 0.1                   # Assumed thickness of feeler gauge/paper used in leveling (mm)
-        # self.HEAD_HEIGHT = 35.0                      # Let enough room for the head, XXX UM2 specific !!!
-        self.HEAD_HEIGHT = 15.0                      # Let enough room for the head, XXX UM2 specific !!!
-
-        # Homing
-        self.X_HOME_POS = self.X_MIN_POS
-        self.Y_HOME_POS = self.Y_MAX_POS
-        self.Z_HOME_POS = self.Z_MAX_POS                  # XXX + add_homeing_z
-        #
-        # End Constants
-        #
-
-        # Headspeed/extrusionspeed where autotemp increase starts
-        self.ExtrusionAmountLow = 30 # [mm/s] for a 1mm nozzle
-        if UseExtrusionAutoTemp:
-            # self.ExtrusionAmountLow = 7.5 # [mm³/s] for a 1mm nozzle
-            area04 = pow(0.4, 2)*math.pi/4
-            self.ExtrusionAmountLow = MatProfile.getBaseExtrusionRate() * (NozzleProfile.getArea() / area04)
-        """
 
         #
         # Extruder advance, max allowed X/Y acceleration for the given E-Jerk
@@ -299,7 +126,6 @@ class Advance (object):
 
         if debugPlot: #  and not self.plotfile:
             self.plottime = 1
-            self.trigger = 0
             # self.plotfile=open("/tmp/ddpath_%d.ascii" % path[0].moveNumber, "w")
             # self.plotfile.write("#time trig vXY vExt\n")
             # self.plotfile.write("0 0 0 0\n");
@@ -374,20 +200,13 @@ class Advance (object):
             self.plotfile.newMove()
 
             # xxx todo move to own function
-            # self.plotfile.write("%.4f %d %.3f %.3f\n" % (self.plottime, self.trigger, move.getStartFr(), 0.0))
-            # self.plottime += move.accelTime 
-            self.plotfile.write(move.accelTime, vXY=move.getStartFr())
+            self.plotfile.xySegment(move.accelTime, vXY1=move.getStartFr(), vXY2=move.getReachedFr())
+            self.plotfile.xySegment(move.linearTime, vXY1=move.getReachedFr())
+            self.plotfile.xySegment(move.deccelTime, vXY1=move.getReachedFr(), vXY2=move.getEndFr())
 
-            # self.plotfile.write("%.4f %d %.3f %.3f\n" % (self.plottime, self.trigger, move.getReachedFr(), 0.0))
-            # self.plottime += move.linearTime 
-            self.plotfile.write(move.linearTime, vXY=move.getReachedFr())
-            self.plotfile.write()
-
-            # self.plotfile.write("%.4f %d %.3f %.3f\n" % (self.plottime, self.trigger, move.getEndFr(), 0.0))
-            # self.plottime += move.deccelTime 
-            self.plotfile.write(move.deccelTime, vXY=move.getEndFr())
-
-            # self.trigger = (self.trigger + 1) % 2
+            self.plotfile.eSegment(move.accelTime, vE1=move.getStartFeedrateV()[A_AXIS], vE2=move.getReachedFeedrateV()[A_AXIS])
+            self.plotfile.eSegment(move.linearTime, vE1=move.getReachedFeedrateV()[A_AXIS])
+            self.plotfile.eSegment(move.deccelTime, vE1=move.getReachedFeedrateV()[A_AXIS], vE2=move.getEndFeedrateV()[A_AXIS])
 
             continue # xxx work
             assert(0)
@@ -423,8 +242,8 @@ class Advance (object):
 
 
         if debugPlot:
-            self.plotfile.write(1)
-            self.plotfile.write()
+            # self.plotfile.write(1)
+            # self.plotfile.write()
             self.plotfile.close()
 
         return # xxx work
@@ -759,7 +578,7 @@ class Advance (object):
 
         endFeedrate = move.getEndFr()
         endFeedrateV = move.getFeedrateV(endFeedrate)
-        endEVelDiff = endFeedrateV[A_AXIS] - move.getReachedSpeedV()[A_AXIS]
+        endEVelDiff = endFeedrateV[A_AXIS] - move.getReachedFeedrateV()[A_AXIS]
         endEAccelSign = util.sign(endEVelDiff)
         endEFeedrate = endFeedrateV[A_AXIS] + self.advJerk * endEAccelSign
 
@@ -786,9 +605,9 @@ class Advance (object):
         #
 
         # debnegtimer
-        nominalSpeed = abs( move.getReachedSpeedV()[leadAxis] ) # [mm/s]
+        nominalSpeed = abs( move.getReachedFeedrateV()[leadAxis] ) # [mm/s]
 
-        reachedSpeedV = move.getReachedSpeedV()
+        reachedSpeedV = move.getReachedFeedrateV()
         reachedSpeedFr = reachedSpeedV.len5()
 
         # advance
