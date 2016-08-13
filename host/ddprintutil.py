@@ -247,6 +247,20 @@ def joinSpeed(move1, move2, jerk, advAccel):
 
         print "avgESpeed: ", avgESpeed
 
+        if move1.getFeedrateV()[A_AXIS] > move2.getFeedrateV()[A_AXIS]:
+            # Slow down move1
+            f = move2.getFeedrateV()[A_AXIS] / move1.getFeedrateV()[A_AXIS]
+            endSpeedS = endSpeedS * f
+            move1.setNominalEndFr(endSpeedS)
+            move2.setNominalStartFr(move2.feedrateS)
+        else:
+            # Slow down move2
+            f = move1.getFeedrateV()[A_AXIS] / move2.getFeedrateV()[A_AXIS]
+            startSpeedS = move2.feedrateS * f
+            move1.setNominalEndFr(endSpeedS)
+            move2.setNominalStartFr(startSpeedS)
+
+        """
         speedScale1 = avgESpeed / move1.getFeedrateV()[A_AXIS]
         speedScale2 = avgESpeed / move2.getFeedrateV()[A_AXIS]
 
@@ -281,6 +295,7 @@ def joinSpeed(move1, move2, jerk, advAccel):
 
         move1.setNominalEndFr(endSpeedS)
         move2.setNominalStartFr(startSpeedS)
+        """
 
         if debugMoves:
             print "***** End joinSpeed() *****"

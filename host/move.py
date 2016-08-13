@@ -351,6 +351,9 @@ class Move(object):
             move_seconds = vectorLength(self.displacement_vector3) / feedrateS
             return self.displacement_vector_raw().scale(1.0 / move_seconds)
 
+    def getReachedFr(self):
+        return self.getReachedSpeedV().len3()
+
     # Get the reached speedvector, this is the nominal plateau speed if the move is long enough, else it is 
     # the reached peek speed. Returns a speed vector.
     def getReachedSpeedV(self):
@@ -405,6 +408,10 @@ class Move(object):
 
             # First move
             nullV.checkJerk(dirVS, jerk, "start 0", "#: %d" % self.moveNumber)
+
+        assert(self.accelTime >= 0)
+        assert(self.linearTime >= 0)
+        assert(self.deccelTime >= 0)
 
     def pprint(self, title):
 
@@ -466,18 +473,22 @@ class Move(object):
 
     def setNominalStartFr(self, fr):
 
+        assert(fr <= self.feedrateS)
         self.nominalStartSpeed = fr
 
     def setNominalEndFr(self, fr):
 
+        assert(fr <= self.feedrateS)
         self.nominalEndSpeed = fr
 
     def setTrueStartFr(self, fr):
 
+        assert(fr <= self.feedrateS)
         self.trueStartSpeed = fr
 
     def setTrueEndFr(self, fr):
         
+        assert(fr <= self.feedrateS)
         self.trueEndSpeed = fr
 
     def getJerkSpeed(self, jerk):
@@ -543,6 +554,11 @@ class Move(object):
     #####################################################################################################################################################
 
     def setDuration(self, accelTime, linearTime, deccelTime):
+
+        assert(accelTime >= 0)
+        assert(linearTime >= 0)
+        assert(deccelTime >= 0)
+
         self.accelTime = accelTime
         self.linearTime = linearTime
         self.deccelTime = deccelTime

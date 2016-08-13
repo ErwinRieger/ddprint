@@ -25,8 +25,8 @@
 debugMoves = True
 # debugMoves = False
 
-debugPlot = True
 debugPlot = False
+debugPlot = True
 
 debugAutoTemp = False
 debugAutoTemp = True

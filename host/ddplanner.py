@@ -243,7 +243,7 @@ class Planner (object):
         # End Constants
         #
 
-        self.plotfile = None
+        # self.plotfile = None
 
         # Headspeed/extrusionspeed where autotemp increase starts
         self.ExtrusionAmountLow = 30 # [mm/s] for a 1mm nozzle
@@ -428,9 +428,9 @@ class Planner (object):
             self.advance.planPath(self.pathData.path)
             self.pathData.path = []
 
-            if debugPlot:
-                self.plotfile.write("e\n")
-                self.plotfile.close()
+            # if debugPlot:
+                # self.plotfile.write("e\n")
+                # self.plotfile.close()
 
             print "\nStatistics:"
             print "-----------"
@@ -864,9 +864,9 @@ class Planner (object):
 
         stepNr = 0
 
-        if debugPlot:
-            accelPlotData = []
-            deccelPlotData = []
+        # if debugPlot:
+            # accelPlotData = []
+            # deccelPlotData = []
 
         if not circaf(move.getStartFr(), reachedSpeedFr, 0.1) and not circaf(move.getEndFr(), reachedSpeedFr, 0.1):
 
@@ -896,11 +896,11 @@ class Planner (object):
 
                     # print "dt: ", dt*1000000, "[uS]", steps_per_second_accel, "[steps/s], timerValue: ", timerValue
 
-                    if debugPlot:
-                        if move.eOnly:
-                            accelPlotData.append((steps_per_second_accel/steps_per_mm, 2, dt))
-                        else:
-                            accelPlotData.append((steps_per_second_accel/steps_per_mm, 1, dt))
+                    # if debugPlot:
+                        # if move.eOnly:
+                            # accelPlotData.append((steps_per_second_accel/steps_per_mm, 2, dt))
+                        # else:
+                            # accelPlotData.append((steps_per_second_accel/steps_per_mm, 1, dt))
 
                     tAccel += dt
 
@@ -932,11 +932,11 @@ class Planner (object):
 
                     # print "dt: ", dt*1000000, "[uS]", steps_per_second_deccel, "[steps/s], timerValue: ", timerValue, ", v: ", steps_per_second_deccel/steps_per_mm
 
-                    if debugPlot:
-                        if move.eOnly:
-                            deccelPlotData.append((steps_per_second_deccel/steps_per_mm, 2, dt))
-                        else:
-                            deccelPlotData.append((steps_per_second_deccel/steps_per_mm, 1, dt))
+                    # if debugPlot:
+                        # if move.eOnly:
+                            # deccelPlotData.append((steps_per_second_deccel/steps_per_mm, 2, dt))
+                        # else:
+                            # deccelPlotData.append((steps_per_second_deccel/steps_per_mm, 1, dt))
 
                     tDeccel += dt
 
@@ -1032,21 +1032,21 @@ class Planner (object):
         timerValue = fTimer / steps_per_second_nominal
         move.stepData.setLinTimer(timerValue)
 
-        if debugPlot:
-            self.plotfile.write("# Acceleration:\n")
-            for (speed, color, dt) in accelPlotData:
-                self.plotfile.write("%f %f %d\n" % (self.plottime, speed, color))
-                self.plottime += dt
+        # if debugPlot:
+            # self.plotfile.write("# Acceleration:\n")
+            # for (speed, color, dt) in accelPlotData:
+                # self.plotfile.write("%f %f %d\n" % (self.plottime, speed, color))
+                # self.plottime += dt
 
-            self.plotfile.write("# Linear top:\n")
-            self.plotfile.write("%f %f 0\n" % (self.plottime, steps_per_second_nominal/steps_per_mm))
-            self.plottime += timerValue / fTimer
+            # self.plotfile.write("# Linear top:\n")
+            # self.plotfile.write("%f %f 0\n" % (self.plottime, steps_per_second_nominal/steps_per_mm))
+            # self.plottime += timerValue / fTimer
 
-            self.plotfile.write("# Decceleration:\n")
-            deccelPlotData.reverse()
-            for (speed, color, dt) in deccelPlotData:
-                self.plotfile.write("%f %f %d\n" % (self.plottime, speed, color))
-                self.plottime += dt
+            # self.plotfile.write("# Decceleration:\n")
+            # deccelPlotData.reverse()
+            # for (speed, color, dt) in deccelPlotData:
+                # self.plotfile.write("%f %f %d\n" % (self.plottime, speed, color))
+                # self.plottime += dt
 
         if debugMoves:
             print "# of steps for move: ", deltaLead

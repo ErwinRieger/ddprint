@@ -146,6 +146,44 @@ class PathData (object):
 """
 
 #####################################################################
+class DebugPlot (object):
+
+    def __init__(self, n):
+
+        self.plottime = 1
+        self.trigger = 0
+        self.plotfile=open("/tmp/ddpath_%04d.ascii" % n, "w")
+        self.plotfile.write("#time trig vXY vExt\n")
+        self.plotfile.write("0 0 0 0\n");
+
+        self.values = { 
+                "trigger": 0,
+                "vXY": 0,
+                "vExt": 0,
+                }
+
+    def newMove(self):
+
+        self.write()
+        self.trigger = (self.trigger+1) % 2
+        self.write()
+
+    def write(self, dt=0.000001, vXY = None, vExt = None):
+
+        if vXY:
+            self.values["vXY"] = vXY
+
+        if vExt:
+            self.values["vExt"] = vXY
+
+        self.plotfile.write("%.4f %d %.3f %.3f\n" % (self.plottime, self.trigger*25, self.values["vXY"], self.values["vExt"]))
+
+        self.plottime += dt
+
+    def close(self):
+        self.plotfile.close()
+
+#####################################################################
 
 class Advance (object):
 
@@ -228,8 +266,6 @@ class Advance (object):
         # End Constants
         #
 
-        self.plotfile = None
-
         # Headspeed/extrusionspeed where autotemp increase starts
         self.ExtrusionAmountLow = 30 # [mm/s] for a 1mm nozzle
         if UseExtrusionAutoTemp:
@@ -254,11 +290,20 @@ class Advance (object):
         #
         print "ADV: max acceleration in X/Y plane:", self.advAccel, " [mm/s²]"
 
+        # self.plotfile = None
 
     def planPath(self, path):
 
         if debugMoves:
             print "***** Start planPath() *****"
+
+        if debugPlot: #  and not self.plotfile:
+            self.plottime = 1
+            self.trigger = 0
+            # self.plotfile=open("/tmp/ddpath_%d.ascii" % path[0].moveNumber, "w")
+            # self.plotfile.write("#time trig vXY vExt\n")
+            # self.plotfile.write("0 0 0 0\n");
+            self.plotfile = DebugPlot(path[0].moveNumber)
 
         # First move of this path, startspeed is jerkspeed/2
         # path[0].setNominalJerkStartSpeed(self.jerk.scale(0.5))
@@ -325,6 +370,25 @@ class Advance (object):
 
             self.planSteps(move)
 
+
+            self.plotfile.newMove()
+
+            # xxx todo move to own function
+            # self.plotfile.write("%.4f %d %.3f %.3f\n" % (self.plottime, self.trigger, move.getStartFr(), 0.0))
+            # self.plottime += move.accelTime 
+            self.plotfile.write(move.accelTime, vXY=move.getStartFr())
+
+            # self.plotfile.write("%.4f %d %.3f %.3f\n" % (self.plottime, self.trigger, move.getReachedFr(), 0.0))
+            # self.plottime += move.linearTime 
+            self.plotfile.write(move.linearTime, vXY=move.getReachedFr())
+            self.plotfile.write()
+
+            # self.plotfile.write("%.4f %d %.3f %.3f\n" % (self.plottime, self.trigger, move.getEndFr(), 0.0))
+            # self.plottime += move.deccelTime 
+            self.plotfile.write(move.deccelTime, vXY=move.getEndFr())
+
+            # self.trigger = (self.trigger + 1) % 2
+
             continue # xxx work
             assert(0)
 
@@ -355,7 +419,14 @@ class Advance (object):
             # Help garbage collection
             move.lastMove = errorMove
             move.nextMove = errorMove
-        
+       
+
+
+        if debugPlot:
+            self.plotfile.write(1)
+            self.plotfile.write()
+            self.plotfile.close()
+
         return # xxx work
         assert(0)
 
@@ -681,22 +752,24 @@ class Advance (object):
         steps_per_mm = PrinterProfile.getStepsPerMM(leadAxis)
 
         startFeedrate = move.getStartFr()
-        startEVelDiff = move.getReachedSpeedV()[A_AXIS] - move.getFeedrateV(startFeedrate)[A_AXIS]
+        startFeedrateV = move.getFeedrateV(startFeedrate)
+        startEVelDiff = startFeedrateV[A_AXIS] - move.getFeedrateV(startFeedrate)[A_AXIS]
         startEAccelSign = util.sign(startEVelDiff)
-        startFeedrate += self.advJerk * startEAccelSign
+        startEFeedrate = startFeedrateV[A_AXIS] + self.advJerk * startEAccelSign
 
         endFeedrate = move.getEndFr()
-        endEVelDiff = move.getFeedrateV(endFeedrate)[A_AXIS] - move.getReachedSpeedV()[A_AXIS]
+        endFeedrateV = move.getFeedrateV(endFeedrate)
+        endEVelDiff = endFeedrateV[A_AXIS] - move.getReachedSpeedV()[A_AXIS]
         endEAccelSign = util.sign(endEVelDiff)
-        endFeedrate += self.advJerk * endEAccelSign
+        endEFeedrate = endFeedrateV[A_AXIS] + self.advJerk * endEAccelSign
 
         print "startEVelDiff, endEVelDiff: ", startEVelDiff, endEVelDiff
         if abs(startEVelDiff) < AdvanceMinE or abs(endEVelDiff) < AdvanceMinE:
             # assert(0)
             print "Warning, small extrusion velocity difference!"
 
-        print "Adv: adjusted startspeed: %f -> %f" % (move.getStartFr(), startFeedrate)
-        print "Adv: adjusted   endspeed: %f -> %f" % (move.getEndFr(), endFeedrate)
+        print "Adv: adjusted E startspeed: %f -> %f" % (startFeedrateV[A_AXIS], startEFeedrate)
+        print "Adv: adjusted E   endspeed: %f -> %f" % (endFeedrateV[A_AXIS], endEFeedrate)
 
 
         return # work
