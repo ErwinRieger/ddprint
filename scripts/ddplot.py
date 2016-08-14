@@ -7,11 +7,7 @@ import math, pickle, sys
 
 fig = plt.figure(1)
 ax = x=plt.subplot(211)
-# print "ax:", ax
-# ax.set_xlim(-1, 10) 
-# ax.set_ylim(0, 2) 
 
-# plt.xlabel('t')
 plt.ylabel('Vel')
 plt.title('XY and E-Velocity')
 plt.grid(True)
@@ -26,11 +22,10 @@ for i in range(len(plot1.Ticks)):
 
 ax.autoscale()
 plt.xlim(xmin=0)
-# ax.margins(0.02)
 
 ax2 = plt.subplot(212, sharex=ax)
 ax2.set_xlim(0)
-# plt.xlabel('t')
+
 plt.ylabel('Vel')
 plt.title('E-Advance')
 plt.grid(True)
