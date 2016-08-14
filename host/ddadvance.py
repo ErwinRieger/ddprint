@@ -20,6 +20,8 @@
 #*/
 
 
+from argparse import Namespace
+
 from ddprintconstants import *
 from ddconfig import *
 from ddprofile import PrinterProfile # , MatProfile, NozzleProfile
@@ -37,73 +39,68 @@ AdvanceMinE = 0.1 # [mm/s]
 
 #####################################################################
 
+class DebugPlotSegment (object):
+
+    def __init__(self, y1, y2=None, color="grey"):
+        self.y1 = y1
+        self.y2 = y2
+        self.color = color
+
 class DebugPlot (object):
 
     def __init__(self, nr):
 
         self.plotfile = "/tmp/ddplot_%04d.pkl" % nr
 
-        self.plottime = 0.1
-        self.eplottime = 0.1
-        self.e2plottime = 0.1
+        self.plot1 = self.makePlot()
+        self.plot2 = self.makePlot()
 
-        self.xylines = []
-        self.colors = []
-        self.linestyles = []
+    def makePlot(self):
 
-        self.segcol = ["green", "blue", "red"]
-        self.elines = []
-        self.e2lines = []
+        pl = Namespace()
+        pl.time = 0.1
+        pl.Lines = []
+        pl.Colors = []
+        pl.Styles = []
+        pl.Ticks = []
+        return pl
 
-    def newMove(self):
+    # def newMove(self):
+        # self.colors += self.segcol
 
-        self.colors += self.segcol
+    def plot1Tick(self, y, nr):
 
-    def xySegment(self, dt, vXY1, vXY2 = None):
+        self.plot1.Ticks.append((self.plot1.time, y, nr))
 
-        style = "solid"
-        if vXY2 == None:
-            vXY2 = vXY1
-            if (dt > 0.05):
-                style = "dashed"
-                dt = 0.05
+    def plot1Segments(self, dt, segspec):
 
-        self.linestyles.append(style)
+        self.plotSegments(self.plot1, dt, segspec)
 
-        self.xylines.append(((self.plottime, vXY1), (self.plottime+dt, vXY2)))
-        self.plottime += dt
+    def plot2Segments(self, dt, segspec):
 
-    def eSegment(self, dt, vE1, vE2 = None):
+        self.plotSegments(self.plot2, dt, segspec)
 
-        if vE2 == None:
-            vE2 = vE1
-            if (dt > 0.05):
-                dt = 0.05
+    def plotSegments(self, plot, dt, segspec):
 
-        self.elines.append(((self.eplottime, vE1), (self.eplottime+dt, vE2)))
-        self.eplottime += dt
+        for seg in segspec:
 
-    def e2Segment(self, dt, vE1, vE2 = None):
+            style = "solid"
+            y2 = seg.y2
+            t = dt
+            if y2 == None:
+                y2 = seg.y1
+                if (t > 0.05):
+                    style = "dashed"
+                    t = 0.05
 
-        if vE2 == None:
-            vE2 = vE1
-            if (dt > 0.05):
-                dt = 0.05
+            plot.Lines.append(((plot.time, seg.y1), (plot.time+t, y2)))
+            plot.Colors.append(seg.color)
+            plot.Styles.append(style)
 
-        self.e2lines.append(((self.e2plottime, vE1), (self.e2plottime+dt, vE2)))
-        self.e2plottime += dt
+        plot.time += t
 
     def close(self):
-
-        d = {
-                "xylines": self.xylines,
-                "colors": self.colors,
-                "linestyles": self.linestyles,
-                "elines": self.elines,
-                "e2lines": self.e2lines,
-                }
-
-        pickle.dump(d, open(self.plotfile, "wb"))
+        pickle.dump((self.plot1, self.plot2), open(self.plotfile, "wb"))
 
 
 #####################################################################
@@ -213,18 +210,45 @@ class Advance (object):
 
 
             # xxx todo move to own function
-            self.plotfile.newMove()
-            self.plotfile.xySegment(move.accelTime, vXY1=move.getStartFr(), vXY2=move.getReachedFr())
-            self.plotfile.xySegment(move.linearTime, vXY1=move.getReachedFr())
-            self.plotfile.xySegment(move.deccelTime, vXY1=move.getReachedFr(), vXY2=move.getEndFr())
+            # self.plotfile.newMove()
+            self.plotfile.plot1Tick(move.getReachedFr(), move.moveNumber)
 
-            self.plotfile.eSegment(move.accelTime, vE1=move.getStartFeedrateV()[A_AXIS], vE2=move.getReachedFeedrateV()[A_AXIS])
-            self.plotfile.eSegment(move.linearTime, vE1=move.getReachedFeedrateV()[A_AXIS])
-            self.plotfile.eSegment(move.deccelTime, vE1=move.getReachedFeedrateV()[A_AXIS], vE2=move.getEndFeedrateV()[A_AXIS])
 
-            self.plotfile.e2Segment(move.accelTime, vE1=move.getStartFeedrateV()[A_AXIS], vE2=move.getReachedFeedrateV()[A_AXIS])
-            self.plotfile.e2Segment(move.linearTime, vE1=move.getReachedFeedrateV()[A_AXIS])
-            self.plotfile.e2Segment(move.deccelTime, vE1=move.getReachedFeedrateV()[A_AXIS], vE2=move.getEndFeedrateV()[A_AXIS])
+            # self.plotfile.xySegment(move.accelTime, vXY1=move.getStartFr(), vXY2=move.getReachedFr())
+            # self.plotfile.eSegment(move.accelTime, vE1=move.getStartFeedrateV()[A_AXIS], vE2=move.getReachedFeedrateV()[A_AXIS])
+            self.plotfile.plot1Segments(move.accelTime, (
+                DebugPlotSegment(move.getStartFr(), move.getReachedFr(), "green"),
+                DebugPlotSegment(move.getStartFeedrateV()[A_AXIS], move.getReachedFeedrateV()[A_AXIS], "green"),
+                ))
+
+            # self.plotfile.xySegment(move.linearTime, vXY1=move.getReachedFr())
+            # self.plotfile.eSegment(move.linearTime, vE1=move.getReachedFeedrateV()[A_AXIS])
+            self.plotfile.plot1Segments(move.linearTime, (
+                DebugPlotSegment(move.getReachedFr(), color="blue"),
+                DebugPlotSegment(move.getReachedFeedrateV()[A_AXIS], color="blue"),
+                ))
+
+            # self.plotfile.xySegment(move.deccelTime, vXY1=move.getReachedFr(), vXY2=move.getEndFr())
+            # self.plotfile.eSegment(move.deccelTime, vE1=move.getReachedFeedrateV()[A_AXIS], vE2=move.getEndFeedrateV()[A_AXIS])
+            self.plotfile.plot1Segments(move.deccelTime, (
+                DebugPlotSegment(move.getReachedFr(), move.getEndFr(), "red"),
+                DebugPlotSegment(move.getReachedFeedrateV()[A_AXIS], move.getEndFeedrateV()[A_AXIS], "red"),
+                ))
+
+            # self.plotfile.e2Segment(move.accelTime, vE1=move.getStartFeedrateV()[A_AXIS], vE2=move.getReachedFeedrateV()[A_AXIS])
+            self.plotfile.plot2Segments(move.accelTime, (
+                DebugPlotSegment(move.getStartFeedrateV()[A_AXIS], move.getReachedFeedrateV()[A_AXIS]),
+                DebugPlotSegment(move.getStartFeedrateV()[A_AXIS], move.getReachedFeedrateV()[A_AXIS], "green"),
+                ))
+            # self.plotfile.e2Segment(move.linearTime, vE1=move.getReachedFeedrateV()[A_AXIS])
+            self.plotfile.plot2Segments(move.linearTime, (
+                DebugPlotSegment(move.getReachedFeedrateV()[A_AXIS]),
+                ))
+            # self.plotfile.e2Segment(move.deccelTime, vE1=move.getReachedFeedrateV()[A_AXIS], vE2=move.getEndFeedrateV()[A_AXIS])
+            self.plotfile.plot2Segments(move.deccelTime, (
+                DebugPlotSegment(move.getReachedFeedrateV()[A_AXIS], move.getEndFeedrateV()[A_AXIS]),
+                DebugPlotSegment(move.getReachedFeedrateV()[A_AXIS], move.getEndFeedrateV()[A_AXIS], "red"),
+                ))
 
             continue # xxx work
             assert(0)
