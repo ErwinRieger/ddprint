@@ -58,7 +58,7 @@ class DebugPlot (object):
     def makePlot(self):
 
         pl = Namespace()
-        pl.time = 0.1
+        pl.time = 0.01
         pl.Lines = []
         pl.Colors = []
         pl.Styles = []
@@ -206,6 +206,8 @@ class Advance (object):
 
             self.planAcceleration(move)
 
+            self.planAdvance(move)
+
             self.planSteps(move)
 
 
@@ -236,18 +238,32 @@ class Advance (object):
                 ))
 
             # self.plotfile.e2Segment(move.accelTime, vE1=move.getStartFeedrateV()[A_AXIS], vE2=move.getReachedFeedrateV()[A_AXIS])
+            self.plotfile.plot2Segments(0, (
+                DebugPlotSegment(move.getStartFeedrateV()[A_AXIS], move.startEFeedrate, "green"),
+                ))
             self.plotfile.plot2Segments(move.accelTime, (
                 DebugPlotSegment(move.getStartFeedrateV()[A_AXIS], move.getReachedFeedrateV()[A_AXIS]),
-                DebugPlotSegment(move.getStartFeedrateV()[A_AXIS], move.getReachedFeedrateV()[A_AXIS], "green"),
+                DebugPlotSegment(move.startEFeedrate, move.startENominalFeedrate, "green"),
                 ))
+            self.plotfile.plot2Segments(0, (
+                DebugPlotSegment(move.startENominalFeedrate, move.getReachedFeedrateV()[A_AXIS], "green"),
+                ))
+
             # self.plotfile.e2Segment(move.linearTime, vE1=move.getReachedFeedrateV()[A_AXIS])
             self.plotfile.plot2Segments(move.linearTime, (
                 DebugPlotSegment(move.getReachedFeedrateV()[A_AXIS]),
                 ))
+
             # self.plotfile.e2Segment(move.deccelTime, vE1=move.getReachedFeedrateV()[A_AXIS], vE2=move.getEndFeedrateV()[A_AXIS])
+            self.plotfile.plot2Segments(0, (
+                DebugPlotSegment(move.getReachedFeedrateV()[A_AXIS], move.endENominalFeedrate, "red"),
+                ))
             self.plotfile.plot2Segments(move.deccelTime, (
                 DebugPlotSegment(move.getReachedFeedrateV()[A_AXIS], move.getEndFeedrateV()[A_AXIS]),
-                DebugPlotSegment(move.getReachedFeedrateV()[A_AXIS], move.getEndFeedrateV()[A_AXIS], "red"),
+                DebugPlotSegment(move.endENominalFeedrate, move.endEFeedrate, "red"),
+                ))
+            self.plotfile.plot2Segments(0, (
+                DebugPlotSegment(move.endEFeedrate, move.getEndFeedrateV()[A_AXIS], "red"),
                 ))
 
             continue # xxx work
@@ -567,6 +583,70 @@ class Advance (object):
             print 
             print "***** End planAcceleration() *****"
 
+    def planAdvance(self, move):
+
+        if debugMoves:
+            print "***** Start planAdvance() *****"
+            move.pprint("planAdvance:")
+
+        """
+        leadAxis = 0
+        leadAxis_value = 0
+
+        print "Warning, disabled extrusion adjust!"
+
+        for i in range(5):
+            disp = move.displacement_vector_steps_raw()
+            dirBits += (disp[i] >= 0) << i # xxx use sign here
+            s = abs(disp[i])
+            abs_displacement_vector_steps.append(s)
+
+        """
+
+        reachedFeedrateV = move.getReachedFeedrateV()
+        # startFeedrate = move.getStartFr()
+        startFeedrateV = move.getStartFeedrateV()
+
+        startEVelDiff = reachedFeedrateV[A_AXIS] - startFeedrateV[A_AXIS]
+        startEAccelSign = util.sign(startEVelDiff)
+
+        # endFeedrate = move.getEndFr()
+        endFeedrateV = move.getEndFeedrateV()
+
+        endEVelDiff = endFeedrateV[A_AXIS] - reachedFeedrateV[A_AXIS]
+        endEAccelSign = util.sign(endEVelDiff)
+
+        print "startEVelDiff, endEVelDiff: ", startEVelDiff, endEVelDiff
+        if abs(startEVelDiff) < AdvanceMinE and abs(endEVelDiff) < AdvanceMinE:
+            # Ignore small ramps
+            print "Warning, sum up small extrusion velocity difference!"
+            move.startEFeedrate = startFeedrateV[A_AXIS]
+            move.startENominalFeedrate = move.endENominalFeedrate = reachedFeedrateV[A_AXIS]
+            move.endEFeedrate = endFeedrateV[A_AXIS]
+            return
+
+        if abs(startEVelDiff) < AdvanceMinE or abs(endEVelDiff) < AdvanceMinE:
+            # 
+            # assert(0)
+            print "Warning, sum up small extrusion velocity difference!"
+            move.startEFeedrate = startFeedrateV[A_AXIS]
+            move.startENominalFeedrate = move.endENominalFeedrate = reachedFeedrateV[A_AXIS]
+            move.endEFeedrate = endFeedrateV[A_AXIS]
+            return
+
+        move.startEFeedrate = startFeedrateV[A_AXIS] + self.advJerk * startEAccelSign
+        move.startENominalFeedrate = reachedFeedrateV[A_AXIS] + self.advJerk * startEAccelSign
+
+        move.endENominalFeedrate = reachedFeedrateV[A_AXIS] + self.advJerk * endEAccelSign
+        move.endEFeedrate = endFeedrateV[A_AXIS] + self.advJerk * endEAccelSign
+
+        print "Adv: adjusted E startspeed: %f -> %f" % (startFeedrateV[A_AXIS], move.startEFeedrate)
+        print "Adv: adjusted E   endspeed: %f -> %f" % (endFeedrateV[A_AXIS], move.endEFeedrate)
+
+        if debugMoves:
+            print 
+            print "***** End planAdvance() *****"
+
     def planSteps(self, move):
 
         if debugMoves:
@@ -611,27 +691,6 @@ class Advance (object):
         """
 
         steps_per_mm = PrinterProfile.getStepsPerMM(leadAxis)
-
-        startFeedrate = move.getStartFr()
-        startFeedrateV = move.getFeedrateV(startFeedrate)
-        startEVelDiff = startFeedrateV[A_AXIS] - move.getFeedrateV(startFeedrate)[A_AXIS]
-        startEAccelSign = util.sign(startEVelDiff)
-        startEFeedrate = startFeedrateV[A_AXIS] + self.advJerk * startEAccelSign
-
-        endFeedrate = move.getEndFr()
-        endFeedrateV = move.getFeedrateV(endFeedrate)
-        endEVelDiff = endFeedrateV[A_AXIS] - move.getReachedFeedrateV()[A_AXIS]
-        endEAccelSign = util.sign(endEVelDiff)
-        endEFeedrate = endFeedrateV[A_AXIS] + self.advJerk * endEAccelSign
-
-        print "startEVelDiff, endEVelDiff: ", startEVelDiff, endEVelDiff
-        if abs(startEVelDiff) < AdvanceMinE or abs(endEVelDiff) < AdvanceMinE:
-            # assert(0)
-            print "Warning, small extrusion velocity difference!"
-
-        print "Adv: adjusted E startspeed: %f -> %f" % (startFeedrateV[A_AXIS], startEFeedrate)
-        print "Adv: adjusted E   endspeed: %f -> %f" % (endFeedrateV[A_AXIS], endEFeedrate)
-
 
         return # work
         assert(0)
