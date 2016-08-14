@@ -16,13 +16,13 @@ plt.ylabel('Vel')
 plt.title('XY and E-Velocity')
 plt.grid(True)
 
+lc = mc.LineCollection(plot1.Lines, colors=plot1.Colors, linestyles=plot1.Styles, linewidth=3)
+ax.add_collection(lc)
+
 for i in range(len(plot1.Ticks)):
     (x, y, nr) = plot1.Ticks[i]
     plt.axvline(x, color="yellow")
     plt.text(x*1.01, y*1.01, "%d" % nr)
-
-lc = mc.LineCollection(plot1.Lines, colors=plot1.Colors, linestyles=plot1.Styles)
-ax.add_collection(lc)
 
 ax.autoscale()
 plt.xlim(xmin=0)
@@ -35,12 +35,14 @@ plt.ylabel('Vel')
 plt.title('E-Advance')
 plt.grid(True)
 
+lc = mc.LineCollection(plot2.Lines, colors=plot2.Colors, linestyles=plot2.Styles, linewidth=3)
+ax2.add_collection(lc)
+
 for i in range(len(plot1.Ticks)):
     (x, y, nr) = plot1.Ticks[i]
     plt.axvline(x, color="yellow")
 
-lc = mc.LineCollection(plot2.Lines, colors=plot2.Colors, linestyles=plot2.Styles)
-ax2.add_collection(lc)
+plt.axhline(0, color="black")
 
 ax2.autoscale()
 plt.xlim(xmin=0)
