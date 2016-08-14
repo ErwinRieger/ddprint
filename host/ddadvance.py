@@ -29,7 +29,7 @@ import math
 
 
 if debugPlot:
-    import matplotlib.pyplot as plt 
+    import pickle, matplotlib.pyplot as plt 
     from matplotlib import collections as mc
 
 # Minimum E velocity difference at move start/end for advance
@@ -39,7 +39,9 @@ AdvanceMinE = 0.1 # [mm/s]
 
 class DebugPlot (object):
 
-    def __init__(self, n):
+    def __init__(self, nr):
+
+        self.plotfile = "/tmp/ddplot_%04d.pkl" % nr
 
         self.plottime = 1
         self.eplottime = 1
@@ -50,18 +52,25 @@ class DebugPlot (object):
 
         self.xylines = []
         self.colors = []
+        self.linestyles = []
+
         self.segcol = ["green", "blue", "red"]
         self.elines = []
 
     def newMove(self):
 
-        plt.axvline(self.plottime, color="yellow")
         self.colors += self.segcol
 
     def xySegment(self, dt, vXY1, vXY2 = None):
 
+        style = "solid"
         if vXY2 == None:
             vXY2 = vXY1
+            if (dt > 0.05):
+                style = "dashed"
+                dt = 0.05
+
+        self.linestyles.append(style)
 
         self.xylines.append(((self.plottime, vXY1), (self.plottime+dt, vXY2)))
         self.plottime += dt
@@ -70,6 +79,8 @@ class DebugPlot (object):
 
         if vE2 == None:
             vE2 = vE1
+            if (dt > 0.05):
+                dt = 0.05
 
         self.elines.append(((self.eplottime, vE1), (self.eplottime+dt, vE2)))
         self.eplottime += dt
@@ -77,18 +88,26 @@ class DebugPlot (object):
     def close(self):
 
         # self.plotfile.close()
-        lc = mc.LineCollection(self.xylines, colors=self.colors, linewidths=2)
-        self.ax.add_collection(lc)
+        # lc = mc.LineCollection(self.xylines, colors=self.colors, linewidths=2)
+        # self.ax.add_collection(lc)
 
-        lc = mc.LineCollection(self.elines, colors=self.colors, linewidths=2)
-        self.ax.add_collection(lc)
+        # lc = mc.LineCollection(self.elines, colors=self.colors, linewidths=2)
+        # self.ax.add_collection(lc)
 
-        self.ax.autoscale()
-        self.ax.margins(0.1)
+        # self.ax.autoscale()
+        # self.ax.margins(0.1)
 
-        while True:
-            plt.pause(0.05)
+        # while True:
+            # plt.pause(0.05)
 
+        d = {
+                "xylines": self.xylines,
+                "colors": self.colors,
+                "linestyles": self.linestyles,
+                "elines": self.elines,
+                }
+
+        pickle.dump(d, open(self.plotfile, "wb"))
 
 
 #####################################################################
@@ -197,9 +216,8 @@ class Advance (object):
             self.planSteps(move)
 
 
-            self.plotfile.newMove()
-
             # xxx todo move to own function
+            self.plotfile.newMove()
             self.plotfile.xySegment(move.accelTime, vXY1=move.getStartFr(), vXY2=move.getReachedFr())
             self.plotfile.xySegment(move.linearTime, vXY1=move.getReachedFr())
             self.plotfile.xySegment(move.deccelTime, vXY1=move.getReachedFr(), vXY2=move.getEndFr())
