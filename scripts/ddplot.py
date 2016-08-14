@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 from matplotlib import collections  as mc
 import math, pickle, sys
 
-d = pickle.load(open(sys.argv[1]))
+(plot1, plot2) = pickle.load(open(sys.argv[1]))
 
 fig = plt.figure(1)
 ax = x=plt.subplot(211)
@@ -16,19 +16,13 @@ plt.ylabel('Vel')
 plt.title('XY and E-Velocity')
 plt.grid(True)
 
-for i in range(len(d["xylines"]) / 3):
-    x = d["xylines"][i*3][0][0]
+for i in range(len(plot1.Ticks)):
+    (x, y, nr) = plot1.Ticks[i]
     plt.axvline(x, color="yellow")
+    plt.text(x*1.01, y*1.01, "%d" % nr)
 
-    # x = d["xylines"][i*3+1][0][0]
-    y = d["xylines"][i*3+1][0][1]
-    plt.text(x*1.01, y*1.01, "%d" % i)
-
-lc = mc.LineCollection(d["xylines"]+d["elines"], colors=d["colors"], linestyles=d["linestyles"])
+lc = mc.LineCollection(plot1.Lines, colors=plot1.Colors, linestyles=plot1.Styles)
 ax.add_collection(lc)
-
-# lc = mc.LineCollection(d["elines"], colors=d["colors"], linestyles=d["linestyles"])
-# ax.add_collection(lc)
 
 ax.autoscale()
 plt.xlim(xmin=0)
@@ -41,16 +35,16 @@ plt.ylabel('Vel')
 plt.title('E-Advance')
 plt.grid(True)
 
-for i in range(len(d["xylines"]) / 3):
-    x = d["xylines"][i*3][0][0]
+for i in range(len(plot1.Ticks)):
+    (x, y, nr) = plot1.Ticks[i]
     plt.axvline(x, color="yellow")
 
-# lc = mc.LineCollection(d["e2lines"], colors=d["colors"], linestyles=d["linestyles"])
-lc = mc.LineCollection(d["e2lines"], colors="grey", linestyles=d["linestyles"])
+lc = mc.LineCollection(plot2.Lines, colors=plot2.Colors, linestyles=plot2.Styles)
 ax2.add_collection(lc)
 
 ax2.autoscale()
 plt.xlim(xmin=0)
+
 
 fig.tight_layout()
 plt.show()
