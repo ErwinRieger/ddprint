@@ -43,12 +43,9 @@ class DebugPlot (object):
 
         self.plotfile = "/tmp/ddplot_%04d.pkl" % nr
 
-        self.plottime = 1
-        self.eplottime = 1
-
-        fig, self.ax = plt.subplots()
-        self.ax.set_xlim(-1, 10) 
-        self.ax.set_ylim(0, 2) 
+        self.plottime = 0.1
+        self.eplottime = 0.1
+        self.e2plottime = 0.1
 
         self.xylines = []
         self.colors = []
@@ -56,6 +53,7 @@ class DebugPlot (object):
 
         self.segcol = ["green", "blue", "red"]
         self.elines = []
+        self.e2lines = []
 
     def newMove(self):
 
@@ -85,26 +83,24 @@ class DebugPlot (object):
         self.elines.append(((self.eplottime, vE1), (self.eplottime+dt, vE2)))
         self.eplottime += dt
 
+    def e2Segment(self, dt, vE1, vE2 = None):
+
+        if vE2 == None:
+            vE2 = vE1
+            if (dt > 0.05):
+                dt = 0.05
+
+        self.e2lines.append(((self.e2plottime, vE1), (self.e2plottime+dt, vE2)))
+        self.e2plottime += dt
+
     def close(self):
-
-        # self.plotfile.close()
-        # lc = mc.LineCollection(self.xylines, colors=self.colors, linewidths=2)
-        # self.ax.add_collection(lc)
-
-        # lc = mc.LineCollection(self.elines, colors=self.colors, linewidths=2)
-        # self.ax.add_collection(lc)
-
-        # self.ax.autoscale()
-        # self.ax.margins(0.1)
-
-        # while True:
-            # plt.pause(0.05)
 
         d = {
                 "xylines": self.xylines,
                 "colors": self.colors,
                 "linestyles": self.linestyles,
                 "elines": self.elines,
+                "e2lines": self.e2lines,
                 }
 
         pickle.dump(d, open(self.plotfile, "wb"))
@@ -225,6 +221,10 @@ class Advance (object):
             self.plotfile.eSegment(move.accelTime, vE1=move.getStartFeedrateV()[A_AXIS], vE2=move.getReachedFeedrateV()[A_AXIS])
             self.plotfile.eSegment(move.linearTime, vE1=move.getReachedFeedrateV()[A_AXIS])
             self.plotfile.eSegment(move.deccelTime, vE1=move.getReachedFeedrateV()[A_AXIS], vE2=move.getEndFeedrateV()[A_AXIS])
+
+            self.plotfile.e2Segment(move.accelTime, vE1=move.getStartFeedrateV()[A_AXIS], vE2=move.getReachedFeedrateV()[A_AXIS])
+            self.plotfile.e2Segment(move.linearTime, vE1=move.getReachedFeedrateV()[A_AXIS])
+            self.plotfile.e2Segment(move.deccelTime, vE1=move.getReachedFeedrateV()[A_AXIS], vE2=move.getEndFeedrateV()[A_AXIS])
 
             continue # xxx work
             assert(0)
