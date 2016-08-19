@@ -23,6 +23,7 @@ import math, struct
 import ddprintcommands, cobs, cStringIO
 
 from ddprintconstants import maxTimerValue16, maxTimerValue24, fTimer, MAX_ACCELERATION, MAX_AXIS_ACCELERATION
+from ddprintconstants import AdvanceEThreshold
 from ddprintutil import X_AXIS, Y_AXIS, Z_AXIS, A_AXIS, B_AXIS,vectorLength, vectorMul, vectorSub, circaf, sign
 from ddprintcommands import CommandNames
 from ddprofile import NozzleProfile, MatProfile
@@ -393,7 +394,7 @@ class Move(object):
             dirVE.checkJerk(nextDirVS, jerk, "#: %d" % self.moveNumber, "#: %d" % nextMove.moveNumber)
 
             eJerk = dirVE[A_AXIS] - nextDirVS[A_AXIS]
-            if not abs(eJerk) < 0.01:
+            if not abs(eJerk) <= AdvanceEThreshold:
            
                 print "Error, E-AXIS jerk: ", eJerk
                 nextMove.pprint("sanityCheck() - nextMove")

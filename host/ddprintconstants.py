@@ -86,5 +86,29 @@ NExtrusionLimit = 40
 # ExtrusionLimitBaseTemp = 190
 
 
+############################################################################
+#
+# Extruder advance
+#
+# Threshold value, if the difference of the extrusion rate of two moves
+# is below this value, we assume they have the same extrusion rate.
+AdvanceEThreshold=0.001 # [mm/s]
+#
+# Minimum extrusion rate difference between two moves for advance.
+AdvanceMinERate = 0.1 # [mm/s]
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 

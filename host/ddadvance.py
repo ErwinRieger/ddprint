@@ -34,9 +34,6 @@ if debugPlot:
     import pickle, matplotlib.pyplot as plt 
     from matplotlib import collections as mc
 
-# Minimum E velocity difference at move start/end for advance
-AdvanceMinE = 0.1 # [mm/s]
-
 #####################################################################
 
 class DebugPlotSegment (object):
@@ -617,22 +614,27 @@ class Advance (object):
         endEAccelSign = util.sign(endEVelDiff)
 
         print "startEVelDiff, endEVelDiff: ", startEVelDiff, endEVelDiff
-        if abs(startEVelDiff) < AdvanceMinE and abs(endEVelDiff) < AdvanceMinE:
+        if abs(startEVelDiff) < AdvanceMinERate and abs(endEVelDiff) < AdvanceMinERate:
             # Ignore small ramps
+            print "Warning, handle small e-difference!"
+            """
             print "Warning, sum up small extrusion velocity difference!"
             move.startEFeedrate = startFeedrateV[A_AXIS]
             move.startENominalFeedrate = move.endENominalFeedrate = reachedFeedrateV[A_AXIS]
             move.endEFeedrate = endFeedrateV[A_AXIS]
             return
+            """
 
-        if abs(startEVelDiff) < AdvanceMinE or abs(endEVelDiff) < AdvanceMinE:
+        if abs(startEVelDiff) < AdvanceMinERate or abs(endEVelDiff) < AdvanceMinERate:
             # 
-            # assert(0)
+            print "Warning, handle small e-difference!"
+            """
             print "Warning, sum up small extrusion velocity difference!"
             move.startEFeedrate = startFeedrateV[A_AXIS]
             move.startENominalFeedrate = move.endENominalFeedrate = reachedFeedrateV[A_AXIS]
             move.endEFeedrate = endFeedrateV[A_AXIS]
             return
+            """
 
         move.startEFeedrate = startFeedrateV[A_AXIS] + self.advJerk * startEAccelSign
         move.startENominalFeedrate = reachedFeedrateV[A_AXIS] + self.advJerk * startEAccelSign
