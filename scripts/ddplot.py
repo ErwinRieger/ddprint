@@ -1,3 +1,4 @@
+#!/usr/bin/python
 
 import matplotlib.pyplot as plt 
 from matplotlib import collections  as mc
@@ -6,6 +7,9 @@ import math, pickle, sys
 (plot1, plot2) = pickle.load(open(sys.argv[1]))
 
 fig = plt.figure(1)
+# fig.suptitle(sys.argv[1], x=0.01, horizontalalignment="left")
+fig.canvas.set_window_title(sys.argv[1])
+
 ax = x=plt.subplot(211)
 
 plt.ylabel('Vel')
