@@ -277,6 +277,35 @@ class StepData:
     def checkLen(self, deltaLead):
         assert(self.abs_vector_steps[self.leadAxis] - (len(self.accelPulses) + len(self.deccelPulses)) >= 0)
 
+class AdvanceData:
+
+    def __init__(self, move):
+
+        self.move = move
+
+        # Additional start E-Feedrate if advance applied or 0
+        self.startFeedrateIncrease = 0
+        # Additional end E-Feedrate if advance applied or 0
+        self.endFeedrateIncrease = 0
+
+    def hasStartAdvance(self):
+        return self.startFeedrateIncrease != 0
+
+    def startEFeedrate(self):
+        return self.move.getStartFeedrateV()[A_AXIS] + self.startFeedrateIncrease
+
+    def startEReachedFeedrate(self):
+        return self.move.getReachedFeedrateV()[A_AXIS] + self.startFeedrateIncrease
+
+    def hasEndAdvance(self):
+        return self.endFeedrateIncrease != 0
+
+    def endEFeedrate(self):
+        return self.move.getEndFeedrateV()[A_AXIS] + self.endFeedrateIncrease
+
+    def endEReachedFeedrate(self):
+        return self.move.getReachedFeedrateV()[A_AXIS] + self.endFeedrateIncrease
+
 ##################################################
 
 class Move(object):
@@ -338,6 +367,8 @@ class Move(object):
         self.accelData = AccelData()
 
         self.stepData = StepData()
+
+        self.advanceData = AdvanceData(self)
 
         self.lastMove = None
         self.nextMove = None

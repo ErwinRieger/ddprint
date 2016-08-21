@@ -128,10 +128,18 @@ class Advance (object):
 
         # self.plotfile = None
 
+        # Sum of skipped small accelration ramps
+        self.advSum = 0
+        # Likewise for decel
+        # self.endSum = 0
+
     def planPath(self, path):
 
         if debugMoves:
             print "***** Start planPath() *****"
+
+        # self.startSum = self.endSum = 0
+        self.advSum = 0
 
         if debugPlot: #  and not self.plotfile:
             self.plottime = 1
@@ -236,17 +244,18 @@ class Advance (object):
                     DebugPlotSegment(move.getReachedFeedrateV()[A_AXIS], move.getEndFeedrateV()[A_AXIS], "red"),
                     ))
 
+            # if move.advanceData.hasStartAdvance():
             if at:
 
                 self.plotfile.plot2Segments(0, (
-                    DebugPlotSegment(move.getStartFeedrateV()[A_AXIS], move.startEFeedrate, "green"),
+                    DebugPlotSegment(move.getStartFeedrateV()[A_AXIS], move.advanceData.startEFeedrate(), "green"),
                     ))
                 self.plotfile.plot2Segments(at, (
                     DebugPlotSegment(move.getStartFeedrateV()[A_AXIS], move.getReachedFeedrateV()[A_AXIS]),
-                    DebugPlotSegment(move.startEFeedrate, move.startENominalFeedrate, "green"),
+                    DebugPlotSegment(move.advanceData.startEFeedrate(), move.advanceData.startEReachedFeedrate(), "green"),
                     ))
                 self.plotfile.plot2Segments(0, (
-                    DebugPlotSegment(move.startENominalFeedrate, move.getReachedFeedrateV()[A_AXIS], "green"),
+                    DebugPlotSegment(move.advanceData.startEReachedFeedrate(), move.getReachedFeedrateV()[A_AXIS], "green"),
                     ))
 
             if lt:
@@ -254,17 +263,18 @@ class Advance (object):
                     DebugPlotSegment(move.getReachedFeedrateV()[A_AXIS]),
                     ))
 
+            # if move.advanceData.hasEndAdvance():
             if dt:
 
                 self.plotfile.plot2Segments(0, (
-                    DebugPlotSegment(move.getReachedFeedrateV()[A_AXIS], move.endENominalFeedrate, "red"),
+                    DebugPlotSegment(move.getReachedFeedrateV()[A_AXIS], move.advanceData.endEReachedFeedrate(), "red"),
                     ))
                 self.plotfile.plot2Segments(dt, (
                     DebugPlotSegment(move.getReachedFeedrateV()[A_AXIS], move.getEndFeedrateV()[A_AXIS]),
-                    DebugPlotSegment(move.endENominalFeedrate, move.endEFeedrate, "red"),
+                    DebugPlotSegment(move.advanceData.endEReachedFeedrate(), move.advanceData.endEFeedrate(), "red"),
                     ))
                 self.plotfile.plot2Segments(0, (
-                    DebugPlotSegment(move.endEFeedrate, move.getEndFeedrateV()[A_AXIS], "red"),
+                    DebugPlotSegment(move.advanceData.endEFeedrate(), move.getEndFeedrateV()[A_AXIS], "red"),
                     ))
 
             continue # xxx work
@@ -605,49 +615,77 @@ class Advance (object):
         """
 
         reachedFeedrateV = move.getReachedFeedrateV()
-        # startFeedrate = move.getStartFr()
+
         startFeedrateV = move.getStartFeedrateV()
+        endFeedrateV = move.getEndFeedrateV()
 
         startEVelDiff = reachedFeedrateV[A_AXIS] - startFeedrateV[A_AXIS]
         startEAccelSign = util.sign(startEVelDiff)
-
-        # endFeedrate = move.getEndFr()
-        endFeedrateV = move.getEndFeedrateV()
 
         endEVelDiff = endFeedrateV[A_AXIS] - reachedFeedrateV[A_AXIS]
         endEAccelSign = util.sign(endEVelDiff)
 
         print "startEVelDiff, endEVelDiff: ", startEVelDiff, endEVelDiff
+
+        #
+        # Advance of start-ramp
+        #
+        at = move.accelTime()
+        if at > AdvanceMinRamp:
+            move.advanceData.startFeedrateIncrease = self.advJerk * startEAccelSign
+        elif at > 0:
+            # Dont advance very small acceleration ramps, but sum up the missing advance.
+            # Note: this simple method works only if every ramp has the same acceleration.
+            self.advSum += at * startEAccelSign
+
+        #
+        # End of start-ramp
+        #
+        dt = move.decelTime()
+        if dt > AdvanceMinRamp:
+            move.advanceData.endFeedrateIncrease = self.advJerk * endEAccelSign
+        elif dt > 0:
+            # Dont advance, sum up like the acceleration ramp.
+            self.advSum += dt * endEAccelSign
+
+        print "advSum: ", self.advSum
+        assert(self.advSum < AdvanceMinRamp)
+
+        """
         if abs(startEVelDiff) < AdvanceMinERate and abs(endEVelDiff) < AdvanceMinERate:
             # Ignore small ramps
             print "Warning, handle small e-difference!"
-            """
+            x""
             print "Warning, sum up small extrusion velocity difference!"
             move.startEFeedrate = startFeedrateV[A_AXIS]
-            move.startENominalFeedrate = move.endENominalFeedrate = reachedFeedrateV[A_AXIS]
+            move.startEReachedFeedrate = move.endEReachedFeedrate = reachedFeedrateV[A_AXIS]
             move.endEFeedrate = endFeedrateV[A_AXIS]
             return
-            """
+            x""
 
         if abs(startEVelDiff) < AdvanceMinERate or abs(endEVelDiff) < AdvanceMinERate:
             # 
             print "Warning, handle small e-difference!"
-            """
+            x""
             print "Warning, sum up small extrusion velocity difference!"
             move.startEFeedrate = startFeedrateV[A_AXIS]
-            move.startENominalFeedrate = move.endENominalFeedrate = reachedFeedrateV[A_AXIS]
+            move.startEReachedFeedrate = move.endEReachedFeedrate = reachedFeedrateV[A_AXIS]
             move.endEFeedrate = endFeedrateV[A_AXIS]
             return
-            """
+            x""
 
-        move.startEFeedrate = startFeedrateV[A_AXIS] + self.advJerk * startEAccelSign
-        move.startENominalFeedrate = reachedFeedrateV[A_AXIS] + self.advJerk * startEAccelSign
+        # move.startEFeedrate = startFeedrateV[A_AXIS] + self.advJerk * startEAccelSign
+        move.advanceData.startFeedrateIncrease = self.advJerk * startEAccelSign
+        # move.startEReachedFeedrate = reachedFeedrateV[A_AXIS] + self.advJerk * startEAccelSign
 
-        move.endENominalFeedrate = reachedFeedrateV[A_AXIS] + self.advJerk * endEAccelSign
-        move.endEFeedrate = endFeedrateV[A_AXIS] + self.advJerk * endEAccelSign
+        # move.endEReachedFeedrate = reachedFeedrateV[A_AXIS] + self.advJerk * endEAccelSign
+        # move.endEFeedrate = endFeedrateV[A_AXIS] + self.advJerk * endEAccelSign
+        move.accelData.endFeedrateIncrease = self.advJerk * endEAccelSign
 
-        print "Adv: adjusted E startspeed: %f -> %f" % (startFeedrateV[A_AXIS], move.startEFeedrate)
-        print "Adv: adjusted E   endspeed: %f -> %f" % (endFeedrateV[A_AXIS], move.endEFeedrate)
+        """
+
+        print "Adv: adjusted E startspeed: %f -> %f" % (startFeedrateV[A_AXIS], move.advanceData.startEFeedrate())
+        print "Adv: adjusted E   endspeed: %f -> %f" % (endFeedrateV[A_AXIS], move.advanceData.endEFeedrate())
 
         if debugMoves:
             print 

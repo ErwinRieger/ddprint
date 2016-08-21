@@ -95,7 +95,9 @@ NExtrusionLimit = 40
 AdvanceEThreshold=0.001 # [mm/s]
 #
 # Minimum extrusion rate difference between two moves for advance.
-AdvanceMinERate = 0.1 # [mm/s]
+# AdvanceMinERate = 0.1 # [mm/s]
+# Minimum duration of accel- and decel-ramps to apply advance.
+AdvanceMinRamp = 0.001 # [s]
 
 
 
