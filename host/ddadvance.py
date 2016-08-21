@@ -209,59 +209,63 @@ class Advance (object):
 
 
             # xxx todo move to own function
-            # self.plotfile.newMove()
             self.plotfile.plot1Tick(move.getReachedFr(), move.moveNumber)
 
+            at = move.accelTime()
+            lt = move.linearTime()
+            dt = move.decelTime()
 
-            # self.plotfile.xySegment(move.accelTime, vXY1=move.getStartFr(), vXY2=move.getReachedFr())
-            # self.plotfile.eSegment(move.accelTime, vE1=move.getStartFeedrateV()[A_AXIS], vE2=move.getReachedFeedrateV()[A_AXIS])
-            self.plotfile.plot1Segments(move.accelTime, (
-                DebugPlotSegment(move.getStartFr(), move.getReachedFr(), "green"),
-                DebugPlotSegment(move.getStartFeedrateV()[A_AXIS], move.getReachedFeedrateV()[A_AXIS], "green"),
-                ))
+            if at:
 
-            # self.plotfile.xySegment(move.linearTime, vXY1=move.getReachedFr())
-            # self.plotfile.eSegment(move.linearTime, vE1=move.getReachedFeedrateV()[A_AXIS])
-            self.plotfile.plot1Segments(move.linearTime, (
-                DebugPlotSegment(move.getReachedFr(), color="blue"),
-                DebugPlotSegment(move.getReachedFeedrateV()[A_AXIS], color="blue"),
-                ))
+                self.plotfile.plot1Segments(at, (
+                    DebugPlotSegment(move.getStartFr(), move.getReachedFr(), "green"),
+                    DebugPlotSegment(move.getStartFeedrateV()[A_AXIS], move.getReachedFeedrateV()[A_AXIS], "green"),
+                    ))
 
-            # self.plotfile.xySegment(move.deccelTime, vXY1=move.getReachedFr(), vXY2=move.getEndFr())
-            # self.plotfile.eSegment(move.deccelTime, vE1=move.getReachedFeedrateV()[A_AXIS], vE2=move.getEndFeedrateV()[A_AXIS])
-            self.plotfile.plot1Segments(move.deccelTime, (
-                DebugPlotSegment(move.getReachedFr(), move.getEndFr(), "red"),
-                DebugPlotSegment(move.getReachedFeedrateV()[A_AXIS], move.getEndFeedrateV()[A_AXIS], "red"),
-                ))
+            if lt:
 
-            # self.plotfile.e2Segment(move.accelTime, vE1=move.getStartFeedrateV()[A_AXIS], vE2=move.getReachedFeedrateV()[A_AXIS])
-            self.plotfile.plot2Segments(0, (
-                DebugPlotSegment(move.getStartFeedrateV()[A_AXIS], move.startEFeedrate, "green"),
-                ))
-            self.plotfile.plot2Segments(move.accelTime, (
-                DebugPlotSegment(move.getStartFeedrateV()[A_AXIS], move.getReachedFeedrateV()[A_AXIS]),
-                DebugPlotSegment(move.startEFeedrate, move.startENominalFeedrate, "green"),
-                ))
-            self.plotfile.plot2Segments(0, (
-                DebugPlotSegment(move.startENominalFeedrate, move.getReachedFeedrateV()[A_AXIS], "green"),
-                ))
+                self.plotfile.plot1Segments(lt, (
+                    DebugPlotSegment(move.getReachedFr(), color="blue"),
+                    DebugPlotSegment(move.getReachedFeedrateV()[A_AXIS], color="blue"),
+                    ))
 
-            # self.plotfile.e2Segment(move.linearTime, vE1=move.getReachedFeedrateV()[A_AXIS])
-            self.plotfile.plot2Segments(move.linearTime, (
-                DebugPlotSegment(move.getReachedFeedrateV()[A_AXIS]),
-                ))
+            if dt:
 
-            # self.plotfile.e2Segment(move.deccelTime, vE1=move.getReachedFeedrateV()[A_AXIS], vE2=move.getEndFeedrateV()[A_AXIS])
-            self.plotfile.plot2Segments(0, (
-                DebugPlotSegment(move.getReachedFeedrateV()[A_AXIS], move.endENominalFeedrate, "red"),
-                ))
-            self.plotfile.plot2Segments(move.deccelTime, (
-                DebugPlotSegment(move.getReachedFeedrateV()[A_AXIS], move.getEndFeedrateV()[A_AXIS]),
-                DebugPlotSegment(move.endENominalFeedrate, move.endEFeedrate, "red"),
-                ))
-            self.plotfile.plot2Segments(0, (
-                DebugPlotSegment(move.endEFeedrate, move.getEndFeedrateV()[A_AXIS], "red"),
-                ))
+                self.plotfile.plot1Segments(dt, (
+                    DebugPlotSegment(move.getReachedFr(), move.getEndFr(), "red"),
+                    DebugPlotSegment(move.getReachedFeedrateV()[A_AXIS], move.getEndFeedrateV()[A_AXIS], "red"),
+                    ))
+
+            if at:
+
+                self.plotfile.plot2Segments(0, (
+                    DebugPlotSegment(move.getStartFeedrateV()[A_AXIS], move.startEFeedrate, "green"),
+                    ))
+                self.plotfile.plot2Segments(at, (
+                    DebugPlotSegment(move.getStartFeedrateV()[A_AXIS], move.getReachedFeedrateV()[A_AXIS]),
+                    DebugPlotSegment(move.startEFeedrate, move.startENominalFeedrate, "green"),
+                    ))
+                self.plotfile.plot2Segments(0, (
+                    DebugPlotSegment(move.startENominalFeedrate, move.getReachedFeedrateV()[A_AXIS], "green"),
+                    ))
+
+            if lt:
+                self.plotfile.plot2Segments(lt, (
+                    DebugPlotSegment(move.getReachedFeedrateV()[A_AXIS]),
+                    ))
+
+            if dt:
+
+                self.plotfile.plot2Segments(0, (
+                    DebugPlotSegment(move.getReachedFeedrateV()[A_AXIS], move.endENominalFeedrate, "red"),
+                    ))
+                self.plotfile.plot2Segments(dt, (
+                    DebugPlotSegment(move.getReachedFeedrateV()[A_AXIS], move.getEndFeedrateV()[A_AXIS]),
+                    DebugPlotSegment(move.endENominalFeedrate, move.endEFeedrate, "red"),
+                    ))
+                self.plotfile.plot2Segments(0, (
+                    DebugPlotSegment(move.endEFeedrate, move.getEndFeedrateV()[A_AXIS], "red"),
+                    ))
 
             continue # xxx work
             assert(0)

@@ -193,13 +193,40 @@ class AccelData:
         # Erreichbare geschwindigkeit falls kein plateu [mm/s]
         self.reachedovNominalVVector = None
 
+        # Time for the three phases of this move
+        self.accelTime = 0
+        self.linearTime = 0
+        self.deccelTime = 0
+
+    def setDuration(self, accelTime, linearTime, deccelTime):
+
+        assert(accelTime >= 0)
+        assert(linearTime >= 0)
+        assert(deccelTime >= 0)
+
+        self.accelTime = accelTime
+        self.linearTime = linearTime
+        self.deccelTime = deccelTime
+
+    def getTime(self):
+
+        return self.accelTime + self.linearTime + self.deccelTime
+
+    def sanityCheck(self):
+
+        assert(self.accelTime >= 0)
+        assert(self.linearTime >= 0)
+        assert(self.deccelTime >= 0)
+
     def __repr__(self):
+
+        s = ""
         if self.reachedovNominalVVector:
             s = "AccelData:"
             s += "\n  Nom. speed not reached, Vreach: " + str(self.reachedovNominalVVector)
-            return s
 
-        return ""
+        s += "\n  AccelTime: %f, LinearTime: %f, DecelTime: %f" % (self.accelTime, self.linearTime, self.deccelTime)
+        return s
 
 class StepData:
 
@@ -321,11 +348,6 @@ class Move(object):
         self.state = 0 # 1: joined, 2: accel planned, 3: steps planned
         self.streamed = False
 
-        # Time for the three phases of this move
-        self.accelTime = 0
-        self.linearTime = 0
-        self.deccelTime = 0
-
     def displacement_vector_raw(self):
         return VVector(self.displacement_vector3 + self.extrusion_displacement_raw)
 
@@ -410,9 +432,7 @@ class Move(object):
             # First move
             nullV.checkJerk(dirVS, jerk, "start 0", "#: %d" % self.moveNumber)
 
-        assert(self.accelTime >= 0)
-        assert(self.linearTime >= 0)
-        assert(self.deccelTime >= 0)
+        self.accelData.sanityCheck()
 
     def pprint(self, title):
 
@@ -425,7 +445,6 @@ class Move(object):
 
         print "displacement_vector:", self.displacement_vector_raw(), "_steps:", self.displacement_vector_steps_raw()
         print "feedrate:", self.feedrateS, "[mm/s], nominalVVector:", self.getFeedrateV(), "[mm/s]"
-        print ""
 
         if self.trueStartSpeed or self.nominalStartSpeed:
             print "\n  Startspeed: ",
@@ -444,15 +463,13 @@ class Move(object):
                 print "Nominal: %.3f" % self.nominalEndSpeed,
             print ",   End ESpeed: %.3f" % self.getFeedrateV(self.getEndFr())[A_AXIS],
 
-
         if self.state > 1:
             print ""
             print self.accelData
-        elif self.state > 2:
+
+        if self.state > 2:
             print ""
             print self.stepData
-        else:
-            print ""
 
         print "---------------------"
 
@@ -562,17 +579,23 @@ class Move(object):
 
     def setDuration(self, accelTime, linearTime, deccelTime):
 
-        assert(accelTime >= 0)
-        assert(linearTime >= 0)
-        assert(deccelTime >= 0)
-
-        self.accelTime = accelTime
-        self.linearTime = linearTime
-        self.deccelTime = deccelTime
+        self.accelData.setDuration(accelTime, linearTime, deccelTime)
 
     def getTime(self):
 
-        return self.accelTime + self.linearTime + self.deccelTime
+        return self.accelData.getTime()
+
+    def accelTime(self):
+
+        return self.accelData.accelTime
+
+    def linearTime(self):
+
+        return self.accelData.linearTime
+
+    def decelTime(self):
+
+        return self.accelData.deccelTime
 
     # return a list of binary encoded commands, ready to be send over serial...
     def commands(self):
