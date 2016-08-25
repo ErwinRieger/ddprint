@@ -109,6 +109,7 @@ class Advance (object):
     def __init__(self, planner): # , args, gui=None):
 
         self.planner = planner
+        self.printer = planner.printer
 
         #
         # Extruder advance, max allowed X/Y acceleration for the given E-Jerk
@@ -244,7 +245,6 @@ class Advance (object):
                     DebugPlotSegment(move.getReachedFeedrateV()[A_AXIS], move.getEndFeedrateV()[A_AXIS], "red"),
                     ))
 
-            # if move.advanceData.hasStartAdvance():
             if at:
 
                 self.plotfile.plot2Segments(0, (
@@ -263,7 +263,6 @@ class Advance (object):
                     DebugPlotSegment(move.getReachedFeedrateV()[A_AXIS]),
                     ))
 
-            # if move.advanceData.hasEndAdvance():
             if dt:
 
                 self.plotfile.plot2Segments(0, (
@@ -277,8 +276,8 @@ class Advance (object):
                     DebugPlotSegment(move.advanceData.endEFeedrate(), move.getEndFeedrateV()[A_AXIS], "red"),
                     ))
 
-            continue # xxx work
-            assert(0)
+            # continue # xxx work
+            assert(0) # work
 
             #
             # Collect some statistics
@@ -600,20 +599,6 @@ class Advance (object):
             print "***** Start planAdvance() *****"
             move.pprint("planAdvance:")
 
-        """
-        leadAxis = 0
-        leadAxis_value = 0
-
-        print "Warning, disabled extrusion adjust!"
-
-        for i in range(5):
-            disp = move.displacement_vector_steps_raw()
-            dirBits += (disp[i] >= 0) << i # xxx use sign here
-            s = abs(disp[i])
-            abs_displacement_vector_steps.append(s)
-
-        """
-
         reachedFeedrateV = move.getReachedFeedrateV()
 
         startFeedrateV = move.getStartFeedrateV()
@@ -723,21 +708,19 @@ class Advance (object):
         for i in range(5):
             disp = move.displacement_vector_steps_raw()
             dirBits += (disp[i] >= 0) << i # xxx use sign here
+
             s = abs(disp[i])
             abs_displacement_vector_steps.append(s)
+            if s > leadAxis_value:
+                leadAxis = i
+                leadAxis_value = s
 
-        print "Warning, disabled dirbits !"
-        """
         if dirBits != self.printer.curDirBits:
             move.stepData.setDirBits = True
             move.stepData.dirBits = dirBits
             self.printer.curDirBits = dirBits
-        """
 
         steps_per_mm = PrinterProfile.getStepsPerMM(leadAxis)
-
-        return # work
-        assert(0)
 
         #
         # Bresenham's variables
@@ -801,6 +784,9 @@ class Advance (object):
             #
             # Ramp up both sides in parallel to not exeed available steps
             #
+
+            return # work
+            assert(0)
 
             done = False
             while not done and stepNr < deltaLead:
@@ -925,6 +911,9 @@ class Advance (object):
             #
             while steps_per_second_deccel < steps_per_second_nominal and stepNr < deltaLead:
 
+                return # work
+                assert(0)
+
                 #
                 # Compute timer value
                 #
@@ -984,336 +973,4 @@ class Advance (object):
         if debugMoves:
             print "***** End planSteps() *****"
 
-        return 
 
-        # XXXXXXXXXXXXXX old, unused ...........
-
-        # 
-        # Compute acceleration timer values
-        # 
-        # while v0 and steps_per_second < steps_per_second_nominal:
-        # lastTimer = None
-        while steps_per_second < steps_per_second_nominal: #  and stepNr < deltaLead:
-
-            assert(stepNr < deltaLead)
-
-            #
-            # Compute timer value
-            #
-            steps_per_second = min(steps_per_second_0 + tAccel * accel_steps_per_square_second, steps_per_second_nominal)
-
-            dt = 1.0 / steps_per_second
-            timerValue = int(fTimer / steps_per_second)
-
-            # print "dt: ", dt*1000000, "[uS]", steps_per_second, "[steps/s], timerValue: ", timerValue
-
-            if debugPlot:
-                if move.eOnly:
-                    self.plotfile.write("%f %f 2\n" % (self.plottime, steps_per_second/steps_per_mm))
-                else:
-                    self.plotfile.write("%f %f 1\n" % (self.plottime, steps_per_second/steps_per_mm))
-                self.plottime += dt
-
-            tAccel += dt
-
-            # debnegtimer
-            # if timerValue <= 0:
-                # print "dt: ", dt*1000000, "[uS]", steps_per_second, "[steps/s], timerValue: ", timerValue
-                # assert(0)
-            # debtimeroverflow
-            if timerValue > maxTimerValue24:
-                move.pprint("PlanSTeps:")
-                print "v0: ", dt*1000000, "[uS]", steps_per_second, "[steps/s], timerValue: ", timerValue
-                print "dt: ", dt*1000000, "[uS]", steps_per_second, "[steps/s], timerValue: ", timerValue
-                assert(0)
-
-            move.stepData.addAccelPulse(timerValue)
-            stepNr += 1
-
-            # if lastTimer:
-                # assert((lastTimer - timerValue) < maxTimerValue16)
-            # lastTimer = timerValue
-
-        # Benutze als timer wert für die lineare phase den letzen timerwert der
-        # beschleunigungsphase falls es diese gab. Sonst:
-        # berechne timervalue ausgehend von linear feedrate:
-        # if not timerValue:
-            # timerValue = fTimer / steps_per_second
-            # dt = 1.0 / steps_per_second
-            # print "dt: ", dt*1000000, "[uS]", steps_per_second, "[steps/s], timerValue: ", timerValue
-
-        timerValue = fTimer / steps_per_second_nominal
-        move.stepData.setLinTimer(timerValue)
-
-        if debugPlot:
-            self.plotfile.write("# Linear top:\n")
-            self.plotfile.write("%f %f 0\n" % (self.plottime, steps_per_second/steps_per_mm))
-            self.plottime += timerValue / fTimer
-
-            self.plotfile.write("# Decceleration:\n")
-
-        #
-        # Compute ramp down (in reverse), decceleration
-        #
-        tDeccel = 1.0 / steps_per_second_nominal
-        steps_per_second = steps_per_second_nominal
-        steps_per_second_1 = v1 * steps_per_mm
-
-        # lastTimer = None
-        while steps_per_second > steps_per_second_1: #  and stepNr < deltaLead:
-
-            if stepNr >= deltaLead:
-                print "stepNr, deltaLead:", stepNr, deltaLead
-
-            assert(stepNr < deltaLead)
-
-            #
-            # Compute timer value
-            #
-            steps_per_second = max(steps_per_second_nominal - tDeccel * accel_steps_per_square_second, steps_per_second_1)
-
-            dt = 1.0 / steps_per_second
-            timerValue = int(fTimer / steps_per_second)
-
-            # print "dt: ", dt*1000000, "[uS]", steps_per_second, "[steps/s], timerValue: ", timerValue, ", v: ", steps_per_second/steps_per_mm
-
-            if debugPlot:
-                if move.eOnly:
-                    self.plotfile.write("%f %f 2\n" % (self.plottime, steps_per_second/steps_per_mm))
-                else:
-                    self.plotfile.write("%f %f 1\n" % (self.plottime, steps_per_second/steps_per_mm))
-                self.plottime += dt
-
-            tDeccel += dt
-
-            # debnegtimer
-            # assert(timerValue > 0)
-            if timerValue > maxTimerValue24:
-                move.pprint("PlanSTeps:")
-                print "v0: ", dt*1000000, "[uS]", steps_per_second, "[steps/s], timerValue: ", timerValue
-                print "dt: ", dt*1000000, "[uS]", steps_per_second, "[steps/s], timerValue: ", timerValue
-                assert(0)
-
-            move.stepData.addDeccelPulse(timerValue)
-            stepNr += 1
-
-            # if lastTimer:
-                # assert((timerValue - lastTimer) < maxTimerValue16)
-            # lastTimer = timerValue
-
-        if debugMoves:
-            print "# of steps for move: ", deltaLead
-            move.pprint("move:")
-            print 
-
-        move.stepData.checkLen(deltaLead)
-
-        if debugMoves:
-            print "***** End planSteps() *****"
-"""
-    def reset(self):
-
-        self.pathData = PathData()
-        # self.layerMoves = LayerMoves()
-
-        self.syncCommands = collections.defaultdict(list)
-        self.partNumber = 1
-
-    @classmethod
-    def get(cls):
-        return cls.__single
-
-    def getHomePos(self):
-
-        # Get additional z-offset from eeprom
-        add_homeing_z = self.printer.getAddHomeing_z()
-
-        assert((add_homeing_z <= 0) and (add_homeing_z >= -35))
-
-        print "add_homeing_z from eeprom: ", add_homeing_z
-
-        # Virtuelle position des druckkopfes falls 'gehomed'
-        homePosMM = util.MyPoint(
-            X = self.X_HOME_POS,
-            Y = self.Y_HOME_POS,
-            Z = self.Z_HOME_POS + add_homeing_z,
-            )
-
-        # Diese stepper position wird gesetzt falls der drucker 'gehomed' ist
-        homePosStepped = vectorMul(homePosMM.vector(), PrinterProfile.getStepsPerMMVector())
-
-        return (homePosMM, homePosStepped)
-
-    def addSynchronizedCommand(self, command, p1=None, p2=None):
-        self.syncCommands[self.pathData.count+1].append((command, p1, p2))
-
-    # Called from gcode parser
-    def newPart(self, partNumber):
-        self.partNumber = partNumber
-
-    # Called from gcode parser
-    def layerChange(self, layer):
-
-        if layer == 2:
-
-            self.partNumber -= 1
-            if self.partNumber:
-                return
-
-            # Reduce bedtemp
-            bedTemp = MatProfile.getBedTempReduced()
-            self.gui.log("Layer2, reducing bedtemp to: ", bedTemp)
-            self.addSynchronizedCommand(
-                CmdSyncTargetTemp, 
-                p1 = packedvalue.uint8_t(HeaterBed),
-                p2 = packedvalue.uint16_t(bedTemp))
-
-    def finishMoves(self):
-
-        if self.pathData.path:
-
-            assert(0)
-
-            # End path
-            move = self.pathData.path[-1]
-            move.state = 1
-
-            # Finish end move
-            move.setNominalJerkEndSpeed(self.jerk)
-
-            if debugMoves:
-                print "Streaming last block of moves, len: ", len(self.pathData.path), ", blocks: ", self.pathData.path[0].moveNumber, " - ", move.moveNumber
-
-            self.streamMoves(self.pathData.path, True)
-            self.pathData.path = []
-
-            if debugPlot:
-                self.plotfile.write("e\n")
-                self.plotfile.close()
-
-            print "\nStatistics:"
-            print "-----------"
-            self.pathData.maxExtrusionRate.printStat()
-            return
-
-        print "finishMoves: nothing to do..."
-
-    def streamMoves(self, moves, finish = False):
-
-        if debugMoves:
-            print "Streaming %d moves..." % len(moves)
-
-        if debugPlot and not self.plotfile:
-            self.plottime = 0
-            self.plotfile=open("/tmp/accel_%d.plt" % moves[0].moveNumber, "w")
-            self.plotfile.write("set grid\n")
-            self.plotfile.write("set label 2 at  graph 0.01, graph 0.95 'Note: Trapez top not included, e-only moves green.'\n")
-            self.plotfile.write('plot "-" using 1:2:3 with linespoints lc variable\n')
-
-        #################################################################################
-        # Backwards move planning
-        # self.joinMovesBwd(moves)
-        #################################################################################
-
-        for move in moves:
-
-            # move.pprint("sanicheck")
-            move.sanityCheck(self.jerk)
-
-            self.xlanAcceleration(move)
-            self.xlanSteps(move)
-
-            #
-            # Collect some statistics
-            #
-            self.pathData.maxExtrusionRate.stat(move)
-
-            #
-            # Collect moves if AutoTemp
-            #
-            if UseExtrusionAutoTemp:
-                if move.xsExtrudingMove(A_AXIS):
-                    # Collect moves and sum up path time
-                    self.pathData.time += move.getTime()
-
-                    # Sum extrusion volume
-                    self.pathData.extrusionAmount += move.getAdjustedExtrusionVolume(A_AXIS, NozzleProfile, MatProfile)
-
-                self.pathData.atMoves.append(move)
-
-            else:
-
-                self.streamMove(move)
-
-            move.streamed = True
-
-            # Help garbage collection
-            move.lastMove = errorMove
-            move.nextMove = errorMove
-        
-        if UseExtrusionAutoTemp:
-
-            if self.pathData.time >= ATInterval or finish:
-
-                if self.pathData.time > 0:
-
-                    # Compute temperature for this segment and add tempcommand into the stream
-                    # Average speed:
-                    avgSpeed = self.pathData.extrusionAmount / self.pathData.time
-
-                    # UseAutoTemp: Adjust temp between Tbase and HotendMaxTemp, if speed is greater than 20 mm/s
-                    # UseExtrusionAutoTemp: Adjust temp between Tbase and HotendMaxTemp, if speed is greater than 5 mm³/s
-                    newTemp = MatProfile.getHotendBaseTemp() # Extruder 1 temp
-                    # extrusionLow = self.ExtrusionAmountLow * pow(NozzleProfile.getSize(), 2)
-                    if avgSpeed > self.ExtrusionAmountLow:
-                        f = MatProfile.getAutoTempFactor()
-                        # newTemp += min((avgSpeed - self.ExtrusionAmountLow * pow(NozzleProfile.getSize(), 2)) * f, ATMaxTempIncrease)
-                        newTemp += (avgSpeed - self.ExtrusionAmountLow) * f
-                        # newTemp *= 1.15 # xxx sync withtemp-speed-adjust
-                        newTemp = min(newTemp, MatProfile.getHotendMaxTemp())
-
-                    if debugAutoTemp:
-                        print "AutoTemp: collected %d moves with %.2f s duration." % (len(self.pathData.atMoves), self.pathData.time)
-                        print "AutoTemp: amount: %.2f, avg extrusion rate: %.2f mm³/s." % (self.pathData.extrusionAmount, avgSpeed)
-                        print "AutoTemp: new temp: %.2f." % (newTemp)
-                        self.pathData.maxExtrusionRate.avgStat(avgSpeed)
-
-                    if newTemp != self.pathData.lastTemp and self.args.mode != "pre":
-
-                        # Schedule target temp command
-                        self.printer.sendCommandParamV(
-                            CmdSyncTargetTemp,
-                            [packedvalue.uint8_t(HeaterEx1), packedvalue.uint16_t(newTemp)])
-
-                        self.pathData.lastTemp = newTemp
-
-                for move in self.pathData.atMoves:
-                    self.streamMove(move)
-                   
-                self.pathData.atMoves = []
-                self.pathData.time = self.pathData.extrusionAmount = 0 # Reset path time
-                # assert(0)
-
-        # if debugPlot:
-            # self.plotfile.write("e\n")
-            # self.plotfile.close()
-
-    def streamMove(self, move):
-
-        if self.args.mode != "pre":
-
-            if move.moveNumber in self.syncCommands:
-                for (cmd, p1, p2) in self.syncCommands[move.moveNumber]:
-                    self.printer.sendCommandParamV(cmd, [p1, p2])
-
-            for (cmd, cobsBlock) in move.commands():
-                self.printer.sendCommandC(cmd, cobsBlock)
-
-    def packAxesBits(self, bitList):
-
-        bits = 0
-        for i in range(5):
-            bits += bitList[i] << i
-        return bits
-
-"""
