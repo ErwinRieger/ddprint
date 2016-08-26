@@ -112,20 +112,25 @@ class Advance (object):
         self.printer = planner.printer
 
         #
-        # Extruder advance, max allowed X/Y acceleration for the given E-Jerk
+        # Extruder advance, max allowed E-acceleration for the given E-Jerk
         #
         # dvin = dvout + ka * acceleration [ m/s + s * m/s² = m/s ]
         #
-        kAdv = 0.035 # [s]
-        kAdv = 0.005 # [s]
-        # self.advAccel = ((sel.jerk[A_AXIS] / 1000.0) / kAdv) * 1000
-        self.advJerk = planner.jerk[A_AXIS]
-        self.advAccel = self.advJerk / kAdv
+        self.kAdv = 0.035 # [s] # xxx move to material profile
+        self.kAdv = 0.010 # [s]
+        # self.advAccel = ((sel.jerk[A_AXIS] / 1000.0) / self.kAdv) * 1000
+        advJerk = planner.jerk[A_AXIS]
+        # self.advAccel = self.advJerk / self.kAdv
+        maxEAccel = advJerk / self.kAdv
 
         #
-        # XXX limit acceleration by DEFAULT_ACCELERATION/DEFAULT_MAX_ACCELERATION
+        # Limit E-acceleration by DEFAULT_ACCELERATION/DEFAULT_MAX_ACCELERATION
         #
-        print "ADV: max acceleration in X/Y plane:", self.advAccel, " [mm/s²]"
+        print "ADV: max E-acceleration:", maxEAccel, " [mm/s²]"
+        self.maxEAccel = min(maxEAccel, MAX_AXIS_ACCELERATION_NOADV[A_AXIS])
+        print "ADV: max E-acceleration, limited:", self.maxEAccel, " [mm/s²]"
+
+        self.maxAxisAcceleration = MAX_AXIS_ACCELERATION_NOADV[:3] + [self.maxEAccel, self.maxEAccel]
 
         # self.plotfile = None
 
@@ -133,6 +138,9 @@ class Advance (object):
         self.advSum = 0
         # Likewise for decel
         # self.endSum = 0
+
+    def eJerk(self, accel):
+        return accel * self.kAdv
 
     def planPath(self, path):
 
@@ -168,7 +176,7 @@ class Advance (object):
 
         # Step 1: join moves forward
         for move in path[1:]:
-            util.joinSpeed(lastMove, move, self.planner.jerk, self.advAccel)
+            util.joinSpeed(lastMove, move, self.planner.jerk, self.maxAxisAcceleration)
             lastMove = move
 
         # Sanity check
@@ -177,7 +185,7 @@ class Advance (object):
             move.sanityCheck(self.planner.jerk)
 
         # Step 2: join moves backwards
-        self.joinMovesBwd(path, self.advAccel)
+        self.joinMovesBwd(path)
 
         # Sanity check
         for move in path:
@@ -276,7 +284,7 @@ class Advance (object):
                     DebugPlotSegment(move.advanceData.endEFeedrate(), move.getEndFeedrateV()[A_AXIS], "red"),
                     ))
 
-            # continue # xxx work
+            continue # xxx work
             assert(0) # work
 
             #
@@ -376,7 +384,7 @@ class Advance (object):
     #   * der move vor dem "isolation move", in diesem falle ist endspeed noch nicht 
     #     gesetzt, aber die min/max grenzen
     #
-    def joinMovesBwd(self, moves, advAccel):
+    def joinMovesBwd(self, moves):
 
         if debugMoves:
             print "***** Start joinMovesBwd() *****"
@@ -395,9 +403,9 @@ class Advance (object):
             # given distance:
 
             endSpeedS = move.getEndFr()
-            # allowedAccel = move.getAllowedAccel()
 
-            maxAllowedStartSpeed = util.vAccelPerDist(endSpeedS, advAccel, move.distance)
+            allowedAccel = move.getMaxAllowedAccel(self.maxAxisAcceleration)
+            maxAllowedStartSpeed = util.vAccelPerDist(endSpeedS, allowedAccel, move.distance)
 
             # print "joinMovesBwd, startspeed, max startspeed: ", move.getStartFr(), maxAllowedStartSpeed
 
@@ -439,7 +447,7 @@ class Advance (object):
 
         move.state = 2
 
-        allowedAccel = allowedDeccel = self.advAccel; # move.getAllowedAccel()
+        allowedAccel = allowedDeccel = move.getMaxAllowedAccel(self.maxAxisAcceleration)
 
         #
         # Check if the speed difference between startspeed and endspeed can be done with
@@ -486,8 +494,8 @@ class Advance (object):
             for dim in range(5):
                 if deltaSpeedV[dim] != 0:
                     dimAccel = deltaSpeedV[dim] / ta
-                    if (dimAccel / MAX_AXIS_ACCELERATION[dim]) > 1.001:
-                        print "dim %d verletzt max accel: " % dim, dimAccel, " > ", MAX_AXIS_ACCELERATION[dim]
+                    if (dimAccel / self.maxAxisAcceleration[dim]) > 1.001:
+                        print "dim %d verletzt max accel: " % dim, dimAccel, " > ", self.maxAxisAcceleration[dim]
                         assert(0)
             #end debug
 
@@ -511,8 +519,8 @@ class Advance (object):
             for dim in range(5):
                 if deltaSpeedV[dim] != 0:
                     dimDeccel = deltaSpeedV[dim] / tb  
-                    if (dimDeccel / MAX_AXIS_ACCELERATION[dim]) > 1.001:
-                        print "dim %d verletzt max accel: " % dim, dimDeccel, " [mm/s] > ", MAX_AXIS_ACCELERATION[dim], " [mm/s]"
+                    if (dimDeccel / self.maxAxisAcceleration[dim]) > 1.001:
+                        print "dim %d verletzt max accel: " % dim, dimDeccel, " [mm/s] > ", self.maxAxisAcceleration[dim], " [mm/s]"
                         assert(0)
             # end debug
 
@@ -612,12 +620,14 @@ class Advance (object):
 
         print "startEVelDiff, endEVelDiff: ", startEVelDiff, endEVelDiff
 
+        allowedAccelV = move.getMaxAllowedAccelVectorNoAdv()
+
         #
         # Advance of start-ramp
         #
         at = move.accelTime()
         if at > AdvanceMinRamp:
-            move.advanceData.startFeedrateIncrease = self.advJerk * startEAccelSign
+            move.advanceData.startFeedrateIncrease = self.eJerk(allowedAccelV[A_AXIS]) * startEAccelSign
         elif at > 0:
             # Dont advance very small acceleration ramps, but sum up the missing advance.
             # Note: this simple method works only if every ramp has the same acceleration.
@@ -628,7 +638,7 @@ class Advance (object):
         #
         dt = move.decelTime()
         if dt > AdvanceMinRamp:
-            move.advanceData.endFeedrateIncrease = self.advJerk * endEAccelSign
+            move.advanceData.endFeedrateIncrease = self.eJerk(allowedAccelV[A_AXIS]) * endEAccelSign
         elif dt > 0:
             # Dont advance, sum up like the acceleration ramp.
             self.advSum += dt * endEAccelSign
@@ -739,12 +749,13 @@ class Advance (object):
         reachedSpeedFr = reachedSpeedV.len5()
 
         # advance
-        # accel = abs(move.getAllowedAccelVector()[leadAxis])
-        accelVector = move.displacement_vector_raw()._setLength( self.advAccel )
-        print "self.advAccel: ", self.advAccel, "accelVector: ", accelVector
-        accel = accelVector.len5()
+        allowedAccel = abs(move.getMaxAllowedAccel(self.maxAxisAcceleration))
 
-        accel_steps_per_square_second = accel * steps_per_mm
+        print "allowedAccel: ", move.getMaxAllowedAccel(self.maxAxisAcceleration), self.maxAxisAcceleration
+        accel_steps_per_square_second = allowedAccel * steps_per_mm
+
+        # todo work
+        return
 
         # startSpeed = move.getStartFr()
 

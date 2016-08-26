@@ -626,7 +626,7 @@ class Planner (object):
 
         move.state = 2
 
-        allowedAccel = allowedDeccel = move.getMaxAllowedAccel()
+        allowedAccel = allowedDeccel = move.getMaxAllowedAccelNoAdv()
 
         #
         # Check if the speed difference between startspeed and endspeed can be done with
@@ -673,8 +673,8 @@ class Planner (object):
             for dim in range(5):
                 if deltaSpeedV[dim] != 0:
                     dimAccel = deltaSpeedV[dim] / ta
-                    if (dimAccel / MAX_AXIS_ACCELERATION[dim]) > 1.001:
-                        print "dim %d verletzt max accel: " % dim, dimAccel, " > ", MAX_AXIS_ACCELERATION[dim]
+                    if (dimAccel / MAX_AXIS_ACCELERATION_NOADV[dim]) > 1.001:
+                        print "dim %d verletzt max accel: " % dim, dimAccel, " > ", MAX_AXIS_ACCELERATION_NOADV[dim]
                         assert(0)
             #end debug
 
@@ -698,8 +698,8 @@ class Planner (object):
             for dim in range(5):
                 if deltaSpeedV[dim] != 0:
                     dimDeccel = deltaSpeedV[dim] / tb  
-                    if (dimDeccel / MAX_AXIS_ACCELERATION[dim]) > 1.001:
-                        print "dim %d verletzt max accel: " % dim, dimDeccel, " [mm/s] > ", MAX_AXIS_ACCELERATION[dim], " [mm/s]"
+                    if (dimDeccel / MAX_AXIS_ACCELERATION_NOADV[dim]) > 1.001:
+                        print "dim %d verletzt max accel: " % dim, dimDeccel, " [mm/s] > ", MAX_AXIS_ACCELERATION_NOADV[dim], " [mm/s]"
                         assert(0)
             # end debug
 
@@ -833,8 +833,7 @@ class Planner (object):
         reachedSpeedV = move.getReachedFeedrateV()
         reachedSpeedFr = reachedSpeedV.len5()
 
-        # advance
-        accel = abs(move.getMaxAllowedAccelVector()[leadAxis])
+        accel = abs(move.getMaxAllowedAccelVectorNoAdv()[leadAxis])
         accel_steps_per_square_second = accel * steps_per_mm
 
         # startSpeed = move.getStartFr()

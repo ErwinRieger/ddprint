@@ -122,7 +122,7 @@ def vAccelPerDist(v0, a, s):
 
 ####################################################################################################
 
-def joinSpeed(move1, move2, jerk, advAccel):
+def joinSpeed(move1, move2, jerk, maxAccelV):
 
         if debugMoves:
             print "***** Start joinSpeed() *****"
@@ -132,14 +132,15 @@ def joinSpeed(move1, move2, jerk, advAccel):
         endSpeedS = move1.feedrateS
 
         # Compute max reachable endspeed of move1
-        maxEndSpeed = vAccelPerDist(move1.getStartFr(), advAccel, move1.distance) * RoundSafe
+        allowedAccel = move1.getMaxAllowedAccel(maxAccelV)
+        maxEndSpeed = vAccelPerDist(move1.getStartFr(), allowedAccel, move1.distance) * RoundSafe
 
         if maxEndSpeed < endSpeedS:
 
             assert(0);
 
             if debugMoves:
-                print "math.sqrt( 2 * %f * %f + pow(%f, 2) ) * %f" % (move1.distance, advAccel, move1.getStartFr(), RoundSafe)
+                print "math.sqrt( 2 * %f * %f + pow(%f, 2) ) * %f" % (move1.distance, allowedAccel, move1.getStartFr(), RoundSafe)
                 print "Max. reachable endspeed: %.3f < feedrate: %.3f" % (maxEndSpeed, endSpeedS)
 
             endSpeedS = maxEndSpeed

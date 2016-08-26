@@ -22,7 +22,7 @@ import math, struct
 
 import ddprintcommands, cobs, cStringIO
 
-from ddprintconstants import maxTimerValue16, maxTimerValue24, fTimer, MAX_ACCELERATION, MAX_AXIS_ACCELERATION
+from ddprintconstants import maxTimerValue16, maxTimerValue24, fTimer, _MAX_ACCELERATION, MAX_AXIS_ACCELERATION_NOADV
 from ddprintconstants import AdvanceEThreshold
 from ddprintutil import X_AXIS, Y_AXIS, Z_AXIS, A_AXIS, B_AXIS,vectorLength, vectorMul, vectorSub, circaf, sign
 from ddprintcommands import CommandNames
@@ -417,17 +417,25 @@ class Move(object):
     def _vDim(self, axis):
         return self.vVector()[axis]
 
-    def getMaxAllowedAccelVector(self):
+    def getMaxAllowedAccelVectorNoAdv(self):
 
-        accelVector = self.displacement_vector_raw()._setLength(MAX_ACCELERATION)
-        return accelVector.constrain(MAX_AXIS_ACCELERATION) or accelVector
+        accelVector = self.displacement_vector_raw()._setLength(_MAX_ACCELERATION)
+        return accelVector.constrain(MAX_AXIS_ACCELERATION_NOADV) or accelVector
 
-    def getMaxAllowedAccel(self):
+    def getMaxAllowedAccelNoAdv(self):
 
-        accelVector = self.getMaxAllowedAccelVector()
-        allowedAccel = accelVector.len5() # always positive
+        accelVector = self.getMaxAllowedAccelVectorNoAdv()
+        return accelVector.len5() # always positive
 
-        return allowedAccel
+    def getMaxAllowedAccelVector(self, maxAccelV):
+
+        accelVector = self.displacement_vector_raw()._setLength(_MAX_ACCELERATION)
+        return accelVector.constrain(maxAccelV) or accelVector
+
+    def getMaxAllowedAccel(self, maxAccelV):
+
+        accelVector = self.getMaxAllowedAccelVector(maxAccelV)
+        return accelVector.len5() # always positive
 
     def sanityCheck(self, jerk):
 
