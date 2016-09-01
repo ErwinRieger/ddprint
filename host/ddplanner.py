@@ -345,9 +345,9 @@ class Planner (object):
             return
 
         if self.pathData.path:
-            lastMove = self.pathData.path[-1]
-            lastMove.nextMove = move
-            move.lastMove = lastMove
+            prevMove = self.pathData.path[-1]
+            prevMove.nextMove = move
+            move.prevMove = prevMove
 
         self.pathData.path.append(move)
 
@@ -374,10 +374,10 @@ class Planner (object):
 
             move.streamed = True
 
-    def isIsolationMove(self, lastMove):
+    def isIsolationMove(self, prevMove):
 
         # 
-        # Alle vorgänger-moves können weiterverarbeitet werden, falls lastMove (nicht move, der ist noch nicht
+        # Alle vorgänger-moves können weiterverarbeitet werden, falls prevMove (nicht move, der ist noch nicht
         # fertig geplant) die folgenden bedingung erfüllt:
         # 
         #  Es kann innerhalb des moves von der startgeschwindigkeit auf Jerk/2 (xxx 0) gebremst werden. In diesem fall
@@ -386,15 +386,15 @@ class Planner (object):
         # 
         # 
 
-        allowedAccel = lastMove.getAllowedAccel()
-        startSpeedS = lastMove.getStartFr()
+        allowedAccel = prevMove.getAllowedAccel()
+        startSpeedS = prevMove.getStartFr()
 
         #
         # Abbremsen auf 0 ist zwar hartes kriterium, aber das beeinflusst ja nicht
         # die erreichten geschwindigkeiten, sonder nur das segmentieren und streamen
         # der moves.
         #
-        endSpeedS = 0 # min(self.jerk.mul(0.5).len3(), lastMove.getEndFr())
+        endSpeedS = 0 # min(self.jerk.mul(0.5).len3(), prevMove.getEndFr())
 
         deltaSpeedS = endSpeedS - startSpeedS
 
@@ -407,7 +407,7 @@ class Planner (object):
                 return True
 
             # bremsen
-            minEndSpeed = util.vAccelPerDist(startSpeedS, -allowedAccel, lastMove.distance)
+            minEndSpeed = util.vAccelPerDist(startSpeedS, -allowedAccel, prevMove.distance)
 
             # print "minEndSpeed:", minEndSpeed
 
@@ -490,7 +490,7 @@ class Planner (object):
             move.streamed = True
 
             # Help garbage collection
-            move.lastMove = errorMove
+            move.prevMove = errorMove
             move.nextMove = errorMove
         
         if UseExtrusionAutoTemp:
@@ -591,7 +591,7 @@ class Planner (object):
                 print "Startspeed of %.5f is to high to reach the desired endspeed." % move.getStartFr()
                 print "Max. allowed startspeed: %.5f." % maxAllowedStartSpeed
 
-            if move.lastMove:
+            if move.prevMove:
 
                 #
                 # Adjust endspeed of the previous move, also.
@@ -603,14 +603,14 @@ class Planner (object):
           
                 assert(factor < 1)
 
-                if move.lastMove.streamed:
-                    move.lastMove.pprint("error-streamed")
+                if move.prevMove.streamed:
+                    move.prevMove.pprint("error-streamed")
 
-                assert( not move.lastMove.streamed )
+                assert( not move.prevMove.streamed )
 
                 # XXX einfacher algo, kann man das besser machen (z.b. mit jerk-berechnung,
                 # vector subtraktion oder so?)
-                move.lastMove.setTrueEndFr(move.lastMove.getEndFr() * factor)
+                move.prevMove.setTrueEndFr(move.prevMove.getEndFr() * factor)
 
             # Adjust startspeed of this move:
             move.setTrueStartFr(maxAllowedStartSpeed)
@@ -796,17 +796,18 @@ class Planner (object):
         dirBits = 0
         abs_displacement_vector_steps = []
 
+        # Determine the 'lead axis' - the axis with the most steps
         leadAxis = 0
-        leadAxis_value = 0
+        leadAxis_steps = 0
 
         for i in range(5):
             dirBits += (move.displacement_vector_steps_raw()[i] >= 0) << i
             adjustedDisplacement = move.displacement_vector_steps_adjusted(NozzleProfile, MatProfile, PrinterProfile)
 
             s = abs(adjustedDisplacement[i])
-            if s > leadAxis_value:
+            if s > leadAxis_steps:
                 leadAxis = i
-                leadAxis_value = s
+                leadAxis_steps = s
 
             abs_displacement_vector_steps.append(s)
 
@@ -820,7 +821,6 @@ class Planner (object):
         #
         # Bresenham's variables
         #
-        deltaLead = abs_displacement_vector_steps[leadAxis]
         move.stepData.setBresenhamParameters(leadAxis, abs_displacement_vector_steps)
 
         #
@@ -876,7 +876,7 @@ class Planner (object):
             #
 
             done = False
-            while not done and stepNr < deltaLead:
+            while not done and stepNr < leadAxis_steps:
 
                 done = True
 
@@ -913,7 +913,7 @@ class Planner (object):
                     stepNr += 1
                     done = False
 
-                if stepNr == deltaLead:
+                if stepNr == leadAxis_steps:
                     break
 
                 #
@@ -958,7 +958,7 @@ class Planner (object):
             # 
             # Compute acceleration timer values
             # 
-            while steps_per_second_accel < steps_per_second_nominal and stepNr < deltaLead:
+            while steps_per_second_accel < steps_per_second_nominal and stepNr < leadAxis_steps:
 
                 #
                 # Compute timer value
@@ -996,7 +996,7 @@ class Planner (object):
             #
             # Compute ramp down (in reverse), decceleration
             #
-            while steps_per_second_deccel < steps_per_second_nominal and stepNr < deltaLead:
+            while steps_per_second_deccel < steps_per_second_nominal and stepNr < leadAxis_steps:
 
                 #
                 # Compute timer value
@@ -1048,138 +1048,11 @@ class Planner (object):
                 # self.plottime += dt
 
         if debugMoves:
-            print "# of steps for move: ", deltaLead
+            print "# of steps for move: ", leadAxis_steps
             move.pprint("move:")
             print 
 
-        move.stepData.checkLen(deltaLead)
-
-        if debugMoves:
-            print "***** End planTravelSteps() *****"
-
-        return 
-
-        # XXXXXXXXXXXXXX old, unused ...........
-
-        # 
-        # Compute acceleration timer values
-        # 
-        # while v0 and steps_per_second < steps_per_second_nominal:
-        # lastTimer = None
-        while steps_per_second < steps_per_second_nominal: #  and stepNr < deltaLead:
-
-            assert(stepNr < deltaLead)
-
-            #
-            # Compute timer value
-            #
-            steps_per_second = min(steps_per_second_0 + tAccel * accel_steps_per_square_second, steps_per_second_nominal)
-
-            dt = 1.0 / steps_per_second
-            timerValue = int(fTimer / steps_per_second)
-
-            # print "dt: ", dt*1000000, "[uS]", steps_per_second, "[steps/s], timerValue: ", timerValue
-
-            if debugPlot:
-                if move.eOnly:
-                    self.plotfile.write("%f %f 2\n" % (self.plottime, steps_per_second/steps_per_mm))
-                else:
-                    self.plotfile.write("%f %f 1\n" % (self.plottime, steps_per_second/steps_per_mm))
-                self.plottime += dt
-
-            tAccel += dt
-
-            # debnegtimer
-            # if timerValue <= 0:
-                # print "dt: ", dt*1000000, "[uS]", steps_per_second, "[steps/s], timerValue: ", timerValue
-                # assert(0)
-            # debtimeroverflow
-            if timerValue > maxTimerValue24:
-                move.pprint("planTravelSTeps:")
-                print "v0: ", dt*1000000, "[uS]", steps_per_second, "[steps/s], timerValue: ", timerValue
-                print "dt: ", dt*1000000, "[uS]", steps_per_second, "[steps/s], timerValue: ", timerValue
-                assert(0)
-
-            move.stepData.addAccelPulse(timerValue)
-            stepNr += 1
-
-            # if lastTimer:
-                # assert((lastTimer - timerValue) < maxTimerValue16)
-            # lastTimer = timerValue
-
-        # Benutze als timer wert für die lineare phase den letzen timerwert der
-        # beschleunigungsphase falls es diese gab. Sonst:
-        # berechne timervalue ausgehend von linear feedrate:
-        # if not timerValue:
-            # timerValue = fTimer / steps_per_second
-            # dt = 1.0 / steps_per_second
-            # print "dt: ", dt*1000000, "[uS]", steps_per_second, "[steps/s], timerValue: ", timerValue
-
-        timerValue = fTimer / steps_per_second_nominal
-        move.stepData.setLinTimer(timerValue)
-
-        if debugPlot:
-            self.plotfile.write("# Linear top:\n")
-            self.plotfile.write("%f %f 0\n" % (self.plottime, steps_per_second/steps_per_mm))
-            self.plottime += timerValue / fTimer
-
-            self.plotfile.write("# Decceleration:\n")
-
-        #
-        # Compute ramp down (in reverse), decceleration
-        #
-        tDeccel = 1.0 / steps_per_second_nominal
-        steps_per_second = steps_per_second_nominal
-        steps_per_second_1 = v1 * steps_per_mm
-
-        # lastTimer = None
-        while steps_per_second > steps_per_second_1: #  and stepNr < deltaLead:
-
-            if stepNr >= deltaLead:
-                print "stepNr, deltaLead:", stepNr, deltaLead
-
-            assert(stepNr < deltaLead)
-
-            #
-            # Compute timer value
-            #
-            steps_per_second = max(steps_per_second_nominal - tDeccel * accel_steps_per_square_second, steps_per_second_1)
-
-            dt = 1.0 / steps_per_second
-            timerValue = int(fTimer / steps_per_second)
-
-            # print "dt: ", dt*1000000, "[uS]", steps_per_second, "[steps/s], timerValue: ", timerValue, ", v: ", steps_per_second/steps_per_mm
-
-            if debugPlot:
-                if move.eOnly:
-                    self.plotfile.write("%f %f 2\n" % (self.plottime, steps_per_second/steps_per_mm))
-                else:
-                    self.plotfile.write("%f %f 1\n" % (self.plottime, steps_per_second/steps_per_mm))
-                self.plottime += dt
-
-            tDeccel += dt
-
-            # debnegtimer
-            # assert(timerValue > 0)
-            if timerValue > maxTimerValue24:
-                move.pprint("planTravelSTeps:")
-                print "v0: ", dt*1000000, "[uS]", steps_per_second, "[steps/s], timerValue: ", timerValue
-                print "dt: ", dt*1000000, "[uS]", steps_per_second, "[steps/s], timerValue: ", timerValue
-                assert(0)
-
-            move.stepData.addDeccelPulse(timerValue)
-            stepNr += 1
-
-            # if lastTimer:
-                # assert((timerValue - lastTimer) < maxTimerValue16)
-            # lastTimer = timerValue
-
-        if debugMoves:
-            print "# of steps for move: ", deltaLead
-            move.pprint("move:")
-            print 
-
-        move.stepData.checkLen(deltaLead)
+        move.stepData.checkLen(leadAxis_steps)
 
         if debugMoves:
             print "***** End planTravelSteps() *****"

@@ -28,11 +28,11 @@ CmdSyncFanSpeed  = 0x3 # Parameters: pwm value 0 - 255
 CmdRaw           = 0x4 # Parameters: blob data
 CmdBlock         = 0x6 # A 512byte block of a lager command
 
-CmdG1            = 0x7
-CmdDirG1         = 0x8 # CmdDirBits and CmdG1 combined
+xCmdG1            = 0x7
+xCmdDirG1         = 0x8 # CmdDirBits and CmdG1 combined
 
-CmdG1_24         = 0x9 # Same as CmdG1, but with 32 bit accel- and deccel-timervalues (vor very slow moves)
-CmdDirG1_24      = 0xa # CmdDirBits and CmdG1_24 combined
+xCmdG1_24         = 0x9 # Same as CmdG1, but with 32 bit accel- and deccel-timervalues (vor very slow moves)
+xCmdDirG1_24      = 0xa # CmdDirBits and CmdG1_24 combined
 CmdSyncTargetTemp= 0xb # Parameters: heater, temp 
 CmdDwellMS       = 0xc # Parameters: dwell time in mS
 
@@ -88,12 +88,12 @@ CmdEnableFRLimit = 165 # Enable/disable flowrate limit
 
 CommandNames = {
     CmdNull: "CmdNull",
-    CmdG1: "CmdG1",
-    CmdG1_24: "CmdG1_24",
+    xCmdG1: "CmdG1",
+    xCmdG1_24: "CmdG1_24",
     CmdDirBits: "CmdDirBits",
     CmdBlock: "CmdBlock",
-    CmdDirG1: "CmdDirG1",
-    CmdDirG1_24: "CmdDirG1_24",
+    xCmdDirG1: "CmdDirG1",
+    xCmdDirG1_24: "CmdDirG1_24",
     CmdSyncTargetTemp: "CmdSyncTargetTemp",
     CmdDwellMS: "CmdDwellMS",
     CmdUnknown: "CmdUnknown",

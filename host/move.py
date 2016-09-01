@@ -288,6 +288,9 @@ class AdvanceData:
         # Additional end E-Feedrate if advance applied or 0
         self.endFeedrateIncrease = 0
 
+        self.startSplits = 0
+        self.endSplits = 0
+
     def hasStartAdvance(self):
         return self.startFeedrateIncrease != 0
 
@@ -305,6 +308,13 @@ class AdvanceData:
 
     def endEReachedFeedrate(self):
         return self.move.getReachedFeedrateV()[A_AXIS] + self.endFeedrateIncrease
+
+    # Check if sign changes at accel/decel
+    def startSignChange(self):
+        return sign(self.startEFeedrate()) != sign(self.startEReachedFeedrate())
+
+    def endSignChange(self):
+        return sign(self.endEFeedrate()) != sign(self.endEReachedFeedrate())
 
 ##################################################
 
@@ -370,7 +380,7 @@ class Move(object):
 
         self.advanceData = AdvanceData(self)
 
-        self.lastMove = None
+        self.prevMove = None
         self.nextMove = None
 
         self.moveNumber = 0
@@ -466,7 +476,7 @@ class Move(object):
             # Last move
             dirVE.checkJerk(nullV, jerk)
 
-        if not self.lastMove:
+        if not self.prevMove:
 
             # First move
             nullV.checkJerk(dirVS, jerk, "start 0", "#: %d" % self.moveNumber)
@@ -772,9 +782,23 @@ class Move(object):
         return raw
 
 
+##################################################
+
+class SubMove(object):
+
+    def __init__(self,
+                 parentMove,
+                 displacement_vector_steps):
+
+        self.parentMove = parentMove
+        # self.displacement_vector_steps3=displacement_vector_steps[:3]
+        self.extrusion_displacement_steps_raw = displacement_vector_steps[3:]
 
 
+        self.prevMove = None
+        self.nextMove = None
 
+        self.moveNumber = None
 
 
 

@@ -21,11 +21,11 @@
 ############################################################################
 # Maximum acceleration of each axis X, Y, Z, (A/B/E)
 #define DEFAULT_MAX_ACCELERATION      {9000,9000,100,10000}
-MAX_AXIS_ACCELERATION = [9000, 9000, 100, 10000, 10000] # [ mm/s^s ]
+MAX_AXIS_ACCELERATION_NOADV = [9000, 9000, 100, 10000, 10000] # [ mm/s^s ]
 
 # Maximum combined acceleration of the X, Y, Z and E axes 
 #define DEFAULT_ACCELERATION          3000
-MAX_ACCELERATION =         3000    # [ mm/s^s ]
+_MAX_ACCELERATION =         3000    # [ mm/s^s ]
 
 #define DEFAULT_RETRACT_ACCELERATION  3000   // E max acceleration in mm/s^2 for retracts
 
@@ -98,6 +98,7 @@ AdvanceEThreshold=0.001 # [mm/s]
 # AdvanceMinERate = 0.1 # [mm/s]
 # Minimum duration of accel- and decel-ramps to apply advance.
 AdvanceMinRamp = 0.001 # [s]
+AdvanceMinRamp = 0.002 # [s]
 
 
 
