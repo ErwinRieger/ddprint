@@ -446,8 +446,10 @@ class VelocityOverride(object):
     def trueSpeed(self, speed=None):
 
         if speed:
-            assert(len(self.speeds) == 2)
-            self.speeds.append(speed)
+            if len(self.speeds) == 2:
+                self.speeds.append(speed)
+            else:
+                self.speeds[2] = speed
             return
 
         if len(self.speeds) < 3:
@@ -508,6 +510,87 @@ class MoveBase(object):
 
         return self.accelData.decelTime
 
+    # return a list of binary encoded commands, ready to be send over serial...
+    def commands(self):
+
+        cmds = []
+
+        payLoad = ""
+        cmdOfs = 0
+
+        if self.stepData.setDirBits:
+            payLoad += struct.pack("<B", self.stepData.dirBits | 0x80)
+            cmdOfs = 1
+
+        use24Bits = False
+        if (self.stepData.accelPulses and self.stepData.accelPulses[0] > maxTimerValue16) or \
+           (self.stepData.deccelPulses and self.stepData.deccelPulses[-1] > maxTimerValue16):
+            use24Bits = True
+
+        payLoad += struct.pack("<BiiiiiH",
+                self.stepData.leadAxis,
+                self.stepData.abs_vector_steps[0],
+                self.stepData.abs_vector_steps[1],
+                self.stepData.abs_vector_steps[2],
+                self.stepData.abs_vector_steps[3],
+                self.stepData.abs_vector_steps[4],
+                len(self.stepData.accelPulses))
+
+        if not use24Bits:
+            print "commands(): ignoring isExtrudingMove!"
+            if False: # self.isExtrudingMove(A_AXIS):
+                leadFactor = int((self.stepData.abs_vector_steps[self.stepData.leadAxis]*1000) / self.stepData.abs_vector_steps[A_AXIS])
+                payLoad += struct.pack("<H", min(leadFactor, 0xffff))
+            else:
+                payLoad += struct.pack("<H", 0)
+
+        payLoad += struct.pack("<HH", 
+                self.stepData.linearTimer,
+                len(self.stepData.deccelPulses))
+
+        if use24Bits:
+
+            cmdHex = ddprintcommands.CmdG1_24 + cmdOfs
+
+            for timer in self.stepData.accelPulses:
+                timerCount = timer / 0xffff
+                payLoad += struct.pack("<B", timerCount)
+
+                rest = timer - (timerCount * 0xffff)
+                payLoad += struct.pack("<H", max(50, rest))
+
+            for timer in self.stepData.deccelPulses:
+                timerCount = timer / 0xffff
+                payLoad += struct.pack("<B", timerCount)
+
+                rest = timer - (timerCount * 0xffff)
+                payLoad += struct.pack("<H", max(50, rest))
+        else:
+
+            cmdHex = ddprintcommands.CmdG1 + cmdOfs
+
+            for timer in self.stepData.accelPulses:
+                payLoad += struct.pack("<H", timer)
+            for timer in self.stepData.deccelPulses:
+                payLoad += struct.pack("<H", timer)
+
+
+        stream = cStringIO.StringIO(payLoad)
+
+        cobsBlock = cobs.encodeCobs(stream)
+        cmds.append(( cmdHex, cobsBlock ))
+
+        while True:
+
+            cobsBlock = cobs.encodeCobs(stream)
+
+            if not cobsBlock:
+                break
+
+            cmds.append(( ddprintcommands.CmdBlock, cobsBlock ))
+
+        return cmds
+
     def sanityCheck(self):
 
         ss = self.startSpeed.trueSpeed()
@@ -521,6 +604,8 @@ class MoveBase(object):
 
         # All velocities should point into the same direction
         assert(vectorLength(vectorSub(ss.direction, ts.direction)) < 0.001)
+
+        print es.direction, ts.direction, vectorSub(es.direction, ts.direction)
         assert(vectorLength(vectorSub(es.direction, ts.direction)) < 0.001)
 
         self.accelData.sanityCheck()
@@ -758,14 +843,14 @@ class SubMove(MoveBase):
 
     def __init__(self,
                  parentMove,
+                 moveNumber,
                  displacement_vector_steps):
 
         MoveBase.__init__(self, Vector(displacement_vector_steps))
 
         self.parentMove = parentMove
 
-        # XXX same number as parent
-        self.moveNumber = parentMove.moveNumber
+        self.moveNumber = moveNumber
 
         self.startSpeed = VelocityOverride(None)
         self.topSpeed = VelocityOverride(None)
@@ -775,6 +860,8 @@ class SubMove(MoveBase):
         self.nextMove = None
 
         # self.topSpeed = parentMove.topSpeed
+
+        self.state = 2
 
     def xsetAdvStartSpeed(self, eFeedrate):
 
@@ -801,6 +888,11 @@ class SubMove(MoveBase):
         if type(ev) == ListType:
             ev = Vector(ev)
         self.endSpeed.nominalSpeed(VelocityVector(v=ev))
+
+    # XXX not exact, only for planSteps
+    def getMaxAllowedAccel(self, maxAccelV):
+
+        return self.parentMove.getMaxAllowedAccel(maxAccelV)
 
     def pprint(self, title):
 

@@ -481,7 +481,7 @@ class UM2GcodeParser:
 
         feedrateVector = displacement_vector._setLength(feedrate).constrain(self.maxFeedrateVector)
         if feedrateVector:
-            feedrate = feedrateVector.len5()
+            feedrate = feedrateVector.length()
 
         # print "pos:", stepped_point, "[steps]"
         # print "displacement_vector:", displacement_vector, "[mm]"

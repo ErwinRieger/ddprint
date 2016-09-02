@@ -32,11 +32,6 @@ from ddprintcommands import CmdSyncTargetTemp
 from ddprintstates import HeaterEx1, HeaterBed
 from ddadvance import Advance
 
-# Debug object
-class StreamedMove:
-        pass
-errorMove = StreamedMove()
-
 #####################################################################
 #
 # "AutoTemp" constants
@@ -108,7 +103,7 @@ class PathData (object):
     def __init__(self):
 
         self.path = []
-        self.count = -1
+        self.count = -10
 
         # AutoTemp
         if UseExtrusionAutoTemp:
@@ -127,7 +122,7 @@ class PathData (object):
 
     # Number of moves
     def incCount(self):
-        self.count += 1
+        self.count += 10 # leave space for advance-submoves
         return self.count
 
 #####################################################################

@@ -99,6 +99,7 @@ AdvanceEThreshold=0.001 # [mm/s]
 # Minimum duration of accel- and decel-ramps to apply advance.
 AdvanceMinRamp = 0.001 # [s]
 AdvanceMinRamp = 0.002 # [s]
+AdvanceMinRamp = 0.0025 # [s]
 
 
 
