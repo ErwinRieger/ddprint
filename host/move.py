@@ -27,6 +27,7 @@ from ddprintconstants import AdvanceEThreshold
 from ddprintutil import X_AXIS, Y_AXIS, Z_AXIS, A_AXIS, B_AXIS,vectorLength, vectorMul, vectorSub, circaf, sign
 from ddprintcommands import CommandNames
 from ddprofile import NozzleProfile, MatProfile
+from types import ListType
 
 
 ##################################################
@@ -271,33 +272,38 @@ class AccelData:
 
     def __init__(self):
 
+        pass
+
         # Erreichbare geschwindigkeit falls kein plateu [mm/s]
         # self.reachedovNominalVVector = None
 
         # Time for the three phases of this move
-        self.accelTime = 0
-        self.linearTime = 0
-        self.deccelTime = 0
+        # self.accelTime = None
+        # self.linearTime = None
+        # self.decelTime = None
 
-    def setDuration(self, accelTime, linearTime, deccelTime):
+    def setDuration(self, accelTime, linearTime, decelTime):
 
         assert(accelTime >= 0)
         assert(linearTime >= 0)
-        assert(deccelTime >= 0)
+        assert(decelTime >= 0)
 
         self.accelTime = accelTime
         self.linearTime = linearTime
-        self.deccelTime = deccelTime
+        self.decelTime = decelTime
 
     def getTime(self):
 
-        return self.accelTime + self.linearTime + self.deccelTime
+        return self.accelTime + self.linearTime + self.decelTime
 
     def sanityCheck(self):
 
-        assert(self.accelTime >= 0)
-        assert(self.linearTime >= 0)
-        assert(self.deccelTime >= 0)
+        if hasattr(self, "accelTime"):
+            assert(self.accelTime >= 0)
+        if hasattr(self, "linearTime"):
+            assert(self.linearTime >= 0)
+        if hasattr(self, "decelTime"):
+            assert(self.decelTime >= 0)
 
     def __repr__(self):
 
@@ -306,7 +312,7 @@ class AccelData:
             # s = "AccelData:"
             # s += "\n  Nom. speed not reached, Vreach: " + str(self.reachedovNominalVVector)
 
-        s += "\n  AccelTime: %f, LinearTime: %f, DecelTime: %f" % (self.accelTime, self.linearTime, self.deccelTime)
+        s += "\n  AccelTime: %f, LinearTime: %f, DecelTime: %f" % (self.accelTime, self.linearTime, self.decelTime)
         return s
 
 class StepData:
@@ -472,11 +478,90 @@ class VelocityOverride(object):
 
 class MoveBase(object):
 
+    def __init__(self, displacement_vector_steps):
+
+        # self.displacement_vector_raw = displacement_vector
+        self.displacement_vector_steps_raw = displacement_vector_steps
+
+        self.accelData = AccelData()
+
+        self.stepData = StepData()
+
+        # debug
+        self.state = 0 # 1: joined, 2: accel planned, 3: steps planned
+
+        self.moveNumber = None
+
+    def setDuration(self, accelTime, linearTime, decelTime):
+
+        self.accelData.setDuration(accelTime, linearTime, decelTime)
+
+    def accelTime(self):
+
+        return self.accelData.accelTime
+
+    def linearTime(self):
+
+        return self.accelData.linearTime
+
+    def decelTime(self):
+
+        return self.accelData.decelTime
+
+    def sanityCheck(self):
+
+        ss = self.startSpeed.trueSpeed()
+        ts = self.topSpeed.trueSpeed()
+        es = self.endSpeed.trueSpeed()
+
+        # All velocities should have reasonable feedrates
+        assert(ss.feedrate >= 0)
+        assert(ts.feedrate >  0)
+        assert(es.feedrate >= 0)
+
+        # All velocities should point into the same direction
+        assert(vectorLength(vectorSub(ss.direction, ts.direction)) < 0.001)
+        assert(vectorLength(vectorSub(es.direction, ts.direction)) < 0.001)
+
+        self.accelData.sanityCheck()
+
+    def pprint(self, title):
+
+        print "\n------ Move %s, #: %d, '%s' ------" % (title, self.moveNumber, self.comment)
+
+        if self.isPrintMove():
+            print "Print-move, distance: %.2f" % self.distance
+        else:
+            print "Travel-move, distance: %.2f" % self.distance
+
+        print "displacement_vector:", self.rawDisplacementV(), "_steps:", self.rawDisplacementStepsL()
+
+        print "Startspeed: ",
+        print self.startSpeed
+        print "Top  speed: ",
+        print self.topSpeed
+        print "End  speed: ",
+        print self.endSpeed
+
+        if self.state > 1:
+            print ""
+            print self.accelData
+
+        if self.state > 2:
+            print ""
+            print self.stepData
+
+        print "---------------------"
+
+# Base class for TravelMove and PrintMove
+class RealMove(MoveBase):
+
     def __init__(self, comment, displacement_vector, displacement_vector_steps, feedrate):
+
+        MoveBase.__init__(self, displacement_vector_steps)
 
         self.comment = comment
         self.displacement_vector_raw = displacement_vector
-        self.displacement_vector_steps_raw = displacement_vector_steps
 
         self.direction = displacement_vector.normalized()
         v = VelocityVector(feedrate = feedrate, direction = self.direction)
@@ -524,40 +609,7 @@ class MoveBase(object):
         accelVector = self.getMaxAllowedAccelVectorNoAdv()
         return accelVector.length() # always positive
 
-    def setDuration(self, accelTime, linearTime, deccelTime):
-
-        self.accelData.setDuration(accelTime, linearTime, deccelTime)
-
-    def accelTime(self):
-
-        return self.accelData.accelTime
-
-    def linearTime(self):
-
-        return self.accelData.linearTime
-
-    def decelTime(self):
-
-        return self.accelData.deccelTime
-
-    def sanityCheck(self):
-
-        ss = self.startSpeed.trueSpeed()
-        ts = self.topSpeed.trueSpeed()
-        es = self.endSpeed.trueSpeed()
-
-        # All velocities should have reasonable feedrates
-        assert(ss.feedrate >= 0)
-        assert(ts.feedrate >  0)
-        assert(es.feedrate >= 0)
-
-        # All velocities should point into the same direction
-        assert(vectorLength(vectorSub(ss.direction, ts.direction)) < 0.001)
-        assert(vectorLength(vectorSub(es.direction, ts.direction)) < 0.001)
-
-        self.accelData.sanityCheck()
-
-    def pprint(self, title):
+    def xpprint(self, title):
 
         print "\n------ Move %s, #: %d, '%s' ------" % (title, self.moveNumber, self.comment)
 
@@ -585,7 +637,7 @@ class MoveBase(object):
 
         print "---------------------"
 
-class TravelMove(MoveBase):
+class TravelMove(RealMove):
 
     def __init__(self,
                  comment,
@@ -594,7 +646,7 @@ class TravelMove(MoveBase):
                  feedrate, # mm/s
                  ):
 
-        MoveBase.__init__(self, comment, displacement_vector, displacement_vector_steps, feedrate)
+        RealMove.__init__(self, comment, displacement_vector, displacement_vector_steps, feedrate)
 
         # self.displacement_vector3=displacement_vector[:3]
         # self.displacement_vector_steps3=displacement_vector_steps[:3]
@@ -611,7 +663,7 @@ class TravelMove(MoveBase):
 
     def sanityCheck(self, jerk):
 
-        MoveBase.sanityCheck(self)
+        RealMove.sanityCheck(self)
 
         nullV = VelocityVector(v=Vector([0, 0, 0, 0, 0]))
 
@@ -620,7 +672,7 @@ class TravelMove(MoveBase):
 
 ##################################################
 
-class PrintMove(MoveBase):
+class PrintMove(RealMove):
 
     def __init__(self,
                  comment,
@@ -629,7 +681,7 @@ class PrintMove(MoveBase):
                  feedrate, # mm/s
                  ):
 
-        MoveBase.__init__(self, comment, displacement_vector, displacement_vector_steps, feedrate)
+        RealMove.__init__(self, comment, displacement_vector, displacement_vector_steps, feedrate)
 
         # self.displacement_vector3=displacement_vector[:3]
         # self.displacement_vector_steps3=displacement_vector_steps[:3]
@@ -661,7 +713,7 @@ class PrintMove(MoveBase):
 
     def sanityCheck(self, jerk):
 
-        MoveBase.sanityCheck(self)
+        RealMove.sanityCheck(self)
 
         nullV = VelocityVector(v=Vector([0, 0, 0, 0, 0]))
 
@@ -692,7 +744,7 @@ class PrintMove(MoveBase):
 
     def pprint(self, title):
 
-        MoveBase.pprint(self, title)
+        RealMove.pprint(self, title)
 
         print "Start ESpeed: %.3f" % self.startSpeed.trueSpeed()[A_AXIS]
         print "  End ESpeed: %.3f" % self.endSpeed.trueSpeed()[A_AXIS]
@@ -702,20 +754,53 @@ class PrintMove(MoveBase):
 
 ##################################################
 
-class SubMove(object):
+class SubMove(MoveBase):
 
     def __init__(self,
                  parentMove,
                  displacement_vector_steps):
 
-        self.parentMove = parentMove
-        self.displacement_vector_steps_raw = Vector(displacement_vector_steps)
+        MoveBase.__init__(self, Vector(displacement_vector_steps))
 
+        self.parentMove = parentMove
+
+        # XXX same number as parent
+        self.moveNumber = parentMove.moveNumber
+
+        self.startSpeed = VelocityOverride(None)
+        self.topSpeed = VelocityOverride(None)
+        self.endSpeed = VelocityOverride(None)
 
         self.prevMove = None
         self.nextMove = None
 
-        self.moveNumber = None
+        # self.topSpeed = parentMove.topSpeed
+
+    def xsetAdvStartSpeed(self, eFeedrate):
+
+        startSpeedV = self.parentMove.startSpeed.trueSpeed().vv()
+        startSpeedV[A_AXIS] = eFeedrate
+        self.startSpeed.nominalSpeed(VelocityVector(v=startSpeedV))
+
+    def xsetAdvTopSpeed(self, eFeedrate):
+
+        topSpeedV = self.parentMove.topSpeed.trueSpeed().vv()
+        topSpeedV[A_AXIS] = eFeedrate
+        self.topSpeed.nominalSpeed(VelocityVector(v=topSpeedV))
+
+    def setSpeeds(self, sv, tv, ev):
+
+        if type(sv) == ListType:
+            sv = Vector(sv)
+        self.startSpeed.nominalSpeed(VelocityVector(v=sv))
+
+        if type(tv) == ListType:
+            tv = Vector(tv)
+        self.topSpeed.nominalSpeed(VelocityVector(v=tv))
+
+        if type(ev) == ListType:
+            ev = Vector(ev)
+        self.endSpeed.nominalSpeed(VelocityVector(v=ev))
 
     def pprint(self, title):
 
@@ -723,10 +808,7 @@ class SubMove(object):
 
         # print "Print-move, distance: %.2f" % self.distance
 
-        print "displacement_vector:", displacement_vector_raw, "_steps:", self.displacement_vector_steps_raw
-
-        print "xxx todo SubMove pprint"
-        return
+        print "displacement_vector_steps:", self.displacement_vector_steps_raw
 
         print "Startspeed: ",
         print self.startSpeed

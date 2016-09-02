@@ -35,7 +35,7 @@ debugPlot = True
 # plotLevelPlanned: plot path after advance-planning
 # plotLevelSplitted: plot advance-splitted path
 debugPlotLevel = "plotLevelPlanned"
-# debugPlotLevel = "plotLevelSplitted"
+debugPlotLevel = "plotLevelSplitted"
 
 ############################################################################
 #
