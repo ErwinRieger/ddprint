@@ -27,8 +27,8 @@ from ddplanner import Planner
 from ddprintcommands import CmdSyncFanSpeed, CmdUnknown, CmdDwellMS
 from ddprintconstants import dimNames
 from ddconfig import *
-from move import VVector, Move
-from ddprintutil import A_AXIS, B_AXIS, vectorDistance, circaf
+from move import Vector, TravelMove, PrintMove
+from ddprintutil import X_AXIS, Y_AXIS, Z_AXIS, A_AXIS, B_AXIS, vectorDistance, circaf
 
 import ddprintutil as util
 
@@ -47,6 +47,46 @@ def getSimplifyLayer(line):
         return int(lstr)
 
     return None
+
+#####################################################################################################################################################
+# Move-type, Matrix aller möglichen kombinationen:
+# X Y Z E Movetype
+# - - - - --------
+# 1 0 0 0 travel
+# 0 1 0 0 travel
+# 1 1 0 0 travel
+# 0 0 1 0 travel
+# 1 0 1 0 travel
+# 0 1 1 0 travel
+# 1 1 1 0 travel
+# 0 0 0 1 travel
+# 1 0 0 1 print
+# 0 1 0 1 print
+# 1 1 0 1 print
+# 0 0 1 1 invalid
+# 1 0 1 1 invalid
+# 0 1 1 1 invalid
+# 1 1 1 1 invalid
+#
+def _isHeadMove(displacement_vector):
+    return displacement_vector[X_AXIS] or displacement_vector[Y_AXIS] or displacement_vector[Z_AXIS]
+
+def _isExtrudingMove(displacement_vector, extruder):
+    return _isHeadMove(displacement_vector) and displacement_vector[extruder]
+
+def _isZMove(displacement_vector):
+    return displacement_vector[Z_AXIS]
+
+def isPrintMove(displacement_vector):
+
+    printMove = _isHeadMove(displacement_vector) and (_isExtrudingMove(displacement_vector, A_AXIS) or _isExtrudingMove(displacement_vector, B_AXIS))
+
+    if printMove:
+        assert(not _isZMove(displacement_vector))
+
+    return printMove
+
+#####################################################################################################################################################
 
 class UM2GcodeParser: 
 
@@ -380,7 +420,7 @@ class UM2GcodeParser:
         # print "curGcodePos: ", newGcodePos
         # print "curRealPos: ", newRealPos
 
-        displacement_vector = VVector()
+        displacement_vector = Vector([0, 0, 0, 0, 0])
         displacement_vector_steps = [0, 0, 0, 0, 0]
 
         eOnlyByGcode = True
@@ -447,13 +487,22 @@ class UM2GcodeParser:
         # print "displacement_vector:", displacement_vector, "[mm]"
         # print "feedrate:", feedrate, "[mm/s]"
 
-        self.planner.addMove(Move(
-            line,
-            # stepped_point=stepped_point,
-            displacement_vector=displacement_vector,
-            displacement_vector_steps=displacement_vector_steps,
-            feedrate=feedrate, # mm/s
-            ))
+        if isPrintMove(displacement_vector):
+            self.planner.addMove(PrintMove(
+                line,
+                # stepped_point=stepped_point,
+                displacement_vector=displacement_vector,
+                displacement_vector_steps=displacement_vector_steps,
+                feedrate=feedrate, # mm/s
+                ))
+        else:
+            self.planner.addMove(TravelMove(
+                line,
+                # stepped_point=stepped_point,
+                displacement_vector=displacement_vector,
+                displacement_vector_steps=displacement_vector_steps,
+                feedrate=feedrate, # mm/s
+                ))
             
         if not eOnlyByGcode:
             self.feedrate = feedrate

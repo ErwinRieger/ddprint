@@ -23,7 +23,7 @@ import math, collections
 
 import ddprintutil as util, dddumbui, packedvalue
 from ddprofile import PrinterProfile, MatProfile, NozzleProfile
-from move import VVector, Move
+from move import Vector # , Move
 from ddprintconstants import *
 from ddconfig import *
 from ddprintutil import Z_AXIS, vectorMul, circaf
@@ -190,7 +190,7 @@ class Planner (object):
         for dim in dimNames:
             jerk.append(PrinterProfile.getValues()['axes'][dim]['jerk'])
 
-        self.jerk = VVector(jerk)
+        self.jerk = Vector(jerk)
         self.gui.log("Jerk vector: ", self.jerk)
 
         self.zeroPos = util.MyPoint()
@@ -357,22 +357,25 @@ class Planner (object):
 
     def planTravelMove(self, move):
 
-            move.state = 1
+        move.state = 1
 
-            move.setNominalJerkStartSpeed(self.jerk.scale(0.5))
-            move.setNominalJerkEndSpeed(self.jerk.scale(0.5))
+        move.setPlannedJerkStartSpeed(self.jerk.scale(0.5))
+        move.setPlannedJerkEndSpeed(self.jerk.scale(0.5))
 
-            move.sanityCheck(self.jerk)
+        move.sanityCheck(self.jerk)
 
-            if debugMoves:
-                print "Streaming travel-move:", move.moveNumber
+        self.planTravelAcceleration(move)
 
-            self.planTravelAcceleration(move)
-            self.planTravelSteps(move)
+        move.sanityCheck(self.jerk)
 
-            self.streamMove(move)
+        self.planTravelSteps(move)
 
-            move.streamed = True
+        if debugMoves:
+            print "Streaming travel-move:", move.moveNumber
+
+        self.streamMove(move)
+
+        move.streamed = True # xxx remove
 
     def isIsolationMove(self, prevMove):
 
@@ -632,8 +635,8 @@ class Planner (object):
         # Check if the speed difference between startspeed and endspeed can be done with
         # this acceleration in this distance
         #
-        startSpeedS = move.getStartFr()
-        endSpeedS = move.getEndFr()
+        startSpeedS = move.startSpeed.plannedSpeed().feedrate
+        endSpeedS = move.endSpeed.plannedSpeed().feedrate
 
         deltaSpeedS = endSpeedS - startSpeedS
 
@@ -660,16 +663,16 @@ class Planner (object):
 
         ta = 0.0
         sa = 0.0
-        # if move.getStartFr().fr != None:
-        deltaStartSpeedS = move.feedrateS - startSpeedS
+
+        deltaStartSpeedS = move.topSpeed.plannedSpeed().feedrate - startSpeedS
 
         if deltaStartSpeedS:
 
             ta = deltaStartSpeedS / allowedAccel
-            # print "accel time (for %f mm/s): %f [s]" % (deltaStartSpeedS, ta)
+            print "accel time (for %f mm/s): %f [s]" % (deltaStartSpeedS, ta)
 
             # debug Check axxis acceleration
-            deltaSpeedV = move.getFeedrateV(deltaStartSpeedS)
+            deltaSpeedV = move.direction.scale(deltaStartSpeedS)
             for dim in range(5):
                 if deltaSpeedV[dim] != 0:
                     dimAccel = deltaSpeedV[dim] / ta
@@ -685,16 +688,16 @@ class Planner (object):
         #
         tb = 0.0
         sb = 0.0
-        # if move.getEndFr().fr != None:
-        deltaEndSpeedS = move.feedrateS - endSpeedS                          # [mm/s]
+
+        deltaEndSpeedS = move.topSpeed.plannedSpeed().feedrate - endSpeedS                          # [mm/s]
 
         if deltaEndSpeedS:
 
             tb = deltaEndSpeedS / allowedAccel                          # [s]
-            # print "deccel time (for %f mm/s): %f [s]" % (deltaEndSpeedS, tb)
+            print "deccel time (for %f mm/s): %f [s]" % (deltaEndSpeedS, tb)
 
             # debug Check axxis acceleration
-            deltaSpeedV = move.getFeedrateV(deltaEndSpeedS)
+            deltaSpeedV = move.direction.scale(deltaEndSpeedS)
             for dim in range(5):
                 if deltaSpeedV[dim] != 0:
                     dimDeccel = deltaSpeedV[dim] / tb  
@@ -719,7 +722,7 @@ class Planner (object):
             assert(sa>0 and sb>0)
             assert(sa>0)
 
-            nominalSpeedS = move.feedrateS
+            topSpeed = move.topSpeed.plannedSpeed()
 
             # sa = (2 * allowedAccel * move.e_distance - pow(startSpeedS, 2) + pow(endSpeedS, 2)) /(4 * allowedAccel)
             sa = (2 * allowedAccel * move.distance - pow(startSpeedS, 2) + pow(endSpeedS, 2)) /(4 * allowedAccel)
@@ -739,39 +742,43 @@ class Planner (object):
 
             assert( abs(v - v2) < 0.001)
 
-            nominalSpeedV = move.getFeedrateV().scale(v / nominalSpeedS)
+            # nominalSpeedV = move.getFeedrateV().scale(v / nominalSpeedS)
+            # move.accelData.reachedovNominalVVector = nominalSpeedV
+            # reachedNominalSpeedS = nominalSpeedV.len5() # [mm/s]
 
-            move.accelData.reachedovNominalVVector = nominalSpeedV
+            topSpeed.feedrate = v
 
-            if move.isPrintMove():
-                # reachedNominalSpeedS = nominalSpeedV.feedrate3() # [mm/s]
-                reachedNominalSpeedS = nominalSpeedV.len5() # [mm/s]
+            move.topSpeed.plannedSpeed(topSpeed)
 
-                deltaSpeedS = reachedNominalSpeedS - startSpeedS                          # [mm/s]
-                ta = deltaSpeedS / allowedAccel
-                # print "ta: ", ta, deltaSpeedS
+            deltaSpeedS = v - startSpeedS                          # [mm/s]
+            ta = deltaSpeedS / allowedAccel
+            # print "ta: ", ta, deltaSpeedS
 
-                deltaSpeedS = reachedNominalSpeedS - endSpeedS                          # [mm/s]
-                tb = deltaSpeedS / allowedAccel
-                # print "tb: ", tb, deltaSpeedS
+            deltaSpeedS = v - endSpeedS                          # [mm/s]
+            tb = deltaSpeedS / allowedAccel
+            # print "tb: ", tb, deltaSpeedS
 
-                move.setDuration(ta, 0, tb)
+            move.setDuration(ta, 0, tb)
 
-        else:
+            if debugMoves:
+                move.pprint("planAcceleration")
+                print 
+                print "***** End planAcceleration() *****"
 
-            # 
-            # Strecke reicht aus, um auf nominal speed zu beschleunigen
-            # 
+            return
 
-            if move.isPrintMove():
-                # print "ta: ", ta, deltaStartSpeedS, sa
-                # print "tb: ", tb, deltaEndSpeedS, sb
+        # 
+        # Strecke reicht aus, um auf nominal speed zu beschleunigen
+        # 
 
-                nominalSpeed = move.getFeedrateV().len5() # [mm/s]
-                slin = move.distance - (sa+sb)
-                tlin = slin / nominalSpeed
-                # print "tlin: ", tlin, slin
-                move.setDuration(ta, tlin, tb)
+        # print "ta: ", ta, deltaStartSpeedS, sa
+        # print "tb: ", tb, deltaEndSpeedS, sb
+
+        nominalSpeed = move.topSpeed.plannedSpeed().feedrate # [mm/s]
+        slin = move.distance - (sa+sb)
+        tlin = slin / nominalSpeed
+        # print "tlin: ", tlin, slin
+        move.setDuration(ta, tlin, tb)
 
         if debugMoves:
             move.pprint("planTravelAcceleration")
@@ -800,8 +807,11 @@ class Planner (object):
         leadAxis = 0
         leadAxis_steps = 0
 
+        print "Warning, disabled extrusion adjust in planTravelSteps!"
+
+        """
         for i in range(5):
-            dirBits += (move.displacement_vector_steps_raw()[i] >= 0) << i
+            dirBits += (move.direction[i] >= 0) << i
             adjustedDisplacement = move.displacement_vector_steps_adjusted(NozzleProfile, MatProfile, PrinterProfile)
 
             s = abs(adjustedDisplacement[i])
@@ -810,6 +820,17 @@ class Planner (object):
                 leadAxis_steps = s
 
             abs_displacement_vector_steps.append(s)
+        """
+
+        for i in range(5):
+            disp = move.displacement_vector_steps_raw
+            dirBits += (disp[i] >= 0) << i # xxx use sign here
+
+            s = abs(disp[i])
+            abs_displacement_vector_steps.append(s)
+            if s > leadAxis_steps:
+                leadAxis = i
+                leadAxis_steps = s
 
         if dirBits != self.printer.curDirBits:
             move.stepData.setDirBits = True
@@ -826,28 +847,16 @@ class Planner (object):
         #
         # Create a list of stepper pulses
         #
+        nominalSpeed = abs( move.topSpeed.trueSpeed().vv()[leadAxis] ) # [mm/s]
+        reachedSpeedFr = move.topSpeed.trueSpeed().feedrate
 
-        # debnegtimer
-        nominalSpeed = abs( move.getReachedFeedrateV()[leadAxis] ) # [mm/s]
-
-        reachedSpeedV = move.getReachedFeedrateV()
-        reachedSpeedFr = reachedSpeedV.len5()
-
-        accel = abs(move.getMaxAllowedAccelVectorNoAdv()[leadAxis])
+        accel = move.getMaxAllowedAccelVectorNoAdv()[leadAxis]
         accel_steps_per_square_second = accel * steps_per_mm
 
-        # startSpeed = move.getStartFr()
+        v0 = abs(move.startSpeed.trueSpeed().vv()[leadAxis])                # [mm/s]
 
-        # debnegtimer
-        v0 = abs(move.getFeedrateV(move.getStartFr())[leadAxis])                # [mm/s]
+        v1 = abs(move.endSpeed.trueSpeed().vv()[leadAxis])                # [mm/s]
 
-        # endSpeed = move.getEndFr()
-
-        # debnegtimer
-        v1 = abs(move.getFeedrateV(move.getEndFr())[leadAxis])                # [mm/s]
-
-        # debnegtimer
-            
         steps_per_second_0 = steps_per_second_accel = v0 * steps_per_mm
         steps_per_second_1 = steps_per_second_deccel = v1 * steps_per_mm
         steps_per_second_nominal = nominalSpeed * steps_per_mm
@@ -867,7 +876,8 @@ class Planner (object):
             # accelPlotData = []
             # deccelPlotData = []
 
-        if not circaf(move.getStartFr(), reachedSpeedFr, 0.1) and not circaf(move.getEndFr(), reachedSpeedFr, 0.1):
+        # if not circaf(move.getStartFr(), reachedSpeedFr, 0.1) and not circaf(move.getEndFr(), reachedSpeedFr, 0.1):
+        if move.accelTime() and move.decelTime():
 
             #
             # Acceleration ramp on both sides.
@@ -949,7 +959,7 @@ class Planner (object):
                     stepNr += 1
                     done = False
 
-        elif not circaf(move.getStartFr(), reachedSpeedFr, 0.1): 
+        elif move.accelTime():
 
             #
             # Acceleration only

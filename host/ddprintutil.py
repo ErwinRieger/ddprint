@@ -41,6 +41,8 @@ RoundSafe = 0.995
 
 ####################################################################################################
 def sign(x):
+    if x == 0:
+        return 1.0
     return math.copysign(1, x)
 
 ####################################################################################################
@@ -105,7 +107,12 @@ def vAccelPerTime(v0, a, t):
 # Distance traveled after accelerating for a certain time
 def accelDist(v0, a, t):
     # s = 0,5 * a * t² + vo * t
-    return 0.5 * a * pow(t, 2) + v0 * t
+    s = 0.5 * a * pow(t, 2) + v0 * t
+
+    if s < 0:
+        print "Error in accelDist(), negative distance computed: v0=%.3f, a=%.3f, t=%.3f, s=%.3f" % (v0, a, t, s)
+        assert(0)
+    return s
 
 ####################################################################################################
 
@@ -129,14 +136,21 @@ def joinSpeed(move1, move2, jerk, maxAccelV):
             move1.pprint("JoinSpeed - Move1")
             move2.pprint("JoinSpeed - Move2")
 
-        endSpeedS = move1.feedrateS
+        startSpeedS1 = move1.startSpeed.plannedSpeed().feedrate
+
+        endSpeed1 = move1.endSpeed.plannedSpeed()
+        endSpeedS1 = endSpeed1.feedrate
+
+        startSpeed2 = move2.startSpeed.plannedSpeed()
+        startSpeedS2 = startSpeed2.feedrate
 
         # Compute max reachable endspeed of move1
         allowedAccel = move1.getMaxAllowedAccel(maxAccelV)
-        maxEndSpeed = vAccelPerDist(move1.getStartFr(), allowedAccel, move1.distance) * RoundSafe
+        maxEndSpeed1 = vAccelPerDist(startSpeedS1, allowedAccel, move1.distance) * RoundSafe
 
-        if maxEndSpeed < endSpeedS:
+        if maxEndSpeed1 < endSpeedS1:
 
+            # Nominal speed of move 1 not reachable
             assert(0);
 
             if debugMoves:
@@ -145,18 +159,20 @@ def joinSpeed(move1, move2, jerk, maxAccelV):
 
             endSpeedS = maxEndSpeed
 
-        print "e-feedrate 1: ", move1.getFeedrateV()[A_AXIS]
-        print "e-feedrate 2: ", move2.getFeedrateV()[A_AXIS]
+        eEndSpeed1 = move1.direction[A_AXIS] * endSpeedS1
+        eStartSpeed2 = move2.direction[A_AXIS] * startSpeedS2
+        print "e-feedrate 1: ", eEndSpeed1
+        print "e-feedrate 2: ", eStartSpeed2
 
         #
         # Compare E-speed of moves
         #
-        if circaf(move1.getFeedrateV()[A_AXIS], move2.getFeedrateV()[A_AXIS], AdvanceEThreshold):
+        if circaf(eEndSpeed1, eStartSpeed2, AdvanceEThreshold):
 
             # E-speed difference is small enough, check X/Y jerk
-            endSpeedV = move1.getFeedrateV(endSpeedS)
-            nomFeedrateVMove2 = move2.getFeedrateV()
-            differenceVector = endSpeedV.subVVector(nomFeedrateVMove2)
+            endSpeedV1 = endSpeed1.vv()
+            startSpeedV2 = startSpeed2.vv()
+            differenceVector = endSpeedV1.subVVector(startSpeedV2)
             print "differenceVector, jerk:", differenceVector, jerk
 
 ##################
@@ -169,10 +185,10 @@ def joinSpeed(move1, move2, jerk, maxAccelV):
             toMuch = False
             for dim in range(2):
 
-                vdim = nomFeedrateVMove2[dim]
+                vdim = startSpeedV2[dim]
 
                 # Speed difference from endspeed to theoretical max speed for axis
-                vdiff = vdim - endSpeedV[dim]
+                vdiff = vdim - endSpeedV1[dim]
 
                 vdiffAbs = abs(vdiff)
 
@@ -224,58 +240,63 @@ def joinSpeed(move1, move2, jerk, maxAccelV):
                 assert(speedScale <= 1.0)
 
                 if debugMoves:
-                    print "set nominal endspeed of move1:", endSpeedS * speedScale
-                move1.setNominalEndFr(endSpeedS * speedScale)
+                    print "set nominal endspeed of move1:", endSpeedS1 * speedScale
+
+                # move1.setNominalEndFr(endSpeedS * speedScale)
+                endSpeed1.feedrate = endSpeedS1 * speedScale
+                move1.endSpeed.plannedSpeed(endSpeed1)
 
                 if debugMoves:
-                    print "set nominal startspeed of move2:", move2.feedrateS * speedScale
-                move2.setNominalStartFr(move2.feedrateS * speedScale)
+                    print "set nominal startspeed of move2:", startSpeedS2 * speedScale
+
+                # move2.setNominalStartFr(move2.feedrateS * speedScale)
+                startSpeed2.feedrate = startSpeedS2 * speedScale
+                move2.startSpeed.plannedSpeed(startSpeed2)
 
             else:
 
                 if debugMoves:
                     print "Doing a full speed join between move %d and %d" % (move1.moveNumber, move2.moveNumber)
 
-                move1.setNominalEndFr(endSpeedS)
-                move2.setNominalStartFr(move2.feedrateS)
+                # move1.setNominalEndFr(endSpeedS)
+                # move2.setNominalStartFr(move2.feedrateS)
 
 ##################
             return
      
-        avgESpeed = (move1.getFeedrateV()[A_AXIS]+move2.getFeedrateV()[A_AXIS])/2
+        avgESpeed = (eEndSpeed1 + eStartSpeed2)/2
 
         print "avgESpeed: ", avgESpeed
 
-        if move1.getFeedrateV()[A_AXIS] > move2.getFeedrateV()[A_AXIS]:
+        if eEndSpeed1 > eStartSpeed2:
             # Slow down move1
-            f = move2.getFeedrateV()[A_AXIS] / move1.getFeedrateV()[A_AXIS]
+            f = eStartSpeed2 / eEndSpeed1
             print "f1: ", f
-            endSpeedS = endSpeedS * f
-            move1.setNominalEndFr(endSpeedS)
-            move2.setNominalStartFr(move2.feedrateS)
+            endSpeedS1 *= f
+            endSpeed1.feedrate = endSpeedS1
+            move1.endSpeed.plannedSpeed(endSpeed1)
         else:
             # Slow down move2
-            f = move1.getFeedrateV()[A_AXIS] / move2.getFeedrateV()[A_AXIS]
+            f = eEndSpeed1 / eStartSpeed2
             print "f2: ", f
-            startSpeedS = move2.feedrateS * f
-            move1.setNominalEndFr(endSpeedS)
-            move2.setNominalStartFr(startSpeedS)
+            startSpeedS2 *= f
+            startSpeed2.feedrate = startSpeedS2
+            move2.startSpeed.plannedSpeed(startSpeed2)
 
         #
         # Join in bezug auf den maximalen jerk aller achsen betrachten:
         #
-
-        endSpeedV = move1.getEndFeedrateV()
-        startSpeedV = move2.getStartFeedrateV()
+        endSpeedV1 = endSpeed1.vv()
+        startSpeedV2 = startSpeed2.vv()
 
         speedDiff = {}
         toMuch = False
         for dim in range(2):
 
-            vdim = startSpeedV[dim]
+            vdim = startSpeedV2[dim]
 
             # Speed difference from endspeed to theoretical max speed for axis
-            vdiff = vdim - endSpeedV[dim]
+            vdiff = vdim - endSpeedV1[dim]
 
             vdiffAbs = abs(vdiff)
 
@@ -289,7 +310,7 @@ def joinSpeed(move1, move2, jerk, maxAccelV):
 
         if toMuch:
 
-            differenceVector = endSpeedV.subVVector(startSpeedV)
+            differenceVector = endSpeedV1.subVVector(startSpeedV2)
             print "differenceVector, jerk:", differenceVector, jerk
 
             if debugMoves:
@@ -330,12 +351,18 @@ def joinSpeed(move1, move2, jerk, maxAccelV):
             assert(speedScale <= 1.0)
 
             if debugMoves:
-                print "set nominal endspeed of move1:", endSpeedS * speedScale
-            move1.setNominalEndFr(endSpeedS * speedScale)
+                print "set nominal endspeed of move1:", endSpeedS1 * speedScale
+
+            # move1.setNominalEndFr(endSpeedS * speedScale)
+            endSpeed1.feedrate = endSpeedS1 * speedScale
+            move1.endSpeed.plannedSpeed(endSpeed1)
 
             if debugMoves:
-                print "set nominal startspeed of move2:", move2.feedrateS * speedScale
-            move2.setNominalStartFr(move2.getStartFr() * speedScale)
+                print "set nominal startspeed of move2:", startSpeedS2 * speedScale
+
+            # move2.setNominalStartFr(move2.getStartFr() * speedScale)
+            startSpeed2.feedrate = startSpeedS2 * speedScale
+            move2.startSpeed.plannedSpeed(startSpeed2)
 
         # else:
 
