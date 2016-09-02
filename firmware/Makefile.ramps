@@ -5,10 +5,6 @@ TARGET       = firmware.ramps
 
 OBJDIR := build.ramps
 
-# Uno board
-# BOARD_TAG    = uno
-# End Uno
-
 # Mega/Ramps board
 BOARD_TAG    = mega
 MCU = atmega2560
@@ -24,7 +20,12 @@ AVRDUDE = $(ARDUINO_DIR)/hardware/tools/avrdude
 AVRDUDE_ARD_BAUDRATE = 115200
 AVRDUDE_ARD_EXTRAOPTS = -D 
 
-include ./Arduino.mk
+ARDMK_DIR         = ./
+# include $(ARDMK_DIR)/Arduino.mk
+# include /usr/share/arduino/Arduino.mk
+
+PARSE_BOARD = $(ARDMK_DIR)/ard-parse-boards --boards_txt=$(BOARDS_TXT)
+include $(ARDMK_DIR)/Arduino.mk
 
 # Mega/Ramps board
 CPPFLAGS      +=  -DMOTHERBOARD=33 -I./fw
