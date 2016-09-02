@@ -709,8 +709,7 @@ class SubMove(object):
                  displacement_vector_steps):
 
         self.parentMove = parentMove
-        # self.displacement_vector_steps3=displacement_vector_steps[:3]
-        self.extrusion_displacement_steps_raw = displacement_vector_steps[3:]
+        self.displacement_vector_steps_raw = Vector(displacement_vector_steps)
 
 
         self.prevMove = None
@@ -745,6 +744,10 @@ class SubMove(object):
             print self.stepData
 
         print "---------------------"
+
+    def sanityCheck(self):
+
+        assert(self.displacement_vector_steps_raw.length() > 0)
 
 
 
