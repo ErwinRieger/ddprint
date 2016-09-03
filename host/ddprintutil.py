@@ -150,14 +150,12 @@ def joinSpeed(move1, move2, jerk, maxAccelV):
 
         if maxEndSpeed1 < endSpeedS1:
 
-            # Nominal speed of move 1 not reachable
-            assert(0);
-
+            # Endspeed of move 1 not reachable
             if debugMoves:
-                print "math.sqrt( 2 * %f * %f + pow(%f, 2) ) * %f" % (move1.distance, allowedAccel, move1.getStartFr(), RoundSafe)
-                print "Max. reachable endspeed: %.3f < feedrate: %.3f" % (maxEndSpeed, endSpeedS)
+                print "math.sqrt( 2 * %f * %f + pow(%f, 2) ) * %f" % (move1.distance, allowedAccel, endSpeedS1, RoundSafe)
+                print "Max. reachable endspeed: %.3f < feedrate: %.3f" % (maxEndSpeed1, endSpeedS1)
 
-            endSpeedS = maxEndSpeed
+            endSpeedS1 = maxEndSpeed1
 
         eEndSpeed1 = move1.direction[A_AXIS] * endSpeedS1
         eStartSpeed2 = move2.direction[A_AXIS] * startSpeedS2

@@ -100,8 +100,10 @@ AdvanceEThreshold=0.001 # [mm/s]
 AdvanceMinRamp = 0.001 # [s]
 AdvanceMinRamp = 0.002 # [s]
 AdvanceMinRamp = 0.0025 # [s]
+AdvanceMinRamp = 0.01 # [s]
 
 
+# AdvanceMinSteps = 10
 
 
 
