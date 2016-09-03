@@ -407,9 +407,9 @@ class AdvanceData:
 
         s = ""
         if self.hasStartAdvance():
-            s += "\n  StartAdvance: Start %.3f Top: %.3f" % (self.startEFeedrate(), self.startEReachedFeedrate())
+            s += "\n  EStartAdvance: %.3f, Start %.3f, Top: %.3f" % (self.startFeedrateIncrease, self.startEFeedrate(), self.startEReachedFeedrate())
         if self.hasEndAdvance():
-            s += "\n    EndAdvance: Top %.3f End: %.3f" % (self.endEReachedFeedrate(), self.endEFeedrate())
+            s += "\n    EEndAdvance: %.3f, Top %.3f, End: %.3f" % (self.endFeedrateIncrease, self.endEReachedFeedrate(), self.endEFeedrate())
         return s
 
 ##################################################
@@ -421,50 +421,36 @@ class VelocityOverride(object):
     def __init__(self, nominalSpeed):
         self.speeds = [nominalSpeed]
 
+    def speed(self):
+        return self.speeds[-1].copy()
+
+    def setSpeed(self, speed):
+
+        if speed != self.speeds[-1]:
+            self.speeds.append(speed)
+
     def nominalSpeed(self, speed=None):
 
         if speed:
-            self.speeds[0] = speed
+            self.setSpeed(speed)
             return
 
-        return self.speeds[0].copy()
+        return self.speed()
 
     def plannedSpeed(self, speed=None):
-
-        if speed:
-            if len(self.speeds) == 1:
-                self.speeds.append(speed)
-            else:
-                self.speeds[1] = speed
-            return
-
-        if len(self.speeds) < 2:
-            return self.nominalSpeed()
-
-        return self.speeds[1].copy()
+        return self.nominalSpeed(speed)
 
     def trueSpeed(self, speed=None):
-
-        if speed:
-            if len(self.speeds) == 2:
-                self.speeds.append(speed)
-            else:
-                self.speeds[2] = speed
-            return
-
-        if len(self.speeds) < 3:
-            return self.plannedSpeed()
-
-        return self.speeds[2].copy()
-
-    # def advancedSpeed(self, speed=None):
-        # if speed:
-            # assert(len(self.speeds) == 3)
-            # self.speeds.append(speed)
-            # return
-        # return self.speeds[3].copy()
+        return self.nominalSpeed(speed)
 
     def __repr__(self):
+
+        s = ""
+
+        for speed in self.speeds:
+            s += "\n\tSpeed: " + str(speed)
+
+        return s
 
         s = "\n\tNominal: " + str(self.nominalSpeed())
         if len(self.speeds) > 1:

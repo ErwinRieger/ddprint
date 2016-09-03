@@ -34,8 +34,8 @@ debugPlot = True
 # Define which stage of path planning to plot
 # plotLevelPlanned: plot path after advance-planning
 # plotLevelSplitted: plot advance-splitted path
-debugPlotLevel = "plotLevelPlanned"
 debugPlotLevel = "plotLevelSplitted"
+debugPlotLevel = "plotLevelPlanned"
 
 ############################################################################
 #

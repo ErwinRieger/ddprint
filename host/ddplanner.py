@@ -715,7 +715,6 @@ class Planner (object):
 
             # ??? 
             assert(sa>0 and sb>0)
-            assert(sa>0)
 
             topSpeed = move.topSpeed.plannedSpeed()
 
