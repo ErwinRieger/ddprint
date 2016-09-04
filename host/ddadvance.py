@@ -24,7 +24,7 @@ from argparse import Namespace
 
 from ddprintconstants import *
 from ddconfig import *
-from ddprofile import PrinterProfile # , MatProfile, NozzleProfile
+from ddprofile import PrinterProfile, MatProfile # , NozzleProfile
 
 import ddprintutil as util
 import math
@@ -116,24 +116,34 @@ class Advance (object):
         #
         # dvin = dvout + ka * acceleration [ m/s + s * m/s² = m/s ]
         #
-        self.kAdv = 0.035 # [s] # xxx move to material profile
+        # self.kAdv = 0.0 # [s] # xxx move to material profile
+        # self.kAdv = 0.035 # [s] # xxx move to material profile
         # self.kAdv = 0.010 # [s]
-        self.kAdv = 0.1 # [s] # xxx move to material profile
+        # self.kAdv = 0.100 # [s] # xxx move to material profile
+        # self.kAdv = 0.250 # [s] # xxx move to material profile
 
-        # self.advAccel = ((sel.jerk[A_AXIS] / 1000.0) / self.kAdv) * 1000
-        advJerk = planner.jerk[A_AXIS]
-        # self.advAccel = self.advJerk / self.kAdv
-        maxEAccel = advJerk / self.kAdv
+        self.kAdv = MatProfile.getKAdv()
 
-        #
-        # Limit E-acceleration by DEFAULT_ACCELERATION/DEFAULT_MAX_ACCELERATION
-        #
-        print "ADV: max E-acceleration:", maxEAccel, ", unlimited accel vector: ", MAX_AXIS_ACCELERATION_NOADV, " [mm/s²]"
-        self.maxEAccel = min(maxEAccel, MAX_AXIS_ACCELERATION_NOADV[A_AXIS])
+        if self.kAdv:
 
-        self.maxAxisAcceleration = MAX_AXIS_ACCELERATION_NOADV[:3] + [self.maxEAccel, self.maxEAccel]
+            # self.advAccel = ((sel.jerk[A_AXIS] / 1000.0) / self.kAdv) * 1000
+            advJerk = planner.jerk[A_AXIS]
+            # self.advAccel = self.advJerk / self.kAdv
+            maxEAccel = advJerk / self.kAdv
 
-        print "ADV: max E-acceleration, limited acceleration vector:", self.maxAxisAcceleration, " [mm/s²]"
+            #
+            # Limit E-acceleration by DEFAULT_ACCELERATION/DEFAULT_MAX_ACCELERATION
+            #
+            print "ADV: max E-acceleration:", maxEAccel, ", unlimited accel vector: ", MAX_AXIS_ACCELERATION_NOADV, " [mm/s²]"
+            maxEAccel = min(maxEAccel, MAX_AXIS_ACCELERATION_NOADV[A_AXIS])
+
+            self.maxAxisAcceleration = MAX_AXIS_ACCELERATION_NOADV[:3] + [self.maxEAccel, self.maxEAccel]
+
+            print "ADV: max E-acceleration, limited acceleration vector:", self.maxAxisAcceleration, " [mm/s²]"
+
+        else:
+
+            self.maxAxisAcceleration = MAX_AXIS_ACCELERATION_NOADV
 
         # self.plotfile = None
 
@@ -219,12 +229,13 @@ class Advance (object):
 
         for move in path:
 
-            move.pprint("sanicheck")
             move.sanityCheck(self.planner.jerk)
-
             self.planAcceleration(move)
 
-            self.planAdvance(move)
+        if self.kAdv:
+            for move in path:
+                move.sanityCheck(self.planner.jerk)
+                self.planAdvance(move)
 
         if debugPlot and debugPlotLevel == "plotLevelPlanned":
 
