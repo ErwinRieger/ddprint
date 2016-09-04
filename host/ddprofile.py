@@ -197,8 +197,11 @@ class MatProfile(ProfileBase):
 
     @classmethod
     def getAutoTempFactor(cls):
-
         return float(cls.getValues()["extrusionAutoTempFactor"])
+
+    @classmethod
+    def getKAdv(cls):
+        return float(cls.getValues()["kAdvance"])
 
 ####################################################################################################
 #
