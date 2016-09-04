@@ -137,7 +137,7 @@ class Advance (object):
             print "ADV: max E-acceleration:", maxEAccel, ", unlimited accel vector: ", MAX_AXIS_ACCELERATION_NOADV, " [mm/s²]"
             maxEAccel = min(maxEAccel, MAX_AXIS_ACCELERATION_NOADV[A_AXIS])
 
-            self.maxAxisAcceleration = MAX_AXIS_ACCELERATION_NOADV[:3] + [self.maxEAccel, self.maxEAccel]
+            self.maxAxisAcceleration = MAX_AXIS_ACCELERATION_NOADV[:3] + [maxEAccel, maxEAccel]
 
             print "ADV: max E-acceleration, limited acceleration vector:", self.maxAxisAcceleration, " [mm/s²]"
 

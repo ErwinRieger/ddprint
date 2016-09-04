@@ -171,7 +171,7 @@ def joinSpeed(move1, move2, jerk, maxAccelV):
             endSpeedV1 = endSpeed1.vv()
             startSpeedV2 = startSpeed2.vv()
             differenceVector = endSpeedV1.subVVector(startSpeedV2)
-            print "differenceVector, jerk:", differenceVector, jerk
+            print "Case1, differenceVector, jerk:", differenceVector, jerk
 
 ##################
             # old joinspeed
@@ -181,7 +181,7 @@ def joinSpeed(move1, move2, jerk, maxAccelV):
             #
             speedDiff = {}
             toMuch = False
-            for dim in range(2):
+            for dim in range(3):
 
                 vdim = startSpeedV2[dim]
 
@@ -264,7 +264,7 @@ def joinSpeed(move1, move2, jerk, maxAccelV):
      
         avgESpeed = (eEndSpeed1 + eStartSpeed2)/2
 
-        print "avgESpeed: ", avgESpeed
+        print "Case2, avgESpeed: ", avgESpeed
 
         if eEndSpeed1 > eStartSpeed2:
             # Slow down move1
@@ -289,7 +289,7 @@ def joinSpeed(move1, move2, jerk, maxAccelV):
 
         speedDiff = {}
         toMuch = False
-        for dim in range(2):
+        for dim in range(3):
 
             vdim = startSpeedV2[dim]
 
@@ -303,7 +303,7 @@ def joinSpeed(move1, move2, jerk, maxAccelV):
             if vdiffAbs > dimJerk: 
                 toMuch = True
 
-        if vdiffAbs > 1:
+            if vdiffAbs > 1:
                 speedDiff[dim] = (vdiff, vdiffAbs)
 
         if toMuch:
