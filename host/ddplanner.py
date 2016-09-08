@@ -669,11 +669,10 @@ class Planner (object):
             # debug Check axxis acceleration
             deltaSpeedV = move.direction.scale(deltaStartSpeedS)
             for dim in range(5):
-                if deltaSpeedV[dim] != 0:
-                    dimAccel = deltaSpeedV[dim] / ta
-                    if (dimAccel / MAX_AXIS_ACCELERATION_NOADV[dim]) > 1.001:
-                        print "dim %d verletzt max accel: " % dim, dimAccel, " > ", MAX_AXIS_ACCELERATION_NOADV[dim]
-                        assert(0)
+                dimAccel = abs(deltaSpeedV[dim]) / ta
+                if (dimAccel / MAX_AXIS_ACCELERATION_NOADV[dim]) > 1.001:
+                    print "dim %d verletzt max accel: " % dim, dimAccel, " > ", MAX_AXIS_ACCELERATION_NOADV[dim]
+                    assert(0)
             #end debug
 
             sa = util.accelDist(startSpeedS, allowedAccel, ta)
@@ -694,11 +693,10 @@ class Planner (object):
             # debug Check axxis acceleration
             deltaSpeedV = move.direction.scale(deltaEndSpeedS)
             for dim in range(5):
-                if deltaSpeedV[dim] != 0:
-                    dimDeccel = deltaSpeedV[dim] / tb  
-                    if (dimDeccel / MAX_AXIS_ACCELERATION_NOADV[dim]) > 1.001:
-                        print "dim %d verletzt max accel: " % dim, dimDeccel, " [mm/s] > ", MAX_AXIS_ACCELERATION_NOADV[dim], " [mm/s]"
-                        assert(0)
+                dimDeccel = abs(deltaSpeedV[dim]) / tb  
+                if (dimDeccel / MAX_AXIS_ACCELERATION_NOADV[dim]) > 1.001:
+                    print "dim %d verletzt max accel: " % dim, dimDeccel, " [mm/s] > ", MAX_AXIS_ACCELERATION_NOADV[dim], " [mm/s]"
+                    assert(0)
             # end debug
 
             sb = util.accelDist(endSpeedS, allowedAccel, tb)
@@ -735,10 +733,6 @@ class Planner (object):
             # print "move.feedrate neu: %f (test: %f, diff: %f)" % (v, v2, abs(v - v2))
 
             assert( abs(v - v2) < 0.001)
-
-            # nominalSpeedV = move.getFeedrateV().scale(v / nominalSpeedS)
-            # move.accelData.reachedovNominalVVector = nominalSpeedV
-            # reachedNominalSpeedS = nominalSpeedV.len5() # [mm/s]
 
             topSpeed.feedrate = v
 

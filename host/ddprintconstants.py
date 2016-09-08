@@ -101,6 +101,7 @@ AdvanceMinRamp = 0.001 # [s]
 AdvanceMinRamp = 0.002 # [s]
 AdvanceMinRamp = 0.0025 # [s]
 AdvanceMinRamp = 0.01 # [s]
+# AdvanceMinRamp = 0.025 # [s]
 
 
 # AdvanceMinSteps = 10

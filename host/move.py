@@ -680,6 +680,15 @@ class RealMove(MoveBase):
         accelVector = self.getMaxAllowedAccelVectorNoAdv()
         return accelVector.length() # always positive
 
+    def sanityCheck(self):
+
+        MoveBase.sanityCheck(self)
+
+        # Check start ramp
+        assert(self.startSpeed.speed().feedrate <= self.topSpeed.speed().feedrate);
+        # Check end ramp
+        assert(self.topSpeed.speed().feedrate >= self.endSpeed.speed().feedrate);
+
     def xpprint(self, title):
 
         print "\n------ Move %s, #: %d, '%s' ------" % (title, self.moveNumber, self.comment)

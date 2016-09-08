@@ -147,8 +147,10 @@ class Advance (object):
 
         # self.plotfile = None
 
-        # Sum of skipped small accelration ramps
+        # Running sum of accelration ramps for debugging
         self.advSum = 0
+        # Sum of skipped small accelration ramps
+        self.skippedAdvSum = 0
         # Likewise for decel
         # self.endSum = 0
 
@@ -162,6 +164,7 @@ class Advance (object):
 
         # self.startSum = self.endSum = 0
         self.advSum = 0
+        self.skippedAdvSum = 0
 
         if debugPlot: #  and not self.plotfile:
             self.plottime = 1
@@ -310,6 +313,12 @@ class Advance (object):
 
             newPath += newMoves
 
+
+        print "advSum: ", self.advSum
+        assert(util.circaf(self.advSum, 0, 0.01))
+
+        print "skippedAdvSum: ", self.skippedAdvSum
+        assert(util.circaf(self.skippedAdvSum, 0, 0.01))
 
         # xxx debug, check chain
         n = 1
@@ -614,12 +623,11 @@ class Advance (object):
             # debug Check axxis acceleration
             deltaSpeedV = move.direction.scale(deltaStartSpeedS)
             for dim in range(5):
-                if deltaSpeedV[dim] != 0:
-                    dimAccel = deltaSpeedV[dim] / ta
-                    print "dimaccel ", dim, dimAccel
-                    if (dimAccel / self.maxAxisAcceleration[dim]) > 1.001:
-                        print "dim %d verletzt max accel: " % dim, dimAccel, " > ", self.maxAxisAcceleration[dim]
-                        assert(0)
+                dimAccel = abs(deltaSpeedV[dim]) / ta
+                print "dimaccel ", dim, dimAccel
+                if (dimAccel / self.maxAxisAcceleration[dim]) > 1.001:
+                    print "dim %d verletzt max accel: " % dim, dimAccel, " > ", self.maxAxisAcceleration[dim]
+                    assert(0)
             #end debug
 
             sa = util.accelDist(startSpeedS, allowedAccel, ta)
@@ -640,11 +648,10 @@ class Advance (object):
             # debug Check axxis acceleration
             deltaSpeedV = move.direction.scale(deltaEndSpeedS)
             for dim in range(5):
-                if deltaSpeedV[dim] != 0:
-                    dimDeccel = deltaSpeedV[dim] / tb  
-                    if (dimDeccel / self.maxAxisAcceleration[dim]) > 1.001:
-                        print "dim %d verletzt max accel: " % dim, dimDeccel, " [mm/s] > ", self.maxAxisAcceleration[dim], " [mm/s]"
-                        assert(0)
+                dimDeccel = abs(deltaSpeedV[dim]) / tb  
+                if (dimDeccel / self.maxAxisAcceleration[dim]) > 1.001:
+                    print "dim %d verletzt max accel: " % dim, dimDeccel, " [mm/s] > ", self.maxAxisAcceleration[dim], " [mm/s]"
+                    assert(0)
             # end debug
 
             sb = util.accelDist(endSpeedS, allowedAccel, tb)
@@ -681,10 +688,6 @@ class Advance (object):
             # print "move.feedrate neu: %f (test: %f, diff: %f)" % (v, v2, abs(v - v2))
 
             assert( abs(v - v2) < 0.001)
-
-            # nominalSpeedV = move.getFeedrateV().scale(v / nominalSpeedS)
-            # move.accelData.reachedovNominalVVector = nominalSpeedV
-            # reachedNominalSpeedS = nominalSpeedV.len5() # [mm/s]
 
             topSpeed.feedrate = v
 
@@ -727,6 +730,50 @@ class Advance (object):
             print "***** End planAcceleration() *****"
             # if move.moveNumber == 40: assert(0)
 
+    # Area (e-distance) of advance ramp
+    def startAdvDistance(self, startFeedrateIncrease, dt):
+
+        # Trapezberechnung
+        sadv = startFeedrateIncrease * dt
+        assert(sadv > 0)
+
+        return sadv
+
+    def startRampDistance(self, v0, v1, dt):
+
+        return ((v1 - v0) * dt) / 2.0 + v0 * dt
+
+    def startERampDistance(self, advData, dt):
+
+        s = self.startRampDistance(
+                advData.move.startSpeed.speed()[A_AXIS], 
+                advData.move.topSpeed.speed()[A_AXIS],
+                dt)
+        return s + self.startAdvDistance(advData.startFeedrateIncrease, dt)
+
+    # Area (e-distance) of advance ramp
+    def endAdvDistance(self, endFeedrateIncrease, dt):
+
+        # Trapezberechnung, resultat negativ, da endFeedrateIncrease negativ ist
+        sadv = endFeedrateIncrease * dt
+        print endFeedrateIncrease, "*", dt
+        print "end sadv:", sadv
+        assert(sadv < 0)
+
+        return sadv
+
+    def endRampDistance(self, v0, v1, dt):
+
+        return ((v0 - v1) * dt) / 2.0 + v1 * dt
+
+    def endERampDistance(self, advData, dt):
+
+        s = self.endRampDistance(
+                advData.move.topSpeed.speed()[A_AXIS],
+                advData.move.endSpeed.speed()[A_AXIS], 
+                dt)
+        return s + self.endAdvDistance(advData.endFeedrateIncrease, dt)
+
     def planAdvance(self, move):
 
         if debugMoves:
@@ -743,44 +790,44 @@ class Advance (object):
         endFeedrateE = endFeedrate[A_AXIS]
 
         startEVelDiff = reachedFeedrateE - startFeedrateE
-        startEAccelSign = util.sign(startEVelDiff)
+        # startEAccelSign = util.sign(startEVelDiff)
 
         endEVelDiff = endFeedrateE - reachedFeedrateE
-        endEAccelSign = util.sign(endEVelDiff)
+        # endEAccelSign = util.sign(endEVelDiff)
 
         print "startEVelDiff, endEVelDiff: ", startEVelDiff, endEVelDiff
+        assert(startEVelDiff >= 0)
+        assert(endEVelDiff <= 0)
 
-        allowedAccelV = move.getMaxAllowedAccelVectorNoAdv()
+        allowedAccelV = move.getMaxAllowedAccelVector(self.maxAxisAcceleration)
 
         #
         # Advance of start-ramp
         #
         at = move.accelTime()
         if at > AdvanceMinRamp:
-            usedEAccel = abs(startEVelDiff)/at
-            print "used accel: ", usedEAccel
-            # move.advanceData.startFeedrateIncrease = self.eJerk(allowedAccelV[A_AXIS]) * startEAccelSign
-            move.advanceData.startFeedrateIncrease = self.eJerk(usedEAccel) * startEAccelSign
+            move.advanceData.startFeedrateIncrease = self.eJerk(allowedAccelV[A_AXIS]) #  * startEAccelSign
+            self.advSum += self.startAdvDistance(move.advanceData.startFeedrateIncrease, at)
         elif at > 0:
             # Dont advance very small acceleration ramps, but sum up the missing advance.
             # Note: this simple method works only if every ramp has the same acceleration.
-            self.advSum += at * startEAccelSign
+            # self.skippedAdvSum += at
+            self.skippedAdvSum += self.startAdvDistance(self.eJerk(allowedAccelV[A_AXIS]), at)
+
 
         #
         # End of start-ramp
         #
         dt = move.decelTime()
         if dt > AdvanceMinRamp:
-            usedEAccel = abs(endEVelDiff)/dt
-            print "used accel: ", usedEAccel
-            # move.advanceData.endFeedrateIncrease = self.eJerk(allowedAccelV[A_AXIS]) * endEAccelSign
-            move.advanceData.endFeedrateIncrease = self.eJerk(usedEAccel) * endEAccelSign
+            move.advanceData.endFeedrateIncrease = - self.eJerk(allowedAccelV[A_AXIS]) #  * endEAccelSign
+            self.advSum += self.endAdvDistance(move.advanceData.endFeedrateIncrease, dt)
         elif dt > 0:
             # Dont advance, sum up like the acceleration ramp.
-            self.advSum += dt * endEAccelSign
+            # self.skippedAdvSum -= dt
+            self.skippedAdvSum += self.endAdvDistance(- self.eJerk(allowedAccelV[A_AXIS]), dt)
 
-        print "advSum: ", self.advSum
-        assert(self.advSum < AdvanceMinRamp)
+        assert(self.skippedAdvSum < AdvanceMinRamp)
 
         # Split move into up to 5 sub moves
         nsub = 1
@@ -879,7 +926,11 @@ class Advance (object):
         if mask == 0x8:
             # Simple advanceed ramp at start
             # Create addtional 'sub-move' at beginning
-            newMoves = self.planSA(move) # simple accel
+
+            if move.linearTime():
+                newMoves = self.planSA(move) # simple accel
+            else:
+                newMoves = self.planA(move) # simple accel, only
         elif mask == 0x1:
             # Simple advanceed ramp at end
             # Create addtional 'sub-move' at end
@@ -894,13 +945,16 @@ class Advance (object):
             if move.linearTime():
                 newMoves = self.planSALSD(move) # simple accel, linear part, simple decel
             else:
-                newMoves = self.planSASD(move) # simple accel, linear part, simple decel
+                newMoves = self.planSASD(move) # simple accel, simple decel
         elif mask == 0xb:
             # * advanceed ramp at start
             # * advanceed ramp at end with sign-change
             # * Create three addtional 'sub-moves', on at the start
             #   of the move at two at the end
-            newMoves = self.planSADD(move) # simple accel, dual deccel
+            if move.linearTime():
+                newMoves = self.planSALDD(move) # simple accel, linear part, dual deccel
+            else:
+                newMoves = self.planSADD(move) # simple accel, dual deccel
         else:
             # Create addtional 'sub-move' at end
 
@@ -1225,6 +1279,71 @@ class Advance (object):
 
 
     #
+    # Single advanceed ramp at start, no linear part
+    #
+    def planA(self, parentMove):
+
+        if debugMoves:
+            print "***** Start planA() *****"
+            parentMove.pprint("planA:")
+
+        displacement_vector_steps_raw = parentMove.displacement_vector_steps_raw
+
+        assert(displacement_vector_steps_raw[Z_AXIS] == 0)
+
+        # PART A, XY
+        displacement_vector_steps_A = [0] * 5
+        ta = parentMove.accelTime()
+
+        allowedAccelV = parentMove.getMaxAllowedAccelVector(self.maxAxisAcceleration)
+
+        startSpeedV = parentMove.startSpeed.trueSpeed().vv()
+
+        for dim in [X_AXIS, Y_AXIS]:
+
+            sa = util.accelDist(abs(startSpeedV[dim]), allowedAccelV[dim], ta)
+            print allowedAccelV, startSpeedV[dim], ta, sa
+
+            steps_per_mm = PrinterProfile.getStepsPerMM(dim)
+            steps = int(round(sa * steps_per_mm * util.sign(parentMove.direction[dim])))
+            print "dim %d moves %.3f mm while accelerating -> %d steps" % (dim, sa, steps)
+            displacement_vector_steps_A[dim] = steps
+
+        # PART A, E
+        startSpeedS = parentMove.advanceData.startEFeedrate()
+
+        sa = util.accelDist(abs(startSpeedS), allowedAccelV[A_AXIS], ta)
+
+        e_steps_per_mm = PrinterProfile.getStepsPerMM(A_AXIS)
+        steps = int(round(sa * e_steps_per_mm))
+        print "dim E moves %.3f mm while accelerating -> %d steps" % (sa, steps)
+        displacement_vector_steps_A[A_AXIS] = steps
+
+        print "new steps: ", displacement_vector_steps_A
+
+        from move import SubMove
+
+        moveA = SubMove(parentMove, parentMove.moveNumber + 1, displacement_vector_steps_A)
+
+        moveA.setDuration(ta, 0, 0)
+     
+        sv = parentMove.startSpeed.trueSpeed().vv()
+        sv[A_AXIS] = parentMove.advanceData.startEFeedrate()
+
+        tv = parentMove.topSpeed.trueSpeed().vv()
+        tv[A_AXIS] = parentMove.advanceData.startEReachedFeedrate()
+
+        moveA.setSpeeds(sv, tv, tv)
+
+        moveA.sanityCheck()
+
+        if debugMoves:
+            print "***** End planA() *****"
+
+        return [moveA]
+
+
+    #
     # Single advanceed ramp at start
     # Create addtional 'sub-move' at beginning
     # Das wichtigste ist, die anzahl der steps genau zu treffen, geringe
@@ -1451,49 +1570,44 @@ class Advance (object):
 
         allowedAccelV = parentMove.getMaxAllowedAccelVector(self.maxAxisAcceleration)
 
-        startSpeedV = parentMove.startSpeed.trueSpeed().vv()
+        startSpeed = parentMove.startSpeed.speed()
+        topSpeed = parentMove.topSpeed.speed()
+        endSpeed = parentMove.endSpeed.speed()
 
         for dim in [X_AXIS, Y_AXIS]:
 
-            sa = util.accelDist(abs(startSpeedV[dim]), allowedAccelV[dim], ta)
+            sa = self.startRampDistance(
+                    startSpeed[dim],
+                    topSpeed[dim], ta)
 
             steps_per_mm = PrinterProfile.getStepsPerMM(dim)
-            steps = int(round(sa * steps_per_mm * util.sign(parentMove.direction[dim])))
+            steps = int(round(sa * steps_per_mm))
             print "dim %d moves %.3f mm while accelerating -> %d steps" % (dim, sa, steps)
             displacement_vector_steps_A[dim] = steps
 
         # PART A, E
-        startSpeedS = parentMove.advanceData.startEFeedrate()
-        sa = util.accelDist(abs(startSpeedS), allowedAccelV[A_AXIS], ta)
-
-        assert(parentMove.direction[A_AXIS] > 0)
-
+        sa = self.startERampDistance(parentMove.advanceData, ta)
         steps = int(round(sa * e_steps_per_mm))
         print "dim E moves %.3f mm while accelerating -> %d steps" % (sa, steps)
         displacement_vector_steps_A[A_AXIS] = steps
 
-
         # PART B, XY
-        # Neuen displacement_vector_steps aufbauen:
-
-        reachedSpeedV = parentMove.topSpeed.trueSpeed().vv()
-
         for dim in [X_AXIS, Y_AXIS]:
 
-            sd = util.accelDist(abs(reachedSpeedV[dim]), allowedAccelV[dim], td)
+            sd = self.endRampDistance(
+                    topSpeed[dim],
+                    endSpeed[dim],
+                    td)
 
             steps_per_mm = PrinterProfile.getStepsPerMM(dim)
-            steps = int(round(sd * steps_per_mm * util.sign(parentMove.direction[dim])))
+            steps = int(round(sd * steps_per_mm))
             print "dim %d moves %.3f mm while decelerating -> %d steps" % (dim, sd, steps)
             displacement_vector_steps_B[dim] = steps
-       
+
         # PART C, E
-        endEReachedFeedrate = parentMove.advanceData.endEReachedFeedrate()
-
-        sd = util.accelDist(abs(endEReachedFeedrate), allowedAccelV[A_AXIS], td)
-
+        sd = self.endERampDistance(parentMove.advanceData, td)
         steps = int(round(sd * e_steps_per_mm))
-        print "dim E moves %.3f mm while accelerating -> %d steps" % (sd, steps)
+        print "dim E moves %.3f mm while decelerating -> %d steps" % (sd, steps)
         displacement_vector_steps_B[A_AXIS] = steps
 
         print "new A steps: ", displacement_vector_steps_A
@@ -1507,9 +1621,9 @@ class Advance (object):
         moveA.setDuration(ta, 0, 0)
         moveB.setDuration(0, 0, td)
 
-        startSpeed = parentMove.startSpeed.speed()
-        topSpeed = parentMove.topSpeed.speed()
-        endSpeed = parentMove.endSpeed.speed()
+        # startSpeed = parentMove.startSpeed.speed()
+        # topSpeed = parentMove.topSpeed.speed()
+        # endSpeed = parentMove.endSpeed.speed()
 
         sv = startSpeed.vv()
         sv[A_AXIS] = parentMove.advanceData.startEFeedrate()
@@ -1679,7 +1793,162 @@ class Advance (object):
 
         displacement_vector_steps_raw = parentMove.displacement_vector_steps_raw
 
-        assert(parentMove.linearTime())
+        assert(displacement_vector_steps_raw[Z_AXIS] == 0)
+
+        # PART A, XY
+        # Neuen displacement_vector_steps aufbauen:
+        displacement_vector_steps_A = [0] * 5
+        displacement_vector_steps_B = [0] * 5
+        displacement_vector_steps_C = [0] * 5
+
+        ta = parentMove.accelTime()
+        td = parentMove.decelTime()
+
+        allowedAccelV = parentMove.getMaxAllowedAccelVector(self.maxAxisAcceleration)
+
+        startSpeedV = parentMove.startSpeed.trueSpeed().vv()
+
+        for dim in [X_AXIS, Y_AXIS]:
+
+            sa = util.accelDist(abs(startSpeedV[dim]), allowedAccelV[dim], ta)
+
+            steps_per_mm = PrinterProfile.getStepsPerMM(dim)
+            steps = int(round(sa * steps_per_mm * util.sign(parentMove.direction[dim])))
+            print "dim %d moves %.3f mm while accelerating -> %d steps" % (dim, sa, steps)
+            displacement_vector_steps_A[dim] = steps
+
+        # PART A, E
+        startSpeedS = parentMove.advanceData.startEFeedrate()
+        sa = util.accelDist(abs(startSpeedS), allowedAccelV[A_AXIS], ta)
+
+        assert(parentMove.direction[A_AXIS] > 0)
+
+        e_steps_per_mm = PrinterProfile.getStepsPerMM(A_AXIS)
+        steps = int(round(sa * e_steps_per_mm))
+        print "dim E moves %.3f mm while accelerating -> %d steps" % (sa, steps)
+        displacement_vector_steps_A[A_AXIS] = steps
+
+
+
+
+
+        # Part B, C
+        # Time till the e-velocity crosses zero
+        endEReachedFeedrate = parentMove.advanceData.endEReachedFeedrate()
+        endEFeedrate = parentMove.advanceData.endEFeedrate()
+
+        tdc = abs(endEReachedFeedrate) / allowedAccelV[A_AXIS]
+        sdc = util.accelDist(abs(endEReachedFeedrate), allowedAccelV[A_AXIS], tdc)
+        bsteps = int(round(sdc * e_steps_per_mm))
+        print "dim E reaches zero in %.3f s, %.3f mm, %d steps" % (tdc, sdc, bsteps)
+
+        displacement_vector_steps_B[A_AXIS] = bsteps
+
+        # Part B, XY
+        reachedSpeedV = parentMove.topSpeed.trueSpeed().vv()
+
+        for dim in [X_AXIS, Y_AXIS]:
+
+            sd = util.accelDist(abs(reachedSpeedV[dim]), allowedAccelV[dim], tdc)
+
+            steps_per_mm = PrinterProfile.getStepsPerMM(dim)
+            steps = int(round(sd * steps_per_mm * util.sign(parentMove.direction[dim])))
+            print "dim %d moves %.3f mm in phase C -> %d steps" % (dim, sd, steps)
+            displacement_vector_steps_B[dim] = steps
+       
+
+        # Part C
+        # Time of rest of decel ramp
+        tdd = td - tdc
+
+        # PART C
+        for dim in range(5):
+            displacement_vector_steps_C[dim] = displacement_vector_steps_raw[dim] - (displacement_vector_steps_A[dim] + displacement_vector_steps_B[dim])
+       
+        print "new A steps: ", displacement_vector_steps_A
+        print "new B steps: ", displacement_vector_steps_B
+        print "new C steps: ", displacement_vector_steps_C
+
+        from move import SubMove
+
+        moveA = SubMove(parentMove, parentMove.moveNumber + 1, displacement_vector_steps_A)
+        moveB = SubMove(parentMove, parentMove.moveNumber + 2, displacement_vector_steps_B)
+        moveC = SubMove(parentMove, parentMove.moveNumber + 3, displacement_vector_steps_C)
+       
+        moveA.setDuration(ta, 0, 0)
+        moveB.setDuration(0, 0, tdc)
+        moveC.setDuration(0, 0, tdd)
+
+        topSpeed = parentMove.topSpeed.trueSpeed()
+        endSpeed = parentMove.endSpeed.trueSpeed()
+
+        sv = parentMove.startSpeed.trueSpeed().vv()
+        sv[A_AXIS] = parentMove.advanceData.startEFeedrate()
+        tv = topSpeed.vv()
+        tv[A_AXIS] = parentMove.advanceData.startEReachedFeedrate()
+        moveA.setSpeeds(sv, tv, tv)
+
+        # Nominal speed at zero crossing
+        allowedAccel = parentMove.getMaxAllowedAccel(self.maxAxisAcceleration)
+        dv = allowedAccel*tdc
+        if topSpeed.feedrate > endSpeed.feedrate:
+          # decel
+          zeroCrossingS = topSpeed.feedrate - dv
+        else:
+          assert(0) # does this happen?
+
+        print "top, zerocrossspeed:", topSpeed.feedrate, zeroCrossingS
+
+        sv = topSpeed.vv()
+        sv[A_AXIS] = parentMove.advanceData.endEReachedFeedrate()
+        ev = [
+            parentMove.direction[X_AXIS] * zeroCrossingS,
+            parentMove.direction[Y_AXIS] * zeroCrossingS,
+            parentMove.direction[Z_AXIS] * zeroCrossingS,
+            0.0,
+            0.0]
+        moveB.setSpeeds(sv, sv, ev)
+
+        sv = [
+            parentMove.direction[X_AXIS] * zeroCrossingS,
+            parentMove.direction[Y_AXIS] * zeroCrossingS,
+            parentMove.direction[Z_AXIS] * zeroCrossingS,
+            0.0,
+            0.0]
+        ev = parentMove.endSpeed.trueSpeed().vv()
+        ev[A_AXIS] = parentMove.advanceData.endEFeedrate()
+        moveC.setSpeeds(sv, sv, ev)
+
+        moveA.nextMove = moveB
+        moveB.prevMove = moveA
+        moveB.nextMove = moveC
+        moveC.prevMove = moveB
+
+        if debugMoves:
+            print "***** End planSADD() *****"
+
+        moveA.sanityCheck()
+        moveB.sanityCheck()
+        moveC.sanityCheck()
+
+        assert(util.vectorAdd(util.vectorAdd(displacement_vector_steps_A, displacement_vector_steps_B), displacement_vector_steps_C) == displacement_vector_steps_raw)
+
+        return [moveA, moveB, moveC]
+
+
+    #
+    # Simple advanceed ramp at start
+    # Linear middle part
+    # End ramp with sign-change
+    # Submoves: A B CD
+    def planSALD(self, parentMove):
+
+        if debugMoves:
+            print "***** Start planSALD() *****"
+            parentMove.pprint("planSALD:")
+
+        displacement_vector_steps_raw = parentMove.displacement_vector_steps_raw
+
         assert(displacement_vector_steps_raw[Z_AXIS] == 0)
 
         # PART A, XY
@@ -1837,7 +2106,7 @@ class Advance (object):
         moveD.prevMove = moveC
 
         if debugMoves:
-            print "***** End planSADD() *****"
+            print "***** End planSALD() *****"
 
         moveA.sanityCheck()
         moveB.sanityCheck()
