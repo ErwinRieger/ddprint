@@ -858,18 +858,6 @@ class SubMove(MoveBase):
 
         self.state = 2
 
-    def xsetAdvStartSpeed(self, eFeedrate):
-
-        startSpeedV = self.parentMove.startSpeed.trueSpeed().vv()
-        startSpeedV[A_AXIS] = eFeedrate
-        self.startSpeed.nominalSpeed(VelocityVector(v=startSpeedV))
-
-    def xsetAdvTopSpeed(self, eFeedrate):
-
-        topSpeedV = self.parentMove.topSpeed.trueSpeed().vv()
-        topSpeedV[A_AXIS] = eFeedrate
-        self.topSpeed.nominalSpeed(VelocityVector(v=topSpeedV))
-
     def setSpeeds(self, sv, tv, ev):
 
         if type(sv) == ListType:
