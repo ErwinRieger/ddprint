@@ -879,7 +879,7 @@ class SubMove(MoveBase):
 
     def pprint(self, title):
 
-        print "\n------ SubMove %s, Parent #: %d ------" % (title, self.parentMove.moveNumber)
+        print "\n------ SubMove # %d: %s, Parent #: %d ------" % (self.moveNumber, title, self.parentMove.moveNumber)
 
         # print "Print-move, distance: %.2f" % self.distance
 
