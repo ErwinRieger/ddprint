@@ -814,11 +814,26 @@ class Advance (object):
 
     def endERampDistance(self, advData, dt):
 
+        # v1 = advData.endEReachedFeedrate()
+        # v2 = advData.endEFeedrate()
+
+        # if v1 > 0 and v2 >= 0:
         s = self.endRampDistance(
-                advData.move.topSpeed.speed()[A_AXIS],
-                advData.move.endSpeed.speed()[A_AXIS], 
-                dt)
+            advData.move.topSpeed.speed()[A_AXIS],
+            advData.move.endSpeed.speed()[A_AXIS], 
+            dt)
         return s + self.endAdvDistance(advData.endFeedrateIncrease, dt)
+
+        print "endERampDistance: ramp not above zero.", v1, v2
+
+        if v1 <=0 and v2 < 0:
+            # Negative part ramp, this looks like a negative start ramp
+            s = self.startRampDistance(v1, v2, dt)
+            print "endERampDistance 'negative start ramp':", s
+            return s
+
+        assert(0)
+
     ################################################################################
 
     def planAdvance(self, move):
@@ -1818,7 +1833,7 @@ class Advance (object):
 
         displacement_vector_steps_raw = parentMove.displacement_vector_steps_raw
         e_steps_per_mm = PrinterProfile.getStepsPerMM(A_AXIS)
-        print "e_steps_per_mm:'", e_steps_per_mm, type(e_steps_per_mm)
+        # print "e_steps_per_mm:'", e_steps_per_mm, type(e_steps_per_mm)
 
         displacement_vector_steps_A = [0] * 5
         displacement_vector_steps_B = [0] * 5
@@ -1868,7 +1883,7 @@ class Advance (object):
             s = tl * topSpeed[A_AXIS]
 
             if td:
-                s = self.endRampDistance(
+                s += self.endRampDistance(
                     topSpeed[A_AXIS],
                     endSpeed[A_AXIS],
                     td)
@@ -2291,7 +2306,7 @@ class Advance (object):
             # PART B, E
             # E-distance ist nicht einfach der rest der e-steps, linearer e-anteil muss über
             # die dauer des linearen anteils (tLinear) berechnet werden.
-                sl = tl * topSpeed[A_AXIS]
+            sl = tl * topSpeed[A_AXIS]
             esteps = int(round(sl * e_steps_per_mm))
             self.ediff += (esteps / float(e_steps_per_mm)) - sl
             print "ediff: ", self.ediff

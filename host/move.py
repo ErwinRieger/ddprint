@@ -384,12 +384,14 @@ class AdvanceData:
     def startEFeedrate(self):
         return self.move.startSpeed.trueSpeed()[A_AXIS] + self.startFeedrateIncrease
 
+    # xxx rename to startETopFeedrate
     def startEReachedFeedrate(self):
         return self.move.topSpeed.trueSpeed()[A_AXIS] + self.startFeedrateIncrease
 
     def hasEndAdvance(self):
         return self.endFeedrateIncrease != 0
 
+    # xxx rename to endETopFeedrate
     def endEReachedFeedrate(self):
         return self.move.topSpeed.trueSpeed()[A_AXIS] + self.endFeedrateIncrease
 
