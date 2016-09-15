@@ -412,6 +412,19 @@ class AdvanceData:
             s += "\n    EEndAdvance: %.3f, Top %.3f, End: %.3f" % (self.endFeedrateIncrease, self.endEReachedFeedrate(), self.endEFeedrate())
         return s
 
+    def sanityCheck(self):
+
+        # XXX assuming no retraction moves with advance
+        if self.hasStartAdvance():
+            assert(self.move.startSpeed.speed()[A_AXIS] >= 0)
+            assert(self.move.topSpeed.speed()[A_AXIS] > 0)
+            assert(self.startFeedrateIncrease >= 0)
+
+        if self.hasEndAdvance():
+            assert(self.move.topSpeed.speed()[A_AXIS] > 0)
+            assert(self.move.endSpeed.speed()[A_AXIS] >= 0)
+            assert(self.endFeedrateIncrease >= 0)
+
 ##################################################
 #
 #
@@ -577,7 +590,7 @@ class MoveBase(object):
 
         return cmds
 
-    def sanityCheck(self):
+    def sanityCheck(self, checkDirection=True):
 
         ss = self.startSpeed.trueSpeed()
         ts = self.topSpeed.trueSpeed()
@@ -588,11 +601,11 @@ class MoveBase(object):
         assert(ts.feedrate >  0)
         assert(es.feedrate >= 0)
 
-        # All velocities should point into the same direction
-        assert(vectorLength(vectorSub(ss.direction, ts.direction)) < 0.001)
+        if checkDirection:
 
-        print es.direction, ts.direction, vectorSub(es.direction, ts.direction)
-        assert(vectorLength(vectorSub(es.direction, ts.direction)) < 0.001)
+            # All velocities should point into the same direction
+            assert(vectorLength(vectorSub(ss.direction, ts.direction)) < 0.001)
+            assert(vectorLength(vectorSub(es.direction, ts.direction)) < 0.001)
 
         self.accelData.sanityCheck()
 
@@ -779,11 +792,11 @@ class PrintMove(RealMove):
     def isPrintMove(self):
         return True
 
-    # Note: returns positive values 
     def getMaxAllowedAccelVector(self, maxAccelV):
 
         accelVector = self.direction.scale(_MAX_ACCELERATION)
-        return abs(accelVector.constrain(maxAccelV) or accelVector)
+        # return abs(accelVector.constrain(maxAccelV) or accelVector)
+        return accelVector.constrain(maxAccelV) or accelVector
 
     # always positive
     def getMaxAllowedAccel(self, maxAccelV):
@@ -821,6 +834,15 @@ class PrintMove(RealMove):
 
             # First move
             self.startSpeed.trueSpeed().checkJerk(nullV, jerk, "start 0", "#: %d" % self.moveNumber)
+
+        self.advanceData.sanityCheck()
+
+    def checkAdvance(self):
+
+        # Check direction of start advance increase
+
+        # Check direction of end advance decrease
+        pass
 
     def pprint(self, title):
 
@@ -904,7 +926,11 @@ class SubMove(MoveBase):
 
     def sanityCheck(self):
 
-        assert(self.displacement_vector_steps_raw.length() > 0)
+        # MoveBase.sanityCheck(self, checkDirection=False) # directionCheck not true for advanced moves
+
+        if self.displacement_vector_steps_raw.length() == 0:
+            self.pprint("sanityCheck")
+            assert(0)
 
 
 

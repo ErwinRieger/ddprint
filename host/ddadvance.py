@@ -34,6 +34,8 @@ if debugPlot:
     import pickle, matplotlib.pyplot as plt 
     from matplotlib import collections as mc
 
+emptyVector5 = [0] * 5
+
 #####################################################################
 
 class DebugPlotSegment (object):
@@ -155,9 +157,10 @@ class Advance (object):
         # self.endSum = 0
         # Running sum of e-distances through advance, for debugging of planSteps()
         self.advStepSum = 0
+        self.ediff = 0
 
     def eJerk(self, accel):
-        return accel * self.kAdv
+        return abs(accel) * self.kAdv
 
     def planPath(self, path):
 
@@ -168,6 +171,7 @@ class Advance (object):
         self.advSum = 0
         self.skippedAdvSum = 0
         self.advStepSum = 0
+        self.ediff = 0
 
         if debugPlot: #  and not self.plotfile:
             self.plottime = 1
@@ -324,6 +328,7 @@ class Advance (object):
         assert(util.circaf(self.skippedAdvSum, 0, 0.01))
 
         print "advStepSum: ", self.advStepSum
+        print "ediff: ", self.ediff
         assert(util.circaf(self.advStepSum, 0, 10))
 
         # xxx debug, check chain
@@ -411,8 +416,6 @@ class Advance (object):
                 """
 
         for move in newPath:
-
-            move.sanityCheck(self.planner.jerk)
 
             #
             # Collect some statistics
@@ -738,19 +741,69 @@ class Advance (object):
             print "***** End planAcceleration() *****"
             # if move.moveNumber == 40: assert(0)
 
-    # Area (e-distance) of advance ramp
+    ################################################################################
+    # Area (e-distance) of advance start ramp
+    # Berechnet die trapezfläche und damit die durch advance zusätzlich
+    # extruderstrecke.
+    # Annahme: startFeedrateIncrease immer positiv (keine retraction), dadurch
+    # return value auch immer positiv.
     def startAdvDistance(self, startFeedrateIncrease, dt):
 
         # Trapezberechnung
         sadv = startFeedrateIncrease * dt
         assert(sadv > 0)
-
         return sadv
 
+    # Area (e-distance) of advance end ramp
+    # Berechnet die trapezfläche und damit die durch advance verringerte
+    # extruderstrecke.
+    # Annahme: endFeedrateIncrease immer negativ (keine retraction), dadurch
+    # return value auch immer negativ.
+    def endAdvDistance(self, endFeedrateIncrease, dt):
+
+        # Trapezberechnung, resultat negativ, da endFeedrateIncrease negativ ist
+        print "endFeedrateIncrease * dt: ", endFeedrateIncrease, dt 
+        sadv = endFeedrateIncrease * dt
+        assert(sadv < 0)
+        return sadv
+    ################################################################################
+
+    ################################################################################
+    # Berechnet die fläche (und damit die strecke) der start-rampe.
+    # Diese besteht aus zwei teilen:
+    # * Der rechteckige teil der aus v0*dt besteht
+    # * Und dem dreieckigen teil der aus dv*dt besteht.
+    # Vorzeichen:
+    #   v0, v1 positiv: resultat positiv
+    #   v0, v1 negativ: resultat negativ
     def startRampDistance(self, v0, v1, dt):
+
+        print "v0:", v0, "v1:", v1
+
+        if v1 > 0: 
+            assert(v0 >= 0)
+            assert(v1 > v0)
+        elif v1 < 0:
+            assert(v0 <= 0)
+            assert(v1 < v0)
 
         return ((v1 - v0) * dt) / 2.0 + v0 * dt
 
+    def endRampDistance(self, v0, v1, dt):
+
+        print "v0:", v0, "v1:", v1
+
+        if v0 > 0:
+            assert(v1 >= 0)
+            assert(v0 > v1)
+        if v0 < 0:
+            assert(v1 <= 0)
+            assert(v0 < v1)
+
+        return ((v0 - v1) * dt) / 2.0 + v1 * dt
+    ################################################################################
+
+    ################################################################################
     def startERampDistance(self, advData, dt):
 
         s = self.startRampDistance(
@@ -759,19 +812,6 @@ class Advance (object):
                 dt)
         return s + self.startAdvDistance(advData.startFeedrateIncrease, dt)
 
-    # Area (e-distance) of advance ramp
-    def endAdvDistance(self, endFeedrateIncrease, dt):
-
-        # Trapezberechnung, resultat negativ, da endFeedrateIncrease negativ ist
-        sadv = endFeedrateIncrease * dt
-        assert(sadv < 0)
-
-        return sadv
-
-    def endRampDistance(self, v0, v1, dt):
-
-        return ((v0 - v1) * dt) / 2.0 + v1 * dt
-
     def endERampDistance(self, advData, dt):
 
         s = self.endRampDistance(
@@ -779,6 +819,7 @@ class Advance (object):
                 advData.move.endSpeed.speed()[A_AXIS], 
                 dt)
         return s + self.endAdvDistance(advData.endFeedrateIncrease, dt)
+    ################################################################################
 
     def planAdvance(self, move):
 
@@ -919,12 +960,11 @@ class Advance (object):
 
             return [move]
 
-
+        assert(move.displacement_vector_steps_raw[Z_AXIS] == 0)
 
         #####################################################################
         """
         emptyVector3 = [0] * 3
-        emptyVector5 = [0] * 5
         newMoves = []
 
         displacement_vector_steps_raw = move.displacement_vector_steps_raw
@@ -946,7 +986,7 @@ class Advance (object):
         tvc = topSpeed.vv()
         evc = endSpeed.vv()
 
-        # allowedAccelV = move.getMaxAllowedAccelVector(self.maxAxisAcceleration)
+        # allowedAccelV = move.absGetMaxAllowedAccelVector(self.maxAxisAcceleration)
 
         displacement_vector_steps_A = [0] * 5
         displacement_vector_steps_B = [0] * 5
@@ -1397,6 +1437,7 @@ class Advance (object):
             newMoves[-1].nextMove = move.nextMove
 
         for move in newMoves:
+            move.sanityCheck()
             self.planStepsSimple(move)
 
         if debugMoves:
@@ -1726,6 +1767,8 @@ class Advance (object):
         # PART A, E
         sa = self.startERampDistance(parentMove.advanceData, ta)
         esteps = int(round(sa * e_steps_per_mm))
+        self.ediff += (esteps / float(e_steps_per_mm)) - sa
+        print "ediff: ", self.ediff
         print "dim E moves %.3f mm while accelerating -> %d steps" % (sa, esteps)
 
         displacement_vector_steps_A[A_AXIS] = esteps
@@ -1775,9 +1818,7 @@ class Advance (object):
 
         displacement_vector_steps_raw = parentMove.displacement_vector_steps_raw
         e_steps_per_mm = PrinterProfile.getStepsPerMM(A_AXIS)
-
-        assert(parentMove.linearTime())
-        assert(displacement_vector_steps_raw[Z_AXIS] == 0)
+        print "e_steps_per_mm:'", e_steps_per_mm, type(e_steps_per_mm)
 
         displacement_vector_steps_A = [0] * 5
         displacement_vector_steps_B = [0] * 5
@@ -1806,6 +1847,8 @@ class Advance (object):
         # PART A, E
         sa = self.startERampDistance(parentMove.advanceData, ta)
         esteps = int(round(sa * e_steps_per_mm))
+        self.ediff += (esteps / float(e_steps_per_mm)) - sa
+        print "ediff: ", self.ediff
         print "dim E moves %.3f mm while accelerating -> %d steps" % (sa, esteps)
 
         displacement_vector_steps_A[A_AXIS] = esteps
@@ -1822,13 +1865,18 @@ class Advance (object):
             # PART B, E
             # E-distance ist nicht einfach der rest der e-steps, linearer e-anteil muss über
             # die dauer des linearen anteils (tLinear) berechnet werden.
-            sl = tl * topSpeed[A_AXIS]
+            s = tl * topSpeed[A_AXIS]
 
             if td:
-                assert(0)
+                s = self.endRampDistance(
+                    topSpeed[A_AXIS],
+                    endSpeed[A_AXIS],
+                    td)
 
-            esteps = int(round(sl * e_steps_per_mm))
-            print "dim E moves %.3f mm in linear phase -> %d steps" % (sl, esteps)
+            esteps = int(round(s * e_steps_per_mm))
+            self.ediff += (esteps / float(e_steps_per_mm)) - s
+            print "ediff: ", self.ediff
+            print "dim E moves %.3f mm in linear and decel phase -> %d steps" % (s, esteps)
 
             displacement_vector_steps_B[A_AXIS] = esteps
         ####################################################################################
@@ -1854,17 +1902,23 @@ class Advance (object):
 
         if tl or td:
 
-            moveB = SubMove(parentMove, parentMove.moveNumber + 2, displacement_vector_steps_B)
-            moveB.setDuration(0, tl, td)
+            if displacement_vector_steps_B != emptyVector5:
+
+                moveB = SubMove(parentMove, parentMove.moveNumber + 2, displacement_vector_steps_B)
+                moveB.setDuration(0, tl, td)
      
-            moveB.startSpeed.setSpeed(topSpeed)
-            moveB.topSpeed.setSpeed(topSpeed)
-            moveB.endSpeed.setSpeed(endSpeed)
+                moveB.startSpeed.setSpeed(topSpeed)
+                moveB.topSpeed.setSpeed(topSpeed)
+                moveB.endSpeed.setSpeed(endSpeed)
 
-            moveA.nextMove = moveB
-            moveB.prevMove = moveA
+                moveA.nextMove = moveB
+                moveB.prevMove = moveA
 
-            newMoves.append(moveB)
+                newMoves.append(moveB)
+
+            else:
+
+                print "planSA: skipping empty b-move" 
 
         # Sum up additional e-distance of this move for debugging
         self.advStepSum += (displacement_vector_steps_A[A_AXIS]+displacement_vector_steps_B[A_AXIS]) - displacement_vector_steps_raw[A_AXIS]
@@ -1898,6 +1952,8 @@ class Advance (object):
         # PART A, E
         sd = self.endERampDistance(parentMove.advanceData, td)
         esteps = int(round(sd * e_steps_per_mm))
+        self.ediff += (esteps / float(e_steps_per_mm)) - sd
+        print "ediff: ", self.ediff
         print "dim E moves %.3f mm while accelerating -> %d steps" % (sd, esteps)
 
         displacement_vector_steps_A[A_AXIS] = esteps
@@ -1925,6 +1981,7 @@ class Advance (object):
         if debugMoves:
             print "***** End planD() *****"
 
+        assert(0)
         return [moveA]
 
 
@@ -1940,8 +1997,6 @@ class Advance (object):
 
         displacement_vector_steps_raw = parentMove.displacement_vector_steps_raw
         e_steps_per_mm = PrinterProfile.getStepsPerMM(A_AXIS)
-
-        assert(displacement_vector_steps_raw[Z_AXIS] == 0)
 
         displacement_vector_steps_A = [0] * 5
         displacement_vector_steps_B = [0] * 5
@@ -1971,6 +2026,8 @@ class Advance (object):
         # PART B, E
         sd = self.endERampDistance(parentMove.advanceData, td)
         esteps = int(round(sd * e_steps_per_mm))
+        self.ediff += (esteps / float(e_steps_per_mm)) - sd
+        print "ediff: ", self.ediff
         print "dim E moves %.3f mm while accelerating -> %d steps" % (sd, esteps)
 
         displacement_vector_steps_B[A_AXIS] = esteps
@@ -1992,6 +2049,8 @@ class Advance (object):
             # die dauer des linearen anteils (tLinear) berechnet werden.
             sl = tl * topSpeed[A_AXIS]
             esteps = int(round(sl * e_steps_per_mm))
+            self.ediff += (esteps / float(e_steps_per_mm)) - sl
+            print "ediff: ", self.ediff
             print "dim E moves %.3f mm in linear phase -> %d steps" % (sl, esteps)
     
             displacement_vector_steps_A[A_AXIS] = esteps
@@ -2028,7 +2087,7 @@ class Advance (object):
             moveA.nextMove = moveB
             moveB.prevMove = moveA
 
-            newMoves.insert(0, moveB)
+            newMoves.insert(0, moveA)
 
         # Sum up additional e-distance of this move for debugging
         self.advStepSum += (displacement_vector_steps_A[A_AXIS]+displacement_vector_steps_B[A_AXIS]) - displacement_vector_steps_raw[A_AXIS]
@@ -2057,8 +2116,6 @@ class Advance (object):
         displacement_vector_steps_raw = parentMove.displacement_vector_steps_raw
         e_steps_per_mm = PrinterProfile.getStepsPerMM(A_AXIS)
 
-        assert(displacement_vector_steps_raw[Z_AXIS] == 0)
-
         # PART A, XY
         # Neuen displacement_vector_steps aufbauen:
         displacement_vector_steps_A = [0] * 5
@@ -2067,7 +2124,7 @@ class Advance (object):
         ta = parentMove.accelTime()
         td = parentMove.decelTime()
 
-        allowedAccelV = parentMove.getMaxAllowedAccelVector(self.maxAxisAcceleration)
+        allowedAccelV = parentMove.absGetMaxAllowedAccelVector(self.maxAxisAcceleration)
 
         startSpeed = parentMove.startSpeed.speed()
         topSpeed = parentMove.topSpeed.speed()
@@ -2164,7 +2221,6 @@ class Advance (object):
         e_steps_per_mm = PrinterProfile.getStepsPerMM(A_AXIS)
 
         assert(parentMove.linearTime())
-        assert(displacement_vector_steps_raw[Z_AXIS] == 0)
 
         displacement_vector_steps_A = [0] * 5
         displacement_vector_steps_B = [0] * 5
@@ -2194,6 +2250,8 @@ class Advance (object):
         # PART A, E
         sa = self.startERampDistance(parentMove.advanceData, ta)
         esteps = int(round(sa * e_steps_per_mm))
+        self.ediff += (esteps / float(e_steps_per_mm)) - sa
+        print "ediff: ", self.ediff
         print "dim E moves %.3f mm while accelerating -> %d steps" % (sa, esteps)
 
         displacement_vector_steps_A[A_AXIS] = esteps
@@ -2216,6 +2274,8 @@ class Advance (object):
         # PART C, E
         sd = self.endERampDistance(parentMove.advanceData, td)
         esteps = int(round(sd * e_steps_per_mm))
+        self.ediff += (esteps / float(e_steps_per_mm)) - sd
+        print "ediff: ", self.ediff
         print "dim E moves %.3f mm while accelerating -> %d steps" % (sd, esteps)
 
         displacement_vector_steps_C[A_AXIS] = esteps
@@ -2233,6 +2293,8 @@ class Advance (object):
             # die dauer des linearen anteils (tLinear) berechnet werden.
                 sl = tl * topSpeed[A_AXIS]
             esteps = int(round(sl * e_steps_per_mm))
+            self.ediff += (esteps / float(e_steps_per_mm)) - sl
+            print "ediff: ", self.ediff
             print "dim E moves %.3f mm in linear phase -> %d steps" % (sl, esteps)
             displacement_vector_steps_B[A_AXIS] = esteps
         ####################################################################################
@@ -2309,8 +2371,6 @@ class Advance (object):
 
         displacement_vector_steps_raw = parentMove.displacement_vector_steps_raw
 
-        assert(displacement_vector_steps_raw[Z_AXIS] == 0)
-
         # PART A, XY
         # Neuen displacement_vector_steps aufbauen:
         displacement_vector_steps_A = [0] * 5
@@ -2320,7 +2380,7 @@ class Advance (object):
         ta = parentMove.accelTime()
         td = parentMove.decelTime()
 
-        allowedAccelV = parentMove.getMaxAllowedAccelVector(self.maxAxisAcceleration)
+        allowedAccelV = parentMove.absGetMaxAllowedAccelVector(self.maxAxisAcceleration)
 
         startSpeedV = parentMove.startSpeed.trueSpeed().vv()
 
@@ -2462,8 +2522,6 @@ class Advance (object):
 
         displacement_vector_steps_raw = parentMove.displacement_vector_steps_raw
 
-        assert(displacement_vector_steps_raw[Z_AXIS] == 0)
-
         # PART A, XY
         # Neuen displacement_vector_steps aufbauen:
         displacement_vector_steps_A = [0] * 5
@@ -2474,7 +2532,7 @@ class Advance (object):
         ta = parentMove.accelTime()
         td = parentMove.decelTime()
 
-        allowedAccelV = parentMove.getMaxAllowedAccelVector(self.maxAxisAcceleration)
+        allowedAccelV = parentMove.absGetMaxAllowedAccelVector(self.maxAxisAcceleration)
 
         startSpeedV = parentMove.startSpeed.trueSpeed().vv()
 
