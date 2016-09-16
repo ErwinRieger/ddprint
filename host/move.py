@@ -807,6 +807,98 @@ class PrintMove(RealMove):
         accelVector = self.getMaxAllowedAccelVector(maxAccelV)
         return accelVector.length()
 
+    ################################################################################
+    # Area (e-distance) of advance start ramp
+    # Berechnet die trapezfläche und damit die durch advance zusätzlich
+    # extruderstrecke.
+    # Annahme: startFeedrateIncrease immer positiv (keine retraction), dadurch
+    # return value auch immer positiv.
+    def startAdvDistance(self, ta, startFeedrateIncrease=None):
+
+        if startFeedrateIncrease == None:
+            startFeedrateIncrease = self.advanceData.startFeedrateIncrease
+
+        # Trapezberechnung
+        sadv = startFeedrateIncrease * ta
+        assert(sadv > 0)
+        return sadv
+
+    # Area (e-distance) of advance end ramp
+    # Berechnet die trapezfläche und damit die durch advance verringerte
+    # extruderstrecke.
+    # Annahme: endFeedrateIncrease immer negativ (keine retraction), dadurch
+    # return value auch immer negativ.
+    def endAdvDistance(self, td, endFeedrateIncrease=None):
+
+        if endFeedrateIncrease == None:
+            endFeedrateIncrease = self.advanceData.endFeedrateIncrease
+
+        # Trapezberechnung, resultat negativ, da endFeedrateIncrease negativ ist
+        sadv = endFeedrateIncrease * td
+        assert(sadv < 0)
+        return sadv
+    ################################################################################
+
+    ################################################################################
+    # Berechnet die fläche (und damit die strecke) der start-rampe.
+    # Diese besteht aus zwei teilen:
+    # * Der rechteckige teil der aus v0*dt besteht
+    # * Und dem dreieckigen teil der aus dv*dt besteht.
+    # Vorzeichen:
+    #   v0, v1 positiv: resultat positiv
+    #   v0, v1 negativ: resultat negativ
+    def startRampDistance(self, v0, v1, dt):
+
+        print "v0:", v0, "v1:", v1
+
+        if v1 > 0: 
+            assert(v0 >= 0)
+            assert(v1 > v0)
+        elif v1 < 0:
+            assert(v0 <= 0)
+            assert(v1 < v0)
+
+        return ((v1 - v0) * dt) / 2.0 + v0 * dt
+
+    def endRampDistance(self, v0, v1, dt):
+
+        print "v0:", v0, "v1:", v1
+
+        if v0 > 0:
+            assert(v1 >= 0)
+            assert(v0 > v1)
+        if v0 < 0:
+            assert(v1 <= 0)
+            assert(v0 < v1)
+
+        return ((v0 - v1) * dt) / 2.0 + v1 * dt
+    ################################################################################
+
+    ################################################################################
+    def startERampDistance(self, ta=None):
+
+        if ta == None:
+            ta = self.accelTime()
+
+        s = self.startRampDistance(
+                self.startSpeed.speed()[A_AXIS], 
+                self.topSpeed.speed()[A_AXIS],
+                ta)
+        return s + self.startAdvDistance(ta)
+
+    def endERampDistance(self, td=None):
+
+        if td == None:
+            td = self.decelTime()
+
+        s = self.endRampDistance(
+            self.topSpeed.speed()[A_AXIS],
+            self.endSpeed.speed()[A_AXIS], 
+            td)
+        return s + self.endAdvDistance(td)
+    ################################################################################
+
+
     def sanityCheck(self, jerk):
 
         RealMove.sanityCheck(self)
