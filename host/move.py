@@ -784,7 +784,8 @@ class PrintMove(RealMove):
         #
         # Move distance in XYZ plane
         #
-        self.distance = displacement_vector.length(3)
+        # self.distance = displacement_vector.length(3)
+        self.distance = displacement_vector.length()
 
         self.prevMove = None
         self.nextMove = None
