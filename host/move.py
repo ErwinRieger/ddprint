@@ -848,6 +848,7 @@ class PrintMove(RealMove):
 
         sa = self.startAdvDistance(ta, startFeedrateIncrease) + roundError
         esteps = int(sa * self.e_steps_per_mm)
+        # esteps = int(round(sa * self.e_steps_per_mm))
         ediff = sa - (esteps / float(self.e_steps_per_mm))
 
         return (sa, esteps, ediff)
@@ -858,6 +859,7 @@ class PrintMove(RealMove):
 
         sd = self.endAdvDistance(td, endFeedrateIncrease) + roundError
         esteps = int(sd * self.e_steps_per_mm)
+        # esteps = int(round(sd * self.e_steps_per_mm))
         ediff = sd - (esteps / float(self.e_steps_per_mm))
 
         return (sd, esteps, ediff)
@@ -910,15 +912,18 @@ class PrintMove(RealMove):
                 ta)
         return s + self.startAdvDistance(ta, startFeedrateIncrease)
 
-    def endERampDistance(self, td=None, endFeedrateIncrease=None):
+    def endERampDistance(self, td=None, endFeedrateIncrease=None, v0=None, v1=None):
 
         if td == None:
             td = self.decelTime()
 
-        s = self.endRampDistance(
-            self.topSpeed.speed()[A_AXIS],
-            self.endSpeed.speed()[A_AXIS], 
-            td)
+        if v0 == None:
+            v0 = self.topSpeed.speed()[A_AXIS]
+
+        if v1 == None:
+            v1 = self.endSpeed.speed()[A_AXIS]
+
+        s = self.endRampDistance(v0, v1, td)
         return s + self.endAdvDistance(td, endFeedrateIncrease)
     ################################################################################
 
@@ -932,9 +937,9 @@ class PrintMove(RealMove):
 
         return (sa, esteps, ediff)
 
-    def endERampSteps(self, td=None, endFeedrateIncrease=None, roundError=0):
+    def endERampSteps(self, td=None, endFeedrateIncrease=None, v0=None, v1=None, roundError=0):
 
-        sd = self.endERampDistance(td, endFeedrateIncrease) + roundError
+        sd = self.endERampDistance(td, endFeedrateIncrease, v0=v0, v1=v1) + roundError
         # esteps = int(round(sd * self.e_steps_per_mm))
         esteps = int(sd * self.e_steps_per_mm)
         ediff = sd - (esteps / float(self.e_steps_per_mm))
