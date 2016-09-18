@@ -26,7 +26,7 @@ from ddprintconstants import maxTimerValue16, maxTimerValue24, fTimer, _MAX_ACCE
 from ddprintconstants import AdvanceEThreshold
 from ddprintutil import X_AXIS, Y_AXIS, Z_AXIS, A_AXIS, B_AXIS,vectorLength, vectorMul, vectorSub, circaf, sign
 from ddprintcommands import CommandNames
-from ddprofile import NozzleProfile, MatProfile
+from ddprofile import NozzleProfile, MatProfile, PrinterProfile
 from types import ListType
 
 
@@ -792,6 +792,8 @@ class PrintMove(RealMove):
 
         self.advanceData = AdvanceData(self)
 
+        self.e_steps_per_mm = PrinterProfile.getStepsPerMM(A_AXIS)
+
     def isPrintMove(self):
         return True
 
@@ -840,6 +842,28 @@ class PrintMove(RealMove):
     ################################################################################
 
     ################################################################################
+    def startAdvSteps(self, startFeedrateIncrease, roundError=0):
+
+        ta = self.accelTime()
+
+        sa = self.startAdvDistance(ta, startFeedrateIncrease) + roundError
+        esteps = int(sa * self.e_steps_per_mm)
+        ediff = sa - (esteps / float(self.e_steps_per_mm))
+
+        return (sa, esteps, ediff)
+
+    def endAdvSteps(self, endFeedrateIncrease, roundError=0):
+
+        td = self.decelTime()
+
+        sd = self.endAdvDistance(td, endFeedrateIncrease) + roundError
+        esteps = int(sd * self.e_steps_per_mm)
+        ediff = sd - (esteps / float(self.e_steps_per_mm))
+
+        return (sd, esteps, ediff)
+    ################################################################################
+
+    ################################################################################
     # Berechnet die fläche (und damit die strecke) der start-rampe.
     # Diese besteht aus zwei teilen:
     # * Der rechteckige teil der aus v0*dt besteht
@@ -875,7 +899,7 @@ class PrintMove(RealMove):
     ################################################################################
 
     ################################################################################
-    def startERampDistance(self, ta=None):
+    def startERampDistance(self, ta=None, startFeedrateIncrease=None):
 
         if ta == None:
             ta = self.accelTime()
@@ -884,9 +908,9 @@ class PrintMove(RealMove):
                 self.startSpeed.speed()[A_AXIS], 
                 self.topSpeed.speed()[A_AXIS],
                 ta)
-        return s + self.startAdvDistance(ta)
+        return s + self.startAdvDistance(ta, startFeedrateIncrease)
 
-    def endERampDistance(self, td=None):
+    def endERampDistance(self, td=None, endFeedrateIncrease=None):
 
         if td == None:
             td = self.decelTime()
@@ -895,7 +919,27 @@ class PrintMove(RealMove):
             self.topSpeed.speed()[A_AXIS],
             self.endSpeed.speed()[A_AXIS], 
             td)
-        return s + self.endAdvDistance(td)
+        return s + self.endAdvDistance(td, endFeedrateIncrease)
+    ################################################################################
+
+    ################################################################################
+    def startERampSteps(self, startFeedrateIncrease=None, roundError=0):
+
+        sa = self.startERampDistance(startFeedrateIncrease=startFeedrateIncrease) + roundError
+        # esteps = int(round(sa * self.e_steps_per_mm))
+        esteps = int(sa * self.e_steps_per_mm)
+        ediff = sa - (esteps / float(self.e_steps_per_mm))
+
+        return (sa, esteps, ediff)
+
+    def endERampSteps(self, td=None, endFeedrateIncrease=None, roundError=0):
+
+        sd = self.endERampDistance(td, endFeedrateIncrease) + roundError
+        # esteps = int(round(sd * self.e_steps_per_mm))
+        esteps = int(sd * self.e_steps_per_mm)
+        ediff = sd - (esteps / float(self.e_steps_per_mm))
+
+        return (sd, esteps, ediff)
     ################################################################################
 
 
