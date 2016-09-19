@@ -1012,12 +1012,27 @@ class Advance (object):
                     (sd, esteps, ediff) = move.endERampSteps(roundError=self.skippedStartAdvSum)
 
                     print "(sd, esteps, ediff):", (sd, esteps, ediff) 
-                    assert(esteps <= -1)
+                    
+                    if esteps <= -1:
+                        move.advanceData.endESteps = esteps
 
-                    move.advanceData.endESteps = esteps
+                        # self.advSum += move.endAdvDistance(td)
+                        self.skippedStartAdvSum = ediff
 
-                    # self.advSum += move.endAdvDistance(td)
-                    self.skippedStartAdvSum = ediff
+                    else:
+
+                        # Dont advance, sum up like the decel ramp.
+                        self.skippedStartAdvSum = sd
+
+                        # E-steps of non-advanced decel ramp
+                        sd = move.endRampDistance(topSpeed[A_AXIS], endSpeed[A_AXIS], td) + self.skippedDecelSteps
+
+                        esteps = int(sd * self.e_steps_per_mm)
+                        self.skippedDecelSteps = sd - (esteps / float(self.e_steps_per_mm))
+                        print "dim E moves %.3f mm in linear phase -> %d steps" % (sd, esteps)
+
+                        move.advanceData.endESteps = esteps
+
             else:
                 print "(sd, esteps, ediff):", (nu_sd, esteps, nu_ediff) 
 
@@ -2067,7 +2082,12 @@ class Advance (object):
         if debugMoves:
             print "***** End planSALSD() *****"
 
-        assert(util.vectorAdd(util.vectorAdd(displacement_vector_steps_A[:3], displacement_vector_steps_B[:3]), displacement_vector_steps_C[:3]) == displacement_vector_steps_raw[:3])
+        # assert(util.vectorAdd(util.vectorAdd(displacement_vector_steps_A[:3], displacement_vector_steps_B[:3]), displacement_vector_steps_C[:3]) == displacement_vector_steps_raw[:3])
+        l1 = util.vectorLength(util.vectorAdd(util.vectorAdd(displacement_vector_steps_A[:3], displacement_vector_steps_B[:3]), displacement_vector_steps_C[:3]))
+        l2 = util.vectorLength(displacement_vector_steps_raw[:3])
+        d=l1-l2
+        print "xyz diff:", d
+        assert(util.circaf(d, 0, 1.1))
 
         return newMoves
 
@@ -2458,12 +2478,12 @@ class Advance (object):
         if debugMoves:
             print "***** End planSALDD() *****"
 
-        assert(util.vectorAdd(util.vectorAdd(util.vectorAdd(displacement_vector_steps_A[:3], displacement_vector_steps_B[:3]), displacement_vector_steps_C[:3]), displacement_vector_steps_D[:3]) == displacement_vector_steps_raw[:3])
-        # l1 = util.vectorLength(util.vectorAdd(util.vectorAdd(util.vectorAdd(displacement_vector_steps_A[:3], displacement_vector_steps_B[:3]), displacement_vector_steps_C[:3]), displacement_vector_steps_D[:3]))
-        # l2 = util.vectorLength(displacement_vector_steps_raw[:3])
-        # d=l1-l2
-        # print "xyz diff:", d
-        # assert(util.circaf(d, 0, 1.1))
+        # assert(util.vectorAdd(util.vectorAdd(util.vectorAdd(displacement_vector_steps_A[:3], displacement_vector_steps_B[:3]), displacement_vector_steps_C[:3]), displacement_vector_steps_D[:3]) == displacement_vector_steps_raw[:3])
+        l1 = util.vectorLength(util.vectorAdd(util.vectorAdd(util.vectorAdd(displacement_vector_steps_A[:3], displacement_vector_steps_B[:3]), displacement_vector_steps_C[:3]), displacement_vector_steps_D[:3]))
+        l2 = util.vectorLength(displacement_vector_steps_raw[:3])
+        d=l1-l2
+        print "xyz diff:", d
+        assert(util.circaf(d, 0, 1.1))
 
         return newMoves
 
