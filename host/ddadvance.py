@@ -904,12 +904,24 @@ class Advance (object):
                 (sa, esteps, ediff) = move.startERampSteps(roundError=self.skippedStartAdvSum)
 
                 print "(sd, esteps, ediff):", (sa, esteps, ediff) 
-                assert(esteps > 1)
+                if esteps >= 1:
 
-                move.advanceData.startESteps = esteps
+                    move.advanceData.startESteps = esteps
+                    # self.advSum += move.startAdvDistance(ta)
+                    self.skippedStartAdvSum = ediff
+                else:
 
-                # self.advSum += move.startAdvDistance(ta)
-                self.skippedStartAdvSum = ediff
+                    # Dont advance very small acceleration ramps, but sum up the missing advance.
+                    self.skippedStartAdvSum += nu_sa
+
+                    # E-steps of non-advanced accel ramp
+                    sa = move.startRampDistance(startSpeed[A_AXIS], topSpeed[A_AXIS], ta) + self.skippedAccelSteps
+
+                    esteps = int(sa * self.e_steps_per_mm)
+                    self.skippedAccelSteps = sa - (esteps / float(self.e_steps_per_mm))
+                    print "dim E moves %.3f mm in accel phase -> %d steps" % (sa, esteps)
+
+                    move.advanceData.startESteps = esteps
             else:
                 print "(sa, esteps, ediff):", (nu_sa, esteps, nu_ediff) 
 
@@ -2477,6 +2489,10 @@ class Advance (object):
 
         if debugMoves:
             print "***** End planSALDD() *****"
+
+        v1 = util.vectorAdd(util.vectorAdd(util.vectorAdd(displacement_vector_steps_A[:3], displacement_vector_steps_B[:3]), displacement_vector_steps_C[:3]), displacement_vector_steps_D[:3])
+        d = util.vectorSub(v1, displacement_vector_steps_raw[:3])
+        print "xyz diff:", d
 
         # assert(util.vectorAdd(util.vectorAdd(util.vectorAdd(displacement_vector_steps_A[:3], displacement_vector_steps_B[:3]), displacement_vector_steps_C[:3]), displacement_vector_steps_D[:3]) == displacement_vector_steps_raw[:3])
         l1 = util.vectorLength(util.vectorAdd(util.vectorAdd(util.vectorAdd(displacement_vector_steps_A[:3], displacement_vector_steps_B[:3]), displacement_vector_steps_C[:3]), displacement_vector_steps_D[:3]))
