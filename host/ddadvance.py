@@ -209,7 +209,7 @@ class Advance (object):
 
         # Step 1: join moves forward
         for move in path[1:]:
-            util.joinSpeed(prevMove, move, self.planner.jerk, self.maxAxisAcceleration)
+            util.joinMoves(prevMove, move, self.planner.jerk, self.maxAxisAcceleration)
             prevMove = move
 
         # Sanity check

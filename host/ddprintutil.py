@@ -129,10 +129,10 @@ def vAccelPerDist(v0, a, s):
 
 ####################################################################################################
 
-def joinSpeed(move1, move2, jerk, maxAccelV):
+def joinMoves(move1, move2, jerk, maxAccelV):
 
         if debugMoves:
-            print "***** Start joinSpeed() *****"
+            print "***** Start joinMoves() *****"
             move1.pprint("JoinSpeed - Move1")
             move2.pprint("JoinSpeed - Move2")
 
@@ -159,9 +159,9 @@ def joinSpeed(move1, move2, jerk, maxAccelV):
             print "Move1, endspeed lowered: ", endSpeed1
             move1.endSpeed.setSpeed(endSpeed1)
 
-        joinSpeed2(move1, move2, jerk)
+        joinMoves2(move1, move2, jerk)
 
-def joinSpeed2(move1, move2, jerk):
+def joinMoves2(move1, move2, jerk):
 
         endSpeed1 = move1.endSpeed.speed()
         startSpeed2 = move2.endSpeed.speed()
@@ -169,8 +169,8 @@ def joinSpeed2(move1, move2, jerk):
         eEndSpeed1 = endSpeed1[A_AXIS]
         eStartSpeed2 = startSpeed2[A_AXIS] 
 
-        print "joinSpeed2(): e-feedrate 1: ", eEndSpeed1
-        print "joinSpeed2(): e-feedrate 2: ", eStartSpeed2
+        print "joinMoves2(): e-feedrate 1: ", eEndSpeed1
+        print "joinMoves2(): e-feedrate 2: ", eStartSpeed2
 
         #
         # Compare E-speed of moves
@@ -184,7 +184,7 @@ def joinSpeed2(move1, move2, jerk):
             print "Case1, differenceVector, jerk:", differenceVector, jerk
 
 ##################
-            # old joinspeed
+            # old joinMoves
 
             #
             # Join in bezug auf den maximalen jerk aller achsen betrachten:
@@ -241,8 +241,8 @@ def joinSpeed2(move1, move2, jerk):
                         speedScale = min(speedScale, jerk[dim] / abs(differenceVector[dim]))
 
                 if debugMoves:
-                    move1.pprint("JoinSpeed - Move1")
-                    move2.pprint("JoinSpeed - Move2")
+                    move1.pprint("JoinMoves - Move1")
+                    move2.pprint("JoinMoves - Move2")
                     print "speedScale: ", speedScale # , weight
 
                 assert(speedScale <= 1.0)
@@ -274,9 +274,9 @@ def joinSpeed2(move1, move2, jerk):
 
 ##################
 
-        joinSpeed3(move1, move2, jerk)
+        joinMoves3(move1, move2, jerk)
      
-def joinSpeed3(move1, move2, jerk):
+def joinMoves3(move1, move2, jerk):
 
         endSpeed1 = move1.endSpeed.speed()
         startSpeed2 = move2.startSpeed.speed()
@@ -284,8 +284,8 @@ def joinSpeed3(move1, move2, jerk):
         eEndSpeed1 = endSpeed1[A_AXIS]
         eStartSpeed2 = startSpeed2[A_AXIS] 
 
-        print "joinSpeed3(): e-feedrate 1: ", eEndSpeed1
-        print "joinSpeed3(): e-feedrate 2: ", eStartSpeed2
+        print "joinMoves3(): e-feedrate 1: ", eEndSpeed1
+        print "joinMoves3(): e-feedrate 2: ", eStartSpeed2
 
         if eEndSpeed1 > eStartSpeed2:
             # Slow down move1
@@ -369,8 +369,8 @@ def joinSpeed3(move1, move2, jerk):
                     speedScale = min(speedScale, jerk[dim] / abs(differenceVector[dim]))
 
             if debugMoves:
-                move1.pprint("JoinSpeed - Move1")
-                move2.pprint("JoinSpeed - Move2")
+                move1.pprint("JoinMoves - Move1")
+                move2.pprint("JoinMoves - Move2")
                 print "speedScale: ", speedScale # , weight
 
             assert(speedScale <= 1.0)
@@ -403,7 +403,7 @@ def joinSpeed3(move1, move2, jerk):
         if debugMoves:
             move1.pprint("Move1, e-adjusted")
             move2.pprint("Move2, e-adjusted")
-            print "***** End joinSpeed() *****"
+            print "***** End joinMoves() *****"
 
 
 ####################################################################################################
