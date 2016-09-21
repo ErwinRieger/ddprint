@@ -86,6 +86,7 @@ class Vector(object):
         for dim in range(len(self.vv)):
             if not circaf(self[dim], other[dim], 0.000001):
                 return False
+
         return True
 
     def __ne__(self, other):
@@ -440,6 +441,10 @@ class VelocityOverride(object):
         return self.speeds[-1].copy()
 
     def setSpeed(self, speed):
+
+        if speed == self.speeds[-1]:
+            print "duplicate speed: ", speed
+            assert(0)
 
         if speed != self.speeds[-1]:
             self.speeds.append(speed)

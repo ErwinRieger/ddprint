@@ -150,20 +150,27 @@ def joinSpeed(move1, move2, jerk, maxAccelV):
 
         if maxEndSpeed1 < endSpeedS1:
 
-            # Endspeed of move 1 not reachable
+            # Endspeed of move 1 not reachable, lowering it to the max. reachable speed
             if debugMoves:
-                print "math.sqrt( 2 * %f * %f + pow(%f, 2) ) * %f" % (move1.distance, allowedAccel, endSpeedS1, RoundSafe)
                 print "Max. reachable endspeed: %.3f < feedrate: %.3f" % (maxEndSpeed1, endSpeedS1)
 
-            endSpeedS1 = maxEndSpeed1
             endSpeed1.feedrate = maxEndSpeed1
 
             print "Move1, endspeed lowered: ", endSpeed1
+            move1.endSpeed.setSpeed(endSpeed1)
 
-        eEndSpeed1 = move1.direction[A_AXIS] * endSpeedS1
-        eStartSpeed2 = move2.direction[A_AXIS] * startSpeedS2
-        print "e-feedrate 1: ", eEndSpeed1
-        print "e-feedrate 2: ", eStartSpeed2
+        joinSpeed2(move1, move2, jerk)
+
+def joinSpeed2(move1, move2, jerk):
+
+        endSpeed1 = move1.endSpeed.speed()
+        startSpeed2 = move2.endSpeed.speed()
+
+        eEndSpeed1 = endSpeed1[A_AXIS]
+        eStartSpeed2 = startSpeed2[A_AXIS] 
+
+        print "joinSpeed2(): e-feedrate 1: ", eEndSpeed1
+        print "joinSpeed2(): e-feedrate 2: ", eStartSpeed2
 
         #
         # Compare E-speed of moves
@@ -262,29 +269,48 @@ def joinSpeed(move1, move2, jerk, maxAccelV):
                 # move1.setNominalEndFr(endSpeedS)
                 # move2.setNominalStartFr(move2.feedrateS)
 
-##################
+            move1.sanityCheck(jerk)
             return
+
+##################
+
+        joinSpeed3(move1, move2, jerk)
      
+def joinSpeed3(move1, move2, jerk):
+
+        endSpeed1 = move1.endSpeed.speed()
+        startSpeed2 = move2.startSpeed.speed()
+
+        eEndSpeed1 = endSpeed1[A_AXIS]
+        eStartSpeed2 = startSpeed2[A_AXIS] 
+
+        print "joinSpeed3(): e-feedrate 1: ", eEndSpeed1
+        print "joinSpeed3(): e-feedrate 2: ", eStartSpeed2
+
         if eEndSpeed1 > eStartSpeed2:
             # Slow down move1
             f = eStartSpeed2 / eEndSpeed1
             print "f1: ", f
-            endSpeedS1 *= f
-            endSpeed1.feedrate = endSpeedS1
-            move1.endSpeed.plannedSpeed(endSpeed1)
+
+            # endSpeedS1 *= f
+            # endSpeed1.feedrate = endSpeedS1
+            endSpeed1 = endSpeed1.scale(f)
+            move1.endSpeed.setSpeed(endSpeed1)
         else:
             # Slow down move2
             f = eEndSpeed1 / eStartSpeed2
             print "f2: ", f
-            startSpeedS2 *= f
-            startSpeed2.feedrate = startSpeedS2
-            move2.startSpeed.plannedSpeed(startSpeed2)
+
+            # startSpeedS2 *= f
+            # startSpeed2.feedrate = startSpeedS2
+            startSpeed2 = startSpeed2.scale(f)
+            move2.startSpeed.setSpeed(startSpeed2)
 
             print "slowed down move2 startspeed:", startSpeed2
 
         #
         # Join in bezug auf den maximalen jerk aller achsen betrachten:
-        #")
+        #
         endSpeedV1 = endSpeed1.vv()
         startSpeedV2 = startSpeed2.vv()
 
@@ -361,17 +387,18 @@ def joinSpeed(move1, move2, jerk, maxAccelV):
             # move2.setNominalStartFr(move2.getStartFr() * speedScale)
             startSpeed2.feedrate = startSpeedS2 * speedScale
 
-        move1.endSpeed.plannedSpeed(endSpeed1)
-        move2.startSpeed.plannedSpeed(startSpeed2)
+            move1.endSpeed.plannedSpeed(endSpeed1)
+            move2.startSpeed.plannedSpeed(startSpeed2)
 
-        # else:
+        else:
 
-            # if debugMoves:
-                # print "Doing a full speed join between move %d and %d" % (move1.moveNumber, move2.moveNumber)
+            if debugMoves:
+                print "Doing a full speed join between move %d and %d" % (move1.moveNumber, move2.moveNumber)
 
             # move1.setNominalEndFr(endSpeedS)
             # move2.setNominalStartFr(move2.feedrateS)
 
+        move1.sanityCheck(jerk)
 ##################
         if debugMoves:
             move1.pprint("Move1, e-adjusted")

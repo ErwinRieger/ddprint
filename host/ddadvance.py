@@ -2141,6 +2141,7 @@ class Advance (object):
 
             displacement_vector_steps_B[dim] = steps
        
+        # PART B, E
         displacement_vector_steps_B[A_AXIS] = parentMove.advanceData.endEStepsC
         print "tdc esteps: ", parentMove.advanceData.endEStepsC
         ####################################################################################
@@ -2159,6 +2160,7 @@ class Advance (object):
 
             displacement_vector_steps_C[dim] = steps
        
+        # PART C, E
         displacement_vector_steps_C[A_AXIS] = parentMove.advanceData.endEStepsD
         print "tdd esteps: ", parentMove.advanceData.endEStepsD
         ####################################################################################
@@ -2167,7 +2169,7 @@ class Advance (object):
         if ta or tl:
 
             for dim in range(3):
-                displacement_vector_steps_A[dim] = displacement_vector_steps_raw[dim] - (displacement_vector_steps_A[dim] + displacement_vector_steps_B[dim] + displacement_vector_steps_C[dim])
+                displacement_vector_steps_A[dim] = displacement_vector_steps_raw[dim] - (displacement_vector_steps_B[dim] + displacement_vector_steps_C[dim])
        
         if ta:
 
@@ -2187,21 +2189,13 @@ class Advance (object):
 
         from move import SubMove
 
-        # moveA = SubMove(parentMove, parentMove.moveNumber + 1, displacement_vector_steps_A)
         moveB = SubMove(parentMove, parentMove.moveNumber + 2, displacement_vector_steps_B)
         moveC = SubMove(parentMove, parentMove.moveNumber + 3, displacement_vector_steps_C)
        
-#         moveA.setDuration(ta, 0, 0)
         moveB.setDuration(0, 0, parentMove.advanceData.tdc)
         moveC.setDuration(0, 0, parentMove.advanceData.tdd)
 
         newMoves = [moveB, moveC]
-
-        # sv = startSpeed.vv()
-        # sv[A_AXIS] = parentMove.advanceData.startEFeedrate()
-        # tv = topSpeed.vv()
-        # tv[A_AXIS] = parentMove.advanceData.startEReachedFeedrate()
-        # moveA.setSpeeds(sv, tv, tv)
 
         sv = topSpeed.vv()
         sv[A_AXIS] = parentMove.advanceData.endEReachedFeedrate()
@@ -2220,14 +2214,21 @@ class Advance (object):
             0.0,
             0.0]
         ev = parentMove.endSpeed.speed().vv()
-        endEFeedrate = parentMove.advanceData.endEFeedrate()
         ev[A_AXIS] = parentMove.advanceData.endEFeedrate()
         moveC.setSpeeds(sv, sv, ev)
 
 
         if ta or tl:
 
-            moveA = SubMove(parentMove, parentMove.moveNumber + 2, displacement_vector_steps_B)
+        # moveA = SubMove(parentMove, parentMove.moveNumber + 1, displacement_vector_steps_A)
+#         moveA.setDuration(ta, 0, 0)
+        # sv = startSpeed.vv()
+        # sv[A_AXIS] = parentMove.advanceData.startEFeedrate()
+        # tv = topSpeed.vv()
+        # tv[A_AXIS] = parentMove.advanceData.startEReachedFeedrate()
+        # moveA.setSpeeds(sv, tv, tv)
+
+            moveA = SubMove(parentMove, parentMove.moveNumber + 1, displacement_vector_steps_A)
 
             moveA.setDuration(ta, tl, 0)
 
@@ -2244,8 +2245,8 @@ class Advance (object):
 
         else:
 
-            moveA.nextMove = moveC
-            moveC.prevMove = moveA
+            moveB.nextMove = moveC
+            moveC.prevMove = moveB
 
         # Sum up additional e-distance of this move for debugging
         self.advStepSum += (displacement_vector_steps_A[A_AXIS]+displacement_vector_steps_B[A_AXIS]+displacement_vector_steps_C[A_AXIS]) - displacement_vector_steps_raw[A_AXIS]
@@ -2406,7 +2407,6 @@ class Advance (object):
             0.0,
             0.0]
         ev = parentMove.endSpeed.speed().vv()
-        endEFeedrate = parentMove.advanceData.endEFeedrate()
         ev[A_AXIS] = parentMove.advanceData.endEFeedrate()
         moveD.setSpeeds(sv, sv, ev)
 
@@ -2501,7 +2501,7 @@ class Advance (object):
         # Part B, C
         # Time till the e-velocity crosses zero
         endEReachedFeedrate = parentMove.advanceData.endEReachedFeedrate()
-        endEFeedrate = parentMove.advanceData.endEFeedrate()
+        # endEFeedrate = parentMove.advanceData.endEFeedrate()
 
         tdc = abs(endEReachedFeedrate) / allowedAccelV[A_AXIS]
         sdc = util.accelDist(abs(endEReachedFeedrate), allowedAccelV[A_AXIS], tdc)
@@ -2653,7 +2653,7 @@ class Advance (object):
         # Part C, E
         # Time till the e-velocity crosses zero
         endEReachedFeedrate = parentMove.advanceData.endEReachedFeedrate()
-        endEFeedrate = parentMove.advanceData.endEFeedrate()
+        # endEFeedrate = parentMove.advanceData.endEFeedrate()
 
         tdc = abs(endEReachedFeedrate) / allowedAccelV[A_AXIS]
         sdc = util.accelDist(abs(endEReachedFeedrate), allowedAccelV[A_AXIS], tdc)
