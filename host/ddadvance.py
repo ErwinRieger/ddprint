@@ -760,99 +760,6 @@ class Advance (object):
             # if move.moveNumber == 40: assert(0)
 
     ################################################################################
-    # Area (e-distance) of advance start ramp
-    # Berechnet die trapezfläche und damit die durch advance zusätzlich
-    # extruderstrecke.
-    # Annahme: startFeedrateIncrease immer positiv (keine retraction), dadurch
-    # return value auch immer positiv.
-    def nu_startAdvDistance(self, startFeedrateIncrease, dt):
-
-        # Trapezberechnung
-        sadv = startFeedrateIncrease * dt
-        assert(sadv > 0)
-        return sadv
-
-    # Area (e-distance) of advance end ramp
-    # Berechnet die trapezfläche und damit die durch advance verringerte
-    # extruderstrecke.
-    # Annahme: endFeedrateIncrease immer negativ (keine retraction), dadurch
-    # return value auch immer negativ.
-    def nu_endAdvDistance(self, endFeedrateIncrease, dt):
-
-        # Trapezberechnung, resultat negativ, da endFeedrateIncrease negativ ist
-        print "endFeedrateIncrease * dt: ", endFeedrateIncrease, dt 
-        sadv = endFeedrateIncrease * dt
-        assert(sadv < 0)
-        return sadv
-    ################################################################################
-
-    ################################################################################
-    # Berechnet die fläche (und damit die strecke) der start-rampe.
-    # Diese besteht aus zwei teilen:
-    # * Der rechteckige teil der aus v0*dt besteht
-    # * Und dem dreieckigen teil der aus dv*dt besteht.
-    # Vorzeichen:
-    #   v0, v1 positiv: resultat positiv
-    #   v0, v1 negativ: resultat negativ
-    def nu_startRampDistance(self, v0, v1, dt):
-
-        print "v0:", v0, "v1:", v1
-
-        if v1 > 0: 
-            assert(v0 >= 0)
-            assert(v1 > v0)
-        elif v1 < 0:
-            assert(v0 <= 0)
-            assert(v1 < v0)
-
-        return ((v1 - v0) * dt) / 2.0 + v0 * dt
-
-    def nu_endRampDistance(self, v0, v1, dt):
-
-        print "v0:", v0, "v1:", v1
-
-        if v0 > 0:
-            assert(v1 >= 0)
-            assert(v0 > v1)
-        if v0 < 0:
-            assert(v1 <= 0)
-            assert(v0 < v1)
-
-        return ((v0 - v1) * dt) / 2.0 + v1 * dt
-    ################################################################################
-
-    ################################################################################
-    def nu_startERampDistance(self, advData, dt):
-
-        s = self.startRampDistance(
-                advData.move.startSpeed.speed()[A_AXIS], 
-                advData.move.topSpeed.speed()[A_AXIS],
-                dt)
-        return s + self.startAdvDistance(advData.startFeedrateIncrease, dt)
-
-    def nu_endERampDistance(self, advData, dt):
-
-        # v1 = advData.endEReachedFeedrate()
-        # v2 = advData.endEFeedrate()
-
-        # if v1 > 0 and v2 >= 0:
-        s = self.endRampDistance(
-            advData.move.topSpeed.speed()[A_AXIS],
-            advData.move.endSpeed.speed()[A_AXIS], 
-            dt)
-        return s + self.endAdvDistance(advData.endFeedrateIncrease, dt)
-
-        print "endERampDistance: ramp not above zero.", v1, v2
-
-        if v1 <=0 and v2 < 0:
-            # Negative part ramp, this looks like a negative start ramp
-            s = self.startRampDistance(v1, v2, dt)
-            print "endERampDistance 'negative start ramp':", s
-            return s
-
-        assert(0)
-
-    ################################################################################
 
     def planAdvance(self, move):
 
@@ -898,14 +805,13 @@ class Advance (object):
             startFeedrateIncrease = self.eJerk(allowedAccelV[A_AXIS])
             (nu_sa, esteps, nu_ediff) = move.startAdvSteps(startFeedrateIncrease=startFeedrateIncrease)
 
-            # if at > AdvanceMinRamp:
-            if esteps > 1:
+            if esteps > AdvanceMinRamp:
                 move.advanceData.startFeedrateIncrease = startFeedrateIncrease
 
                 (sa, esteps, ediff) = move.startERampSteps(roundError=self.skippedStartAdvSum)
 
                 print "(sd, esteps, ediff):", (sa, esteps, ediff) 
-                if esteps >= 1:
+                if esteps >= AdvanceMinRamp:
 
                     move.advanceData.startESteps = esteps
                     self.advStepSum += esteps
@@ -961,8 +867,7 @@ class Advance (object):
             endFeedrateIncrease = - self.eJerk(allowedAccelV[A_AXIS])
             (nu_sd, esteps, nu_ediff) = move.endAdvSteps(endFeedrateIncrease=endFeedrateIncrease)
 
-            # if dt > AdvanceMinRamp:
-            if esteps < -1:
+            if esteps < -AdvanceMinRamp:
                 move.advanceData.endFeedrateIncrease = endFeedrateIncrease
 
 
@@ -974,7 +879,7 @@ class Advance (object):
                     allowedAccelV = move.getMaxAllowedAccelVector(self.maxAxisAcceleration)
 
                     tdc = abs(move.advanceData.endEReachedFeedrate() / allowedAccelV[A_AXIS])
-                    print "Time to reach zero-crossing:", tdc
+                    print "Time to reach zero-crossing (tdc):", tdc, ", tdd: ", td - tdc
 
                     # Nominal speed at zero crossing
                     allowedAccel = move.getMaxAllowedAccel(self.maxAxisAcceleration)
@@ -993,20 +898,6 @@ class Advance (object):
                     move.advanceData.tdc = tdc
                     move.advanceData.tdd = td - tdc
                     move.advanceData.crossingSpeed = crossingSpeed
-
-                    # xxx debug
-                    print ""
-                    a = (topSpeed.feedrate - endSpeed.feedrate) / td
-                    print "allowed accel, a:", allowedAccel, a
-                    sd = move.endRampDistance(
-                            topSpeed[1],
-                            endSpeed[1],
-                            td)
-
-                    steps = int(round(sd * PrinterProfile.getStepsPerMM(1)))
-                    print "xxtest dim %d moves %.3f mm while decelerating -> %d steps" % (1, sd, steps)
-                    print ""
-                    # end debug
 
                     # PART C, E
                     (sdc, estepsc, ediffc) = move.endERampSteps(tdc, v1=crossingSpeed[A_AXIS], roundError=self.skippedStartAdvSum)
@@ -1030,7 +921,7 @@ class Advance (object):
 
                     print "(sd, esteps, ediff):", (sd, esteps, ediff) 
                     
-                    if esteps <= -1:
+                    if esteps <= -AdvanceMinRamp:
                         move.advanceData.endESteps = esteps
                         self.advStepSum += esteps
 
@@ -1487,9 +1378,11 @@ class Advance (object):
         #
         # Linear phase
         #
-        if move.linearTime():
-            timerValue = fTimer / steps_per_second_nominal
-            move.stepData.setLinTimer(timerValue)
+        # if move.linearTime():
+        timerValue = fTimer / steps_per_second_nominal
+        move.stepData.setLinTimer(timerValue)
+        # else:
+            # move.stepData.setLinTimer(0)
 
         """
         if debugPlot:
