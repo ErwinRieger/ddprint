@@ -82,6 +82,7 @@ def isPrintMove(displacement_vector):
     printMove = _isHeadMove(displacement_vector) and (_isExtrudingMove(displacement_vector, A_AXIS) or _isExtrudingMove(displacement_vector, B_AXIS))
 
     if printMove:
+        print "ERROR: printmove with z-part:", displacement_vector
         assert(not _isZMove(displacement_vector))
 
     return printMove
