@@ -148,6 +148,7 @@ class Vector(object):
         return Vector(vectorSub(self.vv, other.vv))
 
     def scale(self, scale):
+        assert(scale >= 0)
         return Vector(vectorMul(self.vv, len(self.vv)*[scale]))
 
     mul = scale
@@ -599,9 +600,9 @@ class MoveBase(object):
 
     def sanityCheck(self, checkDirection=True):
 
-        ss = self.startSpeed.trueSpeed()
-        ts = self.topSpeed.trueSpeed()
-        es = self.endSpeed.trueSpeed()
+        ss = self.startSpeed.speed()
+        ts = self.topSpeed.speed()
+        es = self.endSpeed.speed()
 
         # All velocities should have reasonable feedrates
         assert(ss.feedrate >= 0)
@@ -1078,7 +1079,8 @@ class SubMove(MoveBase):
         # MoveBase.sanityCheck(self, checkDirection=False) # directionCheck not true for advanced moves
 
         if self.displacement_vector_steps_raw.length() == 0:
-            self.pprint("sanityCheck")
+            print "ERROR: null move:"
+            self.pprint("Nullmove")
             assert(0)
 
 
