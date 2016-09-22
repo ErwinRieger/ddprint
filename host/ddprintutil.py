@@ -247,19 +247,19 @@ def joinMoves2(move1, move2, jerk):
 
                 assert(speedScale <= 1.0)
 
-                if debugMoves:
-                    print "set nominal endspeed of move1:", endSpeedS1 * speedScale
-
-                # move1.setNominalEndFr(endSpeedS * speedScale)
-                endSpeed1.feedrate = endSpeedS1 * speedScale
-                move1.endSpeed.plannedSpeed(endSpeed1)
+                endSpeed1 = endSpeed1.scale(speedScale)
 
                 if debugMoves:
-                    print "set nominal startspeed of move2:", startSpeedS2 * speedScale
+                    print "set nominal endspeed of move1:", endSpeed1
 
-                # move2.setNominalStartFr(move2.feedrateS * speedScale)
-                startSpeed2.feedrate = startSpeedS2 * speedScale
-                move2.startSpeed.plannedSpeed(startSpeed2)
+                move1.endSpeed.setSpeed(endSpeed1)
+
+                startSpeed2 = startSpeed2.scale(speedScale)
+
+                if debugMoves:
+                    print "set nominal startspeed of move2:", speedScale
+
+                move2.startSpeed.setSpeed(startSpeed2)
 
             else:
 
@@ -375,20 +375,19 @@ def joinMoves3(move1, move2, jerk):
 
             assert(speedScale <= 1.0)
 
-            if debugMoves:
-                print "set nominal endspeed of move1:", endSpeedS1 * speedScale
-
-            # move1.setNominalEndFr(endSpeedS * speedScale)
-            endSpeed1.feedrate = endSpeedS1 * speedScale
+            endSpeed1 = endSpeed1.scale(speedScale)
 
             if debugMoves:
-                print "set nominal startspeed of move2:", startSpeedS2 * speedScale
+                print "set nominal endspeed of move1:", endSpeed1
 
-            # move2.setNominalStartFr(move2.getStartFr() * speedScale)
-            startSpeed2.feedrate = startSpeedS2 * speedScale
+            move1.endSpeed.setSpeed(endSpeed1)
 
-            move1.endSpeed.plannedSpeed(endSpeed1)
-            move2.startSpeed.plannedSpeed(startSpeed2)
+            startSpeed2 = startSpeed2.scale(speedScale)
+
+            if debugMoves:
+                print "set nominal startspeed of move2:", speedScale
+
+            move2.startSpeed.setSpeed(startSpeed2)
 
         else:
 
