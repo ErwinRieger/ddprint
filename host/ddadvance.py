@@ -2269,8 +2269,9 @@ class Advance (object):
             moveC.prevMove = moveB
 
         # Sum up additional e-distance of this move for debugging
-        self.advStepBalance += (displacement_vector_steps_A[A_AXIS]+displacement_vector_steps_B[A_AXIS]+displacement_vector_steps_C[A_AXIS]) - displacement_vector_steps_raw[A_AXIS]
-        assert(0)
+        esteps = displacement_vector_steps_A[A_AXIS]+displacement_vector_steps_B[A_AXIS]+displacement_vector_steps_C[A_AXIS]
+        # self.advStepBalance += esteps - displacement_vector_steps_raw[A_AXIS]
+        self.advStepBalance += esteps
         print "advStepBalance: ", self.advStepBalance
 
         if debugMoves:
