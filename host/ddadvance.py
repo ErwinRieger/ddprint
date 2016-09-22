@@ -1789,12 +1789,7 @@ class Advance (object):
             for dim in range(3):
                 displacement_vector_steps_A[dim] = displacement_vector_steps_raw[dim] - displacement_vector_steps_B[dim]
      
-            # PART A, E
-            sa = 0
-
-        # E-distance ist nicht einfach der rest der e-steps, linearer e-anteil muss über
-        # die dauer des linearen anteils (tLinear) berechnet werden.
-        # sa += tl * topSpeed[A_AXIS]
+        # PART A, E
         if ta:
 
             print "dim E moves %d steps while accelerating" % parentMove.advanceData.startESteps
@@ -1825,7 +1820,7 @@ class Advance (object):
 
         moveB.setSpeeds(sv, sv, ev)
 
-        if ta or tl:
+        if (ta or tl) and displacement_vector_steps_A != emptyVector5:
 
             moveA = SubMove(parentMove, parentMove.moveNumber + 1, displacement_vector_steps_A)
             moveA.setDuration(ta, tl, 0)
