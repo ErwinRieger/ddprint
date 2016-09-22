@@ -1,5 +1,6 @@
 #! /bin/bash
 
+nTests=0
 for inp in $* test_files/*.gcode; do 
 
     echo "###################################"
@@ -9,12 +10,15 @@ for inp in $* test_files/*.gcode; do
 
     if [ "$?" != "0" ]; then
         echo "###################################"
-        echo "$0: error running $inp"
+        echo "$0: error running Test $nTests $inp"
         echo "###################################"
         exit 1
     fi
+
+    let "nTests = nTests + 1"
+
     echo "###################################"
-    echo "$0: $inp done"
+    echo "$0: Test $nTests $inp done"
     echo "###################################"
 done
 
