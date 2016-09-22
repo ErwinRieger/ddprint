@@ -380,6 +380,12 @@ class AdvanceData:
         self.startSplits = 0
         self.endSplits = 0
 
+        self.startESteps = None
+        self.linESteps = None
+        self.endESteps = None
+        self.endEStepsC = None
+        self.endEStepsD = None
+
     def hasStartAdvance(self):
         return self.startFeedrateIncrease != 0
 
@@ -407,6 +413,22 @@ class AdvanceData:
     def endSignChange(self):
         return sign(self.endEFeedrate()) != sign(self.endEReachedFeedrate())
 
+    def estepSum(self):
+
+        esteps = 0
+        if self.startESteps:
+            esteps += self.startESteps
+        if self.linESteps:
+            esteps += self.linESteps
+        if self.endESteps:
+            esteps += self.endESteps
+        if self.endEStepsC:
+            esteps += self.endEStepsC
+        if self.endEStepsD:
+            esteps += self.endEStepsD
+
+        return esteps
+
     def __repr__(self):
 
         s = ""
@@ -414,6 +436,22 @@ class AdvanceData:
             s += "\n  EStartAdvance: %.3f, Start %.3f, Top: %.3f" % (self.startFeedrateIncrease, self.startEFeedrate(), self.startEReachedFeedrate())
         if self.hasEndAdvance():
             s += "\n    EEndAdvance: %.3f, Top %.3f, End: %.3f" % (self.endFeedrateIncrease, self.endEReachedFeedrate(), self.endEFeedrate())
+
+        if self.startESteps:
+            s += "\n startESteps: %d" % self.startESteps
+        if self.linESteps:
+            s += "\n linESteps: %d" % self.linESteps
+        if self.endESteps:
+            s += "\n endESteps: %d" % self.endESteps
+        if self.endEStepsC:
+            s += "\n endEStepsC: %d" % self.endEStepsC
+        if self.endEStepsD:
+            s += "\n endEStepsD: %d" % self.endEStepsD
+
+        esteps = self.estepSum()
+        if esteps:
+            s += "\n estep sum: %d" % esteps
+
         return s
 
     def sanityCheck(self):

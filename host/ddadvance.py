@@ -160,6 +160,8 @@ class Advance (object):
         # self.skippedEndAdvSum = 0
         # Likewise for decel
         # self.endSum = 0
+        # Running balance of e-distances through advance, for debugging of planSteps()
+        self.advStepBalance = 0
         # Running sum of e-distances through advance, for debugging of planSteps()
         self.advStepSum = 0
 
@@ -180,6 +182,7 @@ class Advance (object):
         self.skippedAccelSteps = 0
         self.skippedDecelSteps = 0
         # self.skippedEndAdvSum = 0
+        self.advStepBalance = 0
         self.advStepSum = 0
 
         if debugPlot: #  and not self.plotfile:
@@ -335,7 +338,7 @@ class Advance (object):
         print "Path skippedLinSteps: ", self.skippedLinSteps
         print "Path skippedAccelSteps: ", self.skippedAccelSteps
         print "Path skippedDecelSteps: ", self.skippedDecelSteps
-        print "Path advStepSum: ", self.advStepSum
+        print "Path advStepBalance, advStepSum: ", self.advStepBalance, self.advStepSum
         # print "ediff: ", self.ediff
 
         assert(util.circaf(self.advSum, 0, 0.02))
@@ -344,7 +347,7 @@ class Advance (object):
         assert(util.circaf(self.skippedLinSteps, 0, 1.0/self.e_steps_per_mm))
         assert(util.circaf(self.skippedAccelSteps, 0, 1.0/self.e_steps_per_mm))
         assert(util.circaf(self.skippedDecelSteps, 0, 1.0/self.e_steps_per_mm))
-        assert(util.circaf(self.advStepSum, 0, 10))
+        assert(util.circaf(self.advStepBalance, self.advStepSum, 1))
 
         # xxx debug, check chain
         n = 1
@@ -893,7 +896,6 @@ class Advance (object):
             # Advance of start-ramp
             #
             startFeedrateIncrease = self.eJerk(allowedAccelV[A_AXIS])
-            # (sa, esteps, ediff) = move.startERampSteps(startFeedrateIncrease=startFeedrateIncrease, roundError=self.skippedStartAdvSum)
             (nu_sa, esteps, nu_ediff) = move.startAdvSteps(startFeedrateIncrease=startFeedrateIncrease)
 
             # if at > AdvanceMinRamp:
@@ -906,7 +908,7 @@ class Advance (object):
                 if esteps >= 1:
 
                     move.advanceData.startESteps = esteps
-                    # self.advSum += move.startAdvDistance(ta)
+                    self.advStepSum += esteps
                     self.skippedStartAdvSum = ediff
                 else:
 
@@ -921,6 +923,7 @@ class Advance (object):
                     print "dim E moves %.3f mm in accel phase -> %d steps" % (sa, esteps)
 
                     move.advanceData.startESteps = esteps
+                    self.advStepSum += esteps
             else:
                 print "(sa, esteps, ediff):", (nu_sa, esteps, nu_ediff) 
 
@@ -935,6 +938,7 @@ class Advance (object):
                 print "dim E moves %.3f mm in accel phase -> %d steps" % (sa, esteps)
 
                 move.advanceData.startESteps = esteps
+                self.advStepSum += esteps
 
             self.advSum += nu_sa
 
@@ -948,13 +952,13 @@ class Advance (object):
             print "dim E moves %.3f mm in linear phase -> %d steps" % (sl, esteps)
 
             move.advanceData.linESteps = esteps
+            self.advStepSum += esteps
 
         if td:
             #
             # Advance of end-ramp
             #
             endFeedrateIncrease = - self.eJerk(allowedAccelV[A_AXIS])
-            # (sd, esteps, ediff) = move.endERampSteps(endFeedrateIncrease=endFeedrateIncrease, roundError=self.skippedEndAdvSum)
             (nu_sd, esteps, nu_ediff) = move.endAdvSteps(endFeedrateIncrease=endFeedrateIncrease)
 
             # if dt > AdvanceMinRamp:
@@ -1009,11 +1013,13 @@ class Advance (object):
                     print "(sdc, estepsc, ediffc):", (sdc, estepsc, ediffc) 
 
                     move.advanceData.endEStepsC = estepsc
+                    self.advStepSum += estepsc
 
                     (sdd, estepsd, ediffd) = move.endERampSteps(move.advanceData.tdd, v0=crossingSpeed[A_AXIS], roundError=ediffc)
                     print "(sdd, estepsd, ediffd):", (sdd, estepsd, ediffd) 
 
                     move.advanceData.endEStepsD = estepsd
+                    self.advStepSum += estepsd
 
                     self.skippedStartAdvSum = ediffd
 
@@ -1026,6 +1032,7 @@ class Advance (object):
                     
                     if esteps <= -1:
                         move.advanceData.endESteps = esteps
+                        self.advStepSum += esteps
 
                         # self.advSum += move.endAdvDistance(td)
                         self.skippedStartAdvSum = ediff
@@ -1043,6 +1050,7 @@ class Advance (object):
                         print "dim E moves %.3f mm in linear phase -> %d steps" % (sd, esteps)
 
                         move.advanceData.endESteps = esteps
+                        self.advStepSum += esteps
 
             else:
                 print "(sd, esteps, ediff):", (nu_sd, esteps, nu_ediff) 
@@ -1058,6 +1066,7 @@ class Advance (object):
                 print "dim E moves %.3f mm in linear phase -> %d steps" % (sd, esteps)
 
                 move.advanceData.endESteps = esteps
+                self.advStepSum += esteps
 
             self.advSum += nu_sd
 
@@ -1069,6 +1078,8 @@ class Advance (object):
         print "skippedDecelSteps: ", self.skippedDecelSteps
         print "skippedStartAdvSum: ", self.skippedStartAdvSum
         # print "skippedEndAdvSum: ", self.skippedEndAdvSum
+
+        move.advanceData.advStepSum = self.advStepSum
 
         # Split move into up to 5 sub moves
         nsub = 1
@@ -1115,6 +1126,17 @@ class Advance (object):
             # Single move with simple ramps
             # xxx use plantravelsteps here
             self.planStepsSimple(move)
+
+            # Sum up esteps for debugging
+            esteps = move.advanceData.estepSum()
+            if esteps:
+
+                # assert(esteps == move.displacement_vector_steps_raw[A_AXIS])
+                self.advStepBalance += esteps
+
+                # Check sum of esteps used
+                print "estep balance, move.sum: ", self.advStepBalance, move.advanceData.advStepSum
+                assert(self.advStepBalance == move.advanceData.advStepSum)
 
             if debugMoves:
                 print "***** End planSteps() *****"
@@ -1176,6 +1198,10 @@ class Advance (object):
             print "unhandled mask: 0x%x" % mask
             assert(0)
 
+        # Check sum of esteps used
+        print "estep balance, move.sum: ", self.advStepBalance, move.advanceData.advStepSum
+        assert(self.advStepBalance == move.advanceData.advStepSum)
+
         print "new moves: ", newMoves
 
         if move.prevMove:
@@ -1199,8 +1225,8 @@ class Advance (object):
     def planStepsSimple(self, move):
 
         if debugMoves:
-            print "***** Start planSteps() *****"
-            move.pprint("PlanSTeps:")
+            print "***** Start planStepsSimple() *****"
+            move.pprint("PlanSTepsSimple:")
 
         move.state = 3
 
@@ -1252,7 +1278,6 @@ class Advance (object):
         # Create a list of stepper pulses
         #
         nominalSpeed = abs( move.topSpeed.trueSpeed()[leadAxis] ) # [mm/s]
-        reachedSpeedFr = move.topSpeed.trueSpeed().feedrate
 
         # advance
         allowedAccel = move.getMaxAllowedAccel(self.maxAxisAcceleration)
@@ -1263,13 +1288,13 @@ class Advance (object):
         # v0 = abs(move.getFeedrateV(move.getStartFr())[leadAxis])                # [mm/s]
         v0 = abs(move.startSpeed.trueSpeed()[leadAxis])                # [mm/s]
         if v0 < 0.1:
-          print "plansteps: min v hack", v0
+          print "planstepsSimple: min v0 hack", v0
           v0 = 0.1
 
         # v1 = abs(move.getFeedrateV(move.getEndFr())[leadAxis])                # [mm/s]
         v1 = abs(move.endSpeed.trueSpeed()[leadAxis])                # [mm/s]
         if v1 < 0.1:
-          print "plansteps: min v hack", v1
+          print "planstepsSimple: min v1 hack", v1
           v1 = 0.1
 
         print "lead, v0, v1: ", leadAxis, v0, v1
@@ -1332,7 +1357,7 @@ class Advance (object):
                     tAccel += dt
 
                     if timerValue > maxTimerValue24:
-                        move.pprint("PlanSTeps:")
+                        move.pprint("PlanSTepsSimple:")
                         print "v0: ", dt*1000000, "[uS]", steps_per_second_accel, "[steps/s], timerValue: ", timerValue
                         print "dt: ", dt*1000000, "[uS]", steps_per_second_accel, "[steps/s], timerValue: ", timerValue
                         assert(0)
@@ -1370,7 +1395,7 @@ class Advance (object):
                     tDeccel += dt
 
                     if timerValue > maxTimerValue24:
-                        move.pprint("PlanSTeps:")
+                        move.pprint("PlanSTepsSimple:")
                         print "v0: ", dt*1000000, "[uS]", steps_per_second_deccel, "[steps/s], timerValue: ", timerValue
                         print "dt: ", dt*1000000, "[uS]", steps_per_second_deccel, "[steps/s], timerValue: ", timerValue
                         assert(0)
@@ -1411,7 +1436,7 @@ class Advance (object):
                 tAccel += dt
 
                 if timerValue > maxTimerValue24:
-                    move.pprint("PlanSTeps:")
+                    move.pprint("PlanSTepsSimple:")
                     print "v0: ", dt*1000000, "[uS]", steps_per_second_accel, "[steps/s], timerValue: ", timerValue
                     print "dt: ", dt*1000000, "[uS]", steps_per_second_accel, "[steps/s], timerValue: ", timerValue
                     assert(0)
@@ -1451,7 +1476,7 @@ class Advance (object):
                 tDeccel += dt
 
                 if timerValue > maxTimerValue24:
-                    move.pprint("PlanSTeps:")
+                    move.pprint("PlanSTepsSimple:")
                     print "v0: ", dt*1000000, "[uS]", steps_per_second_deccel, "[steps/s], timerValue: ", timerValue
                     print "dt: ", dt*1000000, "[uS]", steps_per_second_deccel, "[steps/s], timerValue: ", timerValue
                     assert(0)
@@ -1462,8 +1487,9 @@ class Advance (object):
         #
         # Linear phase
         #
-        timerValue = fTimer / steps_per_second_nominal
-        move.stepData.setLinTimer(timerValue)
+        if move.linearTime():
+            timerValue = fTimer / steps_per_second_nominal
+            move.stepData.setLinTimer(timerValue)
 
         """
         if debugPlot:
@@ -1503,8 +1529,7 @@ class Advance (object):
             print "***** Start planA() *****"
             parentMove.pprint("planA:")
 
-        displacement_vector_steps_raw = parentMove.displacement_vector_steps_raw
-
+        displacement_vector_steps_raw = parentMove.displacement_vector_steps_raw 
         displacement_vector_steps_A = parentMove.displacement_vector_steps_raw[:]
 
         ta = parentMove.accelTime()
@@ -1540,8 +1565,9 @@ class Advance (object):
         moveA.setSpeeds(sv, tv, tv)
 
         # Sum up additional e-distance of this move for debugging
-        self.advStepSum += displacement_vector_steps_A[A_AXIS] - displacement_vector_steps_raw[A_AXIS]
-        print "advStepSum: ", self.advStepSum
+        self.advStepBalance += displacement_vector_steps_A[A_AXIS] - displacement_vector_steps_raw[A_AXIS]
+        assert(0)
+        print "advStepBalance: ", self.advStepBalance
 
         if debugMoves:
             print "***** End planA() *****"
@@ -1671,8 +1697,10 @@ class Advance (object):
                 print "planSA: skipping empty b-move" 
 
         # Sum up additional e-distance of this move for debugging
-        self.advStepSum += (displacement_vector_steps_A[A_AXIS]+displacement_vector_steps_B[A_AXIS]) - displacement_vector_steps_raw[A_AXIS]
-        print "advStepSum: ", self.advStepSum
+        esteps = displacement_vector_steps_A[A_AXIS]+displacement_vector_steps_B[A_AXIS]
+        # self.advStepBalance += esteps - displacement_vector_steps_raw[A_AXIS]
+        self.advStepBalance += esteps
+        print "advStepBalance: ", self.advStepBalance
 
         if debugMoves:
             print "***** End planSA() *****"
@@ -1724,8 +1752,9 @@ class Advance (object):
         moveA.setSpeeds(sv, sv, ev)
 
         # Sum up additional e-distance of this move for debugging
-        self.advStepSum += displacement_vector_steps_A[A_AXIS] - displacement_vector_steps_raw[A_AXIS]
-        print "advStepSum: ", self.advStepSum
+        self.advStepBalance += displacement_vector_steps_A[A_AXIS] - displacement_vector_steps_raw[A_AXIS]
+        assert(0)
+        print "advStepBalance: ", self.advStepBalance
 
         if debugMoves:
             print "***** End planD() *****"
@@ -1835,8 +1864,10 @@ class Advance (object):
             newMoves.insert(0, moveA)
 
         # Sum up additional e-distance of this move for debugging
-        self.advStepSum += (displacement_vector_steps_A[A_AXIS]+displacement_vector_steps_B[A_AXIS]) - displacement_vector_steps_raw[A_AXIS]
-        print "advStepSum: ", self.advStepSum
+        esteps = displacement_vector_steps_A[A_AXIS]+displacement_vector_steps_B[A_AXIS]
+        # self.advStepBalance += esteps - displacement_vector_steps_raw[A_AXIS]
+        self.advStepBalance += esteps
+        print "advStepBalance: ", self.advStepBalance
 
         if debugMoves:
             print "***** End planSD() *****"
@@ -2087,8 +2118,10 @@ class Advance (object):
             moveC.prevMove = moveA
 
         # Sum up additional e-distance of this move for debugging
-        self.advStepSum += (displacement_vector_steps_A[A_AXIS]+displacement_vector_steps_B[A_AXIS]+displacement_vector_steps_C[A_AXIS]) - displacement_vector_steps_raw[A_AXIS]
-        print "advStepSum: ", self.advStepSum
+        esteps = displacement_vector_steps_A[A_AXIS]+displacement_vector_steps_B[A_AXIS]+displacement_vector_steps_C[A_AXIS]
+        # self.advStepBalance += esteps - displacement_vector_steps_raw[A_AXIS]
+        self.advStepBalance += esteps
+        print "advStepBalance: ", self.advStepBalance
 
         if debugMoves:
             print "***** End planSALSD() *****"
@@ -2215,14 +2248,6 @@ class Advance (object):
 
         if ta or tl:
 
-        # moveA = SubMove(parentMove, parentMove.moveNumber + 1, displacement_vector_steps_A)
-#         moveA.setDuration(ta, 0, 0)
-        # sv = startSpeed.vv()
-        # sv[A_AXIS] = parentMove.advanceData.startEFeedrate()
-        # tv = topSpeed.vv()
-        # tv[A_AXIS] = parentMove.advanceData.startEReachedFeedrate()
-        # moveA.setSpeeds(sv, tv, tv)
-
             moveA = SubMove(parentMove, parentMove.moveNumber + 1, displacement_vector_steps_A)
 
             moveA.setDuration(ta, tl, 0)
@@ -2244,8 +2269,9 @@ class Advance (object):
             moveC.prevMove = moveB
 
         # Sum up additional e-distance of this move for debugging
-        self.advStepSum += (displacement_vector_steps_A[A_AXIS]+displacement_vector_steps_B[A_AXIS]+displacement_vector_steps_C[A_AXIS]) - displacement_vector_steps_raw[A_AXIS]
-        print "advStepSum: ", self.advStepSum
+        self.advStepBalance += (displacement_vector_steps_A[A_AXIS]+displacement_vector_steps_B[A_AXIS]+displacement_vector_steps_C[A_AXIS]) - displacement_vector_steps_raw[A_AXIS]
+        assert(0)
+        print "advStepBalance: ", self.advStepBalance
 
         if debugMoves:
             print "***** End planLDD() *****"
@@ -2433,8 +2459,10 @@ class Advance (object):
 
 
         # Sum up additional e-distance of this move for debugging
-        self.advStepSum += (displacement_vector_steps_A[A_AXIS]+displacement_vector_steps_B[A_AXIS]+displacement_vector_steps_C[A_AXIS]+displacement_vector_steps_D[A_AXIS]) - displacement_vector_steps_raw[A_AXIS]
-        print "advStepSum: ", self.advStepSum
+        esteps = displacement_vector_steps_A[A_AXIS]+displacement_vector_steps_B[A_AXIS]+displacement_vector_steps_C[A_AXIS]+displacement_vector_steps_D[A_AXIS]
+        # self.advStepBalance += esteps - displacement_vector_steps_raw[A_AXIS]
+        self.advStepBalance += esteps
+        print "advStepBalance: ", self.advStepBalance
 
         if debugMoves:
             print "***** End planSALDD() *****"
