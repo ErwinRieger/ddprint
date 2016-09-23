@@ -1216,8 +1216,6 @@ class Advance (object):
         rest = e - esteps
         disp[A_AXIS] = esteps
 
-        assert(e == esteps+rest)
-
         self.skippedSimpleSteps = rest
         ######################
 
@@ -1458,8 +1456,8 @@ class Advance (object):
         #
         # Linear phase
         #
-        # if move.linearTime():
-        if True:
+        if move.linearTime():
+        # if True:
             timerValue = fTimer / steps_per_second_nominal
             move.stepData.setLinTimer(timerValue)
         else:
