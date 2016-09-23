@@ -791,6 +791,7 @@ class Advance (object):
         # No advance if there are no (accel- or decel-) ramps.
         if not (ta or td):
 
+            """
             ######################
             # round e
             disp = move.displacement_vector_steps_raw
@@ -804,6 +805,7 @@ class Advance (object):
 
             self.skippedSimpleSteps += rest
             ######################
+            """
 
             if debugMoves:
                 print "***** End planAdvance() *****"
@@ -1193,8 +1195,8 @@ class Advance (object):
 
         disp = move.displacement_vector_steps_raw
 
-        rest = disp[A_AXIS] % 1
-        assert(rest == 0)
+        # rest = disp[A_AXIS] % 1
+        # assert(rest == 0)
 
         # if rest:
             # esteps = move.advanceData.estepSum()
@@ -1202,21 +1204,22 @@ class Advance (object):
             # assert(util.circaf(disp[A_AXIS], esteps, 2))
             # disp[A_AXIS] = esteps
 
-        """
         ######################
         # round e
         # disp = move.displacement_vector_steps_raw
 
         e = disp[A_AXIS] + self.skippedSimpleSteps
+        esteps = int(e)
 
         # assert(e>=0)
 
-        rest = e - int(e)
-        disp[A_AXIS] = int(e)
+        rest = e - esteps
+        disp[A_AXIS] = esteps
 
-        self.skippedSimpleSteps += rest
+        assert(e == esteps+rest)
+
+        self.skippedSimpleSteps = rest
         ######################
-        """
 
         self.moveEsteps -= disp[A_AXIS]
         print "moveEsteps-: %7.3f %7.3f" % ( disp[A_AXIS], self.moveEsteps)
