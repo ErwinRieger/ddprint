@@ -352,6 +352,11 @@ class Planner (object):
 
     def planTravelMove(self, move):
 
+        # skip moves with very small e-steps:
+        if abs(move.displacement_vector_steps_raw[A_AXIS]) < 1:
+            print "planTravelMove: skipping small move...", move.displacement_vector_steps_raw
+            return
+
         move.state = 1
 
         move.setPlannedJerkStartSpeed(self.jerk.scale(0.5))
