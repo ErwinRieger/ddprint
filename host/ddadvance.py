@@ -803,9 +803,7 @@ class Advance (object):
             disp[A_AXIS] = int(e)
 
             self.skippedSimpleSteps += rest
-
             ######################
-
 
             if debugMoves:
                 print "***** End planAdvance() *****"
@@ -910,7 +908,7 @@ class Advance (object):
 
                 if move.advanceData.endSignChange(): 
 
-                    assert(0)
+                    # assert(0)
                     ###############################################################
                     # Compute additional data for planSteps()
 
@@ -1203,6 +1201,22 @@ class Advance (object):
             # print "Warning, e-steps not integer:", disp[A_AXIS], rest, esteps
             # assert(util.circaf(disp[A_AXIS], esteps, 2))
             # disp[A_AXIS] = esteps
+
+        """
+        ######################
+        # round e
+        # disp = move.displacement_vector_steps_raw
+
+        e = disp[A_AXIS] + self.skippedSimpleSteps
+
+        # assert(e>=0)
+
+        rest = e - int(e)
+        disp[A_AXIS] = int(e)
+
+        self.skippedSimpleSteps += rest
+        ######################
+        """
 
         self.moveEsteps -= disp[A_AXIS]
         print "moveEsteps-: %7.3f %7.3f" % ( disp[A_AXIS], self.moveEsteps)

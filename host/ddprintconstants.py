@@ -94,6 +94,7 @@ NExtrusionLimit = 40
 # is below this value, we assume they have the same extrusion rate.
 AdvanceEThreshold=0.01 # [mm/s]
 AdvanceEThreshold=0.00000001 # [mm/s]
+
 #
 # Minimum extrusion rate difference between two moves for advance.
 # AdvanceMinERate = 0.1 # [mm/s]
