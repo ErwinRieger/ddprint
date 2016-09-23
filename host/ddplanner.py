@@ -811,10 +811,12 @@ class Planner (object):
         """
 
         disp = move.displacement_vector_steps_raw
+        disp[A_AXIS] = int(disp[A_AXIS]) # xxx round float e-steps
+
         for i in range(5):
             dirBits += (disp[i] >= 0) << i # xxx use sign here
 
-            s = abs(int(disp[i])) # xxx round float e-steps
+            s = abs(disp[i])
             abs_displacement_vector_steps.append(s)
             if s > leadAxis_steps:
                 leadAxis = i
