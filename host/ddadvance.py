@@ -157,6 +157,7 @@ class Advance (object):
         self.skippedLinSteps = 0
         self.skippedAccelSteps = 0
         self.skippedDecelSteps = 0
+        self.skippedSimpleSteps = 0
         # self.skippedEndAdvSum = 0
         # Likewise for decel
         # self.endSum = 0
@@ -184,6 +185,7 @@ class Advance (object):
         self.skippedLinSteps = 0
         self.skippedAccelSteps = 0
         self.skippedDecelSteps = 0
+        self.skippedSimpleSteps = 0
         # self.skippedEndAdvSum = 0
         self.advStepBalance = 0
         self.advStepSum = 0
@@ -348,6 +350,7 @@ class Advance (object):
         print "Path skippedLinSteps: ", self.skippedLinSteps
         print "Path skippedAccelSteps: ", self.skippedAccelSteps
         print "Path skippedDecelSteps: ", self.skippedDecelSteps
+        print "Path skippedSimpleSteps: ", self.skippedSimpleSteps
         print "Path advStepBalance, advStepSum: ", self.advStepBalance, self.advStepSum
         print "Path moveEsteps: %7.3f" % ( self.moveEsteps)
         # print "ediff: ", self.ediff
@@ -358,6 +361,7 @@ class Advance (object):
         assert(util.circaf(self.skippedLinSteps, 0, 1.0/self.e_steps_per_mm))
         assert(util.circaf(self.skippedAccelSteps, 0, 1.0/self.e_steps_per_mm))
         assert(util.circaf(self.skippedDecelSteps, 0, 1.0/self.e_steps_per_mm))
+        assert(util.circaf(self.skippedSimpleSteps, 0, 1))
         assert(util.circaf(self.advStepBalance, self.advStepSum, 1))
         assert(util.circaf(self.moveEsteps, 0, 3))
 
@@ -783,12 +787,29 @@ class Advance (object):
         tl = move.linearTime()
         td = move.decelTime()
 
-        # xxx funktion trotzdem durchlaufen wegen rundung von e-steps
-        #### No advance if there are no (accel- or decel-) ramps.
-        ###if not (ta or td):
-            ###if debugMoves:
-                ###print "***** End planAdvance() *****"
-            ###return
+        # xxxxxxxxxxxxxxxxxxxx# xxx funktion trotzdem durchlaufen wegen rundung von e-steps
+        # No advance if there are no (accel- or decel-) ramps.
+        if not (ta or td):
+
+            ######################
+            # round e
+            disp = move.displacement_vector_steps_raw
+
+            e = disp[A_AXIS] + self.skippedSimpleSteps
+
+            assert(e>=0)
+
+            rest = e % 1
+            disp[A_AXIS] = int(e)
+
+            self.skippedSimpleSteps += rest
+
+            ######################
+
+
+            if debugMoves:
+                print "***** End planAdvance() *****"
+            return
 
         startSpeed = move.startSpeed.trueSpeed()
         startFeedrateE = startSpeed[A_AXIS]
@@ -824,12 +845,14 @@ class Advance (object):
                 (sa, esteps, ediff) = move.startERampSteps(roundError=self.skippedStartAdvSum)
 
                 print "(sd, esteps, ediff):", (sa, esteps, ediff) 
-                if esteps >= AdvanceMinRamp:
+                # if esteps >= AdvanceMinRamp:
+                if True:
 
                     move.advanceData.startESteps = esteps
                     self.advStepSum += esteps
                     self.skippedStartAdvSum = ediff
                 else:
+                    assert(0)
 
                     # Dont advance very small acceleration ramps, but sum up the missing advance.
                     self.skippedStartAdvSum += nu_sa
@@ -844,6 +867,7 @@ class Advance (object):
                     move.advanceData.startESteps = esteps
                     self.advStepSum += esteps
             else:
+
                 print "(sa, esteps, ediff):", (nu_sa, esteps, nu_ediff) 
 
                 # Dont advance very small acceleration ramps, but sum up the missing advance.
@@ -881,10 +905,12 @@ class Advance (object):
             (nu_sd, esteps, nu_ediff) = move.endAdvSteps(endFeedrateIncrease=endFeedrateIncrease)
 
             if esteps < -AdvanceMinRamp:
+
                 move.advanceData.endFeedrateIncrease = endFeedrateIncrease
 
-
                 if move.advanceData.endSignChange(): 
+                    
+                    # assert(0)
                     ###############################################################
                     # Compute additional data for planSteps()
 
@@ -934,7 +960,9 @@ class Advance (object):
 
                     print "(sd, esteps, ediff):", (sd, esteps, ediff) 
                     
-                    if esteps <= -AdvanceMinRamp:
+                    # if esteps <= -AdvanceMinRamp:
+                    if True:
+
                         move.advanceData.endESteps = esteps
                         self.advStepSum += esteps
 
@@ -942,7 +970,6 @@ class Advance (object):
                         self.skippedStartAdvSum = ediff
 
                     else:
-
                         # Dont advance, sum up like the decel ramp.
                         self.skippedStartAdvSum = sd
 
@@ -951,12 +978,15 @@ class Advance (object):
 
                         esteps = int(sd * self.e_steps_per_mm)
                         self.skippedDecelSteps = sd - (esteps / float(self.e_steps_per_mm))
-                        print "dim E moves %.3f mm in linear phase -> %d steps" % (sd, esteps)
+                        print "dim E moves %.3f mm in decel phase -> %d steps" % (sd, esteps)
 
                         move.advanceData.endESteps = esteps
                         self.advStepSum += esteps
 
+                        assert(0)
+
             else:
+
                 print "(sd, esteps, ediff):", (nu_sd, esteps, nu_ediff) 
 
                 # Dont advance, sum up like the decel ramp.
@@ -967,7 +997,7 @@ class Advance (object):
 
                 esteps = int(sd * self.e_steps_per_mm)
                 self.skippedDecelSteps = sd - (esteps / float(self.e_steps_per_mm))
-                print "dim E moves %.3f mm in linear phase -> %d steps" % (sd, esteps)
+                print "dim E moves %.3f mm in decel phase -> %d steps" % (sd, esteps)
 
                 move.advanceData.endESteps = esteps
                 self.advStepSum += esteps
@@ -1027,12 +1057,20 @@ class Advance (object):
 
         if (move.advanceData.startSplits + move.advanceData.endSplits) == 0:
 
+            ta = move.accelTime()
+            td = move.decelTime()
+
+            esteps = move.advanceData.estepSum()
+
+            if ta or td:
+                # xxx hack
+                move.displacement_vector_steps_raw[A_AXIS] = esteps
+
             # Single move with simple ramps
             # xxx use plantravelsteps here
             self.planStepsSimple(move)
 
             # Sum up esteps for debugging
-            esteps = move.advanceData.estepSum()
             if esteps:
                 # assert(esteps == move.displacement_vector_steps_raw[A_AXIS])
                 self.advStepBalance += esteps
@@ -1158,11 +1196,13 @@ class Advance (object):
         disp = move.displacement_vector_steps_raw
 
         rest = disp[A_AXIS] % 1
-        if rest:
-            esteps = move.advanceData.estepSum()
-            print "Warning, e-steps not integer:", disp[A_AXIS], rest, esteps
-            assert(util.circaf(disp[A_AXIS], esteps, 2))
-            disp[A_AXIS] = esteps
+        assert(rest == 0)
+
+        # if rest:
+            # esteps = move.advanceData.estepSum()
+            # print "Warning, e-steps not integer:", disp[A_AXIS], rest, esteps
+            # assert(util.circaf(disp[A_AXIS], esteps, 2))
+            # disp[A_AXIS] = esteps
 
         self.moveEsteps -= disp[A_AXIS]
         print "moveEsteps-: %7.3f %7.3f" % ( disp[A_AXIS], self.moveEsteps)
@@ -1402,10 +1442,11 @@ class Advance (object):
         # Linear phase
         #
         # if move.linearTime():
-        timerValue = fTimer / steps_per_second_nominal
-        move.stepData.setLinTimer(timerValue)
-        # else:
-            # move.stepData.setLinTimer(0)
+        if True:
+            timerValue = fTimer / steps_per_second_nominal
+            move.stepData.setLinTimer(timerValue)
+        else:
+            move.stepData.setLinTimer(0xffff)
 
         """
         if debugPlot:
