@@ -72,7 +72,7 @@ def _isHeadMove(displacement_vector):
     return displacement_vector[X_AXIS] or displacement_vector[Y_AXIS] or displacement_vector[Z_AXIS]
 
 def _isExtrudingMove(displacement_vector, extruder):
-    return _isHeadMove(displacement_vector) and displacement_vector[extruder]
+    return displacement_vector[extruder]
 
 def _isZMove(displacement_vector):
     return displacement_vector[Z_AXIS]
@@ -81,9 +81,9 @@ def isPrintMove(displacement_vector):
 
     printMove = _isHeadMove(displacement_vector) and (_isExtrudingMove(displacement_vector, A_AXIS) or _isExtrudingMove(displacement_vector, B_AXIS))
 
-    if printMove:
-        print "ERROR: printmove with z-part:", displacement_vector
-        assert(not _isZMove(displacement_vector))
+    if printMove and _isZMove(displacement_vector):
+        print "ERROR: printmove with z-part:", displacement_vector.vv
+        assert(0)
 
     return printMove
 
@@ -424,7 +424,7 @@ class UM2GcodeParser:
         displacement_vector = Vector([0, 0, 0, 0, 0])
         displacement_vector_steps = [0, 0, 0, 0, 0]
 
-        eOnlyByGcode = True
+        # eOnlyByGcode = True
 
         for dim in range(5):
 
@@ -432,13 +432,17 @@ class UM2GcodeParser:
             if dimC not in values:
                 continue
 
-            gDiff = values[dimC] - curGcodePos[dim]
-            if gDiff and dimC in ['X', 'Y', 'Z']:
-                eOnlyByGcode = False
+            # gDiff = values[dimC] - curGcodePos[dim]
+            # if gDiff and dimC in ['X', 'Y', 'Z']:
+                # eOnlyByGcode = False
 
             rDiff = values[dimC] - curRealPos[dim]
 
-            nSteps = (int)((rDiff * self.steps_per_mm[dim]) + 0.5)
+            # xyz as discrete int-steps, e as float
+            if dimC in ['X', 'Y', 'Z']:
+                nSteps = (int)((rDiff * self.steps_per_mm[dim]) + 0.5)
+            else:
+                nSteps = rDiff * self.steps_per_mm[dim]
 
             displacement_vector_steps[dim] = nSteps
 
@@ -447,12 +451,15 @@ class UM2GcodeParser:
             # print "values: ", dimC, rDiff, nSteps, delta
             # end debug
 
-            rDiff = nSteps * self.mm_per_step[dim]
-                    
-            displacement_vector[dim] = rDiff
+            if dimC in ['X', 'Y', 'Z']:
+                rDiff = nSteps * self.mm_per_step[dim]
+                displacement_vector[dim] = rDiff
+                newRealPos[dim] = curRealPos[dim] + rDiff
+            else:
+                displacement_vector[dim] = rDiff
+                newRealPos[dim] = values[dimC]
 
             newGcodePos[dimC] = values[dimC]
-            newRealPos[dim] = curRealPos[dim] + rDiff
 
         #
         # Check if zero or small length:
@@ -464,17 +471,16 @@ class UM2GcodeParser:
             # at the end of this method.
             
             # But respect a possible feedrate change:
-            if not eOnlyByGcode:
-                self.feedrate = feedrate
+            # if not eOnlyByGcode:
+            self.feedrate = feedrate
 
             return
 
         # Get head move distance:
-        move_distance = vectorDistance(curRealPos[:3], newRealPos[:3])
+        # move_distance = vectorDistance(curRealPos[:3], newRealPos[:3])
 
-        if move_distance != 0:
-
-            assert(not eOnlyByGcode)
+        # if move_distance != 0:
+            # assert(not eOnlyByGcode)
 
         if debugMoves:
             for dim in range(5):
@@ -505,8 +511,8 @@ class UM2GcodeParser:
                 feedrate=feedrate, # mm/s
                 ))
             
-        if not eOnlyByGcode:
-            self.feedrate = feedrate
+        # if not eOnlyByGcode:
+        self.feedrate = feedrate
         # else:
             # print "NOT storing new feedrate of E-Only move '%s'!" % comment
 

@@ -165,6 +165,9 @@ class Advance (object):
         # Running sum of e-distances through advance, for debugging of planSteps()
         self.advStepSum = 0
 
+        # Running sum of move esteps, for debugging of planSteps()
+        self.moveEsteps = 0.0
+
         self.e_steps_per_mm = PrinterProfile.getStepsPerMM(A_AXIS)
 
     def eJerk(self, accel):
@@ -184,6 +187,7 @@ class Advance (object):
         # self.skippedEndAdvSum = 0
         self.advStepBalance = 0
         self.advStepSum = 0
+        self.moveEsteps = 0.0
 
         if debugPlot: #  and not self.plotfile:
             self.plottime = 1
@@ -214,6 +218,7 @@ class Advance (object):
         for move in path[1:]:
             util.joinMoves(prevMove, move, self.planner.jerk, self.maxAxisAcceleration)
             prevMove = move
+
 
         # Sanity check
         for move in path:
@@ -257,6 +262,11 @@ class Advance (object):
         if self.kAdv:
             for move in path:
                 move.sanityCheck(self.planner.jerk)
+
+                # sum up esteps
+                self.moveEsteps += move.displacement_vector_steps_raw[A_AXIS]
+                print "moveEsteps+: %7.3f %7.3f" % ( move.displacement_vector_steps_raw[A_AXIS], self.moveEsteps)
+
                 self.planAdvance(move)
 
         if debugPlot and debugPlotLevel == "plotLevelPlanned":
@@ -339,6 +349,7 @@ class Advance (object):
         print "Path skippedAccelSteps: ", self.skippedAccelSteps
         print "Path skippedDecelSteps: ", self.skippedDecelSteps
         print "Path advStepBalance, advStepSum: ", self.advStepBalance, self.advStepSum
+        print "Path moveEsteps: %7.3f" % ( self.moveEsteps)
         # print "ediff: ", self.ediff
 
         assert(util.circaf(self.advSum, 0, 0.02))
@@ -348,6 +359,7 @@ class Advance (object):
         assert(util.circaf(self.skippedAccelSteps, 0, 1.0/self.e_steps_per_mm))
         assert(util.circaf(self.skippedDecelSteps, 0, 1.0/self.e_steps_per_mm))
         assert(util.circaf(self.advStepBalance, self.advStepSum, 1))
+        assert(util.circaf(self.moveEsteps, 0, 3))
 
         # xxx debug, check chain
         n = 1
@@ -771,11 +783,12 @@ class Advance (object):
         tl = move.linearTime()
         td = move.decelTime()
 
-        # No advance if there are no (accel- or decel-) ramps.
-        if not (ta or td):
-            if debugMoves:
-                print "***** End planAdvance() *****"
-            return
+        # xxx funktion trotzdem durchlaufen wegen rundung von e-steps
+        #### No advance if there are no (accel- or decel-) ramps.
+        ###if not (ta or td):
+            ###if debugMoves:
+                ###print "***** End planAdvance() *****"
+            ###return
 
         startSpeed = move.startSpeed.trueSpeed()
         startFeedrateE = startSpeed[A_AXIS]
@@ -1021,7 +1034,6 @@ class Advance (object):
             # Sum up esteps for debugging
             esteps = move.advanceData.estepSum()
             if esteps:
-
                 # assert(esteps == move.displacement_vector_steps_raw[A_AXIS])
                 self.advStepBalance += esteps
 
@@ -1143,8 +1155,19 @@ class Advance (object):
             abs_displacement_vector_steps.append(s)
         """
 
+        disp = move.displacement_vector_steps_raw
+
+        rest = disp[A_AXIS] % 1
+        if rest:
+            esteps = move.advanceData.estepSum()
+            print "Warning, e-steps not integer:", disp[A_AXIS], rest, esteps
+            assert(util.circaf(disp[A_AXIS], esteps, 2))
+            disp[A_AXIS] = esteps
+
+        self.moveEsteps -= disp[A_AXIS]
+        print "moveEsteps-: %7.3f %7.3f" % ( disp[A_AXIS], self.moveEsteps)
+
         for i in range(5):
-            disp = move.displacement_vector_steps_raw
             dirBits += (disp[i] >= 0) << i # xxx use sign here
 
             s = abs(disp[i])
