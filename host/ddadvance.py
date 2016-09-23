@@ -909,8 +909,8 @@ class Advance (object):
                 move.advanceData.endFeedrateIncrease = endFeedrateIncrease
 
                 if move.advanceData.endSignChange(): 
-                    
-                    # assert(0)
+
+                    assert(0)
                     ###############################################################
                     # Compute additional data for planSteps()
 
