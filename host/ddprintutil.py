@@ -136,17 +136,17 @@ def joinMoves(move1, move2, jerk, maxAccelV):
             move1.pprint("JoinSpeed - Move1")
             move2.pprint("JoinSpeed - Move2")
 
-        startSpeedS1 = move1.startSpeed.plannedSpeed().feedrate
+        startSpeedS1 = move1.startSpeed.plannedSpeed().feedrate3()
 
         endSpeed1 = move1.endSpeed.plannedSpeed()
-        endSpeedS1 = endSpeed1.feedrate
+        endSpeedS1 = endSpeed1.feedrate3()
 
         startSpeed2 = move2.startSpeed.plannedSpeed()
-        startSpeedS2 = startSpeed2.feedrate
+        startSpeedS2 = startSpeed2.feedrate3()
 
         # Compute max reachable endspeed of move1
-        allowedAccel = move1.getMaxAllowedAccel(maxAccelV)
-        maxEndSpeed1 = vAccelPerDist(startSpeedS1, allowedAccel, move1.distance) * RoundSafe
+        allowedAccel = move1.getMaxAllowedAccel5(maxAccelV)
+        maxEndSpeed1 = vAccelPerDist(startSpeedS1, allowedAccel, move1.distance3) * RoundSafe
 
         if maxEndSpeed1 < endSpeedS1:
 
@@ -159,6 +159,9 @@ def joinMoves(move1, move2, jerk, maxAccelV):
             print "Move1, endspeed lowered: ", endSpeed1
             move1.endSpeed.setSpeed(endSpeed1)
 
+        # # Check max reachable e endspeed
+        # print "WARNING: joinMoves() no check of e-axis"
+
         joinMoves2(move1, move2, jerk)
 
 def joinMoves2(move1, move2, jerk):
@@ -166,8 +169,8 @@ def joinMoves2(move1, move2, jerk):
         endSpeed1 = move1.endSpeed.speed()
         startSpeed2 = move2.endSpeed.speed()
 
-        eEndSpeed1 = endSpeed1[A_AXIS]
-        eStartSpeed2 = startSpeed2[A_AXIS] 
+        eEndSpeed1 = endSpeed1.eSpeed
+        eStartSpeed2 = startSpeed2.eSpeed
 
         print "joinMoves2(): e-feedrate 1: ", eEndSpeed1
         print "joinMoves2(): e-feedrate 2: ", eStartSpeed2
@@ -178,8 +181,8 @@ def joinMoves2(move1, move2, jerk):
         if circaf(eEndSpeed1, eStartSpeed2, AdvanceEThreshold):
 
             # E-speed difference is small enough, check X/Y jerk
-            endSpeedV1 = endSpeed1.vv()
-            startSpeedV2 = startSpeed2.vv()
+            endSpeedV1 = endSpeed1.vv3()
+            startSpeedV2 = startSpeed2.vv3()
             differenceVector = endSpeedV1.subVVector(startSpeedV2)
             print "Case1, differenceVector, jerk:", differenceVector, jerk
 
@@ -281,8 +284,8 @@ def joinMoves3(move1, move2, jerk):
         endSpeed1 = move1.endSpeed.speed()
         startSpeed2 = move2.startSpeed.speed()
 
-        eEndSpeed1 = endSpeed1[A_AXIS]
-        eStartSpeed2 = startSpeed2[A_AXIS] 
+        eEndSpeed1 = endSpeed1.eSpeed
+        eStartSpeed2 = startSpeed2.eSpeed
 
         print "joinMoves3(): e-feedrate 1: ", eEndSpeed1
         print "joinMoves3(): e-feedrate 2: ", eStartSpeed2
@@ -311,8 +314,8 @@ def joinMoves3(move1, move2, jerk):
         #
         # Join in bezug auf den maximalen jerk aller achsen betrachten:
         #
-        endSpeedV1 = endSpeed1.vv()
-        startSpeedV2 = startSpeed2.vv()
+        endSpeedV1 = endSpeed1.vv3()
+        startSpeedV2 = startSpeed2.vv3()
 
         speedDiff = {}
         toMuch = False

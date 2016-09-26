@@ -353,8 +353,8 @@ class Planner (object):
     def planTravelMove(self, move):
 
         # skip moves with very small e-steps:
-        if move.displacement_vector_steps_raw[:3] == [0.0, 0.0, 0.0] and abs(move.displacement_vector_steps_raw[A_AXIS]) < 1:
-            print "planTravelMove: skipping small move...", move.displacement_vector_steps_raw
+        if move.displacement_vector_steps_raw5[:3] == [0.0, 0.0, 0.0] and abs(move.displacement_vector_steps_raw5[A_AXIS]) < 1:
+            print "planTravelMove: skipping small move...", move.rawDisplacementStepsStr()
             return
 
         move.state = 1
@@ -629,7 +629,7 @@ class Planner (object):
 
         move.state = 2
 
-        allowedAccel = allowedDeccel = move.getMaxAllowedAccelNoAdv()
+        allowedAccel = allowedDeccel = move.getMaxAllowedAccelNoAdv5()
 
         #
         # Check if the speed difference between startspeed and endspeed can be done with
@@ -672,7 +672,7 @@ class Planner (object):
             print "accel time (for %f mm/s): %f [s]" % (deltaStartSpeedS, ta)
 
             # debug Check axxis acceleration
-            deltaSpeedV = move.direction.scale(deltaStartSpeedS)
+            deltaSpeedV = move.direction5.scale(deltaStartSpeedS)
             for dim in range(5):
                 dimAccel = abs(deltaSpeedV[dim]) / ta
                 if (dimAccel / MAX_AXIS_ACCELERATION_NOADV[dim]) > 1.001:
@@ -696,7 +696,7 @@ class Planner (object):
             print "deccel time (for %f mm/s): %f [s]" % (deltaEndSpeedS, tb)
 
             # debug Check axxis acceleration
-            deltaSpeedV = move.direction.scale(deltaEndSpeedS)
+            deltaSpeedV = move.direction5.scale(deltaEndSpeedS)
             for dim in range(5):
                 dimDeccel = abs(deltaSpeedV[dim]) / tb  
                 if (dimDeccel / MAX_AXIS_ACCELERATION_NOADV[dim]) > 1.001:
@@ -708,13 +708,13 @@ class Planner (object):
 
         # print "e_distance: %f, sbeschl, sbrems: %f, %f" % (move.e_distance, sa, sb)
 
-        if move.distance < (sa+sb):
+        if move.distance5 < (sa+sb):
 
             #
             # Strecke zu kurz, Trapez nicht möglich, geschwindigkeit muss abgesenkt werden.
             #
             if debugMoves:
-                print "Trapez nicht möglich: s: %f, sbeschl (%f) + sbrems (%f) = %f" % (move.distance, sa, sb, sa+sb)
+                print "Trapez nicht möglich: s: %f, sbeschl (%f) + sbrems (%f) = %f" % (move.distance5, sa, sb, sa+sb)
 
             # ??? 
             assert(sa>0 and sb>0)
@@ -722,8 +722,8 @@ class Planner (object):
             topSpeed = move.topSpeed.plannedSpeed()
 
             # sa = (2 * allowedAccel * move.e_distance - pow(startSpeedS, 2) + pow(endSpeedS, 2)) /(4 * allowedAccel)
-            sa = (2 * allowedAccel * move.distance - pow(startSpeedS, 2) + pow(endSpeedS, 2)) /(4 * allowedAccel)
-            sb = move.distance - sa
+            sa = (2 * allowedAccel * move.distance5 - pow(startSpeedS, 2) + pow(endSpeedS, 2)) /(4 * allowedAccel)
+            sb = move.distance5 - sa
 
             if debugMoves:
                 print "sbeschl, sbrems neu: %f, %f" % (sa, sb)
@@ -768,7 +768,7 @@ class Planner (object):
         # print "tb: ", tb, deltaEndSpeedS, sb
 
         nominalSpeed = move.topSpeed.plannedSpeed().feedrate # [mm/s]
-        slin = move.distance - (sa+sb)
+        slin = move.distance5 - (sa+sb)
         tlin = slin / nominalSpeed
         # print "tlin: ", tlin, slin
         move.setDuration(ta, tlin, tb)
@@ -815,8 +815,8 @@ class Planner (object):
             abs_displacement_vector_steps.append(s)
         """
 
-        disp = move.displacement_vector_steps_raw
-        disp[A_AXIS] = int(disp[A_AXIS]) # xxx round float e-steps
+        disp = move.displacement_vector_steps_raw5
+        disp[A_AXIS] = int(disp[A_AXIS]) # xxx round float e-steps, xxx skip rounding errors here
 
         for i in range(5):
             dirBits += (disp[i] >= 0) << i # xxx use sign here
@@ -845,7 +845,7 @@ class Planner (object):
         nominalSpeed = abs( move.topSpeed.trueSpeed().vv()[leadAxis] ) # [mm/s]
         reachedSpeedFr = move.topSpeed.trueSpeed().feedrate
 
-        accel = move.getMaxAllowedAccelVectorNoAdv()[leadAxis]
+        accel = move.getMaxAllowedAccelVectorNoAdv5()[leadAxis]
         accel_steps_per_square_second = accel * steps_per_mm
 
         v0 = abs(move.startSpeed.trueSpeed().vv()[leadAxis])                # [mm/s]

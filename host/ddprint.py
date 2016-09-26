@@ -862,7 +862,7 @@ if __name__ == "__main__":
     res = 0
 
     try:
-      main()
+        main()
     except:
         print "Exception: ", traceback.format_exc()
         res = 1

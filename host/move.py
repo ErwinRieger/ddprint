@@ -73,7 +73,10 @@ class Vector(object):
         return self.printSpeedVector(self.vv)
 
     def printSpeedVector(self, v):
-        return "[%8.3f, %8.3f, %8.3f, %8.3f, %8.3f]" % tuple(v)
+        l =  []
+        for el in v:
+            l.append("%8.3f" % el)
+        return "[" + ", ".join(l)+"]"
 
     def __abs__(self):
         return Vector((abs(self.x), abs(self.y), abs(self.z), abs(self.a), abs(self.b)))
@@ -111,14 +114,6 @@ class Vector(object):
 
     # def len5(self):
         # return self.length(5)
-
-    def feedrate3(self):
-        assert(0)
-        f = self.len3()
-        if circaf(f, 0, 0.000001):
-            print "emove"
-            assert(0)
-        return f
 
     def _setLength(self, length):
         return self.normalized().mul(length)
@@ -202,18 +197,23 @@ class Vector(object):
                 return False
         return True
 
+    def nElem(self):
+        return len(self.vv)
+
 ##################################################
 #
 # Handles feedrate and direction of a speedvector
 #
-class VelocityVector(object):
+class VelocityVector5(object):
 
     def __init__(self, feedrate=None, direction=None, v=None):
 
         if v:
+            assert(v.nElem() == 5)
             self.feedrate = v.length() # always positive
             self.direction = v.normalized()
         else:
+            assert(len(direction) == 5)
             self.feedrate = feedrate
             self.direction = direction
 
@@ -246,13 +246,19 @@ class VelocityVector(object):
 
         assert(speedScale < 1)
 
-        return VelocityVector(feedrate = self.feedrate*speedScale, direction = self.direction)
+        return VelocityVector5(feedrate = self.feedrate*speedScale, direction = self.direction)
  
     def scale(self, s):
         return VelocityVector(feedrate = self.feedrate * s, direction = self.direction)
 
+    def feedrateGZ(self):
+        return self.feedrate > 0
+
+    def feedrateGEZ(self):
+        return self.feedrate >= 0
+
     def copy(self):
-        return VelocityVector(feedrate = self.feedrate, direction = self.direction)
+        return VelocityVector5(feedrate = self.feedrate, direction = self.direction)
 
     def checkJerk(self, other, jerk, selfName="", otherName=""):
         # xxx add __sub__
@@ -267,6 +273,111 @@ class VelocityVector(object):
                 print "V1: ", self
                 print "V2: ", other
                 assert(0)
+
+##################################################
+#
+# Handles feedrate and direction of a speedvector
+#
+class VelocityVector32(object):
+
+    def __init__(self, eSpeed, feedrate=None, direction=None, v=None):
+
+        # Nominal speed without advance
+        self.eSpeed = eSpeed
+
+        if v:
+            assert(v.nElem() == 3)
+            self._feedrate = v.length() # always positive
+            self.direction = v.normalized()
+        else:
+            assert(len(direction) == 3)
+            self._feedrate = feedrate
+            self.direction = direction
+
+    def __repr__(self):
+        return ("%.3f [mm/s] " % self._feedrate) + str(self.direction.scale(self._feedrate)) + " " + self.eSpeedStr()
+
+    def eSpeedStr(self):
+        if self.eSpeed == None:
+            return "[-] [mm/s]"
+        return "[%.3f] [mm/s] " % self.eSpeed
+
+    def vv3(self):
+        return self.direction.scale(self._feedrate)
+
+    def setSpeed(self, feedrate):
+
+        self.eSpeed *= feedrate/self._feedrate
+        self._feedrate = feedrate
+
+    def setESpeed(self, eSpeed):
+
+        self.eSpeed = eSpeed
+
+    def copy(self):
+        return VelocityVector32(self.eSpeed, feedrate = self._feedrate, direction = self.direction)
+
+    def scale(self, s):
+
+        return VelocityVector32(self.eSpeed * s, feedrate = self._feedrate * s, direction = self.direction)
+
+    def feedrate3(self):
+        return self._feedrate
+
+    def feedrateGZ(self):
+        return self.feedrate3() > 0
+
+    def feedrateGEZ(self):
+        return self.feedrate3() >= 0
+
+    def __getitem__(self, dim):
+
+        assert(dim < 3)
+        return self.direction[dim] * self._feedrate
+
+
+    """
+    # Feedrate in XY direction
+    def XY(self):
+        return Vector([self[X_AXIS], self[Y_AXIS]]).length()
+
+    def constrain(self, jerkVector):
+
+        speedScale = 1.0
+        vv = self.vv()
+
+        for dim in range(5):
+            if abs(vv[dim]) > jerkVector[dim]:
+                speedScale = min(speedScale, jerkVector[dim] / abs(vv[dim]))
+
+        if abs(1-speedScale) < 0.001:
+            return None
+
+        assert(speedScale < 1)
+
+        return VelocityVector(feedrate = self._feedrate*speedScale, direction = self.direction)
+    """
+
+    def checkJerk(self, other, jerk, selfName="", otherName=""):
+        # xxx add __sub__
+
+        thisv = self.vv3()
+        otherv = other.vv3()
+
+        for dim in range(len(thisv)):
+            j = abs(otherv[dim] - thisv[dim])
+            if (j / jerk[dim]) > 1.001:
+                print "Join '%s' <-> '%s': dimension %d %f verletzt max jerk %f" % (selfName, otherName, dim, j, jerk[dim])
+                print "V1: ", self
+                print "V2: ", other
+                assert(0)
+
+        eJerk = self.eSpeed - other.eSpeed
+        if not abs(eJerk) <= AdvanceEThreshold:
+       
+            print "Error, E-AXIS jerk: ", eJerk
+            nextMove.pprint("sanityCheck() - nextMove")
+            assert(0)
 
 ##################################################
 
@@ -390,28 +501,40 @@ class AdvanceData:
         return self.startFeedrateIncrease != 0
 
     def startEFeedrate(self):
-        return self.move.startSpeed.trueSpeed()[A_AXIS] + self.startFeedrateIncrease
+        return self.move.startSpeed.trueSpeed().eSpeed + self.startFeedrateIncrease
 
     # xxx rename to startETopFeedrate
     def startEReachedFeedrate(self):
-        return self.move.topSpeed.trueSpeed()[A_AXIS] + self.startFeedrateIncrease
+        return self.move.topSpeed.trueSpeed().eSpeed + self.startFeedrateIncrease
 
     def hasEndAdvance(self):
         return self.endFeedrateIncrease != 0
 
     # xxx rename to endETopFeedrate
     def endEReachedFeedrate(self):
-        return self.move.topSpeed.trueSpeed()[A_AXIS] + self.endFeedrateIncrease
+        return self.move.topSpeed.trueSpeed().eSpeed + self.endFeedrateIncrease
 
     def endEFeedrate(self):
-        return self.move.endSpeed.trueSpeed()[A_AXIS] + self.endFeedrateIncrease
+        return self.move.endSpeed.trueSpeed().eSpeed + self.endFeedrateIncrease
 
     # Check if sign changes at accel/decel
     def startSignChange(self):
         return sign(self.startEFeedrate()) != sign(self.startEReachedFeedrate())
 
     def endSignChange(self):
-        return sign(self.endEFeedrate()) != sign(self.endEReachedFeedrate())
+        # return sign(self.endEFeedrate()) != sign(self.endEReachedFeedrate())
+        v0 = self.endEReachedFeedrate()
+        v1 = self.endEFeedrate()
+
+        if v0 == 0 or v1 == 0:
+            return False
+
+        if v0 >= 0 and v1 >= 0:
+            return False
+        if v0 < 0 and v1 < 0:
+            return False
+
+        return True
 
     def estepSum(self):
 
@@ -525,10 +648,7 @@ class VelocityOverride(object):
 
 class MoveBase(object):
 
-    def __init__(self, displacement_vector_steps):
-
-        # self.displacement_vector_raw = displacement_vector
-        self.displacement_vector_steps_raw = displacement_vector_steps
+    def __init__(self):
 
         self.accelData = AccelData()
 
@@ -643,9 +763,9 @@ class MoveBase(object):
         es = self.endSpeed.speed()
 
         # All velocities should have reasonable feedrates
-        assert(ss.feedrate >= 0)
-        assert(ts.feedrate >  0)
-        assert(es.feedrate >= 0)
+        assert(ss.feedrateGEZ())
+        assert(ts.feedrateGZ())
+        assert(es.feedrateGEZ())
 
         if checkDirection:
 
@@ -660,11 +780,11 @@ class MoveBase(object):
         print "\n------ Move %s, #: %d, '%s' ------" % (title, self.moveNumber, self.comment)
 
         if self.isPrintMove():
-            print "Print-move, distance: %.2f" % self.distance
+            print "Print-move, distance: %s" % self.distanceStr()
         else:
-            print "Travel-move, distance: %.2f" % self.distance
+            print "Travel-move, distance: %s" % self.distanceStr()
 
-        print "displacement_vector:", self.rawDisplacementV(), "_steps:", self.rawDisplacementStepsL()
+        print "displacement_vector:", self.rawDisplacementStr(), "_steps:", self.rawDisplacementStepsStr()
 
         print "Startspeed: ",
         print self.startSpeed
@@ -686,19 +806,11 @@ class MoveBase(object):
 # Base class for TravelMove and PrintMove
 class RealMove(MoveBase):
 
-    def __init__(self, comment, displacement_vector, displacement_vector_steps, feedrate):
+    def __init__(self, comment):
 
-        MoveBase.__init__(self, displacement_vector_steps)
+        MoveBase.__init__(self)
 
         self.comment = comment
-        self.displacement_vector_raw = displacement_vector
-
-        self.direction = displacement_vector.normalized()
-        v = VelocityVector(feedrate = feedrate, direction = self.direction)
-
-        self.startSpeed = VelocityOverride(v)
-        self.topSpeed = VelocityOverride(v)
-        self.endSpeed = VelocityOverride(v)
 
         self.accelData = AccelData()
 
@@ -706,12 +818,6 @@ class RealMove(MoveBase):
 
         # debug
         self.state = 0 # 1: joined, 2: accel planned, 3: steps planned
-
-    def rawDisplacementV(self):
-        return self.displacement_vector_raw
-
-    def rawDisplacementStepsL(self):
-       return self.displacement_vector_steps_raw
 
     def getJerkSpeed(self, jerk):
 
@@ -727,26 +833,9 @@ class RealMove(MoveBase):
         v = self.getJerkSpeed(jerk)
         self.endSpeed.plannedSpeed(v)
 
-    # Note: returns positive values 
-    def getMaxAllowedAccelVectorNoAdv(self):
-
-        accelVector = self.direction.scale(_MAX_ACCELERATION)
-        return abs(accelVector.constrain(MAX_AXIS_ACCELERATION_NOADV) or accelVector)
-
-    # Note: always positive
-    def getMaxAllowedAccelNoAdv(self):
-
-        accelVector = self.getMaxAllowedAccelVectorNoAdv()
-        return accelVector.length() # always positive
-
     def sanityCheck(self):
 
         MoveBase.sanityCheck(self)
-
-        # Check start ramp
-        assert(self.startSpeed.speed().feedrate <= self.topSpeed.speed().feedrate);
-        # Check end ramp
-        assert(self.topSpeed.speed().feedrate >= self.endSpeed.speed().feedrate);
 
     def xpprint(self, title):
 
@@ -757,7 +846,7 @@ class RealMove(MoveBase):
         else:
             print "Travel-move, distance: %.2f" % self.distance
 
-        print "displacement_vector:", self.rawDisplacementV(), "_steps:", self.rawDisplacementStepsL()
+        print "displacement_vector:", self.rawDisplacementV(), ", steps:", self.rawDisplacementStepsL()
 
         print "Startspeed: ",
         print self.startSpeed
@@ -785,7 +874,9 @@ class TravelMove(RealMove):
                  feedrate, # mm/s
                  ):
 
-        RealMove.__init__(self, comment, displacement_vector, displacement_vector_steps, feedrate)
+        RealMove.__init__(self, comment)
+
+        # self.displacement_vector_raw = displacement_vector
 
         # self.displacement_vector3=displacement_vector[:3]
         # self.displacement_vector_steps3=displacement_vector_steps[:3]
@@ -795,19 +886,57 @@ class TravelMove(RealMove):
         #
         # Move distance in XYZAB plane
         #
-        self.distance = displacement_vector.length()
+        self.distance5 = displacement_vector.length()
+
+        self.displacement_vector_raw5 = displacement_vector
+        self.displacement_vector_steps_raw5 = displacement_vector_steps
+        self.direction5 = displacement_vector.normalized()
+
+        v = VelocityVector5(feedrate = feedrate, direction = self.direction5)
+
+        self.startSpeed = VelocityOverride(v)
+        self.topSpeed = VelocityOverride(v)
+        self.endSpeed = VelocityOverride(v)
 
     def isPrintMove(self):
         return False
+
+    def distanceStr(self):
+        d = self.displacement_vector_raw5.length()
+        return "%.2f mm (XYZAB)" % d
+
+    def rawDisplacementStr(self):
+        return str(self.displacement_vector_raw5)
+
+    def rawDisplacementStepsStr(self):
+       return str(self.displacement_vector_steps_raw5)
+
+    # Note: returns positive values 
+    def getMaxAllowedAccelVectorNoAdv5(self):
+
+        accelVector = self.direction5.scale(_MAX_ACCELERATION)
+        return abs(accelVector.constrain(MAX_AXIS_ACCELERATION_NOADV) or accelVector)
+
+    # Note: always positive
+    def getMaxAllowedAccelNoAdv5(self):
+
+        accelVector = self.getMaxAllowedAccelVectorNoAdv5()
+        return accelVector.length() # always positive
 
     def sanityCheck(self, jerk):
 
         RealMove.sanityCheck(self)
 
-        nullV = VelocityVector(v=Vector([0, 0, 0, 0, 0]))
+        nullV = VelocityVector5(v=Vector([0, 0, 0, 0, 0]))
 
         self.startSpeed.trueSpeed().checkJerk(nullV, jerk, "start 0", "#: %d" % self.moveNumber)
         self.endSpeed.trueSpeed().checkJerk(nullV, jerk)
+
+        # Check start ramp
+        assert(self.startSpeed.speed().feedrate <= self.topSpeed.speed().feedrate);
+
+        # Check end ramp
+        assert(self.topSpeed.speed().feedrate >= self.endSpeed.speed().feedrate);
 
 ##################################################
 
@@ -820,7 +949,10 @@ class PrintMove(RealMove):
                  feedrate, # mm/s
                  ):
 
-        RealMove.__init__(self, comment, displacement_vector, displacement_vector_steps, feedrate)
+        RealMove.__init__(self, comment)
+
+        # self.displacement_vector_raw = displacement_vector
+        # self.displacement_vector_steps_raw = displacement_vector_steps
 
         # self.displacement_vector3=displacement_vector[:3]
         # self.displacement_vector_steps3=displacement_vector_steps[:3]
@@ -828,8 +960,7 @@ class PrintMove(RealMove):
         #
         # Move distance in XYZ plane
         #
-        # self.distance = displacement_vector.length(3)
-        self.distance = displacement_vector.length()
+        self.distance3 = displacement_vector.length(3)
 
         self.prevMove = None
         self.nextMove = None
@@ -838,19 +969,56 @@ class PrintMove(RealMove):
 
         self.e_steps_per_mm = PrinterProfile.getStepsPerMM(A_AXIS)
 
+        self.displacement_vector_raw3 = Vector(displacement_vector[:3])
+        self.displacement_vector_steps_raw3 = displacement_vector_steps[:3]
+        self.direction5 = displacement_vector.normalized()
+        self.direction3 = self.displacement_vector_raw3.normalized()
+
+        self.eDistance = displacement_vector[A_AXIS]
+        self.eSteps = displacement_vector_steps[A_AXIS]
+
+        self.eDirection = self.eDistance / self.distance3
+
+        # Compute nominal eSpeed
+
+        v = VelocityVector32(feedrate*self.eDirection, feedrate = feedrate, direction = self.direction3)
+
+        self.startSpeed = VelocityOverride(v)
+        self.topSpeed = VelocityOverride(v)
+        self.endSpeed = VelocityOverride(v)
+
     def isPrintMove(self):
         return True
 
-    def getMaxAllowedAccelVector(self, maxAccelV):
+    def distanceStr(self):
+        d = self.displacement_vector_raw3.length()
+        return "%.2f mm (XYZ)" % d
 
-        accelVector = self.direction.scale(_MAX_ACCELERATION)
+    def rawDisplacementStr(self):
+        return str(self.displacement_vector_raw3) + (" [%.3f]" % self.eDistance)
+
+    def rawDisplacementStepsStr(self):
+        return str(self.displacement_vector_steps_raw3) + (" [%.3f]" % self.eSteps)
+
+    def nu_getMaxAllowedAccelVector3(self, maxAccelV):
+
+        accelVector = self.direction3.scale(_MAX_ACCELERATION)
         # return abs(accelVector.constrain(maxAccelV) or accelVector)
         return accelVector.constrain(maxAccelV) or accelVector
 
     # always positive
-    def getMaxAllowedAccel(self, maxAccelV):
+    def nu_getMaxAllowedAccel3(self, maxAccelV):
 
-        accelVector = self.getMaxAllowedAccelVector(maxAccelV)
+        accelVector = self.getMaxAllowedAccelVector3(maxAccelV)
+        return accelVector.length()
+
+    def getMaxAllowedAccelVector5(self, maxAccelV):
+        accelVector = self.direction5.scale(_MAX_ACCELERATION)
+        return accelVector.constrain(maxAccelV) or accelVector
+
+    # always positive
+    def getMaxAllowedAccel5(self, maxAccelV):
+        accelVector = self.getMaxAllowedAccelVector5(maxAccelV)
         return accelVector.length()
 
     ################################################################################
@@ -951,8 +1119,8 @@ class PrintMove(RealMove):
             ta = self.accelTime()
 
         s = self.startRampDistance(
-                self.startSpeed.speed()[A_AXIS], 
-                self.topSpeed.speed()[A_AXIS],
+                self.startSpeed.speed().eSpeed,
+                self.topSpeed.speed().eSpeed,
                 ta)
         return s + self.startAdvDistance(ta, startFeedrateIncrease)
 
@@ -962,10 +1130,10 @@ class PrintMove(RealMove):
             td = self.decelTime()
 
         if v0 == None:
-            v0 = self.topSpeed.speed()[A_AXIS]
+            v0 = self.topSpeed.speed().eSpeed
 
         if v1 == None:
-            v1 = self.endSpeed.speed()[A_AXIS]
+            v1 = self.endSpeed.speed().eSpeed
 
         s = self.endRampDistance(v0, v1, td)
         return s + self.endAdvDistance(td, endFeedrateIncrease)
@@ -996,32 +1164,32 @@ class PrintMove(RealMove):
 
         RealMove.sanityCheck(self)
 
-        nullV = VelocityVector(v=Vector([0, 0, 0, 0, 0]))
+        # Check start ramp
+        assert(self.startSpeed.speed().feedrate3() <= self.topSpeed.speed().feedrate3());
+
+        # Check end ramp
+        assert(self.topSpeed.speed().feedrate3() >= self.endSpeed.speed().feedrate3());
+
+        nullV = self.topSpeed.speed()
+        nullV.setSpeed(0.1) # xxx use same start speed as addMove() here...
 
         nextMove = self.nextMove
 
         if nextMove:
 
-            endSpeed1 = self.endSpeed.trueSpeed()
-            startSpeed2 = nextMove.startSpeed.trueSpeed()
+            endSpeed1 = self.endSpeed.speed()
+            startSpeed2 = nextMove.startSpeed.speed()
             endSpeed1.checkJerk(startSpeed2, jerk, "#: %d" % self.moveNumber, "#: %d" % nextMove.moveNumber)
-
-            eJerk = endSpeed1[A_AXIS] - startSpeed2[A_AXIS]
-            if not abs(eJerk) <= AdvanceEThreshold:
-           
-                print "Error, E-AXIS jerk: ", eJerk
-                nextMove.pprint("sanityCheck() - nextMove")
-                assert(0)
 
         else:
 
             # Last move
-            self.endSpeed.trueSpeed().checkJerk(nullV, jerk)
+            self.endSpeed.speed().checkJerk(nullV, jerk)
 
         if not self.prevMove:
 
             # First move
-            self.startSpeed.trueSpeed().checkJerk(nullV, jerk, "start 0", "#: %d" % self.moveNumber)
+            self.startSpeed.speed().checkJerk(nullV, jerk, "start 0", "#: %d" % self.moveNumber)
 
         self.advanceData.sanityCheck()
 
@@ -1036,8 +1204,8 @@ class PrintMove(RealMove):
 
         RealMove.pprint(self, title)
 
-        print "Start ESpeed: %.3f" % self.startSpeed.trueSpeed()[A_AXIS]
-        print "  End ESpeed: %.3f" % self.endSpeed.trueSpeed()[A_AXIS]
+        print "Start ESpeed: " + self.startSpeed.speed().eSpeedStr()
+        print "  End ESpeed: " + self.endSpeed.speed().eSpeedStr()
 
         print self.advanceData
         print "---------------------"
@@ -1051,7 +1219,8 @@ class SubMove(MoveBase):
                  moveNumber,
                  displacement_vector_steps):
 
-        MoveBase.__init__(self, Vector(displacement_vector_steps))
+        # MoveBase.__init__(self, Vector(displacement_vector_steps))
+        MoveBase.__init__(self)
 
         self.parentMove = parentMove
 
@@ -1066,26 +1235,33 @@ class SubMove(MoveBase):
 
         # self.topSpeed = parentMove.topSpeed
 
+        self.displacement_vector_steps_raw3 = displacement_vector_steps[:3]
+        self.eSteps = displacement_vector_steps[A_AXIS]
+
         self.state = 2
 
     def setSpeeds(self, sv, tv, ev):
 
         if type(sv) == ListType:
+            assert(0)
             sv = Vector(sv)
-        self.startSpeed.nominalSpeed(VelocityVector(v=sv))
+        # self.startSpeed.nominalSpeed(VelocityVector(v=sv))
+        self.startSpeed.nominalSpeed(sv)
 
         if type(tv) == ListType:
+            assert(0)
             tv = Vector(tv)
-        self.topSpeed.nominalSpeed(VelocityVector(v=tv))
+        # self.topSpeed.nominalSpeed(VelocityVector(v=tv))
+        self.topSpeed.nominalSpeed(tv)
 
         if type(ev) == ListType:
+            assert(0)
             ev = Vector(ev)
-        self.endSpeed.nominalSpeed(VelocityVector(v=ev))
+        # self.endSpeed.nominalSpeed(VelocityVector(v=ev))
+        self.endSpeed.nominalSpeed(ev)
 
-    # XXX not exact, only for planSteps
-    def getMaxAllowedAccel(self, maxAccelV):
-
-        return self.parentMove.getMaxAllowedAccel(maxAccelV)
+    def getMaxAllowedAccelVector5(self, maxAccelV):
+        return self.parentMove.getMaxAllowedAccelVector5(maxAccelV)
 
     def pprint(self, title):
 
@@ -1093,7 +1269,7 @@ class SubMove(MoveBase):
 
         # print "Print-move, distance: %.2f" % self.distance
 
-        print "displacement_vector_steps:", self.displacement_vector_steps_raw
+        print "displacement_vector_steps:", self.displacement_vector_steps_raw3, self.eSteps
 
         print "Startspeed: ",
         print self.startSpeed
@@ -1116,7 +1292,7 @@ class SubMove(MoveBase):
 
         # MoveBase.sanityCheck(self, checkDirection=False) # directionCheck not true for advanced moves
 
-        if self.displacement_vector_steps_raw.length() == 0:
+        if self.displacement_vector_steps_raw3 == [0, 0, 0] and self.eSteps == 0:
             print "ERROR: null move:"
             self.pprint("Nullmove")
             assert(0)

@@ -204,10 +204,14 @@ class Advance (object):
         # path[-1].setNominalJerkEndSpeed(self.jerk.scale(0.5))
 
         # First move
-        path[0].startSpeed.plannedSpeed(path[0].topSpeed.nominalSpeed().scale(0.0))
+        v0 = path[0].startSpeed.speed()
+        v0.setSpeed(0.1)
+        path[0].startSpeed.setSpeed(v0)
 
         # Last move
-        path[-1].endSpeed.plannedSpeed(path[-1].topSpeed.nominalSpeed().scale(0.0))
+        v0 = path[-1].startSpeed.speed()
+        v0.setSpeed(0.1)
+        path[-1].endSpeed.setSpeed(v0)
 
         if UseExtrusionAutoTemp:
             self.pathData.time = 0 # Reset path time
@@ -266,8 +270,8 @@ class Advance (object):
                 move.sanityCheck(self.planner.jerk)
 
                 # sum up esteps
-                self.moveEsteps += move.displacement_vector_steps_raw[A_AXIS]
-                print "moveEsteps+: %7.3f %7.3f" % ( move.displacement_vector_steps_raw[A_AXIS], self.moveEsteps)
+                self.moveEsteps += move.eSteps # displacement_vector_steps_raw[A_AXIS]
+                print "moveEsteps+: %7.3f %7.3f" % ( move.eSteps, self.moveEsteps)
 
                 self.planAdvance(move)
 
@@ -276,7 +280,7 @@ class Advance (object):
             # xxx todo move to own function
             for move in path:
 
-                self.plotfile.plot1Tick(move.topSpeed.trueSpeed().XY(), move.moveNumber)
+                self.plotfile.plot1Tick(move.topSpeed.trueSpeed().feedrate3(), move.moveNumber)
 
                 at = move.accelTime()
                 lt = move.linearTime()
@@ -285,53 +289,53 @@ class Advance (object):
                 if at:
 
                     self.plotfile.plot1Segments(at, (
-                        DebugPlotSegment(move.startSpeed.trueSpeed().XY(), move.topSpeed.trueSpeed().XY(), "green"),
-                        DebugPlotSegment(move.startSpeed.trueSpeed()[A_AXIS], move.topSpeed.trueSpeed()[A_AXIS], "green"),
+                        DebugPlotSegment(move.startSpeed.trueSpeed().feedrate3(), move.topSpeed.trueSpeed().feedrate3(), "green"),
+                        DebugPlotSegment(move.startSpeed.trueSpeed().eSpeed, move.topSpeed.trueSpeed().eSpeed, "green"),
                         ))
 
                 if lt:
 
                     self.plotfile.plot1Segments(lt, (
-                        DebugPlotSegment(move.topSpeed.trueSpeed().XY(), color="blue"),
-                        DebugPlotSegment(move.topSpeed.trueSpeed()[A_AXIS], color="blue"),
+                        DebugPlotSegment(move.topSpeed.trueSpeed().feedrate3(), color="blue"),
+                        DebugPlotSegment(move.topSpeed.trueSpeed().eSpeed, color="blue"),
                         ))
 
                 if dt:
 
                     self.plotfile.plot1Segments(dt, (
-                        DebugPlotSegment(move.topSpeed.trueSpeed().XY(), move.endSpeed.trueSpeed().XY(), "red"),
-                        DebugPlotSegment(move.topSpeed.trueSpeed()[A_AXIS], move.endSpeed.trueSpeed()[A_AXIS], "red"),
+                        DebugPlotSegment(move.topSpeed.trueSpeed().feedrate3(), move.endSpeed.trueSpeed().feedrate3(), "red"),
+                        DebugPlotSegment(move.topSpeed.trueSpeed().eSpeed, move.endSpeed.trueSpeed().eSpeed, "red"),
                         ))
 
                 if at:
 
                     self.plotfile.plot2Segments(0, (
-                        DebugPlotSegment(move.startSpeed.trueSpeed()[A_AXIS], move.advanceData.startEFeedrate(), "green"),
+                        DebugPlotSegment(move.startSpeed.trueSpeed().eSpeed, move.advanceData.startEFeedrate(), "green"),
                         ))
                     self.plotfile.plot2Segments(at, (
-                        DebugPlotSegment(move.startSpeed.trueSpeed()[A_AXIS], move.topSpeed.trueSpeed()[A_AXIS]),
+                        DebugPlotSegment(move.startSpeed.trueSpeed().eSpeed, move.topSpeed.trueSpeed().eSpeed),
                         DebugPlotSegment(move.advanceData.startEFeedrate(), move.advanceData.startEReachedFeedrate(), "green"),
                         ))
                     self.plotfile.plot2Segments(0, (
-                        DebugPlotSegment(move.advanceData.startEReachedFeedrate(), move.topSpeed.trueSpeed()[A_AXIS], "green"),
+                        DebugPlotSegment(move.advanceData.startEReachedFeedrate(), move.topSpeed.trueSpeed().eSpeed, "green"),
                         ))
 
                 if lt:
                     self.plotfile.plot2Segments(lt, (
-                        DebugPlotSegment(move.topSpeed.trueSpeed()[A_AXIS]),
+                        DebugPlotSegment(move.topSpeed.trueSpeed().eSpeed),
                         ))
 
                 if dt:
 
                     self.plotfile.plot2Segments(0, (
-                        DebugPlotSegment(move.topSpeed.trueSpeed()[A_AXIS], move.advanceData.endEReachedFeedrate(), "red"),
+                        DebugPlotSegment(move.topSpeed.trueSpeed().eSpeed, move.advanceData.endEReachedFeedrate(), "red"),
                         ))
                     self.plotfile.plot2Segments(dt, (
-                        DebugPlotSegment(move.topSpeed.trueSpeed()[A_AXIS], move.endSpeed.trueSpeed()[A_AXIS]),
+                        DebugPlotSegment(move.topSpeed.trueSpeed().eSpeed, move.endSpeed.trueSpeed().eSpeed),
                         DebugPlotSegment(move.advanceData.endEReachedFeedrate(), move.advanceData.endEFeedrate(), "red"),
                         ))
                     self.plotfile.plot2Segments(0, (
-                        DebugPlotSegment(move.advanceData.endEFeedrate(), move.endSpeed.trueSpeed()[A_AXIS], "red"),
+                        DebugPlotSegment(move.advanceData.endEFeedrate(), move.endSpeed.trueSpeed().eSpeed, "red"),
                         ))
 
         # self.plotfile.close()
@@ -386,7 +390,7 @@ class Advance (object):
             for move in newPath:
 
                 # xxx todo move to own function
-                self.plotfile.plot1Tick(move.topSpeed.trueSpeed().XY(), move.moveNumber)
+                self.plotfile.plot1Tick(move.topSpeed.trueSpeed().feedrate3(), move.moveNumber)
 
                 at = move.accelTime()
                 lt = move.linearTime()
@@ -397,54 +401,54 @@ class Advance (object):
                 if at:
 
                     self.plotfile.plot1Segments(at, (
-                        DebugPlotSegment(move.startSpeed.trueSpeed().XY(), move.topSpeed.trueSpeed().XY(), "green"),
-                        DebugPlotSegment(move.startSpeed.trueSpeed()[A_AXIS], move.topSpeed.trueSpeed()[A_AXIS], "green"),
+                        DebugPlotSegment(move.startSpeed.trueSpeed().feedrate3(), move.topSpeed.trueSpeed().feedrate3(), "green"),
+                        DebugPlotSegment(move.startSpeed.trueSpeed().eSpeed, move.topSpeed.trueSpeed().eSpeed, "green"),
                         ))
 
                 if lt:
 
                     self.plotfile.plot1Segments(lt, (
-                        DebugPlotSegment(move.topSpeed.trueSpeed().XY(), color="blue"),
-                        DebugPlotSegment(move.topSpeed.trueSpeed()[A_AXIS], color="blue"),
+                        DebugPlotSegment(move.topSpeed.trueSpeed().feedrate3(), color="blue"),
+                        DebugPlotSegment(move.topSpeed.trueSpeed().eSpeed, color="blue"),
                         ))
 
                 if dt:
 
                     self.plotfile.plot1Segments(dt, (
-                        DebugPlotSegment(move.topSpeed.trueSpeed().XY(), move.endSpeed.trueSpeed().XY(), "red"),
-                        DebugPlotSegment(move.topSpeed.trueSpeed()[A_AXIS], move.endSpeed.trueSpeed()[A_AXIS], "red"),
+                        DebugPlotSegment(move.topSpeed.trueSpeed().feedrate3(), move.endSpeed.trueSpeed().feedrate3(), "red"),
+                        DebugPlotSegment(move.topSpeed.trueSpeed().eSpeed, move.endSpeed.trueSpeed().eSpeed, "red"),
                         ))
 
                 """
                 if at:
 
                     self.plotfile.plot2Segments(0, (
-                        DebugPlotSegment(move.getStartFeedrateV()[A_AXIS], move.advanceData.startEFeedrate(), "green"),
+                        DebugPlotSegment(move.getStartFeedrateV().eSpeed, move.advanceData.startEFeedrate(), "green"),
                         ))
                     self.plotfile.plot2Segments(at, (
-                        DebugPlotSegment(move.getStartFeedrateV()[A_AXIS], move.getReachedFeedrateV()[A_AXIS]),
+                        DebugPlotSegment(move.getStartFeedrateV().eSpeed, move.getReachedFeedrateV().eSpeed),
                         DebugPlotSegment(move.advanceData.startEFeedrate(), move.advanceData.startEReachedFeedrate(), "green"),
                         ))
                     self.plotfile.plot2Segments(0, (
-                        DebugPlotSegment(move.advanceData.startEReachedFeedrate(), move.getReachedFeedrateV()[A_AXIS], "green"),
+                        DebugPlotSegment(move.advanceData.startEReachedFeedrate(), move.getReachedFeedrateV().eSpeed, "green"),
                         ))
 
                 if lt:
                     self.plotfile.plot2Segments(lt, (
-                        DebugPlotSegment(move.getReachedFeedrateV()[A_AXIS]),
+                        DebugPlotSegment(move.getReachedFeedrateV().eSpeed),
                         ))
 
                 if dt:
 
                     self.plotfile.plot2Segments(0, (
-                        DebugPlotSegment(move.getReachedFeedrateV()[A_AXIS], move.advanceData.endEReachedFeedrate(), "red"),
+                        DebugPlotSegment(move.getReachedFeedrateV().eSpeed, move.advanceData.endEReachedFeedrate(), "red"),
                         ))
                     self.plotfile.plot2Segments(dt, (
-                        DebugPlotSegment(move.getReachedFeedrateV()[A_AXIS], move.getEndFeedrateV()[A_AXIS]),
+                        DebugPlotSegment(move.getReachedFeedrateV().eSpeed, move.getEndFeedrateV().eSpeed),
                         DebugPlotSegment(move.advanceData.endEReachedFeedrate(), move.advanceData.endEFeedrate(), "red"),
                         ))
                     self.plotfile.plot2Segments(0, (
-                        DebugPlotSegment(move.advanceData.endEFeedrate(), move.getEndFeedrateV()[A_AXIS], "red"),
+                        DebugPlotSegment(move.advanceData.endEFeedrate(), move.getEndFeedrateV().eSpeed, "red"),
                         ))
 
                 """
@@ -568,15 +572,16 @@ class Advance (object):
             # move is possible with the given acceleration and within the 
             # given distance:
 
-            endSpeedS = move.endSpeed.plannedSpeed().feedrate
-
-            allowedAccel = move.getMaxAllowedAccel(self.maxAxisAcceleration)
-            maxAllowedStartSpeed = util.vAccelPerDist(endSpeedS, allowedAccel, move.distance)
+            endSpeedS = move.endSpeed.plannedSpeed().feedrate3()
+            allowedAccel = move.getMaxAllowedAccel5(self.maxAxisAcceleration)
+            maxAllowedStartSpeed = util.vAccelPerDist(endSpeedS, allowedAccel, move.distance3)
 
             # print "joinMovesBwd, startspeed, max startspeed: ", move.getStartFr(), maxAllowedStartSpeed
 
             startSpeed1 = move.startSpeed.plannedSpeed()
-            startSpeedS = startSpeed1.feedrate
+            startSpeedS = startSpeed1.feedrate3()
+
+            # print "WARNING: joinMovesBwd() no check of e-axis"
 
             if maxAllowedStartSpeed >= startSpeedS:
                 # good, move is ok
@@ -602,7 +607,7 @@ class Advance (object):
                 # vector subtraktion oder so?)
                 # move.prevMove.setTrueEndFr(move.prevMove.getEndFr() * factor)
                 endSpeedS1 = move.prevMove.endSpeed.plannedSpeed()
-                endSpeedS1.feedrate *= factor
+                endSpeedS1.scale(factor)
                 move.prevMove.endSpeed.trueSpeed(endSpeedS1)
 
             # Adjust startspeed of this move:
@@ -622,15 +627,15 @@ class Advance (object):
 
         move.state = 2
 
-        allowedAccel = allowedDeccel = move.getMaxAllowedAccel(self.maxAxisAcceleration)
+        allowedAccel = allowedDeccel = move.getMaxAllowedAccel5(self.maxAxisAcceleration)
         print "allowed accel: ", allowedAccel
 
         #
         # Check if the speed difference between startspeed and endspeed can be done with
         # this acceleration in this distance
         #
-        startSpeedS = move.startSpeed.plannedSpeed().feedrate
-        endSpeedS = move.endSpeed.plannedSpeed().feedrate
+        startSpeedS = move.startSpeed.plannedSpeed().feedrate3()
+        endSpeedS = move.endSpeed.plannedSpeed().feedrate3()
 
         deltaSpeedS = endSpeedS - startSpeedS
 
@@ -645,9 +650,9 @@ class Advance (object):
                 # decceleration
                 sa = util.accelDist(startSpeedS, -allowedAccel, ta)
       
-            if (sa - move.distance) > 0.001:
+            if (sa - move.distance3) > 0.001:
                 print " 0.5 * %f * pow(%f, 2) + %f * %f" % (allowedAccel, ta, startSpeedS, ta)
-                print "VStart %f mm/s kann nicht innerhalb von %f mm auf Endgeschwindigkeit %f mm/s gebracht werden!" % (startSpeedS, move.distance, endSpeedS)
+                print "VStart %f mm/s kann nicht innerhalb von %f mm auf Endgeschwindigkeit %f mm/s gebracht werden!" % (startSpeedS, move.distance3, endSpeedS)
                 print "Dafür werden %f mm benötigt" % sa
                 assert(0)
 
@@ -658,7 +663,7 @@ class Advance (object):
         ta = 0.0
         sa = 0.0
 
-        deltaStartSpeedS = move.topSpeed.plannedSpeed().feedrate - startSpeedS
+        deltaStartSpeedS = move.topSpeed.plannedSpeed().feedrate3() - startSpeedS
 
         if deltaStartSpeedS:
 
@@ -666,13 +671,15 @@ class Advance (object):
             print "accel time (for %f mm/s): %f [s]" % (deltaStartSpeedS, ta)
 
             # debug Check axxis acceleration
-            deltaSpeedV = move.direction.scale(deltaStartSpeedS)
-            for dim in range(5):
+            deltaSpeedV = move.direction3.scale(deltaStartSpeedS)
+            for dim in range(3):
                 dimAccel = abs(deltaSpeedV[dim]) / ta
                 print "dimaccel ", dim, dimAccel
                 if (dimAccel / self.maxAxisAcceleration[dim]) > 1.001:
                     print "dim %d verletzt max accel: " % dim, dimAccel, " > ", self.maxAxisAcceleration[dim]
                     assert(0)
+
+            print "WARNING: planAcceleration() no check of e-axis"
             #end debug
 
             sa = util.accelDist(startSpeedS, allowedAccel, ta)
@@ -683,7 +690,7 @@ class Advance (object):
         tb = 0.0
         sb = 0.0
 
-        deltaEndSpeedS = move.topSpeed.plannedSpeed().feedrate - endSpeedS                          # [mm/s]
+        deltaEndSpeedS = move.topSpeed.plannedSpeed().feedrate3() - endSpeedS                          # [mm/s]
 
         if deltaEndSpeedS:
 
@@ -691,19 +698,21 @@ class Advance (object):
             # print "deccel time (for %f mm/s): %f [s]" % (deltaEndSpeedS, tb)
 
             # debug Check axxis acceleration
-            deltaSpeedV = move.direction.scale(deltaEndSpeedS)
-            for dim in range(5):
+            deltaSpeedV = move.direction3.scale(deltaEndSpeedS)
+            for dim in range(3):
                 dimDeccel = abs(deltaSpeedV[dim]) / tb  
                 if (dimDeccel / self.maxAxisAcceleration[dim]) > 1.001:
                     print "dim %d verletzt max accel: " % dim, dimDeccel, " [mm/s] > ", self.maxAxisAcceleration[dim], " [mm/s]"
                     assert(0)
+
+            print "WARNING: planAcceleration() no check of e-axis"
             # end debug
 
             sb = util.accelDist(endSpeedS, allowedAccel, tb)
 
         # print "e_distance: %f, sbeschl, sbrems: %f, %f" % (move.e_distance, sa, sb)
 
-        if move.distance < (sa+sb):
+        if move.distance3 < (sa+sb):
 
             #
             # Strecke zu kurz, Trapez nicht möglich, geschwindigkeit muss abgesenkt werden.
@@ -763,8 +772,8 @@ class Advance (object):
         # print "ta: ", ta, deltaStartSpeedS, sa
         # print "tb: ", tb, deltaEndSpeedS, sb
 
-        nominalSpeed = move.topSpeed.plannedSpeed().feedrate # [mm/s]
-        slin = move.distance - (sa+sb)
+        nominalSpeed = move.topSpeed.plannedSpeed().feedrate3() # [mm/s]
+        slin = move.distance3 - (sa+sb)
         tlin = slin / nominalSpeed
         # print "tlin: ", tlin, slin
         move.setDuration(ta, tlin, tb)
@@ -812,13 +821,13 @@ class Advance (object):
             return
 
         startSpeed = move.startSpeed.trueSpeed()
-        startFeedrateE = startSpeed[A_AXIS]
+        startFeedrateE = startSpeed.eSpeed
 
         topSpeed = move.topSpeed.trueSpeed()
-        reachedFeedrateE = topSpeed[A_AXIS]
+        reachedFeedrateE = topSpeed.eSpeed
 
         endSpeed = move.endSpeed.trueSpeed()
-        endFeedrateE = endSpeed[A_AXIS]
+        endFeedrateE = endSpeed.eSpeed
 
         startEVelDiff = reachedFeedrateE - startFeedrateE
         # startEAccelSign = util.sign(startEVelDiff)
@@ -830,7 +839,7 @@ class Advance (object):
         assert(startEVelDiff >= 0)
         assert(endEVelDiff <= 0)
 
-        allowedAccelV = move.getMaxAllowedAccelVector(self.maxAxisAcceleration)
+        allowedAccelV = move.getMaxAllowedAccelVector5(self.maxAxisAcceleration)
 
         if ta:
             #
@@ -889,7 +898,7 @@ class Advance (object):
             # E-steps in linear phase
             # E-distance ist nicht einfach der rest der e-steps, linearer e-anteil muss über
             # die dauer des linearen anteils (tLinear) berechnet werden.
-            sl = tl * topSpeed[A_AXIS] + self.skippedLinSteps
+            sl = tl * topSpeed.eSpeed + self.skippedLinSteps
             esteps = int(sl * self.e_steps_per_mm)
             self.skippedLinSteps = sl - (esteps / float(self.e_steps_per_mm))
             print "dim E moves %.3f mm in linear phase -> %d steps" % (sl, esteps)
@@ -910,42 +919,41 @@ class Advance (object):
 
                 if move.advanceData.endSignChange(): 
 
-                    # assert(0)
                     ###############################################################
                     # Compute additional data for planSteps()
 
                     # Time till the e-velocity crosses zero
-                    allowedAccelV = move.getMaxAllowedAccelVector(self.maxAxisAcceleration)
 
+                    print "v0, accel: ", move.advanceData.endEReachedFeedrate(), allowedAccelV[A_AXIS]
                     tdc = abs(move.advanceData.endEReachedFeedrate() / allowedAccelV[A_AXIS])
                     print "Time to reach zero-crossing (tdc):", tdc, ", tdd: ", td - tdc
 
                     # Nominal speed at zero crossing
-                    allowedAccel = move.getMaxAllowedAccel(self.maxAxisAcceleration)
+                    allowedAccel = allowedAccelV.length()
 
-                    if topSpeed.feedrate > endSpeed.feedrate:
+                    if topSpeed.feedrate3() > endSpeed.feedrate3():
                         # decel
-                        zeroCrossingS = util.vAccelPerTime(topSpeed.feedrate, -allowedAccel, tdc)
+                        zeroCrossingS = util.vAccelPerTime(topSpeed.feedrate3(), -allowedAccel, tdc)
                     else:
                         assert(0) # does this happen?
 
                     crossingSpeed = move.topSpeed.speed()
-                    crossingSpeed.feedrate = zeroCrossingS
+                    crossingSpeed.setSpeed(zeroCrossingS)
 
-                    print "top, zerocrossspeed:", topSpeed.feedrate, zeroCrossingS, crossingSpeed
+                    print "top, zerocrossspeed:", topSpeed.feedrate3(), zeroCrossingS, crossingSpeed
 
                     move.advanceData.tdc = tdc
                     move.advanceData.tdd = td - tdc
                     move.advanceData.crossingSpeed = crossingSpeed
 
                     # PART C, E
-                    (sdc, estepsc, ediffc) = move.endERampSteps(tdc, v1=crossingSpeed[A_AXIS], roundError=self.skippedStartAdvSum)
+                    (sdc, estepsc, ediffc) = move.endERampSteps(tdc, v1=crossingSpeed.eSpeed, roundError=self.skippedStartAdvSum)
                     print "(sdc, estepsc, ediffc):", (sdc, estepsc, ediffc) 
 
                     move.advanceData.endEStepsC = estepsc
                     self.advStepSum += estepsc
 
-                    (sdd, estepsd, ediffd) = move.endERampSteps(move.advanceData.tdd, v0=crossingSpeed[A_AXIS], roundError=ediffc)
+                    (sdd, estepsd, ediffd) = move.endERampSteps(move.advanceData.tdd, v0=crossingSpeed.eSpeed, roundError=ediffc)
                     print "(sdd, estepsd, ediffd):", (sdd, estepsd, ediffd) 
 
                     move.advanceData.endEStepsD = estepsd
@@ -993,7 +1001,7 @@ class Advance (object):
                 self.skippedStartAdvSum += nu_sd
 
                 # E-steps of non-advanced decel ramp
-                sd = move.endRampDistance(topSpeed[A_AXIS], endSpeed[A_AXIS], td) + self.skippedDecelSteps
+                sd = move.endRampDistance(topSpeed.eSpeed, endSpeed.eSpeed, td) + self.skippedDecelSteps
 
                 esteps = int(sd * self.e_steps_per_mm)
                 self.skippedDecelSteps = sd - (esteps / float(self.e_steps_per_mm))
@@ -1084,7 +1092,7 @@ class Advance (object):
 
             return [move]
 
-        assert(move.displacement_vector_steps_raw[Z_AXIS] == 0)
+        assert(move.displacement_vector_steps_raw3[Z_AXIS] == 0)
 
         mask = 0
         if move.advanceData.startSplits == 1:
@@ -1193,7 +1201,7 @@ class Advance (object):
             abs_displacement_vector_steps.append(s)
         """
 
-        disp = move.displacement_vector_steps_raw
+        disp = move.displacement_vector_steps_raw3 + [move.eSteps, 0]
 
         # rest = disp[A_AXIS] % 1
         # assert(rest == 0)
@@ -1249,22 +1257,21 @@ class Advance (object):
         nominalSpeed = abs( move.topSpeed.trueSpeed()[leadAxis] ) # [mm/s]
 
         # advance
-        allowedAccel = move.getMaxAllowedAccel(self.maxAxisAcceleration)
-
-        print "allowedAccel: ", move.getMaxAllowedAccel(self.maxAxisAcceleration), self.maxAxisAcceleration
+        # allowedAccel = move.getMaxAllowedAccel(self.maxAxisAcceleration)
+        allowedAccel = abs(move.getMaxAllowedAccelVector5(self.maxAxisAcceleration)[leadAxis])
         accel_steps_per_square_second = allowedAccel * steps_per_mm
 
         # v0 = abs(move.getFeedrateV(move.getStartFr())[leadAxis])                # [mm/s]
         v0 = abs(move.startSpeed.trueSpeed()[leadAxis])                # [mm/s]
-        if v0 < 0.1:
-          print "planstepsSimple: min v0 hack", v0
-          v0 = 0.1
+        # if v0 < 0.1:
+          # print "planstepsSimple: min v0 hack", v0
+          # v0 = 0.1
 
         # v1 = abs(move.getFeedrateV(move.getEndFr())[leadAxis])                # [mm/s]
         v1 = abs(move.endSpeed.trueSpeed()[leadAxis])                # [mm/s]
-        if v1 < 0.1:
-          print "planstepsSimple: min v1 hack", v1
-          v1 = 0.1
+        # if v1 < 0.1:
+          # print "planstepsSimple: min v1 hack", v1
+          # v1 = 0.1
 
         print "lead, v0, v1: ", leadAxis, v0, v1
 
@@ -1563,7 +1570,7 @@ class Advance (object):
             print "***** Start planSA() *****"
             parentMove.pprint("planSA:")
 
-        displacement_vector_steps_raw = parentMove.displacement_vector_steps_raw
+        displacement_vector_steps_raw = parentMove.displacement_vector_steps_raw3
 
         displacement_vector_steps_A = [0] * 5
         displacement_vector_steps_B = [0] * 5
@@ -1638,11 +1645,15 @@ class Advance (object):
 
         moveA.setDuration(ta, 0, 0)
 
-        sv = startSpeed.vv()
-        sv[A_AXIS] = parentMove.advanceData.startEFeedrate()
+        # sv = startSpeed.vv()
+        # sv[A_AXIS] = parentMove.advanceData.startEFeedrate()
+        sv = parentMove.startSpeed.speed()
+        sv.setESpeed(parentMove.advanceData.startEFeedrate())
 
-        tv = topSpeed.vv()
-        tv[A_AXIS] = parentMove.advanceData.startEReachedFeedrate()
+        # tv = topSpeed.vv()
+        # tv[A_AXIS] = parentMove.advanceData.startEReachedFeedrate()
+        tv = parentMove.topSpeed.speed()
+        tv.setESpeed(parentMove.advanceData.startEReachedFeedrate())
 
         moveA.setSpeeds(sv, tv, tv)
 
@@ -1745,7 +1756,7 @@ class Advance (object):
             print "***** Start planSD() *****"
             parentMove.pprint("planSD:")
 
-        displacement_vector_steps_raw = parentMove.displacement_vector_steps_raw
+        displacement_vector_steps_raw = parentMove.displacement_vector_steps_raw3
 
         displacement_vector_steps_A = [0] * 5
         displacement_vector_steps_B = [0] * 5
@@ -1813,11 +1824,15 @@ class Advance (object):
 
         moveB.setDuration(0, 0, td)
 
-        sv = topSpeed.vv()
-        sv[A_AXIS] = parentMove.advanceData.endEReachedFeedrate()
+        # sv = topSpeed.vv()
+        # sv[A_AXIS] = parentMove.advanceData.endEReachedFeedrate()
+        sv = parentMove.topSpeed.speed()
+        sv.setESpeed(parentMove.advanceData.endEReachedFeedrate())
 
-        ev = endSpeed.vv()
-        ev[A_AXIS] = parentMove.advanceData.endEFeedrate()
+        # ev = endSpeed.vv()
+        # ev[A_AXIS] = parentMove.advanceData.endEFeedrate()
+        ev = parentMove.endSpeed.speed()
+        ev.setESpeed(parentMove.advanceData.endEFeedrate())
 
         moveB.setSpeeds(sv, sv, ev)
 
@@ -1963,7 +1978,7 @@ class Advance (object):
             print "***** Start planSALSD() *****"
             parentMove.pprint("planSALSD:")
 
-        displacement_vector_steps_raw = parentMove.displacement_vector_steps_raw
+        displacement_vector_steps_raw = parentMove.displacement_vector_steps_raw3
 
         displacement_vector_steps_A = [0] * 5
         displacement_vector_steps_B = [0] * 5
@@ -2057,16 +2072,16 @@ class Advance (object):
         moveA.setDuration(ta, 0, 0)
         moveC.setDuration(0, 0, td)
 
-        sv = startSpeed.vv()
-        sv[A_AXIS] = parentMove.advanceData.startEFeedrate()
-        tv = topSpeed.vv()
-        tv[A_AXIS] = parentMove.advanceData.startEReachedFeedrate()
+        sv = parentMove.startSpeed.speed()
+        sv.setESpeed(parentMove.advanceData.startEFeedrate())
+        tv = parentMove.topSpeed.speed()
+        tv.setESpeed(parentMove.advanceData.startEReachedFeedrate())
         moveA.setSpeeds(sv, tv, tv)
 
-        sv = topSpeed.vv()
-        sv[A_AXIS] = parentMove.advanceData.endEReachedFeedrate()
-        ev = endSpeed.vv()
-        ev[A_AXIS] = parentMove.advanceData.endEFeedrate()
+        sv = parentMove.topSpeed.speed()
+        sv.setESpeed(parentMove.advanceData.endEReachedFeedrate())
+        ev = parentMove.endSpeed.speed()
+        ev.setESpeed(parentMove.advanceData.endEFeedrate())
         moveC.setSpeeds(sv, sv, ev)
 
         if tl:
@@ -2263,7 +2278,7 @@ class Advance (object):
             print "***** Start planSALDD() *****"
             parentMove.pprint("planSALDD:")
 
-        displacement_vector_steps_raw = parentMove.displacement_vector_steps_raw
+        displacement_vector_steps_raw = parentMove.displacement_vector_steps_raw3
 
         displacement_vector_steps_A = [0] * 5
         displacement_vector_steps_B = [0] * 5
@@ -2367,42 +2382,40 @@ class Advance (object):
         from move import SubMove
 
         moveA = SubMove(parentMove, parentMove.moveNumber + 1, displacement_vector_steps_A)
-        moveC = SubMove(parentMove, parentMove.moveNumber + 3, displacement_vector_steps_C)
         moveD = SubMove(parentMove, parentMove.moveNumber + 4, displacement_vector_steps_D)
        
         moveA.setDuration(ta, 0, 0)
-        moveC.setDuration(0, 0, parentMove.advanceData.tdc)
         moveD.setDuration(0, 0, parentMove.advanceData.tdd)
 
-        newMoves = [moveA, moveC, moveD]
+        # newMoves = [moveA, moveC, moveD]
+        newMoves = [moveA]
 
-        sv = startSpeed.vv()
-        sv[A_AXIS] = parentMove.advanceData.startEFeedrate()
-        tv = topSpeed.vv()
-        tv[A_AXIS] = parentMove.advanceData.startEReachedFeedrate()
+        sv = parentMove.startSpeed.speed()
+        sv.setESpeed(parentMove.advanceData.startEFeedrate())
+        tv = parentMove.topSpeed.speed()
+        tv.setESpeed(parentMove.advanceData.startEReachedFeedrate())
         moveA.setSpeeds(sv, tv, tv)
 
+        if displacement_vector_steps_C != emptyVector5:
 
+            moveC = SubMove(parentMove, parentMove.moveNumber + 3, displacement_vector_steps_C)
+            moveC.setDuration(0, 0, parentMove.advanceData.tdc)
 
-        sv = topSpeed.vv()
-        sv[A_AXIS] = parentMove.advanceData.endEReachedFeedrate()
-        ev = [
-            parentMove.advanceData.crossingSpeed[X_AXIS],
-            parentMove.advanceData.crossingSpeed[Y_AXIS],
-            parentMove.advanceData.crossingSpeed[Z_AXIS],
-            0.0,
-            0.0]
-        moveC.setSpeeds(sv, sv, ev)
+            newMoves.append(moveC)
 
-        sv = [
-            parentMove.advanceData.crossingSpeed[X_AXIS],
-            parentMove.advanceData.crossingSpeed[Y_AXIS],
-            parentMove.advanceData.crossingSpeed[Z_AXIS],
-            0.0,
-            0.0]
-        ev = parentMove.endSpeed.speed().vv()
-        ev[A_AXIS] = parentMove.advanceData.endEFeedrate()
+            sv = parentMove.topSpeed.speed()
+            sv.setESpeed(parentMove.advanceData.endEReachedFeedrate())
+            ev = parentMove.advanceData.crossingSpeed.copy()
+            ev.eSpeed = 0
+            moveC.setSpeeds(sv, sv, ev)
+
+        sv = parentMove.advanceData.crossingSpeed.copy()
+        sv.eSpeed = 0
+        ev = parentMove.endSpeed.speed()
+        ev.setESpeed(parentMove.advanceData.endEFeedrate())
         moveD.setSpeeds(sv, sv, ev)
+
+        newMoves.append(moveD)
 
         if tl:
 
@@ -2416,10 +2429,17 @@ class Advance (object):
 
             moveA.nextMove = moveB
             moveB.prevMove = moveA
-            moveB.nextMove = moveC
-            moveC.prevMove = moveB
-            moveC.nextMove = moveD
-            moveD.prevMove = moveC
+
+            if displacement_vector_steps_C != emptyVector5:
+                moveB.nextMove = moveC
+                moveC.prevMove = moveB
+                moveC.nextMove = moveD
+                moveD.prevMove = moveC
+
+            else:
+
+                moveB.nextMove = moveD
+                moveD.prevMove = moveB
 
             newMoves.insert(1, moveB)
 
