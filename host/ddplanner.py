@@ -20,6 +20,7 @@
 #*/
 
 import math, collections
+from argparse import Namespace
 
 import ddprintutil as util, dddumbui, packedvalue
 from ddprofile import PrinterProfile, MatProfile, NozzleProfile
@@ -31,6 +32,16 @@ from ddprinter import Printer
 from ddprintcommands import CmdSyncTargetTemp
 from ddprintstates import HeaterEx1, HeaterBed
 from ddadvance import Advance
+
+#####################################################################
+#
+# Enable mathplotlib plotting of move steps
+#
+debugPlot = False
+debugPlot = True
+
+if debugPlot:
+    import pickle
 
 #####################################################################
 #
@@ -160,6 +171,89 @@ class LayerMoves (object):
 """
 #####################################################################
 
+class DebugPlot (object):
+
+    def __init__(self, nr):
+
+        self.plotfile = "/tmp/ddsteps_%04d.pkl" % nr
+
+        self.plot = Namespace()
+        # pl.time = 0.01
+        self.plot.moves = []
+
+    def plotSteps(self, move):
+    
+        """
+        self.accelPulses = []
+        self.linearTimer = None
+        self.deccelPulses = []
+        self.setDirBits = False
+        self.dirBits = 0
+        self.leadAxis = 0
+        self.abs_vector_steps = None
+        """
+
+        d = {
+                "number": move.moveNumber,
+                "accelPulses": move.stepData.accelPulses,
+                "linearTimer": move.stepData.linearTimer,
+                "linearSteps": move.stepData.abs_vector_steps[move.stepData.leadAxis] - (len(move.stepData.accelPulses)+len(move.stepData.deccelPulses)),
+                "deccelPulses": move.stepData.deccelPulses,
+                }
+
+        self.plot.moves.append(d)
+
+
+    """
+    def makePlot(self):
+
+        pl = Namespace()
+        pl.Lines = []
+        pl.Colors = []
+        pl.Styles = []
+        pl.Ticks = []
+        return pl
+
+    # def newMove(self):
+        # self.colors += self.segcol
+
+    def plot1Tick(self, y, nr):
+
+        self.plot1.Ticks.append((self.plot1.time, y, nr))
+
+    def plot1Segments(self, dt, segspec):
+
+        self.plotSegments(self.plot1, dt, segspec)
+
+    def plot2Segments(self, dt, segspec):
+
+        self.plotSegments(self.plot2, dt, segspec)
+
+    def plotSegments(self, plot, dt, segspec):
+
+        for seg in segspec:
+
+            style = "solid"
+            y2 = seg.y2
+            t = dt
+            if y2 == None:
+                y2 = seg.y1
+                if (t > 0.05):
+                    style = "dashed"
+                    t = 0.05
+
+            plot.Lines.append(((plot.time, seg.y1), (plot.time+t, y2)))
+            plot.Colors.append(seg.color)
+            plot.Styles.append(style)
+
+        plot.time += t
+    """
+
+    def close(self):
+        pickle.dump(self.plot, open(self.plotfile, "wb"))
+
+#####################################################################
+
 class Planner (object):
 
     __single = None 
@@ -238,7 +332,7 @@ class Planner (object):
         # End Constants
         #
 
-        # self.plotfile = None
+        self.plotfile = None
 
         # Headspeed/extrusionspeed where autotemp increase starts
         self.ExtrusionAmountLow = 30 # [mm/s] for a 1mm nozzle
@@ -326,6 +420,10 @@ class Planner (object):
                 #
                 self.advance.planPath(self.pathData.path)
                 self.pathData.path = []
+
+                if debugPlot:
+                    self.plotfile.close()
+                    self.plotfile = None
 
             #
             # Do a simple path planning for traveling moves:
@@ -430,6 +528,10 @@ class Planner (object):
 
             self.advance.planPath(self.pathData.path)
             self.pathData.path = []
+
+            if debugPlot:
+                self.plotfile.close()
+                self.plotfile = None
 
             # if debugPlot:
                 # self.plotfile.write("e\n")
@@ -545,13 +647,20 @@ class Planner (object):
 
     def streamMove(self, move):
 
-        if self.args.mode != "pre":
+        if debugPlot:
 
-            if move.moveNumber in self.syncCommands:
-                for (cmd, p1, p2) in self.syncCommands[move.moveNumber]:
+            if not self.plotfile:
+                self.plotfile = DebugPlot(move.moveNumber)
+
+            self.plotfile.plotSteps(move)
+
+        if move.moveNumber in self.syncCommands:
+            for (cmd, p1, p2) in self.syncCommands[move.moveNumber]:
+                if self.args.mode != "pre":
                     self.printer.sendCommandParamV(cmd, [p1, p2])
 
-            for (cmd, cobsBlock) in move.commands():
+        for (cmd, cobsBlock) in move.commands():
+            if self.args.mode != "pre":
                 self.printer.sendCommandC(cmd, cobsBlock)
 
     #

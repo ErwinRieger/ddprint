@@ -29,10 +29,15 @@ from ddprofile import PrinterProfile, MatProfile # , NozzleProfile
 import ddprintutil as util
 import math
 
+#####################################################################
+#
+# Enable mathplotlib plotting of planned paths
+#
+debugPlot = False
+debugPlot = True
 
 if debugPlot:
-    import pickle, matplotlib.pyplot as plt 
-    from matplotlib import collections as mc
+    import pickle
 
 emptyVector3 = [0] * 3
 emptyVector5 = [0] * 5
@@ -1463,8 +1468,8 @@ class Advance (object):
         #
         # Linear phase
         #
-        if move.linearTime():
-        # if True:
+        # if move.linearTime():
+        if True:
             timerValue = fTimer / steps_per_second_nominal
             move.stepData.setLinTimer(timerValue)
         else:
