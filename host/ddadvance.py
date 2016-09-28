@@ -723,7 +723,7 @@ class Advance (object):
             # Strecke zu kurz, Trapez nicht möglich, geschwindigkeit muss abgesenkt werden.
             #
             if debugMoves:
-                print "Trapez nicht möglich: s: %f, sbeschl (%f) + sbrems (%f) = %f" % (move.distance, sa, sb, sa+sb)
+                print "Trapez nicht möglich: s: %f, sbeschl (%f) + sbrems (%f) = %f" % (move.distance3, sa, sb, sa+sb)
 
             # ??? 
             assert(sa>0 and sb>0)
@@ -731,8 +731,8 @@ class Advance (object):
             topSpeed = move.topSpeed.speed()
 
             # sa = (2 * allowedAccel * move.e_distance - pow(startSpeedS, 2) + pow(endSpeedS, 2)) /(4 * allowedAccel)
-            sa = (2 * allowedAccel * move.distance - pow(startSpeedS, 2) + pow(endSpeedS, 2)) / (4 * allowedAccel)
-            sb = move.distance - sa
+            sa = (2 * allowedAccel * move.distance3 - pow(startSpeedS, 2) + pow(endSpeedS, 2)) / (4 * allowedAccel)
+            sb = move.distance3 - sa
 
             if debugMoves:
                 print "sbeschl, sbrems neu: %f, %f" % (sa, sb)
@@ -888,7 +888,7 @@ class Advance (object):
                 self.skippedStartAdvSum += nu_sa
 
                 # E-steps of non-advanced accel ramp
-                sa = move.startRampDistance(startSpeed[A_AXIS], topSpeed[A_AXIS], ta) + self.skippedAccelSteps
+                sa = move.startRampDistance(startSpeed.eSpeed, topSpeed.eSpeed, ta) + self.skippedAccelSteps
 
                 esteps = int(sa * self.e_steps_per_mm)
                 self.skippedAccelSteps = sa - (esteps / float(self.e_steps_per_mm))
@@ -1077,7 +1077,7 @@ class Advance (object):
 
             if ta or td:
                 # xxx hack
-                move.displacement_vector_steps_raw[A_AXIS] = esteps
+                move.eSteps = esteps
 
             # Single move with simple ramps
             # xxx use plantravelsteps here
@@ -1259,24 +1259,24 @@ class Advance (object):
         #
         # Create a list of stepper pulses
         #
-        nominalSpeed = abs( move.topSpeed.trueSpeed()[leadAxis] ) # [mm/s]
+        if leadAxis < A_AXIS:
+            nominalSpeed = abs( move.topSpeed.trueSpeed()[leadAxis] ) # [mm/s]
+        else:
+            nominalSpeed = abs(move.topSpeed.speed().eSpeed)
 
         # advance
-        # allowedAccel = move.getMaxAllowedAccel(self.maxAxisAcceleration)
         allowedAccel = abs(move.getMaxAllowedAccelVector5(self.maxAxisAcceleration)[leadAxis])
         accel_steps_per_square_second = allowedAccel * steps_per_mm
 
-        # v0 = abs(move.getFeedrateV(move.getStartFr())[leadAxis])                # [mm/s]
-        v0 = abs(move.startSpeed.trueSpeed()[leadAxis])                # [mm/s]
-        # if v0 < 0.1:
-          # print "planstepsSimple: min v0 hack", v0
-          # v0 = 0.1
+        if leadAxis < A_AXIS:
+            v0 = abs(move.startSpeed.trueSpeed()[leadAxis])                # [mm/s]
+        else:
+            v0 = abs(move.startSpeed.speed().eSpeed)
 
-        # v1 = abs(move.getFeedrateV(move.getEndFr())[leadAxis])                # [mm/s]
-        v1 = abs(move.endSpeed.trueSpeed()[leadAxis])                # [mm/s]
-        # if v1 < 0.1:
-          # print "planstepsSimple: min v1 hack", v1
-          # v1 = 0.1
+        if leadAxis < A_AXIS:
+            v1 = abs(move.endSpeed.trueSpeed()[leadAxis])                # [mm/s]
+        else:
+            v1 = abs(move.endSpeed.speed().eSpeed)
 
         print "lead, v0, v1: ", leadAxis, v0, v1
 
@@ -1287,7 +1287,6 @@ class Advance (object):
         #
         # Acceleration variables
         #
-        # tAccel = 0  # [s], sum of all acceeration steptimes
         # tAccel mit der initialen zeitspanne vorbelegen, da wir bereits im
         # ersten schleifendurchlauf (d.h. ab t=0) eine beschleunigung haben wollen.
         tAccel = 1.0 / steps_per_second_0  # [s], sum of all acceeration steptimes
