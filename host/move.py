@@ -1078,6 +1078,36 @@ class PrintMove(RealMove):
     ################################################################################
 
     ################################################################################
+    # Berechnet die fläche des dreieckigen anteils (und damit die strecke) der start-rampe.
+    # Vorzeichen:
+    #   v0, v1 positiv: resultat positiv
+    #   v0, v1 negativ: resultat negativ
+    def startRampTriangle(self, v0, v1, dt):
+
+        print "v0:", v0, "v1:", v1
+
+        if v1 > 0: 
+            assert(v0 >= 0)
+            assert(v1 >= v0)
+        elif v1 < 0:
+            assert(v0 <= 0)
+            assert(v1 <= v0)
+
+        return ((v1 - v0) * dt) / 2.0
+
+    def endRampTriangle(self, v0, v1, dt):
+
+        print "v0:", v0, "v1:", v1
+
+        if v0 > 0:
+            assert(v1 >= 0)
+            assert(v0 >= v1)
+        if v0 < 0:
+            assert(v1 <= 0)
+            assert(v0 <= v1)
+
+        return ((v0 - v1) * dt) / 2.0
+    ################################################################################
     # Berechnet die fläche (und damit die strecke) der start-rampe.
     # Diese besteht aus zwei teilen:
     # * Der rechteckige teil der aus v0*dt besteht
@@ -1087,29 +1117,11 @@ class PrintMove(RealMove):
     #   v0, v1 negativ: resultat negativ
     def startRampDistance(self, v0, v1, dt):
 
-        print "v0:", v0, "v1:", v1
-
-        if v1 > 0: 
-            assert(v0 >= 0)
-            assert(v1 > v0)
-        elif v1 < 0:
-            assert(v0 <= 0)
-            assert(v1 < v0)
-
-        return ((v1 - v0) * dt) / 2.0 + v0 * dt
+        return self.startRampTriangle(v0, v1, dt) + v0 * dt
 
     def endRampDistance(self, v0, v1, dt):
 
-        print "v0:", v0, "v1:", v1
-
-        if v0 > 0:
-            assert(v1 >= 0)
-            assert(v0 > v1)
-        if v0 < 0:
-            assert(v1 <= 0)
-            assert(v0 < v1)
-
-        return ((v0 - v1) * dt) / 2.0 + v1 * dt
+        return self.endRampTriangle(v0, v1, dt) + v1 * dt
     ################################################################################
 
     ################################################################################

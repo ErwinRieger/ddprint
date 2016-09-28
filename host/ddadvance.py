@@ -155,6 +155,13 @@ class Advance (object):
 
         # self.plotfile = None
 
+        self.e_steps_per_mm = PrinterProfile.getStepsPerMM(A_AXIS)
+
+    def eJerk(self, accel):
+        return abs(accel) * self.kAdv
+
+    def resetDebugStatistics(self):
+
         # Running sum of e-distances through advance, for debugging of planAdvance()
         self.advSum = 0
         # Sum of skipped small accelration ramps
@@ -174,27 +181,15 @@ class Advance (object):
         # Running sum of move esteps, for debugging of planSteps()
         self.moveEsteps = 0.0
 
-        self.e_steps_per_mm = PrinterProfile.getStepsPerMM(A_AXIS)
-
-    def eJerk(self, accel):
-        return abs(accel) * self.kAdv
+        # Sum of all nominal e acceleration ramps
+        self.eRampSum = 0.0
 
     def planPath(self, path):
 
         if debugMoves:
             print "***** Start planPath() *****"
 
-        # self.startSum = self.endSum = 0
-        self.advSum = 0
-        self.skippedStartAdvSum = 0
-        self.skippedLinSteps = 0
-        self.skippedAccelSteps = 0
-        self.skippedDecelSteps = 0
-        self.skippedSimpleSteps = 0
-        # self.skippedEndAdvSum = 0
-        self.advStepBalance = 0
-        self.advStepSum = 0
-        self.moveEsteps = 0.0
+        self.resetDebugStatistics()
 
         if debugPlot: #  and not self.plotfile:
             self.plottime = 1
@@ -269,6 +264,17 @@ class Advance (object):
 
             move.sanityCheck(self.planner.jerk)
             self.planAcceleration(move)
+
+            # debug
+            s = move.startRampTriangle(move.startSpeed.speed().eSpeed, move.topSpeed.speed().eSpeed, move.accelTime())
+            if s:
+                self.eRampSum += s 
+                print "eRampSum: ", s, self.eRampSum
+            s = move.endRampTriangle(move.topSpeed.speed().eSpeed, move.endSpeed.speed().eSpeed, move.accelTime())
+            if s:
+                self.eRampSum -= s
+                print "eRampSum: ", -s, self.eRampSum
+            # enddebug
 
         if self.kAdv:
             for move in path:
@@ -362,6 +368,7 @@ class Advance (object):
         print "Path skippedSimpleSteps: ", self.skippedSimpleSteps
         print "Path advStepBalance, advStepSum: ", self.advStepBalance, self.advStepSum
         print "Path moveEsteps: %7.3f" % ( self.moveEsteps)
+        print "Path eRampSum: ", self.eRampSum
         # print "ediff: ", self.ediff
 
         assert(util.circaf(self.advSum, 0, 0.02))
