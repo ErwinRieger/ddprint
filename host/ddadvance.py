@@ -349,8 +349,7 @@ class Advance (object):
                         DebugPlotSegment(move.advanceData.endEFeedrate(), move.endSpeed.trueSpeed().eSpeed, "red"),
                         ))
 
-        # self.plotfile.close()
-        # return # xxx work
+            self.plotfile.close()
 
         newPath = []
         for move in path:
@@ -360,6 +359,7 @@ class Advance (object):
             newPath += newMoves
 
         print "Path advSum: ", self.advSum
+        print "Path eRampSum: ", self.eRampSum
         print "Path skippedStartAdvSum: ", self.skippedStartAdvSum
         # print "Path skippedEndAdvSum: ", self.skippedEndAdvSum
         print "Path skippedLinSteps: ", self.skippedLinSteps
@@ -368,12 +368,14 @@ class Advance (object):
         print "Path skippedSimpleSteps: ", self.skippedSimpleSteps
         print "Path advStepBalance, advStepSum: ", self.advStepBalance, self.advStepSum
         print "Path moveEsteps: %7.3f" % ( self.moveEsteps)
-        print "Path eRampSum: ", self.eRampSum
         # print "ediff: ", self.ediff
 
         # Summe aller advance-rampen muss nicht unbedingt null sein, je nach verteilung
         # von e-jerk jumps. Somit ist folgender test völlig willkürlich.
         assert(util.circaf(self.advSum, 0, 1))
+        # Gleiches gilt für eRampSum
+        assert(util.circaf(self.eRampSum, 0, 1))
+
         assert(util.circaf(self.skippedStartAdvSum, 0, 2.0/self.e_steps_per_mm))
         # assert(util.circaf(self.skippedEndAdvSum, 0, 1.0/self.e_steps_per_mm))
         assert(util.circaf(self.skippedLinSteps, 0, 1.0/self.e_steps_per_mm))
@@ -433,39 +435,9 @@ class Advance (object):
                         DebugPlotSegment(move.topSpeed.trueSpeed().eSpeed, move.endSpeed.trueSpeed().eSpeed, "red"),
                         ))
 
-                """
-                if at:
 
-                    self.plotfile.plot2Segments(0, (
-                        DebugPlotSegment(move.getStartFeedrateV().eSpeed, move.advanceData.startEFeedrate(), "green"),
-                        ))
-                    self.plotfile.plot2Segments(at, (
-                        DebugPlotSegment(move.getStartFeedrateV().eSpeed, move.getReachedFeedrateV().eSpeed),
-                        DebugPlotSegment(move.advanceData.startEFeedrate(), move.advanceData.startEReachedFeedrate(), "green"),
-                        ))
-                    self.plotfile.plot2Segments(0, (
-                        DebugPlotSegment(move.advanceData.startEReachedFeedrate(), move.getReachedFeedrateV().eSpeed, "green"),
-                        ))
-
-                if lt:
-                    self.plotfile.plot2Segments(lt, (
-                        DebugPlotSegment(move.getReachedFeedrateV().eSpeed),
-                        ))
-
-                if dt:
-
-                    self.plotfile.plot2Segments(0, (
-                        DebugPlotSegment(move.getReachedFeedrateV().eSpeed, move.advanceData.endEReachedFeedrate(), "red"),
-                        ))
-                    self.plotfile.plot2Segments(dt, (
-                        DebugPlotSegment(move.getReachedFeedrateV().eSpeed, move.getEndFeedrateV().eSpeed),
-                        DebugPlotSegment(move.advanceData.endEReachedFeedrate(), move.advanceData.endEFeedrate(), "red"),
-                        ))
-                    self.plotfile.plot2Segments(0, (
-                        DebugPlotSegment(move.advanceData.endEFeedrate(), move.getEndFeedrateV().eSpeed, "red"),
-                        ))
-
-                """
+            if debugPlot:
+                self.plotfile.close()
 
         print "xxx no statistic"
         for move in newPath:
@@ -500,12 +472,6 @@ class Advance (object):
             move.prevMove = util.StreamedMove()
             move.nextMove = util.StreamedMove()
        
-
-
-        if debugPlot:
-            # self.plotfile.write(1)
-            # self.plotfile.write()
-            self.plotfile.close()
 
         """
         if UseExtrusionAutoTemp:
@@ -744,7 +710,7 @@ class Advance (object):
             sb = move.distance3 - sa
 
             if debugMoves:
-                print "sbeschl, sbrems neu: %f, %f" % (sa, sb)
+                print "sbeschl, sbrems neu: %f, %f" % (sa, sb), ", reachable topspeed: ", topSpeed
 
             # 
             # Geschwindigkeit, die auf strecke sa mit erreicht werden kann
@@ -757,7 +723,7 @@ class Advance (object):
 
             assert( abs(v - v2) < 0.001)
 
-            topSpeed.feedrate = v
+            topSpeed.setSpeed(v)
 
             move.topSpeed.setSpeed(topSpeed)
 
