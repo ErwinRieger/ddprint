@@ -310,6 +310,11 @@ class VelocityVector32(object):
         self.eSpeed *= feedrate/self._feedrate
         self._feedrate = feedrate
 
+    # debug catch assignment to self.feedrate
+    def __setattr__(self, attr, val):
+        assert(attr != "feedrate")
+        object.__setattr__(self, attr, val)
+
     def setESpeed(self, eSpeed):
 
         self.eSpeed = eSpeed
