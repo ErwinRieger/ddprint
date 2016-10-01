@@ -1019,6 +1019,9 @@ class PrintMove(RealMove):
         accelVector = self.getMaxAllowedAccelVector3(maxAccelV)
         return accelVector.length()
 
+    # Alle achsen werden in der gleichen zeit beschleunigt.
+    # Dadurch teilen sich die zulässigen einzelbeschleunigungen
+    # im entsprechenden verhältnis auf.
     def getMaxAllowedAccelVector5(self, maxAccelV):
         accelVector = self.direction5.scale(_MAX_ACCELERATION)
         return accelVector.constrain(maxAccelV) or accelVector

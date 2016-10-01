@@ -699,15 +699,15 @@ class Advance (object):
         #
         # Compute distance to deccel from nominal speed to endspeed:
         #
-        tbxy = 0.0
-        tbe = 0.0
+        """
+        tb = 0.0
 
         deltaEndSpeedS = topSpeed.feedrate3() - endSpeedS                          # [mm/s]
 
         if deltaEndSpeedS:
 
-            tbxy = deltaEndSpeedS / allowedAccel3                          # [s]
-            print "XY: deccel time (for %f mm/s): %f [s]" % (deltaEndSpeedS, tbxy)
+            tb = deltaEndSpeedS / allowedAccel3                          # [s]
+            print "XY: deccel time (for %f mm/s): %f [s]" % (deltaEndSpeedS, tb)
 
         deltaEEndSpeed = topSpeed.eSpeed - startSpeed.eSpeed
 
@@ -716,11 +716,23 @@ class Advance (object):
             tbe = deltaEEndSpeed / av[A_AXIS]                          # [s]
             print "E: deccel time (for %f mm/s): %f [s]" % (deltaEEndSpeed, tbe)
 
-        tb = max(tbxy, tbe)
+            if tbe > tb:
+                move.usedXYZAccel = deltaEndSpeedS / tb
+                tb = tbe
 
         sb = 0.0
+        """
 
-        if tb: 
+        tb = 0.0
+        sb = 0.0
+
+        deltaEndSpeedS = topSpeed.feedrate3() - endSpeedS                          # [mm/s]
+
+        if deltaEndSpeedS:
+
+            tb = deltaEndSpeedS / allowedAccel3                          # [s]
+            print "XY: deccel time (for %f mm/s): %f [s]" % (deltaEndSpeedS, tb)
+
             # debug Check axxis acceleration
             deltaSpeedV = move.direction3.scale(deltaEndSpeedS)
             for dim in range(3):
@@ -730,7 +742,7 @@ class Advance (object):
                     assert(0)
 
             # print "WARNING: planAcceleration() no check of e-axis"
-            eAccel = (topSpeed.eSpeed - startSpeed.eSpeed) / tb
+            eAccel = (topSpeed.eSpeed - endSpeed.eSpeed) / tb
             print "edecel: ", eAccel, av
             assert((eAccel / av[A_AXIS]) < 1.001)
 
@@ -1290,6 +1302,7 @@ class Advance (object):
         else:
             nominalSpeed = abs(move.topSpeed.speed().eSpeed)
 
+        
         # advance
         allowedAccel = abs(move.getMaxAllowedAccelVector5(self.maxAxisAcceleration)[leadAxis])
         accel_steps_per_square_second = allowedAccel * steps_per_mm
@@ -1618,6 +1631,7 @@ class Advance (object):
         else:
             nominalSpeed = abs(move.topSpeed.speed().eSpeed)
 
+        assert(0)
         # advance
         allowedAccel = abs(move.getMaxAllowedAccelVector5(self.maxAxisAcceleration)[leadAxis])
         accel_steps_per_square_second = allowedAccel * steps_per_mm
