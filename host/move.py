@@ -664,6 +664,8 @@ class MoveBase(object):
 
         self.moveNumber = None
 
+        self.crossedDecelStep = False
+
     def setDuration(self, accelTime, linearTime, decelTime):
 
         self.accelData.setDuration(accelTime, linearTime, decelTime)
@@ -1279,6 +1281,9 @@ class SubMove(MoveBase):
 
     def getMaxAllowedAccelVector5(self, maxAccelV):
         return self.parentMove.getMaxAllowedAccelVector5(maxAccelV)
+
+    # def endSignChange(self):
+    #    return self.parentMove.advanceData.endSignChange()
 
     def pprint(self, title):
 
