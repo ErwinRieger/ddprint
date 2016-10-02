@@ -159,7 +159,8 @@ class Advance (object):
 
         # Compute minimal speed for every axis
         self.minSpeeds = []
-        maxStepTime = maxTimerValue24 / fTimer
+        # maxStepTime = maxTimerValue24 / fTimer
+        maxStepTime = maxTimerValue16 / fTimer
         for dim in range(5):
 
             steps_per_mm = PrinterProfile.getStepsPerMM(dim)
@@ -208,12 +209,16 @@ class Advance (object):
 
         # First move
         v0 = path[0].startSpeed.speed()
-        v0.setSpeed(0.1)
+        # xxx use same start speed as PrintMove::sanityCheck() here!
+        # v0.setSpeed(0.1)
+        v0.setSpeed(0.0)
         path[0].startSpeed.setSpeed(v0)
 
         # Last move
-        v0 = path[-1].startSpeed.speed()
-        v0.setSpeed(0.1)
+        # xxx use same start speed as PrintMove::sanityCheck() here!
+        v0 = path[-1].endSpeed.speed()
+        # v0.setSpeed(0.1)
+        v0.setSpeed(0.0)
         path[-1].endSpeed.setSpeed(v0)
 
         if UseExtrusionAutoTemp:
@@ -1258,7 +1263,7 @@ class Advance (object):
         ######################
 
         self.moveEsteps -= disp[A_AXIS]
-        print "moveEsteps-: %7.3f %7.3f" % ( disp[A_AXIS], self.moveEsteps)
+        print "planStepsSimple(): moveEsteps-: %7.3f %7.3f" % ( disp[A_AXIS], self.moveEsteps)
 
         for i in range(5):
             dirBits += (disp[i] >= 0) << i # xxx use sign here
@@ -1296,6 +1301,7 @@ class Advance (object):
         if leadAxis < A_AXIS:
             v1 = abs(move.endSpeed.trueSpeed()[leadAxis])                # [mm/s]
         else:
+            # v1 = max(abs(move.endSpeed.speed().eSpeed), self.minSpeeds[A_AXIS])
             v1 = abs(move.endSpeed.speed().eSpeed)
 
         print "lead, v0, v1: ", leadAxis, v0, v1
@@ -1591,7 +1597,7 @@ class Advance (object):
         ######################
 
         self.moveEsteps -= disp[A_AXIS]
-        print "moveEsteps-: %7.3f %7.3f" % ( disp[A_AXIS], self.moveEsteps)
+        print "planCrossedDecelSteps(): moveEsteps-: %7.3f %7.3f" % ( disp[A_AXIS], self.moveEsteps)
 
         dirBits = 0
 
@@ -1608,9 +1614,9 @@ class Advance (object):
         steps_per_mm_XYZ = PrinterProfile.getStepsPerMM(leadAxisXYZ)
 
         #
-        # Bresenham's variables for XYZ
+        # Bresenham's variables, to make StepData.__repr__() happy.
         #
-        # move.stepData.setBresenhamParameters(leadAxis, abs_displacement_vector_steps)
+        move.stepData.setBresenhamParameters(leadAxisXYZ, abs_displacement_vector_steps)
 
         #
         # Create a list of stepper pulses
@@ -1620,7 +1626,7 @@ class Advance (object):
         allowedAccel_XYZ = abs(move.getMaxAllowedAccelVector5(self.maxAxisAcceleration)[leadAxisXYZ])
         accel_steps_per_square_second_XYZ = allowedAccel_XYZ * steps_per_mm_XYZ
 
-        v1_XYZ = abs(endSpeed[leadAxisXYZ])                # [mm/s]
+        assert(0); v1_XYZ = max(abs(endSpeed[leadAxisXYZ]), self.minSpeeds[leadAxisXYZ])                # [mm/s]
 
         print "XYZ: lead, v1: ", leadAxisXYZ, v1_XYZ
 
@@ -1681,7 +1687,7 @@ class Advance (object):
         allowedAccelE = abs(move.getMaxAllowedAccelVector5(self.maxAxisAcceleration)[A_AXIS])
         accel_steps_per_square_second_E = allowedAccelE * steps_per_mm_E
 
-        v0_E = max(abs(topSpeed.eSpeed), self.minSpeeds[A_AXIS])                # [mm/s]
+        assert(0); v0_E = max(abs(topSpeed.eSpeed), self.minSpeeds[A_AXIS])                # [mm/s]
 
         print "v0_E, nominalSpeedE, accel: ", v0_E, nominalSpeedE, allowedAccelE
 
@@ -1702,20 +1708,21 @@ class Advance (object):
         # 
         # Compute acceleration timer values
         # 
-        print steps_per_second_accel, steps_per_second_nominal_E, stepNrE, eStepsToMove
-        while steps_per_second_accel < steps_per_second_nominal_E and stepNrE < eStepsToMove:
+        # print steps_per_second_accel, steps_per_second_nominal_E, stepNrE, eStepsToMove
+        while stepNrE < eStepsToMove:
 
-            print "steps_per_second_0_E, tAccel, accel_steps_per_square_second_E, tAccel * accel_steps_per_square_second_E",  \
-                steps_per_second_0_E, tAccel, accel_steps_per_square_second_E, tAccel * accel_steps_per_square_second_E
+            # print "steps_per_second_0_E, tAccel, accel_steps_per_square_second_E, tAccel * accel_steps_per_square_second_E",  \
+                # steps_per_second_0_E, tAccel, accel_steps_per_square_second_E, tAccel * accel_steps_per_square_second_E
             #
             # Compute timer value
             #
-            steps_per_second_accel = min(steps_per_second_0_E + tAccel * accel_steps_per_square_second_E, steps_per_second_nominal_E)
+            if steps_per_second_accel < steps_per_second_nominal_E:
+                steps_per_second_accel = min(steps_per_second_0_E + tAccel * accel_steps_per_square_second_E, steps_per_second_nominal_E)
 
             dt = 1.0 / steps_per_second_accel
             timerValueE = int(fTimer / steps_per_second_accel)
 
-            print "dt: ", dt*1000000, "[uS]", steps_per_second_accel, "[steps/s], timerValueE: ", timerValueE
+            # print "dt: ", dt*1000000, "[uS]", steps_per_second_accel, "[steps/s], timerValueE: ", timerValueE
 
             eSteps.append((tAccel, timerValueE, None))
 
@@ -1730,13 +1737,17 @@ class Advance (object):
             # move.stepData.addAccelPulse(timerValueE)
             stepNrE += 1
 
-            print steps_per_second_accel, steps_per_second_nominal_E, stepNrE, eStepsToMove
+            # print steps_per_second_accel, steps_per_second_nominal_E, stepNrE, eStepsToMove
+
+        # move.stepData.checkLen(leadAxis_steps)
+        print "generated %d/%d XYZ steps" % (len(xyzSteps), leadAxis_steps_XYZ)
+        assert(len(xyzSteps) == leadAxis_steps_XYZ)
+        print "generated %d/%d E steps" % (len(eSteps), eStepsToMove)
+        assert(len(eSteps) == eStepsToMove)
 
         print "xyzSteps: ", xyzSteps[:10], "..."
-        print "eSteps: ", eSteps[:10], "..."
-        assert(0)
-
-        move.stepData.checkLen(leadAxis_steps)
+        print "eSteps: ", eSteps
+        # assert(0)
 
         if debugMoves:
             move.pprint("planCrossedDecelSteps:")
@@ -2462,8 +2473,8 @@ class Advance (object):
             parentMove.advanceData.crossingSpeed[X_AXIS],
             parentMove.advanceData.crossingSpeed[Y_AXIS],
             parentMove.advanceData.crossingSpeed[Z_AXIS],
-            self.minSpeeds[A_AXIS],
-            self.minSpeeds[A_AXIS]]
+            0,
+            0]
         moveB.setSpeeds(sv, sv, ev)
         assert(0)
         assert(0) # nullspeed)
@@ -2471,8 +2482,8 @@ class Advance (object):
             parentMove.advanceData.crossingSpeed[X_AXIS],
             parentMove.advanceData.crossingSpeed[Y_AXIS],
             parentMove.advanceData.crossingSpeed[Z_AXIS],
-            -self.minSpeeds[A_AXIS],
-            -self.minSpeeds[A_AXIS]]
+            0,
+            0]
         ev = parentMove.endSpeed.speed().vv()
         ev[A_AXIS] = parentMove.advanceData.endEFeedrate()
         moveC.setSpeeds(sv, sv, ev)
@@ -2648,15 +2659,14 @@ class Advance (object):
 
             newMoves.append(moveC)
 
-            assert(0) # nullspeed
             sv = parentMove.topSpeed.speed()
             sv.setESpeed(parentMove.advanceData.endEReachedFeedrate())
             ev = parentMove.advanceData.crossingSpeed.copy()
-            ev.eSpeed = self.minSpeeds[A_AXIS]
+            ev.eSpeed = 0
             moveC.setSpeeds(sv, sv, ev)
 
         sv = parentMove.advanceData.crossingSpeed.copy()
-        sv.setESpeed(-self.minSpeeds[A_AXIS])
+        sv.setESpeed(0)
         ev = parentMove.endSpeed.speed()
         ev.setESpeed(parentMove.advanceData.endEFeedrate())
         moveD.setSpeeds(sv, sv, ev)
@@ -2834,8 +2844,8 @@ class Advance (object):
             parentMove.direction[X_AXIS] * zeroCrossingS,
             parentMove.direction[Y_AXIS] * zeroCrossingS,
             parentMove.direction[Z_AXIS] * zeroCrossingS,
-            self.minSpeeds[A_AXIS],
-            self.minSpeeds[A_AXIS]]
+            0,
+            0]
         moveB.setSpeeds(sv, sv, ev)
 
         assert(0)
@@ -2844,8 +2854,8 @@ class Advance (object):
             parentMove.direction[X_AXIS] * zeroCrossingS,
             parentMove.direction[Y_AXIS] * zeroCrossingS,
             parentMove.direction[Z_AXIS] * zeroCrossingS,
-            -self.minSpeeds[A_AXIS],
-            -self.minSpeeds[A_AXIS]]
+            0,
+            0]
         ev = parentMove.endSpeed.trueSpeed().vv()
         ev[A_AXIS] = parentMove.advanceData.endEFeedrate()
         moveC.setSpeeds(sv, sv, ev)
@@ -3011,8 +3021,8 @@ class Advance (object):
             parentMove.direction[X_AXIS] * zeroCrossingS,
             parentMove.direction[Y_AXIS] * zeroCrossingS,
             parentMove.direction[Z_AXIS] * zeroCrossingS,
-            self.minSpeeds[A_AXIS],
-            self.minSpeeds[A_AXIS]]
+            0,
+            0]
         moveC.setSpeeds(sv, sv, ev)
 
         assert(0)
@@ -3021,8 +3031,8 @@ class Advance (object):
             parentMove.direction[X_AXIS] * zeroCrossingS,
             parentMove.direction[Y_AXIS] * zeroCrossingS,
             parentMove.direction[Z_AXIS] * zeroCrossingS,
-            -self.minSpeeds[A_AXIS],
-            -self.minSpeeds[A_AXIS]]
+            0,
+            0]
         ev = parentMove.endSpeed.trueSpeed().vv()
         ev[A_AXIS] = parentMove.advanceData.endEFeedrate()
         moveD.setSpeeds(sv, sv, ev)

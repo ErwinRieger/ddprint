@@ -380,8 +380,7 @@ class VelocityVector32(object):
         eJerk = self.eSpeed - other.eSpeed
         if not abs(eJerk) <= AdvanceEThreshold:
        
-            print "Error, E-AXIS jerk: ", eJerk
-            nextMove.pprint("sanityCheck() - nextMove")
+            print "Error, E-AXIS jerk: ", eJerk, self, other
             assert(0)
 
 ##################################################
@@ -1217,7 +1216,9 @@ class PrintMove(RealMove):
         assert(self.topSpeed.speed().feedrate3() >= self.endSpeed.speed().feedrate3());
 
         nullV = self.topSpeed.speed()
-        nullV.setSpeed(0.1) # xxx use same start speed as addMove() here...
+        # xxx use same start speed as addMove() here!
+        # nullV.setSpeed(0.1)
+        nullV.setSpeed(0.0)
 
         nextMove = self.nextMove
 
@@ -1323,6 +1324,13 @@ class SubMove(MoveBase):
 
     # def endSignChange(self):
     #    return self.parentMove.advanceData.endSignChange()
+
+    # return a list of binary encoded commands, ready to be send over serial...
+    def commands(self):
+
+        print "Submove::commands() called..."
+
+        return []
 
     def pprint(self, title):
 
