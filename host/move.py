@@ -664,7 +664,7 @@ class MoveBase(object):
 
         self.moveNumber = None
 
-        self.crossedDecelStep = False
+        # self.crossedDecelStep = False
 
     def setDuration(self, accelTime, linearTime, decelTime):
 
@@ -681,6 +681,19 @@ class MoveBase(object):
     def decelTime(self):
 
         return self.accelData.decelTime
+
+    def leadAxis(self, nAxes=5):
+
+        asv = self.absStepsVector()
+    
+        maxstep = 0
+        maxdim = 0
+        for dim in range(nAxes):
+            if asv[dim] > maxstep:
+                maxdim = dim
+                maxstep = asv[dim]
+
+        return maxdim
 
     # return a list of binary encoded commands, ready to be send over serial...
     def commands(self):
@@ -1181,6 +1194,17 @@ class PrintMove(RealMove):
         return (sd, esteps, ediff)
     ################################################################################
 
+    # Get vector of absolute steps.
+    def absStepsVector(self):
+
+        asv = []
+        for i in range(3):
+            asv.append(abs(displacement_vector_steps_raw3))
+
+        return asv + [abs(self.eSteps), 0]
+
+    def crossedDecelStep(self):
+        return False
 
     def sanityCheck(self, jerk):
 
@@ -1284,6 +1308,18 @@ class SubMove(MoveBase):
 
     def getMaxAllowedAccelVector5(self, maxAccelV):
         return self.parentMove.getMaxAllowedAccelVector5(maxAccelV)
+
+    # Get vector of absolute steps.
+    def absStepsVector(self):
+
+        asv = []
+        for dim in range(3):
+            asv.append(abs(self.displacement_vector_steps_raw3[dim]))
+
+        return asv + [abs(self.eSteps), 0]
+
+    def crossedDecelStep(self):
+        return (self.topSpeed.speed().eSpeed < 0) or (self.endSpeed.speed().eSpeed < 0)
 
     # def endSignChange(self):
     #    return self.parentMove.advanceData.endSignChange()

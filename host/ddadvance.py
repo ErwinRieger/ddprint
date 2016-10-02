@@ -963,7 +963,7 @@ class Advance (object):
                     # Time till the e-velocity crosses zero
 
                     print "v0, accel: ", move.advanceData.endEReachedFeedrate(), allowedAccelV[A_AXIS]
-                    tdc = abs((move.advanceData.endEReachedFeedrate() - self.minSpeeds[A_AXIS]) / allowedAccelV[A_AXIS])
+                    tdc = abs(move.advanceData.endEReachedFeedrate() / allowedAccelV[A_AXIS])
                     print "Time to reach zero-crossing (tdc):", tdc, ", tdd: ", td - tdc
 
                     # Nominal speed at zero crossing
@@ -1202,7 +1202,8 @@ class Advance (object):
         for move in newMoves:
             move.sanityCheck()
 
-            if move.crossedDecelStep:
+            # if move.crossedDecelStep:
+            if move.crossedDecelStep():
                 self.planCrossedDecelSteps(move)
             else:
                 self.planStepsSimple(move)
@@ -1223,11 +1224,11 @@ class Advance (object):
         move.state = 3
 
         dirBits = 0
-        abs_displacement_vector_steps = []
+        abs_displacement_vector_steps = move.absStepsVector()
 
         # Determine the 'lead axis' - the axis with the most steps
-        leadAxis = 0
-        leadAxis_steps = 0
+        leadAxis = move.leadAxis()
+        leadAxis_steps = abs_displacement_vector_steps[leadAxis]
 
         print "Warning, disabled extrusion adjust!"
 
@@ -1246,23 +1247,9 @@ class Advance (object):
 
         disp = move.displacement_vector_steps_raw3 + [move.eSteps, 0]
 
-        # rest = disp[A_AXIS] % 1
-        # assert(rest == 0)
-
-        # if rest:
-            # esteps = move.advanceData.estepSum()
-            # print "Warning, e-steps not integer:", disp[A_AXIS], rest, esteps
-            # assert(util.circaf(disp[A_AXIS], esteps, 2))
-            # disp[A_AXIS] = esteps
-
         ######################
-        # round e
-        # disp = move.displacement_vector_steps_raw
-
         e = disp[A_AXIS] + self.skippedSimpleSteps
         esteps = int(e)
-
-        # assert(e>=0)
 
         rest = e - esteps
         disp[A_AXIS] = esteps
@@ -1275,12 +1262,6 @@ class Advance (object):
 
         for i in range(5):
             dirBits += (disp[i] >= 0) << i # xxx use sign here
-
-            s = abs(disp[i])
-            abs_displacement_vector_steps.append(s)
-            if s > leadAxis_steps:
-                leadAxis = i
-                leadAxis_steps = s
 
         if dirBits != self.printer.curDirBits:
             move.stepData.setDirBits = True
@@ -1547,16 +1528,36 @@ class Advance (object):
             print "***** Start planCrossedDecelSteps() *****"
             move.pprint("PlanCrossedDecelSteps:")
 
-        assert(0)
-
         move.state = 3
 
-        dirBits = 0
-        abs_displacement_vector_steps = []
+        # Zwei gegenläufige bewegungen bezüglich der beschleunigung. Während
+        # XYZ abbremst wird die E achse (negativ) beschleunigt.
 
-        # Determine the 'lead axis' - the axis with the most steps
-        leadAxis = 0
-        leadAxis_steps = 0
+        ta = move.accelTime()
+        tl = move.linearTime()
+        td = move.decelTime()
+
+        topSpeed =  move.topSpeed.speed()
+        topSpeedS = topSpeed.feedrate3()
+        topSpeedE = topSpeed.eSpeed
+
+        endSpeed =  move.endSpeed.speed()
+        endSpeedS = endSpeed.feedrate3()
+        endSpeedE = endSpeed.eSpeed
+
+        # xxxxxxxxxxxxxxxxxxxx# xxx funktion trotzdem durchlaufen wegen rundung von e-steps
+        # Some tests
+        assert(ta == 0)
+        assert(tl == 0)
+        assert(td > 0)
+        assert(topSpeedS > endSpeedS) # XYZ should be decelerating
+        assert(abs(topSpeedE) < abs(endSpeedE)) # E should be accelerating
+
+        abs_displacement_vector_steps = move.absStepsVector()
+
+        # Lead axis in XYZ 
+        leadAxisXYZ = move.leadAxis(3)
+        leadAxis_steps_XYZ = abs_displacement_vector_steps[leadAxisXYZ]
 
         print "Warning, disabled extrusion adjust!"
 
@@ -1575,18 +1576,8 @@ class Advance (object):
 
         disp = move.displacement_vector_steps_raw3 + [move.eSteps, 0]
 
-        # rest = disp[A_AXIS] % 1
-        # assert(rest == 0)
-
-        # if rest:
-            # esteps = move.advanceData.estepSum()
-            # print "Warning, e-steps not integer:", disp[A_AXIS], rest, esteps
-            # assert(util.circaf(disp[A_AXIS], esteps, 2))
-            # disp[A_AXIS] = esteps
-
         ######################
         # round e
-        # disp = move.displacement_vector_steps_raw
 
         e = disp[A_AXIS] + self.skippedSimpleSteps
         esteps = int(e)
@@ -1602,272 +1593,153 @@ class Advance (object):
         self.moveEsteps -= disp[A_AXIS]
         print "moveEsteps-: %7.3f %7.3f" % ( disp[A_AXIS], self.moveEsteps)
 
+        dirBits = 0
+
         for i in range(5):
             dirBits += (disp[i] >= 0) << i # xxx use sign here
 
-            s = abs(disp[i])
-            abs_displacement_vector_steps.append(s)
-            if s > leadAxis_steps:
-                leadAxis = i
-                leadAxis_steps = s
-
-        if dirBits != self.printer.curDirBits:
+        print "XXX no dirbit optimisation..."
+        # if dirBits != self.printer.curDirBits:
+        if True:
             move.stepData.setDirBits = True
             move.stepData.dirBits = dirBits
             self.printer.curDirBits = dirBits
 
-        steps_per_mm = PrinterProfile.getStepsPerMM(leadAxis)
+        steps_per_mm_XYZ = PrinterProfile.getStepsPerMM(leadAxisXYZ)
 
         #
-        # Bresenham's variables
+        # Bresenham's variables for XYZ
         #
-        move.stepData.setBresenhamParameters(leadAxis, abs_displacement_vector_steps)
+        # move.stepData.setBresenhamParameters(leadAxis, abs_displacement_vector_steps)
 
         #
         # Create a list of stepper pulses
         #
-        if leadAxis < A_AXIS:
-            nominalSpeed = abs( move.topSpeed.trueSpeed()[leadAxis] ) # [mm/s]
-        else:
-            nominalSpeed = abs(move.topSpeed.speed().eSpeed)
+        nominalSpeed_XYZ = abs( topSpeed[leadAxisXYZ] ) # [mm/s]
 
-        assert(0)
-        # advance
-        allowedAccel = abs(move.getMaxAllowedAccelVector5(self.maxAxisAcceleration)[leadAxis])
-        accel_steps_per_square_second = allowedAccel * steps_per_mm
+        allowedAccel_XYZ = abs(move.getMaxAllowedAccelVector5(self.maxAxisAcceleration)[leadAxisXYZ])
+        accel_steps_per_square_second_XYZ = allowedAccel_XYZ * steps_per_mm_XYZ
 
-        if leadAxis < A_AXIS:
-            v0 = abs(move.startSpeed.trueSpeed()[leadAxis])                # [mm/s]
-        else:
-            v0 = abs(move.startSpeed.speed().eSpeed)
+        v1_XYZ = abs(endSpeed[leadAxisXYZ])                # [mm/s]
 
-        if leadAxis < A_AXIS:
-            v1 = abs(move.endSpeed.trueSpeed()[leadAxis])                # [mm/s]
-        else:
-            v1 = abs(move.endSpeed.speed().eSpeed)
+        print "XYZ: lead, v1: ", leadAxisXYZ, v1_XYZ
 
-        print "lead, v0, v1: ", leadAxis, v0, v1
+        steps_per_second_1_XYZ = steps_per_second_deccel_XYZ = v1_XYZ * steps_per_mm_XYZ
+        steps_per_second_nominal_XYZ = nominalSpeed_XYZ * steps_per_mm_XYZ
 
-        steps_per_second_0 = steps_per_second_accel = v0 * steps_per_mm
-        steps_per_second_1 = steps_per_second_deccel = v1 * steps_per_mm
-        steps_per_second_nominal = nominalSpeed * steps_per_mm
+        #
+        # Acceleration variables
+        #
+        # tDecel mit der initialen zeitspanne vorbelegen, da wir bereits im
+        # ersten schleifendurchlauf (d.h. ab t=0) eine beschleunigung haben wollen.
+        tDecel = 1.0 / steps_per_second_1_XYZ
+
+        stepNrXYZ = 0
+        xyzSteps = []
+
+        #
+        # Compute ramp down (in reverse), decceleration
+        #
+        while steps_per_second_deccel_XYZ < steps_per_second_nominal_XYZ and stepNrXYZ < leadAxis_steps_XYZ:
+
+            #
+            # Compute timer value
+            #
+            steps_per_second_deccel = min(steps_per_second_1_XYZ + tDecel * accel_steps_per_square_second_XYZ, steps_per_second_nominal_XYZ)
+
+            dt = 1.0 / steps_per_second_deccel
+            timerValueXYZ = int(fTimer / steps_per_second_deccel)
+
+            # print "dt: ", dt*1000000, "[uS]", steps_per_second_deccel, "[steps/s], timerValueXYZ: ", timerValueXYZ, ", v: ", steps_per_second_deccel/steps_per_mm
+
+            xyzSteps.append((tDecel, timerValueXYZ, None))
+
+            tDecel += dt
+
+            if timerValueXYZ > maxTimerValue24:
+                move.pprint("PlanCrossedDecelSteps:")
+                print "v0: ", dt*1000000, "[uS]", steps_per_second_deccel, "[steps/s], timerValueXYZ: ", timerValueXYZ
+                print "dt: ", dt*1000000, "[uS]", steps_per_second_deccel, "[steps/s], timerValueXYZ: ", timerValueXYZ
+                assert(0)
+
+            # move.stepData.addDeccelPulse(timerValueXYZ)
+            stepNrXYZ += 1
+
+        if debugMoves:
+            print "# of XYZ steps for move: ", leadAxis_steps_XYZ
+            print 
+
+
+        #
+        # Steps for E acceleration
+        #
+        eStepsToMove = abs_displacement_vector_steps[A_AXIS]
+        steps_per_mm_E = PrinterProfile.getStepsPerMM(A_AXIS)
+
+        nominalSpeedE = abs( endSpeed.eSpeed ) # [mm/s]
+
+        allowedAccelE = abs(move.getMaxAllowedAccelVector5(self.maxAxisAcceleration)[A_AXIS])
+        accel_steps_per_square_second_E = allowedAccelE * steps_per_mm_E
+
+        v0_E = max(abs(topSpeed.eSpeed), self.minSpeeds[A_AXIS])                # [mm/s]
+
+        print "v0_E, nominalSpeedE, accel: ", v0_E, nominalSpeedE, allowedAccelE
+
+        steps_per_second_0_E = steps_per_second_accel = v0_E * steps_per_mm_E
+        steps_per_second_nominal_E = nominalSpeedE * steps_per_mm_E
 
         #
         # Acceleration variables
         #
         # tAccel mit der initialen zeitspanne vorbelegen, da wir bereits im
         # ersten schleifendurchlauf (d.h. ab t=0) eine beschleunigung haben wollen.
-        tAccel = 1.0 / steps_per_second_0  # [s], sum of all acceeration steptimes
-        tDeccel = 1.0 / steps_per_second_1
+        tAccel = 1.0 / steps_per_second_0_E
+        print "steps_per_second_0_E, taccel: ", steps_per_second_0_E, tAccel
 
-        stepNr = 0
+        eSteps = []
+        stepNrE = 0
 
-        if debugPlot:
-            accelPlotData = []
-            deccelPlotData = []
+        # 
+        # Compute acceleration timer values
+        # 
+        print steps_per_second_accel, steps_per_second_nominal_E, stepNrE, eStepsToMove
+        while steps_per_second_accel < steps_per_second_nominal_E and stepNrE < eStepsToMove:
 
-        if move.accelTime() and move.decelTime():
-
+            print "steps_per_second_0_E, tAccel, accel_steps_per_square_second_E, tAccel * accel_steps_per_square_second_E",  \
+                steps_per_second_0_E, tAccel, accel_steps_per_square_second_E, tAccel * accel_steps_per_square_second_E
             #
-            # Acceleration ramp on both sides.
+            # Compute timer value
             #
-            # Ramp up both sides in parallel to not exeed available steps
-            #
+            steps_per_second_accel = min(steps_per_second_0_E + tAccel * accel_steps_per_square_second_E, steps_per_second_nominal_E)
 
-            done = False
-            while not done and stepNr < leadAxis_steps:
+            dt = 1.0 / steps_per_second_accel
+            timerValueE = int(fTimer / steps_per_second_accel)
 
-                done = True
+            print "dt: ", dt*1000000, "[uS]", steps_per_second_accel, "[steps/s], timerValueE: ", timerValueE
 
-                # 
-                # Compute acceleration timer values
-                # 
-                if steps_per_second_accel < steps_per_second_nominal:
+            eSteps.append((tAccel, timerValueE, None))
 
-                    #
-                    # Compute timer value
-                    #
-                    steps_per_second_accel = min(steps_per_second_0 + tAccel * accel_steps_per_square_second, steps_per_second_nominal)
+            tAccel += dt
 
-                    dt = 1.0 / steps_per_second_accel
-                    timerValue = int(fTimer / steps_per_second_accel)
+            if timerValueE > maxTimerValue24:
+                move.pprint("PlanSTepsSimple:")
+                print "v0: ", dt*1000000, "[uS]", steps_per_second_accel, "[steps/s], timerValueE: ", timerValueE
+                print "dt: ", dt*1000000, "[uS]", steps_per_second_accel, "[steps/s], timerValueE: ", timerValueE
+                assert(0)
 
-                    # print "dt: ", dt*1000000, "[uS]", steps_per_second_accel, "[steps/s], timerValue: ", timerValue
+            # move.stepData.addAccelPulse(timerValueE)
+            stepNrE += 1
 
-                    """
-                    if debugPlot:
-                        if move.eOnly:
-                            accelPlotData.append((steps_per_second_accel/steps_per_mm, 2, dt))
-                        else:
-                            accelPlotData.append((steps_per_second_accel/steps_per_mm, 1, dt))
-                    """
+            print steps_per_second_accel, steps_per_second_nominal_E, stepNrE, eStepsToMove
 
-                    tAccel += dt
-
-                    if timerValue > maxTimerValue24:
-                        move.pprint("PlanCrossedDecelSteps:")
-                        print "v0: ", dt*1000000, "[uS]", steps_per_second_accel, "[steps/s], timerValue: ", timerValue
-                        print "dt: ", dt*1000000, "[uS]", steps_per_second_accel, "[steps/s], timerValue: ", timerValue
-                        assert(0)
-
-                    move.stepData.addAccelPulse(timerValue)
-                    stepNr += 1
-                    done = False
-
-                if stepNr == leadAxis_steps:
-                    break
-
-                #
-                # Compute ramp down (in reverse), decceleration
-                #
-                if steps_per_second_deccel < steps_per_second_nominal:
-
-                    #
-                    # Compute timer value
-                    #
-                    steps_per_second_deccel = min(steps_per_second_1 + tDeccel * accel_steps_per_square_second, steps_per_second_nominal)
-
-                    dt = 1.0 / steps_per_second_deccel
-                    timerValue = int(fTimer / steps_per_second_deccel)
-
-                    # print "dt: ", dt*1000000, "[uS]", steps_per_second_deccel, "[steps/s], timerValue: ", timerValue, ", v: ", steps_per_second_deccel/steps_per_mm
-
-                    """
-                    if debugPlot:
-                        if move.eOnly:
-                            deccelPlotData.append((steps_per_second_deccel/steps_per_mm, 2, dt))
-                        else:
-                            deccelPlotData.append((steps_per_second_deccel/steps_per_mm, 1, dt))
-                    """
-
-                    tDeccel += dt
-
-                    if timerValue > maxTimerValue24:
-                        move.pprint("PlanCrossedDecelSteps:")
-                        print "v0: ", dt*1000000, "[uS]", steps_per_second_deccel, "[steps/s], timerValue: ", timerValue
-                        print "dt: ", dt*1000000, "[uS]", steps_per_second_deccel, "[steps/s], timerValue: ", timerValue
-                        assert(0)
-
-                    move.stepData.addDeccelPulse(timerValue)
-                    stepNr += 1
-                    done = False
-
-        elif move.accelTime():
-
-            #
-            # Acceleration only
-            #
-
-            # 
-            # Compute acceleration timer values
-            # 
-            while steps_per_second_accel < steps_per_second_nominal and stepNr < leadAxis_steps:
-
-                #
-                # Compute timer value
-                #
-                steps_per_second_accel = min(steps_per_second_0 + tAccel * accel_steps_per_square_second, steps_per_second_nominal)
-
-                dt = 1.0 / steps_per_second_accel
-                timerValue = int(fTimer / steps_per_second_accel)
-
-                # print "dt: ", dt*1000000, "[uS]", steps_per_second_accel, "[steps/s], timerValue: ", timerValue
-
-                """
-                if debugPlot:
-                    if move.eOnly:
-                        accelPlotData.append((steps_per_second_accel/steps_per_mm, 2, dt))
-                    else:
-                        accelPlotData.append((steps_per_second_accel/steps_per_mm, 1, dt))
-                """
-
-                tAccel += dt
-
-                if timerValue > maxTimerValue24:
-                    move.pprint("PlanCrossedDecelSteps:")
-                    print "v0: ", dt*1000000, "[uS]", steps_per_second_accel, "[steps/s], timerValue: ", timerValue
-                    print "dt: ", dt*1000000, "[uS]", steps_per_second_accel, "[steps/s], timerValue: ", timerValue
-                    assert(0)
-
-                move.stepData.addAccelPulse(timerValue)
-                stepNr += 1
-
-        else:
-
-            #
-            # Decceleration only
-            #
-
-            #
-            # Compute ramp down (in reverse), decceleration
-            #
-            while steps_per_second_deccel < steps_per_second_nominal and stepNr < leadAxis_steps:
-
-                #
-                # Compute timer value
-                #
-                steps_per_second_deccel = min(steps_per_second_1 + tDeccel * accel_steps_per_square_second, steps_per_second_nominal)
-
-                dt = 1.0 / steps_per_second_deccel
-                timerValue = int(fTimer / steps_per_second_deccel)
-
-                # print "dt: ", dt*1000000, "[uS]", steps_per_second_deccel, "[steps/s], timerValue: ", timerValue, ", v: ", steps_per_second_deccel/steps_per_mm
-
-                """
-                if debugPlot:
-                    if move.eOnly:
-                        deccelPlotData.append((steps_per_second_deccel/steps_per_mm, 2, dt))
-                    else:
-                        deccelPlotData.append((steps_per_second_deccel/steps_per_mm, 1, dt))
-                """
-
-                tDeccel += dt
-
-                if timerValue > maxTimerValue24:
-                    move.pprint("PlanCrossedDecelSteps:")
-                    print "v0: ", dt*1000000, "[uS]", steps_per_second_deccel, "[steps/s], timerValue: ", timerValue
-                    print "dt: ", dt*1000000, "[uS]", steps_per_second_deccel, "[steps/s], timerValue: ", timerValue
-                    assert(0)
-
-                move.stepData.addDeccelPulse(timerValue)
-                stepNr += 1
-
-        #
-        # Linear phase
-        #
-        # if move.linearTime():
-        if True:
-            timerValue = fTimer / steps_per_second_nominal
-            move.stepData.setLinTimer(timerValue)
-        else:
-            move.stepData.setLinTimer(0xffff)
-
-        """
-        if debugPlot:
-            self.plotfile.write("# Acceleration:\n")
-            for (speed, color, dt) in accelPlotData:
-                self.plotfile.write("%f %f %d\n" % (self.plottime, speed, color))
-                self.plottime += dt
-
-            self.plotfile.write("# Linear top:\n")
-            self.plotfile.write("%f %f 0\n" % (self.plottime, steps_per_second_nominal/steps_per_mm))
-            self.plottime += timerValue / fTimer
-
-            self.plotfile.write("# Decceleration:\n")
-            deccelPlotData.reverse()
-            for (speed, color, dt) in deccelPlotData:
-                self.plotfile.write("%f %f %d\n" % (self.plottime, speed, color))
-                self.plottime += dt
-        """
-
-        if debugMoves:
-            print "# of steps for move: ", leadAxis_steps
-            move.pprint("move:")
-            print 
+        print "xyzSteps: ", xyzSteps[:10], "..."
+        print "eSteps: ", eSteps[:10], "..."
+        assert(0)
 
         move.stepData.checkLen(leadAxis_steps)
 
         if debugMoves:
+            move.pprint("planCrossedDecelSteps:")
             print "***** End planCrossedDecelSteps() *****"
 
 
@@ -2594,6 +2466,7 @@ class Advance (object):
             self.minSpeeds[A_AXIS]]
         moveB.setSpeeds(sv, sv, ev)
         assert(0)
+        assert(0) # nullspeed)
         sv = [
             parentMove.advanceData.crossingSpeed[X_AXIS],
             parentMove.advanceData.crossingSpeed[Y_AXIS],
@@ -2603,7 +2476,7 @@ class Advance (object):
         ev = parentMove.endSpeed.speed().vv()
         ev[A_AXIS] = parentMove.advanceData.endEFeedrate()
         moveC.setSpeeds(sv, sv, ev)
-        moveC.crossedDecelStep = True
+        # moveC.crossedDecelStep = True
 
         if ta or tl:
 
@@ -2775,6 +2648,7 @@ class Advance (object):
 
             newMoves.append(moveC)
 
+            assert(0) # nullspeed
             sv = parentMove.topSpeed.speed()
             sv.setESpeed(parentMove.advanceData.endEReachedFeedrate())
             ev = parentMove.advanceData.crossingSpeed.copy()
@@ -2786,7 +2660,7 @@ class Advance (object):
         ev = parentMove.endSpeed.speed()
         ev.setESpeed(parentMove.advanceData.endEFeedrate())
         moveD.setSpeeds(sv, sv, ev)
-        moveD.crossedDecelStep = True
+        # moveD.crossedDecelStep = True
 
         newMoves.append(moveD)
 
@@ -2965,6 +2839,7 @@ class Advance (object):
         moveB.setSpeeds(sv, sv, ev)
 
         assert(0)
+        assert(0) # nullspeed)
         sv = [
             parentMove.direction[X_AXIS] * zeroCrossingS,
             parentMove.direction[Y_AXIS] * zeroCrossingS,
@@ -2974,7 +2849,7 @@ class Advance (object):
         ev = parentMove.endSpeed.trueSpeed().vv()
         ev[A_AXIS] = parentMove.advanceData.endEFeedrate()
         moveC.setSpeeds(sv, sv, ev)
-        moveC.crossedDecelStep = True
+        # moveC.crossedDecelStep = True
 
         moveA.nextMove = moveB
         moveB.prevMove = moveA
@@ -3141,6 +3016,7 @@ class Advance (object):
         moveC.setSpeeds(sv, sv, ev)
 
         assert(0)
+        assert(0) # nullspeed)
         sv = [
             parentMove.direction[X_AXIS] * zeroCrossingS,
             parentMove.direction[Y_AXIS] * zeroCrossingS,
@@ -3150,7 +3026,7 @@ class Advance (object):
         ev = parentMove.endSpeed.trueSpeed().vv()
         ev[A_AXIS] = parentMove.advanceData.endEFeedrate()
         moveD.setSpeeds(sv, sv, ev)
-        moveD.crossedDecelStep = True
+        # moveD.crossedDecelStep = True
 
         moveA.nextMove = moveB
         moveB.prevMove = moveA
