@@ -487,6 +487,87 @@ class StepData:
     def checkLen(self, deltaLead):
         assert(self.abs_vector_steps[self.leadAxis] - (len(self.accelPulses) + len(self.deccelPulses)) >= 0)
 
+    # return a list of binary encoded commands, ready to be send over serial...
+    def commands(self, move):
+
+        cmds = []
+
+        payLoad = ""
+        cmdOfs = 0
+
+        if self.setDirBits:
+            payLoad += struct.pack("<B", self.dirBits | 0x80)
+            cmdOfs = 1
+
+        use24Bits = False
+        if (self.accelPulses and self.accelPulses[0] > maxTimerValue16) or \
+           (self.deccelPulses and self.deccelPulses[-1] > maxTimerValue16):
+            use24Bits = True
+
+        payLoad += struct.pack("<BiiiiiH",
+                self.leadAxis,
+                self.abs_vector_steps[0],
+                self.abs_vector_steps[1],
+                self.abs_vector_steps[2],
+                self.abs_vector_steps[3],
+                self.abs_vector_steps[4],
+                len(self.accelPulses))
+
+        if not use24Bits:
+            print "commands(): ignoring isExtrudingMove!"
+            if False: # self.isExtrudingMove(A_AXIS):
+                leadFactor = int((self.abs_vector_steps[self.leadAxis]*1000) / self.abs_vector_steps[A_AXIS])
+                payLoad += struct.pack("<H", min(leadFactor, 0xffff))
+            else:
+                payLoad += struct.pack("<H", 0)
+
+        payLoad += struct.pack("<HH", 
+                self.linearTimer,
+                len(self.deccelPulses))
+
+        if use24Bits:
+
+            cmdHex = ddprintcommands.CmdG1_24 + cmdOfs
+
+            for timer in self.accelPulses:
+                timerCount = timer / 0xffff
+                payLoad += struct.pack("<B", timerCount)
+
+                rest = timer - (timerCount * 0xffff)
+                payLoad += struct.pack("<H", max(50, rest))
+
+            for timer in self.deccelPulses:
+                timerCount = timer / 0xffff
+                payLoad += struct.pack("<B", timerCount)
+
+                rest = timer - (timerCount * 0xffff)
+                payLoad += struct.pack("<H", max(50, rest))
+        else:
+
+            cmdHex = ddprintcommands.CmdG1 + cmdOfs
+
+            for timer in self.accelPulses:
+                payLoad += struct.pack("<H", timer)
+            for timer in self.deccelPulses:
+                payLoad += struct.pack("<H", timer)
+
+
+        stream = cStringIO.StringIO(payLoad)
+
+        cobsBlock = cobs.encodeCobs(stream)
+        cmds.append(( cmdHex, cobsBlock ))
+
+        while True:
+
+            cobsBlock = cobs.encodeCobs(stream)
+
+            if not cobsBlock:
+                break
+
+            cmds.append(( ddprintcommands.CmdBlock, cobsBlock ))
+
+        return cmds
+
     def debugPlot(self):
 
         return {
@@ -511,6 +592,59 @@ class RawStepData:
         return "RawStepData:" + \
            "\n  Direction bits: 0x%x" % self.dirBits + \
            "\n  # pulses: %d" % len(self.pulses)
+
+    # return a list of binary encoded commands, ready to be send over serial...
+    def commands(self, move):
+
+        print "RawStepData::commands() called..."
+
+        cmds = []
+
+        payLoad = ""
+        cmdOfs = 0
+
+        if self.setDirBits:
+            payLoad += struct.pack("<B", self.dirBits | 0x80)
+            cmdOfs = 1
+
+        payLoad += struct.pack("<H", len(self.pulses))
+
+        print "commands(): ignoring isExtrudingMove!"
+        if False: # self.isExtrudingMove(A_AXIS):
+            leadFactor = int((self.abs_vector_steps[self.leadAxis]*1000) / self.abs_vector_steps[A_AXIS])
+            payLoad += struct.pack("<H", min(leadFactor, 0xffff))
+        else:
+            payLoad += struct.pack("<H", 0)
+
+        cmdHex = ddprintcommands.CmdG1Raw + cmdOfs
+
+        for (timer, stepBits) in self.pulses:
+
+            # For step bitmask see move.h::st_get_move_bit_mask()
+            bits = 0
+            for i in range(5):
+                if stepBits[i]:
+                    bits |= (0x1 << i)
+
+            payLoad += struct.pack("<HB", timer, bits)
+
+        stream = cStringIO.StringIO(payLoad)
+
+        cobsBlock = cobs.encodeCobs(stream)
+        cmds.append(( cmdHex, cobsBlock ))
+
+        while True:
+
+            cobsBlock = cobs.encodeCobs(stream)
+
+            if not cobsBlock:
+                break
+
+            cmds.append(( ddprintcommands.CmdBlock, cobsBlock ))
+
+        # print "commands: ", ddprintcommands.CmdG1Raw, len(cmds)
+
+        return cmds
 
     def debugPlot(self):
 
@@ -739,6 +873,11 @@ class MoveBase(object):
         else:
             assert(0)
 
+    # return a list of binary encoded commands, ready to be send over serial...
+    def commands(self):
+
+        return self.stepData.commands(self)
+
     def sanityCheck(self, checkDirection=True):
 
         ss = self.startSpeed.speed()
@@ -813,87 +952,6 @@ class RealMove(MoveBase):
 
         v = self.getJerkSpeed(jerk)
         self.endSpeed.plannedSpeed(v)
-
-    # return a list of binary encoded commands, ready to be send over serial...
-    def commands(self):
-
-        cmds = []
-
-        payLoad = ""
-        cmdOfs = 0
-
-        if self.stepData.setDirBits:
-            payLoad += struct.pack("<B", self.stepData.dirBits | 0x80)
-            cmdOfs = 1
-
-        use24Bits = False
-        if (self.stepData.accelPulses and self.stepData.accelPulses[0] > maxTimerValue16) or \
-           (self.stepData.deccelPulses and self.stepData.deccelPulses[-1] > maxTimerValue16):
-            use24Bits = True
-
-        payLoad += struct.pack("<BiiiiiH",
-                self.stepData.leadAxis,
-                self.stepData.abs_vector_steps[0],
-                self.stepData.abs_vector_steps[1],
-                self.stepData.abs_vector_steps[2],
-                self.stepData.abs_vector_steps[3],
-                self.stepData.abs_vector_steps[4],
-                len(self.stepData.accelPulses))
-
-        if not use24Bits:
-            print "commands(): ignoring isExtrudingMove!"
-            if False: # self.isExtrudingMove(A_AXIS):
-                leadFactor = int((self.stepData.abs_vector_steps[self.stepData.leadAxis]*1000) / self.stepData.abs_vector_steps[A_AXIS])
-                payLoad += struct.pack("<H", min(leadFactor, 0xffff))
-            else:
-                payLoad += struct.pack("<H", 0)
-
-        payLoad += struct.pack("<HH", 
-                self.stepData.linearTimer,
-                len(self.stepData.deccelPulses))
-
-        if use24Bits:
-
-            cmdHex = ddprintcommands.CmdG1_24 + cmdOfs
-
-            for timer in self.stepData.accelPulses:
-                timerCount = timer / 0xffff
-                payLoad += struct.pack("<B", timerCount)
-
-                rest = timer - (timerCount * 0xffff)
-                payLoad += struct.pack("<H", max(50, rest))
-
-            for timer in self.stepData.deccelPulses:
-                timerCount = timer / 0xffff
-                payLoad += struct.pack("<B", timerCount)
-
-                rest = timer - (timerCount * 0xffff)
-                payLoad += struct.pack("<H", max(50, rest))
-        else:
-
-            cmdHex = ddprintcommands.CmdG1 + cmdOfs
-
-            for timer in self.stepData.accelPulses:
-                payLoad += struct.pack("<H", timer)
-            for timer in self.stepData.deccelPulses:
-                payLoad += struct.pack("<H", timer)
-
-
-        stream = cStringIO.StringIO(payLoad)
-
-        cobsBlock = cobs.encodeCobs(stream)
-        cmds.append(( cmdHex, cobsBlock ))
-
-        while True:
-
-            cobsBlock = cobs.encodeCobs(stream)
-
-            if not cobsBlock:
-                break
-
-            cmds.append(( ddprintcommands.CmdBlock, cobsBlock ))
-
-        return cmds
 
     def sanityCheck(self):
 
@@ -1367,13 +1425,6 @@ class SubMove(MoveBase):
 
     # def endSignChange(self):
     #    return self.parentMove.advanceData.endSignChange()
-
-    # return a list of binary encoded commands, ready to be send over serial...
-    def commands(self):
-
-        print "Submove::commands() called..."
-
-        return []
 
     def pprint(self, title):
 
