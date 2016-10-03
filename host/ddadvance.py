@@ -1555,10 +1555,12 @@ class Advance (object):
 
         assert(len(xyzSteps) <= leadAxis_steps_XYZ)
 
-        timerValueXYZ = timerValueXYZ = int(fTimer / steps_per_second_nominal_XYZ)
+        timerValueXYZ = int(fTimer / steps_per_second_nominal_XYZ)
         for i in range(leadAxis_steps_XYZ - len(xyzSteps)):
             tDecel += timerValueXYZ / fTimer
             xyzSteps.insert(0, timerValueXYZ)
+
+        xyzSteps.reverse()
 
         if debugMoves:
             print "Generated %d/%d XYZ steps in %.3f s" % (len(xyzSteps), leadAxis_steps_XYZ, tDecel)
@@ -1597,14 +1599,14 @@ class Advance (object):
         print "steps_per_second_0_E, taccel: ", steps_per_second_0_E, tAccel
 
         eSteps = []
-        # stepNrE = 0
+        stepNrE = 0
 
         # 
         # Compute acceleration timer values
         # 
         # print steps_per_second_accel, steps_per_second_nominal_E, stepNrE, eStepsToMove
         # while stepNrE < eStepsToMove:
-        while steps_per_second_accel > steps_per_second_0_E:
+        while steps_per_second_accel > steps_per_second_0_E and stepNrE < eStepsToMove:
 
             dt = 1.0 / steps_per_second_accel
             timerValueE = int(fTimer / steps_per_second_accel)
@@ -1615,24 +1617,18 @@ class Advance (object):
 
             # move.stepData.addAccelPulse(timerValueE)
             eSteps.append(timerValueE)
+            stepNrE += 1
 
             tAccel += dt
 
             # steps_per_second_accel = min(steps_per_second_0_E + tAccel * accel_steps_per_square_second_E, steps_per_second_nominal_E)
             steps_per_second_accel = steps_per_second_nominal_E - tAccel * accel_steps_per_square_second_E
 
-            # stepNrE += 1
-
         n = eStepsToMove - len(eSteps)
-
         print "nE: ", n
 
         if n > 0:
             assert(0)
-        elif n < 0:
-            for i in range(-n):
-                tAccel -= eSteps[-1] / fTimer
-                del eSteps[-1]
 
         # move.stepData.checkLen(leadAxis_steps)
         print "generated %d/%d E steps in %.3f s" % (len(eSteps), eStepsToMove, tAccel)
