@@ -23,7 +23,7 @@ import math, struct
 import ddprintcommands, cobs, cStringIO
 
 from ddprintconstants import maxTimerValue16, maxTimerValue24, fTimer, _MAX_ACCELERATION, MAX_AXIS_ACCELERATION_NOADV
-from ddprintconstants import AdvanceEThreshold
+from ddprintconstants import AdvanceEThreshold, StepDataTypeBresenham, StepDataTypeRaw
 from ddprintutil import X_AXIS, Y_AXIS, Z_AXIS, A_AXIS, B_AXIS,vectorLength, vectorMul, vectorSub, circaf, sign
 from ddprintcommands import CommandNames
 from ddprofile import NozzleProfile, MatProfile, PrinterProfile
@@ -487,6 +487,38 @@ class StepData:
     def checkLen(self, deltaLead):
         assert(self.abs_vector_steps[self.leadAxis] - (len(self.accelPulses) + len(self.deccelPulses)) >= 0)
 
+    def debugPlot(self):
+
+        return {
+                "stepType": "bresenham",
+                "accelPulses": self.accelPulses,
+                "linearTimer": self.linearTimer,
+                "linearSteps": self.abs_vector_steps[self.leadAxis] - (len(self.accelPulses)+len(self.deccelPulses)),
+                "deccelPulses": self.deccelPulses,
+                }
+
+class RawStepData:
+
+    def __init__(self):
+        self.pulses = []
+        self.setDirBits = False
+        self.dirBits = 0
+
+    def addPulse(self, pulse, t):
+        self.pulses.append((pulse, t))
+
+    def __repr__(self):
+        return "RawStepData:" + \
+           "\n  Direction bits: 0x%x" % self.dirBits + \
+           "\n  # pulses: %d" % len(self.pulses)
+
+    def debugPlot(self):
+
+        return {
+                "stepType": "raw",
+                "pulses": self.pulses,
+                }
+
 class AdvanceData:
 
     def __init__(self, move):
@@ -662,14 +694,12 @@ class MoveBase(object):
 
         self.accelData = AccelData()
 
-        self.stepData = StepData()
-
         # debug
         self.state = 0 # 1: joined, 2: accel planned, 3: steps planned
 
         self.moveNumber = None
 
-        # self.crossedDecelStep = False
+        self.stepData = None
 
     def setDuration(self, accelTime, linearTime, decelTime):
 
@@ -699,6 +729,90 @@ class MoveBase(object):
                 maxstep = asv[dim]
 
         return maxdim
+
+    def initStepData(self, stepDataType):
+
+        if stepDataType == StepDataTypeBresenham:
+            self.stepData = StepData()
+        elif stepDataType == StepDataTypeRaw:
+            self.stepData = RawStepData()
+        else:
+            assert(0)
+
+    def sanityCheck(self, checkDirection=True):
+
+        ss = self.startSpeed.speed()
+        ts = self.topSpeed.speed()
+        es = self.endSpeed.speed()
+
+        # All velocities should have reasonable feedrates
+        assert(ss.feedrateGEZ())
+        assert(ts.feedrateGZ())
+        assert(es.feedrateGEZ())
+
+        if checkDirection:
+
+            # All velocities should point into the same direction
+            assert(vectorLength(vectorSub(ss.direction, ts.direction)) < 0.001)
+            assert(vectorLength(vectorSub(es.direction, ts.direction)) < 0.001)
+
+        self.accelData.sanityCheck()
+
+    def pprint(self, title):
+
+        print "\n------ Move %s, #: %d, '%s' ------" % (title, self.moveNumber, self.comment)
+
+        if self.isPrintMove():
+            print "Print-move, distance: %s" % self.distanceStr()
+        else:
+            print "Travel-move, distance: %s" % self.distanceStr()
+
+        print "displacement_vector:", self.rawDisplacementStr(), "_steps:", self.rawDisplacementStepsStr()
+
+        print "Startspeed: ",
+        print self.startSpeed
+        print "Top  speed: ",
+        print self.topSpeed
+        print "End  speed: ",
+        print self.endSpeed
+
+        if self.state > 1:
+            print ""
+            print self.accelData
+
+        if self.state > 2:
+            print ""
+            print self.stepData
+
+        print "---------------------"
+
+# Base class for TravelMove and PrintMove
+class RealMove(MoveBase):
+
+    def __init__(self, comment):
+
+        MoveBase.__init__(self)
+
+        self.comment = comment
+
+        self.accelData = AccelData()
+
+        # debug
+        self.state = 0 # 1: joined, 2: accel planned, 3: steps planned
+
+    def getJerkSpeed(self, jerk):
+
+        return self.topSpeed.nominalSpeed().constrain(jerk)
+
+    def setPlannedJerkStartSpeed(self, jerk):
+
+        v = self.getJerkSpeed(jerk)
+        self.startSpeed.plannedSpeed(v)
+
+    def setPlannedJerkEndSpeed(self, jerk):
+
+        v = self.getJerkSpeed(jerk)
+        self.endSpeed.plannedSpeed(v)
 
     # return a list of binary encoded commands, ready to be send over serial...
     def commands(self):
@@ -780,83 +894,6 @@ class MoveBase(object):
             cmds.append(( ddprintcommands.CmdBlock, cobsBlock ))
 
         return cmds
-
-    def sanityCheck(self, checkDirection=True):
-
-        ss = self.startSpeed.speed()
-        ts = self.topSpeed.speed()
-        es = self.endSpeed.speed()
-
-        # All velocities should have reasonable feedrates
-        assert(ss.feedrateGEZ())
-        assert(ts.feedrateGZ())
-        assert(es.feedrateGEZ())
-
-        if checkDirection:
-
-            # All velocities should point into the same direction
-            assert(vectorLength(vectorSub(ss.direction, ts.direction)) < 0.001)
-            assert(vectorLength(vectorSub(es.direction, ts.direction)) < 0.001)
-
-        self.accelData.sanityCheck()
-
-    def pprint(self, title):
-
-        print "\n------ Move %s, #: %d, '%s' ------" % (title, self.moveNumber, self.comment)
-
-        if self.isPrintMove():
-            print "Print-move, distance: %s" % self.distanceStr()
-        else:
-            print "Travel-move, distance: %s" % self.distanceStr()
-
-        print "displacement_vector:", self.rawDisplacementStr(), "_steps:", self.rawDisplacementStepsStr()
-
-        print "Startspeed: ",
-        print self.startSpeed
-        print "Top  speed: ",
-        print self.topSpeed
-        print "End  speed: ",
-        print self.endSpeed
-
-        if self.state > 1:
-            print ""
-            print self.accelData
-
-        if self.state > 2:
-            print ""
-            print self.stepData
-
-        print "---------------------"
-
-# Base class for TravelMove and PrintMove
-class RealMove(MoveBase):
-
-    def __init__(self, comment):
-
-        MoveBase.__init__(self)
-
-        self.comment = comment
-
-        self.accelData = AccelData()
-
-        self.stepData = StepData()
-
-        # debug
-        self.state = 0 # 1: joined, 2: accel planned, 3: steps planned
-
-    def getJerkSpeed(self, jerk):
-
-        return self.topSpeed.nominalSpeed().constrain(jerk)
-
-    def setPlannedJerkStartSpeed(self, jerk):
-
-        v = self.getJerkSpeed(jerk)
-        self.startSpeed.plannedSpeed(v)
-
-    def setPlannedJerkEndSpeed(self, jerk):
-
-        v = self.getJerkSpeed(jerk)
-        self.endSpeed.plannedSpeed(v)
 
     def sanityCheck(self):
 

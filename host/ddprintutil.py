@@ -154,9 +154,10 @@ def joinMoves(move1, move2, jerk, maxAccelV):
             if debugMoves:
                 print "Max. reachable endspeed: %.3f < feedrate: %.3f" % (maxEndSpeed1, endSpeedS1)
 
-            endSpeed1.feedrate = maxEndSpeed1
+            endSpeed1.setSpeed(maxEndSpeed1)
 
             print "Move1, endspeed lowered: ", endSpeed1
+
             move1.endSpeed.setSpeed(endSpeed1)
 
         # # Check max reachable e endspeed

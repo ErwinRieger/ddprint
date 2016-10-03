@@ -182,72 +182,10 @@ class DebugPlot (object):
         self.plot.moves = []
 
     def plotSteps(self, move):
-    
-        """
-        self.accelPulses = []
-        self.linearTimer = None
-        self.deccelPulses = []
-        self.setDirBits = False
-        self.dirBits = 0
-        self.leadAxis = 0
-        self.abs_vector_steps = None
-        """
-
-        d = {
-                "number": move.moveNumber,
-                "accelPulses": move.stepData.accelPulses,
-                "linearTimer": move.stepData.linearTimer,
-                "linearSteps": move.stepData.abs_vector_steps[move.stepData.leadAxis] - (len(move.stepData.accelPulses)+len(move.stepData.deccelPulses)),
-                "deccelPulses": move.stepData.deccelPulses,
-                }
-
+   
+        d = move.stepData.debugPlot()
+        d["number"] = move.moveNumber
         self.plot.moves.append(d)
-
-
-    """
-    def makePlot(self):
-
-        pl = Namespace()
-        pl.Lines = []
-        pl.Colors = []
-        pl.Styles = []
-        pl.Ticks = []
-        return pl
-
-    # def newMove(self):
-        # self.colors += self.segcol
-
-    def plot1Tick(self, y, nr):
-
-        self.plot1.Ticks.append((self.plot1.time, y, nr))
-
-    def plot1Segments(self, dt, segspec):
-
-        self.plotSegments(self.plot1, dt, segspec)
-
-    def plot2Segments(self, dt, segspec):
-
-        self.plotSegments(self.plot2, dt, segspec)
-
-    def plotSegments(self, plot, dt, segspec):
-
-        for seg in segspec:
-
-            style = "solid"
-            y2 = seg.y2
-            t = dt
-            if y2 == None:
-                y2 = seg.y1
-                if (t > 0.05):
-                    style = "dashed"
-                    t = 0.05
-
-            plot.Lines.append(((plot.time, seg.y1), (plot.time+t, y2)))
-            plot.Colors.append(seg.color)
-            plot.Styles.append(style)
-
-        plot.time += t
-    """
 
     def close(self):
         pickle.dump(self.plot, open(self.plotfile, "wb"))
@@ -901,6 +839,8 @@ class Planner (object):
             move.pprint("planTravelSTeps:")
 
         move.state = 3
+
+        move.initStepData(StepDataTypeBresenham)
 
         dirBits = 0
         abs_displacement_vector_steps = []
