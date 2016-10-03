@@ -23,8 +23,10 @@ plt.grid(True)
 # lc = mc.LineCollection(plot1.Lines, colors=plot1.Colors, linestyles=plot1.Styles, linewidth=3)
 # x.add_collection(lc)
 
-t = 0.1
+t = 0.0
 tplot = 0
+
+colors = ["r.", "r.", "r.", "m."]
 
 for i in range(len(plot.moves)):
 
@@ -33,34 +35,61 @@ for i in range(len(plot.moves)):
     plt.axvline(t, color="yellow")
     plt.text(t*1.01, 10, "%d" % move["number"])
 
-    for timer in move["accelPulses"]:
+    if move["stepType"] == "raw":
 
-        tstep = timer / fTimer
+        times = [t, t, t, t, t]
+
+        for (timer, steps) in move["pulses"]:
+
+            tstep = timer / fTimer
+            t += tstep
+
+            for i in range(4):
+
+                if steps[i]:
+            
+                    f = 1.0 / (t - times[i])
+                    # print "f:", f
+                    times[i] = t
+
+                    # if t >= tplot:
+                    if True:
+                        ax.plot(t, f, colors[i])
+                        # if i<=3:
+                            # tplot += 0.01
+                        # else:
+                            # tplot += 0.001
+
+    else:
+
+        for timer in move["accelPulses"]:
+
+            tstep = timer / fTimer
+            f = 1.0 / tstep
+
+            if t >= tplot:
+                ax.plot(t, f, "go")
+                tplot += 0.01
+            t += tstep
+
+        tstep = move["linearTimer"] / fTimer
         f = 1.0 / tstep
 
-        if t >= tplot:
-            ax.plot(t, f, "go")
-            tplot += 0.01
-        t += tstep
+        for i in range(move["linearSteps"]):
 
-    tstep = move["linearTimer"] / fTimer
-    f = 1.0 / tstep
+            if t >= tplot:
+                ax.plot(t, f, "bo")
+                tplot += 0.01
+            t += tstep
 
-    for i in range(move["linearSteps"]):
+        for timer in move["deccelPulses"]:
 
-        if t >= tplot:
-            ax.plot(t, f, "bo")
-            tplot += 0.01
-        t += tstep
-
-    for timer in move["deccelPulses"]:
-
-        tstep = timer / fTimer
-        f = 1.0 / tstep
-        if t >= tplot:
-            ax.plot(t, f, "ro")
-            tplot += 0.01
-        t += tstep
+            tstep = timer / fTimer
+            f = 1.0 / tstep
+            if t >= tplot:
+                ax.plot(t, f, "ro")
+                tplot += 0.01
+            t += tstep
 
 ax.autoscale()
 plt.xlim(xmin=0)
