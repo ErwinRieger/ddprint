@@ -45,6 +45,8 @@
 #define CmdDirG1_24        0xa
 #define CmdSyncTargetTemp  0xb
 #define CmdDwellMS         0xc
+#define CmdG1Raw           0xd
+#define CmdDirG1Raw        0xe
 
 //
 // Direct commands:

@@ -600,9 +600,8 @@ inline void st_step_motor_es(uint8_t stepBits, uint8_t dirbits) {
 
                     uint8_t cmdDir = *peek80();
 
-                    // * Set direction 
-                    // * Step the motors
-                    // * Update step-coordinates (current_pos_steps)
+                    // * Set direction: st_set_direction<>()
+                    // * Step the motors and update step-coordinates (current_pos_steps): st_step_motor<>()
                     // * Set new timer value
 
                     if (cmdDir & 0x80) {
@@ -627,16 +626,16 @@ inline void st_step_motor_es(uint8_t stepBits, uint8_t dirbits) {
                             pop3();
                             break;
                         case CMDLEN4:
-                        OCR1A = *peek82() | (*peek83() << 8);
-                        pop4();
-                        break;
-                    case CMDLEN5:
-                        OCR1A = *peek82() | (*peek83() << 8);
-                        timerLoop = *peek84();
-                        pop5();
-                        break;
-                    default:
-                        massert(0);
+                            OCR1A = *peek82() | (*peek83() << 8);
+                            pop4();
+                            break;
+                        case CMDLEN5:
+                            OCR1A = *peek82() | (*peek83() << 8);
+                            timerLoop = *peek84();
+                            pop5();
+                            break;
+                        default:
+                            massert(0);
                 }
             }
             else {

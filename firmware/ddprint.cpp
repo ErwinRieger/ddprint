@@ -454,6 +454,12 @@ bool FillBufferTask::Run() {
                 case CmdDirG1_24:
                     goto HandleCmdDirG1_24;
 
+                case CmdG1Raw:
+                    goto HandleCmdG1Raw;
+
+                case CmdDirG1Raw:
+                    goto HandleCmdDirG1Raw;
+
                 // case CmdDirBits:
                     // goto HandleCmdDirBits;
 
@@ -843,6 +849,84 @@ bool FillBufferTask::Run() {
 
                     cmdDir &= ~0x80; // clear set-direction bit
                 }
+                PT_RESTART();
+
+            HandleCmdDirG1Raw:
+
+                sDReader.setBytesToRead1();
+                PT_WAIT_THREAD(sDReader);
+
+                cmdDir = *sDReader.readData;
+
+            HandleCmdG1Raw:
+
+                // SERIAL_ECHOLNPGM("C1");
+
+                // ???
+                // cmdSync = true;
+
+                //
+                // Read len of pulses array, 2 bytes short uint
+                //
+                sDReader.setBytesToRead2();
+                PT_WAIT_THREAD(sDReader);
+                nAccel = FromBuf(uint16_t, sDReader.readData);
+                // SERIAL_ECHOLN(nAccel);
+
+                //////////////////////////////////////////////////////
+                sDReader.setBytesToRead2();
+                PT_WAIT_THREAD(sDReader);
+
+#if defined(USEExtrusionRateTable)
+                leadFactor = FromBuf(uint16_t, sDReader.readData);
+
+                if (leadFactor) {
+
+                    int16_t curTempIndex = (current_temperature[0] - extrusionLimitBaseTemp) / 2;
+
+                    if (curTempIndex < 0) {
+
+                        maxTempSpeed = ((uint32_t)tempExtrusionRateTable[0] * 1000) / leadFactor;
+                    }
+                    else if (curTempIndex >= NExtrusionLimit) {
+
+                        maxTempSpeed = ((uint32_t)tempExtrusionRateTable[NExtrusionLimit-1] * 1000) / leadFactor;
+                    }
+                    else {
+
+                        maxTempSpeed = ((uint32_t)tempExtrusionRateTable[curTempIndex] * 1000) / leadFactor;
+                    }
+                }
+                else {
+
+                    maxTempSpeed = 0;
+                }
+#endif
+    
+                //////////////////////////////////////////////////////
+
+                //
+                // Read pulse array, elements of 16bit timer and 8bit stepper mask
+                //
+                for (step=0; step < nAccel; step++) {
+
+                    sDReader.setBytesToRead2();
+                    PT_WAIT_THREAD(sDReader);
+                    timer = STD max ( FromBuf(uint16_t, sDReader.readData), MAXTEMPSPEED );
+
+                    sDReader.setBytesToRead1();
+                    PT_WAIT_THREAD(sDReader);
+                    stepBits = *sDReader.readData;
+
+                    PT_WAIT_WHILE(stepBuffer.full());
+                    if (timer & 0xff00)
+                        stepBuffer.push4(cmdDir, stepBits, timer);
+                    else
+                        stepBuffer.push3(cmdDir, stepBits, timer);
+
+                    cmdDir &= ~0x80; // clear set-direction bit
+                }
+            
                 PT_RESTART();
 
             HandleCmdSyncFanSpeed:
