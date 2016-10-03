@@ -453,17 +453,23 @@ class StepData:
             print "timervalue %d to high, counter overflow!" % timer
             assert(0)
 
-    def addAccelPulse(self, timer):
-        self.checkTimerValue(timer)
-        self.accelPulses.append(timer)
+    def addAccelPulse(self, timer, reverse=False):
+        self.checkTimerValue(timer, maxTimerValue16)
+        if reverse:
+            self.accelPulses.insert(0, timer)
+        else:
+            self.accelPulses.append(timer)
 
     def setLinTimer(self, timer):
         self.checkTimerValue(timer, maxTimerValue16)
         self.linearTimer = timer
     
-    def addDeccelPulse(self, timer):
-        self.checkTimerValue(timer)
-        self.deccelPulses.insert(0, timer)
+    def addDeccelPulse(self, timer, reverse=True):
+        self.checkTimerValue(timer, maxTimerValue16)
+        if reverse:
+            self.deccelPulses.insert(0, timer)
+        else:
+            self.deccelPulses.append(timer)
 
     def setBresenhamParameters(self, leadAxis, abs_vector_steps):
         self.leadAxis = leadAxis
