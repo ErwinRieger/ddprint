@@ -780,6 +780,11 @@ class VelocityOverride(object):
 
     def setSpeed(self, speed):
 
+        # debug
+        # if self.speeds[-1][Y_AXIS] == 0 and speed[Y_AXIS] != 0:
+            # assert(0)
+
+        # debug
         if speed == self.speeds[-1]:
             print "duplicate speed: ", speed
             assert(0)
@@ -1207,7 +1212,11 @@ class PrintMove(RealMove):
     #   v0, v1 negativ: resultat negativ
     def startRampTriangle(self, v0, v1, dt):
 
-        print "v0:", v0, "v1:", v1
+        print "v0:", v0, "v1:", v1, "dt:", dt
+
+        if not dt:
+            assert(0) # does this happen?
+            return 0.0
 
         if v1 > 0: 
             assert(v0 >= 0)
@@ -1220,7 +1229,11 @@ class PrintMove(RealMove):
 
     def endRampTriangle(self, v0, v1, dt):
 
-        print "v0:", v0, "v1:", v1
+        print "v0:", v0, "v1:", v1, "dt:", dt
+
+        if not dt:
+            assert(0) # does this happen?
+            return 0.0
 
         if v0 > 0:
             assert(v1 >= 0)
@@ -1299,7 +1312,7 @@ class PrintMove(RealMove):
 
         asv = []
         for i in range(3):
-            asv.append(abs(displacement_vector_steps_raw3))
+            asv.append(abs(self.displacement_vector_steps_raw3[i]))
 
         return asv + [abs(self.eSteps), 0]
 
@@ -1390,21 +1403,12 @@ class SubMove(MoveBase):
 
     def setSpeeds(self, sv, tv, ev):
 
-        if type(sv) == ListType:
-            assert(0)
-            sv = Vector(sv)
         # self.startSpeed.nominalSpeed(VelocityVector(v=sv))
         self.startSpeed.nominalSpeed(sv)
 
-        if type(tv) == ListType:
-            assert(0)
-            tv = Vector(tv)
         # self.topSpeed.nominalSpeed(VelocityVector(v=tv))
         self.topSpeed.nominalSpeed(tv)
 
-        if type(ev) == ListType:
-            assert(0)
-            ev = Vector(ev)
         # self.endSpeed.nominalSpeed(VelocityVector(v=ev))
         self.endSpeed.nominalSpeed(ev)
 
