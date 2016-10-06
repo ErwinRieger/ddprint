@@ -165,7 +165,7 @@ class Advance (object):
         # Running sum of e-distances through advance, for debugging of planAdvance()
         self.advSum = 0
         # Sum of skipped small accelration ramps
-        self.skippedStartAdvSum = 0
+        self.skippedAdvance = 0
         self.skippedLinSteps = 0
         self.skippedAccelSteps = 0
         self.skippedDecelSteps = 0
@@ -358,7 +358,7 @@ class Advance (object):
 
         print "Path advSum: ", self.advSum
         print "Path eRampSum: ", self.eRampSum
-        print "Path skippedStartAdvSum: ", self.skippedStartAdvSum
+        print "Path skippedAdvance: ", self.skippedAdvance
         # print "Path skippedEndAdvSum: ", self.skippedEndAdvSum
         print "Path skippedLinSteps: ", self.skippedLinSteps
         print "Path skippedAccelSteps: ", self.skippedAccelSteps
@@ -374,7 +374,8 @@ class Advance (object):
         # Gleiches gilt für eRampSum
         assert(util.circaf(self.eRampSum, 0, 1))
 
-        assert(util.circaf(self.skippedStartAdvSum, 0, 2.0/self.e_steps_per_mm))
+        # assert(util.circaf(self.skippedAdvance, 0, 2.0/self.e_steps_per_mm))
+        assert(util.circaf(self.skippedAdvance, 0, 50.0/self.e_steps_per_mm))
         # assert(util.circaf(self.skippedEndAdvSum, 0, 1.0/self.e_steps_per_mm))
         assert(util.circaf(self.skippedLinSteps, 0, 1.0/self.e_steps_per_mm))
         assert(util.circaf(self.skippedAccelSteps, 0, 1.0/self.e_steps_per_mm))
@@ -876,7 +877,7 @@ class Advance (object):
             if esteps > AdvanceMinRamp:
                 move.advanceData.startFeedrateIncrease = startFeedrateIncrease
 
-                (sa, esteps, ediff) = move.startERampSteps(roundError=self.skippedStartAdvSum)
+                (sa, esteps, ediff) = move.startERampSteps(roundError=self.skippedAdvance)
 
                 print "(sd, esteps, ediff):", (sa, esteps, ediff) 
                 # if esteps >= AdvanceMinRamp:
@@ -884,12 +885,12 @@ class Advance (object):
 
                     move.advanceData.startESteps = esteps
                     self.advStepSum += esteps
-                    self.skippedStartAdvSum = ediff
+                    self.skippedAdvance = ediff
                 else:
                     assert(0)
 
                     # Dont advance very small acceleration ramps, but sum up the missing advance.
-                    self.skippedStartAdvSum += nu_sa
+                    self.skippedAdvance += nu_sa
 
                     # E-steps of non-advanced accel ramp
                     sa = move.startRampDistance(startSpeed[A_AXIS], topSpeed[A_AXIS], ta) + self.skippedAccelSteps
@@ -905,7 +906,7 @@ class Advance (object):
                 print "(sa, esteps, ediff):", (nu_sa, esteps, nu_ediff) 
 
                 # Dont advance very small acceleration ramps, but sum up the missing advance.
-                self.skippedStartAdvSum += nu_sa
+                self.skippedAdvance += nu_sa
 
                 # E-steps of non-advanced accel ramp
                 sa = move.startRampDistance(startSpeed.eSpeed, topSpeed.eSpeed, ta) + self.skippedAccelSteps
@@ -973,7 +974,7 @@ class Advance (object):
                     move.advanceData.crossingSpeed = crossingSpeed
 
                     # PART C, E
-                    (sdc, estepsc, ediffc) = move.endERampSteps(tdc, v1=crossingSpeed.eSpeed, roundError=self.skippedStartAdvSum)
+                    (sdc, estepsc, ediffc) = move.endERampSteps(tdc, v1=crossingSpeed.eSpeed, roundError=self.skippedAdvance)
                     print "(sdc, estepsc, ediffc):", (sdc, estepsc, ediffc) 
 
                     move.advanceData.endEStepsC = estepsc
@@ -985,12 +986,12 @@ class Advance (object):
                     move.advanceData.endEStepsD = estepsd
                     self.advStepSum += estepsd
 
-                    self.skippedStartAdvSum = ediffd
+                    self.skippedAdvance = ediffd
 
                     ###############################################################
                 else:
 
-                    (sd, esteps, ediff) = move.endERampSteps(roundError=self.skippedStartAdvSum)
+                    (sd, esteps, ediff) = move.endERampSteps(roundError=self.skippedAdvance)
 
                     print "(sd, esteps, ediff):", (sd, esteps, ediff) 
                     
@@ -1001,11 +1002,11 @@ class Advance (object):
                         self.advStepSum += esteps
 
                         # self.advSum += move.endAdvDistance(td)
-                        self.skippedStartAdvSum = ediff
+                        self.skippedAdvance = ediff
 
                     else:
                         # Dont advance, sum up like the decel ramp.
-                        self.skippedStartAdvSum = sd
+                        self.skippedAdvance = sd
 
                         # E-steps of non-advanced decel ramp
                         sd = move.endRampDistance(topSpeed[A_AXIS], endSpeed[A_AXIS], td) + self.skippedDecelSteps
@@ -1024,7 +1025,7 @@ class Advance (object):
                 print "(sd, esteps, ediff):", (nu_sd, esteps, nu_ediff) 
 
                 # Dont advance, sum up like the decel ramp.
-                self.skippedStartAdvSum += nu_sd
+                self.skippedAdvance += nu_sd
 
                 # E-steps of non-advanced decel ramp
                 sd = move.endRampDistance(topSpeed.eSpeed, endSpeed.eSpeed, td) + self.skippedDecelSteps
@@ -1044,7 +1045,7 @@ class Advance (object):
         print "skippedLinSteps: ", self.skippedLinSteps
         print "skippedAccelSteps: ", self.skippedAccelSteps
         print "skippedDecelSteps: ", self.skippedDecelSteps
-        print "skippedStartAdvSum: ", self.skippedStartAdvSum
+        print "skippedAdvance: ", self.skippedAdvance
         # print "skippedEndAdvSum: ", self.skippedEndAdvSum
 
         move.advanceData.advStepSum = self.advStepSum
