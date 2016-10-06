@@ -38,6 +38,7 @@ FILAMENT_REVERSAL_LENGTH = 750
 
 # To prevent false assertions because of rounding errors
 RoundSafe = 0.995
+# RoundSafe = 0.999999
 
 ####################################################################################################
 def sign(x):
@@ -136,17 +137,20 @@ def joinMoves(move1, move2, jerk, maxAccelV):
             move1.pprint("JoinSpeed - Move1")
             move2.pprint("JoinSpeed - Move2")
 
-        startSpeedS1 = move1.startSpeed.plannedSpeed().feedrate3()
+        startSpeed1 = move1.startSpeed.speed()
+        startSpeedS1 = startSpeed1.feedrate3()
 
-        endSpeed1 = move1.endSpeed.plannedSpeed()
+        endSpeed1 = move1.endSpeed.speed()
         endSpeedS1 = endSpeed1.feedrate3()
 
-        startSpeed2 = move2.startSpeed.plannedSpeed()
+        startSpeed2 = move2.startSpeed.speed()
         startSpeedS2 = startSpeed2.feedrate3()
 
         # Compute max reachable endspeed of move1
-        allowedAccel = move1.getMaxAllowedAccel5(maxAccelV)
-        maxEndSpeed1 = vAccelPerDist(startSpeedS1, allowedAccel, move1.distance3) * RoundSafe
+        # allowedAccel = move1.getMaxAllowedAccel5(maxAccelV)
+        av = move1.getMaxAllowedAccelVector5(maxAccelV)
+        allowedAccel3 = vectorLength(av[:3])
+        maxEndSpeed1 = vAccelPerDist(startSpeedS1, allowedAccel3, move1.distance3) * RoundSafe
 
         if maxEndSpeed1 < endSpeedS1:
 
@@ -160,8 +164,10 @@ def joinMoves(move1, move2, jerk, maxAccelV):
 
             move1.endSpeed.setSpeed(endSpeed1)
 
-        # # Check max reachable e endspeed
-        # print "WARNING: joinMoves() no check of e-axis"
+        # Check max reachable e endspeed
+        maxAllowedEEndSpeed = vAccelPerDist(startSpeed1.eSpeed, av[A_AXIS], move1.eDistance)
+
+        assert(maxAllowedEEndSpeed >= endSpeed1.eSpeed)
 
         joinMoves2(move1, move2, jerk)
 
