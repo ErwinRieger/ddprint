@@ -174,13 +174,13 @@ def joinMoves(move1, move2, jerk, maxAccelV):
 def joinMoves2(move1, move2, jerk):
 
         endSpeed1 = move1.endSpeed.speed()
-        startSpeed2 = move2.endSpeed.speed()
-
         eEndSpeed1 = endSpeed1.eSpeed
+
+        startSpeed2 = move2.startSpeed.speed()
         eStartSpeed2 = startSpeed2.eSpeed
 
-        print "joinMoves2(): e-feedrate 1: ", eEndSpeed1
-        print "joinMoves2(): e-feedrate 2: ", eStartSpeed2
+        print "joinMoves2(): move 1   end e speed: ", eEndSpeed1
+        print "joinMoves2(): move 2 start e speed: ", eStartSpeed2
 
         #
         # Compare E-speed of moves
