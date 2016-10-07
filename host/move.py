@@ -1200,33 +1200,31 @@ class PrintMove(RealMove):
     ################################################################################
 
     ################################################################################
-    def startAdvSteps(self, startFeedrateIncrease=None, roundError=0):
+    def startAdvSteps(self, startFeedrateIncrease=None):
 
         ta = self.accelTime()
 
         if not ta:
-            return (0.0, 0.0, 0.0)
+            return (0.0, 0.0)
 
-        sa = self.startAdvDistance(ta, startFeedrateIncrease) + roundError
-        esteps = int(sa * self.e_steps_per_mm)
-        # esteps = int(round(sa * self.e_steps_per_mm))
-        ediff = sa - (esteps / float(self.e_steps_per_mm))
+        sa = self.startAdvDistance(ta, startFeedrateIncrease)
+        esteps = sa * self.e_steps_per_mm
+        # ediff = sa - (esteps / float(self.e_steps_per_mm))
 
-        return (sa, esteps, ediff)
+        return (sa, esteps)
 
-    def endAdvSteps(self, endFeedrateIncrease=None, roundError=0):
+    def endAdvSteps(self, endFeedrateIncrease=None):
 
         td = self.decelTime()
 
         if not td:
-            return (0.0, 0.0, 0.0)
+            return (0.0, 0.0)
 
-        sd = self.endAdvDistance(td, endFeedrateIncrease) + roundError
-        esteps = int(sd * self.e_steps_per_mm)
-        # esteps = int(round(sd * self.e_steps_per_mm))
-        ediff = sd - (esteps / float(self.e_steps_per_mm))
+        sd = self.endAdvDistance(td, endFeedrateIncrease)
+        esteps = sd * self.e_steps_per_mm
+        # ediff = sd - (esteps / float(self.e_steps_per_mm))
 
-        return (sd, esteps, ediff)
+        return (sd, esteps) # , ediff)
     ################################################################################
 
     ################################################################################
@@ -1312,23 +1310,21 @@ class PrintMove(RealMove):
     ################################################################################
 
     ################################################################################
-    def startERampSteps(self, startFeedrateIncrease=None, roundError=0):
+    def startERampSteps(self, startFeedrateIncrease=None):
 
-        sa = self.startERampDistance(startFeedrateIncrease=startFeedrateIncrease) + roundError
-        # esteps = int(round(sa * self.e_steps_per_mm))
-        esteps = int(sa * self.e_steps_per_mm)
-        ediff = sa - (esteps / float(self.e_steps_per_mm))
+        sa = self.startERampDistance(startFeedrateIncrease=startFeedrateIncrease) # + roundError
+        esteps = sa * self.e_steps_per_mm
+        # ediff = sa - (esteps / float(self.e_steps_per_mm))
 
-        return (sa, esteps, ediff)
+        return (sa, esteps) # , ediff)
 
-    def endERampSteps(self, td=None, endFeedrateIncrease=None, v0=None, v1=None, roundError=0):
+    def endERampSteps(self, td=None, endFeedrateIncrease=None, v0=None, v1=None):
 
-        sd = self.endERampDistance(td, endFeedrateIncrease, v0=v0, v1=v1) + roundError
-        # esteps = int(round(sd * self.e_steps_per_mm))
-        esteps = int(sd * self.e_steps_per_mm)
-        ediff = sd - (esteps / float(self.e_steps_per_mm))
+        sd = self.endERampDistance(td, endFeedrateIncrease, v0=v0, v1=v1) #  + roundError
+        esteps = sd * self.e_steps_per_mm
+        # ediff = sd - (esteps / float(self.e_steps_per_mm))
 
-        return (sd, esteps, ediff)
+        return (sd, esteps) # , ediff)
     ################################################################################
 
     # Get vector of absolute steps.
