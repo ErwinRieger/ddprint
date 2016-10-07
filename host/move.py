@@ -673,6 +673,17 @@ class AdvanceData:
         self.endEStepsC = None
         self.endEStepsD = None
 
+        self.accelGroup = []
+        self.sAccel = 0.0
+        self.sAccelSum = 0.0
+
+        self.decelGroup = []
+        self.sDecel = 0.0
+        self.sDecelSum = 0.0
+
+        # debug
+        self.advStepSum = 0
+
     def hasStartAdvance(self):
         return self.startFeedrateIncrease != 0
 
@@ -751,6 +762,13 @@ class AdvanceData:
         if esteps:
             s += "\n estep sum: %d" % esteps
 
+        s += "\n Group data:"
+        s += "\n Accel nelem: %d" % len(self.accelGroup)
+        s += "\n sAccel: %.3f" % self.sAccel
+        s += "\n sAccelSum: %.3f" % self.sAccelSum
+        s += "\n Decel nelem: %d" % len(self.decelGroup)
+        s += "\n sDecel: %.3f" % self.sDecel
+        s += "\n sDecelSum: %.3f" % self.sDecelSum
         return s
 
     def sanityCheck(self):
@@ -1182,9 +1200,12 @@ class PrintMove(RealMove):
     ################################################################################
 
     ################################################################################
-    def startAdvSteps(self, startFeedrateIncrease, roundError=0):
+    def startAdvSteps(self, startFeedrateIncrease=None, roundError=0):
 
         ta = self.accelTime()
+
+        if not ta:
+            return (0.0, 0.0, 0.0)
 
         sa = self.startAdvDistance(ta, startFeedrateIncrease) + roundError
         esteps = int(sa * self.e_steps_per_mm)
@@ -1193,9 +1214,12 @@ class PrintMove(RealMove):
 
         return (sa, esteps, ediff)
 
-    def endAdvSteps(self, endFeedrateIncrease, roundError=0):
+    def endAdvSteps(self, endFeedrateIncrease=None, roundError=0):
 
         td = self.decelTime()
+
+        if not td:
+            return (0.0, 0.0, 0.0)
 
         sd = self.endAdvDistance(td, endFeedrateIncrease) + roundError
         esteps = int(sd * self.e_steps_per_mm)
