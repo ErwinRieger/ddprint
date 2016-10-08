@@ -362,7 +362,9 @@ class Advance (object):
         print "Path eRampSum: ", self.eRampSum
         print "Path skippedAdvance: ", self.skippedAdvance
         print "Path skippedSimpleSteps: ", self.skippedSimpleSteps
-        print "Path moveEsteps: %7.3f" % ( self.moveEsteps)
+
+        if self.kAdv:
+            print "Path moveEsteps: %7.3f" % ( self.moveEsteps)
 
         # Summe aller advance-rampen muss nicht unbedingt null sein, je nach verteilung
         # von e-jerk jumps. Somit ist folgender test völlig willkürlich.
@@ -373,7 +375,9 @@ class Advance (object):
         # assert(util.circaf(self.skippedAdvance, 0, 2.0/self.e_steps_per_mm))
         assert(util.circaf(self.skippedAdvance, 0, 50.0/self.e_steps_per_mm))
         assert(util.circaf(self.skippedSimpleSteps, 0, 1.001))
-        assert(util.circaf(self.moveEsteps, 0, 1.001))
+
+        if self.kAdv:
+            assert(util.circaf(self.moveEsteps, 0, 1.001))
 
         # xxx debug, check chain
         n = 1
@@ -1513,6 +1517,8 @@ class Advance (object):
 
         move.state = 3
 
+        move.initStepData(StepDataTypeRaw)
+
         # Zwei gegenläufige bewegungen bezüglich der beschleunigung. Während
         # XYZ abbremst wird die E achse (negativ) beschleunigt.
 
@@ -1573,24 +1579,29 @@ class Advance (object):
         ######################
 
         abs_displacement_vector_steps = util.vectorAbs(disp)
+
         leadAxis_steps_XYZ = abs_displacement_vector_steps[leadAxisXYZ]
+        eStepsToMove = abs_displacement_vector_steps[A_AXIS]
+
+        if not leadAxis_steps_XYZ and not eStepsToMove:
+            print "Empty move..."
+            print "***** End planCrossedDecelSteps() *****"
+            return
 
         self.moveEsteps -= disp[A_AXIS]
         print "planCrossedDecelSteps(): moveEsteps-: %7.3f %7.3f" % ( disp[A_AXIS], self.moveEsteps)
-
-        move.initStepData(StepDataTypeRaw)
 
         dirBits = 0
 
         for i in range(5):
             dirBits += (disp[i] >= 0) << i # xxx use sign here
 
-        # print "XXX no dirbit optimisation..."
-        # # if dirBits != self.printer.curDirBits:
-        # if True:
-            # move.stepData.setDirBits = True
-            # move.stepData.dirBits = dirBits
-            # self.printer.curDirBits = dirBits
+        print "XXX no dirbit optimisation..."
+        # if dirBits != self.printer.curDirBits:
+        if True:
+            move.stepData.setDirBits = True
+            move.stepData.dirBits = dirBits
+            self.printer.curDirBits = dirBits
 
         steps_per_mm_XYZ = PrinterProfile.getStepsPerMM(leadAxisXYZ)
 
@@ -1665,8 +1676,6 @@ class Advance (object):
         #
         # Steps for E acceleration
         #
-        # eStepsToMove = abs_displacement_vector_steps[A_AXIS]
-        eStepsToMove = abs(disp[A_AXIS])
         steps_per_mm_E = PrinterProfile.getStepsPerMM(A_AXIS)
 
         nominalSpeedE = abs( endSpeed.eSpeed ) # [mm/s]
@@ -1737,20 +1746,6 @@ class Advance (object):
 
         print "xyzClocks: ", xyzClocks[:10], "..."
         print "eSteps: ", eSteps
-
-        if not xyzClocks and not eSteps:
-            print "Empty move..."
-            print "***** End planCrossedDecelSteps() *****"
-            return
-
-        # Erst self.printer.curDirBits ändern falls wir sicher sind, dass wir auch ein
-        # print command and den drucker schicken.
-        print "XXX no dirbit optimisation..."
-        # if dirBits != self.printer.curDirBits:
-        if True:
-            move.stepData.setDirBits = True
-            move.stepData.dirBits = dirBits
-            self.printer.curDirBits = dirBits
 
         #
         # Generate bresenham stepper bits for XYZ part
