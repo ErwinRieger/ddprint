@@ -1600,12 +1600,12 @@ class Advance (object):
         for i in range(5):
             dirBits += (disp[i] >= 0) << i # xxx use sign here
 
-        print "XXX no dirbit optimisation..."
-        # if dirBits != self.printer.curDirBits:
-        if True:
-            move.stepData.setDirBits = True
-            move.stepData.dirBits = dirBits
-            self.printer.curDirBits = dirBits
+        # print "XXX no dirbit optimisation..."
+        # # if dirBits != self.printer.curDirBits:
+        # if True:
+            # move.stepData.setDirBits = True
+            # move.stepData.dirBits = dirBits
+            # self.printer.curDirBits = dirBits
 
         steps_per_mm_XYZ = PrinterProfile.getStepsPerMM(leadAxisXYZ)
 
@@ -1752,6 +1752,21 @@ class Advance (object):
 
         print "xyzClocks: ", xyzClocks[:10], "..."
         print "eSteps: ", eSteps
+
+        if not xyzClocks and not eSteps:
+
+            move.pprint("planCrossedDecelSteps empty move:")
+            print "***** End planCrossedDecelSteps() *****"
+            return
+
+        # Erst self.printer.curDirBits ändern falls wir sicher sind, dass wir auch ein
+        # print command and den drucker schicken.
+        print "XXX no dirbit optimisation..."
+        # if dirBits != self.printer.curDirBits:
+        if True:
+            move.stepData.setDirBits = True
+            move.stepData.dirBits = dirBits
+            self.printer.curDirBits = dirBits
 
         #
         # Generate bresenham stepper bits for XYZ part

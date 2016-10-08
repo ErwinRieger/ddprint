@@ -492,6 +492,8 @@ class StepData:
 
         cmds = []
 
+        assert(self.abs_vector_steps[self.leadAxis] > 0)
+
         payLoad = ""
         cmdOfs = 0
 
@@ -514,7 +516,7 @@ class StepData:
                 len(self.accelPulses))
 
         if not use24Bits:
-            print "commands(): ignoring isExtrudingMove!"
+            # print "commands(): ignoring isExtrudingMove!"
             if False: # self.isExtrudingMove(A_AXIS):
                 leadFactor = int((self.abs_vector_steps[self.leadAxis]*1000) / self.abs_vector_steps[A_AXIS])
                 payLoad += struct.pack("<H", min(leadFactor, 0xffff))
@@ -596,9 +598,11 @@ class RawStepData:
     # return a list of binary encoded commands, ready to be send over serial...
     def commands(self, move):
 
-        print "RawStepData::commands() called..."
-
         cmds = []
+
+        if not self.pulses:
+            print "RawStepData::commands(): skipping empty move..."
+            return cmds
 
         payLoad = ""
         cmdOfs = 0
@@ -609,7 +613,7 @@ class RawStepData:
 
         payLoad += struct.pack("<H", len(self.pulses))
 
-        print "commands(): ignoring isExtrudingMove!"
+        # print "commands(): ignoring isExtrudingMove!"
         if False: # self.isExtrudingMove(A_AXIS):
             leadFactor = int((self.abs_vector_steps[self.leadAxis]*1000) / self.abs_vector_steps[A_AXIS])
             payLoad += struct.pack("<H", min(leadFactor, 0xffff))

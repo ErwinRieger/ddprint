@@ -113,9 +113,10 @@ AdvanceEThreshold=0.001 # [mm/s]
 ##AdvanceMinRamp = 0.01 # [s]
 
 # Minimum len in steps of acceleration- or deceleration ramp to apply advance
-AdvanceMinRamp = 2
-AdvanceMinRamp = 7
-AdvanceMinRamp = 5
+# AdvanceMinRamp = 2
+# AdvanceMinRamp = 5
+# AdvanceMinRamp = 7.5
+AdvanceMinRamp = 10
 
 
 
