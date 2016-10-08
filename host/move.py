@@ -1254,7 +1254,6 @@ class PrintMove(RealMove):
         print "v0:", v0, "v1:", v1, "dt:", dt
 
         if not dt:
-            assert(0) # does this happen?
             return 0.0
 
         if v0 > 0:
@@ -1310,17 +1309,17 @@ class PrintMove(RealMove):
     ################################################################################
 
     ################################################################################
-    def startERampSteps(self, startFeedrateIncrease=None):
+    def startERampSteps(self, startFeedrateIncrease=None, roundError=0):
 
-        sa = self.startERampDistance(startFeedrateIncrease=startFeedrateIncrease) # + roundError
+        sa = self.startERampDistance(startFeedrateIncrease=startFeedrateIncrease) + roundError
         esteps = sa * self.e_steps_per_mm
         # ediff = sa - (esteps / float(self.e_steps_per_mm))
 
         return (sa, esteps) # , ediff)
 
-    def endERampSteps(self, td=None, endFeedrateIncrease=None, v0=None, v1=None):
+    def endERampSteps(self, td=None, endFeedrateIncrease=None, v0=None, v1=None, roundError=0):
 
-        sd = self.endERampDistance(td, endFeedrateIncrease, v0=v0, v1=v1) #  + roundError
+        sd = self.endERampDistance(td, endFeedrateIncrease, v0=v0, v1=v1) + roundError
         esteps = sd * self.e_steps_per_mm
         # ediff = sd - (esteps / float(self.e_steps_per_mm))
 
