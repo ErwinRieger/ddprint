@@ -24,7 +24,7 @@ import ddprintcommands, cobs, cStringIO
 
 from ddprintconstants import maxTimerValue16, maxTimerValue24, fTimer, _MAX_ACCELERATION, MAX_AXIS_ACCELERATION_NOADV
 from ddprintconstants import AdvanceEThreshold, StepDataTypeBresenham, StepDataTypeRaw
-from ddprintutil import X_AXIS, Y_AXIS, Z_AXIS, A_AXIS, B_AXIS,vectorLength, vectorMul, vectorSub, circaf, sign
+from ddprintutil import X_AXIS, Y_AXIS, Z_AXIS, A_AXIS, B_AXIS,vectorLength, vectorMul, vectorSub, circaf, sign, vectorAbs
 from ddprintcommands import CommandNames
 from ddprofile import NozzleProfile, MatProfile, PrinterProfile
 from types import ListType
@@ -79,7 +79,8 @@ class Vector(object):
         return "[" + ", ".join(l)+"]"
 
     def __abs__(self):
-        return Vector((abs(self.x), abs(self.y), abs(self.z), abs(self.a), abs(self.b)))
+        # return Vector((abs(self.x), abs(self.y), abs(self.z), abs(self.a), abs(self.b)))
+        return Vector(vectorAbs(self.vv))
 
     def __eq__(self, other):
 
@@ -492,7 +493,9 @@ class StepData:
 
         cmds = []
 
-        assert(self.abs_vector_steps[self.leadAxis] > 0)
+        if not self.abs_vector_steps[self.leadAxis]:
+            print "RawStepData::commands(): skipping empty move..."
+            return cmds
 
         payLoad = ""
         cmdOfs = 0

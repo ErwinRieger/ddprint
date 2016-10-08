@@ -95,6 +95,13 @@ def vectorDistance(a, b):
     return vectorLength(vectorSub(a, b))
 
 ####################################################################################################
+def vectorAbs(v):
+    absv = []
+    for val in v:
+        absv.append(abs(val))
+    return absv
+
+####################################################################################################
 def circaf(a, b, delta):
     return abs(a-b) < delta
 

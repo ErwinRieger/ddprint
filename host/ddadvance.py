@@ -1303,11 +1303,10 @@ class Advance (object):
         move.initStepData(StepDataTypeBresenham)
 
         dirBits = 0
-        abs_displacement_vector_steps = move.absStepsVector()
+        # abs_displacement_vector_steps = move.absStepsVector()
 
         # Determine the 'lead axis' - the axis with the most steps
         leadAxis = move.leadAxis()
-        leadAxis_steps = abs_displacement_vector_steps[leadAxis]
 
         print "Warning, disabled extrusion adjust!"
 
@@ -1337,6 +1336,19 @@ class Advance (object):
         self.skippedSimpleSteps = e - esteps
         ######################
 
+        abs_displacement_vector_steps = util.vectorAbs(disp)
+        leadAxis_steps = abs_displacement_vector_steps[leadAxis]
+
+        #
+        # Init Bresenham's variables
+        #
+        move.stepData.setBresenhamParameters(leadAxis, abs_displacement_vector_steps)
+
+        if not leadAxis_steps:
+            print "Empty move..."
+            print "***** End PlanSTepsSimple() *****"
+            return
+
         self.moveEsteps -= disp[A_AXIS]
         print "planStepsSimple(): moveEsteps-: %7.3f %7.3f" % ( disp[A_AXIS], self.moveEsteps)
 
@@ -1349,11 +1361,6 @@ class Advance (object):
             self.printer.curDirBits = dirBits
 
         steps_per_mm = PrinterProfile.getStepsPerMM(leadAxis)
-
-        #
-        # Init Bresenham's variables
-        #
-        move.stepData.setBresenhamParameters(leadAxis, abs_displacement_vector_steps)
 
         #
         # Create a list of stepper pulses
@@ -1529,11 +1536,11 @@ class Advance (object):
         assert(topSpeedS > endSpeedS) # XYZ should be decelerating
         assert(abs(topSpeedE) < abs(endSpeedE)) # E should be accelerating
 
-        abs_displacement_vector_steps = move.absStepsVector()
+        # abs_displacement_vector_steps = move.absStepsVector()
 
         # Lead axis in XYZ 
         leadAxisXYZ = move.leadAxis(3)
-        leadAxis_steps_XYZ = abs_displacement_vector_steps[leadAxisXYZ]
+        # leadAxis_steps_XYZ = abs_displacement_vector_steps[leadAxisXYZ]
 
         print "Warning, disabled extrusion adjust!"
 
@@ -1564,6 +1571,9 @@ class Advance (object):
 
         self.skippedSimpleSteps = e - esteps
         ######################
+
+        abs_displacement_vector_steps = util.vectorAbs(disp)
+        leadAxis_steps_XYZ = abs_displacement_vector_steps[leadAxisXYZ]
 
         self.moveEsteps -= disp[A_AXIS]
         print "planCrossedDecelSteps(): moveEsteps-: %7.3f %7.3f" % ( disp[A_AXIS], self.moveEsteps)
@@ -1729,8 +1739,7 @@ class Advance (object):
         print "eSteps: ", eSteps
 
         if not xyzClocks and not eSteps:
-
-            move.pprint("planCrossedDecelSteps empty move:")
+            print "Empty move..."
             print "***** End planCrossedDecelSteps() *****"
             return
 
