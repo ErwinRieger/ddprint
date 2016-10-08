@@ -681,7 +681,9 @@ class AdvanceData:
         self.sDecel = 0.0
         self.sDecelSum = 0.0
 
-        # debug
+        # Debug, prüfung ob alle in planAdvance() berechneten e-steps in planSteps() 
+        # verwendet werden. Summe ist im idealfall 0, kann aber aufgrund von rundungsfehlern
+        # auch ungleich null sein.
         self.advStepSum = 0
 
     def hasStartAdvance(self):
@@ -748,19 +750,19 @@ class AdvanceData:
             s += "\n    EEndAdvance: %.3f, Top %.3f, End: %.3f" % (self.endFeedrateIncrease, self.endEReachedFeedrate(), self.endEFeedrate())
 
         if self.startESteps:
-            s += "\n startESteps: %d" % self.startESteps
+            s += "\n startESteps: %.3f" % self.startESteps
         if self.linESteps:
-            s += "\n linESteps: %d" % self.linESteps
+            s += "\n linESteps: %.3f" % self.linESteps
         if self.endESteps:
-            s += "\n endESteps: %d" % self.endESteps
+            s += "\n endESteps: %.3f" % self.endESteps
         if self.endEStepsC:
-            s += "\n endEStepsC: %d" % self.endEStepsC
+            s += "\n endEStepsC: %.3f" % self.endEStepsC
         if self.endEStepsD:
-            s += "\n endEStepsD: %d" % self.endEStepsD
+            s += "\n endEStepsD: %.3f" % self.endEStepsD
 
         esteps = self.estepSum()
         if esteps:
-            s += "\n estep sum: %d" % esteps
+            s += "\n estep sum: %.3f" % esteps
 
         s += "\n Group data:"
         s += "\n Accel nelem: %d" % len(self.accelGroup)
