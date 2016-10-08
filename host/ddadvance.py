@@ -2574,19 +2574,11 @@ class Advance (object):
 
         from move import SubMove
 
-        moveB = SubMove(parentMove, parentMove.moveNumber + 2, displacement_vector_steps_B)
         moveC = SubMove(parentMove, parentMove.moveNumber + 3, displacement_vector_steps_C)
        
-        moveB.setDuration(0, 0, parentMove.advanceData.tdc)
         moveC.setDuration(0, 0, parentMove.advanceData.tdd)
 
-        newMoves = [moveB, moveC]
-
-        sv = topSpeed
-        sv.setESpeed(parentMove.advanceData.endEReachedFeedrate())
-        ev = parentMove.advanceData.crossingSpeed.copy()
-        ev.eSpeed = 0
-        moveB.setSpeeds(sv, sv, ev)
+        newMoves = [moveC]
 
         sv = parentMove.advanceData.crossingSpeed.copy()
         sv.eSpeed = 0
@@ -2598,30 +2590,49 @@ class Advance (object):
         if displacement_vector_steps_A != emptyVector5:
 
             moveA = SubMove(parentMove, parentMove.moveNumber + 1, displacement_vector_steps_A)
-
             moveA.setDuration(ta, tl, 0)
 
             moveA.startSpeed.setSpeed(startSpeed)
             moveA.topSpeed.setSpeed(topSpeed)
             moveA.endSpeed.setSpeed(topSpeed)
 
-            moveA.nextMove = moveB
-            moveB.prevMove = moveA
-            moveB.nextMove = moveC
-            moveC.prevMove = moveB
+            # moveA.nextMove = moveB
+            # moveB.prevMove = moveA
+            # moveB.nextMove = moveC
+            # moveC.prevMove = moveB
 
             newMoves.insert(0, moveA)
 
-        else:
+        # else:
 
-            moveB.nextMove = moveC
-            moveC.prevMove = moveB
+            # moveB.nextMove = moveC
+            # moveC.prevMove = moveB
+
+        if displacement_vector_steps_B != emptyVector5:
+
+            moveB = SubMove(parentMove, parentMove.moveNumber + 2, displacement_vector_steps_B)
+            moveB.setDuration(0, 0, parentMove.advanceData.tdc)
+
+            sv = topSpeed
+            sv.setESpeed(parentMove.advanceData.endEReachedFeedrate())
+            ev = parentMove.advanceData.crossingSpeed.copy()
+            ev.eSpeed = 0
+            moveB.setSpeeds(sv, sv, ev)
+
+            newMoves.insert(-1, moveB)
+
+        prevMove = None
+        nextMove = None
+        for move in newMoves:
+
+            if prevMove: 
+                prevMove.nextMove = move
+            move.prevMove = prevMove
+            prevMove = move
 
         # Sum up additional e-distance of this move for debugging
         esteps = displacement_vector_steps_A[A_AXIS]+displacement_vector_steps_B[A_AXIS]+displacement_vector_steps_C[A_AXIS]
-        # self.advStepBalance += esteps - displacement_vector_steps_raw[A_AXIS]
-        assert(0); self.advStepBalance += esteps
-        print "advStepBalance: ", self.advStepBalance
+        parentMove.advanceData.advStepSum -= esteps
 
         if debugMoves:
             print "***** End planLDD() *****"
