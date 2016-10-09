@@ -182,10 +182,11 @@ class DebugPlot (object):
         self.plot.moves = []
 
     def plotSteps(self, move):
-   
-        d = move.stepData.debugPlot()
-        d["number"] = move.moveNumber
-        self.plot.moves.append(d)
+  
+        if not move.empty():
+            d = move.stepData.debugPlot()
+            d["number"] = move.moveNumber
+            self.plot.moves.append(d)
 
     def close(self):
         pickle.dump(self.plot, open(self.plotfile, "wb"))

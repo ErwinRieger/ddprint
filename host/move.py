@@ -476,6 +476,10 @@ class StepData:
         self.leadAxis = leadAxis
         self.abs_vector_steps = abs_vector_steps
 
+    def empty(self):
+
+        return not self.abs_vector_steps[self.leadAxis]
+
     def __repr__(self):
         return "StepData:" + \
            "\n  Direction bits: 0x%x" % self.dirBits + \
@@ -492,10 +496,6 @@ class StepData:
     def commands(self, move):
 
         cmds = []
-
-        if not self.abs_vector_steps[self.leadAxis]:
-            print "RawStepData::commands(): skipping empty move..."
-            return cmds
 
         payLoad = ""
         cmdOfs = 0
@@ -593,6 +593,10 @@ class RawStepData:
     def addPulse(self, pulse, t):
         self.pulses.append((pulse, t))
 
+    def empty(self):
+
+        return not self.pulses
+
     def __repr__(self):
         return "RawStepData:" + \
            "\n  Direction bits: 0x%x" % self.dirBits + \
@@ -602,10 +606,6 @@ class RawStepData:
     def commands(self, move):
 
         cmds = []
-
-        if not self.pulses:
-            print "RawStepData::commands(): skipping empty move..."
-            return cmds
 
         payLoad = ""
         cmdOfs = 0
@@ -905,10 +905,17 @@ class MoveBase(object):
         else:
             assert(0)
 
+    def empty(self):
+
+        return self.stepData.empty()
+
     # return a list of binary encoded commands, ready to be send over serial...
     def commands(self):
 
-        return self.stepData.commands(self)
+        if not self.empty():
+            return self.stepData.commands(self)
+
+        return []
 
     def sanityCheck(self, checkDirection=True):
 

@@ -229,7 +229,7 @@ class Advance (object):
 
         # Sanity check
         for move in path:
-            move.pprint("sanicheck")
+            # move.pprint("sanicheck")
             move.sanityCheck(self.planner.jerk)
 
         # Step 2: join moves backwards
@@ -238,28 +238,13 @@ class Advance (object):
         # Sanity check
         for move in path:
 
-            move.pprint("sanicheck")
+            # move.pprint("sanicheck")
             move.sanityCheck(self.planner.jerk)
 
         # Step 3: handle extruder advance
 
-        # for move in path[1:]:
-            # util.xxx(prevMove, move, self.jerk, self.min_speeds)
-            # prevMove = move
-
-        # assert(0); # self.streamMoves(path)
-        ################################################# StreamMoves #####################################################
-        # def streamMoves(self, moves, finish = False):
-
         if debugMoves:
             print "Streaming %d moves..." % len(path)
-
-        # if debugPlot and not self.plotfile:
-            # self.plottime = 0
-            # self.plotfile=open("/tmp/accel_%d.plt" % moves[0].moveNumber, "w")
-            # self.plotfile.write("set grid\n")
-            # self.plotfile.write("set label 2 at  graph 0.01, graph 0.95 'Note: Trapez top not included, e-only moves green.'\n")
-            # self.plotfile.write('plot "-" using 1:2:3 with linespoints lc variable\n')
 
         for move in path:
 
@@ -2802,29 +2787,7 @@ class Advance (object):
             moveB.topSpeed.setSpeed(topSpeed)
             moveB.endSpeed.setSpeed(topSpeed)
 
-            # moveA.nextMove = moveB
-            # moveB.prevMove = moveA
-
-            # if displacement_vector_steps_C != emptyVector5:
-                # moveB.nextMove = moveC
-                # moveC.prevMove = moveB
-                # moveC.nextMove = moveD
-                # moveD.prevMove = moveC
-
-            # else:
-
-                # moveB.nextMove = moveD
-                # moveD.prevMove = moveB
-
             newMoves.insert(1, moveB)
-
-        # else:
-
-            # moveA.nextMove = moveC
-            # moveC.prevMove = moveA
-            # moveC.nextMove = moveD
-            # moveD.prevMove = moveC
-
 
         prevMove = None
         nextMove = None
