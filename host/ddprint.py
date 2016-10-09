@@ -450,6 +450,8 @@ def main():
     argParser.add_argument("-t0", dest="t0", action="store", type=int, help="Temp 0 (heated bed), default comes from mat. profile.")
     argParser.add_argument("-t1", dest="t1", action="store", type=int, help="Temp 1 (hotend 1), default comes from mat. profile.")
 
+    argParser.add_argument("-kAdvance", dest="kAdvance", action="store", type=float, help="K-Advance factor, default comes from mat. profile.")
+
     argParser.add_argument("-mat", dest="mat", action="store", help="Name of generic material profile to use [pla, abs...], default is pla.", default="pla_1.75mm")
     argParser.add_argument("-smat", dest="smat", action="store", help="Name of specific material profile to use.")
     argParser.add_argument("-noz", dest="nozzle", action="store", help="Name of nozzle profile to use [nozzle40, nozzle80...], default is nozzle40.", default="nozzle40")

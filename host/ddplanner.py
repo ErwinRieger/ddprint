@@ -279,7 +279,7 @@ class Planner (object):
             area04 = pow(0.4, 2)*math.pi/4
             self.ExtrusionAmountLow = MatProfile.getBaseExtrusionRate() * (NozzleProfile.getArea() / area04)
 
-        self.advance = Advance(self)
+        self.advance = Advance(self, args)
 
         self.reset()
 

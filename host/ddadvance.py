@@ -114,7 +114,7 @@ class Advance (object):
 
     __single = None 
 
-    def __init__(self, planner): # , args, gui=None):
+    def __init__(self, planner, args): # , gui=None):
 
         self.planner = planner
         self.printer = planner.printer
@@ -130,9 +130,16 @@ class Advance (object):
         # self.kAdv = 0.100 # [s] # xxx move to material profile
         # self.kAdv = 0.250 # [s] # xxx move to material profile
 
-        self.kAdv = MatProfile.getKAdv()
+        # K-Advance is defined in material profile and overridable by the
+        # commandline
+        if args.kAdvance != None:
+            self.kAdv = args.kAdvance
+        else:
+            self.kAdv = MatProfile.getKAdv()
 
         if self.kAdv:
+
+            print "Advance: usinge K-Advance %.3f" % self.kAdv
 
             # self.advAccel = ((sel.jerk[A_AXIS] / 1000.0) / self.kAdv) * 1000
             advJerk = planner.jerk[A_AXIS]
