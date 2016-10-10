@@ -1540,6 +1540,8 @@ class Advance (object):
         leadAxisXYZ = move.leadAxis(3)
         # leadAxis_steps_XYZ = abs_displacement_vector_steps[leadAxisXYZ]
 
+        move.stepData.setLeadAxisXYZ(leadAxisXYZ)
+
         print "Warning, disabled extrusion adjust!"
 
         """
@@ -1736,8 +1738,8 @@ class Advance (object):
 
         eSteps.reverse()
 
-        print "xyzClocks: ", xyzClocks[:10], "..."
-        print "eSteps: ", eSteps
+        # print "xyzClocks: ", xyzClocks[:10], "..."
+        # print "eSteps: ", eSteps
 
         #
         # Generate bresenham stepper bits for XYZ part

@@ -477,7 +477,6 @@ class StepData:
         self.abs_vector_steps = abs_vector_steps
 
     def empty(self):
-
         return not self.abs_vector_steps[self.leadAxis]
 
     def __repr__(self):
@@ -575,18 +574,25 @@ class StepData:
 
     def debugPlot(self):
 
-        return {
+        d = {
                 "stepType": "bresenham",
+                "leadAxis": self.leadAxis,
                 "accelPulses": self.accelPulses,
                 "linearTimer": self.linearTimer,
                 "linearSteps": self.abs_vector_steps[self.leadAxis] - (len(self.accelPulses)+len(self.deccelPulses)),
                 "deccelPulses": self.deccelPulses,
                 }
 
+        if self.setDirBits:
+            d["dirbits"] = self.dirBits
+
+        return d
+
 class RawStepData:
 
     def __init__(self):
         self.pulses = []
+        self.leadAxisXYZ = None
         self.setDirBits = False
         self.dirBits = 0
 
@@ -594,8 +600,11 @@ class RawStepData:
         self.pulses.append((pulse, t))
 
     def empty(self):
-
         return not self.pulses
+
+    # Used for debugging only
+    def setLeadAxisXYZ(self, leadAxisXYZ):
+        self.leadAxisXYZ = leadAxisXYZ
 
     def __repr__(self):
         return "RawStepData:" + \
@@ -655,10 +664,16 @@ class RawStepData:
 
     def debugPlot(self):
 
-        return {
+        d = {
                 "stepType": "raw",
+                "leadAxisXYZ": self.leadAxisXYZ,
                 "pulses": self.pulses,
                 }
+
+        if self.setDirBits:
+            d["dirbits"] = self.dirBits
+
+        return d
 
 class AdvanceData:
 
@@ -906,7 +921,6 @@ class MoveBase(object):
             assert(0)
 
     def empty(self):
-
         return self.stepData.empty()
 
     # return a list of binary encoded commands, ready to be send over serial...
