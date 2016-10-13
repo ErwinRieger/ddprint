@@ -31,8 +31,6 @@ CmdBlock         = 0x6 # A 512byte block of a lager command
 CmdG1            = 0x7
 CmdDirG1         = 0x8 # CmdDirBits and CmdG1 combined
 
-CmdG1_24         = 0x9 # Same as CmdG1, but with 32 bit accel- and deccel-timervalues (vor very slow moves)
-CmdDirG1_24      = 0xa # CmdDirBits and CmdG1_24 combined
 CmdSyncTargetTemp= 0xb # Parameters: heater, temp 
 CmdDwellMS       = 0xc # Parameters: dwell time in mS
 CmdG1Raw         = 0xd # Raw print move steps, bresenham algo already done.
@@ -91,11 +89,9 @@ CmdEnableFRLimit = 165 # Enable/disable flowrate limit
 CommandNames = {
     CmdNull: "CmdNull",
     CmdG1: "CmdG1",
-    CmdG1_24: "CmdG1_24",
     CmdDirBits: "CmdDirBits",
     CmdBlock: "CmdBlock",
     CmdDirG1: "CmdDirG1",
-    CmdDirG1_24: "CmdDirG1_24",
     CmdG1Raw: "CmdG1Raw",
     CmdDirG1Raw: "CmdDirG1Raw",
     CmdSyncTargetTemp: "CmdSyncTargetTemp",

@@ -448,12 +448,6 @@ bool FillBufferTask::Run() {
                 case CmdDirG1:
                     goto HandleCmdDirG1;
 
-                case CmdG1_24:
-                    goto HandleCmdG1_24;
-
-                case CmdDirG1_24:
-                    goto HandleCmdDirG1_24;
-
                 case CmdG1Raw:
                     goto HandleCmdG1Raw;
 
@@ -492,7 +486,6 @@ bool FillBufferTask::Run() {
                     kill();
             }
 
-            // XXX use template to merge CmdG1 and CmdG1_24
             HandleCmdDirG1:
 
                 sDReader.setBytesToRead1();
@@ -682,173 +675,6 @@ bool FillBufferTask::Run() {
                     cmdDir &= ~0x80; // clear set-direction bit
                 }
             
-                PT_RESTART();
-
-            HandleCmdDirG1_24:
-
-                sDReader.setBytesToRead1();
-                PT_WAIT_THREAD(sDReader);
-
-                cmdDir = *sDReader.readData;
-
-            HandleCmdG1_24:
-
-                // SERIAL_ECHOLNPGM("C1");
-
-                //
-                // Read index of lead axis
-                //
-                sDReader.setBytesToRead1();
-                PT_WAIT_THREAD(sDReader);
-                leadAxis = *sDReader.readData;
-
-                //
-                // Read array of absolute step distances of the 5 axes
-                //
-                sDReader.setBytesToRead4();
-                PT_WAIT_THREAD(sDReader);
-                absSteps[0] = FromBuf(int32_t, sDReader.readData);
-
-                sDReader.setBytesToRead4();
-                PT_WAIT_THREAD(sDReader);
-                absSteps[1] = FromBuf(int32_t, sDReader.readData);
-
-                sDReader.setBytesToRead4();
-                PT_WAIT_THREAD(sDReader);
-                absSteps[2] = FromBuf(int32_t, sDReader.readData);
-
-                sDReader.setBytesToRead4();
-                PT_WAIT_THREAD(sDReader);
-                absSteps[3] = FromBuf(int32_t, sDReader.readData);
-
-                sDReader.setBytesToRead4();
-                PT_WAIT_THREAD(sDReader);
-                absSteps[4] = FromBuf(int32_t, sDReader.readData);
-
-                // nAccel = sDReader.readPayloadUInt16();
-                sDReader.setBytesToRead2();
-                PT_WAIT_THREAD(sDReader);
-                nAccel = FromBuf(uint16_t, sDReader.readData);
-                // SERIAL_ECHOLN(nAccel);
-
-                // tLin = sDReader.readPayloadUInt16();
-                sDReader.setBytesToRead2();
-                PT_WAIT_THREAD(sDReader);
-                tLin = FromBuf(uint16_t, sDReader.readData);
-
-                // nDeccel = sDReader.readPayloadUInt16();
-                sDReader.setBytesToRead2();
-                PT_WAIT_THREAD(sDReader);
-                nDeccel = FromBuf(uint16_t, sDReader.readData);
-                // SERIAL_ECHOLN(nDeccel);
-
-                //
-                // Compute bresenham factors
-                //
-
-                deltaLead = absSteps[leadAxis];
-
-                //  d = (2 * deltay) - deltax 
-                //    = d1 - deltax
-                // d1 = (2 * deltay)
-                // d2 = 2 * (deltay - deltax)
-                //    = 2 * deltay - 2 * deltax
-                //    = d - deltax
-                for (i=0; i<5; i++) {
-
-                    if (i == leadAxis)
-                        continue;
-
-                    d1 = 2 * absSteps[i];
-                    d = d1 - deltaLead;
-                    d2 = d - deltaLead;
-
-                    d_axis[i] = d;
-                    d1_axis[i] = d1;
-                    d2_axis[i] = d2;
-
-                    // SERIAL_ECHOPGM("d/d1/d2: ");
-                    // SERIAL_ECHO(d);
-                    // SERIAL_ECHOPGM(",");
-                    // SERIAL_ECHO(d1);
-                    // SERIAL_ECHOPGM(",");
-                    // SERIAL_ECHOLN(d2);
-                }
-
-
-                for (step=0; step < deltaLead; step++) {
-
-                    //
-                    // Compute stepper bits, bresenham
-                    //
-                    stepBits = 1 << leadAxis;
-
-                    for (i=0; i<5; i++) {
-                        if (i == leadAxis)
-                            continue;
-
-                        if (d_axis[i] < 0) {
-                            //  d_axis[a] = d + 2 * abs_displacement_vector_steps[a]
-                            d_axis[i] += d1_axis[i];
-                        }
-                        else {
-                            //  d_axis[a] = d + 2 * (abs_displacement_vector_steps[a] - deltaLead)
-                            d_axis[i] += d2_axis[i];
-                            stepBits |= 1 << i;
-                        }
-                    }
-
-                    //
-                    // Get timer value
-                    //
-
-                    if (step < nAccel) {
-
-                        // Acceleration
-                        sDReader.setBytesToRead3();
-                        PT_WAIT_THREAD(sDReader);
-                        timerLoop = FromBuf(uint8_t, sDReader.readData);
-                        timer = FromBuf(uint16_t, sDReader.readData);
-
-                        PT_WAIT_WHILE(stepBuffer.full());
-                        if (timer & 0xff00) {
-                            if (timerLoop)
-                                stepBuffer.push5(cmdDir, stepBits, timer, timerLoop);
-                            else
-                                stepBuffer.push4(cmdDir, stepBits, timer);
-                        }
-                        else
-                            stepBuffer.push3(cmdDir, stepBits, timer);
-                    }
-                    else if ((deltaLead - step) <= nDeccel) {
-
-                        // Decceleration
-                        sDReader.setBytesToRead3();
-                        PT_WAIT_THREAD(sDReader);
-                        timerLoop = FromBuf(uint8_t, sDReader.readData);
-                        timer = FromBuf(uint16_t, sDReader.readData);
-
-                        PT_WAIT_WHILE(stepBuffer.full());
-                        if (timer & 0xff00) {
-                            if (timerLoop)
-                                stepBuffer.push5(cmdDir, stepBits, timer, timerLoop);
-                            else
-                                stepBuffer.push4(cmdDir, stepBits, timer);
-                        }
-                        else
-                            stepBuffer.push3(cmdDir, stepBits, timer);
-                    }
-                    else {
-                        // linear part
-                        PT_WAIT_WHILE(stepBuffer.full());
-                        if (tLin & 0xff00)
-                            stepBuffer.push4(cmdDir, stepBits, tLin);
-                        else
-                            stepBuffer.push3(cmdDir, stepBits, tLin);
-                    }
-
-                    cmdDir &= ~0x80; // clear set-direction bit
-                }
                 PT_RESTART();
 
             HandleCmdDirG1Raw:

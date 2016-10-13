@@ -41,8 +41,8 @@
 
 #define CmdG1              0x7
 #define CmdDirG1           0x8
-#define CmdG1_24           0x9
-#define CmdDirG1_24        0xa
+
+
 #define CmdSyncTargetTemp  0xb
 #define CmdDwellMS         0xc
 #define CmdG1Raw           0xd

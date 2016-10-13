@@ -223,21 +223,11 @@ class Planner (object):
 
         self.zeroPos = util.MyPoint()
 
-        # Lowest allowed speed in mm/s for every dimension
-        # xxx used? self.min_speeds = 5 * [0]
-        # xxx used? for dim in range(5):
-            # xxx used? # vmin = (fTimer / maxTimerValue) / steps_per_mm
-            # xxx used? if PrinterProfile.getStepsPerMM(dim):
-                # xxx used? self.min_speeds[dim] = float(fTimer) / (maxTimerValue24 * PrinterProfile.getStepsPerMM(dim))
-
-        # xxx used? self.gui.log( "min speeds: ", self.min_speeds)
-
         #
         # Constants, xxx todo: query from printer and/or profile
         #
         self.HOMING_FEEDRATE = [100, 100, 40]  # set the homing speeds (mm/s) 
         self.HOME_RETRACT_MM = 7               # [mm]
-
 
         # ENDSTOP SETTINGS:
         # Sets direction of endstops when homing; 1=MAX, -1=MIN
@@ -949,12 +939,6 @@ class Planner (object):
 
                     tAccel += dt
 
-                    if timerValue > maxTimerValue24:
-                        move.pprint("planTravelSTeps:")
-                        print "v0: ", dt*1000000, "[uS]", steps_per_second_accel, "[steps/s], timerValue: ", timerValue
-                        print "dt: ", dt*1000000, "[uS]", steps_per_second_accel, "[steps/s], timerValue: ", timerValue
-                        assert(0)
-
                     move.stepData.addAccelPulse(timerValue)
                     stepNr += 1
                     done = False
@@ -984,12 +968,6 @@ class Planner (object):
                             # deccelPlotData.append((steps_per_second_deccel/steps_per_mm, 1, dt))
 
                     tDeccel += dt
-
-                    if timerValue > maxTimerValue24:
-                        move.pprint("planTravelSTeps:")
-                        print "v0: ", dt*1000000, "[uS]", steps_per_second_deccel, "[steps/s], timerValue: ", timerValue
-                        print "dt: ", dt*1000000, "[uS]", steps_per_second_deccel, "[steps/s], timerValue: ", timerValue
-                        assert(0)
 
                     move.stepData.addDeccelPulse(timerValue)
                     stepNr += 1
@@ -1024,12 +1002,6 @@ class Planner (object):
 
                 tAccel += dt
 
-                if timerValue > maxTimerValue24:
-                    move.pprint("planTravelSTeps:")
-                    print "v0: ", dt*1000000, "[uS]", steps_per_second_accel, "[steps/s], timerValue: ", timerValue
-                    print "dt: ", dt*1000000, "[uS]", steps_per_second_accel, "[steps/s], timerValue: ", timerValue
-                    assert(0)
-
                 move.stepData.addAccelPulse(timerValue)
                 stepNr += 1
 
@@ -1061,12 +1033,6 @@ class Planner (object):
                         deccelPlotData.append((steps_per_second_deccel/steps_per_mm, 1, dt))
 
                 tDeccel += dt
-
-                if timerValue > maxTimerValue24:
-                    move.pprint("planTravelSTeps:")
-                    print "v0: ", dt*1000000, "[uS]", steps_per_second_deccel, "[steps/s], timerValue: ", timerValue
-                    print "dt: ", dt*1000000, "[uS]", steps_per_second_deccel, "[steps/s], timerValue: ", timerValue
-                    assert(0)
 
                 move.stepData.addDeccelPulse(timerValue)
                 stepNr += 1

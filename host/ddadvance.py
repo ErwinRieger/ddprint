@@ -1414,7 +1414,6 @@ class Advance (object):
                 # print "dt: ", dt*1000000, "[uS]", steps_per_second_accel, "[steps/s], timerValue: ", timerValue
 
                 if timerValue >= maxTimerValue16:
-                # if timerValueE >= maxTimerValue24:
                     break
 
                 move.stepData.addAccelPulse(timerValue, True)
@@ -1438,7 +1437,6 @@ class Advance (object):
                 # print "dt: ", dt*1000000, "[uS]", steps_per_second_deccel, "[steps/s], timerValue: ", timerValue, ", v: ", steps_per_second_deccel/steps_per_mm
 
                 if timerValue >= maxTimerValue16:
-                # if timerValueE >= maxTimerValue24:
                     break
 
                 move.stepData.addDeccelPulse(timerValue, False)
@@ -1636,7 +1634,6 @@ class Advance (object):
             # print "dt: ", dt*1000000, "[uS]", steps_per_second_deccel_XYZ, "[steps/s], timerValueXYZ: ", timerValueXYZ, ", v: ", steps_per_second_deccel_XYZ/steps_per_mm_XYZ
 
             if timerValueXYZ >= maxTimerValue16:
-            # if timerValueXYZ >= maxTimerValue24:
                 break
 
             # move.stepData.addDeccelPulse(timerValueXYZ)
@@ -1705,7 +1702,6 @@ class Advance (object):
             timerValueE = int(fTimer / steps_per_second_accel)
 
             if timerValueE >= maxTimerValue16:
-            # if timerValueE >= maxTimerValue24:
                 break
 
             # move.stepData.addAccelPulse(timerValueE)
@@ -1804,8 +1800,9 @@ class Advance (object):
         tIndex.sort()
         # print "tIndex:", tIndex
 
-        timer100khz = fTimer/100000
-        timer100khz = fTimer/50000
+        # timer100khz = fTimer/100000
+        # timer100khz = fTimer/50000
+        timer100khz = fTimer/75000
 
         nMerges2 = 0
         i = 0

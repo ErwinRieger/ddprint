@@ -438,7 +438,6 @@ inline void st_step_motor_es(uint8_t stepBits, uint8_t dirbits) {
 
 #define CMDLEN3 (0 << 5)
 #define CMDLEN4 (1 << 5)
-#define CMDLEN5 (2 << 5)
 
 #define GETCMDLEN(v) (v & (3 << 5))
 
@@ -448,17 +447,12 @@ inline void st_step_motor_es(uint8_t stepBits, uint8_t dirbits) {
 
             uint16_t head, tail;
 
-            uint8_t timerLoop;
-
             int16_t syncCount;
 
         public:
 
-            // int32_t timeSum;
-
             StepBuffer() {
                 head = tail = 0;
-                timerLoop = 0;
                 syncCount = 0;
             };
 
@@ -513,26 +507,6 @@ inline void st_step_motor_es(uint8_t stepBits, uint8_t dirbits) {
                 head = (head+1) & StepBufferMask;
             }
 
-            void push5(uint8_t cmdDir, uint8_t steps, uint16_t timer, uint8_t timerLoop) {
-
-                simassert(byteSize()+5 < StepBufferLen);
-
-                stepBuffer[head] = cmdDir | CMDLEN5;
-                head = (head+1) & StepBufferMask;
-
-                stepBuffer[head] = steps;
-                head = (head+1) & StepBufferMask;
-
-                stepBuffer[head] = timer;
-                head = (head+1) & StepBufferMask;
-
-                stepBuffer[head] = timer >> 8;
-                head = (head+1) & StepBufferMask;
-
-                stepBuffer[head] = timerLoop;
-                head = (head+1) & StepBufferMask;
-            }
-
             // Get cmdDir
             FWINLINE uint8_t * peek80() {
                 simassert(byteSize() >= 3);
@@ -554,34 +528,16 @@ inline void st_step_motor_es(uint8_t stepBits, uint8_t dirbits) {
                 return stepBuffer+((tail+3) & StepBufferMask);
             }
 
-            // // Get timer, 16 bit
-            // FWINLINE uint16_t peek162() {
-                // simassert(byteSize() >= 4);
-                // uint16_t t  = stepBuffer[(tail+2) & StepBufferMask];
-                         // t |= stepBuffer[(tail+3) & StepBufferMask] << 8;
-                // return t;
-            // }
-
-            // Get timerLoop, 8 bit
-            uint8_t * peek84() {
-                simassert(byteSize() >= 5);
-                return stepBuffer+((tail+4) & StepBufferMask);
-            }
-
             FWINLINE void pop3() {
                 tail = (tail+3) & StepBufferMask;
                 if (syncCount > 0)
                     syncCount -= 3;
             }
+
             FWINLINE void pop4() {
                 tail = (tail+4) & StepBufferMask;
                 if (syncCount > 0)
                     syncCount -= 4;
-            }
-            void pop5() {
-                tail = (tail+5) & StepBufferMask;
-                if (syncCount > 0)
-                    syncCount -= 5;
             }
 
             void flush() {
@@ -591,17 +547,11 @@ inline void st_step_motor_es(uint8_t stepBits, uint8_t dirbits) {
 
             FWINLINE void runMoveSteps() {
 
-                if (timerLoop) {
-                    timerLoop --;
-                    OCR1A = 0xffff;
-                }
-                // XXX make stepbuffer.pop return pointer, return null if emtpy -> save one function call
-                else if (byteSize()) {
+                if (byteSize()) {
 
                     uint8_t cmdDir = *peek80();
 
-                    // Set direction: st_set_direction<>()
-
+                    // Set direction
                     if (cmdDir & 0x80) {
 
                         // Set direction bits
@@ -629,11 +579,6 @@ inline void st_step_motor_es(uint8_t stepBits, uint8_t dirbits) {
                             OCR1A = *peek82() | (*peek83() << 8);
                             pop4();
                             break;
-                        case CMDLEN5:
-                            OCR1A = *peek82() | (*peek83() << 8);
-                            timerLoop = *peek84();
-                            pop5();
-                            break;
                         default:
                             massert(0);
                 }
@@ -651,42 +596,32 @@ inline void st_step_motor_es(uint8_t stepBits, uint8_t dirbits) {
                 uint8_t cmdDir = *peek80();
 
                 // * Set direction 
-                // * Check endstops
-                // * Step the motors
-                // * Update step-coordinates (current_pos_steps)
-                // * Set new timer value
-
                 if (cmdDir & 0x80) {
 
                     // Set direction bits
                     st_set_direction<XMove>(cmdDir); 
                     st_set_direction<YMove>(cmdDir); 
                     st_set_direction<ZMove>(cmdDir); 
-                    // st_set_direction<EMove>(cmdDir); 
                 }
 
+                // * Step the motors
+                // * Check endstops
+                // * Update step-coordinates (current_pos_steps)
                 uint8_t stepBits = *peek81();
 
                 st_step_motor_es<XMove>(stepBits, cmdDir); 
                 st_step_motor_es<YMove>(stepBits, cmdDir); 
                 st_step_motor_es<ZMove>(stepBits, cmdDir); 
 
+                // * Set new timer value
                 switch (GETCMDLEN(cmdDir)) {
                     case  CMDLEN3:
                         OCR1A = OCR1B = *peek82();
-                        timerLoop = 0;
                         pop3();
                         break;
                     case CMDLEN4:
                         OCR1A = OCR1B = *peek82() | (*peek83() << 8);
-                        timerLoop = 0;
                         pop4();
-                        break;
-                    case CMDLEN5:
-                        massert(0);
-                        // OCR1A = OCR1B = 
-                        // timerLoop = 0;
-                        // pop5();
                         break;
                     default:
                         massert(0);
