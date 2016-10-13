@@ -1298,11 +1298,7 @@ class Advance (object):
 
         move.initStepData(StepDataTypeBresenham)
 
-        dirBits = 0
         # abs_displacement_vector_steps = move.absStepsVector()
-
-        # Determine the 'lead axis' - the axis with the most steps
-        leadAxis = move.leadAxis()
 
         print "Warning, disabled extrusion adjust!"
 
@@ -1333,6 +1329,9 @@ class Advance (object):
         ######################
 
         abs_displacement_vector_steps = util.vectorAbs(disp)
+
+        # Determine the 'lead axis' - the axis with the most steps
+        leadAxis = move.leadAxis()
         leadAxis_steps = abs_displacement_vector_steps[leadAxis]
 
         #
@@ -1348,8 +1347,7 @@ class Advance (object):
         self.moveEsteps -= disp[A_AXIS]
         print "planStepsSimple(): moveEsteps-: %7.3f %7.3f" % ( disp[A_AXIS], self.moveEsteps)
 
-        for i in range(5):
-            dirBits += (disp[i] >= 0) << i # xxx use sign here
+        dirBits = util.directionBits(disp, self.printer.curDirBits)
 
         if dirBits != self.printer.curDirBits:
             move.stepData.setDirBits = True
@@ -1585,14 +1583,9 @@ class Advance (object):
         self.moveEsteps -= disp[A_AXIS]
         print "planCrossedDecelSteps(): moveEsteps-: %7.3f %7.3f" % ( disp[A_AXIS], self.moveEsteps)
 
-        dirBits = 0
+        dirBits = util.directionBits(disp, self.printer.curDirBits)
 
-        for i in range(5):
-            dirBits += (disp[i] >= 0) << i # xxx use sign here
-
-        print "XXX no dirbit optimisation..."
-        # if dirBits != self.printer.curDirBits:
-        if True:
+        if dirBits != self.printer.curDirBits:
             move.stepData.setDirBits = True
             move.stepData.dirBits = dirBits
             self.printer.curDirBits = dirBits
@@ -1812,6 +1805,7 @@ class Advance (object):
         # print "tIndex:", tIndex
 
         timer100khz = fTimer/100000
+        timer100khz = fTimer/50000
 
         nMerges2 = 0
         i = 0

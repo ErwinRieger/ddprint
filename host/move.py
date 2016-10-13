@@ -898,9 +898,21 @@ class MoveBase(object):
 
         return self.accelData.decelTime
 
-    def leadAxis(self, nAxes=5):
+    # Get vector of absolute steps.
+    def absStepsVector(self, disp=None):
 
-        asv = self.absStepsVector()
+        if disp != None:
+            return vectorAbs(disp)
+
+        asv = []
+        for dim in range(3):
+            asv.append(abs(self.displacement_vector_steps_raw3[dim]))
+
+        return asv + [abs(self.eSteps), 0]
+
+    def leadAxis(self, nAxes=5, disp=None):
+
+        asv = self.absStepsVector(disp)
         maxstep = 0
         maxdim = 0
         for dim in range(nAxes):
@@ -908,7 +920,7 @@ class MoveBase(object):
                 maxdim = dim
                 maxstep = asv[dim]
 
-        # Use top speed to determin leadAxis if x- and y-axis have the same step amount
+        # Use top speed to determine leadAxis if x- and y-axis have the same step amount
         if maxdim == X_AXIS and asv[X_AXIS] == asv[Y_AXIS] and abs(self.topSpeed.speed()[Y_AXIS]) > abs(self.topSpeed.speed()[X_AXIS]):
             return Y_AXIS
 
@@ -1359,15 +1371,6 @@ class PrintMove(RealMove):
         return (sd, esteps) # , ediff)
     ################################################################################
 
-    # Get vector of absolute steps.
-    def absStepsVector(self):
-
-        asv = []
-        for i in range(3):
-            asv.append(abs(self.displacement_vector_steps_raw3[i]))
-
-        return asv + [abs(self.eSteps), 0]
-
     def crossedDecelStep(self):
         return False
 
@@ -1466,15 +1469,6 @@ class SubMove(MoveBase):
 
     def getMaxAllowedAccelVector5(self, maxAccelV):
         return self.parentMove.getMaxAllowedAccelVector5(maxAccelV)
-
-    # Get vector of absolute steps.
-    def absStepsVector(self):
-
-        asv = []
-        for dim in range(3):
-            asv.append(abs(self.displacement_vector_steps_raw3[dim]))
-
-        return asv + [abs(self.eSteps), 0]
 
     def crossedDecelStep(self):
         return (self.topSpeed.speed().eSpeed < 0) or (self.endSpeed.speed().eSpeed < 0)

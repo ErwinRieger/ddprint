@@ -533,6 +533,22 @@ class GetChar:
 
 ####################################################################################################
 
+# Compute new stepper direction bits
+def directionBits(disp, curDirBits):
+
+    for i in range(5):
+
+        mask = 1 << i
+
+        if disp[i] > 0 and not (curDirBits & mask):
+            curDirBits += mask
+        if disp[i] < 0 and (curDirBits & mask):
+            curDirBits -= mask
+
+    return curDirBits
+
+####################################################################################################
+
 def commonInit(args, parser):
 
     planner = parser.planner

@@ -843,13 +843,6 @@ class Planner (object):
 
         move.initStepData(StepDataTypeBresenham)
 
-        dirBits = 0
-        abs_displacement_vector_steps = []
-
-        # Determine the 'lead axis' - the axis with the most steps
-        leadAxis = 0
-        leadAxis_steps = 0
-
         print "Warning, disabled extrusion adjust in planTravelSteps!"
 
         """
@@ -867,15 +860,13 @@ class Planner (object):
 
         disp = move.displacement_vector_steps_raw5
         disp[A_AXIS] = int(disp[A_AXIS]) # xxx round float e-steps, xxx skip rounding errors here
+        abs_displacement_vector_steps = util.vectorAbs(disp)
 
-        for i in range(5):
-            dirBits += (disp[i] >= 0) << i # xxx use sign here
+        # Determine the 'lead axis' - the axis with the most steps
+        leadAxis = move.leadAxis(disp=disp)
+        leadAxis_steps = abs_displacement_vector_steps[leadAxis]
 
-            s = abs(disp[i])
-            abs_displacement_vector_steps.append(s)
-            if s > leadAxis_steps:
-                leadAxis = i
-                leadAxis_steps = s
+        dirBits = util.directionBits(disp, self.printer.curDirBits)
 
         if dirBits != self.printer.curDirBits:
             move.stepData.setDirBits = True
