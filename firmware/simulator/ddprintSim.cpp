@@ -38,6 +38,20 @@
 #include "stepper.h"
 #include "filsensorSim.h"
 
+////////////////////////
+// CONFIG
+//
+// Throttle mainloop and therefore the serial read. Used to make serial communication
+// more realistic.
+//
+// #define ThrottleSerialRead 1
+//
+// Write gcode file of printed model.
+//
+// #define WriteGCode 1
+// End CONFIG
+////////////////////////
+
 unsigned long long getTimestamp() {
 
     struct timeval tv;
@@ -50,12 +64,10 @@ static unsigned long long timestamp;
 static unsigned long long lastTempIRQ;
 static unsigned long long lastHeater;
 
-// xxx baudrate 125000 -> geht nicht mit python serial?
-// xxx check file close after print
-// xxx check stepper range/buildvoluem
-// xxx fileprint scheint nicht zu funktionieren, heitzt auf, und ist dann sofortd fertig...
 //
-// sicherheitsfunktionen im temp-modul wieder aktivierenk, setWatch();
+// Todo:
+//
+// Sicherheitsfunktionen im temp-modul wieder aktivierenk, setWatch();
 //
 // XXX aus dem ext. maint. menü kommt man nicht mehr raus falls 'save eeprom' benutzt wurde...
 // XXX frequenz steppertakte prüfen, um bug mit feedrate zu detektieren
@@ -79,12 +91,14 @@ int heaterADC = 250;
 bool bedHeaterOn = false;
 int bedADC = 250;
 
-FILE *viewFile = NULL;
 
 #if ! defined(PROFILING)
 
 void nonblock(int state);
 int kbhit();
+
+#if defined(WriteGCode)
+FILE *viewFile = NULL;
 
 //
 // Write simulated gcode, view with "yagv sim.gcode".
@@ -96,38 +110,13 @@ void openOutputModel() {
 
     assert((viewFile = fopen("sim.gcode", "w+")) != NULL);
 
-#if 0
-    char *prefix = "\n\
-        G1 X-5 Y5 Z5\n\
-        G1 X200 Y5 Z5\n\
-        G1 X200 Y5 Z-200\n\
-        G1 X200 Y5 Z5\n\
-        G1 X200 Y-200 Z5\n\
-        G1 X200 Y-200 Z-200\n\
-        G1 X200 Y-200 Z5\n\
-        G1 X-5 Y-200 Z5\n\
-        G1 X-5 Y-200 Z-200\n\
-        G1 X-5 Y-200 Z5\n\
-        G1 X-5 Y5 Z5\n\
-        \n\
-        G1 X-5 Y5 Z-200\n\
-        G1 X200 Y5 Z-200\n\
-        G1 X200 Y-200 Z-200\n\
-        G1 X-5 Y-200 Z-200\n\
-        G1 X-5 Y5 Z-200\n\
-        G1 X-5 Y5 Z5\n\
-        \n";
-#endif
-
-// #define InitialY 230
-// #define InitialZ 230
-// G1 X-0.1 Y-0.1 Z0
-//
     char *prefix = "\n\
         G1 X0 Y230 Z230\n\
         \n";
         fwrite(prefix, 1, strlen(prefix), viewFile);
 }
+#endif
+
 #endif
 
 main(int argc, char** argv) {
@@ -173,8 +162,10 @@ main(int argc, char** argv) {
         int i=0;
 
 #if ! defined(PROFILING)
+#if defined(WriteGCode)
         openOutputModel();
         nonblock(1);
+#endif
 #endif
 
         assert(pthread_create(&tids, NULL, isrThread, (void *) NULL) == 0);
@@ -198,7 +189,9 @@ main(int argc, char** argv) {
                     char c=fgetc(stdin);
                     printf("pressed: '%c'\n", c);
                     if (c=='q') {
+                        #if defined(WriteGCode)
                         fclose(viewFile);
+                        #endif
                         break;
                     }
 #if 0
@@ -209,12 +202,14 @@ main(int argc, char** argv) {
                     else if (c=='n')
                         lcd_lib_encoder_pos += 8;
 #endif
+                    #if defined(WriteGCode)
                     else if (c=='f')
                         // flush output model
                         fflush(viewFile);
                     else if (c=='r')
                         // reopen output model
                         openOutputModel();
+                    #endif
 #if 0
                     else if (c==' ' || c=='\n')
                         lcd_lib_button_pressed = 1;
@@ -222,23 +217,10 @@ main(int argc, char** argv) {
                 }
 
 #endif
-#if 0
-                // xxx debug
-                if (i == 100) {
-
-                    // Queue the G28 Task
-                    G28Task *homeTask = new G28Task(0.0);
-                    queueTask(homeTask);
-
-                    // enquecommand_P(PSTR("G1 Z40"));
-                    CommandTask *raiseTask = new CommandTask();
-                    raiseTask->strcpy_PGM(PSTR("G1 Z40"));
-                    queueTask(raiseTask);
-                }
-#endif
 
                 timestamp = getTimestamp();
 
+                // Call 'Arduino loop()'
                 loop();
 
 #if 0
@@ -271,6 +253,8 @@ main(int argc, char** argv) {
                     usleep(100000);
                 }
                 else {
+
+#if defined(ThrottleSerialRead)
                     unsigned long delta = getTimestamp() - timestamp;
                     if (delta < 150)
                         usleep(150 - delta);
@@ -280,6 +264,8 @@ main(int argc, char** argv) {
                         // printf("r: %.5f\n", r);
                         usleep(250000 * r);
                     }
+#endif // ThrottleSerialRead
+
                 }
 
                 if (printStarted==2) {
@@ -448,6 +434,7 @@ void *isrThread(void * data) {
 
 
 #if ! defined(PROFILING)
+#if defined(WriteGCode)
             // Write gcode simulation output
             if ((fabs(lastPosX - ssx.pos) > 1) || (fabs(lastPosY -ssy.pos) > 1) || (fabs(lastPosZ - ssz.pos) >= 0.1)) {
 
@@ -461,6 +448,7 @@ void *isrThread(void * data) {
                 lastPosY = ssy.pos;
                 lastPosZ = ssz.pos;
             }
+#endif
 #endif
 
             unsigned long delta = getTimestamp() - moveStart;

@@ -27,6 +27,15 @@
 #include "ddprint.h"
 #include "move.h"
 
+////////////////////////
+// CONFIG
+//
+// Write stepper pulses per layer.
+//
+#define WriteStepFile 1
+// End CONFIG
+////////////////////////
+
 #if 0
 template <typename MOVE>
 void checkPos(float pos) {};
@@ -35,34 +44,32 @@ template <>
 void checkPos<XMove>(float pos);
 #endif
 
+unsigned long long getTimestamp();
+
+#if defined(WriteStepFile)
+extern FILE *layerFile;
+extern int layerNum;
+extern long long layerStartTime;
+#endif
+
 template <typename MOVE>
 class StepperSim {
+
+    // static FILE *viewFile;
+    // static int layerNum;
+
     public:
         float pos;
         float dir;
-        // float plusdir;
-        // float minusdir;
-        // int axis;
+        int axis;
         bool state;
         bool enabled;
 
-        int count;
-
-        StepperSim(float initialPos=0): enabled(0), pos(initialPos), state(false), count(0) {
+        StepperSim(int ax, float initialPos=0): enabled(0), pos(initialPos), state(false) {
+            axis = ax;
         }
         void enable(bool v) { enabled = v; }
-        void setPin(uint8_t v) {
-
-            if (enabled) {
-                if (state && !v) {
-                    // 1 -> 0 flanke, step
-                    pos += dir;
-                    // if ((count++ % 10) == 0) printf("pos: %.1f\n", pos);
-                    // checkPos<MOVE>(pos);
-                }
-            }
-            state = v;
-        }
+        void setPin(uint8_t v);
         void setDir(uint8_t v) {
 
             if (v == st_get_invert_dir<MOVE>()) {
@@ -84,6 +91,51 @@ extern StepperSim< ZMove > ssz;
 
 extern StepperSim< EMove > sse;
 
+template <typename MOVE>
+void StepperSim<MOVE>::setPin(uint8_t v) {
+
+            if (enabled) {
+                if (state && !v) {
+                    // 1 -> 0 flanke, step
+                    pos += dir;
+                    // checkPos<MOVE>(pos);
+
+                    #if defined(WriteStepFile)
+
+                    switch (axis) {
+                        case Z_AXIS:
+                            // Close layer step file
+                            if (layerFile) {
+                                printf("closing layerfile...\n");
+                                fclose(layerFile);
+                                layerFile = NULL;
+                            }
+                            break;
+                        case E_AXIS:
+                            // Open layer step file if not open
+                            if (! layerFile) {
+                                char fn[64];
+                                sprintf(fn, "layer_%03d.steps", layerNum++);
+                                printf("opening layerfile...\n");
+                                assert((layerFile = fopen(fn, "w")) != NULL);
+                                layerStartTime = getTimestamp();
+                            }
+                            fprintf(layerFile, "%ld 0 %.5f 0 %.5f %.5f %5f\n", getTimestamp()-layerStartTime, ssx.pos, ssy.pos, dir, pos);
+                            break;
+                        case X_AXIS:
+                            if (layerFile)
+                                fprintf(layerFile, "%ld %.5f %.5f 0 %.5f 0 %5f\n", getTimestamp()-layerStartTime, dir, pos, ssy.pos, sse.pos);
+                            break;
+                        case Y_AXIS:
+                            if (layerFile)
+                                fprintf(layerFile, "%ld 0 %.5f %.5f %.5f 0 %5f\n", getTimestamp()-layerStartTime, ssx.pos, dir, pos, sse.pos);
+                            break;
+                    }
+                    #endif
+                }
+            }
+            state = v;
+        }
 
 #endif
 
