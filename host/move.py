@@ -901,13 +901,16 @@ class MoveBase(object):
     def leadAxis(self, nAxes=5):
 
         asv = self.absStepsVector()
-    
         maxstep = 0
         maxdim = 0
         for dim in range(nAxes):
             if asv[dim] > maxstep:
                 maxdim = dim
                 maxstep = asv[dim]
+
+        # Use top speed to determin leadAxis if x- and y-axis have the same step amount
+        if maxdim == X_AXIS and asv[X_AXIS] == asv[Y_AXIS] and abs(self.topSpeed.speed()[Y_AXIS]) > abs(self.topSpeed.speed()[X_AXIS]):
+            return Y_AXIS
 
         return maxdim
 
