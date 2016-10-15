@@ -1800,9 +1800,11 @@ class Advance (object):
         tIndex.sort()
         # print "tIndex:", tIndex
 
+        timer100khz = fTimer/500000
         # timer100khz = fTimer/100000
+        # timer100khz = fTimer/75000
         # timer100khz = fTimer/50000
-        timer100khz = fTimer/75000
+        # timer100khz = fTimer/25000
 
         nMerges2 = 0
         i = 0
@@ -1973,22 +1975,12 @@ class Advance (object):
             for dim in range(3):
                 displacement_vector_steps_B[dim] = displacement_vector_steps_raw[dim] - displacement_vector_steps_A[dim]
        
-        # PART B, E
-        # E-distance ist nicht einfach der rest der e-steps, linearer e-anteil muss über
-        # die dauer des linearen anteils (tLinear) berechnet werden.
-        # s = tl * topSpeed[A_AXIS]
-
         if tl:
 
             print "dim E moves %d steps in linear phase" % parentMove.advanceData.linESteps
             displacement_vector_steps_B[A_AXIS] += parentMove.advanceData.linESteps
 
         if td:
-            # assert(0)
-            # s += parentMove.endRampDistance(
-                # topSpeed[A_AXIS],
-                # endSpeed[A_AXIS],
-                # td)
 
             print "dim E moves %d steps while decelerating" % parentMove.advanceData.endESteps
             displacement_vector_steps_B[A_AXIS] += parentMove.advanceData.endESteps
