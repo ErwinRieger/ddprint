@@ -164,7 +164,7 @@ class Advance (object):
 
         self.e_steps_per_mm = PrinterProfile.getStepsPerMM(A_AXIS)
 
-        # Compute minimal speed for every axis
+        # Compute minimal e speed
         maxStepTime = maxTimerValue16 / fTimer
         v = (1.0/self.e_steps_per_mm) / maxStepTime
         self.minESpeed = v * 1.1 # savety margin for rounding errors
@@ -1530,14 +1530,6 @@ class Advance (object):
         assert(topSpeedS > endSpeedS) # XYZ should be decelerating
         assert(abs(topSpeedE) < abs(endSpeedE)) # E should be accelerating
 
-        # abs_displacement_vector_steps = move.absStepsVector()
-
-        # Lead axis in XYZ 
-        leadAxisXYZ = move.leadAxis(3)
-        # leadAxis_steps_XYZ = abs_displacement_vector_steps[leadAxisXYZ]
-
-        move.stepData.setLeadAxisXYZ(leadAxisXYZ)
-
         print "Warning, disabled extrusion adjust!"
 
         """
@@ -1570,10 +1562,7 @@ class Advance (object):
 
         abs_displacement_vector_steps = util.vectorAbs(disp)
 
-        leadAxis_steps_XYZ = abs_displacement_vector_steps[leadAxisXYZ]
-        eStepsToMove = abs_displacement_vector_steps[A_AXIS]
-
-        if not leadAxis_steps_XYZ and not eStepsToMove:
+        if abs_displacement_vector_steps == emptyVector5:
             print "Empty move..."
             print "***** End planCrossedDecelSteps() *****"
             return
@@ -1588,25 +1577,24 @@ class Advance (object):
             move.stepData.dirBits = dirBits
             self.printer.curDirBits = dirBits
 
-        steps_per_mm_XYZ = PrinterProfile.getStepsPerMM(leadAxisXYZ)
-
+        ############################################################################################
         #
-        # Create a list of stepper pulses
+        # Create a list of X-stepper pulses
         #
+        """
+        steps_per_mm_X = PrinterProfile.getStepsPerMM(X_AXIS)
 
-        nominalSpeed_XYZ = abs( topSpeed[leadAxisXYZ] ) # [mm/s]
+        nominalSpeed_X = abs( topSpeed[X_AXIS] ) # [mm/s]
 
-        allowedAccel_XYZ = abs(move.getMaxAllowedAccelVector5(self.maxAxisAcceleration)[leadAxisXYZ])
-        accel_steps_per_square_second_XYZ = allowedAccel_XYZ * steps_per_mm_XYZ
+        allowedAccel_X = abs(move.getMaxAllowedAccelVector5(self.maxAxisAcceleration)[X_AXIS])
+        accel_steps_per_square_second_X = allowedAccel_X * steps_per_mm_X
 
-        v1_XYZ = abs(endSpeed[leadAxisXYZ])                # [mm/s]
+        v1_X = abs(endSpeed[X_AXIS])                # [mm/s]
 
-        print "XYZ: lead, vtop, v1: ", leadAxisXYZ, nominalSpeed_XYZ, v1_XYZ
+        print "X: vtop, v1: ", nominalSpeed_X, v1_X
 
-        # steps_per_second_1_XYZ = steps_per_second_deccel_XYZ = v1_XYZ * steps_per_mm_XYZ
-        # steps_per_second_nominal_XYZ = nominalSpeed_XYZ * steps_per_mm_XYZ
-        steps_per_second_1_XYZ = v1_XYZ * steps_per_mm_XYZ
-        steps_per_second_nominal_XYZ = steps_per_second_deccel_XYZ = nominalSpeed_XYZ * steps_per_mm_XYZ
+        steps_per_second_1_X = v1_X * steps_per_mm_X
+        steps_per_second_nominal_X = steps_per_second_deccel_X = nominalSpeed_X * steps_per_mm_X
 
         #
         # Acceleration variables
@@ -1617,49 +1605,145 @@ class Advance (object):
         # tDecel = 1.0 / steps_per_second_nominal_XYZ
         # tDecel = 0
 
-        tDecel = 1.0 / steps_per_second_nominal_XYZ
-        steps_per_second_deccel_XYZ = steps_per_second_nominal_XYZ - tDecel * accel_steps_per_square_second_XYZ
+        tDecel = 1.0 / steps_per_second_nominal_X
+        steps_per_second_deccel_X = steps_per_second_nominal_X - tDecel * accel_steps_per_square_second_X
 
-        stepNrXYZ = 0
-        xyzClocks = []
+        xClocks = []
+        stepNrX = 0
 
         #
         # Compute ramp down (in reverse), decceleration
         #
-        while steps_per_second_deccel_XYZ > steps_per_second_1_XYZ and stepNrXYZ < leadAxis_steps_XYZ:
+        xStepsToMove = abs_displacement_vector_steps[X_AXIS]
+        while steps_per_second_deccel_X > steps_per_second_1_X and stepNrX < xStepsToMove:
 
-            dt = 1.0 / steps_per_second_deccel_XYZ
-            timerValueXYZ = int(fTimer / steps_per_second_deccel_XYZ)
+            dt = 1.0 / steps_per_second_deccel_X
+            timerValueX = int(fTimer / steps_per_second_deccel_X)
 
-            # print "dt: ", dt*1000000, "[uS]", steps_per_second_deccel_XYZ, "[steps/s], timerValueXYZ: ", timerValueXYZ, ", v: ", steps_per_second_deccel_XYZ/steps_per_mm_XYZ
+            # print "dt: ", dt*1000000, "[uS]", steps_per_second_deccel_X, "[steps/s], timerValueX: ", timerValueX, ", v: ", steps_per_second_deccel_X/steps_per_mm_X
 
-            if timerValueXYZ >= maxTimerValue16:
+            if timerValueX >= maxTimerValue16:
                 break
 
-            # move.stepData.addDeccelPulse(timerValueXYZ)
-            xyzClocks.append(timerValueXYZ)
-            stepNrXYZ += 1
+            xClocks.append(timerValueX)
+
+            stepNrX += 1
 
             tDecel += dt
 
-            steps_per_second_deccel_XYZ = steps_per_second_nominal_XYZ - tDecel * accel_steps_per_square_second_XYZ
+            steps_per_second_deccel_X = steps_per_second_nominal_X - tDecel * accel_steps_per_square_second_X
 
+        nX = xStepsToMove - stepNrX
+        print "nX: ", nX
 
-        nXYZ = leadAxis_steps_XYZ - len(xyzClocks)
-        print "nXYZ: ", nXYZ
+        timerValueX = int(fTimer / steps_per_second_nominal_X)
+        for i in range(nX):
+            xClocks.insert(0, timerValueX)
 
-        timerValueXYZ = int(fTimer / steps_per_second_nominal_XYZ)
-        for i in range(nXYZ):
-            xyzClocks.insert(0, timerValueXYZ)
+        assert(len(xClocks) == xStepsToMove)
+        """
 
-        assert(len(xyzClocks) == leadAxis_steps_XYZ)
+        xStepsToMove = abs_displacement_vector_steps[X_AXIS]
+        xClocks = util.decelRamp(
+                X_AXIS,
+                abs( topSpeed[X_AXIS] ),
+                abs(endSpeed[X_AXIS]),
+                abs(move.getMaxAllowedAccelVector5(self.maxAxisAcceleration)[X_AXIS]),
+                xStepsToMove)
 
         if debugMoves:
-            print "Generated %d/%d XYZ steps" % (len(xyzClocks), leadAxis_steps_XYZ)
+            print "Generated %d/%d X steps" % (len(xClocks), xStepsToMove)
 
+        ############################################################################################
+
+        ############################################################################################
+        #
+        # Create a list of Y-stepper pulses
+        #
+        """
+        yClocks = []
+        yStepsToMove = abs_displacement_vector_steps[Y_AXIS]
+
+        if yStepsToMove:
+
+            steps_per_mm_Y = PrinterProfile.getStepsPerMM(Y_AXIS)
+
+            nominalSpeed_Y = abs( topSpeed[Y_AXIS] ) # [mm/s]
+
+            allowedAccel_Y = abs(move.getMaxAllowedAccelVector5(self.maxAxisAcceleration)[Y_AXIS])
+            accel_steps_per_square_second_Y = allowedAccel_Y * steps_per_mm_Y
+
+            v1_Y = abs(endSpeed[Y_AXIS])                # [mm/s]
+
+            print "Y: vtop, v1: ", nominalSpeed_Y, v1_Y
+
+            steps_per_second_1_Y = v1_Y * steps_per_mm_Y
+            steps_per_second_nominal_Y = steps_per_second_deccel_Y = nominalSpeed_Y * steps_per_mm_Y
+
+            #
+            # Acceleration variables
+            #
+            # tDecel mit der initialen zeitspanne vorbelegen, da wir bereits im
+            # ersten schleifendurchlauf (d.h. ab t=0) eine beschleunigung haben wollen.
+            # tDecel = 1.0 / steps_per_second_1_Y
+            # tDecel = 1.0 / steps_per_second_nominal_Y
+            # tDecel = 0
+
+            tDecel = 1.0 / steps_per_second_nominal_Y
+            steps_per_second_deccel_Y = steps_per_second_nominal_Y - tDecel * accel_steps_per_square_second_Y
+
+            stepNrY = 0
+
+            #
+            # Compute ramp down (in reverse), decceleration
+            #
+            while steps_per_second_deccel_Y > steps_per_second_1_Y and stepNrY < yStepsToMove:
+
+                dt = 1.0 / steps_per_second_deccel_Y
+                timerValueY = int(fTimer / steps_per_second_deccel_Y)
+
+                # print "dt: ", dt*1000000, "[uS]", steps_per_second_deccel_Y, "[steps/s], timerValueY: ", timerValueY, ", v: ", steps_per_second_deccel_Y/steps_per_mm_Y
+
+                if timerValueY >= maxTimerValue16:
+                    break
+
+                yClocks.append(tDecel, timerValueY)
+
+                stepNrY += 1
+
+                tDecel += dt
+
+                steps_per_second_deccel_Y = steps_per_second_nominal_Y - tDecel * accel_steps_per_square_second_Y
+
+
+            nY = leadAxis_steps_Y - stepNrY
+            print "nY: ", nY
+
+            timerValueY = int(fTimer / steps_per_second_nominal_Y)
+            for i in range(nY):
+                yClocks.insert(0, timerValueY)
+
+            assert(len(yClocks) == leadAxis_steps_Y)
+        """
+
+        yStepsToMove = abs_displacement_vector_steps[Y_AXIS]
+        yClocks = util.decelRamp(
+                Y_AXIS,
+                abs( topSpeed[Y_AXIS] ),
+                abs(endSpeed[Y_AXIS]),
+                abs(move.getMaxAllowedAccelVector5(self.maxAxisAcceleration)[Y_AXIS]),
+                yStepsToMove)
+
+        if debugMoves:
+            print "Generated %d/%d Y steps" % (len(yClocks), yStepsToMove)
+
+        ############################################################################################
+
+        ############################################################################################
         #
         # Steps for E acceleration
         #
+        """
         steps_per_mm_E = PrinterProfile.getStepsPerMM(A_AXIS)
 
         nominalSpeedE = abs( endSpeed.eSpeed ) # [mm/s]
@@ -1696,6 +1780,7 @@ class Advance (object):
         # 
         # print steps_per_second_accel, steps_per_second_nominal_E, stepNrE, eStepsToMove
         # while stepNrE < eStepsToMove:
+        eStepsToMove = abs_displacement_vector_steps[A_AXIS]
         while steps_per_second_accel > steps_per_second_0_E and stepNrE < eStepsToMove:
 
             dt = 1.0 / steps_per_second_accel
@@ -1705,7 +1790,8 @@ class Advance (object):
                 break
 
             # move.stepData.addAccelPulse(timerValueE)
-            eSteps.append(timerValueE)
+            eSteps.append(tAccel, timerValueE)
+
             stepNrE += 1
 
             tAccel += dt
@@ -1713,7 +1799,7 @@ class Advance (object):
             # steps_per_second_accel = min(steps_per_second_0_E + tAccel * accel_steps_per_square_second_E, steps_per_second_nominal_E)
             steps_per_second_accel = steps_per_second_nominal_E - tAccel * accel_steps_per_square_second_E
 
-        nE = eStepsToMove - len(eSteps)
+        nE = eStepsToMove - stepNrE
         print "nE: ", nE
 
         timerValueE = int(fTimer / steps_per_second_nominal_E)
@@ -1721,90 +1807,86 @@ class Advance (object):
             eSteps.append(timerValueE)
 
         assert(len(eSteps) == eStepsToMove)
+        """
+
+        eStepsToMove = abs_displacement_vector_steps[A_AXIS]
+        eClocks = util.accelRamp(
+                A_AXIS,
+                abs( topSpeed.eSpeed ),
+                abs( endSpeed.eSpeed ),
+                abs(move.getMaxAllowedAccelVector5(self.maxAxisAcceleration)[A_AXIS]),
+                eStepsToMove)
 
         if debugMoves:
-            print "generated %d/%d E steps in %.3f s" % (len(eSteps), eStepsToMove, tAccel)
+            print "generated %d/%d E steps" % (len(eClocks), eStepsToMove)
 
-        eSteps.reverse()
+        # Hack
+        if (xStepsToMove + yStepsToMove + eStepsToMove) == 1:
+
+            if xStepsToMove:
+                move.stepData.addPulse(xClocks[0][2], [1, 0, 0, 0, 0])
+            elif yStepsToMove:
+                move.stepData.addPulse(yClocks[0][2], [0, 1, 0, 0, 0])
+            else:
+                move.stepData.addPulse(eClocks[0][2], [0, 0, 0, 1, 0])
+
+            if debugMoves:
+                move.pprint("planCrossedDecelSteps:")
+                print "***** End planCrossedDecelSteps() *****"
+
+            return
 
         # print "xyzClocks: ", xyzClocks[:10], "..."
-        # print "eSteps: ", eSteps
+        # print "eClocks: ", eClocks
 
         #
-        # Generate bresenham stepper bits for XYZ part
+        # Merge X, Y and E steps into a single list
         #
-        counters = 3 * [0]
-        xyzSteps = []
-
-        for step in range(leadAxis_steps_XYZ):
-
-            #
-            # Bresenham's, compute which steppers need a pulse
-            #
-            stepPulse = 5 * [0]
-
-            stepPulse[leadAxisXYZ] = 1
-            counters[leadAxisXYZ] += 1
-
-            for a in range(3):
-                if a != leadAxisXYZ and ((float(counters[leadAxisXYZ]) * abs_displacement_vector_steps[a]) / leadAxis_steps_XYZ) > counters[a]:
-                    stepPulse[a] = 1
-                    counters[a] += 1
-
-            # print "step pulse:", stepPulse
-            xyzSteps.append(stepPulse)
-
-        print "counters, move.displacement_vector_steps: ", counters , abs_displacement_vector_steps
-
-        assert( counters == abs_displacement_vector_steps[:3] )
-
-        """
-            # XXX add missing steps to next move!
-            for a in range(3):
-                assert((abs(move.displacement_vector_steps[a]) - counters[a]) == 0)
-                # assert((move.displacement_vector_steps[a] - counters[a]) in [0, 1])
-        """
-
-        #
-        # Merge XYZ and E steps into single list
-        #
-        tDecel = 0
-        tIndex = []
-        tMap = {}
-        for i in range(len(xyzClocks)):
-
-            td = xyzClocks[i]
-            tDecel += td
-            tIndex.append(tDecel)
-            tMap[tDecel] = xyzSteps[i]
-
-        assert(len(tIndex) == leadAxis_steps_XYZ)
 
         # print "tIndex:", tIndex
         # print "tMap:", tMap
 
+        tIndex = []
+        tMap = {}
         nMerges1 = 0
-        tAccel = 0
-        for ta in eSteps:
-            
-            tAccel += ta
-            if tAccel in tIndex:
-                tMap[tAccel][A_AXIS] = 1
+
+        for (t, _, _) in xClocks:
+
+            tIndex.append(t)
+            tMap[t] = [1, 0, 0, 0, 0]
+
+        for (t, _, _) in yClocks:
+
+            if t in tIndex:
+                tMap[t][Y_AXIS] = 1
                 nMerges1 += 1
-                print "Merging inline: ", tAccel, tMap[tAccel]
+                print "Merging inline: ", t, tMap[t]
                 continue
 
-            tIndex.append(tAccel)
-            tMap[tAccel] = None
+            tIndex.append(t)
+            tMap[t] = [0, 1, 0, 0, 0]
+
+        for (t, _, _) in eClocks:
+            
+            if t in tIndex:
+                tMap[t][A_AXIS] = 1
+                nMerges1 += 1
+                print "Merging inline: ", t, tMap[t]
+                continue
+
+            tIndex.append(t)
+            tMap[t] = [0, 0, 0, 1, 0]
 
         tIndex.sort()
         # print "tIndex:", tIndex
 
-        timer100khz = fTimer/500000
+        # timer100khz = fTimer/500000
         # timer100khz = fTimer/100000
         # timer100khz = fTimer/75000
         # timer100khz = fTimer/50000
         # timer100khz = fTimer/25000
+        t100khz = 1 / 100000.0
+        t100khz = 1 / 1000000.0
 
         nMerges2 = 0
         i = 0
@@ -1814,57 +1896,51 @@ class Advance (object):
             ta = tIndex[i]
             tb = tIndex[i+1]
 
-            if (tb - ta) <= timer100khz:
+            if (tb - ta) <= t100khz:
 
                 stepA = tMap[ta]
                 stepB = tMap[tb]
 
-                t = (ta+tb) / 2
+                for bit in range(5):
+                    if stepB[bit]:
+                        assert(not stepA[bit])
+                        stepA[bit] = 1
 
-                assert(stepA == None or stepB == None)
-                
-                if stepA != None:
-                    stepA[A_AXIS] = 1
-                    tMap[t] = stepA
-                elif stepB != None:
-                    stepB[A_AXIS] = 1
-                    tMap[t] = stepB
-                else:
-                    assert(0)
+                print "merging steps:", ta, tb, stepA, stepB
 
-                print "merging steps:", ta, tb, t, stepA, stepB
-
-                del tIndex[i]
-                tIndex[i] = t
+                del tIndex[i+1]
 
                 nMerges2 += 1
 
-                continue # continue with merged step
+                # continue # continue with merged step
 
             i += 1
 
         assert(len(tIndex) == (tIndexLen - nMerges2))
-        assert((leadAxis_steps_XYZ + eStepsToMove) == (len(tIndex) + nMerges1 + nMerges2))
+        assert((xStepsToMove + yStepsToMove + eStepsToMove) == (len(tIndex) + nMerges1 + nMerges2))
 
-        # xxx debug
         for i in range(len(tIndex) - 1):
-            assert((tIndex[i+1] - tIndex[i]) > timer100khz)
-        # xxx end debug
 
-        oneAStep = [0, 0, 0, 1, 0]
-        lastT = 0
-        for t in tIndex:
-
+            t = tIndex[i]
             step = tMap[t]
-            if step == None:
-                step = oneAStep
-            move.stepData.addPulse(t-lastT, step)
-            lastT = t
+
+            dt = tIndex[i+1] - t
+            assert( dt >= t100khz )
+
+            timerValue = fTimer * dt
+
+            move.stepData.addPulse(timerValue, step)
+
+        # Hack, using last timerValue is not exact...
+        t = tIndex[-1]
+        step = tMap[t]
+        move.stepData.addPulse(timerValue, step)
+
+        assert(len(tIndex) == len(move.stepData.pulses))
 
         if debugMoves:
             move.pprint("planCrossedDecelSteps:")
             print "***** End planCrossedDecelSteps() *****"
-
 
     #
     # Single advanceed ramp at start, no linear part
