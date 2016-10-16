@@ -20,7 +20,7 @@
 #*/
 
 import struct, time, math, tty, termios, sys, types, json
-import ddprintconstants, ddhome, ddadvance
+import ddprintconstants, ddhome, ddadvance, pprint
 
 from ddprintcommands import *
 from ddprintstates import *
@@ -1637,10 +1637,93 @@ plot "-" using 1:2 with linespoints title "Target Flowrate", \\
 
 
 ####################################################################################################
+#
+# Create a list of stepper pulses for a acceleration ramp.
+#
+def accelRamp(axis, vstart, vend, a, nSteps):
 
+    dPulses = decelRamp(axis, vend, vstart, a, nSteps)
 
+    dPulses.reverse()
 
+    pulses = []
 
+    tstep = 0
+    for (_, dt, timerValue) in dPulses:
+        pulses.append((tstep, dt, timerValue))
+        tstep += dt
+
+    return pulses
+
+####################################################################################################
+#
+# Create a list of stepper pulses for a deceleration ramp.
+#
+def decelRamp(axis, vstart, vend, a, nSteps):
+
+    assert(vstart >= vend)
+    # assert(nSteps)
+
+    pulses = [] # (tstep, dt, timerValue)
+
+    steps_per_mm = PrinterProfile.getStepsPerMM(axis)
+    sPerStep = 1.0/steps_per_mm
+
+    v = vstart
+    tstep = 0
+    s = sPerStep
+
+    while v > vend and nSteps > 0:
+
+        # Speed after this step
+        vn1 = vAccelPerDist(vstart, -a, s)
+
+        # Time we need for this speed change/this step:
+        dv = v - vn1
+        dt = dv / a
+
+        # Timervalue for this time
+        timerValue = dt * fTimer
+
+        if timerValue > ddprintconstants.maxTimerValue16:
+            print "break on timeroverflow, v after this step:", vn1, s, dt, timerValue
+            break
+
+        # print "v after this step:", vn1, s, dt, timerValue
+
+        pulses.append((tstep, dt, timerValue))
+
+        s += sPerStep
+        v = vn1
+        tstep += dt
+        nSteps -= 1
+
+    # Add missing steps in timeroverflow case
+    if nSteps > 0:
+
+        dt = sPerStep / vstart
+        timerValue = dt * fTimer
+
+        tstep = 0
+        newPulses = []
+        for i in range(nSteps):
+
+            newPulses.append((tstep, dt, timerValue))
+
+            nSteps -= 1
+            tstep += dt
+
+        for p in pulses:
+            newPulses.append((p[0] + tstep, p[1], p[2]))
+
+        # pprint.pprint(newPulses)
+        return newPulses
+
+    assert(nSteps == 0)
+
+    return pulses
+
+####################################################################################################
 
 
 
