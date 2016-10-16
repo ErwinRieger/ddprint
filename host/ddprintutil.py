@@ -1640,9 +1640,9 @@ plot "-" using 1:2 with linespoints title "Target Flowrate", \\
 #
 # Create a list of stepper pulses for a acceleration ramp.
 #
-def accelRamp(axis, vstart, vend, a, nSteps):
+def accelRamp(axis, vstart, vend, a, nSteps, forceFill=False):
 
-    dPulses = decelRamp(axis, vend, vstart, a, nSteps)
+    dPulses = decelRamp(axis, vend, vstart, a, nSteps, forceFill)
 
     dPulses.reverse()
 
@@ -1659,7 +1659,7 @@ def accelRamp(axis, vstart, vend, a, nSteps):
 #
 # Create a list of stepper pulses for a deceleration ramp.
 #
-def decelRamp(axis, vstart, vend, a, nSteps):
+def decelRamp(axis, vstart, vend, a, nSteps, forceFill=False):
 
     assert(vstart >= vend)
     # assert(nSteps)
@@ -1699,7 +1699,7 @@ def decelRamp(axis, vstart, vend, a, nSteps):
         nSteps -= 1
 
     # Add missing steps in timeroverflow case
-    if nSteps > 0:
+    if forceFill and nSteps > 0:
 
         dt = min(sPerStep / vstart, ddprintconstants.maxTimerValue16/fTimer)
         timerValue = min(int(dt * fTimer), ddprintconstants.maxTimerValue16/fTimer)
@@ -1719,7 +1719,8 @@ def decelRamp(axis, vstart, vend, a, nSteps):
         # pprint.pprint(newPulses)
         return newPulses
 
-    assert(nSteps == 0)
+    if forceFill:
+        assert(nSteps == 0)
 
     return pulses
 

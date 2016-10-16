@@ -454,23 +454,27 @@ class StepData:
             print "timervalue %d to high, counter overflow!" % timer
             assert(0)
 
-    def addAccelPulse(self, timer, reverse=False):
+    def addAccelPulse(self, timer):
         self.checkTimerValue(timer, maxTimerValue16)
-        if reverse:
-            self.accelPulses.insert(0, timer)
-        else:
-            self.accelPulses.append(timer)
+        self.accelPulses.append(timer)
+
+    def addAccelPulsees(self, accelPulses):
+
+        for (_, _, timer) in accelPulses:
+            self.addAccelPulse(timer)
 
     def setLinTimer(self, timer):
         self.checkTimerValue(timer, maxTimerValue16)
         self.linearTimer = timer
     
-    def addDeccelPulse(self, timer, reverse=True):
+    def addDeccelPulse(self, timer):
         self.checkTimerValue(timer, maxTimerValue16)
-        if reverse:
-            self.deccelPulses.insert(0, timer)
-        else:
-            self.deccelPulses.append(timer)
+        self.deccelPulses.append(timer)
+
+    def addDecelPulsees(self, decelPulses):
+
+        for (_, _, timer) in decelPulses:
+            self.addDeccelPulse(timer)
 
     def setBresenhamParameters(self, leadAxis, abs_vector_steps):
         self.leadAxis = leadAxis
@@ -567,19 +571,20 @@ class RawStepData:
 
     def __init__(self):
         self.pulses = []
-        self.leadAxisXYZ = None
+        # self.leadAxisXYZ = None
         self.setDirBits = False
         self.dirBits = 0
 
-    def addPulse(self, pulse, t):
-        self.pulses.append((pulse, t))
+    def addPulse(self, timerValue, pulse):
+        assert(timerValue <= maxTimerValue16)
+        self.pulses.append((timerValue, pulse))
 
     def empty(self):
         return not self.pulses
 
     # Used for debugging only
-    def setLeadAxisXYZ(self, leadAxisXYZ):
-        self.leadAxisXYZ = leadAxisXYZ
+    # def setLeadAxisXYZ(self, leadAxisXYZ):
+        # self.leadAxisXYZ = leadAxisXYZ
 
     def __repr__(self):
         return "RawStepData:" + \
@@ -641,7 +646,7 @@ class RawStepData:
 
         d = {
                 "stepType": "raw",
-                "leadAxisXYZ": self.leadAxisXYZ,
+                # "leadAxisXYZ": self.leadAxisXYZ,
                 "pulses": self.pulses,
                 }
 
