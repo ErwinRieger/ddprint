@@ -1683,7 +1683,7 @@ def decelRamp(axis, vstart, vend, a, nSteps):
         dt = dv / a
 
         # Timervalue for this time
-        timerValue = dt * fTimer
+        timerValue = int(dt * fTimer)
 
         if timerValue > ddprintconstants.maxTimerValue16:
             print "break on timeroverflow, v after this step:", vn1, s, dt, timerValue
@@ -1701,8 +1701,8 @@ def decelRamp(axis, vstart, vend, a, nSteps):
     # Add missing steps in timeroverflow case
     if nSteps > 0:
 
-        dt = sPerStep / vstart
-        timerValue = dt * fTimer
+        dt = min(sPerStep / vstart, ddprintconstants.maxTimerValue16/fTimer)
+        timerValue = min(int(dt * fTimer), ddprintconstants.maxTimerValue16/fTimer)
 
         tstep = 0
         newPulses = []
