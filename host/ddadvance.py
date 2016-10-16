@@ -27,7 +27,7 @@ from ddconfig import *
 from ddprofile import PrinterProfile, MatProfile # , NozzleProfile
 
 import ddprintutil as util
-import math
+import math, collections
 
 #####################################################################
 #
@@ -1819,6 +1819,85 @@ class Advance (object):
 
         if debugMoves:
             print "generated %d/%d E steps" % (len(eClocks), eStepsToMove)
+
+        ###########################################################################
+        t100khz = 1 / 100000.0
+        t100khz = 1 / 1000000.0
+
+        print "duration of a 100khz pulse: %.6f" % t100khz
+
+        steps100k = collections.defaultdict(list)
+        nMerges = 0
+        
+        tv = None
+        for (t, dt, tv) in xClocks:
+
+            i100 = int(t / t100khz)
+            # print "x-step at: ", t, i100
+
+            assert(steps100k[i100] == [])
+            steps100k[i100] = [1, 0, 0, 0, 0]
+
+        lastTimer = tv
+        print "last dt:", lastTimer
+
+        for (t, dt, tv) in yClocks:
+
+            i100 = int(t / t100khz)
+            # print "y-step at: ", t, i100
+
+            if steps100k[i100] == []:
+                steps100k[i100] = [0, 1, 0, 0, 0]
+            else:
+                steps100k[i100][Y_AXIS] = 1
+                nMerges += 1
+
+        lastTimer = max(lastTimer, tv)
+        print "last dt:", lastTimer
+
+        for (t, dt, tv) in eClocks:
+
+            i100 = int(t / t100khz)
+            # print "e-step at: ", t, i100
+
+            if steps100k[i100] == []:
+                steps100k[i100] = [0, 0, 0, 1, 0]
+            else:
+                steps100k[i100][A_AXIS] = 1
+                nMerges += 1
+
+        lastTimer = max(lastTimer, tv)
+        print "last dt:", lastTimer
+
+        steps100kIndices = steps100k.keys()
+        steps100kIndices.sort()
+
+        assert((xStepsToMove + yStepsToMove + eStepsToMove) == (len(steps100kIndices) + nMerges))
+
+        for i in range(len(steps100kIndices) - 1):
+
+            step100k = steps100kIndices[i]
+            dt = (steps100kIndices[i+1] - step100k) * t100khz
+
+            timerValue = int(fTimer * dt)
+            stepBits = steps100k[step100k]
+
+            # print "gen step ", step100k, stepBits, dt, timerValue
+
+            move.stepData.addPulse(timerValue, stepBits)
+
+
+        move.stepData.addPulse(lastTimer, steps100k[steps100kIndices[-1]])
+
+        assert(len(steps100kIndices) == len(move.stepData.pulses))
+
+        if debugMoves:
+            move.pprint("planCrossedDecelSteps:")
+            print "***** End planCrossedDecelSteps() *****"
+
+        return 
+
+        ###########################################################################
 
         # Hack
         if (xStepsToMove + yStepsToMove + eStepsToMove) == 1:
