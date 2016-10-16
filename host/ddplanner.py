@@ -874,190 +874,87 @@ class Planner (object):
         # Create a list of stepper pulses
         #
         nominalSpeed = abs( move.topSpeed.trueSpeed().vv()[leadAxis] ) # [mm/s]
-        reachedSpeedFr = move.topSpeed.trueSpeed().feedrate
 
-        accel = move.getMaxAllowedAccelVectorNoAdv5()[leadAxis]
-        accel_steps_per_square_second = accel * steps_per_mm
+        allowedAccel = move.getMaxAllowedAccelVectorNoAdv5()[leadAxis]
 
-        v0 = abs(move.startSpeed.trueSpeed().vv()[leadAxis])                # [mm/s]
+        v0 = abs(move.startSpeed.speed()[leadAxis])                # [mm/s]
 
-        v1 = abs(move.endSpeed.trueSpeed().vv()[leadAxis])                # [mm/s]
+        nominalSpeed = abs( move.topSpeed.speed()[leadAxis] ) # [mm/s]
 
-        steps_per_second_0 = steps_per_second_accel = v0 * steps_per_mm
-        steps_per_second_1 = steps_per_second_deccel = v1 * steps_per_mm
-        steps_per_second_nominal = nominalSpeed * steps_per_mm
+        v1 = abs(move.endSpeed.speed()[leadAxis])                # [mm/s]
 
-        #
-        # Acceleration variables
-        #
-        # tAccel = 0  # [s], sum of all acceeration steptimes
-        # tAccel mit der initialen zeitspanne vorbelegen, da wir bereits im
-        # ersten schleifendurchlauf (d.h. ab t=0) eine beschleunigung haben wollen.
-        tAccel = 1.0 / steps_per_second_0  # [s], sum of all acceeration steptimes
-        tDeccel = 1.0 / steps_per_second_1
+        nAccel = 0
+        if move.accelTime():
 
-        stepNr = 0
+            accelClocks = util.accelRamp(
+                leadAxis,
+                v0,
+                nominalSpeed,
+                allowedAccel,
+                leadAxis_steps) # maximum number of steps
 
-        # if debugPlot:
-            # accelPlotData = []
-            # deccelPlotData = []
+            move.stepData.addAccelPulsees(accelClocks)
 
-        # if not circaf(move.getStartFr(), reachedSpeedFr, 0.1) and not circaf(move.getEndFr(), reachedSpeedFr, 0.1):
-        if move.accelTime() and move.decelTime():
+            nAccel = len(accelClocks)
 
-            #
-            # Acceleration ramp on both sides.
-            #
-            # Ramp up both sides in parallel to not exeed available steps
-            #
+        nDecel = 0
+        if move.decelTime():
 
-            done = False
-            while not done and stepNr < leadAxis_steps:
+            decelClocks = util.decelRamp(
+                leadAxis,
+                nominalSpeed,
+                v1,
+                allowedAccel,
+                leadAxis_steps) # maximum number of steps
 
-                done = True
+            move.stepData.addDecelPulsees(decelClocks)
 
-                # 
-                # Compute acceleration timer values
-                # 
-                if steps_per_second_accel < steps_per_second_nominal:
+            nDecel = len(decelClocks)
 
-                    #
-                    # Compute timer value
-                    #
-                    steps_per_second_accel = min(steps_per_second_0 + tAccel * accel_steps_per_square_second, steps_per_second_nominal)
-
-                    dt = 1.0 / steps_per_second_accel
-                    timerValue = int(fTimer / steps_per_second_accel)
-
-                    # print "dt: ", dt*1000000, "[uS]", steps_per_second_accel, "[steps/s], timerValue: ", timerValue
-
-                    # if debugPlot:
-                        # if move.eOnly:
-                            # accelPlotData.append((steps_per_second_accel/steps_per_mm, 2, dt))
-                        # else:
-                            # accelPlotData.append((steps_per_second_accel/steps_per_mm, 1, dt))
-
-                    tAccel += dt
-
-                    move.stepData.addAccelPulse(timerValue)
-                    stepNr += 1
-                    done = False
-
-                if stepNr == leadAxis_steps:
-                    break
-
-                #
-                # Compute ramp down (in reverse), decceleration
-                #
-                if steps_per_second_deccel < steps_per_second_nominal:
-
-                    #
-                    # Compute timer value
-                    #
-                    steps_per_second_deccel = min(steps_per_second_1 + tDeccel * accel_steps_per_square_second, steps_per_second_nominal)
-
-                    dt = 1.0 / steps_per_second_deccel
-                    timerValue = int(fTimer / steps_per_second_deccel)
-
-                    # print "dt: ", dt*1000000, "[uS]", steps_per_second_deccel, "[steps/s], timerValue: ", timerValue, ", v: ", steps_per_second_deccel/steps_per_mm
-
-                    # if debugPlot:
-                        # if move.eOnly:
-                            # deccelPlotData.append((steps_per_second_deccel/steps_per_mm, 2, dt))
-                        # else:
-                            # deccelPlotData.append((steps_per_second_deccel/steps_per_mm, 1, dt))
-
-                    tDeccel += dt
-
-                    move.stepData.addDeccelPulse(timerValue)
-                    stepNr += 1
-                    done = False
-
-        elif move.accelTime():
-
-            #
-            # Acceleration only
-            #
-
-            # 
-            # Compute acceleration timer values
-            # 
-            while steps_per_second_accel < steps_per_second_nominal and stepNr < leadAxis_steps:
-
-                #
-                # Compute timer value
-                #
-                steps_per_second_accel = min(steps_per_second_0 + tAccel * accel_steps_per_square_second, steps_per_second_nominal)
-
-                dt = 1.0 / steps_per_second_accel
-                timerValue = int(fTimer / steps_per_second_accel)
-
-                # print "dt: ", dt*1000000, "[uS]", steps_per_second_accel, "[steps/s], timerValue: ", timerValue
-
-                if debugPlot:
-                    if move.eOnly:
-                        accelPlotData.append((steps_per_second_accel/steps_per_mm, 2, dt))
-                    else:
-                        accelPlotData.append((steps_per_second_accel/steps_per_mm, 1, dt))
-
-                tAccel += dt
-
-                move.stepData.addAccelPulse(timerValue)
-                stepNr += 1
-
-        else:
-
-            #
-            # Decceleration only
-            #
-
-            #
-            # Compute ramp down (in reverse), decceleration
-            #
-            while steps_per_second_deccel < steps_per_second_nominal and stepNr < leadAxis_steps:
-
-                #
-                # Compute timer value
-                #
-                steps_per_second_deccel = min(steps_per_second_1 + tDeccel * accel_steps_per_square_second, steps_per_second_nominal)
-
-                dt = 1.0 / steps_per_second_deccel
-                timerValue = int(fTimer / steps_per_second_deccel)
-
-                # print "dt: ", dt*1000000, "[uS]", steps_per_second_deccel, "[steps/s], timerValue: ", timerValue, ", v: ", steps_per_second_deccel/steps_per_mm
-
-                if debugPlot:
-                    if move.eOnly:
-                        deccelPlotData.append((steps_per_second_deccel/steps_per_mm, 2, dt))
-                    else:
-                        deccelPlotData.append((steps_per_second_deccel/steps_per_mm, 1, dt))
-
-                tDeccel += dt
-
-                move.stepData.addDeccelPulse(timerValue)
-                stepNr += 1
 
         #
         # Linear phase
         #
-        timerValue = fTimer / steps_per_second_nominal
-        move.stepData.setLinTimer(timerValue)
+        nLin = leadAxis_steps - (nAccel + nDecel)
+        print "# linear steps:", nLin
 
-        # if debugPlot:
-            # self.plotfile.write("# Acceleration:\n")
-            # for (speed, color, dt) in accelPlotData:
-                # self.plotfile.write("%f %f %d\n" % (self.plottime, speed, color))
-                # self.plottime += dt
+        if nLin > 0:
 
-            # self.plotfile.write("# Linear top:\n")
-            # self.plotfile.write("%f %f 0\n" % (self.plottime, steps_per_second_nominal/steps_per_mm))
-            # self.plottime += timerValue / fTimer
+            steps_per_second_nominal = nominalSpeed * steps_per_mm
+            timerValue = fTimer / steps_per_second_nominal
+            move.stepData.setLinTimer(timerValue)
 
-            # self.plotfile.write("# Decceleration:\n")
-            # deccelPlotData.reverse()
-            # for (speed, color, dt) in deccelPlotData:
-                # self.plotfile.write("%f %f %d\n" % (self.plottime, speed, color))
-                # self.plottime += dt
+        else:
+
+            if nLin < 0:
+
+                if nAccel and nDecel:
+
+                    # Überschüssige steps im verhältnis von nAccel zu nDecel abschneiden
+                    cd = int(-nLin / ((float(nAccel) / nDecel) + 1))
+                    ca = -nLin - cd
+
+                    print "ca: ", ca, "cd:", cd
+                    
+                    if ca:
+                        del move.stepData.accelPulses[:ca]
+
+                    if cd:
+                        del move.stepData.accelPulses[-cd:]
+
+                    assert(len(move.stepData.accelPulses)+len(move.stepData.deccelPulses) == leadAxis_steps)
+
+                elif nAccel:
+                    del move.stepData.accelPulses[:-nLin]
+                    assert(len(move.stepData.accelPulses) == leadAxis_steps)
+                else:
+                    del move.stepData.deccelPulses[nLin:]
+                    assert(len(move.stepData.deccelPulses) == leadAxis_steps)
+
+            move.stepData.setLinTimer(0xffff)
+
+        # timerValue = fTimer / steps_per_second_nominal
+        # move.stepData.setLinTimer(timerValue)
 
         if debugMoves:
             print "# of steps for move: ", leadAxis_steps

@@ -1376,85 +1376,45 @@ class Advance (object):
             v1 = abs(move.endSpeed.speed().eSpeed)
 
         allowedAccel = abs(move.getMaxAllowedAccelVector5(self.maxAxisAcceleration)[leadAxis])
-        accel_steps_per_square_second = allowedAccel * steps_per_mm
-
         print "lead, v0, v1: ", leadAxis, v0, v1
-
-        steps_per_second_0 = v0 * steps_per_mm
-        steps_per_second_1 = v1 * steps_per_mm
-        steps_per_second_nominal = nominalSpeed * steps_per_mm
-
-        #
-        # Acceleration variables
-        #
-        # tAccel mit der initialen zeitspanne vorbelegen, da wir bereits im
-        # ersten schleifendurchlauf (d.h. ab t=0) eine beschleunigung haben wollen.
-        # tAccel = 1.0 / steps_per_second_0  # [s], sum of all acceeration steptimes
-        # tDeccel = 1.0 / steps_per_second_1
-
-        tAccel = 1.0 / steps_per_second_nominal  # [s], sum of all acceeration steptimes
-        steps_per_second_accel = steps_per_second_nominal - tAccel * accel_steps_per_square_second
-
-        tDeccel = 1.0 / steps_per_second_nominal
-        steps_per_second_deccel = steps_per_second_nominal - tDeccel * accel_steps_per_square_second
-
-        # stepNr = 0
 
         nAccel = 0
         if move.accelTime():
 
-            # 
-            # Compute ramp down
-            # 
-            while steps_per_second_accel > steps_per_second_0:   # steps_per_second_nominal and stepNr < leadAxis_steps:
+            accelClocks = util.accelRamp(
+                leadAxis,
+                v0,
+                nominalSpeed,
+                allowedAccel,
+                leadAxis_steps) # maximum number of steps
 
-                dt = 1.0 / steps_per_second_accel
-                timerValue = int(fTimer / steps_per_second_accel)
+            move.stepData.addAccelPulsees(accelClocks)
 
-                # print "dt: ", dt*1000000, "[uS]", steps_per_second_accel, "[steps/s], timerValue: ", timerValue
-
-                if timerValue >= maxTimerValue16:
-                    break
-
-                move.stepData.addAccelPulse(timerValue, True)
-                nAccel += 1
-
-                tAccel += dt
-
-                steps_per_second_accel = steps_per_second_nominal - tAccel * accel_steps_per_square_second
+            nAccel = len(accelClocks)
 
         nDecel = 0
         if move.decelTime():
 
-            #
-            # Compute ramp down (in reverse), decceleration
-            #
-            while steps_per_second_deccel > steps_per_second_1: # < steps_per_second_nominal and stepNr < leadAxis_steps:
+            decelClocks = util.decelRamp(
+                leadAxis,
+                nominalSpeed,
+                v1,
+                allowedAccel,
+                leadAxis_steps) # maximum number of steps
 
-                dt = 1.0 / steps_per_second_deccel
-                timerValue = int(fTimer / steps_per_second_deccel)
+            move.stepData.addDecelPulsees(decelClocks)
 
-                # print "dt: ", dt*1000000, "[uS]", steps_per_second_deccel, "[steps/s], timerValue: ", timerValue, ", v: ", steps_per_second_deccel/steps_per_mm
-
-                if timerValue >= maxTimerValue16:
-                    break
-
-                move.stepData.addDeccelPulse(timerValue, False)
-                nDecel += 1
-
-                tDeccel += dt
-
-                steps_per_second_deccel = steps_per_second_nominal - tDeccel * accel_steps_per_square_second
+            nDecel = len(decelClocks)
 
         #
         # Linear phase
         #
         nLin = leadAxis_steps - (nAccel + nDecel)
-
         print "# linear steps:", nLin
 
         if nLin > 0:
 
+            steps_per_second_nominal = nominalSpeed * steps_per_mm
             timerValue = fTimer / steps_per_second_nominal
             move.stepData.setLinTimer(timerValue)
 
@@ -1649,7 +1609,8 @@ class Advance (object):
                 abs( topSpeed[X_AXIS] ),
                 abs(endSpeed[X_AXIS]),
                 abs(move.getMaxAllowedAccelVector5(self.maxAxisAcceleration)[X_AXIS]),
-                xStepsToMove)
+                xStepsToMove,
+                forceFill=True)
 
         if debugMoves:
             print "Generated %d/%d X steps" % (len(xClocks), xStepsToMove)
@@ -1732,7 +1693,8 @@ class Advance (object):
                 abs( topSpeed[Y_AXIS] ),
                 abs(endSpeed[Y_AXIS]),
                 abs(move.getMaxAllowedAccelVector5(self.maxAxisAcceleration)[Y_AXIS]),
-                yStepsToMove)
+                yStepsToMove,
+                forceFill=True)
 
         if debugMoves:
             print "Generated %d/%d Y steps" % (len(yClocks), yStepsToMove)
@@ -1815,7 +1777,8 @@ class Advance (object):
                 abs( topSpeed.eSpeed ),
                 abs( endSpeed.eSpeed ),
                 abs(move.getMaxAllowedAccelVector5(self.maxAxisAcceleration)[A_AXIS]),
-                eStepsToMove)
+                eStepsToMove,
+                forceFill=True)
 
         if debugMoves:
             print "generated %d/%d E steps" % (len(eClocks), eStepsToMove)
