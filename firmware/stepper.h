@@ -581,13 +581,13 @@ inline void st_step_motor_es(uint8_t stepBits, uint8_t dirbits) {
                             break;
                         default:
                             massert(0);
+                    }
+                }
+                else {
+                    // Empty buffer, nothing to step
+                    OCR1A=2000; // 1kHz.
                 }
             }
-            else {
-                // Empty buffer, nothing to step
-                OCR1A=2000; // 1kHz.
-            }
-        }
 
         FWINLINE void runHomingSteps() {
 
