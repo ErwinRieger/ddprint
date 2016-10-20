@@ -50,6 +50,27 @@ unsigned long long getTimestamp();
 extern FILE *layerFile;
 extern int layerNum;
 extern long long layerStartTime;
+
+class ExpoFilter {
+
+    float weight;
+    float current;
+
+  public:
+
+    ExpoFilter(float w) {
+        weight = w;
+        current = 0.0;
+    }
+
+    float addValue(float v) {
+
+        current = (weight * v + (1.0 - weight) * current);
+        return current;
+    }
+
+    void reset() { current = 0.0; }
+};
 #endif
 
 template <typename MOVE>
@@ -64,14 +85,18 @@ class StepperSim {
         int axis;
         bool state;
         bool enabled;
+        double lastStepX, lastStepY, lastStepE;
 
-        StepperSim(int ax, float initialPos=0): enabled(0), pos(initialPos), state(false) {
+        ExpoFilter avgX, avgY, avgE;
+
+        StepperSim(int ax, float initialPos=0): enabled(0), pos(initialPos), state(false),
+            avgX(ExpoFilter(0.30)), avgY(ExpoFilter(0.30)), avgE(ExpoFilter(0.30)) {
+
             axis = ax;
         }
         void enable(bool v) { enabled = v; }
         void setPin(uint8_t v);
         void setDir(uint8_t v) {
-
             if (v == st_get_invert_dir<MOVE>()) {
                 dir = -1.0 / axis_steps_per_mm<MOVE>();
             }
@@ -90,6 +115,8 @@ extern StepperSim< YMove > ssy;
 extern StepperSim< ZMove > ssz;
 
 extern StepperSim< EMove > sse;
+
+extern double tTimer1A;
 
 template <typename MOVE>
 void StepperSim<MOVE>::setPin(uint8_t v) {
@@ -110,28 +137,67 @@ void StepperSim<MOVE>::setPin(uint8_t v) {
                                 fclose(layerFile);
                                 layerFile = NULL;
                             }
+                            lastStepX = lastStepY = lastStepE = tTimer1A;
                             break;
                         case E_AXIS:
                             // Open layer step file if not open
                             if (! layerFile) {
                                 char fn[64];
                                 sprintf(fn, "layer_%03d.steps", layerNum++);
-                                printf("opening layerfile...\n");
+                                printf("opening layerfile %s...\n", fn);
                                 assert((layerFile = fopen(fn, "w")) != NULL);
-                                layerStartTime = getTimestamp();
+                                // layerStartTime = getTimestamp();
+                                // lastStepX = lastStepY = lastStepE = tTimer1A;
                             }
-                            fprintf(layerFile, "%ld 0 %.5f 0 %.5f %.5f %5f\n", getTimestamp()-layerStartTime, ssx.pos, ssy.pos, dir, pos);
+                            {
+                                fprintf(layerFile, "%15.10f", tTimer1A);
+                                fprintf(layerFile, " %8s %16s", "?", "?");
+                                fprintf(layerFile, " %8s %16s", "?", "?");
+                                fprintf(layerFile, " % 8.5f % 16.10f", dir, pos);
+                                fprintf(layerFile, " %9s", "?");
+                                fprintf(layerFile, " %9s", "?");
+                                fprintf(layerFile, " % 9.5f", avgE.addValue(dir/(tTimer1A-lastStepE)));
+                                fprintf(layerFile, "\n");
+                            }
+
+                            lastStepE = tTimer1A;
                             break;
                         case X_AXIS:
-                            if (layerFile)
-                                fprintf(layerFile, "%ld %.5f %.5f 0 %.5f 0 %5f\n", getTimestamp()-layerStartTime, dir, pos, ssy.pos, sse.pos);
+                            if (layerFile) {
+
+                                fprintf(layerFile, "%15.10f", tTimer1A);
+                                fprintf(layerFile, " % 8.5f % 16.10f", dir, pos);
+                                fprintf(layerFile, " %8s %16s", "?", "?");
+                                fprintf(layerFile, " %8s %16s", "?", "?");
+                                fprintf(layerFile, " % 9.5f", avgX.addValue(dir/(tTimer1A-lastStepX)));
+                                fprintf(layerFile, " %9s", "?");
+                                fprintf(layerFile, " %9s", "?");
+                                fprintf(layerFile, "\n");
+                            }
+
+                            lastStepX = tTimer1A;
                             break;
                         case Y_AXIS:
-                            if (layerFile)
-                                fprintf(layerFile, "%ld 0 %.5f %.5f %.5f 0 %5f\n", getTimestamp()-layerStartTime, ssx.pos, dir, pos, sse.pos);
+                            if (layerFile) {
+
+                                fprintf(layerFile, "%15.10f", tTimer1A);
+                                fprintf(layerFile, " %8s %16s", "?", "?");
+                                fprintf(layerFile, " % 8.5f % 16.10f", dir, pos);
+                                fprintf(layerFile, " %8s %16s", "?", "?");
+                                fprintf(layerFile, " %9s", "?");
+                                fprintf(layerFile, " % 9.5f", avgY.addValue(dir/(tTimer1A-lastStepY)));
+                                fprintf(layerFile, " %9s", "?");
+                                fprintf(layerFile, "\n");
+
+                                // printf("Y: %15.10f %5d %15.10f\n", tTimer1A/2000000.0, tTimer1A-lastStep, dir/(tTimer1A-lastStep));
+
+                            }
+
+                            lastStepY = tTimer1A;
                             break;
                     }
                     #endif
+
                 }
             }
             state = v;

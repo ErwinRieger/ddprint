@@ -91,6 +91,7 @@ int heaterADC = 250;
 bool bedHeaterOn = false;
 int bedADC = 250;
 
+double tTimer1A = 0;
 
 #if ! defined(PROFILING)
 
@@ -426,8 +427,11 @@ void *isrThread(void * data) {
             unsigned long moveStart = getTimestamp();
              
             // Stepper interrupt
-            if (TIMSK1 & (1<<OCIE1A))
+            if (TIMSK1 & (1<<OCIE1A)) {
+                tTimer1A += OCR1A / 2000000.0;
+                // printf("timer1: %df, OCR1A: %d\n", tTimer1A, OCR1A);
                 ISRTIMER1_COMPA_vect();
+            }
 
             if (TIMSK1 & (1<<OCIE1B))
                 ISRTIMER1_COMPB_vect();
@@ -739,10 +743,10 @@ void analogWrite(int pin, uint8_t m) {
 
 int TIMSK1 = 0;
 // int TIMSK3 = 0;
-int OCR1A = 0;
-int OCR1B = 0;
-int OCR3A = 0;
-int OCR0A = 0;
+unsigned short OCR1A = 0xffff;
+unsigned short OCR1B = 0;
+unsigned short OCR3A = 0;
+unsigned short OCR0A = 0;
 int TCNT1 = 1;
 int TCNT3 = 1;
 int TCCR1B = 1;
