@@ -24,16 +24,17 @@ plt.grid(True)
 # x.add_collection(lc)
 
 t = 0.0
-te = 0.0
 
-acolors = ["gx", "gv", "g,", "g*"]
-lcolors = ["bx", "bv", "b,", "b*"]
-dcolors = ["rx", "rv", "r,", "r*"]
+acolors = ["gx", "gv", "g>", "g*"]
+lcolors = ["bx", "bv", "b>", "b*"]
+dcolors = ["rx", "rv", "r>", "r*"]
 
 edirection = 1
 
 freq = [
-        -1.0, # xyz
+        -1.0, # x
+        -1.0, # y
+        -1.0, # z
         -1.0  # E
         ]
 
@@ -43,14 +44,9 @@ def plotFreq(axis, ax, t, f, color, force = False):
 
     # assert(f > 50)
 
-    if axis <= 2:
-        axis = 0
-    else:
-        axis = 1
-
     if f != freq[axis] or force:
 
-        if axis == 1 and edirection < 1:
+        if axis == 3 and edirection < 1:
             ax.plot(t, -f, color)
         else:
             ax.plot(t, f, color)
@@ -68,14 +64,27 @@ for i in range(len(plot.moves)):
 
     if move["stepType"] == "raw":
 
-        times = [t, t]
-        # te = t
+        times = [t, t, t, t, t]
 
         for (timer, steps) in move["pulses"]:
 
-            tstep = timer / fTimer
+            print steps, timer
+            for i in range(5):
+                if steps[i]:
 
+                    dt = t - times[i]
+                    if dt:
+                        f = 1.0 / dt
+                        print "f:", f
+                        plotFreq(i, ax, t, f, dcolors[i])
+
+                    times [i] = t
+
+            tstep = timer / fTimer
             t += tstep
+
+            """
+            assert(0)
 
             if steps[move["leadAxisXYZ"]]:
         
@@ -89,7 +98,8 @@ for i in range(len(plot.moves)):
                 f = 1.0 / (t - times[1])
                 times[1] = t
                 # print "f:", f
-                plotFreq(3, ax, t, f, "mo")
+                plotFreq(3, ax, t, f, dcolors[3])
+            """
 
     else:
 
@@ -103,6 +113,10 @@ for i in range(len(plot.moves)):
         if move["linearSteps"]:
             tstep = move["linearTimer"] / fTimer
             f = 1.0 / tstep
+   
+            # print "timer,f: ", move["linearTimer"] , f
+            # assert(f > 250)
+
             plotFreq(move["leadAxis"], ax, t, f, lcolors[move["leadAxis"]], force = True)
 
             # for i in range(move["linearSteps"]):
