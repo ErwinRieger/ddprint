@@ -187,7 +187,7 @@ class Advance (object):
         # Running sum of move esteps, for debugging of planSteps()
         self.moveEsteps = 0.0
 
-        # Sum of all nominal e acceleration ramps
+        # Sum of all nominal e accel-/ deceleration ramps [mm]
         self.eRampSum = 0.0
 
     def planPath(self, path):
@@ -352,7 +352,7 @@ class Advance (object):
             newPath += newMoves
 
         print "Path advSum: ", self.advSum
-        print "Path eRampSum: ", self.eRampSum
+        print "Path eRampSum: ", self.eRampSum, len(newPath)
         print "Path skippedAdvance: ", self.skippedAdvance
         print "Path skippedSimpleSteps: ", self.skippedSimpleSteps
 
@@ -611,7 +611,6 @@ class Advance (object):
 
         move.state = 2
 
-        # allowedAccel = allowedDeccel = move.getMaxAllowedAccel5(self.maxAxisAcceleration)
         allowedAccel3 = util.vectorLength(move.getMaxAllowedAccelVector5(self.maxAxisAcceleration)[:3])
         av = move.getMaxAllowedAccelVector5(self.maxAxisAcceleration)
         print "allowed accel: ", av, allowedAccel3, util.vectorLength(av)
@@ -887,16 +886,6 @@ class Advance (object):
 
                 continue
 
-            """
-            ta = move.accelTime()
-            tl = move.linearTime()
-            td = move.decelTime()
-
-            startSpeed = move.startSpeed.speed()
-            topSpeed = move.topSpeed.speed()
-            endSpeed = move.endSpeed.speed()
-            """
-
             if baseMove.advanceData.accelGroup:
 
                 print "accel group: ", baseMove.moveNumber, baseMove.advanceData
@@ -955,27 +944,6 @@ class Advance (object):
                     baseMove.advanceData.startESteps = esteps
                     baseMove.advanceData.advStepSum += esteps
                     self.skippedAdvance += baseMove.advanceData.sAccelSum
-
-                """
-                advMove = baseMove.advanceData.accelGroup[-1]
-                tl = advMove.linearTime()
-                if tl:
-
-                    assert(not advMove.advanceData.linESteps)
-
-                    # E-steps in linear phase
-                    advMove.pprint("planAdvanceGroup linear phase:")
-
-                    # E-distance ist nicht einfach der rest der e-steps, linearer e-anteil muss über
-                    # die dauer des linearen anteils (tLinear) berechnet werden.
-                    sl = tl * advMove.topSpeed.speed().eSpeed #
-                    # esteps = int(sl * self.e_steps_per_mm)
-                    esteps = sl * self.e_steps_per_mm
-                    print "dim E moves %.3f mm in linear phase -> %d steps" % (sl, esteps)
-
-                    advMove.advanceData.linESteps = esteps
-                    advMove.advanceData.advStepSum += esteps
-                """
 
                 self.advSum += baseMove.advanceData.sAccelSum
 
@@ -1099,61 +1067,10 @@ class Advance (object):
                         advMove.advanceData.advStepSum += esteps
                         self.skippedAdvance += advMove.advanceData.sDecel
 
-                """
-                advMove = baseMove.advanceData.decelGroup[0]
-                tl = advMove.linearTime()
-                if tl and not advMove.advanceData.linESteps:
-
-                    # E-steps in linear phase
-                    advMove.pprint("planAdvanceGroup linear phase:")
-
-                    # E-distance ist nicht einfach der rest der e-steps, linearer e-anteil muss über
-                    # die dauer des linearen anteils (tLinear) berechnet werden.
-                    sl = tl * advMove.topSpeed.speed().eSpeed
-                    # esteps = int(sl * self.e_steps_per_mm)
-                    esteps = sl * self.e_steps_per_mm
-                    print "dim E moves %.3f mm in linear phase -> %d steps" % (sl, esteps)
-
-                    advMove.advanceData.linESteps = esteps
-                    advMove.advanceData.advStepSum += esteps
-                """
-
                 self.advSum += baseMove.advanceData.sDecelSum
 
             print "move %d advSum: " % baseMove.moveNumber, self.advSum
             print "skippedAdvance: ", self.skippedAdvance
-
-            """
-            # Split move into up to 5 sub moves
-            nsub = 1
-            if baseMove.advanceData.hasStartAdvance():
-
-                nsub +=1
-                baseMove.advanceData.startSplits += 1
-
-                if baseMove.advanceData.startSignChange():
-                    nsub +=1
-                    baseMove.advanceData.startSplits += 1
-                    assert(0)
-
-            if baseMove.advanceData.hasEndAdvance():
-
-                nsub +=1
-                baseMove.advanceData.endSplits += 1
-
-                if baseMove.advanceData.endSignChange():
-                    nsub +=1
-                    baseMove.advanceData.endSplits += 1
-    
-            if nsub > 1:
-                print "# movesplits:", nsub
-
-            if baseMove.advanceData.hasStartAdvance():
-                print "Adv: adjusted E startspeed: %f -> %f" % (baseMove.startSpeed.speed().eSpeed, baseMove.advanceData.startEFeedrate())
-
-            if baseMove.advanceData.hasEndAdvance():
-                print "Adv: adjusted E   endspeed: %f -> %f" % (baseMove.endSpeed.speed().eSpeed, baseMove.advanceData.endEFeedrate())
-            """
 
             if debugMoves:
                 print 
@@ -1167,36 +1084,13 @@ class Advance (object):
 
         if (move.advanceData.startSplits + move.advanceData.endSplits) == 0:
 
-            # ta = move.accelTime()
-            # td = move.decelTime()
-
             esteps = move.advanceData.estepSum()
             if esteps:
                 print "move.esteps: ", move.eSteps, ", esteps:", esteps, move.eSteps-esteps
-                # Move 'skipped' advance, die berechneten steps werden von planStepsSimple() nicht
-                # benutzt. Aber sie können für debug-zwecke verwendet werden:
-                # assert(util.circaf(esteps, move.eSteps, 0.001))
-
-            # assert(not esteps)
-
-            # if ta or td:
-                # xxx hack
-                # print "move.esteps: ", move.eSteps, ", esteps:", esteps, move.eSteps-esteps
-                # assert(move.eSteps == esteps)
-                # move.eSteps = esteps
 
             # Single move with simple ramps
-            # xxx use plantravelsteps here
+            # xxx can we use plantravelsteps here
             self.planStepsSimple(move)
-
-            # Sum up esteps for debugging
-            # if esteps:
-
-                # # Debug, prüfung ob alle in planAdvance() berechneten e-steps in planSteps() 
-                # # verwendet werden. Summe ist im idealfall 0, kann aber aufgrund von rundungsfehlern
-                # # auch ungleich null sein.
-                # print "estep move.sum: ", move.advanceData.advStepSum
-                # assert(abs(move.advanceData.advStepSum) < 0.001)
 
             if debugMoves:
                 print "***** End planSteps() *****"
@@ -1216,45 +1110,37 @@ class Advance (object):
             mask |= 1
 
         if mask == 0x8:
+
             # Simple advanceed ramp at start
             # Create addtional 'sub-move' at beginning
-
-            # if move.linearTime():
             newMoves = self.planSA(move) # simple accel
-            # else:
-                # newMoves = self.planA(move) # simple accel, only
+
         elif mask == 0x1:
+
             # Simple advanceed ramp at end
             # Create addtional 'sub-move' at end
-
-            # assert (0)
-            # if move.linearTime():
             newMoves = self.planSD(move) # simple decel
-            # else:
-                # newMoves = self.planD(move) # simple decel, only
+
         elif mask == 0x3:
+
             # Advanced ramp at end with sign-change
             newMoves = self.planLDD(move)
+
         elif mask == 0x9:
+
             # Simple advanceed ramp at start
             # Simple advanceed ramp at end
-
-            # if move.linearTime():
             newMoves = self.planSALSD(move) # simple accel, linear part, simple decel
-            # else:
-                # newMoves = self.planSASD(move) # simple accel, simple decel
+
         elif mask == 0xb:
+
             # * advanceed ramp at start
             # * advanceed ramp at end with sign-change
             # * Create three addtional 'sub-moves', on at the start
             #   of the move at two at the end
-            # if move.linearTime():
             newMoves = self.planSALDD(move) # simple accel, linear part, dual deccel
-            # else:
-                # newMoves = self.planSADD(move) # simple accel, dual deccel
-        else:
-            # Create addtional 'sub-move' at end
 
+        else:
             print "unhandled mask: 0x%x" % mask
             assert(0)
 
@@ -1281,7 +1167,6 @@ class Advance (object):
                 self.planCrossedDecelSteps(move)
             else:
                 self.planStepsSimple(move)
-
 
         if debugMoves:
             print "***** End planSteps() *****"
@@ -1719,10 +1604,9 @@ class Advance (object):
             print "generated %d/%d E steps" % (len(eClocks), eStepsToMove)
 
         ###########################################################################
-        # tv100khz = int(fTimer / 100000.0)
-        tv100khz = int(fTimer / 75000.0)
+        tv75khz = int(fTimer / 75000.0)
 
-        print "Timer value of a 100khz stepper: %d" % tv100khz
+        print "Timer value of a 75khz stepper: %d" % tv75khz
 
         leadAxis = move.leadAxis(disp=disp)
         leadAxis_steps = abs_displacement_vector_steps[leadAxis]
@@ -1788,7 +1672,7 @@ class Advance (object):
 
                     # print "best index", tvsum, bestIndex, tvBestIndex, minDist
 
-                    if minDist < tv100khz:
+                    if minDist < tv75khz:
 
                         tMap[tvBestIndex].steps[otherAxis] = 1
                         # print "merged :", tMap[tvBestIndex]
@@ -1836,7 +1720,7 @@ class Advance (object):
 
                             tMap[tvsum] = newStepDesc
 
-                            print newStepDesc
+                            # print newStepDesc
                             # pprint.pprint(tMap)
 
                             # if prevTv < minDist:
@@ -1866,7 +1750,7 @@ class Advance (object):
                             tvIndex.insert(bestIndex, tvsum)
                             tMap[tvsum] = newStepDesc
 
-                            print newStepDesc
+                            # print newStepDesc
                             # pprint.pprint(tMap)
 
                 tvsum += tv
