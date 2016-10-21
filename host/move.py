@@ -1290,6 +1290,8 @@ class PrintMove(RealMove):
 
         return ((v0 - v1) * dt) / 2.0
     ################################################################################
+
+    ################################################################################
     # Berechnet die fläche (und damit die strecke) der start-rampe.
     # Diese besteht aus zwei teilen:
     # * Der rechteckige teil der aus v0*dt besteht

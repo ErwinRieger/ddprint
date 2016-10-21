@@ -88,6 +88,14 @@ NExtrusionLimit = 40
 
 ############################################################################
 #
+# Acceleration planning
+#
+# Threshold value, if the difference of the velocity at the start or end
+# of a move is below this value, we do not generate a accel-/deceleration ramp .
+AccelThreshold=0.001 # [mm/s]
+
+############################################################################
+#
 # Extruder advance
 #
 # Threshold value, if the difference of the extrusion rate of two moves

@@ -187,9 +187,6 @@ class Advance (object):
         # Running sum of move esteps, for debugging of planSteps()
         self.moveEsteps = 0.0
 
-        # Sum of all nominal e accel-/ deceleration ramps [mm]
-        self.eRampSum = 0.0
-
     def planPath(self, path):
 
         if debugMoves:
@@ -252,19 +249,6 @@ class Advance (object):
             move.sanityCheck(self.planner.jerk)
             self.planAcceleration(move)
 
-            # debug
-            if move.accelTime():
-                s = move.startRampTriangle(move.startSpeed.speed().eSpeed, move.topSpeed.speed().eSpeed, move.accelTime())
-                if s:
-                    self.eRampSum += s 
-                    print "move %d: eRampSum: " % move.moveNumber, s, self.eRampSum
-            if move.decelTime():
-                s = move.endRampTriangle(move.topSpeed.speed().eSpeed, move.endSpeed.speed().eSpeed, move.decelTime())
-                if s:
-                    self.eRampSum -= s
-                    print "move %d: eRampSum: " % move.moveNumber, -s, self.eRampSum
-            # enddebug
-
         if self.kAdv:
 
             self.groupAdvance(path)
@@ -276,7 +260,6 @@ class Advance (object):
                 self.moveEsteps += move.eSteps # displacement_vector_steps_raw[A_AXIS]
                 print "moveEsteps+: %7.3f %7.3f" % ( move.eSteps, self.moveEsteps)
 
-                # self.planAdvance(move)
             self.planAdvanceGroup(path)
 
         if debugPlot and debugPlotLevel == "plotLevelPlanned":
@@ -352,7 +335,6 @@ class Advance (object):
             newPath += newMoves
 
         print "Path advSum: ", self.advSum
-        print "Path eRampSum: ", self.eRampSum, len(newPath)
         print "Path skippedAdvance: ", self.skippedAdvance
         print "Path skippedSimpleSteps: ", self.skippedSimpleSteps
 
@@ -362,8 +344,6 @@ class Advance (object):
         # Summe aller advance-rampen muss nicht unbedingt null sein, je nach verteilung
         # von e-jerk jumps. Somit ist folgender test völlig willkürlich.
         assert(util.circaf(self.advSum, 0, 1))
-        # Gleiches gilt für eRampSum
-        assert(util.circaf(self.eRampSum, 0, 1))
 
         # assert(util.circaf(self.skippedAdvance, 0, 2.0/self.e_steps_per_mm))
         assert(util.circaf(self.skippedAdvance, 0, 50.0/self.e_steps_per_mm))
@@ -664,7 +644,7 @@ class Advance (object):
 
         deltaStartSpeedS = topSpeed.feedrate3() - startSpeedS
 
-        if deltaStartSpeedS > 0.000001:
+        if deltaStartSpeedS > AccelThreshold:
 
             ta = deltaStartSpeedS / allowedAccel3
             print "accel time (for %f mm/s): %f [s]" % (deltaStartSpeedS, ta)
@@ -694,7 +674,7 @@ class Advance (object):
 
         deltaEndSpeedS = topSpeed.feedrate3() - endSpeedS                          # [mm/s]
 
-        if deltaEndSpeedS > 0.000001:
+        if deltaEndSpeedS > AccelThreshold:
 
             tb = deltaEndSpeedS / allowedAccel3                          # [s]
             print "XY: deccel time (for %f mm/s): %f [s]" % (deltaEndSpeedS, tb)
@@ -718,16 +698,13 @@ class Advance (object):
 
         print "e_distance: %f, sbeschl, sbrems: %f, %f" % (move.distance3, sa, sb)
 
-        if move.distance3 < (sa+sb):
+        if (sa+sb) and (move.distance3 < (sa+sb)):
 
             #
             # Strecke zu kurz, Trapez nicht möglich, geschwindigkeit muss abgesenkt werden.
             #
             if debugMoves:
                 print "Trapez nicht möglich: s: %f, sbeschl (%f) + sbrems (%f) = %f" % (move.distance3, sa, sb, sa+sb)
-
-            # ??? 
-            assert(sa>0 and sb>0)
 
             sa = min(
                     (2 * allowedAccel3 * move.distance3 - pow(startSpeedS, 2) + pow(endSpeedS, 2)) / (4 * allowedAccel3),
