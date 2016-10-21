@@ -27,11 +27,6 @@ MAX_AXIS_ACCELERATION_NOADV = [9000, 9000, 100, 10000, 10000] # [ mm/s^s ]
 #define DEFAULT_ACCELERATION          3000
 _MAX_ACCELERATION =         3000    # [ mm/s^s ]
 
-#define DEFAULT_RETRACT_ACCELERATION  3000   // E max acceleration in mm/s^2 for retracts
-
-# const unsigned int dropsegments=5; //everything with less than this number of steps will be ignored as move and joined with the next movement
-DropSegments = 5          # steps
-
 ############################################################################
 #
 # Stepdata types
@@ -46,7 +41,6 @@ StepDataTypeRaw       = 1
 #
 #// number of mm^3 of plastic to extrude when priming
 #// (Ultimaker 2 hot end capacity is approx 80 mm^3)
-# PRIMING_MM3	= 50
 PRIMING_MM3	= 60 # increased because of end-of-print retraction
 
 #// Rate at which to prime head (in mm^3/s)
@@ -98,23 +92,10 @@ NExtrusionLimit = 40
 #
 # Threshold value, if the difference of the extrusion rate of two moves
 # is below this value, we assume they have the same extrusion rate.
-# AdvanceEThreshold=0.01 # [mm/s]
-# AdvanceEThreshold=0.00000001 # [mm/s]
 AdvanceEThreshold=0.001 # [mm/s]
 
 #
-# Minimum extrusion rate difference between two moves for advance.
-# AdvanceMinERate = 0.1 # [mm/s]
-# Minimum duration of accel- and decel-ramps to apply advance.
-##AdvanceMinRamp = 0.001 # [s]
-##AdvanceMinRamp = 0.002 # [s]
-##AdvanceMinRamp = 0.0025 # [s]
-##AdvanceMinRamp = 0.01 # [s]
-
-# Minimum len in steps of acceleration- or deceleration ramp to apply advance
-# AdvanceMinRamp = 2
-# AdvanceMinRamp = 5
-# AdvanceMinRamp = 7.5
+# Minimum len in steps of acceleration- or deceleration ramp to apply advance.
 # AdvanceMinRamp = 10
 AdvanceMinRamp = 15
 
