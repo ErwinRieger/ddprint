@@ -257,7 +257,7 @@ class Advance (object):
                 move.sanityCheck(self.planner.jerk)
 
                 # sum up esteps
-                self.moveEsteps += move.eSteps # displacement_vector_steps_raw[A_AXIS]
+                self.moveEsteps += move.eSteps
                 print "moveEsteps+: %7.3f %7.3f" % ( move.eSteps, self.moveEsteps)
 
             self.planAdvanceGroup(path)
@@ -1090,24 +1090,24 @@ class Advance (object):
 
             # Simple advanceed ramp at start
             # Create addtional 'sub-move' at beginning
-            newMoves = self.planSA(move) # simple accel
+            newMoves = self.planStepsAdvSA(move) # simple accel
 
         elif mask == 0x1:
 
             # Simple advanceed ramp at end
             # Create addtional 'sub-move' at end
-            newMoves = self.planSD(move) # simple decel
+            newMoves = self.planStepsAdvSD(move) # simple decel
 
         elif mask == 0x3:
 
             # Advanced ramp at end with sign-change
-            newMoves = self.planLDD(move)
+            newMoves = self.planStepsAdvLDD(move)
 
         elif mask == 0x9:
 
             # Simple advanceed ramp at start
             # Simple advanceed ramp at end
-            newMoves = self.planSALSD(move) # simple accel, linear part, simple decel
+            newMoves = self.planStepsAdvSALSD(move) # simple accel, linear part, simple decel
 
         elif mask == 0xb:
 
@@ -1115,7 +1115,7 @@ class Advance (object):
             # * advanceed ramp at end with sign-change
             # * Create three addtional 'sub-moves', on at the start
             #   of the move at two at the end
-            newMoves = self.planSALDD(move) # simple accel, linear part, dual deccel
+            newMoves = self.planStepsAdvSALDD(move) # simple accel, linear part, dual deccel
 
         else:
             print "unhandled mask: 0x%x" % mask
@@ -1816,11 +1816,11 @@ class Advance (object):
     #
     # Aufteilung nach taccel/tlinear
     #
-    def planSA(self, parentMove):
+    def planStepsAdvSA(self, parentMove):
 
         if debugMoves:
-            print "***** Start planSA() *****"
-            parentMove.pprint("planSA:")
+            print "***** Start planStepsAdvSA() *****"
+            parentMove.pprint("planStepsAdvSA:")
 
         displacement_vector_steps_raw = parentMove.displacement_vector_steps_raw3
 
@@ -1913,13 +1913,13 @@ class Advance (object):
 
             else:
 
-                print "planSA: skipping empty b-move" 
+                print "planStepsAdvSA: skipping empty b-move" 
 
         # Sum up additional e-distance of this move for debugging
         parentMove.advanceData.advStepSum -= displacement_vector_steps_A[A_AXIS]+displacement_vector_steps_B[A_AXIS]
 
         if debugMoves:
-            print "***** End planSA() *****"
+            print "***** End planStepsAdvSA() *****"
 
         assert(util.vectorAdd(displacement_vector_steps_A[:3], displacement_vector_steps_B[:3]) == displacement_vector_steps_raw[:3])
 
@@ -1983,11 +1983,11 @@ class Advance (object):
     # Single advanceed ramp at end
     # Create addtional 'sub-move' at end
     #
-    def planSD(self, parentMove):
+    def planStepsAdvSD(self, parentMove):
 
         if debugMoves:
-            print "***** Start planSD() *****"
-            parentMove.pprint("planSD:")
+            print "***** Start planStepsAdvSD() *****"
+            parentMove.pprint("planStepsAdvSD:")
 
         displacement_vector_steps_raw = parentMove.displacement_vector_steps_raw3
 
@@ -2082,7 +2082,7 @@ class Advance (object):
         parentMove.advanceData.advStepSum -= esteps
 
         if debugMoves:
-            print "***** End planSD() *****"
+            print "***** End planStepsAdvSD() *****"
 
         assert(util.vectorAdd(displacement_vector_steps_A[:3], displacement_vector_steps_B[:3]) == displacement_vector_steps_raw[:3])
 
@@ -2094,12 +2094,12 @@ class Advance (object):
     # Simple advanceed ramp at end
     # Submoves: A C
     #
-    def planSASD(self, parentMove):
+    def planStepsAdvSASD(self, parentMove):
         assert(0)
 
         if debugMoves:
-            print "***** Start planSASD() *****"
-            parentMove.pprint("planSASD:")
+            print "***** Start planStepsAdvSASD() *****"
+            parentMove.pprint("planStepsAdvSASD:")
 
         displacement_vector_steps_raw = parentMove.displacement_vector_steps_raw
 
@@ -2184,7 +2184,7 @@ class Advance (object):
         moveB.prevMove = moveA
 
         if debugMoves:
-            print "***** End planSASD() *****"
+            print "***** End planStepsAdvSASD() *****"
 
         assert(util.vectorAdd(displacement_vector_steps_A, displacement_vector_steps_B) == displacement_vector_steps_raw)
 
@@ -2197,11 +2197,11 @@ class Advance (object):
     # optional linear middle part
     # Generates 2 or 3 moves
     #
-    def planSALSD(self, parentMove):
+    def planStepsAdvSALSD(self, parentMove):
 
         if debugMoves:
-            print "***** Start planSALSD() *****"
-            parentMove.pprint("planSALSD:")
+            print "***** Start planStepsAdvSALSD() *****"
+            parentMove.pprint("planStepsAdvSALSD:")
 
         displacement_vector_steps_raw = parentMove.displacement_vector_steps_raw3
 
@@ -2334,7 +2334,7 @@ class Advance (object):
         parentMove.advanceData.advStepSum -= esteps
 
         if debugMoves:
-            print "***** End planSALSD() *****"
+            print "***** End planStepsAdvSALSD() *****"
 
         assert(util.vectorAdd(util.vectorAdd(displacement_vector_steps_A[:3], displacement_vector_steps_B[:3]), displacement_vector_steps_C[:3]) == displacement_vector_steps_raw[:3])
 
@@ -2345,11 +2345,11 @@ class Advance (object):
     # Advanced ramp with sign-change at the end
     # Optional accel/linear part
     # Generates 2 or 3 moves
-    def planLDD(self, parentMove):
+    def planStepsAdvLDD(self, parentMove):
 
         if debugMoves:
-            print "***** Start planLDD() *****"
-            parentMove.pprint("planLDD:")
+            print "***** Start planStepsAdvLDD() *****"
+            parentMove.pprint("planStepsAdvLDD:")
 
         displacement_vector_steps_raw = parentMove.displacement_vector_steps_raw3
 
@@ -2493,7 +2493,7 @@ class Advance (object):
         parentMove.advanceData.advStepSum -= esteps
 
         if debugMoves:
-            print "***** End planLDD() *****"
+            print "***** End planStepsAdvLDD() *****"
 
         assert(util.vectorAdd(util.vectorAdd(displacement_vector_steps_A[:3], displacement_vector_steps_B[:3]), displacement_vector_steps_C[:3]) == displacement_vector_steps_raw[:3])
 
@@ -2503,11 +2503,11 @@ class Advance (object):
     # Simple advanceed ramp at start and advanced ramp with sign-change at the end
     # Optional linear part
     # Generates 3 or 4 moves
-    def planSALDD(self, parentMove):
+    def planStepsAdvSALDD(self, parentMove):
 
         if debugMoves:
-            print "***** Start planSALDD() *****"
-            parentMove.pprint("planSALDD:")
+            print "***** Start planStepsAdvSALDD() *****"
+            parentMove.pprint("planStepsAdvSALDD:")
 
         displacement_vector_steps_raw = parentMove.displacement_vector_steps_raw3
 
@@ -2674,7 +2674,7 @@ class Advance (object):
         parentMove.advanceData.advStepSum -= esteps
 
         if debugMoves:
-            print "***** End planSALDD() *****"
+            print "***** End planStepsAdvSALDD() *****"
 
         assert(util.vectorAdd(util.vectorAdd(util.vectorAdd(displacement_vector_steps_A[:3], displacement_vector_steps_B[:3]), displacement_vector_steps_C[:3]), displacement_vector_steps_D[:3]) == displacement_vector_steps_raw[:3])
 
@@ -2684,12 +2684,12 @@ class Advance (object):
     # Simple advanceed ramp at start
     # End ramp with sign-change
     # Submoves: A B CD
-    def planSADD(self, parentMove):
+    def planStepsAdvSADD(self, parentMove):
         assert(0)
 
         if debugMoves:
-            print "***** Start planSADD() *****"
-            parentMove.pprint("planSADD:")
+            print "***** Start planStepsAdvSADD() *****"
+            parentMove.pprint("planStepsAdvSADD:")
 
         displacement_vector_steps_raw = parentMove.displacement_vector_steps_raw
 
@@ -2825,7 +2825,7 @@ class Advance (object):
         moveC.prevMove = moveB
 
         if debugMoves:
-            print "***** End planSADD() *****"
+            print "***** End planStepsAdvSADD() *****"
 
         assert(util.vectorAdd(util.vectorAdd(displacement_vector_steps_A, displacement_vector_steps_B), displacement_vector_steps_C) == displacement_vector_steps_raw)
 
@@ -2837,12 +2837,12 @@ class Advance (object):
     # Linear middle part
     # End ramp with sign-change
     # Submoves: A B CD
-    def planSALD(self, parentMove):
+    def planStepsAdvSALD(self, parentMove):
         assert(0)
 
         if debugMoves:
-            print "***** Start planSALD() *****"
-            parentMove.pprint("planSALD:")
+            print "***** Start planStepsAdvSALD() *****"
+            parentMove.pprint("planStepsAdvSALD:")
 
         displacement_vector_steps_raw = parentMove.displacement_vector_steps_raw
 
@@ -3003,7 +3003,7 @@ class Advance (object):
         moveD.prevMove = moveC
 
         if debugMoves:
-            print "***** End planSALD() *****"
+            print "***** End planStepsAdvSALD() *****"
 
         assert(util.vectorAdd(util.vectorAdd(util.vectorAdd(displacement_vector_steps_A, displacement_vector_steps_B), displacement_vector_steps_C), displacement_vector_steps_D) == displacement_vector_steps_raw)
 
