@@ -767,10 +767,10 @@ class AdvanceData:
             s += "\n estep sum: %.3f" % esteps
 
         s += "\n Group data:"
-        s += "\n Accel nelem: %d" % len(self.accelGroup)
+        s += "\n Accel group:" + str(map(lambda m: m.moveNumber, self.accelGroup))
         s += "\n sAccel: %.3f" % self.sAccel
         s += "\n sAccelSum: %.3f" % self.sAccelSum
-        s += "\n Decel nelem: %d" % len(self.decelGroup)
+        s += "\n Decel group:" + str(map(lambda m: m.moveNumber, self.decelGroup))
         s += "\n sDecel: %.3f" % self.sDecel
         s += "\n sDecelSum: %.3f" % self.sDecelSum
         return s
