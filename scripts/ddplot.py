@@ -7,7 +7,6 @@ import math, pickle, sys
 (plot1, plot2) = pickle.load(open(sys.argv[1]))
 
 fig = plt.figure(1)
-# fig.suptitle(sys.argv[1], x=0.01, horizontalalignment="left")
 fig.canvas.set_window_title(sys.argv[1])
 
 ax = x=plt.subplot(211)
@@ -22,7 +21,7 @@ ax.add_collection(lc)
 for i in range(len(plot1.Ticks)):
     (x, y, nr) = plot1.Ticks[i]
     plt.axvline(x, color="yellow")
-    plt.text(x*1.01, y*1.01, "%d" % nr)
+    plt.text(x, y*1.01, "%d" % nr)
 
 ax.autoscale()
 plt.xlim(xmin=0)
