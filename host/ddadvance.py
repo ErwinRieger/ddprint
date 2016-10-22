@@ -1324,7 +1324,7 @@ class Advance (object):
 
             steps_per_second_nominal = nominalSpeed * steps_per_mm
             timerValue = fTimer / steps_per_second_nominal
-            move.stepData.setLinTimer(timerValue)
+            move.stepData.setLinTimer(min(timerValue, 0xffff))
 
         else:
 
