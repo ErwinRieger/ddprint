@@ -2451,13 +2451,15 @@ class Advance (object):
         stepsUsed = util.vectorAdd(displacement_vector_steps_B[:3], displacement_vector_steps_C[:3])
         stepsMissing = util.vectorSub(displacement_vector_steps_raw[:3], stepsUsed)
 
-        assert(stepsMissing == emptyVector3)
-
         # PART A
         if ta or tl:
 
             for dim in range(3):
                 displacement_vector_steps_A[dim] = displacement_vector_steps_raw[dim] - (displacement_vector_steps_B[dim] + displacement_vector_steps_C[dim])
+
+        else:
+
+            assert(stepsMissing == emptyVector3)
        
         if ta:
 
