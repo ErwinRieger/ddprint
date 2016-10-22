@@ -187,6 +187,9 @@ class Advance (object):
         # Running sum of move esteps, for debugging of planSteps()
         self.moveEsteps = 0.0
 
+        self.longestRampMove = None
+        self.longestRampAdvance = 0
+
     def planPath(self, path):
 
         if debugMoves:
@@ -261,6 +264,43 @@ class Advance (object):
                 print "moveEsteps+: %7.3f %7.3f" % ( move.eSteps, self.moveEsteps)
 
             self.planAdvanceGroup(path)
+
+            print "Path skippedAdvance: ", self.skippedAdvance, "-->", self.skippedAdvance*self.e_steps_per_mm, "e-steps"
+
+            if self.skippedAdvance > 1.0/self.e_steps_per_mm:
+                print "spread skippedAdvance accel on biggest ramp: ", self.longestRampMove, self.longestRampAdvance
+
+                self.longestRampMove.pprint("longestRampMove")
+
+                ta = self.longestRampMove.accelTime()
+
+                startIncrease = self.skippedAdvance / ta
+
+                print "Increasing startramp by: ", startIncrease, "[mm/s]"
+
+                # XXX this possibly increases e-jerk above max e-jerk, a better way is to decrease
+                # the e-jerk of a decel advance ramp...
+
+                assert(startIncrease < 1) # test
+
+                self.longestRampMove.advanceData.startFeedrateIncrease += startIncrease
+
+                estepIncrease = self.skippedAdvance * self.e_steps_per_mm 
+
+                print "Increasing startramp by: ", estepIncrease, "[steps]"
+
+                self.longestRampMove.advanceData.startESteps += estepIncrease
+                self.longestRampMove.advanceData.advStepSum += estepIncrease
+
+                self.skippedAdvance = 0
+
+                self.longestRampMove.pprint("spread longestRampMove")
+
+                # assert(0)
+
+            elif self.skippedAdvance < -11.0/self.e_steps_per_mm:
+                assert(self.skippedAdvance < self.longestRampAdvance)
+                assert(0)
 
         if debugPlot and debugPlotLevel == "plotLevelPlanned":
 
@@ -346,7 +386,7 @@ class Advance (object):
         assert(util.circaf(self.advSum, 0, 1))
 
         # assert(util.circaf(self.skippedAdvance, 0, 2.0/self.e_steps_per_mm))
-        assert(util.circaf(self.skippedAdvance, 0, 50.0/self.e_steps_per_mm))
+        assert(util.circaf(self.skippedAdvance, 0, 1.0/self.e_steps_per_mm))
         assert(util.circaf(self.skippedSimpleSteps, 0, 1.001))
 
         if self.kAdv:
@@ -880,13 +920,16 @@ class Advance (object):
                         (sa, esteps) = advMove.startERampSteps(roundError=self.skippedAdvance)
                         self.skippedAdvance = 0
 
+                        if sa > self.longestRampAdvance:
+                            self.longestRampMove = advMove
+                            self.longestRampAdvance = sa
+
                         advMove.advanceData.startESteps = esteps
                         advMove.advanceData.advStepSum += esteps
 
                         advMove.advanceData.startSplits = 1
                         if advMove.advanceData.startSignChange():
                             assert(0) # should not happen
-                            advMove.advanceData.startSplits += 1
 
                         tl = advMove.linearTime()
                         if tl and not advMove.advanceData.linESteps:
@@ -914,13 +957,14 @@ class Advance (object):
                     sa = baseMove.startRampDistance(
                             baseMove.startSpeed.speed().eSpeed, baseMove.topSpeed.speed().eSpeed, baseMove.accelTime())
 
-                    # esteps = int(sa * self.e_steps_per_mm)
                     esteps = sa * self.e_steps_per_mm
                     print "dim E moves %.3f mm in accel phase -> %d steps" % (sa, esteps)
 
                     baseMove.advanceData.startESteps = esteps
                     baseMove.advanceData.advStepSum += esteps
                     self.skippedAdvance += baseMove.advanceData.sAccelSum
+
+                    # xxx longramp
 
                 self.advSum += baseMove.advanceData.sAccelSum
 
@@ -1007,6 +1051,8 @@ class Advance (object):
                             (sd, esteps) = advMove.endERampSteps(roundError=self.skippedAdvance)
                             self.skippedAdvance = 0
 
+                            # xxx longramp
+
                             advMove.advanceData.endESteps = esteps
                             advMove.advanceData.advStepSum += esteps
 
@@ -1026,7 +1072,6 @@ class Advance (object):
                             advMove.advanceData.advStepSum += esteps
 
                 else:
-
 
                     # Dont advance very small acceleration ramps, but sum up the missing advance.
                     for advMove in baseMove.advanceData.decelGroup:
