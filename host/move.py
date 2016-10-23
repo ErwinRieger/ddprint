@@ -25,6 +25,7 @@ import ddprintcommands, cobs, cStringIO
 from ddprintconstants import maxTimerValue16, fTimer, _MAX_ACCELERATION, MAX_AXIS_ACCELERATION_NOADV
 from ddprintconstants import AdvanceEThreshold, StepDataTypeBresenham, StepDataTypeRaw
 from ddprintutil import X_AXIS, Y_AXIS, Z_AXIS, A_AXIS, B_AXIS,vectorLength, vectorMul, vectorSub, circaf, sign, vectorAbs
+from ddprintutil import pdbAssert
 from ddprintcommands import CommandNames
 from ddprofile import NozzleProfile, MatProfile, PrinterProfile
 from types import ListType
@@ -1336,21 +1337,92 @@ class PrintMove(RealMove):
     ################################################################################
 
     ################################################################################
-    def startERampSteps(self, startFeedrateIncrease=None, roundError=0):
+    def startERampSteps(self, ejerk, startFeedrateIncrease=None, roundError=0):
 
-        sa = self.startERampDistance(startFeedrateIncrease=startFeedrateIncrease) + roundError
+        # sa = self.startERampDistance(startFeedrateIncrease=startFeedrateIncrease)
+        ta = self.accelTime()
+
+        sTri = self.startRampDistance(
+                self.startSpeed.speed().eSpeed,
+                self.topSpeed.speed().eSpeed,
+                ta)
+
+        sPara = self.startAdvDistance(ta, startFeedrateIncrease)
+
+        print "sPara: %f roundError: %f" % (sPara, roundError)
+
+        assert(sPara >= 0)
+
+        usedRoundError = 0
+        if roundError > 0:
+
+            if startFeedrateIncrease == None:
+                startFeedrateIncrease = self.advanceData.startFeedrateIncrease
+
+            maxUsedRoundError = (ejerk - startFeedrateIncrease + 1) * ta
+            print "maxUsedRoundError:", startFeedrateIncrease, maxUsedRoundError
+
+            usedRoundError = min(roundError, maxUsedRoundError)
+            sPara += usedRoundError
+
+        elif roundError < 0:
+
+            usedRoundError = min(sPara, abs(roundError)) * -1
+            sPara += usedRoundError
+
+        assert(sPara >= 0)
+
+        sa = sTri + sPara
         esteps = sa * self.e_steps_per_mm
-        # ediff = sa - (esteps / float(self.e_steps_per_mm))
 
-        return (sa, esteps) # , ediff)
+        return (sa, esteps, usedRoundError)
 
-    def endERampSteps(self, td=None, endFeedrateIncrease=None, v0=None, v1=None, roundError=0):
+    def endERampSteps(self, ejerk, td=None, endFeedrateIncrease=None, v0=None, v1=None, roundError=0):
 
-        sd = self.endERampDistance(td, endFeedrateIncrease, v0=v0, v1=v1) + roundError
+        # sd = self.endERampDistance(td, endFeedrateIncrease, v0=v0, v1=v1)
+
+        if td == None:
+            td = self.decelTime()
+
+        if v0 == None:
+            v0 = self.topSpeed.speed().eSpeed
+
+        if v1 == None:
+            v1 = self.endSpeed.speed().eSpeed
+
+        sTri = self.endRampDistance(v0, v1, td)
+
+        sPara = self.endAdvDistance(td, endFeedrateIncrease)
+
+        print "sPara: %f roundError: %f" % (sPara, roundError)
+
+        assert(sPara <= 0)
+
+        usedRoundError = 0
+        if roundError < 0:
+
+            assert(0)
+            if startFeedrateIncrease == None:
+                startFeedrateIncrease = self.advanceData.startFeedrateIncrease
+
+            maxUsedRoundError = (ejerk + startFeedrateIncrease + 1) * td
+            print "maxUsedRoundError:", startFeedrateIncrease, maxUsedRoundError
+
+            usedRoundError = min(roundError, maxUsedRoundError)
+            sPara += usedRoundError
+
+        elif roundError > 0:
+
+            usedRoundError = min(abs(sPara), roundError)
+            sPara += usedRoundError
+            print sPara
+
+        assert(sPara <= 0)
+
+        sd = sTri + sPara
         esteps = sd * self.e_steps_per_mm
-        # ediff = sd - (esteps / float(self.e_steps_per_mm))
 
-        return (sd, esteps) # , ediff)
+        return (sd, esteps, usedRoundError)
     ################################################################################
 
     def crossedDecelStep(self):

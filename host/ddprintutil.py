@@ -1642,16 +1642,80 @@ plot "-" using 1:2 with linespoints title "Target Flowrate", \\
 #
 def accelRamp(axis, vstart, vend, a, nSteps, forceFill=False):
 
-    dPulses = decelRamp(axis, vend, vstart, a, nSteps, forceFill)
 
-    dPulses.reverse()
+    if False:
 
-    pulses = []
+        dPulses = decelRamp(axis, vend, vstart, a, nSteps, forceFill)
 
+        dPulses.reverse()
+
+        pulses = []
+
+        tstep = 0
+        for (_, dt, timerValue) in dPulses:
+            pulses.append((tstep, dt, timerValue))
+            tstep += dt
+
+        return pulses
+
+    assert(vstart <= vend)
+
+    pulses = [] # (tstep, dt, timerValue)
+
+    steps_per_mm = PrinterProfile.getStepsPerMM(axis)
+    sPerStep = 1.0/steps_per_mm
+
+    v = vstart
     tstep = 0
-    for (_, dt, timerValue) in dPulses:
+    s = sPerStep
+
+    stepToDo = nSteps
+
+    while v < vend and stepToDo > 0:
+
+        # Speed after this step
+        vn1 = vAccelPerDist(vstart, a, s)
+
+        # Time we need for this speed change/this step:
+        dv = vn1 - v
+        dt = dv / a
+
+        # Timervalue for this time
+        timerValue = int(dt * fTimer)
+
+        if timerValue > ddprintconstants.maxTimerValue16:
+            print "limit on timeroverflow, v after this step:", vn1, s, dt, timerValue
+            timerValue = ddprintconstants.maxTimerValue16
+
+        print "v after this step:", vn1, s, dt, timerValue
+
         pulses.append((tstep, dt, timerValue))
+
+        s += sPerStep
+        v = vn1
         tstep += dt
+        stepToDo -= 1
+
+    # Add missing steps in timeroverflow case
+    if forceFill and stepToDo > 0:
+
+        print "fill steps %d/%d" % (stepToDo, nSteps)
+
+        assert((float(stepToDo) / nSteps) < 0.25)
+
+        p = pulses[-1]
+        # dt = p[1]
+        for i in range(stepToDo):
+
+            pulses.append((tstep, dt, timerValue))
+            tstep += dt
+
+        pprint.pprint(pulses)
+        assert(0)
+        return pulses
+
+    if forceFill:
+        assert(stepToDo == 0)
 
     return pulses
 
@@ -1724,6 +1788,12 @@ def decelRamp(axis, vstart, vend, a, nSteps, forceFill=False):
 
     return pulses
 
+####################################################################################################
+def pdbAssert(expr):
+
+    if not expr:
+        import pdb
+        pdb.set_trace()
 ####################################################################################################
 
 
