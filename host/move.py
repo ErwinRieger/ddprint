@@ -1401,14 +1401,18 @@ class PrintMove(RealMove):
         usedRoundError = 0
         if roundError < 0:
 
-            assert(0)
-            if startFeedrateIncrease == None:
-                startFeedrateIncrease = self.advanceData.startFeedrateIncrease
+            # sPara: -0.268433 roundError: -0.000000
 
-            maxUsedRoundError = (ejerk + startFeedrateIncrease + 1) * td
-            print "maxUsedRoundError:", startFeedrateIncrease, maxUsedRoundError
+            if endFeedrateIncrease == None:
+                endFeedrateIncrease = self.advanceData.endFeedrateIncrease
 
-            usedRoundError = min(roundError, maxUsedRoundError)
+            maxUsedRoundError = (ejerk - abs(endFeedrateIncrease) + 1) * td * -1
+            print "maxUsedRoundError:", endFeedrateIncrease, maxUsedRoundError
+
+            if roundError < -0.1:
+                assert(0) # test
+
+            usedRoundError = max(roundError, maxUsedRoundError)
             sPara += usedRoundError
 
         elif roundError > 0:
