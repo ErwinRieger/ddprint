@@ -299,8 +299,39 @@ class Advance (object):
                 # assert(0)
 
             elif self.skippedAdvance < -11.0/self.e_steps_per_mm:
-                assert(self.skippedAdvance < self.longestRampAdvance)
-                assert(0)
+
+                # xxxx using longest start ramp instead of longest end ramp here! maybe better change this
+
+                print "spread skippedAdvance accel on biggest ramp: ", self.longestRampMove, self.longestRampAdvance
+
+                self.longestRampMove.pprint("longestRampMove")
+
+                ta = self.longestRampMove.accelTime()
+
+                startIncrease = self.skippedAdvance / ta
+
+                print "Increasing startramp by: ", startIncrease, "[mm/s]"
+
+                # XXX this possibly increases e-jerk above max e-jerk, a better way is to decrease
+                # the e-jerk of a decel advance ramp...
+
+                assert(startIncrease > -1) # xxx constrain it
+
+                self.longestRampMove.advanceData.startFeedrateIncrease += startIncrease
+                assert(self.longestRampMove.advanceData.startFeedrateIncrease >= 0)
+
+                estepIncrease = self.skippedAdvance * self.e_steps_per_mm 
+
+                print "Increasing startramp by: ", estepIncrease, "[steps]"
+
+                self.longestRampMove.advanceData.startESteps += estepIncrease
+                self.longestRampMove.advanceData.advStepSum += estepIncrease
+
+                self.skippedAdvance = 0
+
+                self.longestRampMove.pprint("spread longestRampMove")
+
+                # assert(0)
 
         if debugPlot and debugPlotLevel == "plotLevelPlanned":
 
@@ -1032,6 +1063,8 @@ class Advance (object):
                                 advMove.advanceData.endFeedrateIncrease += endIncrease
 
                                 if usedRoundError:
+                                    #xxx two different endFeedrateIncrease members needed
+                                    #xxx crossing pont depends on endFeedrateIncrease!
                                     assert(0)
 
                                 print "(sdc, estepsc):", (sdc, estepsc) 
@@ -1059,6 +1092,8 @@ class Advance (object):
                             advMove.advanceData.endFeedrateIncrease += endIncrease
 
                             if usedRoundError:
+                                #xxx two different endFeedrateIncrease members needed
+                                #xxx crossing pont depends on endFeedrateIncrease!
                                 assert(0)
 
                             print "(sdd, estepsd):", (sdd, estepsd) 
