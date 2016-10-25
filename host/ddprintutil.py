@@ -1684,10 +1684,10 @@ def accelRamp(axis, vstart, vend, a, nSteps, forceFill=False):
         timerValue = int(dt * fTimer)
 
         if timerValue > ddprintconstants.maxTimerValue16:
-            print "limit on timeroverflow, v after this step:", vn1, s, dt, timerValue
+            # print "limit on timeroverflow, v after this step:", vn1, s, dt, timerValue
             timerValue = ddprintconstants.maxTimerValue16
 
-        print "v after this step:", vn1, s, dt, timerValue
+        # print "v after this step:", vn1, s, dt, timerValue
 
         pulses.append((tstep, dt, timerValue))
 
@@ -1750,7 +1750,7 @@ def decelRamp(axis, vstart, vend, a, nSteps, forceFill=False):
         timerValue = int(dt * fTimer)
 
         if timerValue > ddprintconstants.maxTimerValue16:
-            print "break on timeroverflow, v after this step:", vn1, s, dt, timerValue
+            # print "break on timeroverflow, v after this step:", vn1, s, dt, timerValue
             break
 
         # print "v after this step:", vn1, s, dt, timerValue

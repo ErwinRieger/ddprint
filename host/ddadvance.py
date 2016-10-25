@@ -1736,9 +1736,9 @@ class Advance (object):
 
                 tvsum += tv
 
-            print "other tMap:", otherAxis
-            pprint.pprint(tvIndex)
-            pprint.pprint(tMap)
+            # print "other tMap:", otherAxis
+            # pprint.pprint(tvIndex)
+            # pprint.pprint(tMap)
 
         # if move.moveNumber == 9713:
             # assert(1)
