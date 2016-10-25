@@ -298,7 +298,7 @@ class Advance (object):
 
                 # assert(0)
 
-            elif self.skippedAdvance < -11.0/self.e_steps_per_mm:
+            elif self.skippedAdvance < -1.0/self.e_steps_per_mm:
 
                 # xxxx using longest start ramp instead of longest end ramp here! maybe better change this
                 # xxx wenn der positive start advance benutzt wird, besteht keine gefahr, einen 'crossing decel'
