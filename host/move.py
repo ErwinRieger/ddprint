@@ -703,20 +703,28 @@ class AdvanceData:
         return self.endFeedrateIncrease != 0
 
     # xxx rename to endETopFeedrate
-    def endEReachedFeedrate(self):
-        return self.move.topSpeed.trueSpeed().eSpeed + self.endFeedrateIncrease
+    def endEReachedFeedrate(self, endFeedrateIncrease = None):
 
-    def endEFeedrate(self):
-        return self.move.endSpeed.trueSpeed().eSpeed + self.endFeedrateIncrease
+        if endFeedrateIncrease == None:
+            endFeedrateIncrease = self.endFeedrateIncrease
+
+        return self.move.topSpeed.trueSpeed().eSpeed + endFeedrateIncrease
+
+    def endEFeedrate(self, endFeedrateIncrease = None):
+
+        if endFeedrateIncrease == None:
+            endFeedrateIncrease = self.endFeedrateIncrease
+
+        return self.move.endSpeed.trueSpeed().eSpeed + endFeedrateIncrease
 
     # Check if sign changes at accel/decel
     def startSignChange(self):
         return sign(self.startEFeedrate()) != sign(self.startEReachedFeedrate())
 
-    def endSignChange(self):
-        # return sign(self.endEFeedrate()) != sign(self.endEReachedFeedrate())
-        v0 = self.endEReachedFeedrate()
-        v1 = self.endEFeedrate()
+    def endSignChange(self, endFeedrateIncrease = None):
+
+        v0 = self.endEReachedFeedrate(endFeedrateIncrease)
+        v1 = self.endEFeedrate(endFeedrateIncrease)
 
         if v0 == 0 or v1 == 0:
             return False
@@ -1384,6 +1392,9 @@ class PrintMove(RealMove):
         if td == None:
             td = self.decelTime()
 
+        if endFeedrateIncrease == None:
+            endFeedrateIncrease = self.advanceData.endFeedrateIncrease
+
         if v0 == None:
             v0 = self.topSpeed.speed().eSpeed
 
@@ -1403,22 +1414,31 @@ class PrintMove(RealMove):
 
             # sPara: -0.268433 roundError: -0.000000
 
-            if endFeedrateIncrease == None:
-                endFeedrateIncrease = self.advanceData.endFeedrateIncrease
-
             maxUsedRoundError = (ejerk - abs(endFeedrateIncrease) + 1) * td * -1
 
             usedRoundError = max(roundError, maxUsedRoundError)
-            sPara += usedRoundError
 
             print "maxUsedRoundError:", endFeedrateIncrease, maxUsedRoundError
             print "sPara: %f usedRoundError: %f" % (sPara, usedRoundError)
 
+            endIncrease = usedRoundError / td
+            if self.advanceData.endSignChange() != self.advanceData.endSignChange(endFeedrateIncrease + endIncrease):
+                print "skipping skippedAdvance because of endSignChange!"
+                usedRoundError = 0
+
+            sPara += usedRoundError
+
         elif roundError > 0:
 
             usedRoundError = min(abs(sPara), roundError)
+
+            endIncrease = usedRoundError / td
+            if self.advanceData.endSignChange() != self.advanceData.endSignChange(endFeedrateIncrease + endIncrease):
+                print "skipping skippedAdvance because of endSignChange!"
+                usedRoundError = 0
+
             sPara += usedRoundError
-            print sPara
+            print "sPara: ", sPara
 
         assert(sPara <= 0)
 

@@ -301,6 +301,8 @@ class Advance (object):
             elif self.skippedAdvance < -11.0/self.e_steps_per_mm:
 
                 # xxxx using longest start ramp instead of longest end ramp here! maybe better change this
+                # xxx wenn der positive start advance benutzt wird, besteht keine gefahr, einen 'crossing decel'
+                # zu verändern.
 
                 print "spread skippedAdvance accel on biggest ramp: ", self.longestRampMove, self.longestRampAdvance
 
@@ -1124,6 +1126,9 @@ class Advance (object):
                             print "Adjust endFeedrateIncrease %f by %f" % (endFeedrateIncrease, endIncrease)
                             assert(endIncrease >= -1.001) # xxx constrain it
                             advMove.advanceData.endFeedrateIncrease += endIncrease
+
+                            # xxx check if move is a crossing decel move after adjust:
+                            assert(not advMove.advanceData.endSignChange())
 
                             # if usedRoundError:
                                 # assert(0)
