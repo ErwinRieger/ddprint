@@ -1531,11 +1531,6 @@ class Advance (object):
         print "lead axisxy is:", leadAxisxy, "lead steps:", leadAxis_stepsxy
 
         ############################################################################################
-
-        tv75khz = int(fTimer / 75000.0)
-        print "Timer value of a 75khz stepper: %d" % tv75khz
-
-        ############################################################################################
         #
         # Create a list of XY-stepper pulses (DDA)
         #
@@ -1565,12 +1560,17 @@ class Advance (object):
         if debugMoves:
             print "Generated %d/%d E steps" % (len(eClocks), eStepsToMove)
 
+        ############################################################################################
+
+        tv75khz = int(fTimer / 75000.0)
+        print "Timer value of a 75khz stepper: %d" % tv75khz
+
         tvsum = 0
         tvIndex = []
         tMap = {}
         for (t, dt, tv, stepBits) in xyClocks:
             tvIndex.append(tvsum)
-            tMap[tvsum] = Namespace(t=t, dt=dt, tv=tv, steps=stepBits + [0, 0, 0])
+            tMap[tvsum] = Namespace(t=t, ttv=tvsum, dt=dt, tv=tv, steps=stepBits + [0, 0, 0])
             tvsum += tv
 
         # print "lead tMap:"
@@ -1581,6 +1581,8 @@ class Advance (object):
         for (_, _, tv) in eClocks:
 
             if tvsum in tvIndex:
+
+                # Exact match
                 tMap[tvsum].steps[A_AXIS] = 1
                 print "merged :", tMap[tvsum]
                 nMerges += 1
@@ -1597,9 +1599,9 @@ class Advance (object):
 
                 tvBestIndex = tvIndex[bestIndex]
 
-                # print "best index", tvsum, bestIndex, tvBestIndex, minDist
+                # print "\nfound index %d for tvsum %d, ttv of found index: %d, distance: %d" % (bestIndex, tvsum, tvBestIndex, minDist)
 
-                if minDist < tv75khz:
+                if minDist <= tv75khz:
 
                     tMap[tvBestIndex].steps[A_AXIS] = 1
                     print "merged :", tMap[tvBestIndex]
@@ -1611,68 +1613,96 @@ class Advance (object):
 
                     if tvsum > tvBestIndex:
                         # insert above best match
-                        # print "insert above:", tvBestIndex, tvsum
-
+                        
                         prevStepDesc = tMap[tvBestIndex]
-
                         prevTv = prevStepDesc.tv
 
+                        nextttv = prevStepDesc.ttv + prevStepDesc.tv
+                        # print "prev situation: %d --(%5d)-->                     %6d" % (prevStepDesc.ttv, prevStepDesc.tv, nextttv)
+
                         if prevTv < minDist:
+
+                            print "append at end..."
+
                             # append at end
                             assert(bestIndex == len(tvIndex) -1)
 
-                            newTv2 = minDist - prevTv
+                            if prevTv > minDist:
+                                newTv2 = max(prevTv - minDist, tv75khz)
+                                newTv1 = prevTv - newTv2
+                                tvsum = prevStepDesc.ttv + newTv1
+                                # print "anew situation: %d --(%5d)--> %6d --(%5d)--> %d" % (prevStepDesc.ttv, newTv1, tvsum, newTv2, nextttv)
+                            else:
+                                newTv2 = tv
+                                newTv1 = minDist
+                                # print "bnew situation: %d --(%5d)--> %6d --(%5d)--> %d" % (prevStepDesc.ttv, newTv1, tvsum, newTv2, nextttv)
 
-                            assert(prevTv+newTv2 == minDist)
-
-                            newStepDesc = Namespace(t=None, dt=None, tv=newTv2, steps=stepBits)
+                            newStepDesc = Namespace(t=None, ttv=tvsum, dt=None, tv=newTv2, steps=stepBits)
                             tvIndex.append(tvsum)
 
                         else:
-                            newTv2 = prevTv - minDist
 
-                            # print "modify prev tv:", prevTv, " --> ", minDist
+                            # print "insert above index: %d/%d" % (bestIndex, len(tvIndex))
+                            assert(prevTv >= 2*tv75khz) # is gap long enough?
+
+                            newTv2 = max(prevTv - minDist, tv75khz)
+                            newTv1 = prevTv - newTv2
+                            tvsum = prevStepDesc.ttv + newTv1
+
+                            # print "modify prev tv:", prevTv, " --> ", newTv2
                             # print "insert new  tv:", newTv2
+                            # print "cnew situation: %d --(%5d)--> %6d --(%5d)--> %d" % (prevStepDesc.ttv, newTv1, tvsum, newTv2, nextttv)
 
-                            assert(minDist > 0)
-                            assert(newTv2 > 0)
-                            assert(minDist+newTv2 == prevTv)
-
-                            newStepDesc = Namespace(t=None, dt=None, tv=newTv2, steps=stepBits)
+                            newStepDesc = Namespace(t=None, ttv=tvsum, dt=None, tv=newTv2, steps=stepBits)
                             tvIndex.insert(bestIndex+1, tvsum)
 
-                        prevStepDesc.tv = minDist
+                        prevStepDesc.tv = newTv1
                         prevStepDesc.dt = None
 
                         tMap[tvsum] = newStepDesc
 
                     else:
                         # insert below best match
-                        # print "insert below:", tvsum, tvBestIndex
+                        # print "insert below:", bestIndex
 
                         prevTvSum = tvIndex[bestIndex-1]
                         prevStepDesc = tMap[prevTvSum]
                         prevTv = prevStepDesc.tv
+
+                        assert(prevTv >= 2*tv75khz) # is gap long enough?
+
+                        nextttv = prevStepDesc.ttv + prevStepDesc.tv
+
                         newTv1 = prevTv - minDist
 
+                        # print "prev situation: %d --(%5d)-->                     %6d" % (prevStepDesc.ttv, prevStepDesc.tv, nextttv)
                         # print "modify prev tv:", prevTv, " --> ", newTv1
                         # print "insert new  tv:", minDist
-
-                        assert(newTv1 > 0)
-                        assert(minDist > 0)
-                        assert(newTv1+minDist == prevTv)
+                        # print " new situation: %d --(%5d)--> %6d --(%5d)--> %d" % (prevStepDesc.ttv, newTv1, tvsum, minDist, nextttv)
 
                         prevStepDesc.dt = None
                         prevStepDesc.tv = newTv1
 
-                        newStepDesc = Namespace(t=None, dt=None, tv=minDist, steps=stepBits)
+                        newStepDesc = Namespace(t=None, ttv=tvsum, dt=None, tv=minDist, steps=stepBits)
                         tvIndex.insert(bestIndex, tvsum)
                         tMap[tvsum] = newStepDesc
 
-                        # print newStepDesc
-                        # pprint.pprint(tMap)
-
             tvsum += tv
+
+            # Sanity check
+            ts = 0
+            for t in tvIndex:
+                stepDesc = tMap[t]
+
+                util.pdbAssert(stepDesc.ttv == ts)
+                util.pdbAssert(stepDesc.tv >= tv75khz)
+                ts += stepDesc.tv
+            # End sanity check
+
+        # Sanity check
+        # print t+stepDesc.tv, tvsum
+        # assert(t+stepDesc.tv == tvsum)
+        # End sanity check
 
             # print "other tMap:", otherAxis
             # pprint.pprint(tvIndex)
