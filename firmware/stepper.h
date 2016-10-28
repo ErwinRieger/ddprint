@@ -545,29 +545,20 @@ inline void st_step_motor_es(uint8_t stepBits, uint8_t dirbits) {
                 syncCount = 0;
             }
 
+            // * Timer 1A is running in CTC mode.
+            // * ISR is called if timer 1A reaches OCR1A value
+            // * Timer 1A is reset to 0 and starts counting up while ISR is running
+            // * New timervalue is set at end of ISR
+            // --> if ISR is running to long (or if it's locked by another interrupt) it is fired again
+            //     immediately on return. The OCR1A value set is therefore ignored and the generated 
+            //     pulse is not related to it.
+            // --> To relax this situation we set the new OCR1A value as fast as possible.
             FWINLINE void runMoveSteps() {
 
                 if (byteSize()) {
 
                     uint8_t cmdDir = *peek80();
-
-                    // Set direction
-                    if (cmdDir & 0x80) {
-
-                        // Set direction bits
-                        st_set_direction<XMove>(cmdDir); 
-                        st_set_direction<YMove>(cmdDir); 
-                        st_set_direction<ZMove>(cmdDir); 
-                        st_set_direction<EMove>(cmdDir); 
-                    }
-
-                    // Step the motors and update step-coordinates (current_pos_steps): st_step_motor<>()
                     uint8_t stepBits = *peek81();
-
-                    st_step_motor<XMove>(stepBits, cmdDir); 
-                    st_step_motor<YMove>(stepBits, cmdDir); 
-                    st_step_motor<ZMove>(stepBits, cmdDir); 
-                    st_step_motor<EMove>(stepBits, cmdDir); 
 
                     // Set new timer value
                     switch (GETCMDLEN(cmdDir)) {
@@ -582,6 +573,22 @@ inline void st_step_motor_es(uint8_t stepBits, uint8_t dirbits) {
                         default:
                             massert(0);
                     }
+
+                    // Set direction
+                    if (cmdDir & 0x80) {
+
+                        // Set direction bits
+                        st_set_direction<XMove>(cmdDir); 
+                        st_set_direction<YMove>(cmdDir); 
+                        st_set_direction<ZMove>(cmdDir); 
+                        st_set_direction<EMove>(cmdDir); 
+                    }
+
+                    // Step the motors and update step-coordinates (current_pos_steps): st_step_motor<>()
+                    st_step_motor<XMove>(stepBits, cmdDir); 
+                    st_step_motor<YMove>(stepBits, cmdDir); 
+                    st_step_motor<ZMove>(stepBits, cmdDir); 
+                    st_step_motor<EMove>(stepBits, cmdDir); 
                 }
                 else {
                     // Empty buffer, nothing to step
@@ -594,24 +601,7 @@ inline void st_step_motor_es(uint8_t stepBits, uint8_t dirbits) {
             if (byteSize()) {
 
                 uint8_t cmdDir = *peek80();
-
-                // * Set direction 
-                if (cmdDir & 0x80) {
-
-                    // Set direction bits
-                    st_set_direction<XMove>(cmdDir); 
-                    st_set_direction<YMove>(cmdDir); 
-                    st_set_direction<ZMove>(cmdDir); 
-                }
-
-                // * Step the motors
-                // * Check endstops
-                // * Update step-coordinates (current_pos_steps)
                 uint8_t stepBits = *peek81();
-
-                st_step_motor_es<XMove>(stepBits, cmdDir); 
-                st_step_motor_es<YMove>(stepBits, cmdDir); 
-                st_step_motor_es<ZMove>(stepBits, cmdDir); 
 
                 // * Set new timer value
                 switch (GETCMDLEN(cmdDir)) {
@@ -626,6 +616,23 @@ inline void st_step_motor_es(uint8_t stepBits, uint8_t dirbits) {
                     default:
                         massert(0);
                 }
+
+                // * Set direction 
+                if (cmdDir & 0x80) {
+
+                    // Set direction bits
+                    st_set_direction<XMove>(cmdDir); 
+                    st_set_direction<YMove>(cmdDir); 
+                    st_set_direction<ZMove>(cmdDir); 
+                }
+
+                // * Step the motors
+                // * Check endstops
+                // * Update step-coordinates (current_pos_steps)
+
+                st_step_motor_es<XMove>(stepBits, cmdDir); 
+                st_step_motor_es<YMove>(stepBits, cmdDir); 
+                st_step_motor_es<ZMove>(stepBits, cmdDir); 
             }
             else {
                 OCR1A = OCR1B=2000; // 1kHz.
