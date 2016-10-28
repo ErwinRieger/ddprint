@@ -131,6 +131,8 @@ for i in range(len(plot.moves)):
             (x, y) = F(timer)
             plotFreq(move["leadAxis"], ax, x, y, dcolors[move["leadAxis"]])
 
+    plt.axvline(ty, color="yellow")
+
 ax.autoscale()
 plt.xlim(xmin=0)
 
