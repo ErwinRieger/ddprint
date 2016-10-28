@@ -1642,22 +1642,6 @@ plot "-" using 1:2 with linespoints title "Target Flowrate", \\
 #
 def accelRamp(axis, vstart, vend, a, nSteps, forceFill=False):
 
-
-    if False:
-
-        dPulses = decelRamp(axis, vend, vstart, a, nSteps, forceFill)
-
-        dPulses.reverse()
-
-        pulses = []
-
-        tstep = 0
-        for (_, dt, timerValue) in dPulses:
-            pulses.append((tstep, dt, timerValue))
-            tstep += dt
-
-        return pulses
-
     assert(vstart <= vend)
 
     pulses = [] # (tstep, dt, timerValue)
@@ -1704,7 +1688,6 @@ def accelRamp(axis, vstart, vend, a, nSteps, forceFill=False):
         assert((float(stepToDo) / nSteps) < 0.25)
 
         p = pulses[-1]
-        # dt = p[1]
         for i in range(stepToDo):
 
             pulses.append((tstep, dt, timerValue))
@@ -1766,7 +1749,7 @@ def decelRamp(axis, vstart, vend, a, nSteps, forceFill=False):
     if forceFill and nSteps > 0:
 
         dt = min(sPerStep / vstart, ddprintconstants.maxTimerValue16/fTimer)
-        timerValue = min(int(dt * fTimer), ddprintconstants.maxTimerValue16/fTimer)
+        timerValue = min(int(dt * fTimer), ddprintconstants.maxTimerValue16)
 
         tstep = 0
         newPulses = []
@@ -1786,6 +1769,112 @@ def decelRamp(axis, vstart, vend, a, nSteps, forceFill=False):
     if forceFill:
         assert(nSteps == 0)
 
+    return pulses
+
+####################################################################################################
+#
+# Create a list of stepper pulses for a deceleration ramp.
+#
+def decelRampXY(leadAxis, vstart, vend, a, absSteps):
+
+    assert(vstart >= vend)
+
+    pulses = [] # (tstep, dt, timerValue)
+
+    leadSteps = absSteps[leadAxis]
+
+    otherAxis = Y_AXIS if leadAxis == X_AXIS else X_AXIS
+    otherSteps = absSteps[otherAxis]
+
+    bFactor = float(otherSteps) / leadSteps
+    print "bfactor:", bFactor
+    otherCount = 0
+
+    steps_per_mm = PrinterProfile.getStepsPerMM(leadAxis)
+    sPerStep = 1.0/steps_per_mm
+
+    v = vstart
+    tstep = 0
+    s = sPerStep
+
+    while v > vend and leadSteps > 0:
+
+        # Speed after this step
+        vn1 = vAccelPerDist(vstart, -a, s)
+
+        # Time we need for this speed change/this step:
+        dv = v - vn1
+        dt = dv / a
+
+        # Timervalue for this time
+        timerValue = int(dt * fTimer)
+
+        if timerValue > ddprintconstants.maxTimerValue16:
+            # print "break on timeroverflow, v after this step:", vn1, s, dt, timerValue
+            break
+
+        # print "v after this step:", vn1, s, dt, timerValue
+
+        stepBits = [0, 0]
+        stepBits[leadAxis] = 1
+
+        otherCount += bFactor
+
+        # if otherCount >= 1:
+        if otherCount >= 0.5:
+            stepBits[otherAxis] = 1
+            otherSteps -= 1
+            otherCount -= 1.0
+
+        # print "steps, otherCount:", stepBits, otherCount
+        pulses.append((tstep, dt, timerValue, stepBits))
+
+        s += sPerStep
+        v = vn1
+        tstep += dt
+        leadSteps -= 1
+
+    print "Missing steps: ", leadSteps, otherSteps
+
+    # Add missing steps in timeroverflow case
+    if leadSteps > 0:
+
+        print "Prepending missing steps: ", leadSteps
+
+        dt = min(sPerStep / vstart, ddprintconstants.maxTimerValue16/fTimer)
+        timerValue = min(int(dt * fTimer), ddprintconstants.maxTimerValue16)
+
+        otherCount = 0
+        tstep = 0
+        newPulses = []
+        for i in range(leadSteps):
+
+            stepBits = [0, 0]
+            stepBits[leadAxis] = 1
+
+            otherCount += bFactor
+
+            # if otherCount >= 1:
+            if otherCount >= 0.5:
+                stepBits[otherAxis] = 1
+                otherSteps -= 1
+                otherCount -= 1.0
+
+            newPulses.append((tstep, dt, timerValue, stepBits))
+
+            leadSteps -= 1
+            tstep += dt
+
+        assert(leadSteps == 0)
+        assert(otherSteps == 0)
+
+        for p in pulses:
+            newPulses.append((p[0] + tstep, p[1], p[2], p[3]))
+
+        pprint.pprint(newPulses)
+        return newPulses
+
+    assert(otherSteps == 0)
     return pulses
 
 ####################################################################################################
