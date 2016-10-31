@@ -1871,7 +1871,7 @@ def decelRampXY(leadAxis, vstart, vend, a, absSteps):
         for p in pulses:
             newPulses.append((p[0] + tstep, p[1], p[2], p[3]))
 
-        pprint.pprint(newPulses)
+        # pprint.pprint(newPulses)
         return newPulses
 
     assert(otherSteps == 0)

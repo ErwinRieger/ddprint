@@ -482,7 +482,8 @@ class StepData:
         self.abs_vector_steps = abs_vector_steps
 
     def empty(self):
-        return not self.abs_vector_steps[self.leadAxis]
+        # return not self.abs_vector_steps[self.leadAxis]
+        return not self.abs_vector_steps
 
     def __repr__(self):
         return "StepData:" + \

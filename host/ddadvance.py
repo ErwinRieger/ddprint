@@ -181,8 +181,6 @@ class Advance (object):
         # Sum of skipped small accelration ramps
         self.skippedAdvance = 0.0
         self.skippedSimpleSteps = 0.0
-        # Likewise for decel
-        # self.endSum = 0
 
         # Running sum of move esteps, for debugging of planSteps()
         self.moveEsteps = 0.0
@@ -259,7 +257,7 @@ class Advance (object):
             for move in path:
                 move.sanityCheck(self.planner.jerk)
 
-                # sum up esteps
+                # Sum up esteps
                 self.moveEsteps += move.eSteps
                 print "moveEsteps+: %7.3f %7.3f" % ( move.eSteps, self.moveEsteps)
 
@@ -412,7 +410,7 @@ class Advance (object):
         print "Path skippedSimpleSteps: ", self.skippedSimpleSteps
 
         if self.kAdv:
-            print "Path moveEsteps: %7.3f" % ( self.moveEsteps)
+            print "Path moveEsteps:", self.moveEsteps
 
         # Summe aller advance-rampen muss nicht unbedingt null sein, je nach verteilung
         # von e-jerk jumps. Somit ist folgender test völlig willkürlich.
@@ -425,7 +423,7 @@ class Advance (object):
         if self.kAdv:
             assert(util.circaf(self.moveEsteps, 0, 1.001))
 
-        # xxx debug, check chain
+        # Debug, check chain
         n = 2
         m = newPath[0]
         while m.nextMove:
@@ -436,6 +434,7 @@ class Advance (object):
             m = m.prevMove
             n += 1
         assert(n == 2*len(newPath))
+        # Debug, end check chain
 
         if debugPlot and debugPlotLevel == "plotLevelSplitted":
 
@@ -1036,7 +1035,8 @@ class Advance (object):
 
                             # Skip first part of crossing decel ramp if its startspeed
                             # is to low.
-                            if abs(v0) > self.minESpeed:
+                            # if abs(v0) > self.minESpeed:
+                            if True:
 
                                 print "v0, accel: ", v0, allowedAccelV[A_AXIS]
                                 tdc = abs(v0 / allowedAccelV[A_AXIS])
@@ -1075,7 +1075,7 @@ class Advance (object):
                                 advMove.advanceData.advStepSum += estepsc
 
                             else:
-
+                                assert(0)
                                 advMove.advanceData.endEStepsC = 0
 
                             print "top, zerocrossspeed:", topSpeed.feedrate3(), crossingSpeed
@@ -1300,15 +1300,18 @@ class Advance (object):
             abs_displacement_vector_steps.append(s)
         """
 
-        disp = move.displacement_vector_steps_raw3 + [move.eSteps, 0]
-
         ######################
-        e = disp[A_AXIS] + self.skippedSimpleSteps
+        e = move.eSteps + self.skippedSimpleSteps
         esteps = int(e)
 
-        print "eround:", disp[A_AXIS], e, e - esteps
+        print "eround:", move.eSteps, e, e - esteps
 
-        disp[A_AXIS] = esteps
+        disp = move.displacement_vector_steps_raw3 + [esteps, 0]
+
+        if disp == emptyVector5:
+            print "Empty move..."
+            print "***** End PlanSTepsSimple() *****"
+            return
 
         self.skippedSimpleSteps = e - esteps
         ######################
@@ -1324,13 +1327,9 @@ class Advance (object):
         #
         move.stepData.setBresenhamParameters(leadAxis, abs_displacement_vector_steps)
 
-        if not leadAxis_steps:
-            print "Empty move..."
-            print "***** End PlanSTepsSimple() *****"
-            return
 
-        self.moveEsteps -= disp[A_AXIS]
-        print "planStepsSimple(): moveEsteps-: %7.3f %7.3f" % ( disp[A_AXIS], self.moveEsteps)
+        self.moveEsteps -= esteps
+        print "planStepsSimple(): moveEsteps-: %7.3f %7.3f" % ( esteps, self.moveEsteps)
 
         dirBits = util.directionBits(disp, self.printer.curDirBits)
 
@@ -1512,8 +1511,8 @@ class Advance (object):
             print "***** End planCrossedDecelSteps() *****"
             return
 
-        self.moveEsteps -= disp[A_AXIS]
-        print "planCrossedDecelSteps(): moveEsteps-: %7.3f %7.3f" % ( disp[A_AXIS], self.moveEsteps)
+        self.moveEsteps -= esteps
+        print "planCrossedDecelSteps(): moveEsteps-: %7.3f %7.3f" % ( esteps, self.moveEsteps)
 
         dirBits = util.directionBits(disp, self.printer.curDirBits)
 
@@ -1622,7 +1621,7 @@ class Advance (object):
 
                         if prevTv < minDist:
 
-                            print "append at end..."
+                            # print "append at end..."
 
                             # append at end
                             assert(bestIndex == len(tvIndex) -1)
