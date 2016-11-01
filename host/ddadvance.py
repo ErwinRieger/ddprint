@@ -31,12 +31,6 @@ import math, collections
 import pprint
 
 #####################################################################
-#
-# Enable mathplotlib plotting of planned paths
-#
-debugPlot = False
-debugPlot = True
-
 if debugPlot:
     import pickle
 
@@ -160,8 +154,6 @@ class Advance (object):
         else:
 
             self.maxAxisAcceleration = MAX_AXIS_ACCELERATION_NOADV
-
-        # self.plotfile = None
 
         self.e_steps_per_mm = PrinterProfile.getStepsPerMM(A_AXIS)
 
@@ -402,15 +394,54 @@ class Advance (object):
         for move in path:
 
             newMoves = self.planSteps(move)
-
             newPath += newMoves
 
-        print "Path advSum: ", self.advSum
+        if debugPlot and debugPlotLevel == "plotLevelSplitted":
+
+            for move in newPath:
+
+                # xxx todo move to own function
+                self.plotfile.plot1Tick(move.topSpeed.trueSpeed().feedrate3(), move.moveNumber)
+
+                at = move.accelTime()
+                lt = move.linearTime()
+                dt = move.decelTime()
+
+                if at:
+
+                    self.plotfile.plot1Segments(at, (
+                        DebugPlotSegment(move.startSpeed.trueSpeed().feedrate3(), move.topSpeed.trueSpeed().feedrate3(), "green"),
+                        ))
+                    self.plotfile.plot2Segments(at, (
+                        DebugPlotSegment(move.startSpeed.trueSpeed().eSpeed, move.topSpeed.trueSpeed().eSpeed, "green"),
+                        ))
+
+                if lt:
+
+                    self.plotfile.plot1Segments(lt, (
+                        DebugPlotSegment(move.topSpeed.trueSpeed().feedrate3(), color="blue"),
+                        ))
+                    self.plotfile.plot2Segments(lt, (
+                        DebugPlotSegment(move.topSpeed.trueSpeed().eSpeed, color="blue"),
+                        ))
+
+                if dt:
+
+                    self.plotfile.plot1Segments(dt, (
+                        DebugPlotSegment(move.topSpeed.trueSpeed().feedrate3(), move.endSpeed.trueSpeed().feedrate3(), "red"),
+                        ))
+                    self.plotfile.plot2Segments(dt, (
+                        DebugPlotSegment(move.topSpeed.trueSpeed().eSpeed, move.endSpeed.trueSpeed().eSpeed, "red"),
+                        ))
+
+                self.plotfile.close()
+
+        print "\nPath advSum: ", self.advSum
         print "Path skippedAdvance: ", self.skippedAdvance, self.skippedAdvance*self.e_steps_per_mm
         print "Path skippedSimpleSteps: ", self.skippedSimpleSteps
 
         if self.kAdv:
-            print "Path moveEsteps:", self.moveEsteps
+            print "Path moveEsteps:", self.moveEsteps, len(newPath)
 
         # Summe aller advance-rampen muss nicht unbedingt null sein, je nach verteilung
         # von e-jerk jumps. Somit ist folgender test völlig willkürlich.
@@ -435,44 +466,6 @@ class Advance (object):
             n += 1
         assert(n == 2*len(newPath))
         # Debug, end check chain
-
-        if debugPlot and debugPlotLevel == "plotLevelSplitted":
-
-            for move in newPath:
-
-                # xxx todo move to own function
-                self.plotfile.plot1Tick(move.topSpeed.trueSpeed().feedrate3(), move.moveNumber)
-
-                at = move.accelTime()
-                lt = move.linearTime()
-                dt = move.decelTime()
-
-                print "ald:", at, lt, dt
-
-                if at:
-
-                    self.plotfile.plot1Segments(at, (
-                        DebugPlotSegment(move.startSpeed.trueSpeed().feedrate3(), move.topSpeed.trueSpeed().feedrate3(), "green"),
-                        DebugPlotSegment(move.startSpeed.trueSpeed().eSpeed, move.topSpeed.trueSpeed().eSpeed, "green"),
-                        ))
-
-                if lt:
-
-                    self.plotfile.plot1Segments(lt, (
-                        DebugPlotSegment(move.topSpeed.trueSpeed().feedrate3(), color="blue"),
-                        DebugPlotSegment(move.topSpeed.trueSpeed().eSpeed, color="blue"),
-                        ))
-
-                if dt:
-
-                    self.plotfile.plot1Segments(dt, (
-                        DebugPlotSegment(move.topSpeed.trueSpeed().feedrate3(), move.endSpeed.trueSpeed().feedrate3(), "red"),
-                        DebugPlotSegment(move.topSpeed.trueSpeed().eSpeed, move.endSpeed.trueSpeed().eSpeed, "red"),
-                        ))
-
-
-            if debugPlot:
-                self.plotfile.close()
 
         print "xxx no statistic"
         for move in newPath:
@@ -852,13 +845,11 @@ class Advance (object):
             # move.pprint("groupAdvance:")
 
         accelGroup = None
-        for index in range(len(path)): #  - 1):
-
-            move = path[index]
+        for move in path:
 
             allowedAccelV = move.getMaxAllowedAccelVector5(self.maxAxisAcceleration)
             startFeedrateIncrease = self.eJerk(allowedAccelV[A_AXIS])
-            (sadv, esteps) = move.startAdvSteps(startFeedrateIncrease=startFeedrateIncrease)
+            (sadv, _) = move.startAdvSteps(startFeedrateIncrease=startFeedrateIncrease)
 
             if sadv:
 
@@ -878,32 +869,28 @@ class Advance (object):
                 accelGroup = None
 
         decelGroup = None
-        for index in range(len(path)): #  - 1):
+        for index in range(len(path)): 
 
-            move = path[index]
+            move = path[len(path) - 1 - index]
 
             allowedAccelV = move.getMaxAllowedAccelVector5(self.maxAxisAcceleration)
             endFeedrateIncrease = - self.eJerk(allowedAccelV[A_AXIS])
-            (sadv, esteps) = move.endAdvSteps(endFeedrateIncrease=endFeedrateIncrease)
+            (sdec, _) = move.endAdvSteps(endFeedrateIncrease=endFeedrateIncrease)
 
-            if sadv:
+            if sdec:
 
                 if not decelGroup:
                     print "start decelgroup with move", move.moveNumber
                     decelGroup = move
 
-                move.advanceData.sDecel = sadv
+                move.advanceData.sDecel = sdec
 
-                print "add decelgroup:", move.moveNumber
+                print "add decelgroup:", move.moveNumber, "sdec:", sdec
                 decelGroup.advanceData.decelGroup.append(move)
-                decelGroup.advanceData.sDecelSum += sadv
+                decelGroup.advanceData.sDecelSum += sdec
 
-            if (not sadv):
-                if decelGroup:
-                    print "end decelgroup with move", move.moveNumber, sadv
-                decelGroup = None
+            if (not sdec) or move.linearTime() or move.accelTime():
 
-            if decelGroup and len(decelGroup.advanceData.decelGroup) > 1 and (move.linearTime() or move.accelTime()):
                 if decelGroup:
                     print "end decelgroup with move", move.moveNumber, move.accelTime(), move.linearTime()
                 decelGroup = None
@@ -1301,8 +1288,10 @@ class Advance (object):
         """
 
         ######################
+        # round e
         e = move.eSteps + self.skippedSimpleSteps
-        esteps = int(e)
+        # esteps = int(e)
+        esteps = int(round(e))
 
         print "eround:", move.eSteps, e, e - esteps
 
@@ -1311,12 +1300,17 @@ class Advance (object):
         if disp == emptyVector5:
             print "Empty move..."
             print "***** End PlanSTepsSimple() *****"
+            # assert(0)
+            self.skippedSimpleSteps += move.eSteps
             return
 
         self.skippedSimpleSteps = e - esteps
         ######################
 
         abs_displacement_vector_steps = util.vectorAbs(disp)
+
+        self.moveEsteps -= esteps
+        print "planStepsSimple(): moveEsteps-: %7.3f %7.3f" % ( esteps, self.moveEsteps)
 
         # Determine the 'lead axis' - the axis with the most steps
         leadAxis = move.leadAxis(disp=disp)
@@ -1326,10 +1320,6 @@ class Advance (object):
         # Init Bresenham's variables
         #
         move.stepData.setBresenhamParameters(leadAxis, abs_displacement_vector_steps)
-
-
-        self.moveEsteps -= esteps
-        print "planStepsSimple(): moveEsteps-: %7.3f %7.3f" % ( esteps, self.moveEsteps)
 
         dirBits = util.directionBits(disp, self.printer.curDirBits)
 
@@ -1413,7 +1403,7 @@ class Advance (object):
                     ca = -nLin - cd
 
                     print "ca: ", ca, "cd:", cd
-                    
+
                     if ca:
                         del move.stepData.accelPulses[:ca]
 
@@ -1489,27 +1479,27 @@ class Advance (object):
             abs_displacement_vector_steps.append(s)
         """
 
-        disp = move.displacement_vector_steps_raw3 + [move.eSteps, 0]
-
         ######################
         # round e
+        e = move.eSteps + self.skippedSimpleSteps
+        # esteps = int(e)
+        esteps = int(round(e))
 
-        e = disp[A_AXIS] + self.skippedSimpleSteps
-        esteps = int(e)
+        print "eround:", move.eSteps, e, e - esteps
 
-        print "eround:", disp[A_AXIS], e, e - esteps
+        disp = move.displacement_vector_steps_raw3 + [esteps, 0]
 
-        disp[A_AXIS] = esteps
+        if disp == emptyVector5:
+            print "Empty move...", 
+            print "***** End planCrossedDecelSteps() *****"
+            # assert(0)
+            self.skippedSimpleSteps += move.eSteps
+            return
 
         self.skippedSimpleSteps = e - esteps
         ######################
 
         abs_displacement_vector_steps = util.vectorAbs(disp)
-
-        if abs_displacement_vector_steps == emptyVector5:
-            print "Empty move..."
-            print "***** End planCrossedDecelSteps() *****"
-            return
 
         self.moveEsteps -= esteps
         print "planCrossedDecelSteps(): moveEsteps-: %7.3f %7.3f" % ( esteps, self.moveEsteps)
@@ -1520,10 +1510,6 @@ class Advance (object):
             move.stepData.setDirBits = True
             move.stepData.dirBits = dirBits
             self.printer.curDirBits = dirBits
-
-        # leadAxis = move.leadAxis(disp=disp)
-        # leadAxis_steps = abs_displacement_vector_steps[leadAxis]
-        # print "lead axis is:", leadAxis, "lead steps:", leadAxis_steps
 
         leadAxisxy = move.leadAxis(nAxes = 2, disp=disp)
         leadAxis_stepsxy = abs_displacement_vector_steps[leadAxisxy]
@@ -1964,61 +1950,6 @@ class Advance (object):
         return 
 
     #
-    # Single advanceed ramp at start, no linear part
-    #
-    def planA(self, parentMove):
-
-        if debugMoves:
-            print "***** Start planA() *****"
-            parentMove.pprint("planA:")
-
-        displacement_vector_steps_raw = parentMove.displacement_vector_steps_raw 
-        displacement_vector_steps_A = parentMove.displacement_vector_steps_raw[:]
-
-        ta = parentMove.accelTime()
-
-        startSpeed = parentMove.startSpeed.speed()
-        topSpeed =   parentMove.topSpeed.speed()
-
-        ####################################################################################
-        # PART A, E
-        (sa, esteps, xdiff) = parentMove.startERampSteps()
-        self.xdiff += xdiff
-        print "xdiff: ", self.xdiff
-        print "dim E moves %.3f mm while accelerating -> %d steps" % (sa, esteps)
-        assert(0)
-
-        displacement_vector_steps_A[A_AXIS] = esteps
-        ####################################################################################
-
-        print "new steps: ", displacement_vector_steps_A
-
-        from move import SubMove
-
-        moveA = SubMove(parentMove, parentMove.moveNumber + 1, displacement_vector_steps_A)
-
-        moveA.setDuration(ta, 0, 0)
-     
-        sv = parentMove.startSpeed.trueSpeed().vv()
-        sv[A_AXIS] = parentMove.advanceData.startEFeedrate()
-
-        tv = topSpeed.vv()
-        tv[A_AXIS] = parentMove.advanceData.startEReachedFeedrate()
-
-        moveA.setSpeeds(sv, tv, tv)
-
-        # Sum up additional e-distance of this move for debugging
-        move.advanceData.advStepSum -= displacement_vector_steps_A[A_AXIS] - displacement_vector_steps_raw[A_AXIS]
-        assert(0)
-
-        if debugMoves:
-            print "***** End planA() *****"
-
-        assert(0)
-        return [moveA]
-
-
-    #
     # Single advanceed ramp at start
     # Create addtional 'sub-move' at beginning
     # Das wichtigste ist, die anzahl der steps genau zu treffen, geringe
@@ -2060,7 +1991,7 @@ class Advance (object):
             displacement_vector_steps_A[dim] = steps
 
         # PART A, E
-        print "dim E moves %d steps while accelerating" % parentMove.advanceData.startESteps
+        print "dim E moves %f steps while accelerating" % parentMove.advanceData.startESteps
         displacement_vector_steps_A[A_AXIS] = parentMove.advanceData.startESteps
         ####################################################################################
 
@@ -2074,12 +2005,12 @@ class Advance (object):
        
         if tl:
 
-            print "dim E moves %d steps in linear phase" % parentMove.advanceData.linESteps
+            print "dim E moves %f steps in linear phase" % parentMove.advanceData.linESteps
             displacement_vector_steps_B[A_AXIS] += parentMove.advanceData.linESteps
 
         if td:
 
-            print "dim E moves %d steps while decelerating" % parentMove.advanceData.endESteps
+            print "dim E moves %f steps while decelerating" % parentMove.advanceData.endESteps
             displacement_vector_steps_B[A_AXIS] += parentMove.advanceData.endESteps
         ####################################################################################
 
@@ -2174,7 +2105,7 @@ class Advance (object):
             displacement_vector_steps_B[dim] = steps
        
         # # PART B, E 
-        print "dim E moves %d steps while decelerating" % parentMove.advanceData.endESteps
+        print "dim E moves %f steps while decelerating" % parentMove.advanceData.endESteps
         displacement_vector_steps_B[A_AXIS] = parentMove.advanceData.endESteps
         ####################################################################################
 
@@ -2188,12 +2119,12 @@ class Advance (object):
         # PART A, E
         if ta:
 
-            print "dim E moves %d steps while accelerating" % parentMove.advanceData.startESteps
+            print "dim E moves %f steps while accelerating" % parentMove.advanceData.startESteps
             displacement_vector_steps_A[A_AXIS] += parentMove.advanceData.startESteps
 
         if tl:
 
-            print "dim E moves %d steps in linear phase" % parentMove.advanceData.linESteps
+            print "dim E moves %f steps in linear phase" % parentMove.advanceData.linESteps
             displacement_vector_steps_A[A_AXIS] += parentMove.advanceData.linESteps
         ####################################################################################
 
@@ -2284,7 +2215,7 @@ class Advance (object):
             displacement_vector_steps_A[dim] = steps
 
         # PART A, E
-        print "dim E moves %d steps while accelerating" % parentMove.advanceData.startESteps
+        print "dim E moves %f steps while accelerating" % parentMove.advanceData.startESteps
         displacement_vector_steps_A[A_AXIS] = parentMove.advanceData.startESteps
         ####################################################################################
 
@@ -2303,7 +2234,7 @@ class Advance (object):
             displacement_vector_steps_C[dim] = steps
        
         # PART C, E
-        print "dim E moves %d steps while decelerating" % parentMove.advanceData.endESteps
+        print "dim E moves %f steps while decelerating" % parentMove.advanceData.endESteps
         displacement_vector_steps_C[A_AXIS] = parentMove.advanceData.endESteps
         ####################################################################################
 
@@ -2332,7 +2263,7 @@ class Advance (object):
                 displacement_vector_steps_B[dim] = displacement_vector_steps_raw[dim] - (displacement_vector_steps_A[dim] + displacement_vector_steps_C[dim])
       
             # PART B, E
-            print "dim E moves %d steps in linear phase" % parentMove.advanceData.linESteps
+            print "dim E moves %f steps in linear phase" % parentMove.advanceData.linESteps
             displacement_vector_steps_B[A_AXIS] = parentMove.advanceData.linESteps
         ####################################################################################
 
@@ -2471,12 +2402,12 @@ class Advance (object):
        
         if ta:
 
-            print "dim E moves %d steps while accelerating" % parentMove.advanceData.startESteps
+            print "dim E moves %f steps while accelerating" % parentMove.advanceData.startESteps
             displacement_vector_steps_A[A_AXIS] += parentMove.advanceData.startESteps
 
         if tl:
 
-            print "dim E moves %d steps in linear phase" % parentMove.advanceData.linESteps
+            print "dim E moves %f steps in linear phase" % parentMove.advanceData.linESteps
             displacement_vector_steps_A[A_AXIS] += parentMove.advanceData.linESteps
 
         ####################################################################################
@@ -2592,7 +2523,7 @@ class Advance (object):
 
             displacement_vector_steps_A[dim] = steps
 
-        print "dim E moves %d steps while accelerating" % parentMove.advanceData.startESteps
+        print "dim E moves %f steps while accelerating" % parentMove.advanceData.startESteps
         displacement_vector_steps_A[A_AXIS] = parentMove.advanceData.startESteps
         ####################################################################################
 
@@ -2655,7 +2586,7 @@ class Advance (object):
             for dim in range(3):
                 displacement_vector_steps_B[dim] = displacement_vector_steps_raw[dim] - (displacement_vector_steps_A[dim] + displacement_vector_steps_C[dim] + displacement_vector_steps_D[dim])
        
-            print "dim E moves %d steps in linear phase" % parentMove.advanceData.linESteps
+            print "dim E moves %f steps in linear phase" % parentMove.advanceData.linESteps
             displacement_vector_steps_B[A_AXIS] += parentMove.advanceData.linESteps
 
         ####################################################################################

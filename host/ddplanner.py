@@ -34,11 +34,6 @@ from ddprintstates import HeaterEx1, HeaterBed
 from ddadvance import Advance
 
 #####################################################################
-#
-# Enable mathplotlib plotting of move steps
-#
-debugPlot = False
-debugPlot = True
 
 if debugPlot:
     import pickle
@@ -849,7 +844,7 @@ class Planner (object):
         """
 
         disp = move.displacement_vector_steps_raw5
-        disp[A_AXIS] = int(disp[A_AXIS]) # xxx round float e-steps, xxx skip rounding errors here
+        disp[A_AXIS] = int(round(disp[A_AXIS])) # XXX account for rounding errors here?
         abs_displacement_vector_steps = util.vectorAbs(disp)
 
         # Determine the 'lead axis' - the axis with the most steps
