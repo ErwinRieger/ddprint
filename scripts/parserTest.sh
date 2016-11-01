@@ -6,16 +6,21 @@ for inp in $* test_files/*.gcode; do
     echo "###################################"
     echo "$0: running python ddprint.py pre $inp"
     echo "###################################"
-    python ddprint.py pre $inp
 
-    if [ "$?" != "0" ]; then
-        echo "###################################"
-        echo "$0: error running Test $nTests $inp"
-        echo "###################################"
-        exit 1
-    fi
+    for kadv in 0 0.4 0.5 1; do
 
-    let "nTests = nTests + 1"
+        python ddprint.py -kAdvance $kadv pre $inp
+
+        if [ "$?" != "0" ]; then
+            echo "########################################################"
+            echo "$0: error running Test $nTests $inp with kAdvance $kadv"
+            echo "########################################################"
+            exit 1
+        fi
+
+        let "nTests = nTests + 1"
+
+    done
 
     echo "###################################"
     echo "$0: Test $nTests $inp done"
