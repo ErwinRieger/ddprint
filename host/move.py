@@ -1244,7 +1244,6 @@ class PrintMove(RealMove):
 
         sa = self.startAdvDistance(ta, startFeedrateIncrease)
         esteps = sa * self.e_steps_per_mm
-        # ediff = sa - (esteps / float(self.e_steps_per_mm))
 
         return (sa, esteps)
 
@@ -1257,9 +1256,8 @@ class PrintMove(RealMove):
 
         sd = self.endAdvDistance(td, endFeedrateIncrease)
         esteps = sd * self.e_steps_per_mm
-        # ediff = sd - (esteps / float(self.e_steps_per_mm))
 
-        return (sd, esteps) # , ediff)
+        return (sd, esteps)
     ################################################################################
 
     ################################################################################
