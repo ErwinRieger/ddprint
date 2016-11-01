@@ -27,11 +27,17 @@ debugMoves = True
 debugAutoTemp = False
 debugAutoTemp = True
 
+#
+# Enable mathplotlib plotting of planned paths
+#
+debugPlot = True
+debugPlot = False
+
 # Define which stage of path planning to plot
 # plotLevelPlanned: plot path after advance-planning
 # plotLevelSplitted: plot advance-splitted path
-debugPlotLevel = "plotLevelSplitted"
 debugPlotLevel = "plotLevelPlanned"
+debugPlotLevel = "plotLevelSplitted"
 
 ############################################################################
 #
