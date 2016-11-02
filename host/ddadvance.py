@@ -166,23 +166,24 @@ class Advance (object):
     def eJerk(self, accel):
         return abs(accel) * self.kAdv
 
-    def resetDebugStatistics(self):
+    def reset(self):
 
+        # Reset debug counters
         # Running sum of e-distances through advance, for debugging of planAdvance()
         self.advSum = 0.0
-        # Sum of skipped small accelration ramps
+        # Sum of skipped small advance ramps
         self.skippedAdvance = 0.0
         self.skippedSimpleSteps = 0.0
-
         # Running sum of move esteps, for debugging of planSteps()
         self.moveEsteps = 0.0
+        # End debug counters
 
     def planPath(self, path):
 
         if debugMoves:
             print "***** Start planPath() *****"
 
-        self.resetDebugStatistics()
+        self.reset()
 
         if debugPlot:
             self.plottime = 1
@@ -191,21 +192,16 @@ class Advance (object):
         # First move
         v0 = path[0].startSpeed.speed()
         # xxx use same start speed as PrintMove::sanityCheck() here!
-        # v0.setSpeed(0.1)
+
         v0.setSpeed(0.0)
         path[0].startSpeed.setSpeed(v0)
 
         # Last move
         # xxx use same start speed as PrintMove::sanityCheck() here!
         v0 = path[-1].endSpeed.speed()
-        # v0.setSpeed(0.1)
+
         v0.setSpeed(0.0)
         path[-1].endSpeed.setSpeed(v0)
-
-        if UseExtrusionAutoTemp:
-            self.pathData.time = 0 # Reset path time
-            self.pathData.extrusionAmount = 0
-            self.pathData.lastTemp = MatProfile.getHotendBaseTemp()
 
         prevMove = path[0]
 
@@ -225,20 +221,25 @@ class Advance (object):
 
         # Sanity check
         for move in path:
-
-            # move.pprint("sanicheck")
             move.sanityCheck(self.planner.jerk)
 
-        # Step 3: handle extruder advance
-
-        if debugMoves:
-            print "Streaming %d moves..." % len(path)
-
+        # Step 3: plan acceleration
         for move in path:
 
-            move.sanityCheck(self.planner.jerk)
             self.planAcceleration(move)
 
+            #
+            # Collect some statistics
+            #
+            self.planner.pathData.maxExtrusionRate.stat(move)
+
+            #
+            # Compute auto hotend temperature
+            #
+            if UseExtrusionAutoTemp:
+                self.planner.pathData.doAutoTemp(move)
+
+        # Step 4: handle extruder advance
         if self.kAdv:
 
             self.groupAdvance(path)
@@ -434,100 +435,22 @@ class Advance (object):
         assert(n == 2*len(newPath))
         # Debug, end check chain
 
-        print "xxx no statistic"
+        # Stream moves to printer
+        if debugMoves:
+            print "Streaming %d moves..." % len(newPath)
+
         for move in newPath:
-
-            #
-            # Collect some statistics
-            #
-            # self.pathData.maxExtrusionRate.stat(move)
-
-            #
-            # Collect moves if AutoTemp
-            #
-            if UseExtrusionAutoTemp:
-                if move.xsExtrudingMove(A_AXIS):
-                    # Collect moves and sum up path time
-                    self.pathData.time += move.getTime()
-
-                    # Sum extrusion volume
-                    self.pathData.extrusionAmount += move.getAdjustedExtrusionVolume(A_AXIS, NozzleProfile, MatProfile)
-
-                self.pathData.atMoves.append(move)
-
-            else:
-
-                # if debugMoves:
-                    # print "Streaming print-move:", move.moveNumber
-                self.planner.streamMove(move)
-
-            move.streamed = True
+            self.planner.streamMove(move)
 
             # Help garbage collection
             move.prevMove = util.StreamedMove()
             move.nextMove = util.StreamedMove()
-       
-
-        """
-        if UseExtrusionAutoTemp:
-
-            if self.pathData.time >= ATInterval or finish:
-
-                if self.pathData.time > 0:
-
-                    # Compute temperature for this segment and add tempcommand into the stream
-                    # Average speed:
-                    avgSpeed = self.pathData.extrusionAmount / self.pathData.time
-
-                    # UseAutoTemp: Adjust temp between Tbase and HotendMaxTemp, if speed is greater than 20 mm/s
-                    # UseExtrusionAutoTemp: Adjust temp between Tbase and HotendMaxTemp, if speed is greater than 5 mm³/s
-                    newTemp = MatProfile.getHotendBaseTemp() # Extruder 1 temp
-                    # extrusionLow = self.ExtrusionAmountLow * pow(NozzleProfile.getSize(), 2)
-                    if avgSpeed > self.ExtrusionAmountLow:
-                        f = MatProfile.getAutoTempFactor()
-                        # newTemp += min((avgSpeed - self.ExtrusionAmountLow * pow(NozzleProfile.getSize(), 2)) * f, ATMaxTempIncrease)
-                        newTemp += (avgSpeed - self.ExtrusionAmountLow) * f
-                        # newTemp *= 1.15 # xxx sync withtemp-speed-adjust
-                        newTemp = min(newTemp, MatProfile.getHotendMaxTemp())
-
-                    if debugAutoTemp:
-                        print "AutoTemp: collected %d moves with %.2f s duration." % (len(self.pathData.atMoves), self.pathData.time)
-                        print "AutoTemp: amount: %.2f, avg extrusion rate: %.2f mm³/s." % (self.pathData.extrusionAmount, avgSpeed)
-                        print "AutoTemp: new temp: %.2f." % (newTemp)
-                        self.pathData.maxExtrusionRate.avgStat(avgSpeed)
-
-                    if newTemp != self.pathData.lastTemp and self.args.mode != "pre":
-
-                        # Schedule target temp command
-                        self.printer.sendCommandParamV(
-                            CmdSyncTargetTemp,
-                            [packedvalue.uint8_t(HeaterEx1), packedvalue.uint16_t(newTemp)])
-
-                        self.pathData.lastTemp = newTemp
-
-                for move in self.pathData.atMoves:
-                    self.streamMove(move)
-                   
-                self.pathData.atMoves = []
-                self.pathData.time = self.pathData.extrusionAmount = 0 # Reset path time
-                # assert(0)
-        """
-
-        # if debugPlot:
-            # self.plotfile.write("e\n")
-            # self.plotfile.close()
-        ################################################# end StreamMoves #####################################################
 
         if debugMoves:
             print "***** End planPath() *****"
 
     #
-    # xxx
-    # Letzter move in revMoves ist entweder:
-    #   * letzer move des pfades, in dem fall ist endspeed bereits berechnet
-    #     und gleich jerkspeed.
-    #   * der move vor dem "isolation move", in diesem falle ist endspeed noch nicht 
-    #     gesetzt, aber die min/max grenzen
+    #
     #
     def joinMovesBwd(self, moves):
 
@@ -559,8 +482,6 @@ class Advance (object):
             maxAllowedStartSpeed = util.vAccelPerDist(endSpeedS, allowedAccel3, move.distance3)
 
             # print "joinMovesBwd, startspeed, max startspeed: ", move.getStartFr(), maxAllowedStartSpeed
-
-            # print "WARNING: joinMovesBwd() no check of e-axis"
 
             maxAllowedEStartSpeed = util.vAccelPerDist(endSpeed1.eSpeed, av[A_AXIS], move.eDistance)
 
@@ -604,7 +525,6 @@ class Advance (object):
 
                 # XXX einfacher algo, kann man das besser machen (z.b. mit jerk-berechnung,
                 # vector subtraktion oder so?)
-                # move.prevMove.setTrueEndFr(move.prevMove.getEndFr() * factor)
                 endSpeed0 = move.prevMove.endSpeed.speed().scale(factor)
                 move.prevMove.endSpeed.setSpeed(endSpeed0)
 

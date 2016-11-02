@@ -143,7 +143,7 @@ class UM2GcodeParser:
         return cls.__single
 
     def reset(self):
-        self._gcodePos = util.MyPoint()
+        # self._gcodePos = util.MyPoint()
         self._realPos = util.MyPoint()
         self.feedrate = None
         self.numParts = 1
@@ -155,22 +155,22 @@ class UM2GcodeParser:
 
     # Set current virtual printer position
     def set_position(self, point):
-        self._gcodePos = point.copy()
+        # self._gcodePos = point.copy()
         self._realPos = point.copy()
 
     def getRealPos(self):
         return self._realPos.copy()
 
-    def getGcodePos(self):
-        return self._gcodePos.copy()
+    # def getGcodePos(self):
+        # return self._gcodePos.copy()
 
     def setRealPos(self, pos):
         # print "setRealPos:", pos
         self._realPos = pos.copy()
 
-    def setGcodePos(self, pos):
-        # print "setGcodePos:", pos
-        self._gcodePos = pos.copy()
+    # def setGcodePos(self, pos):
+        # # print "setGcodePos:", pos
+        # self._gcodePos = pos.copy()
 
     def preParse(self, fn):
 
@@ -386,14 +386,14 @@ class UM2GcodeParser:
 
     def g92_set_pos(self, line, values):
 
-        gcodePos = self.getGcodePos()
+        # gcodePos = self.getGcodePos()
         realPos = self.getRealPos()
         for key in values:
-            gcodePos[key] = values[key]
+            # gcodePos[key] = values[key]
             realPos[key] = values[key]
 
         # self.set_position(pos)
-        self.setGcodePos(gcodePos)
+        # self.setGcodePos(gcodePos)
         self.setRealPos(realPos)
 
     def g0(self, line, values):
@@ -412,10 +412,10 @@ class UM2GcodeParser:
             self.feedrate = feedrate
             return
 
-        curGcodePos = self.getGcodePos()
+        # curGcodePos = self.getGcodePos()
         curRealPos = self.getRealPos()
 
-        newGcodePos = curGcodePos.copy()
+        # newGcodePos = curGcodePos.copy()
         newRealPos = curRealPos.copy()
 
         # print "curGcodePos: ", newGcodePos
@@ -459,7 +459,7 @@ class UM2GcodeParser:
                 displacement_vector[dim] = rDiff
                 newRealPos[dim] = values[dimC]
 
-            newGcodePos[dimC] = values[dimC]
+            # newGcodePos[dimC] = values[dimC]
 
         #
         # Check if zero or small length:
@@ -518,7 +518,7 @@ class UM2GcodeParser:
 
         # print "newGcodePos: ", newGcodePos
         # print "newRealPos: ", newRealPos
-        self.setGcodePos(newGcodePos)
+        # self.setGcodePos(newGcodePos)
         self.setRealPos(newRealPos)
 
 

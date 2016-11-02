@@ -27,7 +27,7 @@ from ddprintconstants import AdvanceEThreshold, StepDataTypeBresenham, StepDataT
 from ddprintutil import X_AXIS, Y_AXIS, Z_AXIS, A_AXIS, B_AXIS,vectorLength, vectorMul, vectorSub, circaf, sign, vectorAbs
 from ddprintutil import pdbAssert
 from ddprintcommands import CommandNames
-from ddprofile import NozzleProfile, MatProfile, PrinterProfile
+from ddprofile import PrinterProfile
 from types import ListType
 
 
@@ -872,6 +872,9 @@ class MoveBase(object):
 
         self.stepData = None
 
+    def isSubMove(self):
+        return False
+
     def setDuration(self, accelTime, linearTime, decelTime):
 
         self.accelData.setDuration(accelTime, linearTime, decelTime)
@@ -1450,6 +1453,9 @@ class PrintMove(RealMove):
     def crossedDecelStep(self):
         return False
 
+    def getExtrusionVolume(self, matProfile):
+        return self.eDistance * matProfile.getMatArea()
+
     def sanityCheck(self, jerk):
 
         RealMove.sanityCheck(self)
@@ -1531,6 +1537,9 @@ class SubMove(MoveBase):
         self.eSteps = displacement_vector_steps[A_AXIS]
 
         self.state = 2
+
+    def isSubMove(self):
+        return True
 
     def setSpeeds(self, sv, tv, ev):
 
