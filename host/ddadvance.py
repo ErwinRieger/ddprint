@@ -177,9 +177,6 @@ class Advance (object):
         # Running sum of move esteps, for debugging of planSteps()
         self.moveEsteps = 0.0
 
-        self.longestRampMove = None
-        self.longestRampAdvance = 0
-
     def planPath(self, path):
 
         if debugMoves:
@@ -257,73 +254,43 @@ class Advance (object):
 
             print "Path skippedAdvance: ", self.skippedAdvance, "-->", self.skippedAdvance*self.e_steps_per_mm, "e-steps"
 
-            if self.skippedAdvance > 1.0/self.e_steps_per_mm:
-                print "spread skippedAdvance accel on biggest ramp: ", self.longestRampMove, self.longestRampAdvance
+            if abs(self.skippedAdvance) > 1.0/self.e_steps_per_mm:
 
-                self.longestRampMove.pprint("longestRampMove")
+                print "Spreading skippedAdvance..."
 
-                ta = self.longestRampMove.accelTime()
+                tAdvAccelSum = 0
+                advAccelMoves = []
+                for move in path:
 
-                startIncrease = self.skippedAdvance / ta
+                    if move.advanceData.hasStartAdvance():
+                        tAdvAccelSum += move.accelTime()
+                        advAccelMoves.append(move)
 
-                print "Increasing startramp by: ", startIncrease, "[mm/s]"
+                print "adv time sum:", tAdvAccelSum
 
-                # XXX this possibly increases e-jerk above max e-jerk, a better way is to decrease
-                # the e-jerk of a decel advance ramp...
+                vAdvanceAdjust = self.skippedAdvance / tAdvAccelSum
 
-                assert(startIncrease < 1) # xxx constrain it
+                print "Average startramp adjust: ", vAdvanceAdjust, "[mm/s]"
 
-                self.longestRampMove.advanceData.startFeedrateIncrease += startIncrease
+                for move in advAccelMoves:
 
-                estepIncrease = self.skippedAdvance * self.e_steps_per_mm 
+                    newFeedrateIncrease = max(move.advanceData.startFeedrateIncrease+vAdvanceAdjust, 0)
+                    deltaFeedrateIncrease = newFeedrateIncrease - move.advanceData.startFeedrateIncrease
+                    move.advanceData.startFeedrateIncrease = newFeedrateIncrease
 
-                print "Increasing startramp by: ", estepIncrease, "[steps]"
+                    print "new startFeedrateIncrease:", move.advanceData.startFeedrateIncrease
 
-                self.longestRampMove.advanceData.startESteps += estepIncrease
-                self.longestRampMove.advanceData.advStepSum += estepIncrease
+                    assert(move.advanceData.startFeedrateIncrease >= 0)
 
-                self.skippedAdvance = 0
+                    sAdvAdjust = deltaFeedrateIncrease * move.accelTime()
+                    sEstepIncrease = sAdvAdjust * self.e_steps_per_mm 
 
-                self.longestRampMove.pprint("spread longestRampMove")
+                    print "Increasing startramp by: ", sEstepIncrease, "[steps]"
 
-                # assert(0)
+                    move.advanceData.startESteps += sEstepIncrease
+                    move.advanceData.advStepSum += sEstepIncrease
 
-            elif self.skippedAdvance < -1.0/self.e_steps_per_mm:
-
-                # xxxx using longest start ramp instead of longest end ramp here! maybe better change this
-                # xxx wenn der positive start advance benutzt wird, besteht keine gefahr, einen 'crossing decel'
-                # zu verändern.
-
-                print "spread skippedAdvance accel on biggest ramp: ", self.longestRampMove, self.longestRampAdvance
-
-                self.longestRampMove.pprint("longestRampMove")
-
-                ta = self.longestRampMove.accelTime()
-
-                startIncrease = self.skippedAdvance / ta
-
-                print "Increasing startramp by: ", startIncrease, "[mm/s]"
-
-                # XXX this possibly increases e-jerk above max e-jerk, a better way is to decrease
-                # the e-jerk of a decel advance ramp...
-
-                assert(startIncrease > -1) # xxx constrain it
-
-                self.longestRampMove.advanceData.startFeedrateIncrease += startIncrease
-                assert(self.longestRampMove.advanceData.startFeedrateIncrease >= 0)
-
-                estepIncrease = self.skippedAdvance * self.e_steps_per_mm 
-
-                print "Increasing startramp by: ", estepIncrease, "[steps]"
-
-                self.longestRampMove.advanceData.startESteps += estepIncrease
-                self.longestRampMove.advanceData.advStepSum += estepIncrease
-
-                self.skippedAdvance = 0
-
-                self.longestRampMove.pprint("spread longestRampMove")
-
-                # assert(0)
+                    self.skippedAdvance -= sAdvAdjust
 
         if debugPlot and debugPlotLevel == "plotLevelPlanned":
 
@@ -935,10 +902,6 @@ class Advance (object):
                         (sa, esteps, usedRoundError) = advMove.startERampSteps(self.planner.jerk[A_AXIS], roundError=self.skippedAdvance)
                         self.skippedAdvance -= usedRoundError
 
-                        if sa > self.longestRampAdvance:
-                            self.longestRampMove = advMove
-                            self.longestRampAdvance = sa
-
                         advMove.advanceData.startESteps = esteps
                         advMove.advanceData.advStepSum += esteps
 
@@ -1517,20 +1480,6 @@ class Advance (object):
 
         ############################################################################################
         #
-        # Create a list of XY-stepper pulses (DDA)
-        #
-        xyClocks = util.decelRampXY(
-            leadAxisxy,
-            abs( topSpeed[leadAxisxy] ),
-            abs(endSpeed[leadAxisxy]),
-            abs(move.getMaxAllowedAccelVector5(self.maxAxisAcceleration)[leadAxisxy]),
-            abs_displacement_vector_steps)
-
-        if debugMoves:
-            print "Generated %d/%d XY steps" % (len(xyClocks), leadAxis_stepsxy)
-
-        ############################################################################################
-        #
         # Steps for E acceleration
         #
         eStepsToMove = abs_displacement_vector_steps[A_AXIS]
@@ -1544,6 +1493,35 @@ class Advance (object):
 
         if debugMoves:
             print "Generated %d/%d E steps" % (len(eClocks), eStepsToMove)
+
+        if not abs_displacement_vector_steps[leadAxisxy]:
+
+            #
+            # Move consists of e-steps only
+            #
+            for (tv, dt, tv) in eClocks:
+
+                move.stepData.addPulse(tv, [0, 0, 0, 1, 0])
+
+            if debugMoves:
+                move.pprint("planCrossedDecelSteps:")
+                print "***** End planCrossedDecelSteps() *****"
+
+            return 
+
+        ############################################################################################
+        #
+        # Create a list of XY-stepper pulses (DDA)
+        #
+        xyClocks = util.decelRampXY(
+            leadAxisxy,
+            abs( topSpeed[leadAxisxy] ),
+            abs(endSpeed[leadAxisxy]),
+            abs(move.getMaxAllowedAccelVector5(self.maxAxisAcceleration)[leadAxisxy]),
+            abs_displacement_vector_steps)
+
+        if debugMoves:
+            print "Generated %d/%d XY steps" % (len(xyClocks), leadAxis_stepsxy)
 
         ############################################################################################
 
