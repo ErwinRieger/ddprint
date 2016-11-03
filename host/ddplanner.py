@@ -19,7 +19,7 @@
 # along with ddprint.  If not, see <http://www.gnu.org/licenses/>.
 #*/
 
-import math, collections
+import math, collections, types
 from argparse import Namespace
 
 import ddprintutil as util, dddumbui, packedvalue
@@ -102,6 +102,101 @@ class MaxExtrusionRate:
             print "Maximal Extrusion Rate (Extruder A) 5 second average: %.1f" % self.maxAvgRate, "mm³/s\n"
 
 #####################################################################
+
+class StepRounder(object):
+
+    def __init__(self, axis):
+
+        self.axis = axis
+        self.g92()
+
+    def g92(self):
+
+        self.roundError = 0
+        self.f = 0
+
+    def round(self, f):
+
+        assert(type(f) == types.FloatType)
+
+        self.f = f
+
+        s = int(round(f + self.roundError))
+       
+        print "round axis %d: %f + %f" % (self.axis, f, self.roundError)
+        return s
+
+    def commit(self):
+
+        f = self.f + self.roundError
+        s = int(round(f))
+        self.roundError = f - s
+        self.f = 0
+
+        # print "commit %d, error: %f" % (self.axis, self.roundError)
+
+    def rollback(self):
+
+        self.roundError += self.f
+        self.f = 0
+
+        # print "rollback %d, error: %f" % (self.axis, self.roundError)
+
+    def pprint(self):
+
+        assert(self.f == 0)
+        print "Remainder axis %s: %f" % (dimNames[self.axis], self.roundError)
+
+        
+    def check(self):
+
+        assert(self.f == 0)
+        assert(abs(self.roundError) < 1.0)
+
+class StepRounders(object):
+
+    def __init__(self):
+
+        self.stepRounders = [
+                StepRounder(0),
+                StepRounder(1),
+                StepRounder(2),
+                StepRounder(3),
+                StepRounder(4)
+                ]
+
+    def g92(self, values):
+
+        for dim in values.keys():
+            self.stepRounders[dimNames.index(dim)].g92()
+
+    def round(self, dispF):
+
+        dispS = []
+        for dim in range(5):
+            dispS.append(self.stepRounders[dim].round(dispF[dim]))
+
+        return dispS
+
+    def commit(self):
+
+        for i in range(5):
+            self.stepRounders[i].commit()
+
+    def rollback(self):
+
+        for i in range(5):
+            self.stepRounders[i].rollback()
+
+    def pprint(self):
+
+        for i in range(5):
+            self.stepRounders[i].pprint()
+
+    def check(self):
+
+        for i in range(5):
+            self.stepRounders[i].check()
 
 class PathData (object):
 
@@ -271,6 +366,7 @@ class Planner (object):
 
         self.advance = Advance(self, args)
 
+
         self.reset()
 
     def reset(self):
@@ -279,6 +375,8 @@ class Planner (object):
 
         self.syncCommands = collections.defaultdict(list)
         self.partNumber = 1
+
+        self.stepRounders = StepRounders()
 
     @classmethod
     def get(cls):
@@ -332,6 +430,10 @@ class Planner (object):
                 CmdSyncTargetTemp, 
                 p1 = packedvalue.uint8_t(HeaterBed),
                 p2 = packedvalue.uint16_t(bedTemp))
+
+    def g92(self, values):
+
+        self.stepRounders.g92(values)
 
     # Called from gcode parser
     def addMove(self, move):
@@ -404,6 +506,9 @@ class Planner (object):
         self.streamMove(move)
 
     def finishMoves(self):
+
+        # debug
+        self.stepRounders.check()
 
         if self.pathData.path:
 
@@ -638,15 +743,20 @@ class Planner (object):
             abs_displacement_vector_steps.append(s)
         """
 
-        disp = move.displacement_vector_steps_raw5
-        disp[A_AXIS] = int(round(disp[A_AXIS])) # XXX account for rounding errors here?
-        abs_displacement_vector_steps = util.vectorAbs(disp)
+        dispF = move.displacement_vector_steps_raw5
+
+        print dispF
+        dispS = self.stepRounders.round(dispF)
+        self.stepRounders.commit()
+
+        # disp[A_AXIS] = int(round(disp[A_AXIS])) # XXX account for rounding errors here?
+        abs_displacement_vector_steps = util.vectorAbs(dispS)
 
         # Determine the 'lead axis' - the axis with the most steps
-        leadAxis = move.leadAxis(disp=disp)
+        leadAxis = move.leadAxis(disp=dispS)
         leadAxis_steps = abs_displacement_vector_steps[leadAxis]
 
-        dirBits = util.directionBits(disp, self.printer.curDirBits)
+        dirBits = util.directionBits(dispS, self.printer.curDirBits)
 
         if dirBits != self.printer.curDirBits:
             move.stepData.setDirBits = True

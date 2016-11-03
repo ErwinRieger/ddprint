@@ -30,8 +30,8 @@ debugAutoTemp = True
 #
 # Enable mathplotlib plotting of planned paths
 #
-debugPlot = True
 debugPlot = False
+debugPlot = True
 
 # Define which stage of path planning to plot
 # plotLevelPlanned: plot path after advance-planning

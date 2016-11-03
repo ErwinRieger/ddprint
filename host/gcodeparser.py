@@ -143,7 +143,6 @@ class UM2GcodeParser:
         return cls.__single
 
     def reset(self):
-        # self._gcodePos = util.MyPoint()
         self._realPos = util.MyPoint()
         self.feedrate = None
         self.numParts = 1
@@ -155,22 +154,14 @@ class UM2GcodeParser:
 
     # Set current virtual printer position
     def set_position(self, point):
-        # self._gcodePos = point.copy()
         self._realPos = point.copy()
 
     def getRealPos(self):
         return self._realPos.copy()
 
-    # def getGcodePos(self):
-        # return self._gcodePos.copy()
-
     def setRealPos(self, pos):
         # print "setRealPos:", pos
         self._realPos = pos.copy()
-
-    # def setGcodePos(self, pos):
-        # # print "setGcodePos:", pos
-        # self._gcodePos = pos.copy()
 
     def preParse(self, fn):
 
@@ -283,10 +274,10 @@ class UM2GcodeParser:
                 # print "replace feedrate in mm/min with mm/sec..."
                 factor = 1.0 / 60
 
-            try:
-                values[valueChar] = int(rest) * factor
-            except ValueError:
-                values[valueChar] = float(rest) * factor
+            # try:
+                # values[valueChar] = int(rest) * factor
+            # except ValueError:
+            values[valueChar] = float(rest) * factor
 
         return values
 
@@ -386,15 +377,14 @@ class UM2GcodeParser:
 
     def g92_set_pos(self, line, values):
 
-        # gcodePos = self.getGcodePos()
         realPos = self.getRealPos()
         for key in values:
-            # gcodePos[key] = values[key]
             realPos[key] = values[key]
 
         # self.set_position(pos)
-        # self.setGcodePos(gcodePos)
         self.setRealPos(realPos)
+
+        self.planner.g92(values)
 
     def g0(self, line, values):
 
@@ -412,19 +402,14 @@ class UM2GcodeParser:
             self.feedrate = feedrate
             return
 
-        # curGcodePos = self.getGcodePos()
         curRealPos = self.getRealPos()
 
-        # newGcodePos = curGcodePos.copy()
         newRealPos = curRealPos.copy()
 
-        # print "curGcodePos: ", newGcodePos
         # print "curRealPos: ", newRealPos
 
-        displacement_vector = Vector([0, 0, 0, 0, 0])
-        displacement_vector_steps = [0, 0, 0, 0, 0]
-
-        # eOnlyByGcode = True
+        displacement_vector = Vector([0.0, 0.0, 0.0, 0.0, 0.0])
+        displacement_vector_steps = [0.0, 0.0, 0.0, 0.0, 0.0]
 
         for dim in range(5):
 
@@ -432,17 +417,9 @@ class UM2GcodeParser:
             if dimC not in values:
                 continue
 
-            # gDiff = values[dimC] - curGcodePos[dim]
-            # if gDiff and dimC in ['X', 'Y', 'Z']:
-                # eOnlyByGcode = False
-
             rDiff = values[dimC] - curRealPos[dim]
 
-            # xyz as discrete int-steps, e as float
-            if dimC in ['X', 'Y', 'Z']:
-                nSteps = (int)((rDiff * self.steps_per_mm[dim]) + 0.5)
-            else:
-                nSteps = rDiff * self.steps_per_mm[dim]
+            nSteps = rDiff * self.steps_per_mm[dim]
 
             displacement_vector_steps[dim] = nSteps
 
@@ -451,36 +428,24 @@ class UM2GcodeParser:
             # print "values: ", dimC, rDiff, nSteps, delta
             # end debug
 
-            if dimC in ['X', 'Y', 'Z']:
-                rDiff = nSteps * self.mm_per_step[dim]
-                displacement_vector[dim] = rDiff
-                newRealPos[dim] = curRealPos[dim] + rDiff
-            else:
-                displacement_vector[dim] = rDiff
-                newRealPos[dim] = values[dimC]
-
-            # newGcodePos[dimC] = values[dimC]
+            displacement_vector[dim] = rDiff
+            newRealPos[dim] = values[dimC]
 
         #
         # Check if zero or small length:
         #
-        if displacement_vector_steps == [0, 0, 0, 0, 0]:
+        if displacement_vector_steps == [0.0, 0.0, 0.0, 0.0, 0.0]:
             # Skip this very small move, the delta of this move is not lost,
             # since it is included in the next absolute gcode command.
             # Current position has not been updated, yet (see self.state.set_position(values))
             # at the end of this method.
             
             # But respect a possible feedrate change:
-            # if not eOnlyByGcode:
             self.feedrate = feedrate
-
             return
 
         # Get head move distance:
         # move_distance = vectorDistance(curRealPos[:3], newRealPos[:3])
-
-        # if move_distance != 0:
-            # assert(not eOnlyByGcode)
 
         if debugMoves:
             for dim in range(5):
@@ -511,14 +476,9 @@ class UM2GcodeParser:
                 feedrate=feedrate, # mm/s
                 ))
             
-        # if not eOnlyByGcode:
         self.feedrate = feedrate
-        # else:
-            # print "NOT storing new feedrate of E-Only move '%s'!" % comment
 
-        # print "newGcodePos: ", newGcodePos
         # print "newRealPos: ", newRealPos
-        # self.setGcodePos(newGcodePos)
         self.setRealPos(newRealPos)
 
 
