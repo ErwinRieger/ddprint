@@ -745,9 +745,12 @@ class Planner (object):
 
         dispF = move.displacement_vector_steps_raw5
 
-        print dispF
-        dispS = self.stepRounders.round(dispF)
-        self.stepRounders.commit()
+        # print dispF
+        # dispS = self.stepRounders.round(dispF)
+        # self.stepRounders.commit()
+        dispS = []
+        for f in dispF:
+            dispS.append(int(round(f)))
 
         # disp[A_AXIS] = int(round(disp[A_AXIS])) # XXX account for rounding errors here?
         abs_displacement_vector_steps = util.vectorAbs(dispS)

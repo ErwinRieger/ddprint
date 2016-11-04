@@ -37,8 +37,11 @@ from ddprofile import PrinterProfile, MatProfile, NozzleProfile
 FILAMENT_REVERSAL_LENGTH = 750
 
 # To prevent false assertions because of rounding errors
-RoundSafe = 0.995
+# RoundSafe = 0.995
 # RoundSafe = 0.999999
+# RoundSafe = 1.0
+xRoundSafe = 0.999999999
+xRoundSafe = 1.0
 
 ####################################################################################################
 def sign(x):
@@ -157,7 +160,7 @@ def joinMoves(move1, move2, jerk, maxAccelV):
         # allowedAccel = move1.getMaxAllowedAccel5(maxAccelV)
         av = move1.getMaxAllowedAccelVector5(maxAccelV)
         allowedAccel3 = vectorLength(av[:3])
-        maxEndSpeed1 = vAccelPerDist(startSpeedS1, allowedAccel3, move1.distance3) * RoundSafe
+        maxEndSpeed1 = vAccelPerDist(startSpeedS1, allowedAccel3, move1.distance3) * xRoundSafe
 
         if maxEndSpeed1 < endSpeedS1:
 
@@ -173,8 +176,8 @@ def joinMoves(move1, move2, jerk, maxAccelV):
 
         # Check max reachable e endspeed
         maxAllowedEEndSpeed = vAccelPerDist(startSpeed1.eSpeed, av[A_AXIS], move1.eDistance)
-
-        assert(maxAllowedEEndSpeed >= endSpeed1.eSpeed)
+        if maxAllowedEEndSpeed < endSpeed1.eSpeed:
+            circaf(maxAllowedEEndSpeed, endSpeed1.eSpeed, 0.000000001)
 
         joinMoves2(move1, move2, jerk)
 

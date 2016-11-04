@@ -93,6 +93,7 @@ NExtrusionLimit = 40
 # Threshold value, if the difference of the velocity at the start or end
 # of a move is below this value, we do not generate a accel-/deceleration ramp .
 AccelThreshold=0.001 # [mm/s]
+AccelThreshold=0.000001 # [mm/s]
 
 ############################################################################
 #
@@ -101,11 +102,12 @@ AccelThreshold=0.001 # [mm/s]
 # Threshold value, if the difference of the extrusion rate of two moves
 # is below this value, we assume they have the same extrusion rate.
 AdvanceEThreshold=0.001 # [mm/s]
+AdvanceEThreshold=0.000001 # [mm/s]
 
 #
-# Minimum len in steps of acceleration- or deceleration ramp to apply advance.
-# AdvanceMinRamp = 10
-AdvanceMinRamp = 15
+# Minimum len in mm of acceleration- or deceleration ramp to apply advance.
+AdvanceMinRamp = 0.1
+AdvanceMinRamp = 0.0
 
 
 
