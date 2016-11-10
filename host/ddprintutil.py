@@ -80,11 +80,16 @@ def vAccelPerDist(v0, a, s):
 
     assert(v0 >= 0)
 
-    term = 2.0 * a * s + pow(v0, 2)
-    if term >= 0:
-        return math.sqrt( term )
-    else:
-        return - math.sqrt( abs(term) )
+    t1 = pow(v0, 2)
+    t2 = 2.0 * a * s
+
+    # print "t1: ", t1
+    # print "t2: ", t2
+
+    if (t1 + t2) >= 0:
+        return math.sqrt(t1+t2)
+
+    return - math.sqrt(abs(t1 + t2))
 
 ####################################################################################################
 
@@ -1765,13 +1770,73 @@ def decelRampXY(leadAxis, vstart, vend, a, absSteps):
     steps_per_mm = PrinterProfile.getStepsPerMM(leadAxis)
     sPerStep = 1.0/steps_per_mm
 
-    v = vstart
     tstep = 0
+
+    # Lower speed
+    maxStepTime = ddprintconstants.maxTimerValue16 / fTimer
+    vmin = sPerStep / maxStepTime
+
+    stepsToDo = 0
+    if vstart > vmin:
+
+        vend = max(vend, vmin)
+
+        # Number of lead axis steps needed
+        dv = vstart - vend
+        dt = dv / a
+        s = accelDist(vstart, -a, dt)
+
+        print "vstart, vend, a", vstart, vend, a
+        print "dv, dt, s:", dv, dt, s
+
+        stepsToDo = int(s * steps_per_mm)
+
+    else:
+
+        vstart = vmin
+
+    print "doing ", stepsToDo, "of", leadSteps
+
+    # # debug
+    # prepended = False
+
+    if leadSteps > stepsToDo:
+
+        # Prepend fast steps
+        for i in range(leadSteps - stepsToDo):
+
+            # Time we need for this speed change/this step:
+            dt = sPerStep / vstart
+
+            # Timervalue for this time
+            timerValue = int(dt * fTimer)
+
+            stepBits = [0, 0]
+            stepBits[leadAxis] = 1
+
+            otherCount += bFactor
+
+            if otherCount >= 0.5:
+                stepBits[otherAxis] = 1
+                otherSteps -= 1
+                otherCount -= 1.0
+
+            # print "steps, otherCount:", stepBits, otherCount
+            pulses.append((tstep, dt, timerValue, stepBits))
+
+            tstep += dt
+            leadSteps -= 1
+
+        # prepended = True
+
+    v = vstart
     s = sPerStep
 
-    while v > vend and leadSteps > 0:
+    # while v > vend and leadSteps > 0:
+    while leadSteps > 0:
 
         # Speed after this step
+        # print "vstar, -a, s:", vstart, -a, s
         vn1 = vAccelPerDist(vstart, -a, s)
 
         # Time we need for this speed change/this step:
@@ -1808,6 +1873,12 @@ def decelRampXY(leadAxis, vstart, vend, a, absSteps):
 
     print "Missing steps: ", leadSteps, otherSteps
 
+    # if prepended:
+        # print "prepended steps:"
+        # pprint.pprint(pulses)
+
+
+    """
     # Add missing steps in timeroverflow case
     if leadSteps > 0:
 
@@ -1845,8 +1916,9 @@ def decelRampXY(leadAxis, vstart, vend, a, absSteps):
 
         # pprint.pprint(newPulses)
         return newPulses
+    """
 
-    assert(otherSteps == 0)
+    assert(leadSteps == 0 and otherSteps == 0)
     return pulses
 
 ####################################################################################################
