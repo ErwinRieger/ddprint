@@ -856,8 +856,7 @@ class PrintMove(RealMove):
         self.endSpeed = VelocityOverride(v)
 
         av = self._getMaxAllowedAccelVector5(maxAccelV)
-        self.startAccel = AccelOverride([av[:3], av[A_AXIS]], self.direction3)
-        self.endAccel = AccelOverride([av[:3], av[A_AXIS]], self.direction3)
+        self.accel = AccelOverride([av[:3], av[A_AXIS]], self.direction3)
 
     def isPrintMove(self):
         return True
@@ -1184,10 +1183,8 @@ class PrintMove(RealMove):
         print "Start ESpeed: " + self.startSpeed.speed().eSpeedStr()
         print "  End ESpeed: " + self.endSpeed.speed().eSpeedStr()
 
-        print "Start Acceleration: ",
-        print self.startAccel
-        print "End Acceleration: ",
-        print self.endAccel
+        print "Allowed Acceleration: ",
+        print self.accel
 
         print self.advanceData
         print "---------------------"
@@ -1220,8 +1217,7 @@ class SubMove(MoveBase):
         self.displacement_vector_steps_raw3 = displacement_vector_steps[:3]
         self.eSteps = displacement_vector_steps[A_AXIS]
 
-        self.startAccel = parentMove.startAccel
-        self.endAccel = parentMove.endAccel
+        self.accel = parentMove.accel
 
         self.state = 2
 

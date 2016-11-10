@@ -530,8 +530,8 @@ class Advance (object):
         self.planner.stepRounders.check()
 
         if self.kAdv:
-            assert(util.circaf(self.moveEsteps, 0, 0.2))
-            assert(util.circaf(self.moveEsteps, 0, 1.001))
+            # assert(util.circaf(self.moveEsteps, 0, 0.2))
+            assert(abs(self.moveEsteps) < 1.0)
 
         # Debug, check chain
         n = 2
@@ -589,18 +589,17 @@ class Advance (object):
 
             # av = move.getMaxAllowedAccelVector5(self.maxAxisAcceleration)
             # allowedAccel3 = vectorLength(av[:3])
-            allowedAccel3 = move.endAccel.xyAccel()
+            allowedAccel3 = move.accel.xyAccel()
 
             maxAllowedStartSpeed = util.vAccelPerDist(endSpeedS, allowedAccel3, move.distance3)
 
-            # print "joinMovesBwd, startspeed, max startspeed: ", move.getStartFr(), maxAllowedStartSpeed
+            # print "joinMovesBwd, startspeed, max startspeed: ", startSpeedS, maxAllowedStartSpeed
 
-            maxAllowedEStartSpeed = util.vAccelPerDist(endSpeed1.eSpeed, move.endAccel.eAccel(), move.eDistance)
+            maxAllowedEStartSpeed = util.vAccelPerDist(endSpeed1.eSpeed, move.accel.eAccel(), move.eDistance)
 
-            if maxAllowedStartSpeed >= startSpeedS:
-                # good, move is ok
+            if maxAllowedStartSpeed >= startSpeedS and maxAllowedEStartSpeed >= startSpeed1.eSpeed:
 
-                assert(maxAllowedEStartSpeed >= startSpeed1.eSpeed)
+                # Join speeds ok
                 continue
 
             if debugMoves: 
@@ -660,11 +659,8 @@ class Advance (object):
         # av = move.getMaxAllowedAccelVector5(self.maxAxisAcceleration)
         # print "allowed accel vector: ", av, ", XY accel: ", allowedAccel3
 
-        startAccel3 = move.startAccel.xyAccel()
-        endAccel3 = move.endAccel.xyAccel()
-
-        print "allowed XY start accel: ", startAccel3
-        print "allowed XY end   accel: ", endAccel3
+        accel3 = move.accel.xyAccel()
+        print "allowed XY start accel: ", accel3
 
         #
         # Check if the speed difference between startspeed and endspeed can be done with
@@ -682,38 +678,37 @@ class Advance (object):
 
         if deltaSpeedS > 0.001:
        
-            ta = deltaSpeedS / startAccel3
+            ta = deltaSpeedS / accel3
 
-            sa = util.accelDist(startSpeedS, util.sign(deltaSpeedS) * startAccel3, ta)
+            sa = util.accelDist(startSpeedS, util.sign(deltaSpeedS) * accel3, ta)
       
             if (sa - move.distance3) > 0.001:
-                print " 0.5 * %f * pow(%f, 2) + %f * %f" % (startAccel3, ta, startSpeedS, ta)
+                print " 0.5 * %f * pow(%f, 2) + %f * %f" % (accel3, ta, startSpeedS, ta)
                 print "VStart %f mm/s kann nicht innerhalb von %f mm auf Endgeschwindigkeit %f mm/s gebracht werden!" % (startSpeedS, move.distance3, endSpeedS)
                 print "Dafür werden %f mm benötigt" % sa
                 assert(0)
 
         if deltaSpeedS < -0.001:
        
-            ta = abs(deltaSpeedS) / endAccel3
+            ta = abs(deltaSpeedS) / accel3
 
-            sa = util.accelDist(startSpeedS, util.sign(deltaSpeedS) * endAccel3, ta)
+            sa = util.accelDist(startSpeedS, util.sign(deltaSpeedS) * accel3, ta)
       
             if (sa - move.distance3) > 0.001:
-                print " 0.5 * %f * pow(%f, 2) + %f * %f" % (endAccel3, ta, startSpeedS, ta)
+                print " 0.5 * %f * pow(%f, 2) + %f * %f" % (accel3, ta, startSpeedS, ta)
                 print "VStart %f mm/s kann nicht innerhalb von %f mm auf Endgeschwindigkeit %f mm/s gebracht werden!" % (startSpeedS, move.distance3, endSpeedS)
                 print "Dafür werden %f mm benötigt" % sa
                 assert(0)
 
         deltaESpeed = endSpeed.eSpeed - startSpeed.eSpeed
 
-        startEAccel = move.startAccel.eAccel()
-        endEAccel = move.endAccel.eAccel()
+        eAccel = move.accel.eAccel()
 
         if deltaESpeed > 0.001:
        
-            ta = deltaESpeed / startEAccel
+            ta = deltaESpeed / eAccel
 
-            sa = util.accelDist(startSpeed.eSpeed, startEAccel, ta)
+            sa = util.accelDist(startSpeed.eSpeed, eAccel, ta)
       
             if (sa - move.eDistance) > 0.001:
                 # print " 0.5 * %f * pow(%f, 2) + %f * %f" % (allowedAccel, ta, startSpeedS, ta)
@@ -723,9 +718,9 @@ class Advance (object):
 
         if deltaESpeed > -0.001:
        
-            ta = abs(deltaESpeed) / endEAccel
+            ta = abs(deltaESpeed) / eAccel
 
-            sa = util.accelDist(startSpeed.eSpeed, endEAccel, ta)
+            sa = util.accelDist(startSpeed.eSpeed, eAccel, ta)
       
             if (sa - move.eDistance) > 0.001:
                 # print " 0.5 * %f * pow(%f, 2) + %f * %f" % (allowedAccel, ta, startSpeedS, ta)
@@ -743,7 +738,7 @@ class Advance (object):
 
         if deltaStartSpeedS > AccelThreshold:
 
-            ta = deltaStartSpeedS / startAccel3
+            ta = deltaStartSpeedS / accel3
             print "XY accel time (for %f mm/s): %f [s]" % (deltaStartSpeedS, ta)
 
             # debug Check axxis acceleration
@@ -757,11 +752,11 @@ class Advance (object):
 
             # Check acceleration of e-axis
             eAccel = (topSpeed.eSpeed - startSpeed.eSpeed) / ta
-            print "eaccel: ", eAccel, move.startAccel.eAccel()
-            assert((eAccel / move.startAccel.eAccel()) < 1.001)
+            print "eaccel: ", eAccel, move.accel.eAccel()
+            assert((eAccel / move.accel.eAccel()) < 1.001)
             #end debug
 
-            sa = util.accelDist(startSpeedS, startAccel3, ta)
+            sa = util.accelDist(startSpeedS, accel3, ta)
 
         #
         # Compute distance to decel from nominal speed to endspeed:
@@ -773,7 +768,7 @@ class Advance (object):
 
         if deltaEndSpeedS > AccelThreshold:
 
-            tb = deltaEndSpeedS / endAccel3                          # [s]
+            tb = deltaEndSpeedS / accel3                          # [s]
             print "XY decel time (for %f mm/s): %f [s]" % (deltaEndSpeedS, tb)
 
             # debug Check axxis acceleration
@@ -786,11 +781,11 @@ class Advance (object):
 
             # Check acceleration of e-axis
             eAccel = (topSpeed.eSpeed - endSpeed.eSpeed) / tb
-            print "edecel: ", eAccel, move.endAccel.eAccel()
-            assert((eAccel / move.endAccel.eAccel()) < 1.001)
+            print "edecel: ", eAccel, move.accel.eAccel()
+            assert((eAccel / move.accel.eAccel()) < 1.001)
             # end debug
 
-            sb = util.accelDist(endSpeedS, endAccel3, tb)
+            sb = util.accelDist(endSpeedS, accel3, tb)
 
         print "e_distance: %f, sbeschl, sbrems: %f, %f" % (move.distance3, sa, sb)
 
@@ -803,15 +798,12 @@ class Advance (object):
                 print "Trapez nicht möglich: s: %f, sbeschl (%f) + sbrems (%f) = %f" % (move.distance3, sa, sb, sa+sb)
 
             # float vsquared = (acceleration * totalDistance) + 0.5 * (fsquare(startSpeed) + fsquare(endSpeed));
-            # vReachedSquared = (allowedAccel3 * move.distance3) + (pow(startSpeedS, 2) + pow(endSpeedS, 2))/2;
-            # vReachedSquared = (startAccel3 * move.distance3) + (pow(startSpeedS, 2) + pow(endSpeedS, 2))/2;
-            # assert(vReachedSquared >= 0)
-            # vReached = math.sqrt(vReachedSquared)
-
-            # vr2s = (2*move.distance3 + pow(startSpeedS, 2)/startAccel3 + pow(endSpeedS, 2)/endAccel3) / (1/startAccel3 + 1/endAccel3)
-            vReachedSquared = (2*startAccel3*endAccel3*move.distance3 + startAccel3*pow(startSpeedS, 2) + endAccel3*pow(endSpeedS, 2) ) / (startAccel3 + endAccel3)
+            vReachedSquared = (accel3 * move.distance3) + (pow(startSpeedS, 2) + pow(endSpeedS, 2))/2;
+            # vReachedSquared = (2*startAccel3*endAccel3*move.distance3 + startAccel3*pow(startSpeedS, 2) + endAccel3*pow(endSpeedS, 2) ) / (startAccel3 + endAccel3)
 
             assert(vReachedSquared >= 0)
+            vReached = math.sqrt(vReachedSquared)
+
 
             vReached = math.sqrt(vReachedSquared)
 
@@ -820,12 +812,12 @@ class Advance (object):
             # assert(util.circaf(vReached, startSpeedS, 0.001))
             # assert(util.circaf(vReached, endSpeedS, 0.001))
 
-            sa = max((vReachedSquared - pow(startSpeedS, 2))/(2.0 * startAccel3), 0.0)
+            sa = max((vReachedSquared - pow(startSpeedS, 2))/(2.0 * accel3), 0.0)
 
             print "sa:", sa
 
             # Handle very small acceleration distances
-            if sa < 0.001:
+            if sa < 0.000001:
 
                 # Zero acceleration, only deceleration, topspeed is startspeed
 
@@ -834,13 +826,13 @@ class Advance (object):
 
                 # Check used acceleration
                 usedAccel3 = -deltaSpeedS / tb
-                print "allowedAccel3, usedAccel3:", endAccel3, usedAccel3, endAccel3-usedAccel3
+                print "allowedAccel3, usedAccel3:", accel3, usedAccel3, accel3-usedAccel3
                 
                 usedEAccel = -deltaESpeed / tb
-                print "eAccel, usedEAccel:", endEAccel, usedEAccel, endEAccel-usedEAccel
+                print "eAccel, usedEAccel:", eAccel, usedEAccel, eAccel-usedEAccel
 
-                if usedAccel3 != startAccel3 and usedEAccel != startEAccel:
-                    move.endAccel.setAccel(usedAccel3, usedEAccel)
+                if usedAccel3 != accel3 and usedEAccel != eAccel:
+                    move.accel.setAccel(usedAccel3, usedEAccel)
 
                 topSpeed.setSpeed(startSpeedS)
                 move.topSpeed.setSpeed(topSpeed)
@@ -860,7 +852,7 @@ class Advance (object):
             sb = move.distance3 - sa
 
             # Handle very small deceleration distances
-            if sb < 0.001:
+            if sb < 0.000001:
 
                 # Zero deceleration, only acceleration, topspeed is endspeed
 
@@ -869,13 +861,13 @@ class Advance (object):
 
                 # Check used acceleration
                 usedAccel3 = deltaSpeedS / ta
-                print "startAccel3, usedAccel3:", startAccel3, usedAccel3, startAccel3-usedAccel3
+                print "accel3, usedAccel3:", accel3, usedAccel3, accel3-usedAccel3
 
                 usedEAccel = deltaESpeed / ta
-                print "eAccel, usedEAccel:", startEAccel, usedEAccel, startEAccel-usedEAccel
+                print "eAccel, usedEAccel:", eAccel, usedEAccel, eAccel-usedEAccel
 
-                if usedAccel3 != startAccel3 and usedEAccel != startEAccel:
-                    move.startAccel.setAccel(usedAccel3, usedEAccel)
+                if usedAccel3 != accel3 and usedEAccel != eAccel:
+                    move.accel.setAccel(usedAccel3, usedEAccel)
 
                 topSpeed.setSpeed(endSpeedS)
                 move.topSpeed.setSpeed(topSpeed)
@@ -895,7 +887,7 @@ class Advance (object):
             # 
             # Geschwindigkeit, die auf strecke sa erreicht werden kann
             # 
-            v = math.sqrt ( 2 * startAccel3 * sa + pow(startSpeedS, 2) )
+            v = math.sqrt ( 2 * accel3 * sa + pow(startSpeedS, 2) )
 
             assert(v > startSpeedS) # v = max(v, startSpeedS)
             assert(v > endSpeedS) # v = max(v, endSpeedS)
@@ -903,7 +895,7 @@ class Advance (object):
             # debug, test
             if sb:
 
-                v2 = math.sqrt ( 2 * endAccel3 * sb + pow(endSpeedS, 2) )
+                v2 = math.sqrt ( 2 * accel3 * sb + pow(endSpeedS, 2) )
                 print "move.feedrate neu: %f (test: %f, diff: %f)" % (v, v2, abs(v - v2))
 
                 assert( abs(v - v2) < 0.001)
@@ -919,11 +911,11 @@ class Advance (object):
             move.topSpeed.setSpeed(topSpeed)
 
             deltaSpeedS = v - startSpeedS                          # [mm/s]
-            ta = deltaSpeedS / startAccel3
+            ta = deltaSpeedS / accel3
             print "ta: ", ta, deltaSpeedS
 
             deltaSpeedS = v - endSpeedS                          # [mm/s]
-            tb = deltaSpeedS / endAccel3
+            tb = deltaSpeedS / accel3
             print "tb: ", tb, deltaSpeedS
 
             assert(ta > 0)
@@ -971,7 +963,7 @@ class Advance (object):
 
             # allowedAccelV = move.getMaxAllowedAccelVector5(self.maxAxisAcceleration)
             # startFeedrateIncrease = self.eJerk(allowedAccelV[A_AXIS])
-            startFeedrateIncrease = self.eJerk(move.startAccel.eAccel())
+            startFeedrateIncrease = self.eJerk(move.accel.eAccel())
             (sadv, _) = move.startAdvSteps(startFeedrateIncrease=startFeedrateIncrease)
 
             if sadv:
@@ -998,7 +990,7 @@ class Advance (object):
 
             # allowedAccelV = move.getMaxAllowedAccelVector5(self.maxAxisAcceleration)
             # endFeedrateIncrease = - self.eJerk(allowedAccelV[A_AXIS])
-            endFeedrateIncrease = - self.eJerk(move.endAccel.eAccel())
+            endFeedrateIncrease = - self.eJerk(move.accel.eAccel())
             (sdec, _) = move.endAdvSteps(endFeedrateIncrease=endFeedrateIncrease)
 
             if sdec:
@@ -1053,7 +1045,7 @@ class Advance (object):
 
                         # allowedAccelV = advMove.getMaxAllowedAccelVector5(self.maxAxisAcceleration)
                         # startFeedrateIncrease = self.eJerk(allowedAccelV[A_AXIS])
-                        startFeedrateIncrease = self.eJerk(advMove.startAccel.eAccel())
+                        startFeedrateIncrease = self.eJerk(advMove.accel.eAccel())
                         advMove.advanceData.startFeedrateIncrease = startFeedrateIncrease
 
                         advMove.pprint("planAdvanceGroup accel adv:")
@@ -1121,7 +1113,7 @@ class Advance (object):
 
                         # allowedAccelV = advMove.getMaxAllowedAccelVector5(self.maxAxisAcceleration)
                         # endFeedrateIncrease = - self.eJerk(allowedAccelV[A_AXIS])
-                        endFeedrateIncrease = - self.eJerk(advMove.endAccel.eAccel())
+                        endFeedrateIncrease = - self.eJerk(advMove.accel.eAccel())
                         advMove.advanceData.endFeedrateIncrease = endFeedrateIncrease
 
                         advMove.pprint("planAdvanceGroup decel adv:")
@@ -1148,8 +1140,8 @@ class Advance (object):
                             # if abs(v0) > self.minESpeed:
                             if True:
 
-                                print "v0, accel: ", v0, advMove.endAccel.eAccel()
-                                tdc = abs(v0 / advMove.endAccel.eAccel())
+                                print "v0, accel: ", v0, advMove.accel.eAccel()
+                                tdc = abs(v0 / advMove.accel.eAccel())
 
                                 print "Time to reach zero-crossing (tdc):", tdc, ", tdd: ", td - tdc
                                 assert(tdc >= 0 and tdc <= td)
@@ -1157,7 +1149,7 @@ class Advance (object):
                                 # Nominal speed at zero crossing
                                 if topSpeed.feedrate3() > endSpeed.feedrate3():
                                     # decel
-                                    zeroCrossingS = util.vAccelPerTime(topSpeed.feedrate3(), - advMove.endAccel.xyAccel(), tdc)
+                                    zeroCrossingS = util.vAccelPerTime(topSpeed.feedrate3(), - advMove.accel.xyAccel(), tdc)
                                 else:
                                     assert(0) # does this happen?
 
@@ -1408,8 +1400,8 @@ class Advance (object):
             abs_displacement_vector_steps.append(s)
         """
 
-        self.moveEsteps -= move.eSteps
-        print "planStepsSimple(): moveEsteps-: %7.3f %7.3f" % (move.eSteps, self.moveEsteps)
+        # self.moveEsteps -= move.eSteps
+        # print "planStepsSimple(): moveEsteps-: %7.3f %7.3f" % (move.eSteps, self.moveEsteps)
 
         # Round step values
         dispF = move.displacement_vector_steps_raw3 + [move.eSteps, 0.0]
@@ -1425,6 +1417,9 @@ class Advance (object):
             return
 
         self.planner.stepRounders.commit()
+
+        self.moveEsteps -= dispS[A_AXIS]
+        print "planStepsSimple(): moveEsteps-: %7.3f %7.3f" % (move.eSteps, dispS[A_AXIS])
 
         ######################
         # # round e
@@ -1495,7 +1490,7 @@ class Advance (object):
                 leadAxis,
                 v0,
                 nominalSpeed,
-                abs(move.startAccel.accel(leadAxis)),
+                abs(move.accel.accel(leadAxis)),
                 leadAxis_steps) # maximum number of steps
 
             move.stepData.addAccelPulsees(accelClocks)
@@ -1509,7 +1504,7 @@ class Advance (object):
                 leadAxis,
                 nominalSpeed,
                 v1,
-                abs(move.endAccel.accel(leadAxis)),
+                abs(move.accel.accel(leadAxis)),
                 leadAxis_steps) # maximum number of steps
 
             move.stepData.addDecelPulsees(decelClocks)
@@ -1615,8 +1610,8 @@ class Advance (object):
             abs_displacement_vector_steps.append(s)
         """
 
-        self.moveEsteps -= move.eSteps
-        print "planCrossedDecelSteps(): moveEsteps-: %7.3f %7.3f" % (move.eSteps, self.moveEsteps)
+        # self.moveEsteps -= move.eSteps
+        # print "planCrossedDecelSteps(): moveEsteps-: %7.3f %7.3f" % (move.eSteps, self.moveEsteps)
 
         # Round step values
         dispF = move.displacement_vector_steps_raw3 + [move.eSteps, 0.0]
@@ -1632,6 +1627,9 @@ class Advance (object):
             return
 
         self.planner.stepRounders.commit()
+
+        self.moveEsteps -= dispS[A_AXIS]
+        print "planCrossedDecelSteps(): moveEsteps-: %7.3f %7.3f" % (move.eSteps, dispS[A_AXIS])
 
         ######################
         # round e
@@ -1675,7 +1673,7 @@ class Advance (object):
                 A_AXIS,
                 abs( topSpeed.eSpeed ),
                 abs( endSpeed.eSpeed ),
-                abs(move.endAccel.eAccel()),
+                abs(move.accel.eAccel()),
                 eStepsToMove,
                 forceFill=False)
 
@@ -1705,7 +1703,7 @@ class Advance (object):
             leadAxisxy,
             abs( topSpeed[leadAxisxy] ),
             abs(endSpeed[leadAxisxy]),
-            abs(move.endAccel.accel(leadAxisxy)),
+            abs(move.accel.accel(leadAxisxy)),
             abs_displacement_vector_steps)
 
         if debugMoves:

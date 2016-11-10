@@ -145,7 +145,7 @@ class StepRounder(object):
     def pprint(self):
 
         assert(self.f == 0)
-        print "Remainder axis %s: %f" % (dimNames[self.axis], self.roundError)
+        print "Reminder axis %s: %f" % (dimNames[self.axis], self.roundError)
 
         
     def check(self):
