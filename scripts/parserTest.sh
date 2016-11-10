@@ -1,7 +1,7 @@
 #! /bin/bash
 
 nTests=0
-for inp in $* test_files/*.gcode; do 
+for inp in $(ls -rS $* test_files/*.gcode); do 
 
     echo "###################################"
     echo "$0: running python ddprint.py pre $inp"
@@ -15,6 +15,7 @@ for inp in $* test_files/*.gcode; do
             echo "########################################################"
             echo "$0: error running Test $nTests $inp with kAdvance $kadv"
             echo "########################################################"
+            echo "$kadv $inp" > /tmp/parserTest_error_file
             exit 1
         fi
 
