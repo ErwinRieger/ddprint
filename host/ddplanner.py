@@ -24,10 +24,10 @@ from argparse import Namespace
 
 import ddprintutil as util, dddumbui, packedvalue
 from ddprofile import PrinterProfile, MatProfile, NozzleProfile
-from move import Vector # , Move
+from ddvector import Vector, vectorMul, vectorAbs
 from ddprintconstants import *
 from ddconfig import *
-from ddprintutil import Z_AXIS, vectorMul, circaf
+from ddprintutil import Z_AXIS, circaf
 from ddprinter import Printer
 from ddprintcommands import CmdSyncTargetTemp
 from ddprintstates import HeaterEx1, HeaterBed
@@ -562,7 +562,7 @@ class Planner (object):
 
         move.state = 2
 
-        allowedAccel = allowedDeccel = move.getMaxAllowedAccelNoAdv5()
+        allowedAccel = allowedDecel = move.getMaxAllowedAccelNoAdv5()
 
         #
         # Check if the speed difference between startspeed and endspeed can be done with
@@ -581,7 +581,7 @@ class Planner (object):
                 # acceleration
                 sa = util.accelDist(startSpeedS, allowedAccel, ta)
             else:
-                # decceleration
+                # deceleration
                 sa = util.accelDist(startSpeedS, -allowedAccel, ta)
       
             if (sa - move.distance) > 0.001:
@@ -616,7 +616,7 @@ class Planner (object):
             sa = util.accelDist(startSpeedS, allowedAccel, ta)
 
         #
-        # Compute distance to deccel from nominal speed to endspeed:
+        # Compute distance to decel from nominal speed to endspeed:
         #
         tb = 0.0
         sb = 0.0
@@ -626,14 +626,14 @@ class Planner (object):
         if deltaEndSpeedS:
 
             tb = deltaEndSpeedS / allowedAccel                          # [s]
-            print "deccel time (for %f mm/s): %f [s]" % (deltaEndSpeedS, tb)
+            print "decel time (for %f mm/s): %f [s]" % (deltaEndSpeedS, tb)
 
             # debug Check axxis acceleration
             deltaSpeedV = move.direction5.scale(deltaEndSpeedS)
             for dim in range(5):
-                dimDeccel = abs(deltaSpeedV[dim]) / tb  
-                if (dimDeccel / MAX_AXIS_ACCELERATION_NOADV[dim]) > 1.001:
-                    print "dim %d verletzt max accel: " % dim, dimDeccel, " [mm/s] > ", MAX_AXIS_ACCELERATION_NOADV[dim], " [mm/s]"
+                dimDecel = abs(deltaSpeedV[dim]) / tb  
+                if (dimDecel / MAX_AXIS_ACCELERATION_NOADV[dim]) > 1.001:
+                    print "dim %d verletzt max accel: " % dim, dimDecel, " [mm/s] > ", MAX_AXIS_ACCELERATION_NOADV[dim], " [mm/s]"
                     assert(0)
             # end debug
 
@@ -753,7 +753,7 @@ class Planner (object):
             dispS.append(int(round(f)))
 
         # disp[A_AXIS] = int(round(disp[A_AXIS])) # XXX account for rounding errors here?
-        abs_displacement_vector_steps = util.vectorAbs(dispS)
+        abs_displacement_vector_steps = vectorAbs(dispS)
 
         # Determine the 'lead axis' - the axis with the most steps
         leadAxis = move.leadAxis(disp=dispS)
@@ -845,14 +845,14 @@ class Planner (object):
                     if cd:
                         del move.stepData.accelPulses[-cd:]
 
-                    assert(len(move.stepData.accelPulses)+len(move.stepData.deccelPulses) == leadAxis_steps)
+                    assert(len(move.stepData.accelPulses)+len(move.stepData.decelPulses) == leadAxis_steps)
 
                 elif nAccel:
                     del move.stepData.accelPulses[:-nLin]
                     assert(len(move.stepData.accelPulses) == leadAxis_steps)
                 else:
-                    del move.stepData.deccelPulses[nLin:]
-                    assert(len(move.stepData.deccelPulses) == leadAxis_steps)
+                    del move.stepData.decelPulses[nLin:]
+                    assert(len(move.stepData.decelPulses) == leadAxis_steps)
 
             move.stepData.setLinTimer(0xffff)
 

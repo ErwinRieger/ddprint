@@ -27,6 +27,7 @@ from ddprintstates import *
 from ddprintconstants import *
 from ddconfig import *
 from ddprofile import PrinterProfile, MatProfile, NozzleProfile
+from ddvector import vectorLength
 
 ####################################################################################################
 #
@@ -40,7 +41,7 @@ FILAMENT_REVERSAL_LENGTH = 750
 # RoundSafe = 0.995
 # RoundSafe = 0.999999
 # RoundSafe = 1.0
-xRoundSafe = 0.999999999
+# xRoundSafe = 0.999999999
 xRoundSafe = 1.0
 
 ####################################################################################################
@@ -50,63 +51,10 @@ def sign(x):
     return math.copysign(1, x)
 
 ####################################################################################################
-def vectorAdd(v1, v2):
-
-    sum = []
-    for a, b in zip(v1, v2):
-        sum.append(a + b)
-
-    return sum
-
-####################################################################################################
-def vectorSub(v1, v2):
-
-    diff = []
-    for a, b in zip(v1, v2):
-        diff.append(a - b)
-
-    return diff
-
-####################################################################################################
-def vectorLength(vv):
-
-    sum = 0
-    for v in vv:
-        sum += pow(v, 2)
-    return math.sqrt(sum)
-
-####################################################################################################
-def vectorMul(v1, v2):
-
-    product = []
-    for i in range(len(v2)):
-        product.append(v1[i] * v2[i])
-
-    return product
-
-####################################################################################################
-def vectorDiv(v1, v2):
-
-    product = []
-    for i in range(len(v2)):
-        product.append(v1[i] / v2[i])
-
-    return product
-
-####################################################################################################
-def vectorDistance(a, b):
-    return vectorLength(vectorSub(a, b))
-
-####################################################################################################
-def vectorAbs(v):
-    absv = []
-    for val in v:
-        absv.append(abs(val))
-    return absv
-
-####################################################################################################
 def circaf(a, b, delta):
     return abs(a-b) < delta
+
+####################################################################################################
 
 # Speed after accelerating for a certain time
 def vAccelPerTime(v0, a, t):
@@ -132,11 +80,28 @@ def vAccelPerDist(v0, a, s):
 
     assert(v0 >= 0)
 
-    term = 2 * a * s + pow(v0, 2)
+    term = 2.0 * a * s + pow(v0, 2)
     if term >= 0:
         return math.sqrt( term )
     else:
         return - math.sqrt( abs(term) )
+
+####################################################################################################
+
+# Time needed to do deltaV in given distance s
+def timePerDist(v1, v2, s):
+
+    assert(v2 >= v1)
+    return s / (v1 + ((v2 - v1)/2.0))
+
+####################################################################################################
+
+# Compute acceleration by distance and delta-v
+def accelPerDist(v1, v2, s):
+
+    # a = ( ve² - v0² ) / ( 2 * s )
+    assert(v2 >= v1)
+    return ( pow(v2, 2) - pow(v1, 2) ) / ( 2 * s )
 
 ####################################################################################################
 
@@ -157,9 +122,11 @@ def joinMoves(move1, move2, jerk, maxAccelV):
         startSpeedS2 = startSpeed2.feedrate3()
 
         # Compute max reachable endspeed of move1
-        # allowedAccel = move1.getMaxAllowedAccel5(maxAccelV)
-        av = move1.getMaxAllowedAccelVector5(maxAccelV)
-        allowedAccel3 = vectorLength(av[:3])
+        # av = move1.getMaxAllowedAccelVector5(maxAccelV)
+        # allowedAccel3 = vectorLength(av[:3])
+
+        allowedAccel3 = move1.startAccel.xyAccel()
+        print "xxx allowedAccel3", allowedAccel3
         maxEndSpeed1 = vAccelPerDist(startSpeedS1, allowedAccel3, move1.distance3) * xRoundSafe
 
         if maxEndSpeed1 < endSpeedS1:
@@ -171,11 +138,10 @@ def joinMoves(move1, move2, jerk, maxAccelV):
             endSpeed1.setSpeed(maxEndSpeed1)
 
             print "Move1, endspeed lowered: ", endSpeed1
-
             move1.endSpeed.setSpeed(endSpeed1)
 
         # Check max reachable e endspeed
-        maxAllowedEEndSpeed = vAccelPerDist(startSpeed1.eSpeed, av[A_AXIS], move1.eDistance)
+        maxAllowedEEndSpeed = vAccelPerDist(startSpeed1.eSpeed, move1.startAccel.eAccel(), move1.eDistance)
         if maxAllowedEEndSpeed < endSpeed1.eSpeed:
             circaf(maxAllowedEEndSpeed, endSpeed1.eSpeed, 0.000000001)
 
@@ -316,6 +282,9 @@ def joinMoves3(move1, move2, jerk):
             # endSpeed1.feedrate = endSpeedS1
             endSpeed1 = endSpeed1.scale(f)
             move1.endSpeed.setSpeed(endSpeed1)
+
+            print "slowed down move1 endspeed:", eEndSpeed1
+
         else:
             # Slow down move2
             f = eEndSpeed1 / eStartSpeed2

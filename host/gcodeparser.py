@@ -27,8 +27,9 @@ from ddplanner import Planner
 from ddprintcommands import CmdSyncFanSpeed, CmdUnknown, CmdDwellMS
 from ddprintconstants import dimNames
 from ddconfig import *
-from move import Vector, TravelMove, PrintMove
-from ddprintutil import X_AXIS, Y_AXIS, Z_AXIS, A_AXIS, B_AXIS, vectorDistance, circaf
+from move import TravelMove, PrintMove
+from ddvector import Vector, vectorDistance
+from ddprintutil import X_AXIS, Y_AXIS, Z_AXIS, A_AXIS, B_AXIS, circaf
 
 import ddprintutil as util
 
@@ -466,6 +467,7 @@ class UM2GcodeParser:
                 displacement_vector=displacement_vector,
                 displacement_vector_steps=displacement_vector_steps,
                 feedrate=feedrate, # mm/s
+                maxAccelV = self.planner.advance.maxAxisAcceleration,
                 ))
         else:
             self.planner.addMove(TravelMove(

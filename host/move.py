@@ -24,7 +24,8 @@ import ddprintcommands, cobs, cStringIO
 
 from ddprintconstants import maxTimerValue16, fTimer, _MAX_ACCELERATION, MAX_AXIS_ACCELERATION_NOADV
 from ddprintconstants import AdvanceEThreshold, StepDataTypeBresenham, StepDataTypeRaw
-from ddprintutil import X_AXIS, Y_AXIS, Z_AXIS, A_AXIS, B_AXIS,vectorLength, vectorMul, vectorSub, circaf, sign, vectorAbs
+from ddprintutil import X_AXIS, Y_AXIS, Z_AXIS, A_AXIS, B_AXIS, circaf, sign
+from ddvector import Vector, VelocityVector32, VelocityVector5, vectorLength, vectorSub, vectorAbs
 from ddprintutil import pdbAssert
 from ddprintcommands import CommandNames
 from ddprofile import PrinterProfile
@@ -40,350 +41,6 @@ MoveTypePrint = 0
 # * Z move
 # * Extrusion A/B only move
 MoveTypeTravel = 1
-
-##################################################
-
-# class VVector(object):
-class Vector(object):
-
-    def __init__(self, v):
-        # if v:
-        self.vv = v
-        # else:
-            # self.vv = 5 * [0.0]
-
-    def __setitem__(self, dim, v):
-        self.vv[dim] = v
-
-    def __getitem__(self, dim):
-        return self.vv[dim]
-
-    def __getattr__(self, dim):
-
-        dim = dim.upper()
-        if dim not in "XYZAB":
-            print "unknown dimension requested: ", dim
-            assert(0)
-
-        return self.vv["XYZAB".index(dim)]
-
-    def __len__(self):
-        return len(self.vv)
-
-    def __repr__(self):
-        return self.printSpeedVector(self.vv)
-
-    def printSpeedVector(self, v):
-        l =  []
-        for el in v:
-            l.append("%8.3f" % el)
-        return "[" + ", ".join(l)+"]"
-
-    def __abs__(self):
-        # return Vector((abs(self.x), abs(self.y), abs(self.z), abs(self.a), abs(self.b)))
-        return Vector(vectorAbs(self.vv))
-
-    def __eq__(self, other):
-
-        if other == None:
-            return False
-
-        for dim in range(len(self.vv)):
-            if not circaf(self[dim], other[dim], 0.000001):
-                return False
-
-        return True
-
-    def __ne__(self, other):
-        return not self == other
-
-    def checkJerk(self, other, jerk, selfName="", otherName=""):
-        # xxx add __sub__
-
-        for dim in range(len(self.vv)):
-            j = abs(other[dim] - self[dim])
-            if (j / jerk[dim]) > 1.1:
-                print "Join '%s' <-> '%s': dimension %d %f verletzt max jerk %f" % (selfName, otherName, dim, j, jerk[dim])
-                print "V1: ", self
-                print "V2: ", other
-                assert(0)
-
-    def length(self, nelem=None):
-        return vectorLength(self.vv[:nelem])
-
-    # def len3(self):
-        # return self.length(3)
-
-    # def len5(self):
-        # return self.length(5)
-
-    def _setLength(self, length):
-        return self.normalized().mul(length)
-
-    def cosAngle(self, other):
-        #
-        #            V1 * V2
-        # cos a = ----------------
-        #           |V1| + |V2|
-        #
-        scalarProduct = sum(multiply_vector(self.vv, other.vv))
-        lenProduct = calculate_vector_magnitude(self.vv) * calculate_vector_magnitude(other.vv)
-        return scalarProduct / lenProduct
-
-    def angleBetween(self, other):
-        cos = self.cosAngle(other)
-
-        if cos >= 1:
-            return 0
-
-        return math.degrees(math.acos(cos))
-
-    def addVVector(self, other):
-        self.vv = vectorAdd(self.vv, other.vv)
-
-    def subVVector(self, other):
-        return Vector(vectorSub(self.vv, other.vv))
-
-    def scale(self, scale):
-        assert(scale >= 0)
-        return Vector(vectorMul(self.vv, len(self.vv)*[scale]))
-
-    mul = scale
-
-    def div(self, other):
-        return VVector(vectorDiv(self.vv, other.vv))
-
-    def normalized(self):
-
-        length = self.length()
-
-        if length == 0:
-            return Vector([0, 0, 0, 0, 0])
-
-        return self.scale(1.0 / length)
- 
-    def constrain(self, jerkVector):
-
-        speedScale = 1.0
-        for dim in range(len(self.vv)):
-            if abs(self.vv[dim]) > jerkVector[dim]:
-                speedScale = min(speedScale, jerkVector[dim] / abs(self.vv[dim]))
-
-        # print "speedScale: ", speedScale
-
-        if abs(1-speedScale) < 0.001:
-            return None
-
-        assert(speedScale < 1)
-
-        return self.scale(speedScale)
-  
-    def constrain3(self, jerkVector):
-
-        assert(0)
-
-        speedScale = 1.0
-        for dim in range(3):
-            if abs(self.vv[dim]) > jerkVector[dim]:
-                speedScale = min(speedScale, jerkVector[dim] / abs(self.vv[dim]))
-
-        # print "speedScale: ", speedScale
-
-        assert(speedScale <= 1.0)
-        return self.scale(speedScale)
-  
-    def isDisjointV(self, other, delta=0.000001):
-
-        for dim in range(len(self.vv)):
-            if abs(self.vv[dim]) > delta and abs(other.vv[dim]) > delta:
-                return False
-        return True
-
-    def nElem(self):
-        return len(self.vv)
-
-##################################################
-#
-# Handles feedrate and direction of a speedvector
-#
-class VelocityVector5(object):
-
-    def __init__(self, feedrate=None, direction=None, v=None):
-
-        if v:
-            assert(v.nElem() == 5)
-            self.feedrate = v.length() # always positive
-            self.direction = v.normalized()
-        else:
-            assert(len(direction) == 5)
-            self.feedrate = feedrate
-            self.direction = direction
-
-    def __repr__(self):
-
-        return ("%.3f [mm/s] " % self.feedrate) + str(self.direction.scale(self.feedrate)) + " [mm/s]"
-
-    def vv(self):
-        return self.direction.scale(self.feedrate)
-
-    # Feedrate in XY direction
-    def XY(self):
-        return Vector([self[X_AXIS], self[Y_AXIS]]).length()
-
-    def __getitem__(self, dim):
-
-        return self.direction[dim] * self.feedrate
-
-    def constrain(self, jerkVector):
-
-        speedScale = 1.0
-        vv = self.vv()
-
-        for dim in range(5):
-            if abs(vv[dim]) > jerkVector[dim]:
-                speedScale = min(speedScale, jerkVector[dim] / abs(vv[dim]))
-
-        if abs(1-speedScale) < 0.001:
-            return None
-
-        assert(speedScale < 1)
-
-        return VelocityVector5(feedrate = self.feedrate*speedScale, direction = self.direction)
- 
-    def scale(self, s):
-        return VelocityVector(feedrate = self.feedrate * s, direction = self.direction)
-
-    def feedrateGZ(self):
-        return self.feedrate > 0
-
-    def feedrateGEZ(self):
-        return self.feedrate >= 0
-
-    def copy(self):
-        return VelocityVector5(feedrate = self.feedrate, direction = self.direction)
-
-    def checkJerk(self, other, jerk, selfName="", otherName=""):
-        # xxx add __sub__
-
-        thisv = self.vv()
-        otherv = other.vv()
-
-        for dim in range(len(thisv)):
-            j = abs(otherv[dim] - thisv[dim])
-            if (j / jerk[dim]) > 1.001:
-                print "Join '%s' <-> '%s': dimension %d %f verletzt max jerk %f" % (selfName, otherName, dim, j, jerk[dim])
-                print "V1: ", self
-                print "V2: ", other
-                assert(0)
-
-##################################################
-#
-# Handles feedrate and direction of a speedvector
-#
-class VelocityVector32(object):
-
-    def __init__(self, eSpeed, feedrate=None, direction=None, v=None):
-
-        # Nominal speed without advance
-        self.eSpeed = eSpeed
-
-        if v:
-            assert(v.nElem() == 3)
-            self._feedrate = v.length() # always positive
-            self.direction = v.normalized()
-        else:
-            assert(len(direction) == 3)
-            self._feedrate = feedrate
-            self.direction = direction
-
-    def __repr__(self):
-        return ("%.3f [mm/s] " % self._feedrate) + str(self.direction.scale(self._feedrate)) + " " + self.eSpeedStr()
-
-    def eSpeedStr(self):
-        if self.eSpeed == None:
-            return "[-] [mm/s]"
-        return "[%.3f] [mm/s] " % self.eSpeed
-
-    def vv3(self):
-        return self.direction.scale(self._feedrate)
-
-    def setSpeed(self, feedrate):
-
-        self.eSpeed *= feedrate/self._feedrate
-        self._feedrate = feedrate
-
-    # debug catch assignment to self.feedrate
-    def __setattr__(self, attr, val):
-        assert(attr != "feedrate")
-        object.__setattr__(self, attr, val)
-
-    def setESpeed(self, eSpeed):
-
-        self.eSpeed = eSpeed
-
-    def copy(self):
-        return VelocityVector32(self.eSpeed, feedrate = self._feedrate, direction = self.direction)
-
-    def scale(self, s):
-
-        return VelocityVector32(self.eSpeed * s, feedrate = self._feedrate * s, direction = self.direction)
-
-    def feedrate3(self):
-        return self._feedrate
-
-    def feedrateGZ(self):
-        return self.feedrate3() > 0
-
-    def feedrateGEZ(self):
-        return self.feedrate3() >= 0
-
-    def __getitem__(self, dim):
-
-        assert(dim < 3)
-        return self.direction[dim] * self._feedrate
-
-
-    """
-    # Feedrate in XY direction
-    def XY(self):
-        return Vector([self[X_AXIS], self[Y_AXIS]]).length()
-
-    def constrain(self, jerkVector):
-
-        speedScale = 1.0
-        vv = self.vv()
-
-        for dim in range(5):
-            if abs(vv[dim]) > jerkVector[dim]:
-                speedScale = min(speedScale, jerkVector[dim] / abs(vv[dim]))
-
-        if abs(1-speedScale) < 0.001:
-            return None
-
-        assert(speedScale < 1)
-
-        return VelocityVector(feedrate = self._feedrate*speedScale, direction = self.direction)
-    """
-
-    def checkJerk(self, other, jerk, selfName="", otherName=""):
-        # xxx add __sub__
-
-        thisv = self.vv3()
-        otherv = other.vv3()
-
-        for dim in range(len(thisv)):
-            j = abs(otherv[dim] - thisv[dim])
-            if (j / jerk[dim]) > 1.001:
-                print "Join '%s' <-> '%s': dimension %d %f verletzt max jerk %f" % (selfName, otherName, dim, j, jerk[dim])
-                print "V1: ", self
-                print "V2: ", other
-                assert(0)
-
-        eJerk = self.eSpeed - other.eSpeed
-        if not abs(eJerk) <= AdvanceEThreshold:
-       
-            print "Error, E-AXIS jerk: ", eJerk, self, other
-            assert(0)
 
 ##################################################
 
@@ -439,7 +96,7 @@ class StepData:
     def __init__(self):
         self.accelPulses = []
         self.linearTimer = None
-        self.deccelPulses = []
+        self.decelPulses = []
         self.setDirBits = False
         self.dirBits = 0
         self.leadAxis = 0
@@ -468,14 +125,14 @@ class StepData:
         self.checkTimerValue(timer, maxTimerValue16)
         self.linearTimer = timer
     
-    def addDeccelPulse(self, timer):
+    def addDecelPulse(self, timer):
         self.checkTimerValue(timer, maxTimerValue16)
-        self.deccelPulses.append(timer)
+        self.decelPulses.append(timer)
 
     def addDecelPulsees(self, decelPulses):
 
         for (_, _, timer) in decelPulses:
-            self.addDeccelPulse(timer)
+            self.addDecelPulse(timer)
 
     def setBresenhamParameters(self, leadAxis, abs_vector_steps):
         self.leadAxis = leadAxis
@@ -491,11 +148,11 @@ class StepData:
            "\n  # leadAxis: %d" % self.leadAxis + \
            "\n  # abs_vector_steps: %s" % `self.abs_vector_steps` + \
            "\n  # accelPulses: %d" % len(self.accelPulses) + \
-           "\n  # linearPulses: %d" % (self.abs_vector_steps[self.leadAxis] - (len(self.accelPulses) + len(self.deccelPulses))) + \
-           "\n  # deccelPulses: %d" % len(self.deccelPulses)
+           "\n  # linearPulses: %d" % (self.abs_vector_steps[self.leadAxis] - (len(self.accelPulses) + len(self.decelPulses))) + \
+           "\n  # decelPulses: %d" % len(self.decelPulses)
 
     def checkLen(self, deltaLead):
-        assert(self.abs_vector_steps[self.leadAxis] - (len(self.accelPulses) + len(self.deccelPulses)) >= 0)
+        assert(self.abs_vector_steps[self.leadAxis] - (len(self.accelPulses) + len(self.decelPulses)) >= 0)
 
     # return a list of binary encoded commands, ready to be send over serial...
     def commands(self, move):
@@ -527,13 +184,13 @@ class StepData:
 
         payLoad += struct.pack("<HH", 
                 self.linearTimer,
-                len(self.deccelPulses))
+                len(self.decelPulses))
 
         cmdHex = ddprintcommands.CmdG1 + cmdOfs
 
         for timer in self.accelPulses:
             payLoad += struct.pack("<H", timer)
-        for timer in self.deccelPulses:
+        for timer in self.decelPulses:
             payLoad += struct.pack("<H", timer)
 
 
@@ -560,8 +217,8 @@ class StepData:
                 "leadAxis": self.leadAxis,
                 "accelPulses": self.accelPulses,
                 "linearTimer": self.linearTimer,
-                "linearSteps": self.abs_vector_steps[self.leadAxis] - (len(self.accelPulses)+len(self.deccelPulses)),
-                "deccelPulses": self.deccelPulses,
+                "linearSteps": self.abs_vector_steps[self.leadAxis] - (len(self.accelPulses)+len(self.decelPulses)),
+                "decelPulses": self.decelPulses,
                 }
 
         if self.setDirBits:
@@ -847,13 +504,42 @@ class VelocityOverride(object):
 
         return s
 
-        s = "\n\tNominal: " + str(self.nominalSpeed())
-        if len(self.speeds) > 1:
-            s += "\n\tPlanned: " + str(self.plannedSpeed())
-        if len(self.speeds) > 2:
-            s += "\n\tTrue: " + str(self.trueSpeed())
-        # if len(self.speeds) > 3:
-            # s += "\n\tADV: " + str(self.advancedSpeed())
+##################################################
+
+class AccelOverride(object):
+
+    def __init__(self, accel, xyzDirection):
+        self.accels = [accel]
+        self.xyzDirection = xyzDirection
+
+    def xyAccel(self):
+        return vectorLength(self.accels[-1][0])
+
+    def eAccel(self):
+        return self.accels[-1][1]
+
+    def setAccel(self, xyAccel, eAccel):
+
+        # debug
+        if xyAccel == self.xyAccel() and eAccel == self.eAccel():
+            print "duplicate accel: ", xyAccel, eAccel
+            assert(0)
+
+        self.accels.append([self.xyzDirection.scale(xyAccel), eAccel])
+
+    def accel(self, dim):
+
+        if dim == A_AXIS:
+            return self.eAccel()
+
+        return self.accels[-1][0][dim]
+
+    def __repr__(self):
+
+        s = ""
+
+        for (accel3, eAccel) in self.accels:
+            s += "\n\tXYZAccel: " + str(accel3) + (" EAccel: %f" % eAccel)
 
         return s
 
@@ -1128,6 +814,7 @@ class PrintMove(RealMove):
                  displacement_vector,
                  displacement_vector_steps,
                  feedrate, # mm/s
+                 maxAccelV,
                  ):
 
         RealMove.__init__(self, comment)
@@ -1168,6 +855,10 @@ class PrintMove(RealMove):
         self.topSpeed = VelocityOverride(v)
         self.endSpeed = VelocityOverride(v)
 
+        av = self._getMaxAllowedAccelVector5(maxAccelV)
+        self.startAccel = AccelOverride([av[:3], av[A_AXIS]], self.direction3)
+        self.endAccel = AccelOverride([av[:3], av[A_AXIS]], self.direction3)
+
     def isPrintMove(self):
         return True
 
@@ -1181,27 +872,15 @@ class PrintMove(RealMove):
     def rawDisplacementStepsStr(self):
         return str(self.displacement_vector_steps_raw3) + (" [%.3f]" % self.eSteps)
 
-    def nu_getMaxAllowedAccelVector3(self, maxAccelV):
-
-        accelVector = self.direction3.scale(_MAX_ACCELERATION)
-        # return abs(accelVector.constrain(maxAccelV) or accelVector)
-        return accelVector.constrain(maxAccelV) or accelVector
-
-    # always positive
-    def nu_getMaxAllowedAccel3(self, maxAccelV):
-
-        accelVector = self.getMaxAllowedAccelVector3(maxAccelV)
-        return accelVector.length()
-
     # Alle achsen werden in der gleichen zeit beschleunigt.
     # Dadurch teilen sich die zulässigen einzelbeschleunigungen
     # im entsprechenden verhältnis auf.
-    def getMaxAllowedAccelVector5(self, maxAccelV):
+    def _getMaxAllowedAccelVector5(self, maxAccelV):
         accelVector = self.direction5.scale(_MAX_ACCELERATION)
         return accelVector.constrain(maxAccelV) or accelVector
 
     # always positive
-    def getMaxAllowedAccel5(self, maxAccelV):
+    def _getMaxAllowedAccel5(self, maxAccelV):
         accelVector = self.getMaxAllowedAccelVector5(maxAccelV)
         return accelVector.length()
 
@@ -1505,6 +1184,11 @@ class PrintMove(RealMove):
         print "Start ESpeed: " + self.startSpeed.speed().eSpeedStr()
         print "  End ESpeed: " + self.endSpeed.speed().eSpeedStr()
 
+        print "Start Acceleration: ",
+        print self.startAccel
+        print "End Acceleration: ",
+        print self.endAccel
+
         print self.advanceData
         print "---------------------"
 
@@ -1536,6 +1220,9 @@ class SubMove(MoveBase):
         self.displacement_vector_steps_raw3 = displacement_vector_steps[:3]
         self.eSteps = displacement_vector_steps[A_AXIS]
 
+        self.startAccel = parentMove.startAccel
+        self.endAccel = parentMove.endAccel
+
         self.state = 2
 
     def isSubMove(self):
@@ -1552,7 +1239,7 @@ class SubMove(MoveBase):
         # self.endSpeed.nominalSpeed(VelocityVector(v=ev))
         self.endSpeed.nominalSpeed(ev)
 
-    def getMaxAllowedAccelVector5(self, maxAccelV):
+    def nu_getMaxAllowedAccelVector5(self, maxAccelV):
         return self.parentMove.getMaxAllowedAccelVector5(maxAccelV)
 
     def crossedDecelStep(self):
