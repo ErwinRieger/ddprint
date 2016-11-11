@@ -270,6 +270,10 @@ class VelocityVector5(object):
     def vv(self):
         return self.direction.scale(self.feedrate)
 
+    def setSpeed(self, feedrate):
+        self.feedrate = feedrate
+
+    # debug catch assignment to self.feedrate
     # Feedrate in XY direction
     def XY(self):
         return Vector([self[X_AXIS], self[Y_AXIS]]).length()
@@ -295,7 +299,10 @@ class VelocityVector5(object):
         return VelocityVector5(feedrate = self.feedrate*speedScale, direction = self.direction)
  
     def scale(self, s):
-        return VelocityVector(feedrate = self.feedrate * s, direction = self.direction)
+        return VelocityVector5(feedrate = self.feedrate * s, direction = self.direction)
+
+    def feedrate5(self):
+        return self.feedrate
 
     def feedrateGZ(self):
         return self.feedrate > 0

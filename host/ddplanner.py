@@ -366,7 +366,6 @@ class Planner (object):
 
         self.advance = Advance(self, args)
 
-
         self.reset()
 
     def reset(self):
@@ -445,83 +444,158 @@ class Planner (object):
             print "***** Start addMove() *****"
             move.pprint("AddMove")
 
-        if not move.isPrintMove():
+        pathEnding = False
+        if self.pathData.path:
+            prevMove = self.pathData.path[-1]
+            if prevMove.isPrintMove() == move.isPrintMove():
+                prevMove.nextMove = move
+                move.prevMove = prevMove
+            else:
+                pathEnding = True
 
-            if self.pathData.path:
+        if pathEnding:
+
+            if move.isPrintMove():
+
+                #
+                # Finisch preceding travelmoves.
+                #
+                #
+                # Do a simple path planning for traveling moves:
+                # * start/stop at jerk/2
+                # * don't do advance
+                #
+                print "addMove(): ending travel path with %d moves" % len(self.pathData.path)
+                self.planTravelPath(self.pathData.path)
+
+            else:
+
                 #
                 # Finisch preceding printmoves.
                 #
+                print "addMove(): ending path print with %d moves" % len(self.pathData.path)
                 self.advance.planPath(self.pathData.path)
-                self.pathData.path = []
 
                 if debugPlot:
                     self.plotfile.close()
                     self.plotfile = None
 
-            #
-            # Do a simple path planning for traveling moves:
-            # * start/stop at jerk/2
-            # * don't join moves 
-            # * don't do advance
-            #
-            self.planTravelMove(move)
-
-            if debugMoves:
-                print "***** End addMove() *****"
-            return
-
-        if self.pathData.path:
-            prevMove = self.pathData.path[-1]
-            prevMove.nextMove = move
-            move.prevMove = prevMove
+            self.pathData.path = []
 
         self.pathData.path.append(move)
 
         if debugMoves:
             print "***** End addMove() *****"
         
-    def planTravelMove(self, move):
+    def planTravelPath(self, path):
 
-        ## # skip moves with very small e-steps:
-        ## if move.displacement_vector_steps_raw5[:3] == [0.0, 0.0, 0.0] and abs(move.displacement_vector_steps_raw5[A_AXIS]) < 1:
-            ## print "planTravelMove: skipping small move...", move.rawDisplacementStepsStr()
-            ## return
-
-        move.state = 1
-
-        move.setPlannedJerkStartSpeed(self.jerk.scale(0.5))
-        move.setPlannedJerkEndSpeed(self.jerk.scale(0.5))
-
-        move.sanityCheck(self.jerk)
-
-        self.planTravelAcceleration(move)
-
-        move.sanityCheck(self.jerk)
-
-        self.planTravelSteps(move)
+        # old ################################################################
+        """
+        """
+        # end old ################################################################
 
         if debugMoves:
-            print "Streaming travel-move:", move.moveNumber
+            print "***** Start planTravelPath() *****"
 
-        self.streamMove(move)
+        # Set startspeed of first move
+        path[0].setPlannedJerkStartSpeed(self.jerk, "planTravelPath() first move")
 
+        prevMove = path[0]
+
+        # Step 1: join moves forward
+        for move in path[1:]:
+        
+            util.joinTravelMoves(prevMove, move, self.jerk)
+            prevMove = move
+
+        for move in path:
+            move.state = 1
+
+        # Check max endspeed of last move
+        # Set endspeed of last move
+        lastMove = path[-1]
+
+        # Max reachable speed of last move
+        allowedAccel5 = lastMove.getMaxAllowedAccelNoAdv5()
+        maxEndSpeed = util.vAccelPerDist(lastMove.startSpeed.speed().feedrate5(), allowedAccel5, lastMove.distance5)
+
+        v = lastMove.getJerkSpeed(self.jerk) or lastMove.topSpeed.speed()
+
+        endSpeed = lastMove.endSpeed.speed()
+        endSpeed.setSpeed(min(v.feedrate5(), maxEndSpeed))
+        lastMove.endSpeed.setSpeed(endSpeed, "planTravelPath() - last move")
+
+        """
+        # Sanity check
+        for move in path:
+            move.sanityCheck(self.jerk)
+        """
+
+        # Step 2: join moves backwards
+        self.joinTravelMovesBwd(path)
+
+        """
+        # Sanity check
+        for move in path:
+            move.sanityCheck(self.jerk)
+        """
+
+        # Step 3: plan acceleration
+        for move in path:
+            self.planTravelAcceleration(move)
+
+        # Sanity check
+        for move in path:
+            move.sanityCheck(self.jerk)
+
+        # Step 4: plan steps and stream moves to printer
+        if debugMoves:
+            print "Streaming %d travel moves..." % len(path)
+
+        for move in path:
+
+            self.planTravelSteps(move)
+
+            if debugMoves:
+                print "Streaming travel-move:", move.moveNumber
+
+            self.streamMove(move)
+
+            # Help garbage collection
+            move.prevMove = util.StreamedMove()
+            move.nextMove = util.StreamedMove()
+
+        if debugMoves:
+            print "***** End planTravelPath() *****"
+
+    # xxx should be called finishPath()
     def finishMoves(self):
 
         # debug
         self.stepRounders.check()
 
         if self.pathData.path:
+            
+            prevMove = self.pathData.path[-1]
+            if prevMove.isPrintMove():
 
-            self.advance.planPath(self.pathData.path)
-            self.pathData.path = []
+                print "finishMoves(): ending path print with %d moves" % len(self.pathData.path)
+                self.advance.planPath(self.pathData.path)
 
-            if debugPlot:
-                self.plotfile.close()
-                self.plotfile = None
+                if debugPlot:
+                    self.plotfile.close()
+                    self.plotfile = None
 
-            print "\nStatistics:"
-            print "-----------"
-            self.pathData.maxExtrusionRate.printStat()
+                print "\nStatistics:"
+                print "-----------"
+                self.pathData.maxExtrusionRate.printStat()
+
+            else:
+
+                print "finishMoves(): ending travel path with %d moves" % len(self.pathData.path)
+                self.planTravelPath(self.pathData.path)
+
+            self.reset()
             return
 
         print "finishMoves: nothing to do..."
@@ -554,6 +628,74 @@ class Planner (object):
             if self.args.mode != "pre":
                 self.printer.sendCommandC(cmd, cobsBlock)
 
+    #
+    #
+    #
+    def joinTravelMovesBwd(self, moves):
+
+        if debugMoves:
+            print "***** Start joinTravelMovesBwd() *****"
+
+        index = len(moves) - 1
+        while index >= 0:
+
+            move = moves[index]
+            index -= 1
+
+            if debugMoves: 
+                move.pprint("joinTravelMovesBwd")
+
+            # Check, if deceleration between startspeed and endspeed of
+            # move is possible with the given acceleration and within the 
+            # given distance:
+
+            startSpeed1 = move.startSpeed.speed()
+            startSpeed1S = startSpeed1.feedrate5()
+
+            endSpeed1 = move.endSpeed.speed()
+            endSpeed1S = endSpeed1.feedrate5()
+
+            allowedAccel5 = move.getMaxAllowedAccelNoAdv5()
+
+            maxAllowedStartSpeed = util.vAccelPerDist(endSpeed1S, allowedAccel5, move.distance5)
+
+            # print "joinMovesBwd, startspeed, max startspeed: ", startSpeedS, maxAllowedStartSpeed
+
+
+
+            if maxAllowedStartSpeed >= startSpeed1S:
+
+                # Join speeds ok
+                continue
+
+            if debugMoves: 
+                print "Startspeed of %.5f is to high to reach the desired endspeed." % startSpeed1S
+                print "Max. allowed startspeed: %.5f." % maxAllowedStartSpeed
+
+            # Adjust startspeed of this move:
+            startSpeed1.setSpeed(maxAllowedStartSpeed)
+            move.startSpeed.setSpeed(startSpeed1, "joinTravelMovesBwd - breaking")
+
+            if move.prevMove:
+
+                #
+                # Adjust endspeed of the previous move, also.
+                #
+
+                factor = maxAllowedStartSpeed / startSpeed1S
+                # print "factor: ", factor
+
+                # Adjust endspeed of last move:
+                assert(factor < 1)
+
+                # XXX einfacher algo, kann man das besser machen (z.b. mit jerk-berechnung,
+                # vector subtraktion oder so?)
+                endSpeed0 = move.prevMove.endSpeed.speed().scale(factor)
+                move.prevMove.endSpeed.setSpeed(endSpeed0, "joinMovesBwd - prevMove breaking")
+
+        if debugMoves:
+            print "***** End joinTravelMovesBwd() *****"
+
     def planTravelAcceleration(self, move):
 
         if debugMoves: 
@@ -568,8 +710,8 @@ class Planner (object):
         # Check if the speed difference between startspeed and endspeed can be done with
         # this acceleration in this distance
         #
-        startSpeedS = move.startSpeed.plannedSpeed().feedrate
-        endSpeedS = move.endSpeed.plannedSpeed().feedrate
+        startSpeedS = move.startSpeed.speed().feedrate
+        endSpeedS = move.endSpeed.speed().feedrate
 
         deltaSpeedS = endSpeedS - startSpeedS
 
@@ -577,16 +719,15 @@ class Planner (object):
        
             ta = abs(deltaSpeedS) / allowedAccel
 
-            if deltaSpeedS > 0:
+            if deltaSpeedS >= 0:
                 # acceleration
                 sa = util.accelDist(startSpeedS, allowedAccel, ta)
             else:
                 # deceleration
                 sa = util.accelDist(startSpeedS, -allowedAccel, ta)
       
-            if (sa - move.distance) > 0.001:
-                print " 0.5 * %f * pow(%f, 2) + %f * %f" % (allowedAccel, ta, startSpeedS, ta)
-                print "VStart %f mm/s kann nicht innerhalb von %f mm auf Endgeschwindigkeit %f mm/s gebracht werden!" % (startSpeedS, move.distance, endSpeedS)
+            if (sa - move.distance5) > 0.001:
+                print "VStart %f mm/s kann nicht innerhalb von %f mm auf Endgeschwindigkeit %f mm/s gebracht werden!" % (startSpeedS, move.distance5, endSpeedS)
                 print "Dafür werden %f mm benötigt" % sa
                 assert(0)
 
@@ -597,7 +738,7 @@ class Planner (object):
         ta = 0.0
         sa = 0.0
 
-        deltaStartSpeedS = move.topSpeed.plannedSpeed().feedrate - startSpeedS
+        deltaStartSpeedS = move.topSpeed.speed().feedrate - startSpeedS
 
         if deltaStartSpeedS:
 
@@ -621,7 +762,7 @@ class Planner (object):
         tb = 0.0
         sb = 0.0
 
-        deltaEndSpeedS = move.topSpeed.plannedSpeed().feedrate - endSpeedS                          # [mm/s]
+        deltaEndSpeedS = move.topSpeed.speed().feedrate - endSpeedS                          # [mm/s]
 
         if deltaEndSpeedS:
 
@@ -652,9 +793,8 @@ class Planner (object):
             # ??? 
             assert(sa>0 and sb>0)
 
-            topSpeed = move.topSpeed.plannedSpeed()
+            topSpeed = move.topSpeed.speed()
 
-            # sa = (2 * allowedAccel * move.e_distance - pow(startSpeedS, 2) + pow(endSpeedS, 2)) /(4 * allowedAccel)
             sa = (2 * allowedAccel * move.distance5 - pow(startSpeedS, 2) + pow(endSpeedS, 2)) /(4 * allowedAccel)
             sb = move.distance5 - sa
 
@@ -672,24 +812,37 @@ class Planner (object):
 
             assert( abs(v - v2) < 0.001)
 
-            topSpeed.feedrate = v
-
-            move.topSpeed.plannedSpeed(topSpeed)
-
             deltaSpeedS = v - startSpeedS                          # [mm/s]
+
+            # Handle rounding errors
+            if deltaSpeedS < 0:
+                assert(deltaSpeedS > -0.000001)
+                deltaSpeedS = 0
+                v = startSpeedS
+
             ta = deltaSpeedS / allowedAccel
-            # print "ta: ", ta, deltaSpeedS
+            print "ta: ", ta, deltaSpeedS
 
             deltaSpeedS = v - endSpeedS                          # [mm/s]
+
+            # Handle rounding errors
+            if deltaSpeedS < 0:
+                assert(deltaSpeedS > -0.000001)
+                deltaSpeedS = 0
+                v = endSpeedS
+
             tb = deltaSpeedS / allowedAccel
-            # print "tb: ", tb, deltaSpeedS
+            print "tb: ", tb, deltaSpeedS
+
+            topSpeed.feedrate = v
+            move.topSpeed.setSpeed(topSpeed, "planTravelAcceleration - max reachable topspeed")
 
             move.setDuration(ta, 0, tb)
 
             if debugMoves:
-                move.pprint("planAcceleration")
+                move.pprint("planTravelAcceleration")
                 print 
-                print "***** End planAcceleration() *****"
+                print "***** End planTravelAcceleration() *****"
 
             return
 
@@ -700,7 +853,7 @@ class Planner (object):
         # print "ta: ", ta, deltaStartSpeedS, sa
         # print "tb: ", tb, deltaEndSpeedS, sb
 
-        nominalSpeed = move.topSpeed.plannedSpeed().feedrate # [mm/s]
+        nominalSpeed = move.topSpeed.speed().feedrate # [mm/s]
         slin = move.distance5 - (sa+sb)
         tlin = slin / nominalSpeed
         # print "tlin: ", tlin, slin
@@ -776,7 +929,7 @@ class Planner (object):
         #
         # Create a list of stepper pulses
         #
-        nominalSpeed = abs( move.topSpeed.trueSpeed().vv()[leadAxis] ) # [mm/s]
+        nominalSpeed = abs( move.topSpeed.speed().vv()[leadAxis] ) # [mm/s]
 
         allowedAccel = move.getMaxAllowedAccelVectorNoAdv5()[leadAxis]
 

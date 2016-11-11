@@ -42,7 +42,6 @@ FILAMENT_REVERSAL_LENGTH = 750
 # RoundSafe = 0.999999
 # RoundSafe = 1.0
 # xRoundSafe = 0.999999999
-xRoundSafe = 1.0
 
 ####################################################################################################
 def sign(x):
@@ -132,7 +131,7 @@ def joinMoves(move1, move2, jerk, maxAccelV):
 
         allowedAccel3 = move1.accel.xyAccel()
         print "xxx allowedAccel3", allowedAccel3
-        maxEndSpeed1 = vAccelPerDist(startSpeedS1, allowedAccel3, move1.distance3) * xRoundSafe
+        maxEndSpeed1 = vAccelPerDist(startSpeedS1, allowedAccel3, move1.distance3)
 
         if maxEndSpeed1 < endSpeedS1:
 
@@ -143,7 +142,7 @@ def joinMoves(move1, move2, jerk, maxAccelV):
             endSpeed1.setSpeed(maxEndSpeed1)
 
             print "Move1, endspeed lowered: ", endSpeed1
-            move1.endSpeed.setSpeed(endSpeed1)
+            move1.endSpeed.setSpeed(endSpeed1, "joinMoves - max. reachable endspeed")
 
         # Check max reachable e endspeed
         maxAllowedEEndSpeed = vAccelPerDist(startSpeed1.eSpeed, move1.accel.eAccel(), move1.eDistance)
@@ -234,7 +233,7 @@ def joinMoves2(move1, move2, jerk):
                 if debugMoves:
                     move1.pprint("JoinMoves - Move1")
                     move2.pprint("JoinMoves - Move2")
-                    print "speedScale: ", speedScale # , weight
+                    print "speedScale: ", speedScale
 
                 assert(speedScale <= 1.0)
 
@@ -243,14 +242,14 @@ def joinMoves2(move1, move2, jerk):
                 if debugMoves:
                     print "set nominal endspeed of move1:", endSpeed1
 
-                move1.endSpeed.setSpeed(endSpeed1)
+                move1.endSpeed.setSpeed(endSpeed1, "joinMoves2 - adjust jerk")
 
                 startSpeed2 = startSpeed2.scale(speedScale)
 
                 if debugMoves:
                     print "set nominal startspeed of move2:", speedScale
 
-                move2.startSpeed.setSpeed(startSpeed2)
+                move2.startSpeed.setSpeed(startSpeed2, "joinMoves2 - adjust jerk")
 
             else:
 
@@ -286,7 +285,7 @@ def joinMoves3(move1, move2, jerk):
             # endSpeedS1 *= f
             # endSpeed1.feedrate = endSpeedS1
             endSpeed1 = endSpeed1.scale(f)
-            move1.endSpeed.setSpeed(endSpeed1)
+            move1.endSpeed.setSpeed(endSpeed1, "joinMoves3 - adjust ejerk")
 
             print "slowed down move1 endspeed:", eEndSpeed1
 
@@ -298,7 +297,7 @@ def joinMoves3(move1, move2, jerk):
             # startSpeedS2 *= f
             # startSpeed2.feedrate = startSpeedS2
             startSpeed2 = startSpeed2.scale(f)
-            move2.startSpeed.setSpeed(startSpeed2)
+            move2.startSpeed.setSpeed(startSpeed2, "joinMoves3 - adjust ejerk")
 
             print "slowed down move2 startspeed:", startSpeed2
 
@@ -365,7 +364,7 @@ def joinMoves3(move1, move2, jerk):
             if debugMoves:
                 move1.pprint("JoinMoves - Move1")
                 move2.pprint("JoinMoves - Move2")
-                print "speedScale: ", speedScale # , weight
+                print "speedScale: ", speedScale
 
             assert(speedScale <= 1.0)
 
@@ -374,14 +373,14 @@ def joinMoves3(move1, move2, jerk):
             if debugMoves:
                 print "set nominal endspeed of move1:", endSpeed1
 
-            move1.endSpeed.setSpeed(endSpeed1)
+            move1.endSpeed.setSpeed(endSpeed1, "joinMoves3 - adjust jerk")
 
             startSpeed2 = startSpeed2.scale(speedScale)
 
             if debugMoves:
                 print "set nominal startspeed of move2:", speedScale
 
-            move2.startSpeed.setSpeed(startSpeed2)
+            move2.startSpeed.setSpeed(startSpeed2, "joinMoves3 - adjust jerk")
 
         else:
 
@@ -398,6 +397,142 @@ def joinMoves3(move1, move2, jerk):
             move2.pprint("Move2, e-adjusted")
             print "***** End joinMoves() *****"
 
+
+####################################################################################################
+
+#
+# Join travel moves, this is easier than joining printing moves since E-axis jerk has not to be
+# considered.
+#
+def joinTravelMoves(move1, move2, jerk):
+
+        if debugMoves:
+            print "***** Start joinTravelMoves() *****"
+
+        allowedAccel = move1.getMaxAllowedAccelNoAdv5()
+
+        startSpeedMove1 = move1.startSpeed.speed()
+        startSpeedMove1S = startSpeedMove1.feedrate5()
+
+        endSpeedMove1 = move1.endSpeed.speed()
+        endSpeedVMove1 = endSpeedMove1.vv()
+
+        startSpeedMove2 = move2.startSpeed.speed()
+
+        # Compute max reachable endspeed of move1
+        maxEndSpeed = vAccelPerDist(startSpeedMove1S, allowedAccel, move1.distance5) #  * RoundSafe
+
+        if endSpeedVMove1.isDisjointV(startSpeedMove2.vv()):
+
+            # Set endspeed to minimum of reachable endspeed and jerkspeed
+            jerkSpeed = move1.getJerkSpeed(jerk) or endSpeedMove1
+
+            print "maxEndSpeed of first disjoint move:", maxEndSpeed, jerkSpeed.feedrate5()
+            endSpeedMove1.setSpeed(min(jerkSpeed.feedrate5(), maxEndSpeed))
+            move1.endSpeed.setSpeed(endSpeedMove1, "joinTravelMoves - disjoint, jerk ormaxendspeed")
+
+            move2.setPlannedJerkStartSpeed(jerk, "joinTravelMoves - disjoint, jerk")
+
+            if debugMoves:
+                print "***** End joinTravelMoves() *****"
+            return
+
+        endSpeedMove1S = endSpeedMove1.feedrate5()
+
+        startSpeedMove2S = startSpeedMove2.feedrate5()
+
+        if maxEndSpeed < endSpeedMove1S:
+
+            if debugMoves:
+                print "Max. reachable endspeed: %.3f < feedrate: %.3f" % (maxEndSpeed, endSpeedMove1S)
+
+            endSpeedMove1S = maxEndSpeed
+            endSpeedMove1.setSpeed(endSpeedMove1S)
+            move1.endSpeed.setSpeed(endSpeedMove1, "joinTravelMoves - max. reachable endspeed")
+            endSpeedVMove1 = endSpeedMove1.vv()
+
+        startSpeedVMove2 = startSpeedMove2.vv()
+        differenceVector = startSpeedVMove2.subVVector(endSpeedVMove1)
+
+        #
+        # Join in bezug auf den maximalen jerk aller achsen betrachten:
+        #
+        speedDiff = {}
+        toMuch = False
+        for dim in range(5):
+
+            vdim = startSpeedVMove2[dim]
+
+            # Speed difference from start speed to theoretical max speed for axis
+            vdiff = vdim - endSpeedVMove1[dim]
+
+            vdiffAbs = abs(vdiff)
+
+            dimJerk = jerk[dim]
+
+            if vdiffAbs > dimJerk: 
+                toMuch = True
+
+            if vdiffAbs > 1:
+                speedDiff[dim] = (vdiff, vdiffAbs)
+
+        if debugMoves:
+            print "speedDiff:", speedDiff
+
+        if toMuch:
+
+            # 
+            # Der geschwindigkeitsunterschied mindestens einer achse ist grösser als der 
+            # erlaubte jerk fuer diese achse.
+            # 
+            # Man könnte auch sagen: der "geschwindigkeits knick" ist zu gross. 
+            # 
+            # Letzter step muss also am ende gebremst werden und dieser step muss mit
+            # entsprechend kleiner geschwindigkeit gestartet werden.
+            #
+            # Abbremsen auf 0 geht auf jeden fall, aber ist auch eine höhere
+            # jerk geschwindigkeit möglich? Bzw. wie kann diese berechnet werden?
+            # 
+            # 
+
+            #
+            # Skalierungsfaktor berechnen um den die beiden geschwindigkeiten
+            # reduziert werden müssen, damit sie nur noch einen unterschied von
+            # 'jerk' haben.
+            #
+
+            speedScale = 1.0
+            for dim in speedDiff.keys():
+                # print "diff: ", differenceVector[dim], jerk[dim]
+                if abs(differenceVector[dim]) > jerk[dim]:
+                    # print "mindiff: ", dimNames[dim], differenceVector[dim], jerk[dim]
+                    speedScale = min(speedScale, jerk[dim] / abs(differenceVector[dim]))
+
+            if debugMoves:
+                move1.pprint("joinTravelMoves - Move1")
+                move2.pprint("joinTravelMoves - Move2")
+                print "speedScale: ", speedScale
+
+            assert(speedScale <= 1.0)
+
+            if debugMoves:
+                print "set nominal endspeed of move1:", endSpeedMove1S * speedScale
+            move1.endSpeed.setSpeed(endSpeedMove1.scale(speedScale), "joinTravelMoves - adjust jerk")
+
+            if debugMoves:
+                print "set nominal startspeed of move2:", startSpeedMove2S * speedScale
+            move2.startSpeed.setSpeed(startSpeedMove2.scale(speedScale), "joinTravelMoves - adjust jerk")
+
+        else:
+
+            if debugMoves:
+                print "Doing a full speed join between move %d and %d" % (move1.moveNumber, move2.moveNumber)
+
+            # move1.setNominalEndFr(endSpeedMove1S)
+            # move2.setNominalStartFr(move2.feedrateS)
+      
+        if debugMoves:
+            print "***** End joinTravelMoves() *****"
 
 ####################################################################################################
 

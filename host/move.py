@@ -351,11 +351,11 @@ class AdvanceData:
         return self.startFeedrateIncrease != 0
 
     def startEFeedrate(self):
-        return self.move.startSpeed.trueSpeed().eSpeed + self.startFeedrateIncrease
+        return self.move.startSpeed.speed().eSpeed + self.startFeedrateIncrease
 
     # xxx rename to startETopFeedrate
     def startEReachedFeedrate(self):
-        return self.move.topSpeed.trueSpeed().eSpeed + self.startFeedrateIncrease
+        return self.move.topSpeed.speed().eSpeed + self.startFeedrateIncrease
 
     def hasEndAdvance(self):
         return self.endFeedrateIncrease != 0
@@ -366,14 +366,14 @@ class AdvanceData:
         if endFeedrateIncrease == None:
             endFeedrateIncrease = self.endFeedrateIncrease
 
-        return self.move.topSpeed.trueSpeed().eSpeed + endFeedrateIncrease
+        return self.move.topSpeed.speed().eSpeed + endFeedrateIncrease
 
     def endEFeedrate(self, endFeedrateIncrease = None):
 
         if endFeedrateIncrease == None:
             endFeedrateIncrease = self.endFeedrateIncrease
 
-        return self.move.endSpeed.trueSpeed().eSpeed + endFeedrateIncrease
+        return self.move.endSpeed.speed().eSpeed + endFeedrateIncrease
 
     # Check if sign changes at accel/decel
     def startSignChange(self):
@@ -462,26 +462,22 @@ class AdvanceData:
 class VelocityOverride(object):
 
     def __init__(self, nominalSpeed):
-        self.speeds = [nominalSpeed]
+        self.speeds = [(nominalSpeed, "initial")]
 
     def speed(self):
-        return self.speeds[-1].copy()
+        return self.speeds[-1][0].copy()
 
-    def setSpeed(self, speed):
-
-        # debug
-        # if self.speeds[-1][Y_AXIS] == 0 and speed[Y_AXIS] != 0:
-            # assert(0)
+    def setSpeed(self, speed, comment):
 
         # debug
         if speed == self.speeds[-1]:
-            print "duplicate speed: ", speed
+            print "duplicate speed: ", speed, comment
             assert(0)
 
         if speed != self.speeds[-1]:
-            self.speeds.append(speed)
+            self.speeds.append((speed, comment))
 
-    def nominalSpeed(self, speed=None):
+    def nu_nominalSpeed(self, speed=None):
 
         if speed:
             self.setSpeed(speed)
@@ -489,18 +485,18 @@ class VelocityOverride(object):
 
         return self.speed()
 
-    def plannedSpeed(self, speed=None):
+    def nu_plannedSpeed(self, speed=None):
         return self.nominalSpeed(speed)
 
-    def trueSpeed(self, speed=None):
+    def nu_trueSpeed(self, speed=None):
         return self.nominalSpeed(speed)
 
     def __repr__(self):
 
         s = ""
 
-        for speed in self.speeds:
-            s += "\n\tSpeed: " + str(speed)
+        for (speed, comment) in self.speeds:
+            s += "\n\tSpeed: " + str(speed) + " " + comment
 
         return s
 
@@ -679,6 +675,9 @@ class RealMove(MoveBase):
 
         MoveBase.__init__(self)
 
+        self.prevMove = None
+        self.nextMove = None
+
         self.comment = comment
 
         self.accelData = AccelData()
@@ -688,17 +687,19 @@ class RealMove(MoveBase):
 
     def getJerkSpeed(self, jerk):
 
-        return self.topSpeed.nominalSpeed().constrain(jerk)
+        return self.topSpeed.speed().constrain(jerk)
 
-    def setPlannedJerkStartSpeed(self, jerk):
-
-        v = self.getJerkSpeed(jerk)
-        self.startSpeed.plannedSpeed(v)
-
-    def setPlannedJerkEndSpeed(self, jerk):
+    def setPlannedJerkStartSpeed(self, jerk, comment):
 
         v = self.getJerkSpeed(jerk)
-        self.endSpeed.plannedSpeed(v)
+        if v != None:
+            self.startSpeed.setSpeed(v, "setPlannedJerkStartSpeed " + comment)
+
+    def setPlannedJerkEndSpeed(self, jerk, comment):
+
+        v = self.getJerkSpeed(jerk)
+        if v != None:
+            self.endSpeed.setSpeed(v, "setPlannedJerkEndSpeed " + comment)
 
     def sanityCheck(self):
 
@@ -794,16 +795,34 @@ class TravelMove(RealMove):
 
         RealMove.sanityCheck(self)
 
-        nullV = VelocityVector5(v=Vector([0, 0, 0, 0, 0]))
-
-        self.startSpeed.trueSpeed().checkJerk(nullV, jerk, "start 0", "#: %d" % self.moveNumber)
-        self.endSpeed.trueSpeed().checkJerk(nullV, jerk)
-
         # Check start ramp
-        assert(self.startSpeed.speed().feedrate <= self.topSpeed.speed().feedrate);
+        assert(self.startSpeed.speed().feedrate5() <= self.topSpeed.speed().feedrate5());
 
         # Check end ramp
-        assert(self.topSpeed.speed().feedrate >= self.endSpeed.speed().feedrate);
+        assert(self.topSpeed.speed().feedrate5() >= self.endSpeed.speed().feedrate5());
+
+        nullV = self.topSpeed.speed()
+        # xxx use same start speed as addMove() here!
+        # nullV.setSpeed(0.1)
+        nullV.setSpeed(0.0)
+
+        nextMove = self.nextMove
+
+        if nextMove:
+
+            endSpeed1 = self.endSpeed.speed()
+            startSpeed2 = nextMove.startSpeed.speed()
+            endSpeed1.checkJerk(startSpeed2, jerk, "#: %d" % self.moveNumber, "#: %d" % nextMove.moveNumber)
+
+        else:
+
+            # Last move
+            self.endSpeed.speed().checkJerk(nullV, jerk)
+
+        if not self.prevMove:
+
+            # First move
+            self.startSpeed.speed().checkJerk(nullV, jerk, "start 0", "#: %d" % self.moveNumber)
 
 ##################################################
 
@@ -819,19 +838,10 @@ class PrintMove(RealMove):
 
         RealMove.__init__(self, comment)
 
-        # self.displacement_vector_raw = displacement_vector
-        # self.displacement_vector_steps_raw = displacement_vector_steps
-
-        # self.displacement_vector3=displacement_vector[:3]
-        # self.displacement_vector_steps3=displacement_vector_steps[:3]
-
         #
         # Move distance in XYZ plane
         #
         self.distance3 = displacement_vector.length(3)
-
-        self.prevMove = None
-        self.nextMove = None
 
         self.advanceData = AdvanceData(self)
 
@@ -1226,14 +1236,11 @@ class SubMove(MoveBase):
 
     def setSpeeds(self, sv, tv, ev):
 
-        # self.startSpeed.nominalSpeed(VelocityVector(v=sv))
-        self.startSpeed.nominalSpeed(sv)
+        self.startSpeed.setSpeed(sv, "SubMove.setSpeeds")
 
-        # self.topSpeed.nominalSpeed(VelocityVector(v=tv))
-        self.topSpeed.nominalSpeed(tv)
+        self.topSpeed.setSpeed(tv, "SubMove.setSpeeds")
 
-        # self.endSpeed.nominalSpeed(VelocityVector(v=ev))
-        self.endSpeed.nominalSpeed(ev)
+        self.endSpeed.setSpeed(ev, "SubMove.setSpeeds")
 
     def nu_getMaxAllowedAccelVector5(self, maxAccelV):
         return self.parentMove.getMaxAllowedAccelVector5(maxAccelV)
