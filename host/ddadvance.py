@@ -120,11 +120,6 @@ class Advance (object):
         #
         # dvin = dvout + ka * acceleration [ m/s + s * m/s² = m/s ]
         #
-        # self.kAdv = 0.0 # [s] # xxx move to material profile
-        # self.kAdv = 0.035 # [s] # xxx move to material profile
-        # self.kAdv = 0.010 # [s]
-        # self.kAdv = 0.100 # [s] # xxx move to material profile
-        # self.kAdv = 0.250 # [s] # xxx move to material profile
 
         # K-Advance is defined in material profile and overridable by the
         # commandline
@@ -137,9 +132,7 @@ class Advance (object):
 
             print "Advance: usinge K-Advance %.3f" % self.kAdv
 
-            # self.advAccel = ((sel.jerk[A_AXIS] / 1000.0) / self.kAdv) * 1000
             advJerk = planner.jerk[A_AXIS]
-            # self.advAccel = self.advJerk / self.kAdv
             maxEAccel = advJerk / self.kAdv
 
             #
@@ -2194,7 +2187,7 @@ class Advance (object):
         xyzStepSum = vectorAdd(displacement_vector_steps_A[:3], displacement_vector_steps_B[:3])
         stepsMissing = vectorSub(displacement_vector_steps_raw[:3], xyzStepSum)
         print "stepsMissing:", stepsMissing
-        assert(vectorLength(stepsMissing) < 0.001)
+        assert(vectorLength(stepsMissing) < 0.000001)
 
         return newMoves
 
@@ -2463,7 +2456,7 @@ class Advance (object):
         xyzStepSum = vectorAdd(vectorAdd(displacement_vector_steps_A[:3], displacement_vector_steps_B[:3]), displacement_vector_steps_C[:3])
         stepsMissing = vectorSub(displacement_vector_steps_raw[:3], xyzStepSum)
         print "stepsMissing:", stepsMissing
-        assert(vectorLength(stepsMissing) < 0.001)
+        assert(vectorLength(stepsMissing) < 0.000001)
 
         return newMoves
 
@@ -2637,7 +2630,10 @@ class Advance (object):
         if debugMoves:
             print "***** End planStepsAdvLDD() *****"
 
-        assert(vectorAdd(vectorAdd(displacement_vector_steps_A[:3], displacement_vector_steps_B[:3]), displacement_vector_steps_C[:3]) == displacement_vector_steps_raw[:3])
+        xyzStepSum = vectorAdd(vectorAdd(displacement_vector_steps_A[:3], displacement_vector_steps_B[:3]), displacement_vector_steps_C[:3])
+        stepsMissing = vectorSub(displacement_vector_steps_raw[:3], xyzStepSum)
+        print "stepsMissing:", stepsMissing
+        assert(vectorLength(stepsMissing) < 0.000001)
 
         return newMoves
 
@@ -2828,7 +2824,7 @@ class Advance (object):
         xyzStepSum = vectorAdd(vectorAdd(vectorAdd(displacement_vector_steps_A[:3], displacement_vector_steps_B[:3]), displacement_vector_steps_C[:3]), displacement_vector_steps_D[:3])
         stepsMissing = vectorSub(displacement_vector_steps_raw[:3], xyzStepSum)
         print "stepsMissing:", stepsMissing
-        assert(vectorLength(stepsMissing) < 0.001)
+        assert(vectorLength(stepsMissing) < 0.000001)
 
         return newMoves
 
