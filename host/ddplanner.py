@@ -123,7 +123,7 @@ class StepRounder(object):
 
         s = int(round(f + self.roundError))
        
-        print "round axis %d: %f + %f" % (self.axis, f, self.roundError)
+        # print "round axis %d: %f + %f" % (self.axis, f, self.roundError)
         return s
 
     def commit(self):
@@ -405,7 +405,7 @@ class Planner (object):
     def addSynchronizedCommand(self, command, p1=None, p2=None, moveNumber=None):
 
         if moveNumber == None:
-            moveNumber = self.pathData.count+10
+            moveNumber = max(self.pathData.count, 0)
 
         self.syncCommands[moveNumber].append((command, p1, p2))
 
@@ -576,8 +576,8 @@ class Planner (object):
 
         if self.pathData.path:
             
-            prevMove = self.pathData.path[-1]
-            if prevMove.isPrintMove():
+            move = self.pathData.path[0]
+            if move.isPrintMove():
 
                 print "finishMoves(): ending path print with %d moves" % len(self.pathData.path)
                 self.advance.planPath(self.pathData.path)
@@ -595,10 +595,8 @@ class Planner (object):
                 print "finishMoves(): ending travel path with %d moves" % len(self.pathData.path)
                 self.planTravelPath(self.pathData.path)
 
-            self.reset()
-            return
-
-        print "finishMoves: nothing to do..."
+        assert(not self.syncCommands)
+        self.reset()
 
     def streamMove(self, move):
 
@@ -608,7 +606,6 @@ class Planner (object):
                 if self.args.mode != "pre":
                     self.printer.sendCommandParamV(cmd, [p1, p2])
 
-            # Prevent multiple sends for parentMove of submoves
             del self.syncCommands[moveNumber]
 
         if debugPlot:
