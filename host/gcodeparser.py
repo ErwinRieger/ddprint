@@ -171,14 +171,14 @@ class UM2GcodeParser:
         tmpfname = ("/tmp/%d_" % id(fn)) + os.path.basename(fn)
         shutil.copyfile(fn, tmpfname)
 
-        f = open(fn)
+        f = open(tmpfname)
 
         print "Unlinking temp. copy of gcode input: ", tmpfname
         os.unlink(tmpfname)
 
         self.numParts = 0
 
-        print "pre-parsing ", fn
+        print "pre-parsing ", fn, tmpfname
         for line in f:
             line = line.strip()
             if line.startswith(";"):
@@ -207,12 +207,11 @@ class UM2GcodeParser:
                     self.ultiGcodeFlavor = True
                     # To compute extrude length from volume (see getValues()):
                     # V = A * h, h = V / A, A = pi/4 * diameter²
-                    # self.e_to_filament_length *= 4 / (math.pi * pow(MatProfile.getMatDiameter(), 2))
                     aFilament = MatProfile.getMatArea()
                     self.e_to_filament_length = self.e_to_filament_length / aFilament
 
         print "pre-parsing # parts:", self.numParts
-        f.seek(0) # rewind
+        f.seek() # rewind
         return f
 
     def execute_line(self, line):
@@ -282,9 +281,6 @@ class UM2GcodeParser:
 
         return values
 
-    # def finishMoves(self):
-        # self.planner.finishMoves()
-
     def m25_stop_reading(self, line, values):
         print "XXX todo implement M25", values
 
@@ -296,7 +292,7 @@ class UM2GcodeParser:
         print "ignoring m84..."
 
     def m104_extruder_temp(self, line, values):
-        print "ignoring m104..."
+        print "ignoring m104 (set extruder temp)..."
 
     def m106_fan_on(self, line, values):
         # print "m106_fan_on", values
