@@ -680,7 +680,7 @@ def main():
             Y = planner.Y_HOME_POS,
             Z = planner.Z_HOME_POS, #  - 20,
             )
-        parser.set_position(homePosMM)
+        parser.setPos(homePosMM)
 
         f = parser.preParse(args.gfile)
         lineNr = 0
