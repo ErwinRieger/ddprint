@@ -422,6 +422,7 @@ def joinTravelMoves(move1, move2, jerk):
         # Compute max reachable endspeed of move1
         maxEndSpeed = vAccelPerDist(startSpeedMove1S, allowedAccel, move1.distance5) #  * RoundSafe
 
+        """
         if endSpeedVMove1.isDisjointV(startSpeedMove2.vv()):
 
             # Set endspeed to minimum of reachable endspeed and jerkspeed
@@ -437,9 +438,9 @@ def joinTravelMoves(move1, move2, jerk):
                 print "***** End joinTravelMoves() *****"
             return
 
-        endSpeedMove1S = endSpeedMove1.feedrate5()
+        """
 
-        startSpeedMove2S = startSpeedMove2.feedrate5()
+        endSpeedMove1S = endSpeedMove1.feedrate5()
 
         if maxEndSpeed < endSpeedMove1S:
 
@@ -520,7 +521,7 @@ def joinTravelMoves(move1, move2, jerk):
             move1.endSpeed.setSpeed(endSpeedMove1.scale(speedScale), "joinTravelMoves - adjust jerk")
 
             if debugMoves:
-                print "set nominal startspeed of move2:", startSpeedMove2S * speedScale
+                print "set nominal startspeed of move2:", startSpeedMove2.feedrate5() * speedScale
             move2.startSpeed.setSpeed(startSpeedMove2.scale(speedScale), "joinTravelMoves - adjust jerk")
 
         else:
