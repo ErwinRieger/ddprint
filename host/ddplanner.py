@@ -48,6 +48,8 @@ if debugPlot:
 ATInterval = 3 # [s]
 # ATMaxTempIncrease = 50
 
+emptyVector5 = [0] * 5
+
 #####################################################################
 #
 # Computes some statistics about the used maximal extrusion rates.
@@ -893,16 +895,19 @@ class Planner (object):
             abs_displacement_vector_steps.append(s)
         """
 
+        # Round step values
         dispF = move.displacement_vector_steps_raw5
+        dispS = self.stepRounders.round(dispF)
 
-        # print dispF
-        # dispS = self.stepRounders.round(dispF)
-        # self.stepRounders.commit()
-        dispS = []
-        for f in dispF:
-            dispS.append(int(round(f)))
+        if dispS == emptyVector5:
 
-        # disp[A_AXIS] = int(round(disp[A_AXIS])) # XXX account for rounding errors here?
+            print "Empty move..."
+            print "***** End planTravelSteps() *****"
+            self.stepRounders.rollback()
+            return
+
+        self.stepRounders.commit()
+
         abs_displacement_vector_steps = vectorAbs(dispS)
 
         # Determine the 'lead axis' - the axis with the most steps
