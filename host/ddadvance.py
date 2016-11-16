@@ -1401,14 +1401,11 @@ class Advance (object):
 
         # Round step values
         dispF = move.displacement_vector_steps_raw3 + [move.eSteps, 0.0]
-        print "displacement vector float:", dispF
         dispS = self.planner.stepRounders.round(dispF)
-        print "displacement vector steps:", dispS
 
         if dispS == emptyVector5:
             print "Empty move..."
             print "***** End PlanSTepsSimple() *****"
-            # self.skippedSimpleSteps += move.eSteps
             self.planner.stepRounders.rollback()
             return
 
@@ -1590,14 +1587,11 @@ class Advance (object):
 
         # Round step values
         dispF = move.displacement_vector_steps_raw3 + [move.eSteps, 0.0]
-        print "displacement vector float:", dispF
         dispS = self.planner.stepRounders.round(dispF)
-        print "displacement vector steps:", dispS
 
         if dispS == emptyVector5:
             print "Empty move..."
             print "***** End planCrossedDecelSteps() *****"
-            # self.skippedSimpleSteps += move.eSteps
             self.planner.stepRounders.rollback()
             return
 
