@@ -457,7 +457,6 @@ class UM2GcodeParser:
             return
 
         # Constrain feedrate to max values
-        print "feedrate: ", feedrate
         feedrateVector = displacement_vector._setLength(feedrate).constrain(self.maxFeedrateVector)
         if feedrateVector:
             feedrate = feedrateVector.length()
