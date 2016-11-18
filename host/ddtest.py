@@ -59,7 +59,7 @@ def calibrateFilSensor(args, parser):
 
     # ddhome.home(parser, args.fakeendstop)
 
-    current_position = parser.getRealPos()
+    current_position = parser.getPos()
     apos = current_position[util.A_AXIS]
 
     fsstepsum = 0
