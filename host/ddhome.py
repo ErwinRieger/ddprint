@@ -37,7 +37,7 @@ def homeMove(parser, dim, direction, dist, fakeHomingEndstops, feedRateFactor=1.
 
     printer.sendPrinterInit()
 
-    parser.set_position(planner.zeroPos)
+    parser.setPos(planner.zeroPos)
 
     print "---------------- send homing move, dim: %d, dist: %.2f" % (dim, dist*direction)
 
@@ -135,7 +135,7 @@ def home(parser, fakeHomingEndstops=False, force=False):
         #
         # Set Virtual E-pos 0:
         #
-        parser.set_position(homePosMM)
+        parser.setPos(homePosMM)
 
         print "*"
         print "* Done homing..."
@@ -179,10 +179,10 @@ def home(parser, fakeHomingEndstops=False, force=False):
     #
     # xxx set end-of-print retraction e-pos also here?
     #
-    # parser.set_position(planner.homePosMM)
+    # parser.setPos(planner.homePosMM)
     # payload = struct.pack("<iiiii", *planner.homePosStepped)
     (homePosMM, homePosStepped) = planner.getHomePos()
-    parser.set_position(homePosMM)
+    parser.setPos(homePosMM)
 
     # print "Tell printer its position [steps]:", homePosStepped
     payload = struct.pack("<iiiii", *homePosStepped)
