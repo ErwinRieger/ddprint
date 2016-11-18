@@ -128,7 +128,7 @@ class PrinterProfile(ProfileBase):
 
     @classmethod
     def getRetractLength(cls):
-        return cls.getValues()["RetractLength"]
+        return float(cls.getValues()["RetractLength"])
 
 ####################################################################################################
 #
