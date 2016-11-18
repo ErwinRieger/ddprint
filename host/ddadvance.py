@@ -152,10 +152,10 @@ class Advance (object):
         self.e_steps_per_mm = PrinterProfile.getStepsPerMM(A_AXIS)
 
         # Compute minimal e speed
-        maxStepTime = maxTimerValue16 / fTimer
-        v = (1.0/self.e_steps_per_mm) / maxStepTime
-        self.minESpeed = v * 1.1 # savety margin for rounding errors
-        print "min e-speed", self.minESpeed
+        # maxStepTime = maxTimerValue16 / fTimer
+        # v = (1.0/self.e_steps_per_mm) / maxStepTime
+        # self.minESpeed = v * 1.1 # savety margin for rounding errors
+        # print "min e-speed", self.minESpeed
 
     def eJerk(self, accel):
         return abs(accel) * self.kAdv
@@ -371,7 +371,7 @@ class Advance (object):
                         tAdvAccelSum += move.accelTime()
                         advAccelMoves.append(move)
 
-                print "adv time sum:", tAdvAccelSum
+                # print "adv time sum:", tAdvAccelSum
 
                 vAdvanceAdjust = self.skippedAdvance / tAdvAccelSum
 
@@ -383,7 +383,7 @@ class Advance (object):
                     deltaFeedrateIncrease = newFeedrateIncrease - move.advanceData.startFeedrateIncrease
                     move.advanceData.startFeedrateIncrease = newFeedrateIncrease
 
-                    print "new startFeedrateIncrease:", move.advanceData.startFeedrateIncrease
+                    # print "new startFeedrateIncrease:", move.advanceData.startFeedrateIncrease
 
                     assert(move.advanceData.startFeedrateIncrease >= 0)
 
@@ -588,9 +588,11 @@ class Advance (object):
 
             maxAllowedStartSpeed = util.vAccelPerDist(endSpeed1S, allowedAccel3, move.distance3)
 
-            # print "joinMovesBwd, startspeed, max startspeed: ", startSpeedS, maxAllowedStartSpeed
+            print "joinMovesBwd, startspeed, max startspeed: ", startSpeed1S, maxAllowedStartSpeed
 
             maxAllowedEStartSpeed = util.vAccelPerDist(endSpeed1.eSpeed, move.accel.eAccel(), move.eDistance)
+
+            print "joinMovesBwd, E-startspeed, max E-startspeed: ", startSpeed1.eSpeed, maxAllowedEStartSpeed
 
             if maxAllowedStartSpeed >= startSpeed1S and maxAllowedEStartSpeed >= startSpeed1.eSpeed:
 
@@ -654,7 +656,7 @@ class Advance (object):
         # print "allowed accel vector: ", av, ", XY accel: ", allowedAccel3
 
         accel3 = move.accel.xyAccel()
-        print "allowed XY start accel: ", accel3
+        # print "allowed XY start accel: ", accel3
 
         #
         # Check if the speed difference between startspeed and endspeed can be done with
@@ -682,16 +684,16 @@ class Advance (object):
                 print "Dafür werden %f mm benötigt" % sa
                 assert(0)
 
-        if deltaSpeedS < -0.001:
+        elif deltaSpeedS < -0.001:
        
-            ta = abs(deltaSpeedS) / accel3
+            td = abs(deltaSpeedS) / accel3
 
-            sa = util.accelDist(startSpeedS, -accel3, ta)
+            sd = util.accelDist(startSpeedS, -accel3, td)
       
-            if (sa - move.distance3) > 0.001:
-                print " 0.5 * %f * pow(%f, 2) + %f * %f" % (accel3, ta, startSpeedS, ta)
+            if (sd - move.distance3) > 0.001:
+                print " 0.5 * %f * pow(%f, 2) + %f * %f" % (accel3, td, startSpeedS, td)
                 print "VStart %f mm/s kann nicht innerhalb von %f mm auf Endgeschwindigkeit %f mm/s gebracht werden!" % (startSpeedS, move.distance3, endSpeedS)
-                print "Dafür werden %f mm benötigt" % sa
+                print "Dafür werden %f mm benötigt" % sd
                 assert(0)
 
         deltaESpeed = endSpeed.eSpeed - startSpeed.eSpeed
@@ -710,16 +712,15 @@ class Advance (object):
                 # print "Dafür werden %f mm benötigt" % sa
                 assert(0)
 
-        if deltaESpeed > -0.001:
+        elif deltaESpeed < -0.001:
        
-            ta = abs(deltaESpeed) / eAccel
+            td = abs(deltaESpeed) / eAccel
 
-            sa = util.accelDist(startSpeed.eSpeed, eAccel, ta)
+            sd = util.accelDist(startSpeed.eSpeed, -eAccel, td)
       
-            if (sa - move.eDistance) > 0.001:
-                # print " 0.5 * %f * pow(%f, 2) + %f * %f" % (allowedAccel, ta, startSpeedS, ta)
-                # print "VStart %f mm/s kann nicht innerhalb von %f mm auf Endgeschwindigkeit %f mm/s gebracht werden!" % (startSpeedS, move.distance3, endSpeedS)
-                # print "Dafür werden %f mm benötigt" % sa
+            if (sd - move.eDistance) > 0.001:
+                print "VStartE %f mm/s kann nicht innerhalb von %f mm auf Endgeschwindigkeit %f mm/s gebracht werden!" % (startSpeed.eSpeed, move.eDistance, endSpeed.eSpeed)
+                print "Dafür werden %f mm benötigt" % sd
                 assert(0)
 
 
@@ -733,20 +734,20 @@ class Advance (object):
         if deltaStartSpeedS > AccelThreshold:
 
             ta = deltaStartSpeedS / accel3
-            print "XY accel time (for %f mm/s): %f [s]" % (deltaStartSpeedS, ta)
+            # print "XY accel time (for %f mm/s): %f [s]" % (deltaStartSpeedS, ta)
 
             # debug Check axxis acceleration
             deltaSpeedV = move.direction3.scale(deltaStartSpeedS)
             for dim in range(3):
                 dimAccel = abs(deltaSpeedV[dim]) / ta
-                print "dimaccel ", dim, dimAccel
+                # print "dimaccel ", dim, dimAccel
                 if (dimAccel / self.maxAxisAcceleration[dim]) > 1.001:
                     print "dim %d verletzt max accel: " % dim, dimAccel, " > ", self.maxAxisAcceleration[dim]
                     assert(0)
 
             # Check acceleration of e-axis
             eAccel = (topSpeed.eSpeed - startSpeed.eSpeed) / ta
-            print "eaccel: ", eAccel, move.accel.eAccel()
+            # print "eaccel: ", eAccel, move.accel.eAccel()
             assert((eAccel / move.accel.eAccel()) < 1.001)
             #end debug
 
@@ -763,7 +764,7 @@ class Advance (object):
         if deltaEndSpeedS > AccelThreshold:
 
             tb = deltaEndSpeedS / accel3                          # [s]
-            print "XY decel time (for %f mm/s): %f [s]" % (deltaEndSpeedS, tb)
+            # print "XY decel time (for %f mm/s): %f [s]" % (deltaEndSpeedS, tb)
 
             # debug Check axxis acceleration
             deltaSpeedV = move.direction3.scale(deltaEndSpeedS)
@@ -775,13 +776,13 @@ class Advance (object):
 
             # Check acceleration of e-axis
             eAccel = (topSpeed.eSpeed - endSpeed.eSpeed) / tb
-            print "edecel: ", eAccel, move.accel.eAccel()
+            # print "edecel: ", eAccel, move.accel.eAccel()
             assert((eAccel / move.accel.eAccel()) < 1.001)
             # end debug
 
             sb = util.accelDist(endSpeedS, accel3, tb)
 
-        print "e_distance: %f, sbeschl, sbrems: %f, %f" % (move.distance3, sa, sb)
+        # print "e_distance: %f, sbeschl, sbrems: %f, %f" % (move.distance3, sa, sb)
 
         if (sa+sb) and (move.distance3 < (sa+sb)):
 
@@ -820,10 +821,10 @@ class Advance (object):
 
                 # Check used acceleration
                 usedAccel3 = -deltaSpeedS / tb
-                print "allowedAccel3, usedAccel3:", accel3, usedAccel3, accel3-usedAccel3
+                # print "allowedAccel3, usedAccel3:", accel3, usedAccel3, accel3-usedAccel3
                 
                 usedEAccel = -deltaESpeed / tb
-                print "eAccel, usedEAccel:", eAccel, usedEAccel, eAccel-usedEAccel
+                # print "eAccel, usedEAccel:", eAccel, usedEAccel, eAccel-usedEAccel
 
                 if usedAccel3 != accel3 and usedEAccel != eAccel:
                     move.accel.setAccel(usedAccel3, usedEAccel)
@@ -855,10 +856,10 @@ class Advance (object):
 
                 # Check used acceleration
                 usedAccel3 = deltaSpeedS / ta
-                print "accel3, usedAccel3:", accel3, usedAccel3, accel3-usedAccel3
+                # print "accel3, usedAccel3:", accel3, usedAccel3, accel3-usedAccel3
 
                 usedEAccel = deltaESpeed / ta
-                print "eAccel, usedEAccel:", eAccel, usedEAccel, eAccel-usedEAccel
+                # print "eAccel, usedEAccel:", eAccel, usedEAccel, eAccel-usedEAccel
 
                 if usedAccel3 != accel3 and usedEAccel != eAccel:
                     move.accel.setAccel(usedAccel3, usedEAccel)
@@ -890,7 +891,7 @@ class Advance (object):
             if sb:
 
                 v2 = math.sqrt ( 2 * accel3 * sb + pow(endSpeedS, 2) )
-                print "move.feedrate neu: %f (test: %f, diff: %f)" % (v, v2, abs(v - v2))
+                # print "move.feedrate neu: %f (test: %f, diff: %f)" % (v, v2, abs(v - v2))
 
                 assert( abs(v - v2) < 0.001)
             # end debug
@@ -1057,7 +1058,7 @@ class Advance (object):
 
                         startIncrease = usedRoundError / advMove.accelTime()
 
-                        print "Adjust startFeedrateIncrease %f by %f" %(startFeedrateIncrease, startIncrease)
+                        # print "Adjust startFeedrateIncrease %f by %f" %(startFeedrateIncrease, startIncrease)
                         assert(startIncrease <= 1.001) # xxx constrain it
                         advMove.advanceData.startFeedrateIncrease += startIncrease
 
@@ -1065,13 +1066,13 @@ class Advance (object):
                         if tl and not advMove.advanceData.linESteps:
 
                             # E-steps in linear phase
-                            advMove.pprint("planAdvanceGroup linear phase:")
+                            # advMove.pprint("planAdvanceGroup linear phase:")
 
                             # E-distance ist nicht einfach der rest der e-steps, linearer e-anteil muss über
                             # die dauer des linearen anteils (tLinear) berechnet werden.
                             sl = tl * advMove.topSpeed.speed().eSpeed
                             esteps = sl * self.e_steps_per_mm
-                            print "dim E moves %.3f mm in linear phase -> %d steps" % (sl, esteps)
+                            # print "dim E moves %.3f mm in linear phase -> %d steps" % (sl, esteps)
     
                             advMove.advanceData.linESteps = esteps
                             advMove.advanceData.advStepSum += esteps
@@ -1134,10 +1135,10 @@ class Advance (object):
                             # if abs(v0) > self.minESpeed:
                             if True:
 
-                                print "v0, accel: ", v0, advMove.accel.eAccel()
+                                # print "v0, accel: ", v0, advMove.accel.eAccel()
                                 tdc = abs(v0 / advMove.accel.eAccel())
 
-                                print "Time to reach zero-crossing (tdc):", tdc, ", tdd: ", td - tdc
+                                # print "Time to reach zero-crossing (tdc):", tdc, ", tdd: ", td - tdc
                                 assert(tdc >= 0 and tdc <= td)
 
                                 # Nominal speed at zero crossing
@@ -1157,7 +1158,7 @@ class Advance (object):
                                 assert(usedRoundError == 0)
                                 endIncrease = usedRoundError / advMove.decelTime()
 
-                                print "Adjust endFeedrateIncrease %f by %f" % (endFeedrateIncrease, endIncrease)
+                                # print "Adjust endFeedrateIncrease %f by %f" % (endFeedrateIncrease, endIncrease)
                                 assert(endIncrease >= -1.001) # xxx constrain it
                                 advMove.advanceData.endFeedrateIncrease += endIncrease
 
@@ -1166,7 +1167,7 @@ class Advance (object):
                                     #xxx crossing pont depends on endFeedrateIncrease!
                                     assert(0)
 
-                                print "(sdc, estepsc):", (sdc, estepsc) 
+                                # print "(sdc, estepsc):", (sdc, estepsc) 
 
                                 advMove.advanceData.endEStepsC = estepsc
                                 advMove.advanceData.advStepSum += estepsc
@@ -1175,7 +1176,7 @@ class Advance (object):
                                 assert(0)
                                 advMove.advanceData.endEStepsC = 0
 
-                            print "top, zerocrossspeed:", topSpeed.feedrate3(), crossingSpeed
+                            # print "top, zerocrossspeed:", topSpeed.feedrate3(), crossingSpeed
 
                             advMove.advanceData.tdc = tdc
                             advMove.advanceData.tdd = td - tdc
@@ -1186,7 +1187,7 @@ class Advance (object):
                             assert(usedRoundError == 0)
                             endIncrease = usedRoundError / advMove.decelTime()
 
-                            print "Adjust endFeedrateIncrease %f by %f" % (endFeedrateIncrease, endIncrease)
+                            # print "Adjust endFeedrateIncrease %f by %f" % (endFeedrateIncrease, endIncrease)
                             assert(endIncrease >= -1.001) # xxx constrain it
                             advMove.advanceData.endFeedrateIncrease += endIncrease
 
@@ -1217,7 +1218,7 @@ class Advance (object):
 
                             endIncrease = usedRoundError / advMove.decelTime()
 
-                            print "Adjust endFeedrateIncrease %f by %f" % (endFeedrateIncrease, endIncrease)
+                            # print "Adjust endFeedrateIncrease %f by %f" % (endFeedrateIncrease, endIncrease)
                             assert(endIncrease >= -1.001) # xxx constrain it
                             advMove.advanceData.endFeedrateIncrease += endIncrease
 
@@ -1231,13 +1232,13 @@ class Advance (object):
                         if tl and not advMove.advanceData.linESteps:
 
                             # E-steps in linear phase
-                            advMove.pprint("planAdvanceGroup linear phase:")
+                            # advMove.pprint("planAdvanceGroup linear phase:")
 
                             # E-distance ist nicht einfach der rest der e-steps, linearer e-anteil muss über
                             # die dauer des linearen anteils (tLinear) berechnet werden.
                             sl = tl * advMove.topSpeed.speed().eSpeed
                             esteps = sl * self.e_steps_per_mm
-                            print "dim E moves %.3f mm in linear phase -> %d steps" % (sl, esteps)
+                            # print "dim E moves %.3f mm in linear phase -> %d steps" % (sl, esteps)
     
                             advMove.advanceData.linESteps = esteps
                             advMove.advanceData.advStepSum += esteps
@@ -1412,7 +1413,7 @@ class Advance (object):
         self.planner.stepRounders.commit()
 
         self.moveEsteps -= dispS[A_AXIS]
-        print "planStepsSimple(): moveEsteps-: %7.3f %7.3f" % (move.eSteps, dispS[A_AXIS])
+        # print "planStepsSimple(): moveEsteps-: %7.3f %7.3f" % (move.eSteps, dispS[A_AXIS])
 
         abs_displacement_vector_steps = vectorAbs(dispS)
 
@@ -1453,7 +1454,7 @@ class Advance (object):
             v1 = abs(move.endSpeed.speed().eSpeed)
 
         # allowedAccel = abs(move.getMaxAllowedAccelVector5(self.maxAxisAcceleration)[leadAxis])
-        print "lead, v0, v1: ", leadAxis, v0, v1
+        # print "lead, v0, v1: ", leadAxis, v0, v1
 
         nAccel = 0
         if move.accelTime():
@@ -1487,7 +1488,7 @@ class Advance (object):
         # Linear phase
         #
         nLin = leadAxis_steps - (nAccel + nDecel)
-        print "# linear steps:", nLin
+        # print "# linear steps:", nLin
 
         if nLin > 0:
 
@@ -1598,7 +1599,7 @@ class Advance (object):
         self.planner.stepRounders.commit()
 
         self.moveEsteps -= dispS[A_AXIS]
-        print "planCrossedDecelSteps(): moveEsteps-: %7.3f %7.3f" % (move.eSteps, dispS[A_AXIS])
+        # print "planCrossedDecelSteps(): moveEsteps-: %7.3f %7.3f" % (move.eSteps, dispS[A_AXIS])
 
         abs_displacement_vector_steps = vectorAbs(dispS)
 
@@ -1912,7 +1913,7 @@ class Advance (object):
             tvsum += tv
 
         tMoveLead = leadClocks[-1][0] + leadClocks[-1][1]
-        print "move time:", tMoveLead
+        # print "move time:", tMoveLead
 
         dt0Lead = leadClocks[0][1]
 
@@ -2099,12 +2100,12 @@ class Advance (object):
                     topSpeed[dim], ta)
 
             steps = sa * PrinterProfile.getStepsPerMM(dim)
-            print "dim %d moves %.3f mm while accelerating -> %d steps" % (dim, sa, steps)
+            # print "dim %d moves %.3f mm while accelerating -> %d steps" % (dim, sa, steps)
 
             displacement_vector_steps_A[dim] = steps
 
         # PART A, E
-        print "dim E moves %f steps while accelerating" % parentMove.advanceData.startESteps
+        # print "dim E moves %f steps while accelerating" % parentMove.advanceData.startESteps
         displacement_vector_steps_A[A_AXIS] = parentMove.advanceData.startESteps
         ####################################################################################
 
@@ -2118,12 +2119,12 @@ class Advance (object):
        
         if tl:
 
-            print "dim E moves %f steps in linear phase" % parentMove.advanceData.linESteps
+            # print "dim E moves %f steps in linear phase" % parentMove.advanceData.linESteps
             displacement_vector_steps_B[A_AXIS] += parentMove.advanceData.linESteps
 
         if td:
 
-            print "dim E moves %f steps while decelerating" % parentMove.advanceData.endESteps
+            # print "dim E moves %f steps while decelerating" % parentMove.advanceData.endESteps
             displacement_vector_steps_B[A_AXIS] += parentMove.advanceData.endESteps
         ####################################################################################
 
@@ -2219,7 +2220,7 @@ class Advance (object):
                     td)
 
                 steps = sd * PrinterProfile.getStepsPerMM(dim)
-                print "dim %d moves %.3f mm while decelerating -> %f steps" % (dim, sd, steps)
+                # print "dim %d moves %.3f mm while decelerating -> %f steps" % (dim, sd, steps)
 
                 displacement_vector_steps_B[dim] = steps
         else:
@@ -2227,7 +2228,7 @@ class Advance (object):
                 displacement_vector_steps_B = displacement_vector_steps_raw + [0.0, 0.0]
        
         # # PART B, E 
-        print "dim E moves %f steps while decelerating" % parentMove.advanceData.endESteps
+        # print "dim E moves %f steps while decelerating" % parentMove.advanceData.endESteps
         displacement_vector_steps_B[A_AXIS] = parentMove.advanceData.endESteps
         ####################################################################################
 
@@ -2241,17 +2242,17 @@ class Advance (object):
         # PART A, E
         if ta:
 
-            print "dim E moves %f steps while accelerating" % parentMove.advanceData.startESteps
+            # print "dim E moves %f steps while accelerating" % parentMove.advanceData.startESteps
             displacement_vector_steps_A[A_AXIS] += parentMove.advanceData.startESteps
 
         if tl:
 
-            print "dim E moves %f steps in linear phase" % parentMove.advanceData.linESteps
+            # print "dim E moves %f steps in linear phase" % parentMove.advanceData.linESteps
             displacement_vector_steps_A[A_AXIS] += parentMove.advanceData.linESteps
         ####################################################################################
 
-        print "new A steps: ", displacement_vector_steps_A
-        print "new B steps: ", displacement_vector_steps_B
+        # print "new A steps: ", displacement_vector_steps_A
+        # print "new B steps: ", displacement_vector_steps_B
 
         from move import SubMove
 
@@ -2333,12 +2334,12 @@ class Advance (object):
 
             # steps = int(round(sa * PrinterProfile.getStepsPerMM(dim)))
             steps = sa * PrinterProfile.getStepsPerMM(dim)
-            print "dim %d moves %.3f mm while accelerating -> %f steps" % (dim, sa, steps)
+            # print "dim %d moves %.3f mm while accelerating -> %f steps" % (dim, sa, steps)
 
             displacement_vector_steps_A[dim] = steps
 
         # PART A, E
-        print "dim E moves %f steps while accelerating" % parentMove.advanceData.startESteps
+        # print "dim E moves %f steps while accelerating" % parentMove.advanceData.startESteps
         displacement_vector_steps_A[A_AXIS] = parentMove.advanceData.startESteps
         ####################################################################################
 
@@ -2353,12 +2354,12 @@ class Advance (object):
 
             # steps = int(round(sd * PrinterProfile.getStepsPerMM(dim)))
             steps = sd * PrinterProfile.getStepsPerMM(dim)
-            print "dim %d moves %.3f mm while decelerating -> %f steps" % (dim, sd, steps)
+            # print "dim %d moves %.3f mm while decelerating -> %f steps" % (dim, sd, steps)
 
             displacement_vector_steps_C[dim] = steps
        
         # PART C, E
-        print "dim E moves %f steps while decelerating" % parentMove.advanceData.endESteps
+        # print "dim E moves %f steps while decelerating" % parentMove.advanceData.endESteps
         displacement_vector_steps_C[A_AXIS] = parentMove.advanceData.endESteps
         ####################################################################################
 
@@ -2374,7 +2375,7 @@ class Advance (object):
                 displacement_vector_steps_B[dim] = displacement_vector_steps_raw[dim] - (displacement_vector_steps_A[dim] + displacement_vector_steps_C[dim])
       
             # PART B, E
-            print "dim E moves %f steps in linear phase" % parentMove.advanceData.linESteps
+            # print "dim E moves %f steps in linear phase" % parentMove.advanceData.linESteps
             displacement_vector_steps_B[A_AXIS] = parentMove.advanceData.linESteps
 
         elif stepsMissing != emptyVector3:
@@ -2490,13 +2491,13 @@ class Advance (object):
 
             # steps = int(round(sd * PrinterProfile.getStepsPerMM(dim)))
             steps = sd * PrinterProfile.getStepsPerMM(dim)
-            print "dim %d moves %.3f mm while decelerating -> %f steps" % (dim, sd, steps)
+            # print "dim %d moves %.3f mm while decelerating -> %f steps" % (dim, sd, steps)
 
             displacement_vector_steps_B[dim] = steps
        
         # PART B, E
         displacement_vector_steps_B[A_AXIS] = parentMove.advanceData.endEStepsC
-        print "tdc esteps: ", parentMove.advanceData.endEStepsC
+        # print "tdc esteps: ", parentMove.advanceData.endEStepsC
         ####################################################################################
 
         ####################################################################################
@@ -2510,13 +2511,13 @@ class Advance (object):
 
             # steps = int(round(sd * PrinterProfile.getStepsPerMM(dim)))
             steps = sd * PrinterProfile.getStepsPerMM(dim)
-            print "dim %d moves %.3f mm while decelerating -> %f steps" % (dim, sd, steps)
+            # print "dim %d moves %.3f mm while decelerating -> %f steps" % (dim, sd, steps)
 
             displacement_vector_steps_C[dim] = steps
        
         # PART C, E
         displacement_vector_steps_C[A_AXIS] = parentMove.advanceData.endEStepsD
-        print "tdd esteps: ", parentMove.advanceData.endEStepsD
+        # print "tdd esteps: ", parentMove.advanceData.endEStepsD
         ####################################################################################
 
         # Distribute missing X/Y steps from rounding errors (only if no other part that uses them)
@@ -2545,12 +2546,12 @@ class Advance (object):
 
         if ta:
 
-            print "dim E moves %f steps while accelerating" % parentMove.advanceData.startESteps
+            # print "dim E moves %f steps while accelerating" % parentMove.advanceData.startESteps
             displacement_vector_steps_A[A_AXIS] += parentMove.advanceData.startESteps
 
         if tl:
 
-            print "dim E moves %f steps in linear phase" % parentMove.advanceData.linESteps
+            # print "dim E moves %f steps in linear phase" % parentMove.advanceData.linESteps
             displacement_vector_steps_A[A_AXIS] += parentMove.advanceData.linESteps
 
         ####################################################################################
@@ -2666,11 +2667,11 @@ class Advance (object):
 
             # steps = int(round(sa * PrinterProfile.getStepsPerMM(dim)))
             steps = sa * PrinterProfile.getStepsPerMM(dim)
-            print "dim %d moves %.3f mm while accelerating -> %f steps" % (dim, sa, steps)
+            # print "dim %d moves %.3f mm while accelerating -> %f steps" % (dim, sa, steps)
 
             displacement_vector_steps_A[dim] = steps
 
-        print "dim E moves %f steps while accelerating" % parentMove.advanceData.startESteps
+        # print "dim E moves %f steps while accelerating" % parentMove.advanceData.startESteps
         displacement_vector_steps_A[A_AXIS] = parentMove.advanceData.startESteps
         ####################################################################################
 
@@ -2685,12 +2686,12 @@ class Advance (object):
 
             # steps = int(round(sd * PrinterProfile.getStepsPerMM(dim)))
             steps = sd * PrinterProfile.getStepsPerMM(dim)
-            print "dim %d moves %.3f mm while decelerating -> %f steps" % (dim, sd, steps)
+            # print "dim %d moves %.3f mm while decelerating -> %f steps" % (dim, sd, steps)
 
             displacement_vector_steps_C[dim] = steps
       
         displacement_vector_steps_C[A_AXIS] = parentMove.advanceData.endEStepsC
-        print "tdc esteps: ", parentMove.advanceData.endEStepsC
+        # print "tdc esteps: ", parentMove.advanceData.endEStepsC
 
         # PART D, XY
         for dim in [X_AXIS, Y_AXIS]:
@@ -2702,13 +2703,13 @@ class Advance (object):
 
             # steps = int(round(sd * PrinterProfile.getStepsPerMM(dim)))
             steps = sd * PrinterProfile.getStepsPerMM(dim)
-            print "dim %d moves %.3f mm while decelerating -> %f steps" % (dim, sd, steps)
+            # print "dim %d moves %.3f mm while decelerating -> %f steps" % (dim, sd, steps)
 
             displacement_vector_steps_D[dim] = steps
        
         # PART D, E
         displacement_vector_steps_D[A_AXIS] = parentMove.advanceData.endEStepsD
-        print "tdd esteps: ", parentMove.advanceData.endEStepsD
+        # print "tdd esteps: ", parentMove.advanceData.endEStepsD
         ####################################################################################
 
         # Distribute missing X/Y steps from rounding errors (only if no linear part that uses them)
@@ -2722,7 +2723,7 @@ class Advance (object):
             for dim in range(3):
                 displacement_vector_steps_B[dim] = displacement_vector_steps_raw[dim] - (displacement_vector_steps_A[dim] + displacement_vector_steps_C[dim] + displacement_vector_steps_D[dim])
        
-            print "dim E moves %f steps in linear phase" % parentMove.advanceData.linESteps
+            # print "dim E moves %f steps in linear phase" % parentMove.advanceData.linESteps
             displacement_vector_steps_B[A_AXIS] += parentMove.advanceData.linESteps
 
         elif stepsMissing != emptyVector3:
@@ -2854,7 +2855,7 @@ class Advance (object):
 
             steps_per_mm = PrinterProfile.getStepsPerMM(dim)
             steps = int(round(sa * steps_per_mm * util.sign(parentMove.direction[dim])))
-            print "dim %d moves %.3f mm while accelerating -> %d steps" % (dim, sa, steps)
+            # print "dim %d moves %.3f mm while accelerating -> %d steps" % (dim, sa, steps)
             displacement_vector_steps_A[dim] = steps
 
         # PART A, E
@@ -2865,7 +2866,7 @@ class Advance (object):
 
         assert(0)
         steps = int(round(sa * ee_steps_per_mm))
-        print "dim E moves %.3f mm while accelerating -> %d steps" % (sa, steps)
+        # print "dim E moves %.3f mm while accelerating -> %d steps" % (sa, steps)
         displacement_vector_steps_A[A_AXIS] = steps
 
 
@@ -2937,7 +2938,7 @@ class Advance (object):
         else:
           assert(0) # does this happen?
 
-        print "top, zerocrossspeed:", topSpeed.feedrate, zeroCrossingS
+        # print "top, zerocrossspeed:", topSpeed.feedrate, zeroCrossingS
 
         sv = topSpeed.vv()
         sv[A_AXIS] = parentMove.advanceData.endEReachedFeedrate()
@@ -2972,184 +2973,5 @@ class Advance (object):
         assert(vectorAdd(vectorAdd(displacement_vector_steps_A, displacement_vector_steps_B), displacement_vector_steps_C) == displacement_vector_steps_raw)
 
         return [moveA, moveB, moveC]
-
-
-    #
-    # Simple advanceed ramp at start
-    # Linear middle part
-    # End ramp with sign-change
-    # Submoves: A B CD
-    def planStepsAdvSALD(self, parentMove):
-        assert(0)
-
-        if debugMoves:
-            print "***** Start planStepsAdvSALD() *****"
-            parentMove.pprint("planStepsAdvSALD:")
-
-        displacement_vector_steps_raw = parentMove.displacement_vector_steps_raw
-
-        # PART A, XY
-        # Neuen displacement_vector_steps aufbauen:
-        displacement_vector_steps_A = [0] * 5
-        displacement_vector_steps_B = [0] * 5
-        displacement_vector_steps_C = [0] * 5
-        displacement_vector_steps_D = [0] * 5
-
-        ta = parentMove.accelTime()
-        td = parentMove.decelTime()
-
-        xllowedAccelV = parentMove.absGetMaxAllowedAccelVector(self.maxAxisAcceleration)
-
-        startSpeedV = parentMove.startSpeed.speed().vv()
-
-        for dim in [X_AXIS, Y_AXIS]:
-
-            sa = util.accelDist(abs(startSpeedV[dim]), xllowedAccelV[dim], ta)
-
-            steps_per_mm = PrinterProfile.getStepsPerMM(dim)
-            steps = int(round(sa * steps_per_mm * util.sign(parentMove.direction[dim])))
-            print "dim %d moves %.3f mm while accelerating -> %d steps" % (dim, sa, steps)
-            displacement_vector_steps_A[dim] = steps
-
-        # PART A, E
-        startSpeedS = parentMove.advanceData.startEFeedrate()
-        sa = util.accelDist(abs(startSpeedS), xllowedAccelV[A_AXIS], ta)
-
-        assert(parentMove.direction[A_AXIS] > 0)
-
-        assert(0)
-        steps = int(round(sa * ee_steps_per_mm))
-        print "dim E moves %.3f mm while accelerating -> %d steps" % (sa, steps)
-        displacement_vector_steps_A[A_AXIS] = steps
-
-
-
-
-
-        # Part C, E
-        # Time till the e-velocity crosses zero
-        endEReachedFeedrate = parentMove.advanceData.endEReachedFeedrate()
-        # endEFeedrate = parentMove.advanceData.endEFeedrate()
-
-        tdc = abs(endEReachedFeedrate) / xllowedAccelV[A_AXIS]
-        sdc = util.accelDist(abs(endEReachedFeedrate), xllowedAccelV[A_AXIS], tdc)
-        csteps = int(round(sdc * ee_steps_per_mm))
-        print "dim E reaches zero in %.3f s, %.3f mm, %d steps" % (tdc, sdc, csteps)
-
-        displacement_vector_steps_C[A_AXIS] = csteps
-
-        # Part C, XY
-        reachedSpeedV = parentMove.topSpeed.speed().vv()
-
-        for dim in [X_AXIS, Y_AXIS]:
-
-            sd = util.accelDist(abs(reachedSpeedV[dim]), xllowedAccelV[dim], tdc)
-
-            steps_per_mm = PrinterProfile.getStepsPerMM(dim)
-            steps = int(round(sd * steps_per_mm * util.sign(parentMove.direction[dim])))
-            print "dim %d moves %.3f mm in phase C -> %d steps" % (dim, sd, steps)
-            displacement_vector_steps_C[dim] = steps
-       
-
-        # Part D, E
-        # Time of rest of decel ramp
-        tdd = td - tdc
-        sdd = util.accelDist(abs(endEFeedrate), xllowedAccelV[A_AXIS], tdd)
-        dsteps = int(round(sdd * ee_steps_per_mm))
-        print "dim E remaining %.3f s, %.3f mm, %d steps" % (tdd, sdd, dsteps)
-
-        displacement_vector_steps_D[A_AXIS] = dsteps
-
-        # Part C, XY
-        for dim in [X_AXIS, Y_AXIS]:
-
-            sd = util.accelDist(0, xllowedAccelV[dim], tdd)
-
-            steps_per_mm = PrinterProfile.getStepsPerMM(dim)
-            steps = int(round(sd * steps_per_mm * util.sign(parentMove.direction[dim])))
-            print "dim %d moves %.3f mm in phase D -> %d steps" % (dim, sd, steps)
-            displacement_vector_steps_D[dim] = steps
-       
-        # PART B, XY
-        for dim in range(3):
-            displacement_vector_steps_B[dim] = displacement_vector_steps_raw[dim] - (displacement_vector_steps_A[dim] + displacement_vector_steps_C[dim] + displacement_vector_steps_D[dim])
-       
-        print "new A steps: ", displacement_vector_steps_A
-        print "new B steps: ", displacement_vector_steps_B
-        print "new C steps: ", displacement_vector_steps_C
-        print "new D steps: ", displacement_vector_steps_D
-
-        from move import SubMove
-
-        moveA = SubMove(parentMove, parentMove.moveNumber + 1, displacement_vector_steps_A)
-        moveB = SubMove(parentMove, parentMove.moveNumber + 2, displacement_vector_steps_B)
-        moveC = SubMove(parentMove, parentMove.moveNumber + 3, displacement_vector_steps_C)
-        moveD = SubMove(parentMove, parentMove.moveNumber + 4, displacement_vector_steps_D)
-       
-        moveA.setDuration(ta, 0, 0)
-        moveB.setDuration(0, parentMove.linearTime(), 0)
-        moveC.setDuration(0, 0, tdc)
-        moveD.setDuration(0, 0, tdd)
-
-        topSpeed = parentMove.topSpeed.speed()
-        endSpeed = parentMove.endSpeed.speed()
-
-        sv = parentMove.startSpeed.speed().vv()
-        sv[A_AXIS] = parentMove.advanceData.startEFeedrate()
-        tv = topSpeed.vv()
-        tv[A_AXIS] = parentMove.advanceData.startEReachedFeedrate()
-        moveA.setSpeeds(sv, tv, tv)
-
-        moveB.startSpeed.setSpeed(topSpeed)
-        moveB.topSpeed.setSpeed(topSpeed)
-        moveB.endSpeed.setSpeed(topSpeed)
-
-        # Nominal speed at zero crossing
-        allowedAccel = parentMove.getMaxAllowedAccel(self.maxAxisAcceleration)
-        dv = allowedAccel*tdc
-        if topSpeed.feedrate > endSpeed.feedrate:
-          # decel
-          zeroCrossingS = topSpeed.feedrate - dv
-        else:
-          assert(0) # does this happen?
-
-        print "top, zerocrossspeed:", topSpeed.feedrate, zeroCrossingS
-
-        sv = topSpeed.vv()
-        sv[A_AXIS] = parentMove.advanceData.endEReachedFeedrate()
-        ev = [
-            parentMove.direction[X_AXIS] * zeroCrossingS,
-            parentMove.direction[Y_AXIS] * zeroCrossingS,
-            parentMove.direction[Z_AXIS] * zeroCrossingS,
-            0,
-            0]
-        moveC.setSpeeds(sv, sv, ev)
-
-        assert(0)
-        assert(0) # nullspeed)
-        sv = [
-            parentMove.direction[X_AXIS] * zeroCrossingS,
-            parentMove.direction[Y_AXIS] * zeroCrossingS,
-            parentMove.direction[Z_AXIS] * zeroCrossingS,
-            0,
-            0]
-        ev = parentMove.endSpeed.speed().vv()
-        ev[A_AXIS] = parentMove.advanceData.endEFeedrate()
-        moveD.setSpeeds(sv, sv, ev)
-
-        moveA.nextMove = moveB
-        moveB.prevMove = moveA
-        moveB.nextMove = moveC
-        moveC.prevMove = moveB
-        moveC.nextMove = moveD
-        moveD.prevMove = moveC
-
-        if debugMoves:
-            print "***** End planStepsAdvSALD() *****"
-
-        assert(vectorAdd(vectorAdd(vectorAdd(displacement_vector_steps_A, displacement_vector_steps_B), displacement_vector_steps_C), displacement_vector_steps_D) == displacement_vector_steps_raw)
-
-        return [moveA, moveB, moveC, moveD]
-
 
 
