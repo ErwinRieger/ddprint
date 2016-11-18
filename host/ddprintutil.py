@@ -125,10 +125,6 @@ def joinMoves(move1, move2, jerk, maxAccelV):
         startSpeed2 = move2.startSpeed.speed()
         startSpeedS2 = startSpeed2.feedrate3()
 
-        # Compute max reachable endspeed of move1
-        # av = move1.getMaxAllowedAccelVector5(maxAccelV)
-        # allowedAccel3 = vectorLength(av[:3])
-
         allowedAccel3 = move1.accel.xyAccel()
         print "xxx allowedAccel3", allowedAccel3
         maxEndSpeed1 = vAccelPerDist(startSpeedS1, allowedAccel3, move1.distance3)
@@ -693,7 +689,7 @@ def getVirtualPos(parser):
         )
 
     print "Printer is at [mm]: ", curPosMM
-    parser.set_position(curPosMM)
+    parser.setPos(curPosMM)
 
     return curPosMM
 
@@ -706,7 +702,7 @@ def prime(parser):
 
     parser.execute_line("G0 F%f Y0 Z%f" % (planner.HOMING_FEEDRATE[X_AXIS]*60, ddprintconstants.PRIMING_HEIGHT))
 
-    pos = parser.getRealPos()
+    pos = parser.getPos()
 
     aFilament = MatProfile.getMatArea()
 
@@ -715,9 +711,9 @@ def prime(parser):
         pos[A_AXIS] + (ddprintconstants.PRIMING_MM3 / aFilament)))
 
     # Set E to 0
-    current_position = parser.getRealPos()
+    current_position = parser.getPos()
     current_position[A_AXIS] = 0.0
-    parser.set_position(current_position)
+    parser.setPos(current_position)
 
     #
     # Retract
@@ -778,7 +774,7 @@ def manualMove(parser, axis, distance, feedrate=0, absolute=False):
     if not feedrate:
         feedrate = PrinterProfile.getMaxFeedrate(axis)
 
-    current_position = parser.getRealPos()
+    current_position = parser.getPos()
     if absolute:
         d = distance - current_position[A_AXIS] 
         assert(abs(d) <= 1000)
@@ -807,7 +803,7 @@ def insertFilament(args, parser):
 
     def manualMoveE():
 
-        current_position = parser.getRealPos()
+        current_position = parser.getPos()
         aofs = current_position[A_AXIS]
         print "cura: ", aofs
 
@@ -962,7 +958,7 @@ def bedLeveling(args, parser):
 
     def manualMoveZ():
 
-        current_position = parser.getRealPos()
+        current_position = parser.getPos()
         zofs = current_position[Z_AXIS]
         print "curz: ", zofs
 
@@ -1015,7 +1011,7 @@ def bedLeveling(args, parser):
 
     manualMoveZ()
 
-    current_position = parser.getRealPos()
+    current_position = parser.getPos()
     print "curz: ", current_position[Z_AXIS]
 
     add_homeing_z = -1 * current_position[Z_AXIS];
@@ -1030,7 +1026,7 @@ def bedLeveling(args, parser):
     current_position[Z_AXIS] = planner.LEVELING_OFFSET;
 
     # Adjust the virtual position
-    parser.set_position(current_position)
+    parser.setPos(current_position)
 
     # Adjust the printer position
     posStepped = vectorMul(current_position, parser.steps_per_mm)
@@ -1128,7 +1124,7 @@ def endOfPrintLift(parser):
 
     planner = parser.planner
 
-    pos = parser.getRealPos()
+    pos = parser.getPos()
     zlift = min(pos.Z + 25, planner.Z_MAX_POS)
 
     if zlift > pos.Z:
@@ -1625,7 +1621,7 @@ def measureTempFlowrateCurve(args, parser):
 
     printer.waitForState(StateIdle)
 
-    current_position = parser.getRealPos()
+    current_position = parser.getPos()
     apos = current_position[A_AXIS]
 
     t1 = MatProfile.getHotendBaseTemp() # start temperature
