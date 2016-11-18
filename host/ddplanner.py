@@ -467,7 +467,7 @@ class Planner (object):
                 # * start/stop at jerk/2
                 # * don't do advance
                 #
-                print "addMove(): ending travel path with %d moves" % len(self.pathData.path)
+                # print "addMove(): ending travel path with %d moves" % len(self.pathData.path)
                 self.planTravelPath(self.pathData.path)
 
             else:
@@ -475,7 +475,7 @@ class Planner (object):
                 #
                 # Finisch preceding printmoves.
                 #
-                print "addMove(): ending path print with %d moves" % len(self.pathData.path)
+                # print "addMove(): ending path print with %d moves" % len(self.pathData.path)
                 self.advance.planPath(self.pathData.path)
 
                 if debugPlot:
@@ -581,7 +581,7 @@ class Planner (object):
             move = self.pathData.path[0]
             if move.isPrintMove():
 
-                print "finishMoves(): ending path print with %d moves" % len(self.pathData.path)
+                # print "finishMoves(): ending path print with %d moves" % len(self.pathData.path)
                 self.advance.planPath(self.pathData.path)
 
                 if debugPlot:
@@ -594,7 +594,7 @@ class Planner (object):
 
             else:
 
-                print "finishMoves(): ending travel path with %d moves" % len(self.pathData.path)
+                # print "finishMoves(): ending travel path with %d moves" % len(self.pathData.path)
                 self.planTravelPath(self.pathData.path)
 
         assert(not self.syncCommands)
@@ -742,7 +742,7 @@ class Planner (object):
         if deltaStartSpeedS:
 
             ta = deltaStartSpeedS / allowedAccel
-            print "accel time (for %f mm/s): %f [s]" % (deltaStartSpeedS, ta)
+            # print "accel time (for %f mm/s): %f [s]" % (deltaStartSpeedS, ta)
 
             # debug Check axxis acceleration
             deltaSpeedV = move.direction5.scale(deltaStartSpeedS)
@@ -766,7 +766,7 @@ class Planner (object):
         if deltaEndSpeedS:
 
             tb = deltaEndSpeedS / allowedAccel                          # [s]
-            print "decel time (for %f mm/s): %f [s]" % (deltaEndSpeedS, tb)
+            # print "decel time (for %f mm/s): %f [s]" % (deltaEndSpeedS, tb)
 
             # debug Check axxis acceleration
             deltaSpeedV = move.direction5.scale(deltaEndSpeedS)
@@ -974,7 +974,7 @@ class Planner (object):
         # Linear phase
         #
         nLin = leadAxis_steps - (nAccel + nDecel)
-        print "# linear steps:", nLin
+        # print "# linear steps:", nLin
 
         if nLin > 0:
 
