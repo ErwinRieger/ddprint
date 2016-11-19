@@ -2295,7 +2295,10 @@ class Advance (object):
         if debugMoves:
             print "***** End planStepsAdvSD() *****"
 
-        assert(vectorAdd(displacement_vector_steps_A[:3], displacement_vector_steps_B[:3]) == displacement_vector_steps_raw[:3])
+        xyzStepSum = vectorAdd(displacement_vector_steps_A[:3], displacement_vector_steps_B[:3])
+        stepsMissing = vectorSub(displacement_vector_steps_raw[:3], xyzStepSum)
+        print "stepsMissing:", stepsMissing
+        assert(vectorLength(stepsMissing) < 0.000001)
 
         return newMoves
 
