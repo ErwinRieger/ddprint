@@ -24,7 +24,7 @@
 // #define PIDAutoTune 1
 
 // Use ADNS9800 as a flowrate sensor
-// #define ADNSFS 1
+#define ADNSFS 1
 
 // Use Bourns ems22a Rotary Encoder as a flowrate sensor
 // #define BournsEMS22AFS 1 
