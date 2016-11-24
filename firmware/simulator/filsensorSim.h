@@ -44,8 +44,7 @@ class FilSensorSim {
         bool isEnabled() { return enabled; }
 
         void computeDeltaY() {
-assert(0);
-#if 0
+
             assert(delta_y == 0);
 
             float ediff = sse.pos - lastEPos; // [mm]
@@ -59,11 +58,9 @@ assert(0);
                 }
             }
             lastEPos = sse.pos;
-#endif
         }
 
         void spiSend(uint8_t b) {
-#if 0
 
         // write = b & 0x80;
         // address = b & 0x7f;
@@ -141,7 +138,6 @@ assert(0);
                     assert(0);
             }
         }
-#endif
         }
 
         uint8_t spiRec() {
