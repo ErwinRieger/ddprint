@@ -151,7 +151,7 @@ class Printer {
         void disableSteppers();
         void cmdDisableSteppers();
         void cmdDisableStepperIsr();
-        void cmdGetState();
+        void cmdGetDirBits();
         void cmdGetHomed();
         void cmdGetEndstops();
         void cmdGetPos();
