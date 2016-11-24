@@ -69,7 +69,7 @@
     #define CmdSetHeaterY       139
 #endif
 
-#define CmdGetState             150
+#define CmdGetDirBits           150
 #define CmdGetHomed             151
 #define CmdGetEndstops          152
 #define CmdGetEepromVersion     153
