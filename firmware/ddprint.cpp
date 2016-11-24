@@ -832,12 +832,16 @@ void Printer::printerInit() {
         swapErased = true;
     }
 
-//xxxxxxxxxxx
-sDReader.flush();
-fillBufferTask.flush();
-stepBuffer.flush();
+    massert(printerState <= StateInit);
 
     swapDev.reset();
+
+//xxxxxxxxxxx
+sDReader.flush();
+
+    fillBufferTask.flush();
+
+stepBuffer.flush();
 
     printerState = StateInit;
     eotReceived = false;
@@ -1077,11 +1081,6 @@ void Printer::cmdDisableStepperIsr() {
     SERIAL_PROTOCOLLNPGM(MSG_OK);
 }
 
-void Printer::cmdGetState() {
-
-    SERIAL_ECHOPGM("Res:");
-    SERIAL_ECHOLN(printerState);
-}
 #endif
 
 void Printer::cmdGetHomed() {
@@ -1154,6 +1153,15 @@ void Printer::cmdGetPos() {
     txBuffer.sendResponseEnd();
 }
 
+void Printer::cmdGetDirBits() {
+
+    uint8_t dirbits = st_get_direction<XMove>() | st_get_direction<YMove>() | st_get_direction<ZMove>() | st_get_direction<EMove>();
+
+    txBuffer.sendResponseStart(CmdGetDirBits);
+    txBuffer.sendResponseUint8(dirbits);
+    txBuffer.sendResponseEnd();
+}
+
 // uint16_t waitCount = 0;
 void Printer::cmdGetStatus() {
 #if 0
@@ -1192,8 +1200,8 @@ void Printer::cmdGetStatus() {
 
     // Flowrate sensor
 #if defined(HASFILAMENTSENSOR)
-    txBuffer.sendResponseInt16(filamentSensor.targetSpeed);
-    txBuffer.sendResponseInt16(filamentSensor.actualSpeed);
+    txBuffer.sendResponseInt16(filamentSensor.targetSpeed.value());
+    txBuffer.sendResponseInt16(filamentSensor.actualSpeed.value());
 #else
     txBuffer.sendResponseInt16(0);
     txBuffer.sendResponseInt16(0);
@@ -1589,7 +1597,7 @@ class UsbCommand : public Protothread {
 #endif
 #if defined(HASFILAMENTSENSOR)
                     case CmdEnableFRLimit:
-                        filamentSensor.enable(MSerial.readNoCheckCobs());
+                        filamentSensor.enableFeedrateLimiter(MSerial.readNoCheckCobs());
                         txBuffer.sendACK();
                         break;
 #endif
@@ -1598,6 +1606,9 @@ class UsbCommand : public Protothread {
                     //
                     // Commands with response payload
                     //
+                    case CmdGetDirBits:
+                        printer.cmdGetDirBits();
+                        break;
                     case CmdGetStatus:
                         printer.cmdGetStatus();
                         break;
@@ -1647,9 +1658,6 @@ class UsbCommand : public Protothread {
 
 #if 0
 // Currently not used:
-                    case CmdGetState:
-                        printer.cmdGetState();
-                        break;
                     case CmdDisableStepperIsr:
                         printer.cmdDisableStepperIsr();
                         break;
