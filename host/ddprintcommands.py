@@ -69,7 +69,7 @@ CmdStopMove = 138
 CmdSetHeaterY = 139
 
 # Getters, they return a string of the form "ret: <expr>"
-# currently not used: CmdGetState = 150
+CmdGetDirBits = 150
 CmdGetHomed = 151
 CmdGetEndstops = 152   # Get endstop state and pos
 CmdGetEepromVersion = 153
@@ -128,8 +128,8 @@ CommandNames = {
     CmdSetHeaterY: "CmdSetHeaterY",
     CmdRaw: "CmdRaw",
     
-    # Getters, they return a string of the form "ret: <expr>"
-    # currently not used: CmdGetState: "CmdGetState",
+    # Getters
+    CmdGetDirBits: "CmdGetDirBits",
     CmdGetHomed: "CmdGetHomed",
     CmdGetEndstops: "CmdGetEndstops",
     CmdGetEepromVersion: "CmdGetEepromVersion",
