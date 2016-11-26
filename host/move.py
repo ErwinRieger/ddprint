@@ -144,7 +144,7 @@ class StepData:
 
     def __repr__(self):
         return "StepData:" + \
-           "\n  Direction bits: 0x%x" % self.dirBits + \
+           "\n  SetDirbits: %s, Direction bits: 0x%x" % (self.setDirBits, self.dirBits) + \
            "\n  # leadAxis: %d" % self.leadAxis + \
            "\n  # abs_vector_steps: %s" % `self.abs_vector_steps` + \
            "\n  # accelPulses: %d" % len(self.accelPulses) + \
