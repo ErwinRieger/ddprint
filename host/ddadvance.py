@@ -588,11 +588,11 @@ class Advance (object):
 
             maxAllowedStartSpeed = util.vAccelPerDist(endSpeed1S, allowedAccel3, move.distance3)
 
-            print "joinMovesBwd, startspeed, max startspeed: ", startSpeed1S, maxAllowedStartSpeed
+            # print "joinMovesBwd, startspeed, max startspeed: ", startSpeed1S, maxAllowedStartSpeed
 
             maxAllowedEStartSpeed = util.vAccelPerDist(endSpeed1.eSpeed, move.accel.eAccel(), move.eDistance)
 
-            print "joinMovesBwd, E-startspeed, max E-startspeed: ", startSpeed1.eSpeed, maxAllowedEStartSpeed
+            # print "joinMovesBwd, E-startspeed, max E-startspeed: ", startSpeed1.eSpeed, maxAllowedEStartSpeed
 
             if maxAllowedStartSpeed >= startSpeed1S and maxAllowedEStartSpeed >= startSpeed1.eSpeed:
 
