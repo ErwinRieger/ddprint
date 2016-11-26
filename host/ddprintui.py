@@ -419,8 +419,8 @@ class MainForm(npyscreen.Form):
             # 
             # Add a move to lift the nozzle from the print if not ultigcode flavor
             # 
-            if not self.parser.ultiGcodeFlavor:
-                util.endOfPrintLift(self.parser)
+            # if not self.parser.ultiGcodeFlavor:
+            util.endOfPrintLift(self.parser)
 
             self.planner.finishMoves()
             self.printer.sendCommand(CmdEOT)
