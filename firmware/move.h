@@ -146,6 +146,26 @@ inline void st_write_dir_pin<EMove>(bool v) {
     WRITE( E0_DIR_PIN, v);
 }
 
+template<typename MOVE>
+uint8_t st_read_dir_pin();
+
+template<>
+inline uint8_t st_read_dir_pin<XMove>() {
+    return READ(X_DIR_PIN);
+}
+template<>
+inline uint8_t st_read_dir_pin<YMove>() {
+    return READ(Y_DIR_PIN);
+}
+template<>
+inline uint8_t st_read_dir_pin<ZMove>() {
+    return READ(Z_DIR_PIN);
+}
+template<>
+inline uint8_t st_read_dir_pin<EMove>() {
+    return READ(E0_DIR_PIN);
+}
+
 #if 0
 template<typename MOVE>
 uint8_t st_get_step_pin();
@@ -189,23 +209,23 @@ inline void st_write_step_pin<EMove>(bool v) {
 }
 
 template<typename MOVE>
-bool st_get_invert_dir();
+bool st_get_positive_dir();
 
 template<>
-inline bool st_get_invert_dir<XMove>() {
-    return INVERT_X_DIR;
+inline bool st_get_positive_dir<XMove>() {
+    return POSITIVE_X_DIR;
 }
 template<>
-inline bool st_get_invert_dir<YMove>() {
-    return INVERT_Y_DIR;
+inline bool st_get_positive_dir<YMove>() {
+    return POSITIVE_Y_DIR;
 }
 template<>
-inline bool st_get_invert_dir<ZMove>() {
-    return INVERT_Z_DIR;
+inline bool st_get_positive_dir<ZMove>() {
+    return POSITIVE_Z_DIR;
 }
 template<>
-inline bool st_get_invert_dir<EMove>() {
-    return INVERT_E0_DIR;
+inline bool st_get_positive_dir<EMove>() {
+    return POSITIVE_E1_DIR;
 }
 
 template<typename MOVE>

@@ -145,9 +145,26 @@ template<typename MOVE>
 inline void st_set_direction(uint8_t dirbits) {
 
     if (dirbits & st_get_move_bit_mask<MOVE>())
-        st_write_dir_pin<MOVE>(! st_get_invert_dir<MOVE>());
+        st_write_dir_pin<MOVE>(  st_get_positive_dir<MOVE>());
     else
-        st_write_dir_pin<MOVE>(  st_get_invert_dir<MOVE>());
+        st_write_dir_pin<MOVE>(! st_get_positive_dir<MOVE>());
+}
+
+template<typename MOVE>
+inline uint8_t st_get_direction() {
+
+    if (st_read_dir_pin<MOVE>()) {
+
+        if (st_get_positive_dir<MOVE>())
+            return st_get_move_bit_mask<MOVE>();
+    }
+    else {
+
+        if (! st_get_positive_dir<MOVE>())
+            return st_get_move_bit_mask<MOVE>();
+    }
+
+    return 0;
 }
 
 #define X_ENDSTOP_PRESSED (READ(X_STOP_PIN) != X_ENDSTOPS_INVERTING)
