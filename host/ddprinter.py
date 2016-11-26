@@ -111,9 +111,6 @@ class Printer(Serial):
 
         self.curDirBits = 0
 
-        # xxx
-        # self.gentimeout = True
-
     @classmethod
     def get(cls):
         return cls.__single
@@ -427,8 +424,8 @@ class Printer(Serial):
         return self.lineNr-1
 
     def sendPrinterInit(self):
-        self.curdirbits = 0
         self.sendCommand(CmdPrinterInit)
+        self.curDirBits = self.getDirBits()
 
     # Send a command to the printer, add a newline if 
     # needed.
@@ -438,14 +435,6 @@ class Printer(Serial):
 
             try:
                 self.write(cmd)
-                """
-                self.write(cmd[:5])
-                if self.gentimeout:
-                    print "timeout"
-                    time.sleep(2.5)
-                    self.gentimeout = False
-                self.write(cmd[5:])
-                """
             except SerialTimeoutException:
                 self.gui.log("Tryed sending %d bytes: " % len(cmd), cmd[:10].encode("hex"))
                 self.gui.log("SerialTimeoutException on send!!!")
@@ -826,6 +815,14 @@ class Printer(Serial):
 
         (cmd, payload) = self.query(CmdGetFilSensor)
         return struct.unpack("<i", payload)[0]
+
+    ####################################################################################################
+
+    # Get current stepper direction bits
+    def getDirBits(self):
+
+        (cmd, payload) = self.query(CmdGetDirBits)
+        return struct.unpack("<B", payload)[0]
 
     ####################################################################################################
 
