@@ -958,7 +958,7 @@ class PrintMove(RealMove):
     #   v0, v1 negativ: resultat negativ
     def startRampTriangle(self, v0, v1, dt):
 
-        print "v0:", v0, "v1:", v1, "dt:", dt
+        # print "v0:", v0, "v1:", v1, "dt:", dt
 
         if not dt:
             assert(0) # does this happen?
@@ -975,7 +975,7 @@ class PrintMove(RealMove):
 
     def endRampTriangle(self, v0, v1, dt):
 
-        print "v0:", v0, "v1:", v1, "dt:", dt
+        # print "v0:", v0, "v1:", v1, "dt:", dt
 
         if not dt:
             return 0.0
@@ -1035,7 +1035,7 @@ class PrintMove(RealMove):
     ################################################################################
 
     ################################################################################
-    def startERampSteps(self, ejerk, startFeedrateIncrease=None, roundError=0):
+    def startERampSteps(self, ejerk, startFeedrateIncrease=None):
 
         # sa = self.startERampDistance(startFeedrateIncrease=startFeedrateIncrease)
         ta = self.accelTime()
@@ -1047,33 +1047,12 @@ class PrintMove(RealMove):
 
         sPara = self.startAdvDistance(ta, startFeedrateIncrease)
 
-        print "sPara: %f roundError: %f" % (sPara, roundError)
-
-        assert(sPara >= 0)
-
-        usedRoundError = 0
-        if roundError > 0:
-
-            if startFeedrateIncrease == None:
-                startFeedrateIncrease = self.advanceData.startFeedrateIncrease
-
-            maxUsedRoundError = (ejerk - startFeedrateIncrease + 1) * ta
-            print "maxUsedRoundError:", startFeedrateIncrease, maxUsedRoundError
-
-            usedRoundError = min(roundError, maxUsedRoundError)
-            sPara += usedRoundError
-
-        elif roundError < 0:
-
-            usedRoundError = min(sPara, abs(roundError)) * -1
-            sPara += usedRoundError
-
         assert(sPara >= 0)
 
         sa = sTri + sPara
         esteps = sa * self.e_steps_per_mm
 
-        return (sa, esteps, usedRoundError)
+        return (sa, esteps)
 
     def endERampSteps(self, ejerk, td=None, endFeedrateIncrease=None, v0=None, v1=None, roundError=0):
 
@@ -1095,47 +1074,14 @@ class PrintMove(RealMove):
 
         sPara = self.endAdvDistance(td, endFeedrateIncrease)
 
-        print "sPara: %f roundError: %f" % (sPara, roundError)
-
-        assert(sPara <= 0)
-
-        usedRoundError = 0
-        if roundError < 0:
-
-            # sPara: -0.268433 roundError: -0.000000
-
-            maxUsedRoundError = (ejerk - abs(endFeedrateIncrease) + 1) * td * -1
-
-            usedRoundError = max(roundError, maxUsedRoundError)
-
-            print "maxUsedRoundError:", endFeedrateIncrease, maxUsedRoundError
-            print "sPara: %f usedRoundError: %f" % (sPara, usedRoundError)
-
-            endIncrease = usedRoundError / td
-            if self.advanceData.endSignChange() != self.advanceData.endSignChange(endFeedrateIncrease + endIncrease):
-                print "skipping skippedAdvance because of endSignChange!"
-                usedRoundError = 0
-
-            sPara += usedRoundError
-
-        elif roundError > 0:
-
-            usedRoundError = min(abs(sPara), roundError)
-
-            endIncrease = usedRoundError / td
-            if self.advanceData.endSignChange() != self.advanceData.endSignChange(endFeedrateIncrease + endIncrease):
-                print "skipping skippedAdvance because of endSignChange!"
-                usedRoundError = 0
-
-            sPara += usedRoundError
-            print "sPara: ", sPara
+        # print "sPara: %f" % sPara
 
         assert(sPara <= 0)
 
         sd = sTri + sPara
         esteps = sd * self.e_steps_per_mm
 
-        return (sd, esteps, usedRoundError)
+        return (sd, esteps)
     ################################################################################
 
     def crossedDecelStep(self):

@@ -660,8 +660,6 @@ class Planner (object):
 
             # print "joinMovesBwd, startspeed, max startspeed: ", startSpeedS, maxAllowedStartSpeed
 
-
-
             if maxAllowedStartSpeed >= startSpeed1S:
 
                 # Join speeds ok
@@ -820,7 +818,7 @@ class Planner (object):
                 v = startSpeedS
 
             ta = deltaSpeedS / allowedAccel
-            print "ta: ", ta, deltaSpeedS
+            # print "ta: ", ta, deltaSpeedS
 
             deltaSpeedS = v - endSpeedS                          # [mm/s]
 
@@ -831,7 +829,7 @@ class Planner (object):
                 v = endSpeedS
 
             tb = deltaSpeedS / allowedAccel
-            print "tb: ", tb, deltaSpeedS
+            # print "tb: ", tb, deltaSpeedS
 
             topSpeed.feedrate = v
             move.topSpeed.setSpeed(topSpeed, "planTravelAcceleration - max reachable topspeed")

@@ -126,7 +126,7 @@ def joinMoves(move1, move2, jerk, maxAccelV):
         startSpeedS2 = startSpeed2.feedrate3()
 
         allowedAccel3 = move1.accel.xyAccel()
-        print "xxx allowedAccel3", allowedAccel3
+
         maxEndSpeed1 = vAccelPerDist(startSpeedS1, allowedAccel3, move1.distance3)
 
         if maxEndSpeed1 < endSpeedS1:
@@ -137,7 +137,7 @@ def joinMoves(move1, move2, jerk, maxAccelV):
 
             endSpeed1.setSpeed(maxEndSpeed1)
 
-            print "Move1, endspeed lowered: ", endSpeed1
+            # print "Move1, endspeed lowered: ", endSpeed1
             move1.endSpeed.setSpeed(endSpeed1, "joinMoves - max. reachable endspeed")
 
         # Check max reachable e endspeed
@@ -155,8 +155,8 @@ def joinMoves2(move1, move2, jerk):
         startSpeed2 = move2.startSpeed.speed()
         eStartSpeed2 = startSpeed2.eSpeed
 
-        print "joinMoves2(): move 1   end e speed: ", eEndSpeed1
-        print "joinMoves2(): move 2 start e speed: ", eStartSpeed2
+        # print "joinMoves2(): move 1   end e speed: ", eEndSpeed1
+        # print "joinMoves2(): move 2 start e speed: ", eStartSpeed2
 
         #
         # Compare E-speed of moves
@@ -167,7 +167,7 @@ def joinMoves2(move1, move2, jerk):
             endSpeedV1 = endSpeed1.vv3()
             startSpeedV2 = startSpeed2.vv3()
             differenceVector = endSpeedV1.subVVector(startSpeedV2)
-            print "Case1, differenceVector, jerk:", differenceVector, jerk
+            # print "Case1, differenceVector, jerk:", differenceVector, jerk
 
 ##################
             # old joinMoves
@@ -270,32 +270,32 @@ def joinMoves3(move1, move2, jerk):
         eEndSpeed1 = endSpeed1.eSpeed
         eStartSpeed2 = startSpeed2.eSpeed
 
-        print "joinMoves3(): e-feedrate 1: ", eEndSpeed1
-        print "joinMoves3(): e-feedrate 2: ", eStartSpeed2
+        # print "joinMoves3(): e-feedrate 1: ", eEndSpeed1
+        # print "joinMoves3(): e-feedrate 2: ", eStartSpeed2
 
         if eEndSpeed1 > eStartSpeed2:
             # Slow down move1
             f = eStartSpeed2 / eEndSpeed1
-            print "f1: ", f
+            # print "f1: ", f
 
             # endSpeedS1 *= f
             # endSpeed1.feedrate = endSpeedS1
             endSpeed1 = endSpeed1.scale(f)
             move1.endSpeed.setSpeed(endSpeed1, "joinMoves3 - adjust ejerk")
 
-            print "slowed down move1 endspeed:", eEndSpeed1
+            # print "slowed down move1 endspeed:", eEndSpeed1
 
         else:
             # Slow down move2
             f = eEndSpeed1 / eStartSpeed2
-            print "f2: ", f
+            # print "f2: ", f
 
             # startSpeedS2 *= f
             # startSpeed2.feedrate = startSpeedS2
             startSpeed2 = startSpeed2.scale(f)
             move2.startSpeed.setSpeed(startSpeed2, "joinMoves3 - adjust ejerk")
 
-            print "slowed down move2 startspeed:", startSpeed2
+            # print "slowed down move2 startspeed:", startSpeed2
 
         #
         # Join in bezug auf den maximalen jerk aller achsen betrachten:
@@ -325,7 +325,7 @@ def joinMoves3(move1, move2, jerk):
         if toMuch:
 
             differenceVector = endSpeedV1.subVVector(startSpeedV2)
-            print "differenceVector, jerk:", differenceVector, jerk
+            # print "differenceVector, jerk:", differenceVector, jerk
 
             if debugMoves:
                 print "E-speed angepasst, XY-speedDiff:", speedDiff
@@ -1888,7 +1888,7 @@ def decelRampXY(leadAxis, vstart, vend, a, absSteps):
     otherSteps = absSteps[otherAxis]
 
     bFactor = float(otherSteps) / leadSteps
-    print "bfactor:", bFactor
+    # print "bfactor:", bFactor
     otherCount = 0
 
     steps_per_mm = PrinterProfile.getStepsPerMM(leadAxis)
@@ -1910,8 +1910,8 @@ def decelRampXY(leadAxis, vstart, vend, a, absSteps):
         dt = dv / a
         s = accelDist(vstart, -a, dt)
 
-        print "vstart, vend, a", vstart, vend, a
-        print "dv, dt, s:", dv, dt, s
+        # print "vstart, vend, a", vstart, vend, a
+        # print "dv, dt, s:", dv, dt, s
 
         stepsToDo = int(s * steps_per_mm)
 
@@ -1919,7 +1919,7 @@ def decelRampXY(leadAxis, vstart, vend, a, absSteps):
 
         vstart = vmin
 
-    print "doing ", stepsToDo, "of", leadSteps
+    # print "doing ", stepsToDo, "of", leadSteps
 
     # # debug
     # prepended = False
@@ -1995,52 +1995,11 @@ def decelRampXY(leadAxis, vstart, vend, a, absSteps):
         tstep += dt
         leadSteps -= 1
 
-    print "Missing steps: ", leadSteps, otherSteps
+    # print "Missing steps: ", leadSteps, otherSteps
 
     # if prepended:
         # print "prepended steps:"
         # pprint.pprint(pulses)
-
-
-    """
-    # Add missing steps in timeroverflow case
-    if leadSteps > 0:
-
-        print "Prepending missing steps: ", leadSteps
-
-        dt = min(sPerStep / vstart, ddprintconstants.maxTimerValue16/fTimer)
-        timerValue = min(int(dt * fTimer), ddprintconstants.maxTimerValue16)
-
-        otherCount = 0
-        tstep = 0
-        newPulses = []
-        for i in range(leadSteps):
-
-            stepBits = [0, 0]
-            stepBits[leadAxis] = 1
-
-            otherCount += bFactor
-
-            # if otherCount >= 1:
-            if otherCount >= 0.5:
-                stepBits[otherAxis] = 1
-                otherSteps -= 1
-                otherCount -= 1.0
-
-            newPulses.append((tstep, dt, timerValue, stepBits))
-
-            leadSteps -= 1
-            tstep += dt
-
-        assert(leadSteps == 0)
-        assert(otherSteps == 0)
-
-        for p in pulses:
-            newPulses.append((p[0] + tstep, p[1], p[2], p[3]))
-
-        # pprint.pprint(newPulses)
-        return newPulses
-    """
 
     assert(leadSteps == 0 and otherSteps == 0)
     return pulses
