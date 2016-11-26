@@ -27,7 +27,7 @@ from ddprintstates import *
 from ddprintconstants import *
 from ddconfig import *
 from ddprofile import PrinterProfile, MatProfile, NozzleProfile
-from ddvector import vectorLength
+from ddvector import vectorLength, vectorMul
 
 ####################################################################################################
 #
@@ -651,7 +651,7 @@ def directionBits(disp, curDirBits):
 
         if disp[i] > 0 and not (curDirBits & mask):
             curDirBits += mask
-        if disp[i] < 0 and (curDirBits & mask):
+        elif disp[i] < 0 and (curDirBits & mask):
             curDirBits -= mask
 
     return curDirBits
@@ -698,7 +698,6 @@ def getVirtualPos(parser):
 def prime(parser):
 
     planner = parser.planner
-    # printer = planner.printer
 
     parser.execute_line("G0 F%f Y0 Z%f" % (planner.HOMING_FEEDRATE[X_AXIS]*60, ddprintconstants.PRIMING_HEIGHT))
 
@@ -722,15 +721,7 @@ def prime(parser):
 
     # Wipe priming material if not ultigcode flavor 
     if not parser.ultiGcodeFlavor:
-        # parser.execute_line("G10")
-        # parser.execute_line("G0 F%f X50 Z0.5" % (planner.HOMING_FEEDRATE[X_AXIS]*60))
         parser.execute_line("G0 F9000 X20 Z0.1")
-        # parser.execute_line("G0 F1200 X%.2f" % (planner.X_MAX_POS * 0.8))
-        # parser.execute_line("G0 F%d Z10" % (planner.HOMING_FEEDRATE[Z_AXIS]*60))
-        # parser.execute_line("G1 X190 Z0.1 F9000") #  ; pull away filament
-        # parser.execute_line("G1 X210 F9000") #  ; wipe
-        # parser.execute_line("G1 Y20 F9000") #  ; wipe
-        # parser.execute_line("G11")
 
 ####################################################################################################
 
@@ -792,7 +783,7 @@ def manualMove(parser, axis, distance, feedrate=0, absolute=False):
 
     printer.waitForState(StateIdle)
 
-    printer.readMore(10)
+    printer.readMore(2)
 
 ####################################################################################################
 
@@ -1621,9 +1612,6 @@ def measureTempFlowrateCurve(args, parser):
 
     printer.waitForState(StateIdle)
 
-    current_position = parser.getPos()
-    apos = current_position[A_AXIS]
-
     t1 = MatProfile.getHotendBaseTemp() # start temperature
     area04 = pow(0.4, 2)*math.pi/4
     flowrate = MatProfile.getBaseExtrusionRate() * (NozzleProfile.getArea() / area04)
@@ -1685,8 +1673,7 @@ fit f(x) "-" using 1:3 noerror via a,b\n""" % t1)
             feedrate = flowrate / aFilament
             # distance = 5 * feedrate # xxx
             distance = 50
-
-            apos += distance
+            fsTargetDistance = distance - PrinterProfile.getRetractLength()
 
             print "Feedrate for flowrate:", feedrate, flowrate
 
@@ -1694,8 +1681,13 @@ fit f(x) "-" using 1:3 noerror via a,b\n""" % t1)
 
             if retracted:
                 parser.execute_line("G11")
-            parser.execute_line("G0 F%d %s%f" % (feedrate*60, dimNames[A_AXIS], apos))
+                fsTargetDistance += PrinterProfile.getRetractLength()
+
+            current_position = parser.getPos()
+            parser.execute_line("G0 F%d %s%f" % (feedrate*60, dimNames[A_AXIS], current_position[A_AXIS] + distance))
+
             parser.execute_line("G10")
+
             planner.finishMoves()
             printer.sendCommand(CmdEOT)
             printer.sendCommandParamV(CmdMove, [MoveTypeNormal])
@@ -1706,11 +1698,11 @@ fit f(x) "-" using 1:3 noerror via a,b\n""" % t1)
             fssteps = printer.getFilSensor()
             fsdist = fssteps / fssteps_per_mm
 
-            ratio = fsdist / distance
+            ratio = fsdist / fsTargetDistance
 
             actualFlowrate = flowrate * ratio
 
-            print "t1, flowrate, fsdist, distance, ratio:",  t1, flowrate, fsdist, distance, ratio
+            print "t1, flowrate, fsdist, distance, ratio:",  t1, flowrate, fsdist, fsTargetDistance, ratio
 
             flowrate += 1
             retracted = True
