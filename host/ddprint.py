@@ -637,8 +637,8 @@ def main():
         # 
         # Add a move to lift the nozzle from the print if not ultigcode flavor
         # 
-        if not parser.ultiGcodeFlavor:
-            util.endOfPrintLift(parser)
+        # if not parser.ultiGcodeFlavor:
+        util.endOfPrintLift(parser)
 
         planner.finishMoves()
         printer.sendCommand(CmdEOT)
@@ -848,8 +848,9 @@ def main():
     elif args.mode == 'test':
 
         printer.commandInit(args)
-        util.downloadTempTable(printer)
-        printer.readMore()
+        dirbits = printer.getDirBits()
+        print "dirbits:", dirbits
+        # printer.readMore()
 
     elif args.mode == "writeEepromFloat":
 
