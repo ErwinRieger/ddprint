@@ -27,7 +27,8 @@
     "A" : {
       "max_feedrate"  : 45,
       "steps_per_mm"  : 141,
-      "jerk"          : 5
+      # "jerk"          : 5
+      "jerk"          : 7.5
     },
     "Abulldog" : {
       "max_feedrate"  : 45,
