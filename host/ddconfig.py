@@ -23,9 +23,7 @@
 # Enable Debugging
 #
 debugMoves = False
-debugMoves = True
 debugAutoTemp = False
-debugAutoTemp = True
 
 #
 # Enable mathplotlib plotting of planned paths
