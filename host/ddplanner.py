@@ -878,21 +878,6 @@ class Planner (object):
 
         move.initStepData(StepDataTypeBresenham)
 
-        print "Warning, disabled extrusion adjust in planTravelSteps!"
-
-        """
-        for i in range(5):
-            dirBits += (move.direction[i] >= 0) << i
-            adjustedDisplacement = move.displacement_vector_steps_adjusted(NozzleProfile, MatProfile, PrinterProfile)
-
-            s = abs(adjustedDisplacement[i])
-            if s > leadAxis_steps:
-                leadAxis = i
-                leadAxis_steps = s
-
-            abs_displacement_vector_steps.append(s)
-        """
-
         # Round step values
         dispF = move.displacement_vector_steps_raw5
         dispS = self.stepRounders.round(dispF)
@@ -990,7 +975,7 @@ class Planner (object):
                     cd = int(-nLin / ((float(nAccel) / nDecel) + 1))
                     ca = -nLin - cd
 
-                    print "ca: ", ca, "cd:", cd
+                    # print "ca: ", ca, "cd:", cd
                     
                     if ca:
                         del move.stepData.accelPulses[:ca]
