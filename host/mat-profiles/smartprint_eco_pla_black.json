@@ -1,6 +1,6 @@
 {
   # filament ist 'sehr flüssig'
-  "hotendBaseTemp"    : 180,
+  "hotendBaseTemp"    : 190,
   "extrusionAutoTempFactor" : 3.5 
 }
 
