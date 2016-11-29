@@ -20,13 +20,14 @@
 #*/
 
 import struct, time, math, tty, termios, sys, types, json
-import ddprintconstants, ddhome
+import ddprintconstants, ddhome, ddadvance, pprint
 
 from ddprintcommands import *
 from ddprintstates import *
 from ddprintconstants import *
 from ddconfig import *
 from ddprofile import PrinterProfile, MatProfile, NozzleProfile
+from ddvector import vectorLength, vectorMul
 
 ####################################################################################################
 #
@@ -37,50 +38,22 @@ from ddprofile import PrinterProfile, MatProfile, NozzleProfile
 FILAMENT_REVERSAL_LENGTH = 750
 
 # To prevent false assertions because of rounding errors
-RoundSafe = 0.995
+# RoundSafe = 0.995
+# RoundSafe = 0.999999
+# RoundSafe = 1.0
+# xRoundSafe = 0.999999999
 
 ####################################################################################################
-def vectorAdd(v1, v2):
-
-    sum = []
-    for a, b in zip(v1, v2):
-        sum.append(a + b)
-
-    return sum
-
-####################################################################################################
-def vectorSub(v1, v2):
-
-    diff = []
-    for a, b in zip(v1, v2):
-        diff.append(a - b)
-
-    return diff
-
-####################################################################################################
-def vectorLength(vv):
-
-    sum = 0
-    for v in vv:
-        sum += pow(v, 2)
-    return math.sqrt(sum)
-
-####################################################################################################
-def vectorMul(v1, v2):
-
-    product = []
-    for i in range(len(v2)):
-        product.append(v1[i] * v2[i])
-
-    return product
-
-####################################################################################################
-def vectorDistance(a, b):
-    return vectorLength(vectorSub(a, b))
+def sign(x):
+    if x == 0:
+        return 1.0
+    return math.copysign(1, x)
 
 ####################################################################################################
 def circaf(a, b, delta):
     return abs(a-b) < delta
+
+####################################################################################################
 
 # Speed after accelerating for a certain time
 def vAccelPerTime(v0, a, t):
@@ -92,7 +65,12 @@ def vAccelPerTime(v0, a, t):
 # Distance traveled after accelerating for a certain time
 def accelDist(v0, a, t):
     # s = 0,5 * a * t² + vo * t
-    return 0.5 * a * pow(t, 2) + v0 * t
+    s = 0.5 * a * pow(t, 2) + v0 * t
+
+    # if s < 0:
+        # print "Error in accelDist(), negative distance computed: v0=%.3f, a=%.3f, t=%.3f, s=%.3f" % (v0, a, t, s)
+        # assert(0)
+    return s
 
 ####################################################################################################
 
@@ -101,60 +79,377 @@ def vAccelPerDist(v0, a, s):
 
     assert(v0 >= 0)
 
-    term = 2 * a * s + pow(v0, 2)
-    if term >= 0:
-        return math.sqrt( term )
-    else:
-        return - math.sqrt( abs(term) )
+    t1 = pow(v0, 2)
+    t2 = 2.0 * a * s
+
+    # print "t1: ", t1
+    # print "t2: ", t2
+
+    if (t1 + t2) >= 0:
+        return math.sqrt(t1+t2)
+
+    return - math.sqrt(abs(t1 + t2))
 
 ####################################################################################################
 
-def joinSpeed(move1, move2, jerk, min_speeds):
+# Time needed to do deltaV in given distance s
+def timePerDist(v1, v2, s):
+
+    assert(v2 >= v1)
+    return s / (v1 + ((v2 - v1)/2.0))
+
+####################################################################################################
+
+# Compute acceleration by distance and delta-v
+def accelPerDist(v1, v2, s):
+
+    # a = ( ve² - v0² ) / ( 2 * s )
+    assert(v2 >= v1)
+    return ( pow(v2, 2) - pow(v1, 2) ) / ( 2 * s )
+
+####################################################################################################
+
+def joinMoves(move1, move2, jerk, maxAccelV):
 
         if debugMoves:
-            print "***** Start joinSpeed() *****"
+            print "***** Start joinMoves() *****"
+            move1.pprint("JoinSpeed - Move1")
+            move2.pprint("JoinSpeed - Move2")
 
-        allowedAccel = move1.getAllowedAccel()
+        startSpeed1 = move1.startSpeed.speed()
+        startSpeedS1 = startSpeed1.feedrate3()
 
-        if move1.getFeedrateV().isDisjointV(move2.getFeedrateV()):
+        endSpeed1 = move1.endSpeed.speed()
+        endSpeedS1 = endSpeed1.feedrate3()
 
+        startSpeed2 = move2.startSpeed.speed()
+        startSpeedS2 = startSpeed2.feedrate3()
+
+        allowedAccel3 = move1.accel.xyAccel()
+
+        maxEndSpeed1 = vAccelPerDist(startSpeedS1, allowedAccel3, move1.distance3)
+
+        if maxEndSpeed1 < endSpeedS1:
+
+            # Endspeed of move 1 not reachable, lowering it to the max. reachable speed
             if debugMoves:
-                move1.pprint("JoinSpeed - disjoint Move1")
-                move2.pprint("JoinSpeed - disjoint Move2")
+                print "Max. reachable endspeed: %.3f < feedrate: %.3f" % (maxEndSpeed1, endSpeedS1)
 
-            # Set endspeed to minimum of reachable endspeed and jerkspeed
-            f = move1.getJerkSpeed(jerk)
-            maxEndSpeed = vAccelPerDist(move1.getStartFr(), allowedAccel, move1.distance) * RoundSafe
-            # print "maxEndSpeed of first disjoint move:", maxEndSpeed, f
-            move1.setNominalEndFr(min(f, maxEndSpeed))
+            endSpeed1.setSpeed(maxEndSpeed1)
 
-            # jerkSpeed = move2.vVector().constrain(jerk) or move2.feedrate
-            # move2.setNominalStartFr(jerkSpeed)
-            move2.setNominalJerkStartSpeed(jerk)
+            # print "Move1, endspeed lowered: ", endSpeed1
+            move1.endSpeed.setSpeed(endSpeed1, "joinMoves - max. reachable endspeed")
 
-            if debugMoves:
-                print "***** End joinSpeed() *****"
+        # Check max reachable e endspeed
+        maxAllowedEEndSpeed = vAccelPerDist(startSpeed1.eSpeed, move1.accel.eAccel(), move1.eDistance)
+        if maxAllowedEEndSpeed < endSpeed1.eSpeed:
+            circaf(maxAllowedEEndSpeed, endSpeed1.eSpeed, 0.000000001)
+
+        joinMoves2(move1, move2, jerk)
+
+def joinMoves2(move1, move2, jerk):
+
+        endSpeed1 = move1.endSpeed.speed()
+        eEndSpeed1 = endSpeed1.eSpeed
+
+        startSpeed2 = move2.startSpeed.speed()
+        eStartSpeed2 = startSpeed2.eSpeed
+
+        # print "joinMoves2(): move 1   end e speed: ", eEndSpeed1
+        # print "joinMoves2(): move 2 start e speed: ", eStartSpeed2
+
+        #
+        # Compare E-speed of moves
+        #
+        if circaf(eEndSpeed1, eStartSpeed2, AdvanceEThreshold):
+
+            # E-speed difference is small enough, check X/Y jerk
+            endSpeedV1 = endSpeed1.vv3()
+            startSpeedV2 = startSpeed2.vv3()
+            differenceVector = endSpeedV1.subVVector(startSpeedV2)
+            # print "Case1, differenceVector, jerk:", differenceVector, jerk
+
+##################
+            # old joinMoves
+
+            #
+            # Join in bezug auf den maximalen jerk aller achsen betrachten:
+            #
+            speedDiff = {}
+            toMuch = False
+            for dim in range(3):
+
+                vdim = startSpeedV2[dim]
+
+                # Speed difference from endspeed to theoretical max speed for axis
+                vdiff = vdim - endSpeedV1[dim]
+
+                vdiffAbs = abs(vdiff)
+
+                dimJerk = jerk[dim]
+
+                if vdiffAbs > dimJerk: 
+                    toMuch = True
+
+                if vdiffAbs > 1:
+                    speedDiff[dim] = (vdiff, vdiffAbs)
+
+            if toMuch:
+
+                if debugMoves:
+                    print "E-speed ok, XY-speedDiff:", speedDiff
+
+                # 
+                # Der geschwindigkeitsunterschied mindestens einer achse ist grösser als der 
+                # erlaubte jerk fuer diese achse.
+                # 
+                # Man könnte auch sagen: der "geschwindigkeits knick" ist zu gross. 
+                # 
+                # Letzter step muss also am ende gebremst werden und dieser step muss mit
+                # entsprechend kleiner geschwindigkeit gestartet werden.
+                #
+                # Abbremsen auf 0 geht auf jeden fall, aber ist auch eine höhere
+                # jerk geschwindigkeit möglich? Bzw. wie kann diese berechnet werden?
+                # 
+                # 
+
+                #
+                # Skalierungsfaktor berechnen um den die beiden geschwindigkeiten
+                # reduziert werden müssen, damit sie nur noch einen unterschied von
+                # 'jerk' haben.
+                #
+
+                speedScale = 1.0
+                for dim in speedDiff.keys():
+                    # print "diff: ", differenceVector[dim], jerk[dim]
+                    if abs(differenceVector[dim]) > jerk[dim]:
+                        # print "mindiff: ", dimNames[dim], differenceVector[dim], jerk[dim]
+                        speedScale = min(speedScale, jerk[dim] / abs(differenceVector[dim]))
+
+                if debugMoves:
+                    move1.pprint("JoinMoves - Move1")
+                    move2.pprint("JoinMoves - Move2")
+                    print "speedScale: ", speedScale
+
+                assert(speedScale <= 1.0)
+
+                endSpeed1 = endSpeed1.scale(speedScale)
+
+                if debugMoves:
+                    print "set nominal endspeed of move1:", endSpeed1
+
+                move1.endSpeed.setSpeed(endSpeed1, "joinMoves2 - adjust jerk")
+
+                startSpeed2 = startSpeed2.scale(speedScale)
+
+                if debugMoves:
+                    print "set nominal startspeed of move2:", speedScale
+
+                move2.startSpeed.setSpeed(startSpeed2, "joinMoves2 - adjust jerk")
+
+            else:
+
+                if debugMoves:
+                    print "Doing a full speed join between move %d and %d" % (move1.moveNumber, move2.moveNumber)
+
+                # move1.setNominalEndFr(endSpeedS)
+                # move2.setNominalStartFr(move2.feedrateS)
+
+            move1.sanityCheck(jerk)
             return
 
-        endSpeedS = move1.feedrateS
-        endSpeedV = move1.getFeedrateV()
+##################
 
-        # Compute max reachable endspeed of move1
-        # maxEndSpeed = vAccelPerDist(move1.getStartFr(), allowedAccel, move1.e_distance)
-        maxEndSpeed = vAccelPerDist(move1.getStartFr(), allowedAccel, move1.distance) * RoundSafe
+        joinMoves3(move1, move2, jerk)
+     
+def joinMoves3(move1, move2, jerk):
 
-        if maxEndSpeed < endSpeedS:
+        endSpeed1 = move1.endSpeed.speed()
+        startSpeed2 = move2.startSpeed.speed()
+
+        eEndSpeed1 = endSpeed1.eSpeed
+        eStartSpeed2 = startSpeed2.eSpeed
+
+        # print "joinMoves3(): e-feedrate 1: ", eEndSpeed1
+        # print "joinMoves3(): e-feedrate 2: ", eStartSpeed2
+
+        if eEndSpeed1 > eStartSpeed2:
+            # Slow down move1
+            f = eStartSpeed2 / eEndSpeed1
+            # print "f1: ", f
+
+            # endSpeedS1 *= f
+            # endSpeed1.feedrate = endSpeedS1
+            endSpeed1 = endSpeed1.scale(f)
+            move1.endSpeed.setSpeed(endSpeed1, "joinMoves3 - adjust ejerk")
+
+            # print "slowed down move1 endspeed:", eEndSpeed1
+
+        else:
+            # Slow down move2
+            f = eEndSpeed1 / eStartSpeed2
+            # print "f2: ", f
+
+            # startSpeedS2 *= f
+            # startSpeed2.feedrate = startSpeedS2
+            startSpeed2 = startSpeed2.scale(f)
+            move2.startSpeed.setSpeed(startSpeed2, "joinMoves3 - adjust ejerk")
+
+            # print "slowed down move2 startspeed:", startSpeed2
+
+        #
+        # Join in bezug auf den maximalen jerk aller achsen betrachten:
+        #
+        endSpeedV1 = endSpeed1.vv3()
+        startSpeedV2 = startSpeed2.vv3()
+
+        speedDiff = {}
+        toMuch = False
+        for dim in range(3):
+
+            vdim = startSpeedV2[dim]
+
+            # Speed difference from endspeed to theoretical max speed for axis
+            vdiff = vdim - endSpeedV1[dim]
+
+            vdiffAbs = abs(vdiff)
+
+            dimJerk = jerk[dim]
+
+            if vdiffAbs > dimJerk: 
+                toMuch = True
+
+            if vdiffAbs > 1:
+                speedDiff[dim] = (vdiff, vdiffAbs)
+
+        if toMuch:
+
+            differenceVector = endSpeedV1.subVVector(startSpeedV2)
+            # print "differenceVector, jerk:", differenceVector, jerk
 
             if debugMoves:
-                print "math.sqrt( 2 * %f * %f + pow(%f, 2) ) * %f" % (move1.distance, allowedAccel, move1.getStartFr(), RoundSafe)
-                print "Max. reachable endspeed: %.3f < feedrate: %.3f" % (maxEndSpeed, endSpeedS)
+                print "E-speed angepasst, XY-speedDiff:", speedDiff
 
-            endSpeedS = maxEndSpeed
+            # 
+            # Der geschwindigkeitsunterschied mindestens einer achse ist grösser als der 
+            # erlaubte jerk fuer diese achse.
+            # 
+            # Man könnte auch sagen: der "geschwindigkeits knick" ist zu gross. 
+            # 
+            # Letzter step muss also am ende gebremst werden und dieser step muss mit
+            # entsprechend kleiner geschwindigkeit gestartet werden.
+            #
+            # Abbremsen auf 0 geht auf jeden fall, aber ist auch eine höhere
+            # jerk geschwindigkeit möglich? Bzw. wie kann diese berechnet werden?
+            # 
+            # 
 
-            endSpeedV = move1.getFeedrateV(maxEndSpeed)
+            #
+            # Skalierungsfaktor berechnen um den die beiden geschwindigkeiten
+            # reduziert werden müssen, damit sie nur noch einen unterschied von
+            # 'jerk' haben.
+            #
 
-        nomFeedrateVMove2 = move2.getFeedrateV()
-        differenceVector = nomFeedrateVMove2.subVVector(endSpeedV)
+            speedScale = 1.0
+            for dim in speedDiff.keys():
+                # print "diff: ", differenceVector[dim], jerk[dim]
+                if abs(differenceVector[dim]) > jerk[dim]:
+                    # print "mindiff: ", dimNames[dim], differenceVector[dim], jerk[dim]
+                    speedScale = min(speedScale, jerk[dim] / abs(differenceVector[dim]))
+
+            if debugMoves:
+                move1.pprint("JoinMoves - Move1")
+                move2.pprint("JoinMoves - Move2")
+                print "speedScale: ", speedScale
+
+            assert(speedScale <= 1.0)
+
+            endSpeed1 = endSpeed1.scale(speedScale)
+
+            if debugMoves:
+                print "set nominal endspeed of move1:", endSpeed1
+
+            move1.endSpeed.setSpeed(endSpeed1, "joinMoves3 - adjust jerk")
+
+            startSpeed2 = startSpeed2.scale(speedScale)
+
+            if debugMoves:
+                print "set nominal startspeed of move2:", speedScale
+
+            move2.startSpeed.setSpeed(startSpeed2, "joinMoves3 - adjust jerk")
+
+        else:
+
+            if debugMoves:
+                print "Doing a full speed join between move %d and %d" % (move1.moveNumber, move2.moveNumber)
+
+            # move1.setNominalEndFr(endSpeedS)
+            # move2.setNominalStartFr(move2.feedrateS)
+
+        move1.sanityCheck(jerk)
+##################
+        if debugMoves:
+            move1.pprint("Move1, e-adjusted")
+            move2.pprint("Move2, e-adjusted")
+            print "***** End joinMoves() *****"
+
+
+####################################################################################################
+
+#
+# Join travel moves, this is easier than joining printing moves since E-axis jerk has not to be
+# considered.
+#
+def joinTravelMoves(move1, move2, jerk):
+
+        if debugMoves:
+            print "***** Start joinTravelMoves() *****"
+
+        allowedAccel = move1.getMaxAllowedAccelNoAdv5()
+
+        startSpeedMove1 = move1.startSpeed.speed()
+        startSpeedMove1S = startSpeedMove1.feedrate5()
+
+        endSpeedMove1 = move1.endSpeed.speed()
+        endSpeedVMove1 = endSpeedMove1.vv()
+
+        startSpeedMove2 = move2.startSpeed.speed()
+
+        # Compute max reachable endspeed of move1
+        maxEndSpeed = vAccelPerDist(startSpeedMove1S, allowedAccel, move1.distance5) #  * RoundSafe
+
+        """
+        if endSpeedVMove1.isDisjointV(startSpeedMove2.vv()):
+
+            # Set endspeed to minimum of reachable endspeed and jerkspeed
+            jerkSpeed = move1.getJerkSpeed(jerk) or endSpeedMove1
+
+            print "maxEndSpeed of first disjoint move:", maxEndSpeed, jerkSpeed.feedrate5()
+            endSpeedMove1.setSpeed(min(jerkSpeed.feedrate5(), maxEndSpeed))
+            move1.endSpeed.setSpeed(endSpeedMove1, "joinTravelMoves - disjoint, jerk ormaxendspeed")
+
+            move2.setPlannedJerkStartSpeed(jerk, "joinTravelMoves - disjoint, jerk")
+
+            if debugMoves:
+                print "***** End joinTravelMoves() *****"
+            return
+
+        """
+
+        endSpeedMove1S = endSpeedMove1.feedrate5()
+
+        if maxEndSpeed < endSpeedMove1S:
+
+            if debugMoves:
+                print "Max. reachable endspeed: %.3f < feedrate: %.3f" % (maxEndSpeed, endSpeedMove1S)
+
+            endSpeedMove1S = maxEndSpeed
+            endSpeedMove1.setSpeed(endSpeedMove1S)
+            move1.endSpeed.setSpeed(endSpeedMove1, "joinTravelMoves - max. reachable endspeed")
+            endSpeedVMove1 = endSpeedMove1.vv()
+
+        startSpeedVMove2 = startSpeedMove2.vv()
+        differenceVector = startSpeedVMove2.subVVector(endSpeedVMove1)
 
         #
         # Join in bezug auf den maximalen jerk aller achsen betrachten:
@@ -163,10 +458,10 @@ def joinSpeed(move1, move2, jerk, min_speeds):
         toMuch = False
         for dim in range(5):
 
-            vdim = nomFeedrateVMove2[dim]
+            vdim = startSpeedVMove2[dim]
 
             # Speed difference from start speed to theoretical max speed for axis
-            vdiff = vdim - endSpeedV[dim]
+            vdiff = vdim - endSpeedVMove1[dim]
 
             vdiffAbs = abs(vdiff)
 
@@ -211,32 +506,39 @@ def joinSpeed(move1, move2, jerk, min_speeds):
                     speedScale = min(speedScale, jerk[dim] / abs(differenceVector[dim]))
 
             if debugMoves:
-                move1.pprint("JoinSpeed - Move1")
-                move2.pprint("JoinSpeed - Move2")
-                print "speedScale: ", speedScale # , weight
+                move1.pprint("joinTravelMoves - Move1")
+                move2.pprint("joinTravelMoves - Move2")
+                print "speedScale: ", speedScale
 
             assert(speedScale <= 1.0)
 
             if debugMoves:
-                print "set nominal endspeed of move1:", endSpeedS * speedScale
-            move1.setNominalEndFr(endSpeedS * speedScale)
+                print "set nominal endspeed of move1:", endSpeedMove1S * speedScale
+            move1.endSpeed.setSpeed(endSpeedMove1.scale(speedScale), "joinTravelMoves - adjust jerk")
 
             if debugMoves:
-                print "set nominal startspeed of move2:", move2.feedrateS * speedScale
-            move2.setNominalStartFr(move2.feedrateS * speedScale)
+                print "set nominal startspeed of move2:", startSpeedMove2.feedrate5() * speedScale
+            move2.startSpeed.setSpeed(startSpeedMove2.scale(speedScale), "joinTravelMoves - adjust jerk")
 
         else:
 
             if debugMoves:
                 print "Doing a full speed join between move %d and %d" % (move1.moveNumber, move2.moveNumber)
 
-            move1.setNominalEndFr(endSpeedS)
-            move2.setNominalStartFr(move2.feedrateS)
+            # move1.setNominalEndFr(endSpeedMove1S)
+            # move2.setNominalStartFr(move2.feedrateS)
       
         if debugMoves:
-            print "***** End joinSpeed() *****"
+            print "***** End joinTravelMoves() *****"
 
 ####################################################################################################
+
+# Debug object
+class StreamedMove:
+        pass
+
+####################################################################################################
+
 
 class MyPoint:
 
@@ -340,6 +642,22 @@ class GetChar:
 
 ####################################################################################################
 
+# Compute new stepper direction bits
+def directionBits(disp, curDirBits):
+
+    for i in range(5):
+
+        mask = 1 << i
+
+        if disp[i] > 0 and not (curDirBits & mask):
+            curDirBits += mask
+        elif disp[i] < 0 and (curDirBits & mask):
+            curDirBits -= mask
+
+    return curDirBits
+
+####################################################################################################
+
 def commonInit(args, parser):
 
     planner = parser.planner
@@ -371,7 +689,7 @@ def getVirtualPos(parser):
         )
 
     print "Printer is at [mm]: ", curPosMM
-    parser.set_position(curPosMM)
+    parser.setPos(curPosMM)
 
     return curPosMM
 
@@ -380,11 +698,10 @@ def getVirtualPos(parser):
 def prime(parser):
 
     planner = parser.planner
-    # printer = planner.printer
 
     parser.execute_line("G0 F%f Y0 Z%f" % (planner.HOMING_FEEDRATE[X_AXIS]*60, ddprintconstants.PRIMING_HEIGHT))
 
-    pos = parser.getRealPos()
+    pos = parser.getPos()
 
     aFilament = MatProfile.getMatArea()
 
@@ -393,9 +710,9 @@ def prime(parser):
         pos[A_AXIS] + (ddprintconstants.PRIMING_MM3 / aFilament)))
 
     # Set E to 0
-    current_position = parser.getRealPos()
+    current_position = parser.getPos()
     current_position[A_AXIS] = 0.0
-    parser.set_position(current_position)
+    parser.setPos(current_position)
 
     #
     # Retract
@@ -404,15 +721,7 @@ def prime(parser):
 
     # Wipe priming material if not ultigcode flavor 
     if not parser.ultiGcodeFlavor:
-        # parser.execute_line("G10")
-        # parser.execute_line("G0 F%f X50 Z0.5" % (planner.HOMING_FEEDRATE[X_AXIS]*60))
         parser.execute_line("G0 F9000 X20 Z0.1")
-        # parser.execute_line("G0 F1200 X%.2f" % (planner.X_MAX_POS * 0.8))
-        # parser.execute_line("G0 F%d Z10" % (planner.HOMING_FEEDRATE[Z_AXIS]*60))
-        # parser.execute_line("G1 X190 Z0.1 F9000") #  ; pull away filament
-        # parser.execute_line("G1 X210 F9000") #  ; wipe
-        # parser.execute_line("G1 Y20 F9000") #  ; wipe
-        # parser.execute_line("G11")
 
 ####################################################################################################
 
@@ -456,7 +765,7 @@ def manualMove(parser, axis, distance, feedrate=0, absolute=False):
     if not feedrate:
         feedrate = PrinterProfile.getMaxFeedrate(axis)
 
-    current_position = parser.getRealPos()
+    current_position = parser.getPos()
     if absolute:
         d = distance - current_position[A_AXIS] 
         assert(abs(d) <= 1000)
@@ -474,7 +783,7 @@ def manualMove(parser, axis, distance, feedrate=0, absolute=False):
 
     printer.waitForState(StateIdle)
 
-    printer.readMore(10)
+    printer.readMore(2)
 
 ####################################################################################################
 
@@ -485,7 +794,7 @@ def insertFilament(args, parser):
 
     def manualMoveE():
 
-        current_position = parser.getRealPos()
+        current_position = parser.getPos()
         aofs = current_position[A_AXIS]
         print "cura: ", aofs
 
@@ -640,7 +949,7 @@ def bedLeveling(args, parser):
 
     def manualMoveZ():
 
-        current_position = parser.getRealPos()
+        current_position = parser.getPos()
         zofs = current_position[Z_AXIS]
         print "curz: ", zofs
 
@@ -693,7 +1002,7 @@ def bedLeveling(args, parser):
 
     manualMoveZ()
 
-    current_position = parser.getRealPos()
+    current_position = parser.getPos()
     print "curz: ", current_position[Z_AXIS]
 
     add_homeing_z = -1 * current_position[Z_AXIS];
@@ -708,7 +1017,7 @@ def bedLeveling(args, parser):
     current_position[Z_AXIS] = planner.LEVELING_OFFSET;
 
     # Adjust the virtual position
-    parser.set_position(current_position)
+    parser.setPos(current_position)
 
     # Adjust the printer position
     posStepped = vectorMul(current_position, parser.steps_per_mm)
@@ -806,7 +1115,7 @@ def endOfPrintLift(parser):
 
     planner = parser.planner
 
-    pos = parser.getRealPos()
+    pos = parser.getPos()
     zlift = min(pos.Z + 25, planner.Z_MAX_POS)
 
     if zlift > pos.Z:
@@ -1303,9 +1612,6 @@ def measureTempFlowrateCurve(args, parser):
 
     printer.waitForState(StateIdle)
 
-    current_position = parser.getRealPos()
-    apos = current_position[A_AXIS]
-
     t1 = MatProfile.getHotendBaseTemp() # start temperature
     area04 = pow(0.4, 2)*math.pi/4
     flowrate = MatProfile.getBaseExtrusionRate() * (NozzleProfile.getArea() / area04)
@@ -1367,8 +1673,7 @@ fit f(x) "-" using 1:3 noerror via a,b\n""" % t1)
             feedrate = flowrate / aFilament
             # distance = 5 * feedrate # xxx
             distance = 50
-
-            apos += distance
+            fsTargetDistance = distance - PrinterProfile.getRetractLength()
 
             print "Feedrate for flowrate:", feedrate, flowrate
 
@@ -1376,8 +1681,13 @@ fit f(x) "-" using 1:3 noerror via a,b\n""" % t1)
 
             if retracted:
                 parser.execute_line("G11")
-            parser.execute_line("G0 F%d %s%f" % (feedrate*60, dimNames[A_AXIS], apos))
+                fsTargetDistance += PrinterProfile.getRetractLength()
+
+            current_position = parser.getPos()
+            parser.execute_line("G0 F%d %s%f" % (feedrate*60, dimNames[A_AXIS], current_position[A_AXIS] + distance))
+
             parser.execute_line("G10")
+
             planner.finishMoves()
             printer.sendCommand(CmdEOT)
             printer.sendCommandParamV(CmdMove, [MoveTypeNormal])
@@ -1388,11 +1698,11 @@ fit f(x) "-" using 1:3 noerror via a,b\n""" % t1)
             fssteps = printer.getFilSensor()
             fsdist = fssteps / fssteps_per_mm
 
-            ratio = fsdist / distance
+            ratio = fsdist / fsTargetDistance
 
             actualFlowrate = flowrate * ratio
 
-            print "t1, flowrate, fsdist, distance, ratio:",  t1, flowrate, fsdist, distance, ratio
+            print "t1, flowrate, fsdist, distance, ratio:",  t1, flowrate, fsdist, fsTargetDistance, ratio
 
             flowrate += 1
             retracted = True
@@ -1428,10 +1738,279 @@ plot "-" using 1:2 with linespoints title "Target Flowrate", \\
 
 
 ####################################################################################################
+#
+# Create a list of stepper pulses for a acceleration ramp.
+#
+def accelRamp(axis, vstart, vend, a, nSteps, forceFill=False):
 
+    assert(vstart <= vend)
 
+    pulses = [] # (tstep, dt, timerValue)
 
+    steps_per_mm = PrinterProfile.getStepsPerMM(axis)
+    sPerStep = 1.0/steps_per_mm
 
+    v = vstart
+    tstep = 0
+    s = sPerStep
+
+    stepToDo = nSteps
+
+    while v < vend and stepToDo > 0:
+
+        # Speed after this step
+        vn1 = vAccelPerDist(vstart, a, s)
+
+        # Time we need for this speed change/this step:
+        dv = vn1 - v
+        dt = dv / a
+
+        # Timervalue for this time
+        timerValue = int(dt * fTimer)
+
+        if timerValue > ddprintconstants.maxTimerValue16:
+            # print "limit on timeroverflow, v after this step:", vn1, s, dt, timerValue
+            timerValue = ddprintconstants.maxTimerValue16
+
+        # print "v after this step:", vn1, s, dt, timerValue
+
+        pulses.append((tstep, dt, timerValue))
+
+        s += sPerStep
+        v = vn1
+        tstep += dt
+        stepToDo -= 1
+
+    # Add missing steps in timeroverflow case
+    if forceFill and stepToDo > 0:
+
+        print "fill steps %d/%d" % (stepToDo, nSteps)
+
+        assert((float(stepToDo) / nSteps) < 0.25)
+
+        p = pulses[-1]
+        for i in range(stepToDo):
+
+            pulses.append((tstep, dt, timerValue))
+            tstep += dt
+
+        pprint.pprint(pulses)
+        assert(0)
+        return pulses
+
+    if forceFill:
+        assert(stepToDo == 0)
+
+    return pulses
+
+####################################################################################################
+#
+# Create a list of stepper pulses for a deceleration ramp.
+#
+def decelRamp(axis, vstart, vend, a, nSteps, forceFill=False):
+
+    assert(vstart >= vend)
+    # assert(nSteps)
+
+    pulses = [] # (tstep, dt, timerValue)
+
+    steps_per_mm = PrinterProfile.getStepsPerMM(axis)
+    sPerStep = 1.0/steps_per_mm
+
+    v = vstart
+    tstep = 0
+    s = sPerStep
+
+    while v > vend and nSteps > 0:
+
+        # Speed after this step
+        vn1 = vAccelPerDist(vstart, -a, s)
+
+        # Time we need for this speed change/this step:
+        dv = v - vn1
+        dt = dv / a
+
+        # Timervalue for this time
+        timerValue = int(dt * fTimer)
+
+        if timerValue > ddprintconstants.maxTimerValue16:
+            # print "break on timeroverflow, v after this step:", vn1, s, dt, timerValue
+            break
+
+        # print "v after this step:", vn1, s, dt, timerValue
+
+        pulses.append((tstep, dt, timerValue))
+
+        s += sPerStep
+        v = vn1
+        tstep += dt
+        nSteps -= 1
+
+    # Add missing steps in timeroverflow case
+    if forceFill and nSteps > 0:
+
+        dt = min(sPerStep / vstart, ddprintconstants.maxTimerValue16/fTimer)
+        timerValue = min(int(dt * fTimer), ddprintconstants.maxTimerValue16)
+
+        tstep = 0
+        newPulses = []
+        for i in range(nSteps):
+
+            newPulses.append((tstep, dt, timerValue))
+
+            nSteps -= 1
+            tstep += dt
+
+        for p in pulses:
+            newPulses.append((p[0] + tstep, p[1], p[2]))
+
+        # pprint.pprint(newPulses)
+        return newPulses
+
+    if forceFill:
+        assert(nSteps == 0)
+
+    return pulses
+
+####################################################################################################
+#
+# Create a list of stepper pulses for a deceleration ramp.
+#
+def decelRampXY(leadAxis, vstart, vend, a, absSteps):
+
+    assert(vstart >= vend)
+
+    pulses = [] # (tstep, dt, timerValue)
+
+    leadSteps = absSteps[leadAxis]
+
+    otherAxis = Y_AXIS if leadAxis == X_AXIS else X_AXIS
+    otherSteps = absSteps[otherAxis]
+
+    bFactor = float(otherSteps) / leadSteps
+    # print "bfactor:", bFactor
+    otherCount = 0
+
+    steps_per_mm = PrinterProfile.getStepsPerMM(leadAxis)
+    sPerStep = 1.0/steps_per_mm
+
+    tstep = 0
+
+    # Lower speed
+    maxStepTime = ddprintconstants.maxTimerValue16 / fTimer
+    vmin = sPerStep / maxStepTime
+
+    stepsToDo = 0
+    if vstart > vmin:
+
+        vend = max(vend, vmin)
+
+        # Number of lead axis steps needed
+        dv = vstart - vend
+        dt = dv / a
+        s = accelDist(vstart, -a, dt)
+
+        # print "vstart, vend, a", vstart, vend, a
+        # print "dv, dt, s:", dv, dt, s
+
+        stepsToDo = int(s * steps_per_mm)
+
+    else:
+
+        vstart = vmin
+
+    # print "doing ", stepsToDo, "of", leadSteps
+
+    # # debug
+    # prepended = False
+
+    if leadSteps > stepsToDo:
+
+        # Prepend fast steps
+        for i in range(leadSteps - stepsToDo):
+
+            # Time we need for this speed change/this step:
+            dt = sPerStep / vstart
+
+            # Timervalue for this time
+            timerValue = int(dt * fTimer)
+
+            stepBits = [0, 0]
+            stepBits[leadAxis] = 1
+
+            otherCount += bFactor
+
+            if otherCount >= 0.5:
+                stepBits[otherAxis] = 1
+                otherSteps -= 1
+                otherCount -= 1.0
+
+            # print "steps, otherCount:", stepBits, otherCount
+            pulses.append((tstep, dt, timerValue, stepBits))
+
+            tstep += dt
+            leadSteps -= 1
+
+        # prepended = True
+
+    v = vstart
+    s = sPerStep
+
+    # while v > vend and leadSteps > 0:
+    while leadSteps > 0:
+
+        # Speed after this step
+        # print "vstar, -a, s:", vstart, -a, s
+        vn1 = vAccelPerDist(vstart, -a, s)
+
+        # Time we need for this speed change/this step:
+        dv = v - vn1
+        dt = dv / a
+
+        # Timervalue for this time
+        timerValue = int(dt * fTimer)
+
+        if timerValue > ddprintconstants.maxTimerValue16:
+            # print "break on timeroverflow, v after this step:", vn1, s, dt, timerValue
+            break
+
+        # print "v after this step:", vn1, s, dt, timerValue
+
+        stepBits = [0, 0]
+        stepBits[leadAxis] = 1
+
+        otherCount += bFactor
+
+        # if otherCount >= 1:
+        if otherCount >= 0.5:
+            stepBits[otherAxis] = 1
+            otherSteps -= 1
+            otherCount -= 1.0
+
+        # print "steps, otherCount:", stepBits, otherCount
+        pulses.append((tstep, dt, timerValue, stepBits))
+
+        s += sPerStep
+        v = vn1
+        tstep += dt
+        leadSteps -= 1
+
+    # print "Missing steps: ", leadSteps, otherSteps
+
+    # if prepended:
+        # print "prepended steps:"
+        # pprint.pprint(pulses)
+
+    assert(leadSteps == 0 and otherSteps == 0)
+    return pulses
+
+####################################################################################################
+def pdbAssert(expr):
+
+    if not expr:
+        import pdb
+        pdb.set_trace()
+####################################################################################################
 
 
 

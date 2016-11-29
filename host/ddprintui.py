@@ -213,6 +213,7 @@ class MainForm(npyscreen.Form):
         parser.add_argument("-nc", dest="noCoolDown", action="store", type=bool, help="Debug: don't wait for heater cool down after print.", default=False)
         parser.add_argument("-t0", dest="t0", action="store", type=int, help="Temp 0 (heated bed), default comes from mat. profile.")
         parser.add_argument("-t1", dest="t1", action="store", type=int, help="Temp 1 (hotend 1), default comes from mat. profile.")
+        parser.add_argument("-kAdvance", dest="kAdvance", action="store", type=float, help="K-Advance factor, default comes from mat. profile.")
         parser.add_argument("-mat", dest="mat", action="store", help="Name of material profile to use [pla, abs...], default is pla.", default="pla_1.75mm")
         parser.add_argument("-smat", dest="smat", action="store", help="Name of specific material profile to use.")
         parser.add_argument("-noz", dest="nozzle", action="store", help="Name of nozzle profile to use [nozzle40, nozzle80...], default is nozzle40.", default="nozzle40")
@@ -419,8 +420,8 @@ class MainForm(npyscreen.Form):
             # 
             # Add a move to lift the nozzle from the print if not ultigcode flavor
             # 
-            if not self.parser.ultiGcodeFlavor:
-                util.endOfPrintLift(self.parser)
+            # if not self.parser.ultiGcodeFlavor:
+            util.endOfPrintLift(self.parser)
 
             self.planner.finishMoves()
             self.printer.sendCommand(CmdEOT)

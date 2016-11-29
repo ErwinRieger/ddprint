@@ -20,7 +20,9 @@ AVRDUDE = $(ARDUINO_DIR)/hardware/tools/avrdude
 AVRDUDE_ARD_BAUDRATE = 115200
 AVRDUDE_ARD_EXTRAOPTS = -D 
 
-include ./Arduino.mk
+ARDMK_DIR         = ./
+PARSE_BOARD = $(ARDMK_DIR)/ard-parse-boards --boards_txt=$(BOARDS_TXT)
+include $(ARDMK_DIR)/Arduino.mk
 
 # Mega/Ramps board
 CPPFLAGS      +=  -DMOTHERBOARD=72 -I./fw

@@ -41,10 +41,12 @@
 
 #define CmdG1              0x7
 #define CmdDirG1           0x8
-#define CmdG1_24           0x9
-#define CmdDirG1_24        0xa
+
+
 #define CmdSyncTargetTemp  0xb
 #define CmdDwellMS         0xc
+#define CmdG1Raw           0xd
+#define CmdDirG1Raw        0xe
 
 //
 // Direct commands:
@@ -67,7 +69,7 @@
     #define CmdSetHeaterY       139
 #endif
 
-#define CmdGetState             150
+#define CmdGetDirBits           150
 #define CmdGetHomed             151
 #define CmdGetEndstops          152
 #define CmdGetEepromVersion     153

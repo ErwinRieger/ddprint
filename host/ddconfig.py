@@ -22,33 +22,39 @@
 #
 # Enable Debugging
 #
-debugMoves = True
 debugMoves = False
+debugAutoTemp = False
 
+#
+# Enable mathplotlib plotting of planned paths
+#
 debugPlot = True
 debugPlot = False
 
-debugAutoTemp = False
-debugAutoTemp = True
-
+# Define which stage of path planning to plot
+# plotLevelPlanned: plot path after advance-planning
+# plotLevelSplitted: plot advance-splitted path
+debugPlotLevel = "plotLevelPlanned"
+debugPlotLevel = "plotLevelSplitted"
 
 ############################################################################
 #
 # AutoTemp algorithm
 #
+UseExtrusionAutoTemp = False
 UseExtrusionAutoTemp = True
 
 #####################################################################
 #
 # Auto extrusion adjust, always enabled
 #
-# UseExtrusionAdjust = True
+############### xxx not used??? UseExtrusionAdjust = True
 
 #####################################################################
 #
 # Limit extrusion by hotend temperature in the firmware
 #
-UseExtrusionLimit = True
+# xxx not used??? UseExtrusionLimit = True
 
 
 

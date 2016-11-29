@@ -196,14 +196,14 @@ extern RegUDR0 UDR0;
     extern int TCCR1A;
     extern int TCCR3B;
     extern int TCCR3A;
-    extern int OCR1A;
-    extern int OCR1B;
+    extern unsigned short OCR1A;
+    extern unsigned short OCR1B;
     extern int TCNT1;
     extern int TCNT3;
     extern int TIMSK0;
     extern int TIMSK1;
     extern int TIMSK3;
-    extern int OCR3A;
+    extern unsigned short OCR3A;
     extern int SPCR;
     extern int SPSR;
 

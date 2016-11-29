@@ -27,8 +27,9 @@ from ddplanner import Planner
 from ddprintcommands import CmdSyncFanSpeed, CmdUnknown, CmdDwellMS
 from ddprintconstants import dimNames
 from ddconfig import *
-from move import VVector, Move
-from ddprintutil import A_AXIS, B_AXIS, vectorDistance, circaf
+from move import TravelMove, PrintMove
+from ddvector import Vector, vectorDistance
+from ddprintutil import X_AXIS, Y_AXIS, Z_AXIS, A_AXIS, B_AXIS, circaf
 
 import ddprintutil as util
 
@@ -47,6 +48,47 @@ def getSimplifyLayer(line):
         return int(lstr)
 
     return None
+
+#####################################################################################################################################################
+# Move-type, Matrix aller möglichen kombinationen:
+# X Y Z E Movetype
+# - - - - --------
+# 1 0 0 0 travel
+# 0 1 0 0 travel
+# 1 1 0 0 travel
+# 0 0 1 0 travel
+# 1 0 1 0 travel
+# 0 1 1 0 travel
+# 1 1 1 0 travel
+# 0 0 0 1 travel
+# 1 0 0 1 print
+# 0 1 0 1 print
+# 1 1 0 1 print
+# 0 0 1 1 invalid
+# 1 0 1 1 invalid
+# 0 1 1 1 invalid
+# 1 1 1 1 invalid
+#
+def _isHeadMove(displacement_vector):
+    return displacement_vector[X_AXIS] or displacement_vector[Y_AXIS] or displacement_vector[Z_AXIS]
+
+def _isExtrudingMove(displacement_vector, extruder):
+    return displacement_vector[extruder]
+
+def _isZMove(displacement_vector):
+    return displacement_vector[Z_AXIS]
+
+def isPrintMove(displacement_vector):
+
+    printMove = _isHeadMove(displacement_vector) and (_isExtrudingMove(displacement_vector, A_AXIS) or _isExtrudingMove(displacement_vector, B_AXIS))
+
+    if printMove and _isZMove(displacement_vector):
+        print "ERROR: printmove with z-part:", displacement_vector.vv
+        assert(0)
+
+    return printMove
+
+#####################################################################################################################################################
 
 class UM2GcodeParser: 
 
@@ -102,34 +144,21 @@ class UM2GcodeParser:
         return cls.__single
 
     def reset(self):
-        self._gcodePos = util.MyPoint()
-        self._realPos = util.MyPoint()
+        self.position = util.MyPoint()
         self.feedrate = None
         self.numParts = 1
 
         # For G10/G11 handling: xxx session handling
-        self.retracted = False
+        # self.retracted = False
 
         self.ultiGcodeFlavor = False
 
     # Set current virtual printer position
-    def set_position(self, point):
-        self._gcodePos = point.copy()
-        self._realPos = point.copy()
+    def setPos(self, point):
+        self.position = point.copy()
 
-    def getRealPos(self):
-        return self._realPos.copy()
-
-    def getGcodePos(self):
-        return self._gcodePos.copy()
-
-    def setRealPos(self, pos):
-        # print "setRealPos:", pos
-        self._realPos = pos.copy()
-
-    def setGcodePos(self, pos):
-        # print "setGcodePos:", pos
-        self._gcodePos = pos.copy()
+    def getPos(self):
+        return self.position.copy()
 
     def preParse(self, fn):
 
@@ -138,14 +167,14 @@ class UM2GcodeParser:
         tmpfname = ("/tmp/%d_" % id(fn)) + os.path.basename(fn)
         shutil.copyfile(fn, tmpfname)
 
-        f = open(fn)
+        f = open(tmpfname)
 
         print "Unlinking temp. copy of gcode input: ", tmpfname
         os.unlink(tmpfname)
 
         self.numParts = 0
 
-        print "pre-parsing ", fn
+        print "pre-parsing ", fn, tmpfname
         for line in f:
             line = line.strip()
             if line.startswith(";"):
@@ -174,7 +203,6 @@ class UM2GcodeParser:
                     self.ultiGcodeFlavor = True
                     # To compute extrude length from volume (see getValues()):
                     # V = A * h, h = V / A, A = pi/4 * diameter²
-                    # self.e_to_filament_length *= 4 / (math.pi * pow(MatProfile.getMatDiameter(), 2))
                     aFilament = MatProfile.getMatArea()
                     self.e_to_filament_length = self.e_to_filament_length / aFilament
 
@@ -242,15 +270,12 @@ class UM2GcodeParser:
                 # print "replace feedrate in mm/min with mm/sec..."
                 factor = 1.0 / 60
 
-            try:
-                values[valueChar] = int(rest) * factor
-            except ValueError:
-                values[valueChar] = float(rest) * factor
+            # try:
+                # values[valueChar] = int(rest) * factor
+            # except ValueError:
+            values[valueChar] = float(rest) * factor
 
         return values
-
-    # def finishMoves(self):
-        # self.planner.finishMoves()
 
     def m25_stop_reading(self, line, values):
         print "XXX todo implement M25", values
@@ -263,7 +288,7 @@ class UM2GcodeParser:
         print "ignoring m84..."
 
     def m104_extruder_temp(self, line, values):
-        print "ignoring m104..."
+        print "ignoring m104 (set extruder temp)..."
 
     def m106_fan_on(self, line, values):
         # print "m106_fan_on", values
@@ -305,27 +330,63 @@ class UM2GcodeParser:
     def g10_retract(self, line, values):
         # print "g10_retract", values
 
-        # Compute retract 
-        if not self.retracted:
-            current_position = self.getRealPos()
-            values = {
-                    "F": PrinterProfile.getRetractFeedrate(),
-                    "A": current_position[A_AXIS] - PrinterProfile.getRetractLength(),
-                    }
-            self.g0("G10", values)
-            self.retracted = True
+        # if self.retracted:
+            # return
 
+        current_position = self.getPos()
+
+        """
+        values = {
+                "F": PrinterProfile.getRetractFeedrate(),
+                "A": current_position[A_AXIS] - PrinterProfile.getRetractLength(),
+                }
+        self.g0("G10", values)
+        """
+
+        rl = - PrinterProfile.getRetractLength()
+
+        current_position[A_AXIS] += rl
+
+        self.planner.addMove(TravelMove(
+            line,
+            displacement_vector=Vector([0.0, 0.0, 0.0, rl, 0.0]),
+            displacement_vector_steps=[0.0, 0.0, 0.0, rl * self.steps_per_mm[A_AXIS], 0.0],
+            feedrate=min(PrinterProfile.getRetractFeedrate(), PrinterProfile.getMaxFeedrate(3))
+            ))
+
+        # self.retracted = True
+        self.setPos(current_position)
+            
     def g11_retract_recover(self, line, values):
         # print "g11_retract_recover", values
 
-        if self.retracted:
-            current_position = self.getRealPos()
-            values = {
-                    "F": PrinterProfile.getRetractFeedrate(),
-                    "A": current_position[A_AXIS] + PrinterProfile.getRetractLength(),
-                    }
-            self.g0("G11", values)
-            self.retracted = False
+        # if not self.retracted:
+            # return
+
+        current_position = self.getPos()
+
+        """
+        values = {
+                "F": PrinterProfile.getRetractFeedrate(),
+                "A": current_position[A_AXIS] + PrinterProfile.getRetractLength(),
+                }
+        self.g0("G11", values)
+        self.retracted = False
+        """
+
+        rl = PrinterProfile.getRetractLength()
+
+        current_position[A_AXIS] += rl
+
+        self.planner.addMove(TravelMove(
+            line,
+            displacement_vector=Vector([0.0, 0.0, 0.0, rl, 0.0]),
+            displacement_vector_steps=[0.0, 0.0, 0.0, rl * self.steps_per_mm[A_AXIS], 0.0],
+            feedrate=min(PrinterProfile.getRetractFeedrate(), PrinterProfile.getMaxFeedrate(3))
+            ))
+
+        # self.retracted = False
+        self.setPos(current_position)
 
     def g21_metric_values(self, line, values):
         # We're always using metric values...
@@ -345,45 +406,36 @@ class UM2GcodeParser:
 
     def g92_set_pos(self, line, values):
 
-        gcodePos = self.getGcodePos()
-        realPos = self.getRealPos()
+        realPos = self.getPos()
         for key in values:
-            gcodePos[key] = values[key]
             realPos[key] = values[key]
 
-        # self.set_position(pos)
-        self.setGcodePos(gcodePos)
-        self.setRealPos(realPos)
+        self.setPos(realPos)
+
+        self.planner.g92(values)
 
     def g0(self, line, values):
 
         # print "g0", values
 
-        feedrate = self.feedrate
         if 'F' in values:
-            feedrate = values['F']
+
+            self.feedrate = values['F']
+
+        feedrate = self.feedrate
 
         if not ("X" in values or "Y" in values or "Z" in values or "A" in values or "B" in values):
 
             # Nothing to move, F-Only gcode or invalid
-            assert("F" in values)
-
-            self.feedrate = feedrate
             return
 
-        curGcodePos = self.getGcodePos()
-        curRealPos = self.getRealPos()
-
-        newGcodePos = curGcodePos.copy()
+        curRealPos = self.getPos()
         newRealPos = curRealPos.copy()
 
-        # print "curGcodePos: ", newGcodePos
         # print "curRealPos: ", newRealPos
 
-        displacement_vector = VVector()
-        displacement_vector_steps = [0, 0, 0, 0, 0]
-
-        eOnlyByGcode = True
+        displacement_vector = Vector([0.0, 0.0, 0.0, 0.0, 0.0])
+        displacement_vector_steps = [0.0, 0.0, 0.0, 0.0, 0.0]
 
         for dim in range(5):
 
@@ -391,80 +443,42 @@ class UM2GcodeParser:
             if dimC not in values:
                 continue
 
-            gDiff = values[dimC] - curGcodePos[dim]
-            if gDiff and dimC in ['X', 'Y', 'Z']:
-                eOnlyByGcode = False
-
             rDiff = values[dimC] - curRealPos[dim]
-
-            nSteps = (int)((rDiff * self.steps_per_mm[dim]) + 0.5)
-
-            displacement_vector_steps[dim] = nSteps
-
-            # debug
-            # delta = nSteps * self.mm_per_step[dim] - rDiff
-            # print "values: ", dimC, rDiff, nSteps, delta
-            # end debug
-
-            rDiff = nSteps * self.mm_per_step[dim]
-                    
             displacement_vector[dim] = rDiff
 
-            newGcodePos[dimC] = values[dimC]
-            newRealPos[dim] = curRealPos[dim] + rDiff
+            nSteps = rDiff * self.steps_per_mm[dim]
+            displacement_vector_steps[dim] = nSteps
 
-        #
-        # Check if zero or small length:
-        #
-        if displacement_vector_steps == [0, 0, 0, 0, 0]:
-            # Skip this very small move, the delta of this move is not lost,
-            # since it is included in the next absolute gcode command.
-            # Current position has not been updated, yet (see self.state.set_position(values))
-            # at the end of this method.
-            
-            # But respect a possible feedrate change:
-            if not eOnlyByGcode:
-                self.feedrate = feedrate
+            newRealPos[dim] = values[dimC]
 
+        # Check if zero length:
+        if displacement_vector_steps == [0.0, 0.0, 0.0, 0.0, 0.0]:
+            # Skip this empty move.
             return
 
-        # Get head move distance:
-        move_distance = vectorDistance(curRealPos[:3], newRealPos[:3])
-
-        if move_distance != 0:
-
-            assert(not eOnlyByGcode)
-
-        if debugMoves:
-            for dim in range(5):
-                assert(circaf(newRealPos[dim] - curRealPos[dim], displacement_vector[dim], 0.000001))
-
+        # Constrain feedrate to max values
         feedrateVector = displacement_vector._setLength(feedrate).constrain(self.maxFeedrateVector)
         if feedrateVector:
-            feedrate = feedrateVector.len5()
+            feedrate = feedrateVector.length()
 
-        # print "pos:", stepped_point, "[steps]"
-        # print "displacement_vector:", displacement_vector, "[mm]"
-        # print "feedrate:", feedrate, "[mm/s]"
-
-        self.planner.addMove(Move(
-            line,
-            # stepped_point=stepped_point,
-            displacement_vector=displacement_vector,
-            displacement_vector_steps=displacement_vector_steps,
-            feedrate=feedrate, # mm/s
-            ))
+        if isPrintMove(displacement_vector):
+            self.planner.addMove(PrintMove(
+                line,
+                displacement_vector=displacement_vector,
+                displacement_vector_steps=displacement_vector_steps,
+                feedrate=feedrate, # mm/s
+                maxAccelV = self.planner.advance.maxAxisAcceleration,
+                ))
+        else:
+            self.planner.addMove(TravelMove(
+                line,
+                displacement_vector=displacement_vector,
+                displacement_vector_steps=displacement_vector_steps,
+                feedrate=feedrate, # mm/s
+                ))
             
-        if not eOnlyByGcode:
-            self.feedrate = feedrate
-        # else:
-            # print "NOT storing new feedrate of E-Only move '%s'!" % comment
-
-        # print "newGcodePos: ", newGcodePos
         # print "newRealPos: ", newRealPos
-        self.setGcodePos(newGcodePos)
-        self.setRealPos(newRealPos)
-
+        self.setPos(newRealPos)
 
     def unknown(self, line, values):
         self.planner.addSynchronizedCommand(CmdUnknown, p1=packedvalue.uint8_t(values["X"]))

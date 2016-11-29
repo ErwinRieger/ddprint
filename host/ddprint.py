@@ -53,7 +53,7 @@ import argparse
 logging.basicConfig(level=logging.DEBUG)
 
 import ddprintutil as util, gcodeparser, packedvalue, ddhome
-import ddtest
+import ddtest, ddadvance
 
 from ddprofile import PrinterProfile, MatProfile, NozzleProfile
 from ddplanner import Planner
@@ -450,6 +450,8 @@ def main():
     argParser.add_argument("-t0", dest="t0", action="store", type=int, help="Temp 0 (heated bed), default comes from mat. profile.")
     argParser.add_argument("-t1", dest="t1", action="store", type=int, help="Temp 1 (hotend 1), default comes from mat. profile.")
 
+    argParser.add_argument("-kAdvance", dest="kAdvance", action="store", type=float, help="K-Advance factor, default comes from mat. profile.")
+
     argParser.add_argument("-mat", dest="mat", action="store", help="Name of generic material profile to use [pla, abs...], default is pla.", default="pla_1.75mm")
     argParser.add_argument("-smat", dest="smat", action="store", help="Name of specific material profile to use.")
     argParser.add_argument("-noz", dest="nozzle", action="store", help="Name of nozzle profile to use [nozzle40, nozzle80...], default is nozzle40.", default="nozzle40")
@@ -635,8 +637,8 @@ def main():
         # 
         # Add a move to lift the nozzle from the print if not ultigcode flavor
         # 
-        if not parser.ultiGcodeFlavor:
-            util.endOfPrintLift(parser)
+        # if not parser.ultiGcodeFlavor:
+        util.endOfPrintLift(parser)
 
         planner.finishMoves()
         printer.sendCommand(CmdEOT)
@@ -678,7 +680,7 @@ def main():
             Y = planner.Y_HOME_POS,
             Z = planner.Z_HOME_POS, #  - 20,
             )
-        parser.set_position(homePosMM)
+        parser.setPos(homePosMM)
 
         f = parser.preParse(args.gfile)
         lineNr = 0
@@ -846,8 +848,9 @@ def main():
     elif args.mode == 'test':
 
         printer.commandInit(args)
-        util.downloadTempTable(printer)
-        printer.readMore()
+        dirbits = printer.getDirBits()
+        print "dirbits:", dirbits
+        # printer.readMore()
 
     elif args.mode == "writeEepromFloat":
 
@@ -862,7 +865,7 @@ if __name__ == "__main__":
     res = 0
 
     try:
-      main()
+        main()
     except:
         print "Exception: ", traceback.format_exc()
         res = 1

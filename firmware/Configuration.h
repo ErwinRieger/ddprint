@@ -241,11 +241,15 @@ const bool Z_ENDSTOPS_INVERTING = true; // set to true to invert the logic of th
 #define DISABLE_Z false
 #define DISABLE_E false // For all extruders
 
-#define INVERT_X_DIR true     // for Mendel set to false, for Orca set to true
-#define INVERT_Y_DIR false    // for Mendel set to true, for Orca set to false
-#define INVERT_Z_DIR true     // for Mendel set to false, for Orca set to true
-#define INVERT_E1_DIR false    // for direct drive extruder v9 set to true, for geared extruder set to false
-#define INVERT_E2_DIR false   // for direct drive extruder v9 set to true, for geared extruder set to false
+//
+// Stepper direction pins. Set this to true, if the output pin has to be switched HIGH
+// for a movement into positive direction.
+//
+#define POSITIVE_X_DIR false
+#define POSITIVE_Y_DIR true
+#define POSITIVE_Z_DIR false
+#define POSITIVE_E1_DIR true
+#define POSITIVE_E2_DIR true
 
 // ENDSTOP SETTINGS:
 // Sets direction of endstops when homing; 1=MAX, -1=MIN

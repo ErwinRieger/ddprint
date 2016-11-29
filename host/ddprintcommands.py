@@ -31,10 +31,10 @@ CmdBlock         = 0x6 # A 512byte block of a lager command
 CmdG1            = 0x7
 CmdDirG1         = 0x8 # CmdDirBits and CmdG1 combined
 
-CmdG1_24         = 0x9 # Same as CmdG1, but with 32 bit accel- and deccel-timervalues (vor very slow moves)
-CmdDirG1_24      = 0xa # CmdDirBits and CmdG1_24 combined
 CmdSyncTargetTemp= 0xb # Parameters: heater, temp 
 CmdDwellMS       = 0xc # Parameters: dwell time in mS
+CmdG1Raw         = 0xd # Raw print move steps, bresenham algo already done.
+CmdDirG1Raw      = 0xe # CmdDirBits and CmdG1Raw combined
 
 CmdUnknown       = 0x7f # Unknown command for debugging
 
@@ -69,7 +69,7 @@ CmdStopMove = 138
 CmdSetHeaterY = 139
 
 # Getters, they return a string of the form "ret: <expr>"
-# currently not used: CmdGetState = 150
+CmdGetDirBits = 150
 CmdGetHomed = 151
 CmdGetEndstops = 152   # Get endstop state and pos
 CmdGetEepromVersion = 153
@@ -89,11 +89,11 @@ CmdEnableFRLimit = 165 # Enable/disable flowrate limit
 CommandNames = {
     CmdNull: "CmdNull",
     CmdG1: "CmdG1",
-    CmdG1_24: "CmdG1_24",
     CmdDirBits: "CmdDirBits",
     CmdBlock: "CmdBlock",
     CmdDirG1: "CmdDirG1",
-    CmdDirG1_24: "CmdDirG1_24",
+    CmdG1Raw: "CmdG1Raw",
+    CmdDirG1Raw: "CmdDirG1Raw",
     CmdSyncTargetTemp: "CmdSyncTargetTemp",
     CmdDwellMS: "CmdDwellMS",
     CmdUnknown: "CmdUnknown",
@@ -128,8 +128,8 @@ CommandNames = {
     CmdSetHeaterY: "CmdSetHeaterY",
     CmdRaw: "CmdRaw",
     
-    # Getters, they return a string of the form "ret: <expr>"
-    # currently not used: CmdGetState: "CmdGetState",
+    # Getters
+    CmdGetDirBits: "CmdGetDirBits",
     CmdGetHomed: "CmdGetHomed",
     CmdGetEndstops: "CmdGetEndstops",
     CmdGetEepromVersion: "CmdGetEepromVersion",

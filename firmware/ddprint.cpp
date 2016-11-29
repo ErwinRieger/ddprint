@@ -448,11 +448,11 @@ bool FillBufferTask::Run() {
                 case CmdDirG1:
                     goto HandleCmdDirG1;
 
-                case CmdG1_24:
-                    goto HandleCmdG1_24;
+                case CmdG1Raw:
+                    goto HandleCmdG1Raw;
 
-                case CmdDirG1_24:
-                    goto HandleCmdDirG1_24;
+                case CmdDirG1Raw:
+                    goto HandleCmdDirG1Raw;
 
                 // case CmdDirBits:
                     // goto HandleCmdDirBits;
@@ -486,7 +486,6 @@ bool FillBufferTask::Run() {
                     kill();
             }
 
-            // XXX use template to merge CmdG1 and CmdG1_24
             HandleCmdDirG1:
 
                 sDReader.setBytesToRead1();
@@ -678,171 +677,82 @@ bool FillBufferTask::Run() {
             
                 PT_RESTART();
 
-            HandleCmdDirG1_24:
+            HandleCmdDirG1Raw:
 
                 sDReader.setBytesToRead1();
                 PT_WAIT_THREAD(sDReader);
 
                 cmdDir = *sDReader.readData;
 
-            HandleCmdG1_24:
+            HandleCmdG1Raw:
 
                 // SERIAL_ECHOLNPGM("C1");
 
-                //
-                // Read index of lead axis
-                //
-                sDReader.setBytesToRead1();
-                PT_WAIT_THREAD(sDReader);
-                leadAxis = *sDReader.readData;
+                // ???
+                // cmdSync = true;
 
                 //
-                // Read array of absolute step distances of the 5 axes
+                // Read len of pulses array, 2 bytes short uint
                 //
-                sDReader.setBytesToRead4();
-                PT_WAIT_THREAD(sDReader);
-                absSteps[0] = FromBuf(int32_t, sDReader.readData);
-
-                sDReader.setBytesToRead4();
-                PT_WAIT_THREAD(sDReader);
-                absSteps[1] = FromBuf(int32_t, sDReader.readData);
-
-                sDReader.setBytesToRead4();
-                PT_WAIT_THREAD(sDReader);
-                absSteps[2] = FromBuf(int32_t, sDReader.readData);
-
-                sDReader.setBytesToRead4();
-                PT_WAIT_THREAD(sDReader);
-                absSteps[3] = FromBuf(int32_t, sDReader.readData);
-
-                sDReader.setBytesToRead4();
-                PT_WAIT_THREAD(sDReader);
-                absSteps[4] = FromBuf(int32_t, sDReader.readData);
-
-                // nAccel = sDReader.readPayloadUInt16();
                 sDReader.setBytesToRead2();
                 PT_WAIT_THREAD(sDReader);
                 nAccel = FromBuf(uint16_t, sDReader.readData);
                 // SERIAL_ECHOLN(nAccel);
 
-                // tLin = sDReader.readPayloadUInt16();
+                //////////////////////////////////////////////////////
                 sDReader.setBytesToRead2();
                 PT_WAIT_THREAD(sDReader);
-                tLin = FromBuf(uint16_t, sDReader.readData);
 
-                // nDeccel = sDReader.readPayloadUInt16();
-                sDReader.setBytesToRead2();
-                PT_WAIT_THREAD(sDReader);
-                nDeccel = FromBuf(uint16_t, sDReader.readData);
-                // SERIAL_ECHOLN(nDeccel);
+#if defined(USEExtrusionRateTable)
+                leadFactor = FromBuf(uint16_t, sDReader.readData);
 
-                //
-                // Compute bresenham factors
-                //
+                if (leadFactor) {
 
-                deltaLead = absSteps[leadAxis];
+                    int16_t curTempIndex = (current_temperature[0] - extrusionLimitBaseTemp) / 2;
 
-                //  d = (2 * deltay) - deltax 
-                //    = d1 - deltax
-                // d1 = (2 * deltay)
-                // d2 = 2 * (deltay - deltax)
-                //    = 2 * deltay - 2 * deltax
-                //    = d - deltax
-                for (i=0; i<5; i++) {
+                    if (curTempIndex < 0) {
 
-                    if (i == leadAxis)
-                        continue;
-
-                    d1 = 2 * absSteps[i];
-                    d = d1 - deltaLead;
-                    d2 = d - deltaLead;
-
-                    d_axis[i] = d;
-                    d1_axis[i] = d1;
-                    d2_axis[i] = d2;
-
-                    // SERIAL_ECHOPGM("d/d1/d2: ");
-                    // SERIAL_ECHO(d);
-                    // SERIAL_ECHOPGM(",");
-                    // SERIAL_ECHO(d1);
-                    // SERIAL_ECHOPGM(",");
-                    // SERIAL_ECHOLN(d2);
-                }
-
-
-                for (step=0; step < deltaLead; step++) {
-
-                    //
-                    // Compute stepper bits, bresenham
-                    //
-                    stepBits = 1 << leadAxis;
-
-                    for (i=0; i<5; i++) {
-                        if (i == leadAxis)
-                            continue;
-
-                        if (d_axis[i] < 0) {
-                            //  d_axis[a] = d + 2 * abs_displacement_vector_steps[a]
-                            d_axis[i] += d1_axis[i];
-                        }
-                        else {
-                            //  d_axis[a] = d + 2 * (abs_displacement_vector_steps[a] - deltaLead)
-                            d_axis[i] += d2_axis[i];
-                            stepBits |= 1 << i;
-                        }
+                        maxTempSpeed = ((uint32_t)tempExtrusionRateTable[0] * 1000) / leadFactor;
                     }
+                    else if (curTempIndex >= NExtrusionLimit) {
 
-                    //
-                    // Get timer value
-                    //
-
-                    if (step < nAccel) {
-
-                        // Acceleration
-                        sDReader.setBytesToRead3();
-                        PT_WAIT_THREAD(sDReader);
-                        timerLoop = FromBuf(uint8_t, sDReader.readData);
-                        timer = FromBuf(uint16_t, sDReader.readData);
-
-                        PT_WAIT_WHILE(stepBuffer.full());
-                        if (timer & 0xff00) {
-                            if (timerLoop)
-                                stepBuffer.push5(cmdDir, stepBits, timer, timerLoop);
-                            else
-                                stepBuffer.push4(cmdDir, stepBits, timer);
-                        }
-                        else
-                            stepBuffer.push3(cmdDir, stepBits, timer);
-                    }
-                    else if ((deltaLead - step) <= nDeccel) {
-
-                        // Decceleration
-                        sDReader.setBytesToRead3();
-                        PT_WAIT_THREAD(sDReader);
-                        timerLoop = FromBuf(uint8_t, sDReader.readData);
-                        timer = FromBuf(uint16_t, sDReader.readData);
-
-                        PT_WAIT_WHILE(stepBuffer.full());
-                        if (timer & 0xff00) {
-                            if (timerLoop)
-                                stepBuffer.push5(cmdDir, stepBits, timer, timerLoop);
-                            else
-                                stepBuffer.push4(cmdDir, stepBits, timer);
-                        }
-                        else
-                            stepBuffer.push3(cmdDir, stepBits, timer);
+                        maxTempSpeed = ((uint32_t)tempExtrusionRateTable[NExtrusionLimit-1] * 1000) / leadFactor;
                     }
                     else {
-                        // linear part
-                        PT_WAIT_WHILE(stepBuffer.full());
-                        if (tLin & 0xff00)
-                            stepBuffer.push4(cmdDir, stepBits, tLin);
-                        else
-                            stepBuffer.push3(cmdDir, stepBits, tLin);
+
+                        maxTempSpeed = ((uint32_t)tempExtrusionRateTable[curTempIndex] * 1000) / leadFactor;
                     }
+                }
+                else {
+
+                    maxTempSpeed = 0;
+                }
+#endif
+    
+                //////////////////////////////////////////////////////
+
+                //
+                // Read pulse array, elements of 16bit timer and 8bit stepper mask
+                //
+                for (step=0; step < nAccel; step++) {
+
+                    sDReader.setBytesToRead2();
+                    PT_WAIT_THREAD(sDReader);
+                    timer = STD max ( FromBuf(uint16_t, sDReader.readData), MAXTEMPSPEED );
+
+                    sDReader.setBytesToRead1();
+                    PT_WAIT_THREAD(sDReader);
+                    stepBits = *sDReader.readData;
+
+                    PT_WAIT_WHILE(stepBuffer.full());
+                    if (timer & 0xff00)
+                        stepBuffer.push4(cmdDir, stepBits, timer);
+                    else
+                        stepBuffer.push3(cmdDir, stepBits, timer);
 
                     cmdDir &= ~0x80; // clear set-direction bit
                 }
+            
                 PT_RESTART();
 
             HandleCmdSyncFanSpeed:
@@ -922,12 +832,16 @@ void Printer::printerInit() {
         swapErased = true;
     }
 
-//xxxxxxxxxxx
-sDReader.flush();
-fillBufferTask.flush();
-stepBuffer.flush();
+    massert(printerState <= StateInit);
 
     swapDev.reset();
+
+//xxxxxxxxxxx
+sDReader.flush();
+
+    fillBufferTask.flush();
+
+stepBuffer.flush();
 
     printerState = StateInit;
     eotReceived = false;
@@ -1167,11 +1081,6 @@ void Printer::cmdDisableStepperIsr() {
     SERIAL_PROTOCOLLNPGM(MSG_OK);
 }
 
-void Printer::cmdGetState() {
-
-    SERIAL_ECHOPGM("Res:");
-    SERIAL_ECHOLN(printerState);
-}
 #endif
 
 void Printer::cmdGetHomed() {
@@ -1244,6 +1153,15 @@ void Printer::cmdGetPos() {
     txBuffer.sendResponseEnd();
 }
 
+void Printer::cmdGetDirBits() {
+
+    uint8_t dirbits = st_get_direction<XMove>() | st_get_direction<YMove>() | st_get_direction<ZMove>() | st_get_direction<EMove>();
+
+    txBuffer.sendResponseStart(CmdGetDirBits);
+    txBuffer.sendResponseUint8(dirbits);
+    txBuffer.sendResponseEnd();
+}
+
 // uint16_t waitCount = 0;
 void Printer::cmdGetStatus() {
 #if 0
@@ -1282,8 +1200,8 @@ void Printer::cmdGetStatus() {
 
     // Flowrate sensor
 #if defined(HASFILAMENTSENSOR)
-    txBuffer.sendResponseInt16(filamentSensor.targetSpeed);
-    txBuffer.sendResponseInt16(filamentSensor.actualSpeed);
+    txBuffer.sendResponseInt16(filamentSensor.targetSpeed.value());
+    txBuffer.sendResponseInt16(filamentSensor.actualSpeed.value());
 #else
     txBuffer.sendResponseInt16(0);
     txBuffer.sendResponseInt16(0);
@@ -1679,7 +1597,7 @@ class UsbCommand : public Protothread {
 #endif
 #if defined(HASFILAMENTSENSOR)
                     case CmdEnableFRLimit:
-                        filamentSensor.enable(MSerial.readNoCheckCobs());
+                        filamentSensor.enableFeedrateLimiter(MSerial.readNoCheckCobs());
                         txBuffer.sendACK();
                         break;
 #endif
@@ -1688,6 +1606,9 @@ class UsbCommand : public Protothread {
                     //
                     // Commands with response payload
                     //
+                    case CmdGetDirBits:
+                        printer.cmdGetDirBits();
+                        break;
                     case CmdGetStatus:
                         printer.cmdGetStatus();
                         break;
@@ -1737,9 +1658,6 @@ class UsbCommand : public Protothread {
 
 #if 0
 // Currently not used:
-                    case CmdGetState:
-                        printer.cmdGetState();
-                        break;
                     case CmdDisableStepperIsr:
                         printer.cmdDisableStepperIsr();
                         break;

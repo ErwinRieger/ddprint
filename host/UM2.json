@@ -27,7 +27,8 @@
     "A" : {
       "max_feedrate"  : 45,
       "steps_per_mm"  : 141,
-      "jerk"          : 5
+      # "jerk"          : 5
+      "jerk"          : 7.5
     },
     "Abulldog" : {
       "max_feedrate"  : 45,
@@ -41,11 +42,14 @@
     }
   },
   # 3 mm filament, [mm/s]
-  "RetractFeedrate"  : 40,
-  "RetractLength"  : 4.5,
+  # "RetractFeedrate"  : 40,
+  # "RetractLength"  : 4.5,
   # 1.75 mm filament [mm/s]
+  # "RetractFeedrate"  : 50,
+  # "RetractLength"  : 5.0
+  # 1.75 mm filament, with advance [mm/s]
   "RetractFeedrate"  : 50,
-  "RetractLength"  : 5.0
+  "RetractLength"  : 1.0
 }
 
 

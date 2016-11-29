@@ -19,24 +19,17 @@
 /*
  * Estimate Polling rate:
  *
- * Range X/Y is -128...127
  * Max extrusion: 50mm³/s, with 1.75mm filament: 20.8 mm/s filament speed
- * Resolution: 25.4mm/1000 = 0.0254mm/count
- * count rate at max extrusion: 20.8 mm/s / 0.0254 mm = 819 counts/s
- * Time for 127 counts at max extrusion: 127 / (819 counts/s) = 155 ms
  *
- * Extruderspeed for 5mm³/s flowrate
- * v5 = 5 / (math.pi/4 * pow(1.75, 2))
- *
- * Frequenz e-stepper bei 4mm/s:
- *  4 * 141 =  564
+ *  -> estepper runs at ca. 3000 steps/s 
+ *  -> filsensor::run() is called every 100ms -> ca. 300 steps per call
  */
 
 // Factor to compute Extruder steps from filament sensor count
 // #define ASTEPS_PER_COUNT (25.4*141/1000.0)
 
 // mm/s, ca. 7.2 mm³/s
-#define FilSensorMinSpeed 3
+// #define FilSensorMinSpeed 3
 
 #define FilSensorDebug 1
 
@@ -56,7 +49,8 @@ FilamentSensorADNS9800::FilamentSensorADNS9800() {
     WRITE(FILSENSNCS, HIGH);
     SET_OUTPUT(FILSENSNCS);
 
-    enabled = true;
+    // feedrateLimiterEnabled = true;
+    feedrateLimiterEnabled = false;
 
     init();
 }
@@ -73,12 +67,12 @@ void FilamentSensorADNS9800::init() {
     lastASteps = current_pos_steps[E_AXIS];
     lastTS = millis();
 
-    iRAvg = 0;
-    nRAvg = 0;
+    // iRAvg = 0;
+    // nRAvg = 0;
 
     // grip = 200;
-    targetSpeed = 0;
-    actualSpeed = 0;
+    // targetSpeed = 0;
+    // actualSpeed = 0;
 }
 
 uint8_t FilamentSensorADNS9800::readLoc(uint8_t addr){
@@ -148,48 +142,40 @@ void FilamentSensorADNS9800::run() {
     long astep = current_pos_steps[E_AXIS];
     uint32_t ts = millis();
 
-    int16_t ds = astep - lastASteps; // Requested extruded length
-    int16_t dy = getDY(); // Real extruded length
+    int32_t ds = astep - lastASteps; // Requested extruded length
+    int32_t dy = getDY(); // Real extruded length
 
-#if 0
-    if (ds < 0) {
+    int32_t dt = ts - lastTS;
 
-        iRAvg = 0;
-        nRAvg = 0;
+    // rAvgS[iRAvg] = ds;
+    // rAvg[iRAvg++] = dy;
 
-        lastASteps = astep;
-        lastTS = ts;
-        return;
-    }
-#endif
+    // if (iRAvg == RAVGWINDOW)
+        // iRAvg = 0;
 
-    uint16_t dt = ts - lastTS;
+    // if (nRAvg < RAVGWINDOW)
+        // nRAvg++;
 
-    rAvgS[iRAvg] = ds;
-    rAvg[iRAvg++] = dy;
-
-    if (iRAvg == RAVGWINDOW)
-        iRAvg = 0;
-
-    if (nRAvg < RAVGWINDOW)
-        nRAvg++;
-
-    int32_t ssum = 0;
-    int32_t rsum = 0;
-    for (int i=0; i<nRAvg; i++) {
-        ssum += rAvgS[i];
-        rsum += rAvg[i];
-    }
+    // int32_t ssum = 0;
+    // int32_t rsum = 0;
+    // for (int i=0; i<nRAvg; i++) {
+        // ssum += rAvgS[i];
+        // rsum += rAvg[i];
+    // }
 
     // i16          = int         / int
-    targetSpeed = (ssum*100000) / ((int32_t)nRAvg * AXIS_STEPS_PER_MM_E * dt);
+    // targetSpeed = (ssum*100000) / ((int32_t)nRAvg * AXIS_STEPS_PER_MM_E * dt);
+    int16_t tgtSpeed = (ds * 100000) / (AXIS_STEPS_PER_MM_E * dt);
+    targetSpeed.addValue(tgtSpeed);
 
     // i16          = int         / float
-    actualSpeed = (rsum*100000) / (nRAvg * FS_STEPS_PER_MM * dt);
+    // actualSpeed = (rsum*100000) / (nRAvg * FS_STEPS_PER_MM * dt);
+    int16_t actSpeed = (dy * 100000) / (FS_STEPS_PER_MM * dt);
+    actualSpeed.addValue(actSpeed);
 
-    if (enabled && (actualSpeed > 300) && fillBufferTask.synced() && stepBuffer.synced()) { // 3mm/s bzw. 7.2mm³/s
+    if (feedrateLimiterEnabled && (actualSpeed.value() > 300) && fillBufferTask.synced() && stepBuffer.synced()) { // 3mm/s bzw. 7.2mm³/s
 
-        int16_t grip = ((int32_t)actualSpeed*100) / targetSpeed;
+        int16_t grip = ((int32_t)actualSpeed.value()*100) / targetSpeed.value();
 
         if ((grip > 0) && (grip < 50)) {
 
@@ -202,8 +188,8 @@ void FilamentSensorADNS9800::run() {
                 txBuffer.sendResponseStart(RespUnsolicitedMsg);
                 txBuffer.sendResponseUint8(ExtrusionLimitDbg);
                 txBuffer.sendResponseInt16(curTempIndex);
-                txBuffer.sendResponseInt16(actualSpeed);
-                txBuffer.sendResponseInt16(targetSpeed);
+                txBuffer.sendResponseInt16(actualSpeed.value());
+                txBuffer.sendResponseInt16(targetSpeed.value());
                 txBuffer.sendResponseInt16(grip);
                 txBuffer.sendResponseEnd();
 
@@ -408,8 +394,8 @@ FilamentSensor::FilamentSensor() {
     // grip = 200;
     // maxTempSpeed = 0;
 
-    // enabled = false;
-    enabled = true;
+    // feedrateLimiterEnabled = false;
+    feedrateLimiterEnabled = true;
 
     // Pull high chip select of filament sensor to free the
     // SPI bus (for sdcard).

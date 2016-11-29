@@ -15,7 +15,7 @@
     // #define FS_STEPS_PER_MM ((8200.0*FSFACTOR)/25.4)
 
     // calibrateFilSensor
-    #define FS_STEPS_PER_MM 265.0
+    #define FS_STEPS_PER_MM 265
 #endif
 
 #if defined(BournsEMS22AFS)
@@ -77,8 +77,34 @@
 
 // Window size running average filament speed
 // #define RAVGWINDOW 3
-#define RAVGWINDOW 5
+// #define RAVGWINDOW 5
 
+// Weight for exponential filter of e-speed [percent]
+#define ESpeedWeight 0.25
+
+class SpeedExpoFilter {
+
+    // float weight;
+    // float current;
+    int16_t current;
+
+  public:
+
+    SpeedExpoFilter(/* float w*/) {
+        // weight = w;
+        current = 0;
+    }
+
+    void /*int16_t*/ addValue(int16_t v) {
+
+        current = (ESpeedWeight * v + (1.0 - ESpeedWeight) * current);
+        // return current;
+    }
+
+    int16_t value() { return current; }
+
+    void reset() { current = 0; }
+};
 
 /*
  * Inteface to a ADNS9800 'Mousesensor'
@@ -90,21 +116,14 @@ class FilamentSensorADNS9800 {
 
         // Running average of stepper speed
         // float rAvgS[RAVGWINDOW];
-        int16_t rAvgS[RAVGWINDOW];
+        // int16_t rAvgS[RAVGWINDOW];
 
         // Running average measured filament speed
         // float rAvg[RAVGWINDOW];
-        int16_t rAvg[RAVGWINDOW];
+        // int16_t rAvg[RAVGWINDOW];
 
-        uint8_t iRAvg; // index
-        uint8_t nRAvg; // # of values
-
-#if 0
-        // Running average of speed difference
-        float rAvg[RAVGWINDOW];
-        uint8_t iRAvg; // index
-        uint8_t nRAvg; // # of values
-#endif
+        // uint8_t iRAvg; // index
+        // uint8_t nRAvg; // # of values
 
         void spiInit(uint8_t spiRate);
         uint8_t readLoc(uint8_t addr);
@@ -114,16 +133,19 @@ class FilamentSensorADNS9800 {
 
         // Ratio of Measured filament speed to stepper speed [0.5%]
         // uint8_t grip;
-        bool enabled;
+        bool feedrateLimiterEnabled;
 
     public:
 
         int32_t yPos;
 
         // Measured stepper speed [0.01 mm/s]
-        int16_t targetSpeed;
+        // int16_t targetSpeed;
+        SpeedExpoFilter targetSpeed;
+
         // Measured filament speed [0.01 mm/s]
-        int16_t actualSpeed;
+        // int16_t actualSpeed;
+        SpeedExpoFilter actualSpeed;
 
         FilamentSensorADNS9800();
         void init();
@@ -132,7 +154,7 @@ class FilamentSensorADNS9800 {
         void run();
         void selfTest();
 
-        void enable(bool flag) { enabled = flag; }
+        void enableFeedrateLimiter(bool flag) { /* feedrateLimiterEnabled = flag; */ }
 };
 
 extern FilamentSensorADNS9800 filamentSensor;
@@ -160,7 +182,7 @@ class FilamentSensor {
     public:
 
         int32_t yPos;
-        // bool enabled;
+        // bool feedrateLimiterEnabled;
 
         float slip; // xxx rename to grip
         // xxx use a better name
