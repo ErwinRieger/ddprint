@@ -32,7 +32,7 @@
 //
 // Write stepper pulses per layer.
 //
-#define WriteStepFile 1
+// #define WriteStepFile 1
 // End CONFIG
 ////////////////////////
 
@@ -87,21 +87,26 @@ class StepperSim {
         bool enabled;
         double lastStepX, lastStepY, lastStepE;
 
+#if defined(WriteStepFile)
         ExpoFilter avgX, avgY, avgE;
+#endif
 
-        StepperSim(int ax, float initialPos=0): enabled(0), pos(initialPos), state(false),
-            avgX(ExpoFilter(0.30)), avgY(ExpoFilter(0.30)), avgE(ExpoFilter(0.30)) {
+        StepperSim(int ax, float initialPos=0): enabled(0), pos(initialPos), state(false)
+#if defined(WriteStepFile)
+            , avgX(ExpoFilter(0.30)), avgY(ExpoFilter(0.30)), avgE(ExpoFilter(0.30))
+#endif
+            {
 
             axis = ax;
         }
         void enable(bool v) { enabled = v; }
         void setPin(uint8_t v);
         void setDir(uint8_t v) {
-            if (v == st_get_invert_dir<MOVE>()) {
-                dir = -1.0 / axis_steps_per_mm<MOVE>();
+            if (v == st_get_positive_dir<MOVE>()) {
+                dir = 1.0 / axis_steps_per_mm<MOVE>();
             }
             else {
-                dir = 1.0 / axis_steps_per_mm<MOVE>();
+                dir = -1.0 / axis_steps_per_mm<MOVE>();
             }
         }
 };

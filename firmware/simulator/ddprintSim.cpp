@@ -521,6 +521,28 @@ uint8_t READ(int pin) {
                 return 0;
             case SDSS:
                 return sdChipSelect;
+
+            case X_DIR_PIN:
+                if (ssx.dir > 0)
+                    return st_get_positive_dir<XMove>();
+                else
+                    return ! st_get_positive_dir<XMove>();
+            case Y_DIR_PIN:
+                if (ssy.dir > 0)
+                    return st_get_positive_dir<YMove>();
+                else
+                    return ! st_get_positive_dir<YMove>();
+            case Z_DIR_PIN:
+                if (ssz.dir > 0)
+                    return st_get_positive_dir<ZMove>();
+                else
+                    return ! st_get_positive_dir<ZMove>();
+            case E0_DIR_PIN:
+                if (ssy.dir > 0)
+                    return st_get_positive_dir<EMove>();
+                else
+                    return ! st_get_positive_dir<EMove>();
+
         }
         assert(0);
 }
