@@ -167,7 +167,6 @@ class Advance (object):
         self.advSum = 0.0
         # Sum of skipped small advance ramps
         self.skippedAdvance = 0.0
-        self.xskippedSimpleSteps = 0.0
         # Running sum of move esteps, for debugging of planSteps()
         self.moveEsteps = 0.0
         # End debug counters
