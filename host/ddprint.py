@@ -744,7 +744,7 @@ def main():
 
     elif args.mode == 'removeFilament':
 
-        util.removeFilament(args, parser)
+        util.removeFilament(args, parser, args.feedrate)
 
     elif args.mode == 'bedLeveling':
 

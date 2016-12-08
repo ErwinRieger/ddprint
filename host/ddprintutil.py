@@ -866,7 +866,7 @@ def insertFilament(args, parser):
 
 ####################################################################################################
 
-def removeFilament(args, parser):
+def removeFilament(args, parser, feedrate):
 
     planner = parser.planner
     printer = planner.printer
@@ -878,12 +878,8 @@ def removeFilament(args, parser):
     printer.sendPrinterInit()
 
     # Move to mid-position
-    # MAX_POS = (X_MAX_POS, Y_MAX_POS, Z_MAX_POS)
-    # feedrate = PrinterProfile.getMaxFeedrate(Z_AXIS)
-    # parser.execute_line("G0 F%d Z%f" % (feedrate*60, MAX_POS[Z_AXIS]))
-
-    feedrate = PrinterProfile.getMaxFeedrate(X_AXIS)
-    parser.execute_line("G0 F%d X%f Y%f" % (feedrate*60, planner.MAX_POS[X_AXIS]/2, planner.MAX_POS[Y_AXIS]/2))
+    maxFeedrate = PrinterProfile.getMaxFeedrate(X_AXIS)
+    parser.execute_line("G0 F%d X%f Y%f" % (maxFeedrate*60, planner.MAX_POS[X_AXIS]/2, planner.MAX_POS[Y_AXIS]/2))
 
     planner.finishMoves()
 
@@ -898,7 +894,7 @@ def removeFilament(args, parser):
     # Etwas vorwärts um den retract-pfropfen einzuschmelzen
     manualMove(parser, A_AXIS, PrinterProfile.getRetractLength() + 5, 5)
 
-    manualMove(parser, A_AXIS, -1.3*FILAMENT_REVERSAL_LENGTH)
+    manualMove(parser, A_AXIS, -1.3*FILAMENT_REVERSAL_LENGTH, feedrate)
 
     if not args.noCoolDown:
         printer.coolDown(HeaterEx1,wait=150)
