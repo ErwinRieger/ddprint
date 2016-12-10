@@ -35,6 +35,7 @@ import list_ports
 import dddumbui, cobs
 
 from serial import Serial, SerialException, SerialTimeoutException
+from ddconfig import debugComm
 from ddprintcommands import *
 from ddprintconstants import *
 from ddprintstates import *
@@ -316,7 +317,8 @@ class Printer(Serial):
         crc = crc16.crc16xmodem(l, crc)
 
         length = ord(l) - 1
-        self.gui.logRecv("Response 0x%x, reading %d b" % (cmd, length))
+        if debugComm:
+            self.gui.logRecv("Response 0x%x, reading %d b" % (cmd, length))
 
         payload = ""
         if length:
@@ -370,7 +372,7 @@ class Printer(Serial):
                 time.sleep(0.1)
                 continue
 
-            if recvLine:
+            if recvLine and debugComm:
                 if ord(recvLine[0]) > 20:
                     self.gui.logRecv("Reply: ", recvLine,)
                 else:
@@ -584,7 +586,8 @@ class Printer(Serial):
             self.send(binary)
         """
 
-        self.gui.logSend("*** sendCommand %s (0x%x, len: %d, seq: %d) *** " % (CommandNames[sendCmd], sendCmd, len(binary), self.prevLineNumber()))
+        if debugComm:
+            self.gui.logSend("*** sendCommand %s (0x%x, len: %d, seq: %d) *** " % (CommandNames[sendCmd], sendCmd, len(binary), self.prevLineNumber()))
         # print "send: ", binary.encode("hex")
         self.send(binary)
 
@@ -619,7 +622,8 @@ class Printer(Serial):
             n = len(binary)
             dt = time.time() - startTime
             if cmd == 0x6:
-                self.gui.logRecv("ACK, Sent %d bytes in %.2f ms, %.2f Kb/s" % (n, dt*1000, n/(dt*1000)))
+                if debugComm:
+                    self.gui.logRecv("ACK, Sent %d bytes in %.2f ms, %.2f Kb/s" % (n, dt*1000, n/(dt*1000)))
                 return (cmd, payload)
 
             # if cmd == RespGenericString:
@@ -643,7 +647,8 @@ class Printer(Serial):
                 self.send(resendCommand)
                 continue
 
-            self.gui.logRecv("ACK (0x%x/0x%x), Sent %d bytes in %.2f ms, %.2f Kb/s" % (cmd, sendCmd, n, dt*1000, n/(dt*1000)))
+            if debugComm:
+                self.gui.logRecv("ACK (0x%x/0x%x), Sent %d bytes in %.2f ms, %.2f Kb/s" % (cmd, sendCmd, n, dt*1000, n/(dt*1000)))
 
             if cmd == sendCmd:
                 # print "got reply:", payload

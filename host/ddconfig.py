@@ -37,6 +37,9 @@ debugPlot = False
 debugPlotLevel = "plotLevelPlanned"
 debugPlotLevel = "plotLevelSplitted"
 
+# Debug (serial) communication between host and firmware.
+debugComm = False
+
 ############################################################################
 #
 # AutoTemp algorithm
