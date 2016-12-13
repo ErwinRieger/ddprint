@@ -11,7 +11,7 @@
   "baseExtrusionRate" : 1.5,
   # xxx abhängig von düsen durchmesser?
   "extrusionAutoTempFactor" : 2.5,
-  "kAdvance" : 0.5
+  "kAdvance" : 0.4
 }
 
 
