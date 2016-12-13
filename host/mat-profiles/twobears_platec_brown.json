@@ -1,0 +1,7 @@
+{
+  # copper paste effect?
+  "hotendBaseTemp"    : 190,
+  "extrusionAutoTempFactor" : 4.0
+}
+
+
