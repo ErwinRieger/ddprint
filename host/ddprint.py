@@ -740,7 +740,7 @@ def main():
 
     elif args.mode == 'insertFilament':
 
-        util.insertFilament(args, parser)
+        util.insertFilament(args, parser, args.feedrate)
 
     elif args.mode == 'removeFilament':
 

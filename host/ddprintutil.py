@@ -787,7 +787,7 @@ def manualMove(parser, axis, distance, feedrate=0, absolute=False):
 
 ####################################################################################################
 
-def insertFilament(args, parser):
+def insertFilament(args, parser, feedrate):
 
     planner = parser.planner
     printer = planner.printer
@@ -827,8 +827,8 @@ def insertFilament(args, parser):
     commonInit(args, parser)
 
     # Move to mid-position
-    feedrate = PrinterProfile.getMaxFeedrate(X_AXIS)
-    parser.execute_line("G0 F%d X%f Y%f" % (feedrate*60, planner.MAX_POS[X_AXIS]/2, planner.MAX_POS[Y_AXIS]/2))
+    maxFeedrate = PrinterProfile.getMaxFeedrate(X_AXIS)
+    parser.execute_line("G0 F%d X%f Y%f" % (maxFeedrate*60, planner.MAX_POS[X_AXIS]/2, planner.MAX_POS[Y_AXIS]/2))
 
     planner.finishMoves()
 
@@ -844,7 +844,7 @@ def insertFilament(args, parser):
     manualMoveE()
 
     print "\nForwarding filament.\n"
-    manualMove(parser, A_AXIS, FILAMENT_REVERSAL_LENGTH * 0.85)
+    manualMove(parser, A_AXIS, FILAMENT_REVERSAL_LENGTH * 0.85, feedrate)
 
     print "\nExtrude filament.\n"
     manualMoveE()
