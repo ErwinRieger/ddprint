@@ -947,6 +947,7 @@ void Printer::cmdMove(MoveType mt) {
     moveType = mt;
 
     if (mt == MoveTypeNormal) {
+
         massert(homed[0]);
         massert(homed[1]);
         massert(homed[2]);
@@ -957,6 +958,8 @@ void Printer::cmdMove(MoveType mt) {
         // getEepromSettings(es);
         // Compute max z step pos for software endstops, xxx um2 specific.
         // z_max_pos_steps = (long)((Z_MAX_POS + es.add_homeing[Z_AXIS]) * AXIS_STEPS_PER_MM_Z);
+
+        bufferLow = -1;
     }
 
     if (mt == MoveTypeHoming) {
@@ -989,8 +992,6 @@ void Printer::cmdMove(MoveType mt) {
     // SERIAL_ECHOPGM(", SDRReadPos is: ");
     // SERIAL_ECHOLN(sDReader.getBufferPtr());
     // xxxxxxxxxxxxxx
-
-    bufferLow = -1;
 
 #if defined(HASFILAMENTSENSOR)
     filamentSensor.init();
@@ -1186,7 +1187,7 @@ void Printer::cmdGetStatus() {
     txBuffer.sendResponseValue(swapDev.available());
     txBuffer.sendResponseValue(sDReader.available());
     txBuffer.sendResponseUint8(stepBuffer.byteSize());
-    txBuffer.sendResponseValue((uint16_t)bufferLow);
+    txBuffer.sendResponseInt16(bufferLow);
     txBuffer.sendResponseValue(target_temperature[0]);
 
     // Flowrate sensor
@@ -1725,12 +1726,14 @@ FWINLINE void loop() {
     if (printer.printerState == Printer::StateStart) {
 
         if (printer.bufferLow == -1) {
+
             if  (stepBuffer.byteSize() > 10)
                 printer.bufferLow = 0;
         }
         else {
             if ((stepBuffer.byteSize() < 10) &&
-                (printer.bufferLow < 255) &&
+
+                (printer.bufferLow < 0x8000) &&
                 swapDev.available()) {
 
                 printer.bufferLow++;

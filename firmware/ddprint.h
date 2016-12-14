@@ -139,7 +139,7 @@ class Printer {
         MoveType moveType;
 
         // long z_max_pos_steps;
-        int8_t bufferLow;
+        int16_t bufferLow;
 
         Printer();
         void printerInit();
