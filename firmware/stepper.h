@@ -456,7 +456,7 @@ inline void st_step_motor_es(uint8_t stepBits, uint8_t dirbits) {
 #define CMDLEN3 (0 << 5)
 #define CMDLEN4 (1 << 5)
 
-#define GETCMDLEN(v) (v & (3 << 5))
+#define GETCMDLEN(v) (v & (1 << 5))
 
     class StepBuffer {
         private:
@@ -497,7 +497,7 @@ inline void st_step_motor_es(uint8_t stepBits, uint8_t dirbits) {
 
                 simassert(byteSize()+3 < StepBufferLen);
 
-                stepBuffer[head] = cmdDir | CMDLEN3;
+                stepBuffer[head] = cmdDir; //  | CMDLEN3;
                 head = (head+1) & StepBufferMask;
 
                 stepBuffer[head] = steps;

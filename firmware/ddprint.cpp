@@ -399,7 +399,7 @@ static SDReader sDReader;
 
 bool FillBufferTask::Run() {
 
-            uint8_t i;
+            uint8_t i, cmd;
 
             int32_t d;
             int32_t d1;
@@ -420,15 +420,16 @@ bool FillBufferTask::Run() {
             #if 0
             # Move segment data, new with bresenham in firmware:
             #   * Header data:
+            #       + 8 flag bits
             #       + index lead axis, 8 bits
             #       + array of absolute steps, 5 * 16 bits
             #       + number of accel steps, naccel, 16 bits
             #       + constant linear timer value, 16 bits
-            #       + number of deccel steps, ndeccel, 16 bits
+            #       + number of decel steps, ndccel, 16 bits
             #
-            #   * accel steps: naccel*(timer value(16bits))
+            #   * accel steps: naccel*(timer value(16bits)) or 16bits + (naccel-1)*8bits
             #
-            #   * deccel steps: ndeccel*(timer value(16bits))
+            #   * decel steps: ndecel*(timer value(16bits)) or 16bits + (naccel-1)*8bits
             #
             #endif
 
@@ -436,23 +437,13 @@ bool FillBufferTask::Run() {
             PT_WAIT_THREAD(sDReader);
             cmd = *sDReader.readData;
 
-            // Skip packet size
-            ///////////sDReader.setBytesToRead4();
-            ///////////PT_WAIT_THREAD(sDReader);
-
             switch (cmd) {
 
                 case CmdG1:
                     goto HandleCmdG1;
 
-                case CmdDirG1:
-                    goto HandleCmdDirG1;
-
                 case CmdG1Raw:
                     goto HandleCmdG1Raw;
-
-                case CmdDirG1Raw:
-                    goto HandleCmdDirG1Raw;
 
                 // case CmdDirBits:
                     // goto HandleCmdDirBits;
@@ -486,14 +477,17 @@ bool FillBufferTask::Run() {
                     kill();
             }
 
-            HandleCmdDirG1:
+            HandleCmdG1:
 
+                // Read flag byte and stepper direction bits
                 sDReader.setBytesToRead1();
                 PT_WAIT_THREAD(sDReader);
 
-                cmdDir = *sDReader.readData;
-
-            HandleCmdG1:
+                flags = *sDReader.readData;
+                if (flags & 0x80)
+                    // Change stepper direction(s)
+                    dirBits = flags & 0x9F;
+// xxx printf("flags: 0x%x, dirbits: 0x%x\n", flags, dirBits);
 
                 // SERIAL_ECHOLNPGM("C1");
 
@@ -572,11 +566,11 @@ bool FillBufferTask::Run() {
 
                 tLin = STD max ( FromBuf(uint16_t, sDReader.readData), MAXTEMPSPEED);
 
-                // nDeccel = sDReader.readPayloadUInt16();
+                // nDecel = sDReader.readPayloadUInt16();
                 sDReader.setBytesToRead2();
                 PT_WAIT_THREAD(sDReader);
-                nDeccel = FromBuf(uint16_t, sDReader.readData);
-                // SERIAL_ECHOLN(nDeccel);
+                nDecel = FromBuf(uint16_t, sDReader.readData);
+                // SERIAL_ECHOLN(nDecel);
 
                 //
                 // Compute bresenham factors
@@ -611,6 +605,121 @@ bool FillBufferTask::Run() {
                     // SERIAL_ECHOLN(d2);
                 }
 
+                if (nAccel) {
+
+                    //
+                    // Acceleration, get first timer value
+                    //
+                    sDReader.setBytesToRead2();
+                    PT_WAIT_THREAD(sDReader);
+                    lastTimer = FromBuf(uint16_t, sDReader.readData);
+                    timer = STD max ( lastTimer, MAXTEMPSPEED );
+
+                    computeStepBits();
+                    PT_WAIT_WHILE(stepBuffer.full());
+                    pushStepperData(dirBits, stepBits, timer);
+
+                    dirBits &= ~0x80; // clear set-direction bit
+
+                    if (flags & AccelByteFlag) {
+
+                        // Timer value as 8bit difference
+                        for (step = 1; step < nAccel; step++) {
+
+                            sDReader.setBytesToRead1();
+                            PT_WAIT_THREAD(sDReader);
+                            lastTimer -= FromBuf(uint8_t, sDReader.readData);
+                            timer = STD max ( lastTimer,  MAXTEMPSPEED );
+
+                            computeStepBits();
+                            PT_WAIT_WHILE(stepBuffer.full());
+                            pushStepperData(dirBits, stepBits, timer);
+                        }
+                    }
+                    else {
+
+                        // Timer value as 16bit absolute value
+                        for (step = 1; step < nAccel; step++) {
+
+                            sDReader.setBytesToRead2();
+                            PT_WAIT_THREAD(sDReader);
+                            timer = STD max ( FromBuf(uint16_t, sDReader.readData), MAXTEMPSPEED );
+
+                            computeStepBits();
+                            PT_WAIT_WHILE(stepBuffer.full());
+                            pushStepperData(dirBits, stepBits, timer);
+                        }
+                    }
+                }
+
+                //
+                // Constant phase
+                //
+                step = deltaLead - (nAccel+nDecel);
+                if (step) {
+
+                    computeStepBits();
+                    PT_WAIT_WHILE(stepBuffer.full());
+                    pushStepperData(dirBits, stepBits, tLin);
+
+                    dirBits &= ~0x80; // clear set-direction bit
+
+                    for (; step > 1; step--) {
+
+                        computeStepBits();
+                        PT_WAIT_WHILE(stepBuffer.full());
+                        pushStepperData(dirBits, stepBits, tLin);
+                    }
+                }
+
+                if (nDecel) {
+
+                    //
+                    // Deceleration, get first timer value
+                    //
+                    sDReader.setBytesToRead2();
+                    PT_WAIT_THREAD(sDReader);
+                    lastTimer = FromBuf(uint16_t, sDReader.readData);
+                    timer = STD max ( lastTimer, MAXTEMPSPEED );
+
+                    computeStepBits();
+                    PT_WAIT_WHILE(stepBuffer.full());
+                    pushStepperData(dirBits, stepBits, timer);
+
+                    dirBits &= ~0x80; // clear set-direction bit
+
+                    if (flags & DecelByteFlag) {
+
+                        // Timer value as 8bit difference
+                        for (step = 1; step < nDecel; step++) {
+
+                            sDReader.setBytesToRead1();
+                            PT_WAIT_THREAD(sDReader);
+                            lastTimer += FromBuf(uint8_t, sDReader.readData);
+                            timer = STD max ( lastTimer,  MAXTEMPSPEED );
+
+                            computeStepBits();
+                            PT_WAIT_WHILE(stepBuffer.full());
+                            pushStepperData(dirBits, stepBits, timer);
+                        }
+                    }
+                    else {
+
+                        // Timer value as 16bit absolute value
+                        for (step = 1; step < nDecel; step++) {
+
+                            sDReader.setBytesToRead2();
+                            PT_WAIT_THREAD(sDReader);
+                            timer = STD max ( FromBuf(uint16_t, sDReader.readData), MAXTEMPSPEED );
+
+                            computeStepBits();
+                            PT_WAIT_WHILE(stepBuffer.full());
+                            pushStepperData(dirBits, stepBits, timer);
+                        }
+                    }
+                }
+
+#if 0
                 for (step=0; step < deltaLead; step++) {
 
                     //
@@ -619,6 +728,7 @@ bool FillBufferTask::Run() {
                     stepBits = 1 << leadAxis;
 
                     for (i=0; i<5; i++) {
+
                         if (i == leadAxis)
                             continue;
 
@@ -636,7 +746,6 @@ bool FillBufferTask::Run() {
                     //
                     // Get timer value
                     //
-
                     if (step < nAccel) {
 
                         // Acceleration
@@ -646,45 +755,49 @@ bool FillBufferTask::Run() {
 
                         PT_WAIT_WHILE(stepBuffer.full());
                         if (timer & 0xff00)
-                            stepBuffer.push4(cmdDir, stepBits, timer);
+                            stepBuffer.push4(dirFlags, stepBits, timer);
                         else
-                            stepBuffer.push3(cmdDir, stepBits, timer);
+                            stepBuffer.push3(dirFlags, stepBits, timer);
                     }
-                    else if ((deltaLead - step) <= nDeccel) { // TODO: speed up by combining nDeccel and deltaLead to remove subtract
+                    else if ((deltaLead - step) <= nDecel) { // TODO: speed up by combining nDecel and deltaLead to remove subtract
 
-                        // Decceleration
+                        // Deceleration
                         sDReader.setBytesToRead2();
                         PT_WAIT_THREAD(sDReader);
                         timer = STD max ( FromBuf(uint16_t, sDReader.readData), MAXTEMPSPEED );
 
                         PT_WAIT_WHILE(stepBuffer.full());
                         if (timer & 0xff00)
-                            stepBuffer.push4(cmdDir, stepBits, timer);
+                            stepBuffer.push4(dirFlags, stepBits, timer);
                         else
-                            stepBuffer.push3(cmdDir, stepBits, timer);
+                            stepBuffer.push3(dirFlags, stepBits, timer);
                     }
                     else {
+
                         // linear part
                         PT_WAIT_WHILE(stepBuffer.full());
                         if (tLin & 0xff00)
-                            stepBuffer.push4(cmdDir, stepBits, tLin);
+                            stepBuffer.push4(dirFlags, stepBits, tLin);
                         else
-                            stepBuffer.push3(cmdDir, stepBits, tLin);
+                            stepBuffer.push3(dirFlags, stepBits, tLin);
                     }
 
-                    cmdDir &= ~0x80; // clear set-direction bit
+                    dirFlags &= ~0x80; // clear set-direction bit
                 }
-            
+#endif
+
                 PT_RESTART();
 
-            HandleCmdDirG1Raw:
+            HandleCmdG1Raw:
 
+                // Read flag byte and stepper direction bits
                 sDReader.setBytesToRead1();
                 PT_WAIT_THREAD(sDReader);
 
-                cmdDir = *sDReader.readData;
-
-            HandleCmdG1Raw:
+                flags = *sDReader.readData;
+                if (flags & 0x80)
+                    // Change stepper direction(s)
+                    dirBits = flags & 0x9F;
 
                 // SERIAL_ECHOLNPGM("C1");
 
@@ -731,28 +844,59 @@ bool FillBufferTask::Run() {
     
                 //////////////////////////////////////////////////////
 
-                //
-                // Read pulse array, elements of 16bit timer and 8bit stepper mask
-                //
-                for (step=0; step < nAccel; step++) {
+                sDReader.setBytesToRead2();
+                PT_WAIT_THREAD(sDReader);
+                lastTimer = FromBuf(uint16_t, sDReader.readData);
+                timer = STD max ( lastTimer, MAXTEMPSPEED );
 
-                    sDReader.setBytesToRead2();
-                    PT_WAIT_THREAD(sDReader);
-                    timer = STD max ( FromBuf(uint16_t, sDReader.readData), MAXTEMPSPEED );
+                sDReader.setBytesToRead1();
+                PT_WAIT_THREAD(sDReader);
+                stepBits = *sDReader.readData;
 
-                    sDReader.setBytesToRead1();
-                    PT_WAIT_THREAD(sDReader);
-                    stepBits = *sDReader.readData;
+                PT_WAIT_WHILE(stepBuffer.full());
+                pushStepperData(dirBits, stepBits, timer);
 
-                    PT_WAIT_WHILE(stepBuffer.full());
-                    if (timer & 0xff00)
-                        stepBuffer.push4(cmdDir, stepBits, timer);
-                    else
-                        stepBuffer.push3(cmdDir, stepBits, timer);
+                dirBits &= ~0x80; // clear set-direction bit
 
-                    cmdDir &= ~0x80; // clear set-direction bit
+                if (flags & RawByteFlag) {
+                    //
+                    // Read pulse array, first element is a 16bit timer value and 8bit stepper mask,
+                    // then elements of 8bit timer delta and 8bit stepper mask
+                    //
+                    for (step=1; step < nAccel; step++) {
+
+                        sDReader.setBytesToRead1();
+                        PT_WAIT_THREAD(sDReader);
+                        lastTimer += FromBuf(int8_t, sDReader.readData);
+                        timer = STD max ( lastTimer, MAXTEMPSPEED );
+
+                        sDReader.setBytesToRead1();
+                        PT_WAIT_THREAD(sDReader);
+                        stepBits = *sDReader.readData;
+
+                        PT_WAIT_WHILE(stepBuffer.full());
+                        pushStepperData(dirBits, stepBits, timer);
+                    }
                 }
-            
+                else {
+                    //
+                    // Read pulse array, elements of 16bit timer and 8bit stepper mask
+                    //
+                    for (step=1; step < nAccel; step++) {
+
+                        sDReader.setBytesToRead2();
+                        PT_WAIT_THREAD(sDReader);
+                        timer = STD max ( FromBuf(uint16_t, sDReader.readData), MAXTEMPSPEED );
+
+                        sDReader.setBytesToRead1();
+                        PT_WAIT_THREAD(sDReader);
+                        stepBits = *sDReader.readData;
+
+                        PT_WAIT_WHILE(stepBuffer.full());
+                        pushStepperData(dirBits, stepBits, timer);
+                    }
+                }
+
                 PT_RESTART();
 
             HandleCmdSyncFanSpeed:
@@ -798,6 +942,13 @@ bool FillBufferTask::Run() {
             PT_END(); // Not reached
         }
 
+inline void FillBufferTask::pushStepperData(uint8_t dFlags, uint8_t sBits, uint16_t tv) {
+
+    if (tv & 0xff00)
+        stepBuffer.push4(dFlags, sBits, tv);
+    else
+        stepBuffer.push3(dFlags, sBits, tv);
+}
 
 FillBufferTask fillBufferTask;
 

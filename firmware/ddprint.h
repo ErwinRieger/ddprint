@@ -172,16 +172,15 @@ extern Printer printer;
 
 class FillBufferTask : public Protothread {
 
-        uint8_t cmd;
-        uint8_t cmdDir;
+        uint8_t flags, dirBits;
         uint8_t stepBits;
         uint8_t timerLoop;
-        uint16_t timer;
+        uint16_t lastTimer, timer;
 
         uint16_t nAccel;
         uint8_t leadAxis;
         uint16_t tLin;
-        uint16_t nDeccel;
+        uint16_t nDecel;
         int32_t absSteps[5];
 #if defined(USEExtrusionRateTable)
         uint16_t maxTempSpeed;
@@ -206,7 +205,7 @@ class FillBufferTask : public Protothread {
 
     public:
         FillBufferTask() {
-            cmdDir = 0;
+            dirBits = 0;
             cmdSync = false;
         }
 
@@ -225,6 +224,33 @@ class FillBufferTask : public Protothread {
             cmdSync = false;
             Restart();
         }
+
+        inline void pushStepperData(uint8_t dFlags, uint8_t sBits, uint16_t tv);
+
+        //
+        // Compute stepper bits, bresenham
+        //
+        inline void computeStepBits() {
+
+            stepBits = 1 << leadAxis;
+
+            for (uint8_t i=0; i<5; i++) {
+
+                if (i == leadAxis)
+                    continue;
+
+                if (d_axis[i] < 0) {
+                    //  d_axis[a] = d + 2 * abs_displacement_vector_steps[a]
+                    d_axis[i] += d1_axis[i];
+                }
+                else {
+                    //  d_axis[a] = d + 2 * (abs_displacement_vector_steps[a] - deltaLead)
+                    d_axis[i] += d2_axis[i];
+                    stepBits |= 1 << i;
+                }
+            }
+        }
+
 };
 
 extern FillBufferTask fillBufferTask;

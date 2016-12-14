@@ -26,6 +26,13 @@
 // #define SOH  0x81
 #define SOH  0x0
 
+// 
+//
+//
+#define AccelByteFlag (1 << 6)
+#define RawByteFlag AccelByteFlag
+#define DecelByteFlag (1 << 5)
+
 //
 // USB commands
 //
@@ -40,13 +47,13 @@
 #define CmdBlock           0x6
 
 #define CmdG1              0x7
-#define CmdDirG1           0x8
+// #define CmdDirG1           0x8
 
 
 #define CmdSyncTargetTemp  0xb
 #define CmdDwellMS         0xc
 #define CmdG1Raw           0xd
-#define CmdDirG1Raw        0xe
+// #define CmdDirG1Raw        0xe
 
 //
 // Direct commands:
