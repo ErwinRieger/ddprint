@@ -665,7 +665,7 @@ class Printer(Serial):
 
         (cmd, payload) = self.query(CmdGetStatus, doLog=False)
 
-        tup = struct.unpack("<BffIHHHHhh", payload)
+        tup = struct.unpack("<BffIHHHBhh", payload)
 
         statusDict = {}
         for i in range(len(valueNames)):
