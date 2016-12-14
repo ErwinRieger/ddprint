@@ -720,73 +720,6 @@ bool FillBufferTask::Run() {
                     }
                 }
 
-#if 0
-                for (step=0; step < deltaLead; step++) {
-
-                    //
-                    // Compute stepper bits, bresenham
-                    //
-                    stepBits = 1 << leadAxis;
-
-                    for (i=0; i<5; i++) {
-
-                        if (i == leadAxis)
-                            continue;
-
-                        if (d_axis[i] < 0) {
-                            //  d_axis[a] = d + 2 * abs_displacement_vector_steps[a]
-                            d_axis[i] += d1_axis[i];
-                        }
-                        else {
-                            //  d_axis[a] = d + 2 * (abs_displacement_vector_steps[a] - deltaLead)
-                            d_axis[i] += d2_axis[i];
-                            stepBits |= 1 << i;
-                        }
-                    }
-
-                    //
-                    // Get timer value
-                    //
-                    if (step < nAccel) {
-
-                        // Acceleration
-                        sDReader.setBytesToRead2();
-                        PT_WAIT_THREAD(sDReader);
-                        timer = STD max ( FromBuf(uint16_t, sDReader.readData), MAXTEMPSPEED );
-
-                        PT_WAIT_WHILE(stepBuffer.full());
-                        if (timer & 0xff00)
-                            stepBuffer.push4(dirFlags, stepBits, timer);
-                        else
-                            stepBuffer.push3(dirFlags, stepBits, timer);
-                    }
-                    else if ((deltaLead - step) <= nDecel) { // TODO: speed up by combining nDecel and deltaLead to remove subtract
-
-                        // Deceleration
-                        sDReader.setBytesToRead2();
-                        PT_WAIT_THREAD(sDReader);
-                        timer = STD max ( FromBuf(uint16_t, sDReader.readData), MAXTEMPSPEED );
-
-                        PT_WAIT_WHILE(stepBuffer.full());
-                        if (timer & 0xff00)
-                            stepBuffer.push4(dirFlags, stepBits, timer);
-                        else
-                            stepBuffer.push3(dirFlags, stepBits, timer);
-                    }
-                    else {
-
-                        // linear part
-                        PT_WAIT_WHILE(stepBuffer.full());
-                        if (tLin & 0xff00)
-                            stepBuffer.push4(dirFlags, stepBits, tLin);
-                        else
-                            stepBuffer.push3(dirFlags, stepBits, tLin);
-                    }
-
-                    dirFlags &= ~0x80; // clear set-direction bit
-                }
-#endif
-
                 PT_RESTART();
 
             HandleCmdG1Raw:
@@ -1110,18 +1043,6 @@ void Printer::cmdStopMove() {
 
 void Printer::cmdGetTargetTemps() {
 
-#if 0
-    SERIAL_ECHOPGM("Res:(");
-    SERIAL_ECHO(target_temperature_bed);
-    SERIAL_ECHOPGM(",");
-    SERIAL_ECHO(target_temperature[0]);
-#if EXTRUDERS > 1
-    SERIAL_ECHOPGM(",");
-    SERIAL_ECHO(target_temperature[1]);
-#endif
-    SERIAL_ECHOLNPGM(")");
-#endif
-
     txBuffer.sendResponseStart(CmdGetTargetTemps);
 
     txBuffer.sendResponseUint8(target_temperature_bed);
@@ -1133,18 +1054,6 @@ void Printer::cmdGetTargetTemps() {
 }
 
 void Printer::cmdGetCurrentTemps() {
-
-#if 0
-    SERIAL_ECHOPGM("Res:(");
-    SERIAL_ECHO(current_temperature_bed);
-    SERIAL_ECHOPGM(",");
-    SERIAL_ECHO(current_temperature[0]);
-#if EXTRUDERS > 1
-    SERIAL_ECHOPGM(",");
-    SERIAL_ECHO(current_temperature[1]);
-#endif
-    SERIAL_ECHOLNPGM(")");
-#endif
 
 #if EXTRUDERS == 1
     txBuffer.sendResponseStart(CmdGetCurrentTemps);
@@ -1229,38 +1138,12 @@ void Printer::cmdDisableStepperIsr() {
 
 void Printer::cmdGetHomed() {
 
-#if 0
-    SERIAL_ECHOPGM("Res:(");
-    SERIAL_ECHO(homed[0]);
-    SERIAL_ECHOPGM(",");
-    SERIAL_ECHO(homed[1]);
-    SERIAL_ECHOPGM(",");
-    SERIAL_ECHO(homed[2]);
-    SERIAL_ECHOLNPGM(")");
-#endif
-
     txBuffer.sendResponseStart(CmdGetHomed);
     txBuffer.sendResponseValue((uint8_t*)homed, sizeof(homed));
     txBuffer.sendResponseEnd();
 }
 
 void Printer::cmdGetEndstops() {
-
-#if 0
-    SERIAL_ECHOPGM("Res:((");
-    SERIAL_ECHO(X_ENDSTOP_PRESSED);
-    SERIAL_ECHOPGM(",");
-    SERIAL_ECHO(current_pos_steps[X_AXIS]);
-    SERIAL_ECHOPGM("),(");
-    SERIAL_ECHO(Y_ENDSTOP_PRESSED);
-    SERIAL_ECHOPGM(",");
-    SERIAL_ECHO(current_pos_steps[Y_AXIS]);
-    SERIAL_ECHOPGM("),(");
-    SERIAL_ECHO(Z_ENDSTOP_PRESSED);
-    SERIAL_ECHOPGM(",");
-    SERIAL_ECHO(current_pos_steps[Z_AXIS]);
-    SERIAL_ECHOLNPGM("))");
-#endif
 
     txBuffer.sendResponseStart(CmdGetEndstops);
 
@@ -1278,20 +1161,6 @@ void Printer::cmdGetEndstops() {
 
 void Printer::cmdGetPos() {
 
-#if 0
-    SERIAL_ECHOPGM("Res:(");
-    SERIAL_ECHO(current_pos_steps[X_AXIS]);
-    SERIAL_ECHOPGM(",");
-    SERIAL_ECHO(current_pos_steps[Y_AXIS]);
-    SERIAL_ECHOPGM(",");
-    SERIAL_ECHO(current_pos_steps[Z_AXIS]);
-    SERIAL_ECHOPGM(",");
-    SERIAL_ECHO(current_pos_steps[E_AXIS]);
-    // SERIAL_ECHOPGM(",");
-    // SERIAL_ECHO(current_pos_steps[B_AXIS]);
-    SERIAL_ECHOLNPGM(")");
-#endif
-
     txBuffer.sendResponseStart(CmdGetPos);
     txBuffer.sendResponseValue((uint8_t*)current_pos_steps, sizeof(current_pos_steps));
     txBuffer.sendResponseEnd();
@@ -1308,28 +1177,6 @@ void Printer::cmdGetDirBits() {
 
 // uint16_t waitCount = 0;
 void Printer::cmdGetStatus() {
-#if 0
-    // ["state", "t0", "t1", "Swap", "SDReader", "StepBuffer", "StepBufUnderRuns", "targetT1"]
-    SERIAL_ECHOPGM("Res:(");
-    SERIAL_ECHO(printerState);
-    SERIAL_ECHOPGM(",");
-    SERIAL_ECHO(current_temperature_bed);
-    SERIAL_ECHOPGM(",");
-    SERIAL_ECHO(current_temperature[0]);
-    SERIAL_ECHOPGM(",");
-    SERIAL_ECHO(swapDev.available());
-    SERIAL_ECHOPGM(",");
-    SERIAL_ECHO(sDReader.available());
-    SERIAL_ECHOPGM(",");
-    SERIAL_ECHO(stepBuffer.byteSize());
-    SERIAL_ECHOPGM(",");
-    SERIAL_ECHO((uint16_t)bufferLow);
-    SERIAL_ECHOPGM(",");
-    SERIAL_ECHO(target_temperature[0]);
-    SERIAL_ECHOPGM(",");
-    SERIAL_ECHO(waitCount);
-    SERIAL_ECHOLNPGM(")");
-#endif
 
     txBuffer.sendResponseStart(CmdGetStatus);
 
