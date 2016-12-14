@@ -942,7 +942,7 @@ bool FillBufferTask::Run() {
             PT_END(); // Not reached
         }
 
-inline void FillBufferTask::pushStepperData(uint8_t dFlags, uint8_t sBits, uint16_t tv) {
+FWINLINE void FillBufferTask::pushStepperData(uint8_t dFlags, uint8_t sBits, uint16_t tv) {
 
     if (tv & 0xff00)
         stepBuffer.push4(dFlags, sBits, tv);

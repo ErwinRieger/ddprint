@@ -225,12 +225,12 @@ class FillBufferTask : public Protothread {
             Restart();
         }
 
-        inline void pushStepperData(uint8_t dFlags, uint8_t sBits, uint16_t tv);
+        FWINLINE void pushStepperData(uint8_t dFlags, uint8_t sBits, uint16_t tv);
 
         //
         // Compute stepper bits, bresenham
         //
-        inline void computeStepBits() {
+        FWINLINE void computeStepBits() {
 
             stepBits = 1 << leadAxis;
 
