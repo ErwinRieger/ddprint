@@ -30,6 +30,7 @@
 #include "mdebug.h"
 #include "fastio.h"
 #include "swapdev.h"
+#include "stepper.h"
 
 #if defined(DDSim)
     #include <unistd.h>
@@ -172,10 +173,9 @@ extern Printer printer;
 
 class FillBufferTask : public Protothread {
 
-        uint8_t flags, dirBits;
-        uint8_t stepBits;
+        uint8_t flags;
         uint8_t timerLoop;
-        uint16_t lastTimer, timer;
+        uint16_t lastTimer;
 
         uint16_t nAccel;
         uint8_t leadAxis;
@@ -203,9 +203,11 @@ class FillBufferTask : public Protothread {
 
         bool cmdSync;
 
+        stepData sd;
+
     public:
         FillBufferTask() {
-            dirBits = 0;
+            sd.dirBits = 0;
             cmdSync = false;
         }
 
@@ -225,14 +227,12 @@ class FillBufferTask : public Protothread {
             Restart();
         }
 
-        FWINLINE void pushStepperData(uint8_t dFlags, uint8_t sBits, uint16_t tv);
-
         //
         // Compute stepper bits, bresenham
         //
         FWINLINE void computeStepBits() {
 
-            stepBits = 1 << leadAxis;
+            sd.stepBits = 1 << leadAxis;
 
             for (uint8_t i=0; i<5; i++) {
 
@@ -246,7 +246,7 @@ class FillBufferTask : public Protothread {
                 else {
                     //  d_axis[a] = d + 2 * (abs_displacement_vector_steps[a] - deltaLead)
                     d_axis[i] += d2_axis[i];
-                    stepBits |= 1 << i;
+                    sd.stepBits |= 1 << i;
                 }
             }
         }

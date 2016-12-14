@@ -428,42 +428,26 @@ inline void st_step_motor_es(uint8_t stepBits, uint8_t dirbits) {
 #   * operiert auf tail pointer
 #   * liest head pointer (um buffer fill festzustellen)
 #
-# xxx use volatile BYTE variables for head and tail.
-#
-    */
+*/
 
-    /*
-    struct StepBlock {
+typedef struct {
+    // Bit 0-4: Direction bits, F
+    // Bit 7: set-direction-flag, DDDDD
+    uint8_t dirBits;
+    uint8_t stepBits;
+    uint16_t timer;
+} stepData;
 
-        // Bit 0-4: Direction bits, F
-        // Bits 5-6: size of entry, 0,1 or 3, LL
-        // Bit 7: set-direction-flag, DDDDD
-        // FLLDDDDD
-        uint8_t cmdDirBits;
+// Size of step buffer, entries are stepData structs.
+#define StepBufferLen  256
 
-        uint8_t stepBits;   // 5 bits used
+class StepBuffer {
 
-        [uint8_t|uint16_t] timer;
-
-        [uint8_t timerLoop;]
-    };
-    */
-
-    // Size of step buffer in bytes, must be a power of 2:
-#define StepBufferLen  2048
-#define StepBufferMask  (StepBufferLen - 1)
-
-#define CMDLEN4 (1 << 5)
-
-#define GETCMDLEN(v) (v & (1 << 5))
-
-    class StepBuffer {
         private:
-            uint8_t stepBuffer[StepBufferLen];
+            stepData stepBuffer[StepBufferLen];
 
-            uint16_t head, tail;
-
-            int16_t syncCount;
+            uint8_t head, tail;
+            uint8_t syncCount;
 
         public:
 
@@ -472,8 +456,8 @@ inline void st_step_motor_es(uint8_t stepBits, uint8_t dirbits) {
                 syncCount = 0;
             };
 
-            FWINLINE uint16_t byteSize() {
-                return (StepBufferLen + head - tail) & StepBufferMask;
+            FWINLINE uint8_t byteSize() {
+                return (uint16_t)(StepBufferLen + head) - tail;
             }
 
             FWINLINE bool empty() {
@@ -481,7 +465,7 @@ inline void st_step_motor_es(uint8_t stepBits, uint8_t dirbits) {
             }
 
             FWINLINE bool full() {
-                return byteSize() >= (StepBufferLen-10);
+                return byteSize() >= (StepBufferLen-1);
             }
 
             FWINLINE void sync() {
@@ -489,71 +473,20 @@ inline void st_step_motor_es(uint8_t stepBits, uint8_t dirbits) {
             }
 
             FWINLINE bool synced() {
-                return syncCount <= 0;
+                return syncCount == 0;
             }
 
-            FWINLINE void push3(uint8_t cmdDir, uint8_t steps, uint8_t timer) {
+            FWINLINE void push(stepData &sd) {
 
-                simassert(byteSize()+3 < StepBufferLen);
+                simassert(! full());
 
-                stepBuffer[head] = cmdDir;
-                head = (head+1) & StepBufferMask;
-
-                stepBuffer[head] = steps;
-                head = (head+1) & StepBufferMask;
-
-                stepBuffer[head] = timer;
-                head = (head+1) & StepBufferMask;
+                stepBuffer[head++] = sd;
             }
 
-            FWINLINE void push4(uint8_t cmdDir, uint8_t steps, uint16_t timer) {
-
-                simassert(byteSize()+4 < StepBufferLen);
-
-                stepBuffer[head] = cmdDir | CMDLEN4;
-                head = (head+1) & StepBufferMask;
-
-                stepBuffer[head] = steps;
-                head = (head+1) & StepBufferMask;
-
-                stepBuffer[head] = timer;
-                head = (head+1) & StepBufferMask;
-
-                stepBuffer[head] = timer >> 8;
-                head = (head+1) & StepBufferMask;
-            }
-
-            // Get cmdDir
-            FWINLINE uint8_t * peek80() {
-                simassert(byteSize() >= 3);
-                return stepBuffer+tail;
-            }
-            // Get stepBits
-            FWINLINE uint8_t * peek81() {
-                simassert(byteSize() >= 3);
-                return stepBuffer+((tail+1) & StepBufferMask);
-            }
-            // Get timer, 8 bit
-            FWINLINE uint8_t *peek82() {
-                simassert(byteSize() >= 3);
-                return stepBuffer+((tail+2) & StepBufferMask);
-            }
-            // Get timer, high 8 bit
-            FWINLINE uint8_t *peek83() {
-                simassert(byteSize() >= 4);
-                return stepBuffer+((tail+3) & StepBufferMask);
-            }
-
-            FWINLINE void pop3() {
-                tail = (tail+3) & StepBufferMask;
+            FWINLINE stepData & pop() {
                 if (syncCount > 0)
-                    syncCount -= 3;
-            }
-
-            FWINLINE void pop4() {
-                tail = (tail+4) & StepBufferMask;
-                if (syncCount > 0)
-                    syncCount -= 4;
+                    syncCount--;
+                return stepBuffer[tail++];
             }
 
             void flush() {
@@ -574,39 +507,28 @@ inline void st_step_motor_es(uint8_t stepBits, uint8_t dirbits) {
                 if (empty()) {
 
                     // Empty buffer, nothing to step
-                    OCR1A=2000; // 1kHz.
+                    OCR1A = 2000; // 1kHz.
                 }
                 else {
 
-                    uint8_t cmdDir = *peek80();
-                    uint8_t stepBits = *peek81();
+                    stepData &sd = pop();
 
-                    // Set new timer value
-                    switch (GETCMDLEN(cmdDir)) {
-                        case CMDLEN4:
-                            OCR1A = *peek82() | (*peek83() << 8);
-                            pop4();
-                            break;
-                        default:
-                            OCR1A = *peek82();
-                            pop3();
-                    }
+                    OCR1A = sd.timer;
 
-                    // Set direction
-                    if (cmdDir & 0x80) {
+                    if (sd.dirBits & 0x80) {
 
                         // Set direction bits
-                        st_set_direction<XMove>(cmdDir); 
-                        st_set_direction<YMove>(cmdDir); 
-                        st_set_direction<ZMove>(cmdDir); 
-                        st_set_direction<EMove>(cmdDir); 
+                        st_set_direction<XMove>(sd.dirBits);
+                        st_set_direction<YMove>(sd.dirBits);
+                        st_set_direction<ZMove>(sd.dirBits);
+                        st_set_direction<EMove>(sd.dirBits);
                     }
 
                     // Step the motors and update step-coordinates (current_pos_steps): st_step_motor<>()
-                    st_step_motor<XMove>(stepBits, cmdDir); 
-                    st_step_motor<YMove>(stepBits, cmdDir); 
-                    st_step_motor<ZMove>(stepBits, cmdDir); 
-                    st_step_motor<EMove>(stepBits, cmdDir); 
+                    st_step_motor<XMove>(sd.stepBits, sd.dirBits);
+                    st_step_motor<YMove>(sd.stepBits, sd.dirBits);
+                    st_step_motor<ZMove>(sd.stepBits, sd.dirBits);
+                    st_step_motor<EMove>(sd.stepBits, sd.dirBits);
                 }
             }
 
@@ -615,40 +537,29 @@ inline void st_step_motor_es(uint8_t stepBits, uint8_t dirbits) {
             if (empty()) {
 
                 // Empty buffer, nothing to step
-                OCR1A = OCR1B=2000; // 1kHz.
+                OCR1A = OCR1B = 2000; // 1kHz.
             }
             else {
 
-                uint8_t cmdDir = *peek80();
-                uint8_t stepBits = *peek81();
+                stepData &sd = pop();
 
-                // * Set new timer value
-                switch (GETCMDLEN(cmdDir)) {
-                    case CMDLEN4:
-                        OCR1A = OCR1B = *peek82() | (*peek83() << 8);
-                        pop4();
-                        break;
-                    default:
-                        OCR1A = OCR1B = *peek82();
-                        pop3();
-                }
+                OCR1A = OCR1B = sd.timer;
 
                 // * Set direction 
-                if (cmdDir & 0x80) {
+                if (sd.dirBits & 0x80) {
 
                     // Set direction bits
-                    st_set_direction<XMove>(cmdDir); 
-                    st_set_direction<YMove>(cmdDir); 
-                    st_set_direction<ZMove>(cmdDir); 
+                    st_set_direction<XMove>(sd.dirBits);
+                    st_set_direction<YMove>(sd.dirBits);
+                    st_set_direction<ZMove>(sd.dirBits);
                 }
 
                 // * Step the motors
                 // * Check endstops
                 // * Update step-coordinates (current_pos_steps)
-
-                st_step_motor_es<XMove>(stepBits, cmdDir); 
-                st_step_motor_es<YMove>(stepBits, cmdDir); 
-                st_step_motor_es<ZMove>(stepBits, cmdDir); 
+                st_step_motor_es<XMove>(sd.stepBits, sd.dirBits);
+                st_step_motor_es<YMove>(sd.stepBits, sd.dirBits);
+                st_step_motor_es<ZMove>(sd.stepBits, sd.dirBits);
             }
         }
 };
