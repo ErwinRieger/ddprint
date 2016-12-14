@@ -50,9 +50,6 @@ class AccelData:
 
         pass
 
-        # Erreichbare geschwindigkeit falls kein plateu [mm/s]
-        # self.reachedovNominalVVector = None
-
         # Time for the three phases of this move
         # self.accelTime = None
         # self.linearTime = None
@@ -83,13 +80,7 @@ class AccelData:
 
     def __repr__(self):
 
-        s = ""
-        # if self.reachedovNominalVVector:
-            # s = "AccelData:"
-            # s += "\n  Nom. speed not reached, Vreach: " + str(self.reachedovNominalVVector)
-
-        s += "\n  AccelTime: %f, LinearTime: %f, DecelTime: %f" % (self.accelTime, self.linearTime, self.decelTime)
-        return s
+        return "\n  AccelTime: %f, LinearTime: %f, DecelTime: %f" % (self.accelTime, self.linearTime, self.decelTime)
 
 class StepData:
 
@@ -113,6 +104,7 @@ class StepData:
             assert(0)
 
     def addAccelPulse(self, timer):
+
         self.checkTimerValue(timer, maxTimerValue16)
         self.accelPulses.append(timer)
 
@@ -126,6 +118,7 @@ class StepData:
         self.linearTimer = timer
     
     def addDecelPulse(self, timer):
+
         self.checkTimerValue(timer, maxTimerValue16)
         self.decelPulses.append(timer)
 
@@ -157,16 +150,45 @@ class StepData:
     # return a list of binary encoded commands, ready to be send over serial...
     def commands(self, move):
 
-        cmds = []
-
-        payLoad = ""
-        cmdOfs = 0
-
+        flags = 0
         if self.setDirBits:
-            payLoad += struct.pack("<B", self.dirBits | 0x80)
-            cmdOfs = 1
+            flags = self.dirBits | 0x80
 
-        payLoad += struct.pack("<BiiiiiH",
+        # Check if acceleration timer values can be sent as difference bytes
+        accelByteFlag = 1 << 6;
+        if self.accelPulses:
+            lastTimer = self.accelPulses[0]
+            for tv in self.accelPulses[1:]:
+                dtv = lastTimer - tv
+
+                assert(dtv >= 0)
+
+                if dtv > 255:
+                    accelByteFlag = 0
+                    break
+
+                lastTimer = tv
+        
+        # Check if deceleration timer values can be sent as difference bytes
+        decelByteFlag = 1 << 5;
+        if self.decelPulses:
+            lastTimer = self.decelPulses[0]
+            for tv in self.decelPulses[1:]:
+                dtv = tv - lastTimer
+
+                assert(dtv >= 0)
+
+                if dtv > 255:
+                    decelByteFlag = 0
+                    break
+
+                lastTimer = tv
+       
+        # print "flags: 0x%x, dirbits: 0x%x" % (flags | accelByteFlag | decelByteFlag, flags)
+        # print "ald:", len(self.accelPulses), self.abs_vector_steps[self.leadAxis]-(len(self.accelPulses)+len(self.decelPulses)), len(self.decelPulses)
+
+        payLoad = struct.pack("<BBiiiiiH",
+                flags | accelByteFlag | decelByteFlag,
                 self.leadAxis,
                 self.abs_vector_steps[0],
                 self.abs_vector_steps[1],
@@ -186,18 +208,40 @@ class StepData:
                 self.linearTimer,
                 len(self.decelPulses))
 
-        cmdHex = ddprintcommands.CmdG1 + cmdOfs
+        if self.accelPulses and accelByteFlag:
 
-        for timer in self.accelPulses:
-            payLoad += struct.pack("<H", timer)
-        for timer in self.decelPulses:
-            payLoad += struct.pack("<H", timer)
+            lastTimer = self.accelPulses[0]
+            payLoad += struct.pack("<H", lastTimer)
 
+            for tv in self.accelPulses[1:]:
+                dtv = lastTimer - tv
+                payLoad += struct.pack("<B", dtv)
+                lastTimer = tv
+
+        else:
+
+            for timer in self.accelPulses:
+                payLoad += struct.pack("<H", timer)
+
+        if self.decelPulses and decelByteFlag:
+
+            lastTimer = self.decelPulses[0]
+            payLoad += struct.pack("<H", lastTimer)
+
+            for tv in self.decelPulses[1:]:
+                dtv = tv - lastTimer
+                payLoad += struct.pack("<B", dtv)
+                lastTimer = tv
+
+        else:
+
+            for timer in self.decelPulses:
+                payLoad += struct.pack("<H", timer)
 
         stream = cStringIO.StringIO(payLoad)
 
         cobsBlock = cobs.encodeCobs(stream)
-        cmds.append(( cmdHex, cobsBlock ))
+        cmds = [( ddprintcommands.CmdG1, cobsBlock )]
 
         while True:
 
@@ -235,6 +279,7 @@ class RawStepData:
         self.dirBits = 0
 
     def addPulse(self, timerValue, pulse):
+
         assert(timerValue <= maxTimerValue16)
         self.pulses.append((timerValue, pulse))
 
@@ -250,19 +295,39 @@ class RawStepData:
            "\n  Direction bits: 0x%x" % self.dirBits + \
            "\n  # pulses: %d" % len(self.pulses)
 
+    # For step bitmask see move.h::st_get_move_bit_mask()
+    def stepBits(self, stepBits):
+
+        bits = 0
+        for i in range(5):
+            if stepBits[i]:
+                bits |= (0x1 << i)
+
+        return bits
+
     # return a list of binary encoded commands, ready to be send over serial...
     def commands(self, move):
 
-        cmds = []
-
-        payLoad = ""
-        cmdOfs = 0
-
+        flags = 0
         if self.setDirBits:
-            payLoad += struct.pack("<B", self.dirBits | 0x80)
-            cmdOfs = 1
+            flags = self.dirBits | 0x80
 
-        payLoad += struct.pack("<H", len(self.pulses))
+        # Check if timer values can be sent as difference bytes
+        timerByteFlag = 1 << 6;
+        if self.pulses:
+            lastTimer = self.pulses[0][0]
+            for (tv, _) in self.pulses[1:]:
+                dtv = lastTimer - tv
+
+                if dtv > 127 or dtv < -128:
+                    timerByteFlag = 0
+                    break
+
+                lastTimer = tv
+        
+        payLoad = struct.pack("<BH",
+                flags | timerByteFlag,
+                len(self.pulses))
 
         # print "commands(): ignoring isExtrudingMove!"
         if False: # self.isExtrudingMove(A_AXIS):
@@ -271,22 +336,26 @@ class RawStepData:
         else:
             payLoad += struct.pack("<H", 0)
 
-        cmdHex = ddprintcommands.CmdG1Raw + cmdOfs
+        if timerByteFlag:
 
-        for (timer, stepBits) in self.pulses:
+            (lastTimer, stepBits) = self.pulses[0]
+            payLoad += struct.pack("<HB", lastTimer, self.stepBits(stepBits))
 
-            # For step bitmask see move.h::st_get_move_bit_mask()
-            bits = 0
-            for i in range(5):
-                if stepBits[i]:
-                    bits |= (0x1 << i)
+            for (tv, stepBits) in self.pulses[1:]:
+                dtv = lastTimer - tv
+                payLoad += struct.pack("<bB", dtv, self.stepBits(stepBits))
+                lastTimer = tv
+        
 
-            payLoad += struct.pack("<HB", timer, bits)
+        else:
+
+            for (timer, stepBits) in self.pulses:
+                payLoad += struct.pack("<HB", timer, self.stepBits(stepBits))
 
         stream = cStringIO.StringIO(payLoad)
 
         cobsBlock = cobs.encodeCobs(stream)
-        cmds.append(( cmdHex, cobsBlock ))
+        cmds = [( ddprintcommands.CmdG1Raw, cobsBlock )]
 
         while True:
 

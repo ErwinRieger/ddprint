@@ -174,21 +174,12 @@ from ddprinter import Printer, RxTimeout
 #   - speichere das kommando
 #
 #
-# Move segment data, OLD:
-#   * Header data:
-#       + number of accel steps, naccel, 16 bits
-#       + number of linear steps, nlinear, 16 bits
-#       + constant linear timer value, 16 bits
-#       + number of deccel steps, ndeccel, 16 bits
-#
-#   * accel steps: naccel*(stepbits (8bit) + timer value(16bits))
-#
-#   * steps: nlinear * (stepbits (8bit))
-#
-#   * deccel steps: ndeccel*(stepbits (8bit) + timer value(16bits))
-#
 # Move segment data, new with bresenham in firmware:
 #   * Header data:
+#       + flags 
+#           Bit 7: flag bits 0-4 contain stepper direction bits for X, Y, Z, A, B
+#           Bit 6: Accel step or raw timer values are compressd (one word + differences as bytes)
+#           Bit 5: Decel step values are compressd (one word + differences as bytes)
 #       + index lead axis, 8 bits
 #       + array of absolute steps, 5 * 32 bits
 #       + number of accel steps, naccel, 16 bits

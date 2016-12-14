@@ -23,18 +23,18 @@
 # ----------------------
 #
 CmdNull          = 0x0
-CmdDirBits       = 0x2
+# CmdDirBits       = 0x2
 CmdSyncFanSpeed  = 0x3 # Parameters: pwm value 0 - 255
 CmdRaw           = 0x4 # Parameters: blob data
 CmdBlock         = 0x6 # A 512byte block of a lager command
 
 CmdG1            = 0x7
-CmdDirG1         = 0x8 # CmdDirBits and CmdG1 combined
+# CmdDirG1         = 0x8 # CmdDirBits and CmdG1 combined
 
 CmdSyncTargetTemp= 0xb # Parameters: heater, temp 
 CmdDwellMS       = 0xc # Parameters: dwell time in mS
 CmdG1Raw         = 0xd # Raw print move steps, bresenham algo already done.
-CmdDirG1Raw      = 0xe # CmdDirBits and CmdG1Raw combined
+# CmdDirG1Raw      = 0xe # CmdDirBits and CmdG1Raw combined
 
 CmdUnknown       = 0x7f # Unknown command for debugging
 
@@ -89,11 +89,11 @@ CmdEnableFRLimit = 165 # Enable/disable flowrate limit
 CommandNames = {
     CmdNull: "CmdNull",
     CmdG1: "CmdG1",
-    CmdDirBits: "CmdDirBits",
+    # CmdDirBits: "CmdDirBits",
     CmdBlock: "CmdBlock",
-    CmdDirG1: "CmdDirG1",
+    # CmdDirG1: "CmdDirG1",
     CmdG1Raw: "CmdG1Raw",
-    CmdDirG1Raw: "CmdDirG1Raw",
+    # CmdDirG1Raw: "CmdDirG1Raw",
     CmdSyncTargetTemp: "CmdSyncTargetTemp",
     CmdDwellMS: "CmdDwellMS",
     CmdUnknown: "CmdUnknown",
