@@ -453,7 +453,6 @@ inline void st_step_motor_es(uint8_t stepBits, uint8_t dirbits) {
 #define StepBufferLen  2048
 #define StepBufferMask  (StepBufferLen - 1)
 
-#define CMDLEN3 (0 << 5)
 #define CMDLEN4 (1 << 5)
 
 #define GETCMDLEN(v) (v & (1 << 5))
@@ -497,7 +496,7 @@ inline void st_step_motor_es(uint8_t stepBits, uint8_t dirbits) {
 
                 simassert(byteSize()+3 < StepBufferLen);
 
-                stepBuffer[head] = cmdDir; //  | CMDLEN3;
+                stepBuffer[head] = cmdDir;
                 head = (head+1) & StepBufferMask;
 
                 stepBuffer[head] = steps;
@@ -572,23 +571,25 @@ inline void st_step_motor_es(uint8_t stepBits, uint8_t dirbits) {
             // --> To relax this situation we set the new OCR1A value as fast as possible.
             FWINLINE void runMoveSteps() {
 
-                if (byteSize()) {
+                if (empty()) {
+
+                    // Empty buffer, nothing to step
+                    OCR1A=2000; // 1kHz.
+                }
+                else {
 
                     uint8_t cmdDir = *peek80();
                     uint8_t stepBits = *peek81();
 
                     // Set new timer value
                     switch (GETCMDLEN(cmdDir)) {
-                        case  CMDLEN3:
-                            OCR1A = *peek82();
-                            pop3();
-                            break;
                         case CMDLEN4:
                             OCR1A = *peek82() | (*peek83() << 8);
                             pop4();
                             break;
                         default:
-                            massert(0);
+                            OCR1A = *peek82();
+                            pop3();
                     }
 
                     // Set direction
@@ -607,31 +608,29 @@ inline void st_step_motor_es(uint8_t stepBits, uint8_t dirbits) {
                     st_step_motor<ZMove>(stepBits, cmdDir); 
                     st_step_motor<EMove>(stepBits, cmdDir); 
                 }
-                else {
-                    // Empty buffer, nothing to step
-                    OCR1A=2000; // 1kHz.
-                }
             }
 
         FWINLINE void runHomingSteps() {
 
-            if (byteSize()) {
+            if (empty()) {
+
+                // Empty buffer, nothing to step
+                OCR1A = OCR1B=2000; // 1kHz.
+            }
+            else {
 
                 uint8_t cmdDir = *peek80();
                 uint8_t stepBits = *peek81();
 
                 // * Set new timer value
                 switch (GETCMDLEN(cmdDir)) {
-                    case  CMDLEN3:
-                        OCR1A = OCR1B = *peek82();
-                        pop3();
-                        break;
                     case CMDLEN4:
                         OCR1A = OCR1B = *peek82() | (*peek83() << 8);
                         pop4();
                         break;
                     default:
-                        massert(0);
+                        OCR1A = OCR1B = *peek82();
+                        pop3();
                 }
 
                 // * Set direction 
@@ -650,9 +649,6 @@ inline void st_step_motor_es(uint8_t stepBits, uint8_t dirbits) {
                 st_step_motor_es<XMove>(stepBits, cmdDir); 
                 st_step_motor_es<YMove>(stepBits, cmdDir); 
                 st_step_motor_es<ZMove>(stepBits, cmdDir); 
-            }
-            else {
-                OCR1A = OCR1B=2000; // 1kHz.
             }
         }
 };
