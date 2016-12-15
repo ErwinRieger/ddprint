@@ -271,7 +271,7 @@ class SDReader: public Protothread {
         uint16_t bytesToRead;
 
         // Temporary buffer if we cross a block boundary,
-        // the size if 4 bytes - the length of the longest
+        // the size is 4 bytes - the length of the longest
         // datatype to read (int32).
         uint8_t tempBuffer[4]; 
 
