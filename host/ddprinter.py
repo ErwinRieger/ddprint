@@ -30,7 +30,7 @@
 # at second connect).
 # So i've mixed pyserial 2.5.x with the list_ports functions from 2.6.x
 #
-import time, struct, crc16
+import time, struct, crc_ccitt_kermit
 import list_ports
 import dddumbui, cobs
 
@@ -310,11 +310,11 @@ class Printer(Serial):
         assert(s == cobs.nullByte)
 
         rc = self.readWithTimeout(1) # read response code
-        crc = crc16.crc16xmodem(rc)
+        crc = crc_ccitt_kermit.crc16_kermit(rc, 0xffff)
         cmd = ord(rc)
 
         l = self.readWithTimeout(1) # read length byte
-        crc = crc16.crc16xmodem(l, crc)
+        crc = crc_ccitt_kermit.crc16_kermit(l, crc)
 
         length = ord(l) - 1
         if debugComm:
@@ -323,7 +323,7 @@ class Printer(Serial):
         payload = ""
         if length:
             payload = self.readWithTimeout(length) # read payload
-            crc = crc16.crc16xmodem(payload, crc)
+            crc = crc_ccitt_kermit.crc16_kermit(payload, crc)
 
         (cflags, checkSum) = struct.unpack("<BH", self.readWithTimeout(3))
 
@@ -478,11 +478,11 @@ class Printer(Serial):
         header = struct.pack("<BBB", self.lineNr, binCmd, payloadSize+0x01)
 
         binary += header
-        checksum = crc16.crc16xmodem(header)
+        checksum = crc_ccitt_kermit.crc16_kermit(header, 0xffff)
 
         if binPayload:
             binary += binPayload
-            checksum = crc16.crc16xmodem(binPayload, checksum)
+            checksum = crc_ccitt_kermit.crc16_kermit(binPayload, checksum)
 
         # print "cflags, c1: 0x%x, 0x%x" % (cflags, checksum)
         cflags = 0x1

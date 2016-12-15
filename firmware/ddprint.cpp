@@ -1334,6 +1334,7 @@ class UsbCommand : public Protothread {
             unsigned long ts = millis();
 
             if (MSerial._available() >= nChars) {
+
                 startTS = ts; // reset timeout 
                 return CharsAvailable;
             }
@@ -1358,12 +1359,11 @@ class UsbCommand : public Protothread {
             SerAvailableState av;
 
             // Read startbyte
-            PT_WAIT_UNTIL( MSerial._available() );
-            PT_WAIT_UNTIL( MSerial.readNoCheckNoCobs() == SOH );
+            PT_WAIT_UNTIL( MSerial._available() && ( MSerial.readNoCheckNoCobs() == SOH ) );
             
             startTS = millis();
 
-            checksum = 0;
+            checksum = 0xffff;
 
             // Read packet number, command and payload length
             PT_WAIT_WHILE( (av = waitForSerial(3)) == NothinAvailable );
@@ -1372,11 +1372,11 @@ class UsbCommand : public Protothread {
 
             // Packet serial number
             c = MSerial.readNoCheckNoCobs();
-            checksum = _crc_xmodem_update(checksum, c);
+            checksum = _crc_ccitt_update(checksum, c);
 
             // Read command byte
             commandByte = MSerial.readNoCheckNoCobs();
-            checksum = _crc_xmodem_update(checksum, commandByte);
+            checksum = _crc_ccitt_update(checksum, commandByte);
 
             if (commandByte < 128) {
 
@@ -1391,7 +1391,7 @@ class UsbCommand : public Protothread {
 
                 // Read payload length 1 byte
                 payloadLength = MSerial.readNoCheckNoCobs();
-                checksum = _crc_xmodem_update(checksum, payloadLength);
+                checksum = _crc_ccitt_update(checksum, payloadLength);
                 payloadLength--;
 
                 // Wait for payload, checksum flags and two checksum bytes
@@ -1466,7 +1466,7 @@ class UsbCommand : public Protothread {
 
                 // Read payload length 1 byte
                 payloadLength = MSerial.readNoCheckNoCobs();
-                checksum = _crc_xmodem_update(checksum, payloadLength);
+                checksum = _crc_ccitt_update(checksum, payloadLength);
                 payloadLength--;
 
                 // Wait for payload, checksum flags and two checksum bytes
@@ -1798,9 +1798,6 @@ FWINLINE void loop() {
         tempControl.Run();
 
         if ((loopTS - timer100mS) > 100) { // Every 100 mS
-
-            // lcd_lib_buttons_update_interrupt();
-            // lcd_update();
 
             //
             // Control heater 

@@ -16,7 +16,7 @@ uint8_t MarlinSerial::peekN(uint8_t index) {
 void MarlinSerial::peekChecksum(uint16_t *checksum, uint8_t count) {
 
     for (uint8_t i=0; i<count; i++)
-        *checksum = _crc_xmodem_update(*checksum, peekN(i));
+        *checksum = _crc_ccitt_update(*checksum, peekN(i));
 }
 
 void MarlinSerial::cobsInit(uint16_t payloadLength) {
