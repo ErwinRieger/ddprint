@@ -378,7 +378,6 @@ class SDReader: public Protothread {
         void flush() {
 
             bufferLength = bufferPtr = 0;
-            // bytesToRead = 0;
 
             //
             // Restart is done in setBytesToReadX().
@@ -876,6 +875,16 @@ bool FillBufferTask::Run() {
             PT_END(); // Not reached
         }
 
+void FillBufferTask::flush() {
+
+    step = deltaLead;
+    cmdSync = false;
+    Restart();
+
+    sDReader.flush(); // resets swapdev also
+    stepBuffer.flush();
+}
+
 FillBufferTask fillBufferTask;
 
 Printer::Printer() {
@@ -911,14 +920,8 @@ void Printer::printerInit() {
 
     massert(printerState <= StateInit);
 
-    swapDev.reset();
-
-//xxxxxxxxxxx
-sDReader.flush();
-
+    // Init buffers
     fillBufferTask.flush();
-
-stepBuffer.flush();
 
     printerState = StateInit;
     eotReceived = false;
@@ -1035,9 +1038,7 @@ void Printer::cmdStopMove() {
     moveType = MoveTypeNone;
 
     // Flush remaining steps
-    sDReader.flush();
     fillBufferTask.flush();
-    stepBuffer.flush();
 
     cmdFanSpeed(0);
 }
@@ -1083,9 +1084,7 @@ void Printer::checkMoveFinished() {
         if ((moveType == MoveTypeHoming) && (! STEPPER1_DRIVER_INTERRUPT_ENABLED())) {
 
             // Flush remaining steps
-            sDReader.flush();
             fillBufferTask.flush();
-            stepBuffer.flush();
         }
 
         if ( eotReceived &&

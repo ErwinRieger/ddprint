@@ -221,11 +221,8 @@ class FillBufferTask : public Protothread {
             return cmdSync;
         }
 
-        void flush() {
-            step = deltaLead;
-            cmdSync = false;
-            Restart();
-        }
+        // Flush/init swap, swapreader, fillbuffer task and stepbuffer
+        void flush();
 
         //
         // Compute stepper bits, bresenham
