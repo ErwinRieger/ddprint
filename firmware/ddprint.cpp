@@ -924,6 +924,8 @@ stepBuffer.flush();
     eotReceived = false;
 
     analogWrite(LED_PIN, 255);
+
+    bufferLow = -1;
 }
 
 void Printer::cmdEot() {
@@ -958,8 +960,6 @@ void Printer::cmdMove(MoveType mt) {
         // getEepromSettings(es);
         // Compute max z step pos for software endstops, xxx um2 specific.
         // z_max_pos_steps = (long)((Z_MAX_POS + es.add_homeing[Z_AXIS]) * AXIS_STEPS_PER_MM_Z);
-
-        bufferLow = -1;
     }
 
     if (mt == MoveTypeHoming) {
@@ -1257,7 +1257,7 @@ void Printer::dwellEnd() {
 
     printerState = StateStart;
     // moveType = MoveTypeNormal;
-    bufferLow = -1;
+    // bufferLow = -1;
 }
 
 Printer printer;
@@ -1732,19 +1732,12 @@ FWINLINE void loop() {
         }
         else {
             if ((stepBuffer.byteSize() < 10) &&
-
                 (printer.bufferLow < 0x8000) &&
                 swapDev.available()) {
 
                 printer.bufferLow++;
-                /*
-                SERIAL_ECHO("BUFLOW:");
-                SERIAL_PROTOCOL(printer.bufferLow);
-                SERIAL_PROTOCOL(" SWP:");
-                SERIAL_PROTOCOL(swapDev.available());
-                SERIAL_PROTOCOL(" SDR:");
-                SERIAL_PROTOCOLLN(sDReader.available());
-                */
+
+                // printDebugInfo();
             }
         }
     }

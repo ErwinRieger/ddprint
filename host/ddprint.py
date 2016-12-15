@@ -433,9 +433,9 @@ def main():
 
     argParser = argparse.ArgumentParser(description='%s, Direct Drive USB Print.' % sys.argv[0])
     argParser.add_argument("-d", dest="device", action="store", type=str, help="Device to use, default: /dev/ttyACM0.", default="/dev/ttyACM0")
-    argParser.add_argument("-b", dest="baud", action="store", type=int, help="Baudrate, default 115200.", default=115200)
+    # argParser.add_argument("-b", dest="baud", action="store", type=int, help="Baudrate, default 115200.", default=115200)
     # argParser.add_argument("-b", dest="baud", action="store", type=int, help="Baudrate, default 230400.", default=230400)
-    # argParser.add_argument("-b", dest="baud", action="store", type=int, help="Baudrate, default 500000.", default=500000)
+    argParser.add_argument("-b", dest="baud", action="store", type=int, help="Baudrate, default 500000.", default=500000)
     # argParser.add_argument("-b", dest="baud", action="store", type=int, help="Baudrate, default 1000000.", default=1000000)
 
     argParser.add_argument("-t0", dest="t0", action="store", type=int, help="Temp 0 (heated bed), default comes from mat. profile.")

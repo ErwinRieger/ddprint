@@ -32,9 +32,10 @@
 #define SERIAL_PORT 0
 
 // This determines the communication speed of the printer
-#define BAUDRATE 115200
+// #define BAUDRATE 115200
 // #define BAUDRATE 230400
-// #define BAUDRATE 500000
+// #define BAUDRATE 250000
+#define BAUDRATE 500000
 // #define BAUDRATE 1000000
 
 // This defines the number of extruders

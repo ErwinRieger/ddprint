@@ -207,7 +207,7 @@ class MainForm(npyscreen.Form):
 
         parser = argparse.ArgumentParser(description='%s, Direct Drive USB Print.' % sys.argv[0])
         parser.add_argument("-d", dest="device", action="store", type=str, help="Device to use, default: /dev/ttyACM0.", default="/dev/ttyACM0")
-        parser.add_argument("-b", dest="baud", action="store", type=int, help="Baudrate, default 115200.", default=115200)
+        parser.add_argument("-b", dest="baud", action="store", type=int, help="Baudrate, default 500000.", default=500000)
         parser.add_argument("-f", dest="file", action="store", type=str, help="Gcode to print")
         parser.add_argument("-F", dest="fakeendstop", action="store", type=bool, help="fake endstops", default=False)
         parser.add_argument("-nc", dest="noCoolDown", action="store", type=bool, help="Debug: don't wait for heater cool down after print.", default=False)
