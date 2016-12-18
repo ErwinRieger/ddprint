@@ -606,11 +606,11 @@ class Advance (object):
             startSpeed1.setSpeed(maxAllowedStartSpeed)
 
             if startSpeed1.eSpeed > maxAllowedEStartSpeed:
-                print "startSpeed1.eSpeed higher than maxAllowedEStartSpeed:", startSpeed1.eSpeed, maxAllowedEStartSpeed
+
+                # print "startSpeed1.eSpeed higher than maxAllowedEStartSpeed:", startSpeed1.eSpeed, maxAllowedEStartSpeed
 
                 factor = maxAllowedEStartSpeed / startSpeed1.eSpeed
-
-                print "factor: ", factor
+                # print "factor: ", factor
                 assert(factor < 1)
 
                 startSpeed1 = startSpeed1.scale(factor)
@@ -629,10 +629,10 @@ class Advance (object):
                 #
 
                 factor = startSpeed1.feedrate3() / startSpeed1S
-                print "factor: ", factor
+                # print "factor: ", factor
+                assert(factor < 1)
 
                 # Adjust endspeed of last move:
-                assert(factor < 1)
 
                 # XXX einfacher algo, kann man das besser machen (z.b. mit jerk-berechnung,
                 # vector subtraktion oder so?)
@@ -649,10 +649,6 @@ class Advance (object):
             move.pprint("Start planAcceleration")
 
         move.state = 2
-
-        # allowedAccel3 = vectorLength(move.getMaxAllowedAccelVector5(self.maxAxisAcceleration)[:3])
-        # av = move.getMaxAllowedAccelVector5(self.maxAxisAcceleration)
-        # print "allowed accel vector: ", av, ", XY accel: ", allowedAccel3
 
         accel3 = move.accel.xyAccel()
         # print "allowed XY start accel: ", accel3
@@ -894,8 +890,6 @@ class Advance (object):
                 assert( abs(v - v2) < 0.001)
             # end debug
 
-            # topSpeed.setSpeed(v / util.RoundSafe)
-            print "XXX topspeed hack disabled." # topSpeed.setSpeed(v / 0.999999)
             topSpeed.setSpeed(v)
 
             if debugMoves:
@@ -954,8 +948,6 @@ class Advance (object):
         accelGroup = None
         for move in path:
 
-            # allowedAccelV = move.getMaxAllowedAccelVector5(self.maxAxisAcceleration)
-            # startFeedrateIncrease = self.eJerk(allowedAccelV[A_AXIS])
             startFeedrateIncrease = self.eJerk(move.accel.eAccel())
             (sadv, _) = move.startAdvSteps(startFeedrateIncrease=startFeedrateIncrease)
 
@@ -982,8 +974,6 @@ class Advance (object):
 
             move = path[len(path) - 1 - index]
 
-            # allowedAccelV = move.getMaxAllowedAccelVector5(self.maxAxisAcceleration)
-            # endFeedrateIncrease = - self.eJerk(allowedAccelV[A_AXIS])
             endFeedrateIncrease = - self.eJerk(move.accel.eAccel())
             (sdec, _) = move.endAdvSteps(endFeedrateIncrease=endFeedrateIncrease)
 
@@ -1037,8 +1027,6 @@ class Advance (object):
 
                     for advMove in baseMove.advanceData.accelGroup:
 
-                        # allowedAccelV = advMove.getMaxAllowedAccelVector5(self.maxAxisAcceleration)
-                        # startFeedrateIncrease = self.eJerk(allowedAccelV[A_AXIS])
                         startFeedrateIncrease = self.eJerk(advMove.accel.eAccel())
                         advMove.advanceData.startFeedrateIncrease = startFeedrateIncrease
 
@@ -1097,8 +1085,6 @@ class Advance (object):
 
                     for advMove in baseMove.advanceData.decelGroup:
 
-                        # allowedAccelV = advMove.getMaxAllowedAccelVector5(self.maxAxisAcceleration)
-                        # endFeedrateIncrease = - self.eJerk(allowedAccelV[A_AXIS])
                         endFeedrateIncrease = - self.eJerk(advMove.accel.eAccel())
                         advMove.advanceData.endFeedrateIncrease = endFeedrateIncrease
 
@@ -1337,23 +1323,6 @@ class Advance (object):
 
         move.initStepData(StepDataTypeBresenham)
 
-        # abs_displacement_vector_steps = move.absStepsVector()
-
-        print "Warning, disabled extrusion adjust!"
-
-        """
-        for i in range(5):
-            dirBits += (move.displacement_vector_steps_raw()[i] >= 0) << i
-            adjustedDisplacement = move.displacement_vector_steps_adjusted(NozzleProfile, MatProfile, PrinterProfile)
-
-            s = abs(adjustedDisplacement[i])
-            if s > leadAxis_steps:
-                leadAxis = i
-                leadAxis_steps = s
-
-            abs_displacement_vector_steps.append(s)
-        """
-
         # self.moveEsteps -= move.eSteps
         # print "planStepsSimple(): moveEsteps-: %7.3f %7.3f" % (move.eSteps, self.moveEsteps)
 
@@ -1362,8 +1331,11 @@ class Advance (object):
         dispS = self.planner.stepRounders.round(dispF)
 
         if dispS == emptyVector5:
-            print "Empty move..."
-            print "***** End PlanSTepsSimple() *****"
+
+            if debugMoves:
+                print "Empty move..."
+                print "***** End PlanSTepsSimple() *****"
+
             self.planner.stepRounders.rollback()
             return
 
@@ -1409,9 +1381,6 @@ class Advance (object):
             v1 = abs(move.endSpeed.speed()[leadAxis])                # [mm/s]
         else:
             v1 = abs(move.endSpeed.speed().eSpeed)
-
-        # allowedAccel = abs(move.getMaxAllowedAccelVector5(self.maxAxisAcceleration)[leadAxis])
-        # print "lead, v0, v1: ", leadAxis, v0, v1
 
         nAccel = 0
         if move.accelTime():
@@ -1517,28 +1486,12 @@ class Advance (object):
         endSpeedS = endSpeed.feedrate3()
         endSpeedE = endSpeed.eSpeed
 
-        # xxxxxxxxxxxxxxxxxxxx# xxx funktion trotzdem durchlaufen wegen rundung von e-steps
         # Some tests
         assert(ta == 0)
         assert(tl == 0)
         assert(td > 0)
         assert(topSpeedS > endSpeedS) # XYZ should be decelerating
         assert(abs(topSpeedE) < abs(endSpeedE)) # E should be accelerating
-
-        print "Warning, disabled extrusion adjust!"
-
-        """
-        for i in range(5):
-            dirBits += (move.displacement_vector_steps_raw()[i] >= 0) << i
-            adjustedDisplacement = move.displacement_vector_steps_adjusted(NozzleProfile, MatProfile, PrinterProfile)
-
-            s = abs(adjustedDisplacement[i])
-            if s > leadAxis_steps:
-                leadAxis = i
-                leadAxis_steps = s
-
-            abs_displacement_vector_steps.append(s)
-        """
 
         # self.moveEsteps -= move.eSteps
         # print "planCrossedDecelSteps(): moveEsteps-: %7.3f %7.3f" % (move.eSteps, self.moveEsteps)
@@ -1548,8 +1501,11 @@ class Advance (object):
         dispS = self.planner.stepRounders.round(dispF)
 
         if dispS == emptyVector5:
-            print "Empty move..."
-            print "***** End planCrossedDecelSteps() *****"
+        
+            if debugMoves:
+                print "Empty move..."
+                print "***** End planCrossedDecelSteps() *****"
+
             self.planner.stepRounders.rollback()
             return
 
@@ -1792,7 +1748,7 @@ class Advance (object):
                 X_AXIS,
                 abs( topSpeed[X_AXIS] ),
                 abs(endSpeed[X_AXIS]),
-                abs(move.getMaxAllowedAccelVector5(self.maxAxisAcceleration)[X_AXIS]),
+                abs(move.accel.accel(X_AXIS)),
                 xStepsToMove,
                 forceFill=True)
 
@@ -1810,7 +1766,7 @@ class Advance (object):
                 Y_AXIS,
                 abs( topSpeed[Y_AXIS] ),
                 abs(endSpeed[Y_AXIS]),
-                abs(move.getMaxAllowedAccelVector5(self.maxAxisAcceleration)[Y_AXIS]),
+                abs(move.accel.accel(Y_AXIS)),
                 yStepsToMove,
                 forceFill=True)
 
@@ -1828,7 +1784,7 @@ class Advance (object):
                 A_AXIS,
                 abs( topSpeed.eSpeed ),
                 abs( endSpeed.eSpeed ),
-                abs(move.getMaxAllowedAccelVector5(self.maxAxisAcceleration)[A_AXIS]),
+                abs(move.accel.eAccel()),
                 eStepsToMove,
                 forceFill=True)
 

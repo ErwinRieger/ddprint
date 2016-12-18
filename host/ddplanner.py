@@ -94,11 +94,16 @@ class MaxExtrusionRate:
 
     def printStat(self):
 
-        # Extrusion adjust
-        adjustedExtrusion = self.maxRate + pow(self.maxRate, 2) * NozzleProfile.getExtrusionAdjustFactor()
 
         if self.maxRate:
-            print "Maximal net Extrusion Rate (Extruder A): %.1f mm³/s, adjusted/gross: %.1f mm³/s, move:" % (self.maxRate, adjustedExtrusion)
+
+            if UseExtrusionAdjust:
+                # Extrusion adjust
+                adjustedExtrusion = self.maxRate + pow(self.maxRate, 2) * NozzleProfile.getExtrusionAdjustFactor()
+                print "Maximal net Extrusion Rate (Extruder A): %.1f mm³/s, adjusted/gross: %.1f mm³/s, move:" % (self.maxRate, adjustedExtrusion)
+            else:
+                print "Maximal net Extrusion Rate (Extruder A): %.1f mm³/s, move:" % self.maxRate
+
             self.move.pprint("Max. extrusion Move")
             print "Net Max10: ", self.max10
             print "Maximal Extrusion Rate (Extruder A) 5 second average: %.1f" % self.maxAvgRate, "mm³/s\n"
@@ -236,7 +241,6 @@ class PathData (object):
         self.time += move.accelData.getTime()
 
         # Sum extrusion volume
-        # self.extrusionAmount += move.getAdjustedExtrusionVolume(A_AXIS, NozzleProfile, MatProfile)
         self.extrusionAmount += move.getExtrusionVolume(MatProfile)
 
         if self.time >= ATInterval:

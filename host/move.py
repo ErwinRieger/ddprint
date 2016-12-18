@@ -31,6 +31,7 @@ from ddprintcommands import CommandNames
 from ddprofile import PrinterProfile
 from types import ListType
 
+from ddconfig import *
 
 ##################################################
 # Move types.
@@ -918,8 +919,13 @@ class PrintMove(RealMove):
 
         self.displacement_vector_raw3 = Vector(displacement_vector[:3])
         self.displacement_vector_steps_raw3 = displacement_vector_steps[:3]
-        self.direction5 = displacement_vector.normalized()
+
         self.direction3 = self.displacement_vector_raw3.normalized()
+
+        # Apply extrusion adjust
+        # if UseExtrusionAdjust:
+
+        direction5 = displacement_vector.normalized()
 
         self.eDistance = displacement_vector[A_AXIS]
         self.eSteps = displacement_vector_steps[A_AXIS]
@@ -934,7 +940,11 @@ class PrintMove(RealMove):
         self.topSpeed = VelocityOverride(v)
         self.endSpeed = VelocityOverride(v)
 
-        av = self._getMaxAllowedAccelVector5(maxAccelV)
+        # self.__direction5 = displacement_vector.normalized()
+        # av = self.__getMaxAllowedAccelVector5(maxAccelV)
+
+        accelVector = direction5.scale(_MAX_ACCELERATION)
+        av = accelVector.constrain(maxAccelV) or accelVector
         self.accel = AccelOverride([av[:3], av[A_AXIS]], self.direction3)
 
     def isPrintMove(self):
@@ -953,14 +963,14 @@ class PrintMove(RealMove):
     # Alle achsen werden in der gleichen zeit beschleunigt.
     # Dadurch teilen sich die zulässigen einzelbeschleunigungen
     # im entsprechenden verhältnis auf.
-    def _getMaxAllowedAccelVector5(self, maxAccelV):
-        accelVector = self.direction5.scale(_MAX_ACCELERATION)
-        return accelVector.constrain(maxAccelV) or accelVector
+    # def __getMaxAllowedAccelVector5(self, maxAccelV):
+        # accelVector = self.__direction5.scale(_MAX_ACCELERATION)
+        # return accelVector.constrain(maxAccelV) or accelVector
 
-    # always positive
-    def _getMaxAllowedAccel5(self, maxAccelV):
-        accelVector = self.getMaxAllowedAccelVector5(maxAccelV)
-        return accelVector.length()
+    ####### always positive
+    ######def __getMaxAllowedAccel5(self, maxAccelV):
+        ######accelVector = self.getMaxAllowedAccelVector5(maxAccelV)
+        ######return accelVector.length()
 
     ################################################################################
     # Area (e-distance) of advance start ramp
@@ -1256,9 +1266,6 @@ class SubMove(MoveBase):
         self.topSpeed.setSpeed(tv, "SubMove.setSpeeds")
 
         self.endSpeed.setSpeed(ev, "SubMove.setSpeeds")
-
-    def nu_getMaxAllowedAccelVector5(self, maxAccelV):
-        return self.parentMove.getMaxAllowedAccelVector5(maxAccelV)
 
     def crossedDecelStep(self):
         return (self.topSpeed.speed().eSpeed < 0) or (self.endSpeed.speed().eSpeed < 0)

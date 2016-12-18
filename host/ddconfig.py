@@ -51,7 +51,7 @@ UseExtrusionAutoTemp = True
 #
 # Auto extrusion adjust, always enabled
 #
-############### xxx not used??? UseExtrusionAdjust = True
+UseExtrusionAdjust = False
 
 #####################################################################
 #
