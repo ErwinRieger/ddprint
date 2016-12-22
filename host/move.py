@@ -586,10 +586,12 @@ class AccelOverride(object):
 
     def setAccel(self, xyAccel, eAccel):
 
+        """
         # debug
         if xyAccel == self.xyAccel() and eAccel == self.eAccel():
             print "duplicate accel: ", xyAccel, eAccel
             assert(0)
+        """
 
         self.accels.append([self.xyzDirection.scale(xyAccel), eAccel])
 
@@ -928,6 +930,8 @@ class PrintMove(RealMove):
         direction5 = displacement_vector.normalized()
 
         self.eDistance = displacement_vector[A_AXIS]
+
+        # xxx todo: add override
         self.eSteps = displacement_vector_steps[A_AXIS]
 
         self.eDirection = self.eDistance / self.distance3
@@ -945,7 +949,10 @@ class PrintMove(RealMove):
 
         accelVector = direction5.scale(_MAX_ACCELERATION)
         av = accelVector.constrain(maxAccelV) or accelVector
-        self.accel = AccelOverride([av[:3], av[A_AXIS]], self.direction3)
+
+        # xxx rework accel, store default xyz and eaccel, make start- and eaccel overridable
+        self.startAccel = AccelOverride([av[:3], av[A_AXIS]], self.direction3)
+        self.endAccel = AccelOverride([av[:3], av[A_AXIS]], self.direction3)
 
     def isPrintMove(self):
         return True
@@ -1218,8 +1225,10 @@ class PrintMove(RealMove):
         print "Start ESpeed: " + self.startSpeed.speed().eSpeedStr()
         print "  End ESpeed: " + self.endSpeed.speed().eSpeedStr()
 
-        print "Allowed Acceleration: ",
-        print self.accel
+        print "Allowed Start Acceleration: ",
+        print self.startAccel
+        print "Allowed End Acceleration: ",
+        print self.endAccel
 
         print self.advanceData
         print "---------------------"
@@ -1252,7 +1261,8 @@ class SubMove(MoveBase):
         self.displacement_vector_steps_raw3 = displacement_vector_steps[:3]
         self.eSteps = displacement_vector_steps[A_AXIS]
 
-        self.accel = parentMove.accel
+        self.startAccel = parentMove.startAccel
+        self.endAccel = parentMove.endAccel
 
         self.state = 2
 

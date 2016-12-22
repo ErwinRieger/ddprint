@@ -125,7 +125,7 @@ def joinMoves(move1, move2, jerk, maxAccelV):
         startSpeed2 = move2.startSpeed.speed()
         startSpeedS2 = startSpeed2.feedrate3()
 
-        allowedAccel3 = move1.accel.xyAccel()
+        allowedAccel3 = move1.startAccel.xyAccel()
 
         maxEndSpeed1 = vAccelPerDist(startSpeedS1, allowedAccel3, move1.distance3)
 
@@ -141,7 +141,7 @@ def joinMoves(move1, move2, jerk, maxAccelV):
             move1.endSpeed.setSpeed(endSpeed1, "joinMoves - max. reachable endspeed")
 
         # Check max reachable e endspeed
-        maxAllowedEEndSpeed = vAccelPerDist(startSpeed1.eSpeed, move1.accel.eAccel(), move1.eDistance)
+        maxAllowedEEndSpeed = vAccelPerDist(startSpeed1.eSpeed, move1.startAccel.eAccel(), move1.eDistance)
         if maxAllowedEEndSpeed < endSpeed1.eSpeed:
             circaf(maxAllowedEEndSpeed, endSpeed1.eSpeed, 0.000000001)
 
