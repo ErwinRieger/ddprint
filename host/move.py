@@ -431,28 +431,22 @@ class AdvanceData:
         return self.endFeedrateIncrease != 0
 
     # xxx rename to endETopFeedrate
-    def endEReachedFeedrate(self, endFeedrateIncrease = None):
+    def endEReachedFeedrate(self):
 
-        if endFeedrateIncrease == None:
-            endFeedrateIncrease = self.endFeedrateIncrease
+        return self.move.topSpeed.speed().eSpeed + self.endFeedrateIncrease
 
-        return self.move.topSpeed.speed().eSpeed + endFeedrateIncrease
+    def endEFeedrate(self):
 
-    def endEFeedrate(self, endFeedrateIncrease = None):
-
-        if endFeedrateIncrease == None:
-            endFeedrateIncrease = self.endFeedrateIncrease
-
-        return self.move.endSpeed.speed().eSpeed + endFeedrateIncrease
+        return self.move.endSpeed.speed().eSpeed + self.endFeedrateIncrease
 
     # Check if sign changes at accel/decel
     def startSignChange(self):
         return sign(self.startEFeedrate()) != sign(self.startEReachedFeedrate())
 
-    def endSignChange(self, endFeedrateIncrease = None):
+    def endSignChange(self):
 
-        v0 = self.endEReachedFeedrate(endFeedrateIncrease)
-        v1 = self.endEFeedrate(endFeedrateIncrease)
+        v0 = self.endEReachedFeedrate()
+        v1 = self.endEFeedrate()
 
         if v0 == 0 or v1 == 0:
             return False
@@ -1017,24 +1011,24 @@ class PrintMove(RealMove):
         ta = self.accelTime()
 
         if not ta:
-            return (0.0, 0.0)
+            return 0.0
 
         sa = self.startAdvDistance(ta, startFeedrateIncrease)
-        esteps = sa * self.e_steps_per_mm
+        # esteps = sa * self.e_steps_per_mm
 
-        return (sa, esteps)
+        return sa
 
     def endAdvSteps(self, endFeedrateIncrease=None):
 
         td = self.decelTime()
 
         if not td:
-            return (0.0, 0.0)
+            return 0.0
 
         sd = self.endAdvDistance(td, endFeedrateIncrease)
-        esteps = sd * self.e_steps_per_mm
+        # esteps = sd * self.e_steps_per_mm
 
-        return (sd, esteps)
+        return sd
     ################################################################################
 
     ################################################################################
@@ -1279,9 +1273,6 @@ class SubMove(MoveBase):
 
     def crossedDecelStep(self):
         return (self.topSpeed.speed().eSpeed < 0) or (self.endSpeed.speed().eSpeed < 0)
-
-    # def endSignChange(self):
-    #    return self.parentMove.advanceData.endSignChange()
 
     def pprint(self, title):
 

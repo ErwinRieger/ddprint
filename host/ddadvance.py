@@ -165,7 +165,6 @@ class Advance (object):
 
         kCorr = 0.015 # PLA
         kCorr = 0.04  # Flexible
-        kCorr = 0
 
         # vCorr = vExtruder / (1 - kCorr * vExtruder)
 
@@ -277,7 +276,7 @@ class Advance (object):
 
             self.planAdvanceGroup(path)
 
-            """
+            # """
             print "Path skippedAdvance: ", self.skippedAdvance, "-->", self.skippedAdvance*self.e_steps_per_mm, "e-steps"
 
             # heavy debug
@@ -346,11 +345,11 @@ class Advance (object):
 
                         sc = (v0 * tdc) / 2
                         endStepsC = sc * self.e_steps_per_mm
-                        print "endStepsC: ", endStepsC, "err:", move.advanceData.endEStepsC-endStepsC
+                        print "endStepsC: ", move.advanceData.endEStepsC, endStepsC, "err:", move.advanceData.endEStepsC-endStepsC
 
                         sd = (v1 * tdd) / 2
                         endStepsD = sd * self.e_steps_per_mm
-                        print "endStepsD: ", endStepsD, "err:", move.advanceData.endEStepsD-endStepsD
+                        print "endStepsD: ", move.advanceData.endEStepsD, endStepsD, "err:", move.advanceData.endEStepsD-endStepsD
 
                         roundError = move.advanceData.endEStepsC + move.advanceData.endEStepsD - endStepsC - endStepsD
                         assert(util.circaf(roundError, 0, 0.001))
@@ -383,7 +382,7 @@ class Advance (object):
             assert(util.circaf( self.moveEsteps-plannedEstepsNASum, 0, 0.001))
             assert(roundErrorSum < 0.001)
             # end heavy debug
-            """
+            # """
 
             if abs(self.skippedAdvance) > 1.0/self.e_steps_per_mm:
 
@@ -610,13 +609,13 @@ class Advance (object):
             endSpeed1 = move.endSpeed.speed()
             endSpeed1S = endSpeed1.feedrate3()
 
-            allowedAccel3 = move.startAccel.xyAccel()
+            allowedAccel3 = move.endAccel.xyAccel()
 
             maxAllowedStartSpeed = util.vAccelPerDist(endSpeed1S, allowedAccel3, move.distance3)
 
             # print "joinMovesBwd, startspeed, max startspeed: ", startSpeed1S, maxAllowedStartSpeed
 
-            maxAllowedEStartSpeed = util.vAccelPerDist(endSpeed1.eSpeed, move.startAccel.eAccel(), move.eDistance)
+            maxAllowedEStartSpeed = util.vAccelPerDist(endSpeed1.eSpeed, move.endAccel.eAccel(), move.eDistance)
 
             # print "joinMovesBwd, E-startspeed, max E-startspeed: ", startSpeed1.eSpeed, maxAllowedEStartSpeed
 
@@ -669,6 +668,7 @@ class Advance (object):
         if debugMoves:
             print "***** End joinMovesBwd() *****"
 
+    # xxx rename to ...Compensation
     def planFeederCorrection(self, move):
 
         if 1:
@@ -709,6 +709,9 @@ class Advance (object):
         # Increase e-steps of the three phases and adjust
         # the resulting acceleration:
         eSteps = 0
+
+        newStartAccel = None # xxx
+
         if ta:
             # Aproximation of the real curve through a
             # simple ramp XXX todo
@@ -745,6 +748,7 @@ class Advance (object):
             eAccel = move.endAccel.eAccel()
 
             newEndAccel = (newTopSpeedS - newEndSpeedS) / td
+            # newEndAccel = max(newStartAccel, (newTopSpeedS - newEndSpeedS) / td)
             print "feederCorr: endAccel %.5f -> %.5f" % (eAccel, newEndAccel)
             move.endAccel.setAccel(xyzAccel, newEndAccel)
 
@@ -1064,7 +1068,7 @@ class Advance (object):
         for move in path:
 
             startFeedrateIncrease = self.eJerk(move.startAccel.eAccel())
-            (sadv, _) = move.startAdvSteps(startFeedrateIncrease=startFeedrateIncrease)
+            sadv = move.startAdvSteps(startFeedrateIncrease=startFeedrateIncrease)
 
             if sadv:
 
@@ -1090,7 +1094,7 @@ class Advance (object):
             move = path[len(path) - 1 - index]
 
             endFeedrateIncrease = - self.eJerk(move.endAccel.eAccel())
-            (sdec, _) = move.endAdvSteps(endFeedrateIncrease=endFeedrateIncrease)
+            sdec = move.endAdvSteps(endFeedrateIncrease=endFeedrateIncrease)
 
             if sdec:
 
@@ -1429,9 +1433,6 @@ class Advance (object):
 
         move.initStepData(StepDataTypeBresenham)
 
-        # self.moveEsteps -= move.eSteps
-        # print "planStepsSimple(): moveEsteps-: %7.3f %7.3f" % (move.eSteps, self.moveEsteps)
-
         # Round step values
         dispF = move.displacement_vector_steps_raw3 + [move.eSteps, 0.0]
         dispS = self.planner.stepRounders.round(dispF)
@@ -1598,9 +1599,6 @@ class Advance (object):
         assert(td > 0)
         assert(topSpeedS > endSpeedS) # XYZ should be decelerating
         assert(abs(topSpeedE) < abs(endSpeedE)) # E should be accelerating
-
-        # self.moveEsteps -= move.eSteps
-        # print "planCrossedDecelSteps(): moveEsteps-: %7.3f %7.3f" % (move.eSteps, self.moveEsteps)
 
         # Round step values
         dispF = move.displacement_vector_steps_raw3 + [move.eSteps, 0.0]
@@ -2412,7 +2410,6 @@ class Advance (object):
 
             for dim in [X_AXIS, Y_AXIS]:
                 maxSteps[dim] += stepsMissing[dim]
-
             print "adjusted steps: ", maxSteps
 
         ####################################################################################
@@ -2564,7 +2561,7 @@ class Advance (object):
 
             for dim in [X_AXIS, Y_AXIS]:
                 maxSteps[dim] += stepsMissing[dim]
-            print "adjusted steps: ", dim, maxSteps
+            print "adjusted steps: ", maxSteps
 
         if ta:
 
@@ -2763,7 +2760,7 @@ class Advance (object):
 
             for dim in [X_AXIS, Y_AXIS]:
                 maxSteps[dim] += stepsMissing[dim]
-            print "adjusted steps: ", dim, maxSteps
+            print "adjusted steps: ", maxSteps
 
         ####################################################################################
 
