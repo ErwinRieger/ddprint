@@ -10,7 +10,8 @@
   # 0.4mm nozzle, 0.8mm nozzle has 4 times more
   "baseExtrusionRate" : 1.5,
   # xxx abhängig von düsen durchmesser?
-  "extrusionAutoTempFactor" : 2.5
+  "extrusionAutoTempFactor" : 2.5,
+  "kFeederCompensation": 0.015
 }
 
 
