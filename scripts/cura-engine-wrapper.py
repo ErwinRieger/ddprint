@@ -1,18 +1,35 @@
 #!/usr/bin/env python3
+# encoding: utf-8 
 #
-# export PYTHONPATH="/opt/cura/lib/cura/plugins:/opt/cura/lib/python3/dist-packages"
-# export LD_LIBRARY_PATH=/opt/cura/lib
-# CURA_ENGINE_SEARCH_PATH
+#/*
+# This file is part of ddprint - a direct drive 3D printer firmware.
+# 
+# Copyright 2016 erwin.rieger@ibrieger.de
+# 
+# ddprint is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+# 
+# ddprint is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+# 
+# You should have received a copy of the GNU General Public License
+# along with ddprint.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Drei verschiedene container typen (ContainerRegistry.getContainerTypes()):
-# * stack?
-# * definition (.json)
-# * InstanceContainer: instantiierung einer definition?, profile (.cfg)
+# This program needs a CURA (github.com/Ultimaker/Cura) installation (2.3.x) 
+# and uses its python modules.
 #
-# ~/.config/cura/cura.cfg:
-#   active_machine = Ultimaker 2        -> ...home...local...cura/machine_instances/Ultimaker+2.stack.cfg
+#*/
+
 #
-import os, copy, sys
+# Collect CuraEngine settings from Cura Machine- and Qualityprofiles and call
+# CuraEngine to produce a gcode file from a stl input.
+#
+
+import os, copy, sys, subprocess
 import urllib.parse
 
 from UM.Application import Application
@@ -28,12 +45,14 @@ import cura.Settings
 
 if len(sys.argv) < 3 or sys.argv[1] == "-h":
     print("Usage:")
-    print("  %s -h: print help" % sys.argv[0])
-    print("  %s -l: <curapath> list all container names" % sys.argv[0])
-    print("  %s -pm <curapath> <machine name>: print values of machine container" % sys.argv[0])
-    print("  %s -pp <curapath> <profile name>: print values of profile" % sys.argv[0])
-    print("  %s <curapath> <machine name> <profile name>: print settings string for curaEngine" % sys.argv[0])
+    print("  %s -h: print help" % os.path.basename(sys.argv[0]))
+    print("  %s -l: <curapath> list all container names" % os.path.basename(sys.argv[0]))
+    print("  %s -pm <curapath> <machine name>: print values of machine container" % os.path.basename(sys.argv[0]))
+    print("  %s -pp <curapath> <profile name>: print values of profile" % os.path.basename(sys.argv[0]))
+    print("  %s <curapath> <machine name> <profile name> <input-stl> <output-gcode>: Collect settings from profiles and call curaEngine to produce gcode ouput from stl." % os.path.basename(sys.argv[0]))
     sys.exit(0)
+
+curaDir = sys.argv[1]
 
 # Send log messages of cura to stderr
 class DummyLogger:
@@ -142,7 +161,9 @@ if sys.argv[2] == "-pm":
 
     print("\nMachine container:\n")
 
-    machine = cr.findContainerStacks(type = "machine", name = sys.argv[3])[0]
+    machProfile = sys.argv[3]
+
+    machine = cr.findContainerStacks(type = "machine", name = machProfile)[0]
     dummyApp.setGlobalContainerStack(machine)
 
     for key in machine.getAllKeys():
@@ -154,51 +175,54 @@ if sys.argv[2] == "-pp":
 
     print("\nProfile container:\n")
 
-    profile = cr.findInstanceContainers(type = "quality_changes", name = sys.argv[3])[0]
+    qualityProfile = sys.argv[3]
+
+    profile = cr.findInstanceContainers(type = "quality_changes", name = qualityProfile)[0]
 
     for key in profile.getAllKeys():
         print(key, "=", profile.getProperty(key, "value"))
 
     sys.exit(0)
 
+machProfile = sys.argv[2]
+qualityProfile = sys.argv[3]
+inputFile = sys.argv[4]
+outputFile = sys.argv[5]
+
 allValues = {}
 
-machine = cr.findContainerStacks(type = "machine", name = "Ultimaker 2 0.80")[0]
+machine = cr.findContainerStacks(type = "machine", name = machProfile)[0]
 dummyApp.setGlobalContainerStack(machine)
 
 for key in machine.getAllKeys():
 
-    # assert(machine.getProperty(key, "resolve") == None)
-    allValues[key] = machine.getProperty(key, "value")
+    value = machine.getProperty(key, "value")
+    resolved = machine.getProperty(key, "resolve")
 
-profile = cr.findInstanceContainers(type = "quality_changes", name = "advance_08")[0]
+    if resolved != None and resolved != value:
+        print(key, "resolved:", resolved, value)
+        assert(0)
+
+    allValues[key] = value
+
+profile = cr.findInstanceContainers(type = "quality_changes", name = qualityProfile)[0]
 
 for key in profile.getAllKeys():
 
-    # assert(profile.getProperty(key, "resolve") == None)
+    assert(profile.getProperty(key, "resolve") == None)
     allValues[key] = profile.getProperty(key, "value")
 
+# fdmprinter = cr.findDefinitionContainers(type = "machine", name = "FDM Printer Base Description")[0]
 
-fdmprinter = cr.findDefinitionContainers(type = "machine", name = "FDM Printer Base Description")[0]
-
-def listStr(value):
-
-    if isinstance(value, list):
-        s = "["
-        s += ",".join(map(lambda v: str(listStr(v)), value))
-        s += "]"
-        return s
-    else:
-        return value
-
+engineArgs = [ 
+        os.path.join(curaDir, "bin", "CuraEngine"),
+        "slice",
+        "-j", os.path.join(curaDir, "share", "cura", "resources", "definitions", "fdmprinter.def.json"),
+        ]
 
 for key in allValues:
 
     value = allValues[key]
-
-    # print("-s %s=\"%s\"" % (key, str(value).replace(" ", "\ ")), end=" ")
-    # print("-s %s='%s'" % (key, listStr(value)), end=" ")
-    print("-s\0%s=%s" % (key, value), end="\0")
 
     """
     # Output changed values only
@@ -215,7 +239,19 @@ for key in allValues:
         print("-s %s=\"%s\"" % (key, value), end=" ")
     """
 
-# print()
+    engineArgs.append("-s")
+    engineArgs.append("%s=%s" % (key, value))
+
+
+engineArgs += [
+        "-s", "center_object=true",
+        "-o", outputFile,
+        "-l", inputFile
+        ]
+
+# print("engineArgs:", engineArgs)
+
+subprocess.call(engineArgs)
 
 
 
