@@ -1115,7 +1115,7 @@ class PrintMove(RealMove):
     ################################################################################
 
     ################################################################################
-    def startERampSteps(self, ejerk, startFeedrateIncrease=None):
+    def startERampSteps(self, startFeedrateIncrease=None):
 
         # sa = self.startERampDistance(startFeedrateIncrease=startFeedrateIncrease)
         ta = self.accelTime()
@@ -1132,9 +1132,9 @@ class PrintMove(RealMove):
         sa = sTri + sPara
         esteps = sa * self.e_steps_per_mm
 
-        return (sa, esteps)
+        return esteps
 
-    def endERampSteps(self, ejerk, td=None, endFeedrateIncrease=None, v0=None, v1=None, roundError=0):
+    def endERampSteps(self, td=None, endFeedrateIncrease=None, v0=None, v1=None, roundError=0):
 
         # sd = self.endERampDistance(td, endFeedrateIncrease, v0=v0, v1=v1)
 
@@ -1161,7 +1161,7 @@ class PrintMove(RealMove):
         sd = sTri + sPara
         esteps = sd * self.e_steps_per_mm
 
-        return (sd, esteps)
+        return esteps
     ################################################################################
 
     def crossedDecelStep(self):
