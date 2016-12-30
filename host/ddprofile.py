@@ -203,6 +203,10 @@ class MatProfile(ProfileBase):
     def getKAdv(cls):
         return float(cls.getValues()["kAdvance"])
 
+    @classmethod
+    def getKFeederCompensation(cls):
+        return float(cls.getValues()["kFeederCompensation"])
+
 ####################################################################################################
 #
 # Nozzle profile, singleton
