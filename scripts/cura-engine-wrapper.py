@@ -43,6 +43,9 @@ from UM.Logger import Logger
 
 import cura.Settings
 
+debug = False
+
+# XXX todo: use proper python argparse module here, add "-d" debug option
 if len(sys.argv) < 3 or sys.argv[1] == "-h":
     print("Usage:")
     print("  %s -h: print help" % os.path.basename(sys.argv[0]))
@@ -81,6 +84,16 @@ class DummyApp(Application):
 
     def parseCommandLine(self):
         pass
+
+def skipCurrentUserSettings(cr):
+
+    # Remove current user settings by cleaning them out. XXX Better way to do this? Some sort of filter?
+    containers = cr.findInstanceContainers(type = "user") # , machine = stack.getId())
+    for container in containers:
+
+        if debug:
+            print("Skipping user settings container:", container.getName())
+        container.clear()
 
 dummyApp = DummyApp()
 
@@ -159,13 +172,14 @@ if sys.argv[2] == "-l":
 
 if sys.argv[2] == "-pm":
 
-    print("\nMachine container:\n")
-
     machProfile = sys.argv[3]
+
+    skipCurrentUserSettings(cr)
 
     machine = cr.findContainerStacks(type = "machine", name = machProfile)[0]
     dummyApp.setGlobalContainerStack(machine)
 
+    print("\nMachine container:\n")
     for key in machine.getAllKeys():
         print(key, "=", machine.getProperty(key, "value"))
 
@@ -173,12 +187,11 @@ if sys.argv[2] == "-pm":
 
 if sys.argv[2] == "-pp":
 
-    print("\nProfile container:\n")
-
     qualityProfile = sys.argv[3]
 
     profile = cr.findInstanceContainers(type = "quality_changes", name = qualityProfile)[0]
 
+    print("\nProfile container:\n")
     for key in profile.getAllKeys():
         print(key, "=", profile.getProperty(key, "value"))
 
@@ -188,8 +201,14 @@ machProfile = sys.argv[2]
 qualityProfile = sys.argv[3]
 inputFile = sys.argv[4]
 outputFile = sys.argv[5]
+additionalSettings = {}
+
+if len(sys.argv) > 6 and sys.argv[6]:
+    additionalSettings = eval(sys.argv[6])
 
 allValues = {}
+
+skipCurrentUserSettings(cr)
 
 machine = cr.findContainerStacks(type = "machine", name = machProfile)[0]
 dummyApp.setGlobalContainerStack(machine)
@@ -211,6 +230,10 @@ for key in profile.getAllKeys():
 
     assert(profile.getProperty(key, "resolve") == None)
     allValues[key] = profile.getProperty(key, "value")
+
+for key in additionalSettings:
+
+    allValues[key] = additionalSettings[key]
 
 # fdmprinter = cr.findDefinitionContainers(type = "machine", name = "FDM Printer Base Description")[0]
 
@@ -234,9 +257,11 @@ for key in allValues:
             fdmprinterValue = fdmprinterValue(machine)
 
         if fdmprinterValue != value:
-            print("-s %s=\"%s\"" % (key, value), end=" ")
+            engineArgs.append("-s")
+            engineArgs.append("%s=%s" % (key, value))
     else:
-        print("-s %s=\"%s\"" % (key, value), end=" ")
+        engineArgs.append("-s")
+        engineArgs.append("%s=%s" % (key, value))
     """
 
     engineArgs.append("-s")
@@ -249,7 +274,8 @@ engineArgs += [
         "-l", inputFile
         ]
 
-# print("engineArgs:", engineArgs)
+if debug:
+    print("engineArgs:", engineArgs)
 
 subprocess.call(engineArgs)
 
