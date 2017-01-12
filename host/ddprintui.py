@@ -7,8 +7,7 @@
 # Copyright 2015 erwin.rieger@ibrieger.de
 # 
 # ddprint is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
+# it under the terms of the GNU General Public License as published by # the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
 # 
 # ddprint is distributed in the hope that it will be useful,
@@ -285,11 +284,11 @@ class MainForm(npyscreen.Form):
         self.pState.set_value( "%8s" % self.stateNames[status["state"]])
         self.pState.update()
         self.updateTemps(status["t0"], status["t1"], status["targetT1"])
-        self.swapSize.set_value( "%8s" % str(status["Swap"]))
+        self.swapSize.set_value( "%8s" % util.sizeof_fmt(status["Swap"]))
         self.swapSize.update()
-        self.sdrSize.set_value( "%8s" % str(status["SDReader"]))
+        self.sdrSize.set_value( "%8s" % util.sizeof_fmt(status["SDReader"]))
         self.sdrSize.update()
-        self.sbSisze.set_value( "%8s" % str(status["StepBuffer"]))
+        self.sbSisze.set_value( "%8s" % util.sizeof_fmt(status["StepBuffer"]))
         self.sbSisze.update()
         self.underrun.set_value( "%8s" % str(status["StepBufUnderRuns"]))
         self.underrun.update()

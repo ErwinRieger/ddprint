@@ -2007,6 +2007,21 @@ def pdbAssert(expr):
         import pdb
         pdb.set_trace()
 ####################################################################################################
+# Print size in human readable form
+
+def sizeof_fmt(num):
+    for unit in ['B','kB','mB','gB','tB','pB','eB','zB']:
+        if abs(num) < 1024.0:
+            if unit == "B":
+                return "%3d%s" % (num, unit)
+            return "%3.1f%s" % (num, unit)
+        num /= 1024.0
+    return "%.1f%s" % (num, 'yB')
+####################################################################################################
+
+
+
+
 
 
 
