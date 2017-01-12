@@ -1215,7 +1215,7 @@ class Advance (object):
 
                         if advMove.advanceData.endSignChange(): 
 
-                            advMove.pprint("zero cross move")
+                            # advMove.pprint("zero cross move")
 
                             ###############################################################
                             # Compute additional data for planSteps()
@@ -1229,10 +1229,10 @@ class Advance (object):
 
                             v0 = advMove.advanceData.endEReachedFeedrate()
 
-                            print "v0, accel, endFeedrateIncrease: ", v0, advMove.endAccel.eAccel(), advMove.advanceData.endFeedrateIncrease
+                            # print "v0, accel, endFeedrateIncrease: ", v0, advMove.endAccel.eAccel(), advMove.advanceData.endFeedrateIncrease
                             tdc = v0 / advMove.endAccel.eAccel()
 
-                            print "Time to reach zero-crossing tdc:", tdc, ", tdd: ", td - tdc
+                            # print "Time to reach zero-crossing tdc:", tdc, ", tdd: ", td - tdc
                             assert(tdc >= 0 and tdc <= td)
 
                             # Nominal speed at zero crossing
@@ -1246,7 +1246,7 @@ class Advance (object):
                             crossingSpeed = advMove.topSpeed.speed()
                             crossingSpeed.setSpeed(zeroCrossingS)
 
-                            print "crossingspeed: ", crossingSpeed
+                            # print "crossingspeed: ", crossingSpeed
 
                             # PART C, D
                             estepsc = advMove.endRampTriangle(v0 = v0, v1 = 0, dt = tdc) * self.e_steps_per_mm
