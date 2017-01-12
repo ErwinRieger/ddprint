@@ -1117,7 +1117,6 @@ class PrintMove(RealMove):
     ################################################################################
     def startERampSteps(self, startFeedrateIncrease=None):
 
-        # sa = self.startERampDistance(startFeedrateIncrease=startFeedrateIncrease)
         ta = self.accelTime()
 
         sTri = self.startRampDistance(
@@ -1135,8 +1134,6 @@ class PrintMove(RealMove):
         return esteps
 
     def endERampSteps(self, td=None, endFeedrateIncrease=None, v0=None, v1=None, roundError=0):
-
-        # sd = self.endERampDistance(td, endFeedrateIncrease, v0=v0, v1=v1)
 
         if td == None:
             td = self.decelTime()
