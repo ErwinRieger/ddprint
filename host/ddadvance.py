@@ -2568,7 +2568,7 @@ class Advance (object):
 
             for dim in [X_AXIS, Y_AXIS]:
                 maxSteps[dim] += stepsMissing[dim]
-            print "adjusted steps: ", maxSteps
+            # print "adjusted steps: ", maxSteps
 
         if ta:
 
@@ -2767,7 +2767,7 @@ class Advance (object):
 
             for dim in [X_AXIS, Y_AXIS]:
                 maxSteps[dim] += stepsMissing[dim]
-            print "adjusted steps: ", maxSteps
+            # print "adjusted steps: ", maxSteps
 
         ####################################################################################
 
