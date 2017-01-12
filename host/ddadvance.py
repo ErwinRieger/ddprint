@@ -128,6 +128,11 @@ class Advance (object):
         else:
             self.kAdv = MatProfile.getKAdv()
 
+        self.kFeederComp = MatProfile.getKFeederCompensation()
+
+        if self.kFeederComp:
+            print "Feeder Compensation: usinge K-FeederCompensation %.3f" % self.kFeederComp
+
         if self.kAdv:
 
             print "Advance: usinge K-Advance %.3f" % self.kAdv
@@ -160,15 +165,12 @@ class Advance (object):
     def eJerk(self, accel):
         return abs(accel) * self.kAdv
 
-    # Correction of feeder slip
-    def eCorr(self, vExtruder):
+    # Compensation of feeder slip
+    def eComp(self, vExtruder):
 
-        kCorr = 0.015 # PLA
-        kCorr = 0.04  # Flexible
+        # vCorr = vExtruder / (1 - self.kFeederComp * vExtruder)
 
-        # vCorr = vExtruder / (1 - kCorr * vExtruder)
-
-        k = min(kCorr * vExtruder, 0.999)
+        k = min(self.kFeederComp * vExtruder, 0.999)
 
         vCorr = vExtruder / (1 - k)
 
@@ -253,7 +255,7 @@ class Advance (object):
             #
             # Correct eSpeed for feeder slip
             #
-            # self.planFeederCorrection(move)
+            self.planFeederCorrection(move)
 
         # """
         # Sanity check
@@ -276,7 +278,7 @@ class Advance (object):
 
             self.planAdvanceGroup(path)
 
-            # """
+            """
             print "Path skippedAdvance: ", self.skippedAdvance, "-->", self.skippedAdvance*self.e_steps_per_mm, "e-steps"
 
             # heavy debug
@@ -382,7 +384,7 @@ class Advance (object):
             assert(util.circaf( self.moveEsteps-plannedEstepsNASum, 0, 0.001))
             assert(roundErrorSum < 0.001)
             # end heavy debug
-            # """
+            """
 
             if abs(self.skippedAdvance) > 1.0/self.e_steps_per_mm:
 
@@ -671,7 +673,7 @@ class Advance (object):
     # xxx rename to ...Compensation
     def planFeederCorrection(self, move):
 
-        if 1:
+        if debugMoves:
             print "***** Start planFeederCorrection() *****"
             move.pprint("Start planFeederCorrection")
 
@@ -689,19 +691,19 @@ class Advance (object):
         td = move.decelTime()
        
         # New start speed
-        newStartSpeedS = self.eCorr(startSpeedS)
+        newStartSpeedS = self.eComp(startSpeedS)
         print "feederCorr: startSpeed %.5f -> %.5f" % (startSpeedS, newStartSpeedS)
         startSpeed.setESpeed(newStartSpeedS)
         move.startSpeed.setSpeed(startSpeed, "planFeederCorrection - max reachable speed")
 
         # New const speed
-        newTopSpeedS = self.eCorr(topSpeedS)
+        newTopSpeedS = self.eComp(topSpeedS)
         print "feederCorr: topSpeed %.5f -> %.5f" % (topSpeedS, newTopSpeedS)
         topSpeed.setESpeed(newTopSpeedS)
         move.topSpeed.setSpeed(topSpeed, "planFeederCorrection")
 
         # New end speed
-        newEndSpeedS = self.eCorr(endSpeedS)
+        newEndSpeedS = self.eComp(endSpeedS)
         print "feederCorr: endSpeed %.5f -> %.5f" % (endSpeedS, newEndSpeedS)
         endSpeed.setESpeed(newEndSpeedS)
         move.endSpeed.setSpeed(endSpeed, "planFeederCorrection")
@@ -757,7 +759,7 @@ class Advance (object):
 
         move.eSteps = eSteps
 
-        if 1:
+        if debugMoves:
             print "***** End planFeederCorrection() *****"
             move.pprint("End planFeederCorrection")
 
@@ -1151,7 +1153,7 @@ class Advance (object):
 
                         # advMove.pprint("planAdvanceGroup accel adv:")
 
-                        (sa, esteps) = advMove.startERampSteps(self.planner.jerk[A_AXIS])
+                        esteps = advMove.startERampSteps()
 
                         advMove.advanceData.startESteps = esteps
                         advMove.advanceData.advStepSum += esteps
@@ -1213,6 +1215,8 @@ class Advance (object):
 
                         if advMove.advanceData.endSignChange(): 
 
+                            advMove.pprint("zero cross move")
+
                             ###############################################################
                             # Compute additional data for planSteps()
                             # Time till the e-velocity crosses zero
@@ -1222,14 +1226,13 @@ class Advance (object):
                             endSpeed = advMove.endSpeed.speed()
 
                             tdc = 0
-                            crossingSpeed = topSpeed
 
                             v0 = advMove.advanceData.endEReachedFeedrate()
 
-                            print "v0, accel: ", v0, advMove.endAccel.eAccel()
-                            tdc = abs(v0 / advMove.endAccel.eAccel())
+                            print "v0, accel, endFeedrateIncrease: ", v0, advMove.endAccel.eAccel(), advMove.advanceData.endFeedrateIncrease
+                            tdc = v0 / advMove.endAccel.eAccel()
 
-                            print "Time to reach zero-crossing (tdc):", tdc, ", tdd: ", td - tdc
+                            print "Time to reach zero-crossing tdc:", tdc, ", tdd: ", td - tdc
                             assert(tdc >= 0 and tdc <= td)
 
                             # Nominal speed at zero crossing
@@ -1239,12 +1242,14 @@ class Advance (object):
                             else:
                                 assert(0) # does this happen?
 
+                            # XYZ speed at E zerocrossing
                             crossingSpeed = advMove.topSpeed.speed()
                             crossingSpeed.setSpeed(zeroCrossingS)
 
-                            # PART C, E
-                            (sdc, estepsc) = advMove.endERampSteps(
-                                    self.planner.jerk[A_AXIS], td=tdc, v1=crossingSpeed.eSpeed) # , roundError=self.skippedAdvance)
+                            print "crossingspeed: ", crossingSpeed
+
+                            # PART C, D
+                            estepsc = advMove.endRampTriangle(v0 = v0, v1 = 0, dt = tdc) * self.e_steps_per_mm
 
                             # print "(sdc, estepsc):", (sdc, estepsc) 
 
@@ -1257,8 +1262,10 @@ class Advance (object):
                             advMove.advanceData.tdd = td - tdc
                             advMove.advanceData.crossingSpeed = crossingSpeed
 
-                            (sdd, estepsd) = advMove.endERampSteps(
-                                    self.planner.jerk[A_AXIS], td=advMove.advanceData.tdd, v0=crossingSpeed.eSpeed) # , roundError=ediffc)
+                            estepsd = advMove.startRampTriangle(
+                                    v0 = 0,
+                                    v1 = advMove.advanceData.endEFeedrate(),
+                                    dt = advMove.advanceData.tdd)  * self.e_steps_per_mm
 
                             # print "(sdd, estepsd):", (sdd, estepsd) 
 
@@ -1271,7 +1278,7 @@ class Advance (object):
 
                         else:
 
-                            (sd, esteps) = advMove.endERampSteps(self.planner.jerk[A_AXIS])
+                            esteps = advMove.endERampSteps()
 
                             # print "sd: %f, skippedAdvance: %f, used: %f" % (sd, self.skippedAdvance)
                             
