@@ -20,17 +20,7 @@
 
 import math
 
-# import ddprintcommands, cobs, cStringIO
-
 from ddprintconstants import AdvanceEThreshold
-
-# from ddprintconstants import maxTimerValue16, fTimer, _MAX_ACCELERATION, MAX_AXIS_ACCELERATION_NOADV
-# from ddprintconstants import AdvanceEThreshold, StepDataTypeBresenham, StepDataTypeRaw
-# from ddprintutil import X_AXIS, Y_AXIS, Z_AXIS, A_AXIS, B_AXIS,vectorLength, vectorMul, vectorSub, circaf, sign, vectorAbs
-# from ddprintutil import pdbAssert
-# from ddprintcommands import CommandNames
-# from ddprofile import PrinterProfile
-# from types import ListType
 
 ####################################################################################################
 def vectorAdd(v1, v2):
