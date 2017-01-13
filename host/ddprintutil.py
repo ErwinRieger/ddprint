@@ -109,7 +109,7 @@ def accelPerDist(v1, v2, s):
 
 ####################################################################################################
 
-def joinMoves(move1, move2, jerk, maxAccelV):
+def joinMoves(move1, move2, advInstance): # jerk, maxAccelV):
 
         if debugMoves:
             print "***** Start joinMoves() *****"
@@ -145,9 +145,9 @@ def joinMoves(move1, move2, jerk, maxAccelV):
         if maxAllowedEEndSpeed < endSpeed1.eSpeed:
             circaf(maxAllowedEEndSpeed, endSpeed1.eSpeed, 0.000000001)
 
-        joinMoves2(move1, move2, jerk)
+        joinMoves2(move1, move2, advInstance)
 
-def joinMoves2(move1, move2, jerk):
+def joinMoves2(move1, move2, advInstance): # jerk):
 
         endSpeed1 = move1.endSpeed.speed()
         eEndSpeed1 = endSpeed1.eSpeed
@@ -161,7 +161,17 @@ def joinMoves2(move1, move2, jerk):
         #
         # Compare E-speed of moves
         #
-        if circaf(eEndSpeed1, eStartSpeed2, AdvanceEThreshold):
+        # Note: normally we would compare eEndSpeed1 and eStartSpeed2 here.
+        # But this is a problem with feederCompensation and move.sanityCheck() with the
+        # increased E feedrate values (the difference of compensated endspeed/startspeed could be
+        # more than AdvanceEThreshold).
+        # Therefore we compare the compensated values here:
+        #
+        # if circaf(eEndSpeed1, eStartSpeed2, AdvanceEThreshold):
+        #
+        adjEEndSpeed1 = advInstance.eComp(eEndSpeed1)
+        adjEStartSpeed2 = advInstance.eComp(eStartSpeed2)
+        if circaf(adjEEndSpeed1, adjEStartSpeed2, AdvanceEThreshold):
 
             # E-speed difference is small enough, check X/Y jerk
             endSpeedV1 = endSpeed1.vv3()
@@ -175,6 +185,7 @@ def joinMoves2(move1, move2, jerk):
             #
             # Join in bezug auf den maximalen jerk aller achsen betrachten:
             #
+            jerk = advInstance.planner.jerk
             speedDiff = {}
             toMuch = False
             for dim in range(3):
@@ -260,9 +271,9 @@ def joinMoves2(move1, move2, jerk):
 
 ##################
 
-        joinMoves3(move1, move2, jerk)
+        joinMoves3(move1, move2, advInstance)
      
-def joinMoves3(move1, move2, jerk):
+def joinMoves3(move1, move2, advInstance): # jerk):
 
         endSpeed1 = move1.endSpeed.speed()
         startSpeed2 = move2.startSpeed.speed()
@@ -303,6 +314,7 @@ def joinMoves3(move1, move2, jerk):
         endSpeedV1 = endSpeed1.vv3()
         startSpeedV2 = startSpeed2.vv3()
 
+        jerk = advInstance.planner.jerk
         speedDiff = {}
         toMuch = False
         for dim in range(3):

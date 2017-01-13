@@ -214,7 +214,7 @@ class Advance (object):
 
         # Step 1: join moves forward
         for move in path[1:]:
-            util.joinMoves(prevMove, move, self.planner.jerk, self.maxAxisAcceleration)
+            util.joinMoves(prevMove, move, self)
             prevMove = move
 
 
@@ -253,7 +253,7 @@ class Advance (object):
             #
             # Correct eSpeed for feeder slip
             #
-            # self.planFeederCorrection(move)
+            self.planFeederCorrection(move)
 
         # """
         # Sanity check
@@ -276,7 +276,7 @@ class Advance (object):
 
             self.planAdvanceGroup(path)
 
-            # """
+            """
 
             # heavy debug
             plannedEsteps = 0
@@ -380,7 +380,7 @@ class Advance (object):
             print "roundErrorSum:", roundErrorSum
             assert(roundErrorSum < 0.001)
             # end heavy debug
-            # """
+            """
 
         if debugPlot and debugPlotLevel == "plotLevelPlanned":
 
