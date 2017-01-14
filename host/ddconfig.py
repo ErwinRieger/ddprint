@@ -22,20 +22,19 @@
 #
 # Enable Debugging
 #
-debugMoves = False
+debugMoves = True
 debugAutoTemp = False
 
 #
 # Enable mathplotlib plotting of planned paths
 #
 debugPlot = True
-debugPlot = False
 
 # Define which stage of path planning to plot
 # plotLevelPlanned: plot path after advance-planning
 # plotLevelSplitted: plot advance-splitted path
-debugPlotLevel = "plotLevelPlanned"
 debugPlotLevel = "plotLevelSplitted"
+debugPlotLevel = "plotLevelPlanned"
 
 # Debug (serial) communication between host and firmware.
 debugComm = False
@@ -44,7 +43,6 @@ debugComm = False
 #
 # AutoTemp algorithm
 #
-UseExtrusionAutoTemp = False
 UseExtrusionAutoTemp = True
 
 #####################################################################
