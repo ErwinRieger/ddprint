@@ -1495,10 +1495,11 @@ def genTempTable(printer):
 
     baseTemp = MatProfile.getHotendBaseTemp()
 
-    area04 = pow(0.4, 2)*math.pi/4
-    extrusionLow = MatProfile.getBaseExtrusionRate() * (NozzleProfile.getArea() / area04)
+    # area04 = pow(0.4, 2)*math.pi/4
+    # extrusionLow = MatProfile.getBaseExtrusionRate() * (NozzleProfile.getArea() / area04)
 
     f = MatProfile.getAutoTempFactor()
+    extrusionLow = MatProfile.getBaseExtrusionRate(NozzleProfile.getSize()) + (baseTemp - 200) / f
 
     mmpermm3 = 1 / MatProfile.getMatArea()
     spm = PrinterProfile.getStepsPerMM(A_AXIS)
@@ -1621,8 +1622,12 @@ def measureTempFlowrateCurve(args, parser):
     printer.waitForState(StateIdle)
 
     t1 = MatProfile.getHotendBaseTemp() # start temperature
-    area04 = pow(0.4, 2)*math.pi/4
-    flowrate = MatProfile.getBaseExtrusionRate() * (NozzleProfile.getArea() / area04)
+    # area04 = pow(0.4, 2)*math.pi/4
+    # flowrate = MatProfile.getBaseExtrusionRate() * (NozzleProfile.getArea() / area04)
+
+    f = MatProfile.getAutoTempFactor()
+    extrusionLow = MatProfile.getBaseExtrusionRate(NozzleProfile.getSize()) + (t1 - 200) / f
+
     aFilament = MatProfile.getMatArea()
 
     print "t1: ", t1

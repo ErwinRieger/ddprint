@@ -192,8 +192,8 @@ class MatProfile(ProfileBase):
         return cls.get().matArea
 
     @classmethod
-    def getBaseExtrusionRate(cls):
-        return float(cls.getValues()["baseExtrusionRate"])
+    def getBaseExtrusionRate(cls, nozzleDiam):
+        return float(cls.getValues()["baseExtrusionRate_%d" % int(nozzleDiam * 100)])
 
     @classmethod
     def getAutoTempFactor(cls):

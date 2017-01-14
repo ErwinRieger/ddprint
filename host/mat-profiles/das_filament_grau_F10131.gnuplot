@@ -1,3 +1,6 @@
+
+# BaseTemp=200
+
 set grid
 set yrange [0:35]
 plot "-" using 1:2 with linespoints title "Target Flowrate", \

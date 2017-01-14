@@ -3,6 +3,8 @@
 set grid
 set yrange [0:35]
 
+# BaseTemp=180
+
 # Startwert steigung
 a=0.5
 

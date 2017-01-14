@@ -223,9 +223,14 @@ class PathData (object):
             self.extrusionAmount = 0
             self.lastTemp = MatProfile.getHotendBaseTemp()
 
-            # Extrusionspeed where autotemp increase starts
-            area04 = pow(0.4, 2)*math.pi/4
-            self.ExtrusionAmountLow = MatProfile.getBaseExtrusionRate() * (NozzleProfile.getArea() / area04)
+            # # Extrusionspeed where autotemp increase starts
+            # area04 = pow(0.4, 2)*math.pi/4
+            # self.ExtrusionAmountLow = MatProfile.getBaseExtrusionRate() * (NozzleProfile.getArea() / area04)
+
+            # Max flowrate at 200°C
+            f = MatProfile.getAutoTempFactor()
+            self.ExtrusionAmountLow = MatProfile.getBaseExtrusionRate(NozzleProfile.getSize()) + (MatProfile.getHotendBaseTemp() - 200) / f
+            print "flowrate at 200°C: ", MatProfile.getBaseExtrusionRate(NozzleProfile.getSize()), self.ExtrusionAmountLow
 
         # Some statistics
         self.maxExtrusionRate = MaxExtrusionRate()
