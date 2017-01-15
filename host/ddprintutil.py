@@ -1645,6 +1645,8 @@ def measureTempFlowrateCurve(args, parser):
 set grid
 set yrange [0:35]
 
+# BaseTemp=%d
+
 # Startwert steigung
 a=0.5
 
@@ -1652,7 +1654,7 @@ a=0.5
 b=5
 f(x)=b+a*(x-%d)
 
-fit f(x) "-" using 1:3 noerror via a,b\n""" % t1)
+fit f(x) "-" using 1:3 noerror via a,b\n""" % (t1, t1))
 
     
     dataSet = []
