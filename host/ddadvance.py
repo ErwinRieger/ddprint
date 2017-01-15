@@ -278,12 +278,7 @@ class Advance (object):
 
             self.planAdvanceGroup(path)
 
-            # xxx debug, remove heavy
-            if debugPlot and debugPlotLevel == "plotLevelPlanned":
-
-                self.plotPlannedPath(path)
-
-            # """
+            """
             print "Path skippedAdvance: ", self.skippedAdvance, "-->", self.skippedAdvance*self.e_steps_per_mm, "e-steps"
 
             # heavy debug
@@ -302,11 +297,14 @@ class Advance (object):
                 topSpeed =  move.topSpeed.speed()
                 endSpeed =  move.endSpeed.speed()
 
+                # Step sum of the three phases without advance
                 plannedEstepsNA = 0
 
                 if move.advanceData.hasStartAdvance() or move.advanceData.hasEndAdvance():
 
-                    plannedEsteps += move.advanceData.estepSum()
+                    # Sum to check result of advanceData.estepSum()
+                    estepSum = move.advanceData.estepSum()
+                    plannedEsteps += estepSum
 
                     if move.advanceData.startESteps:
                         sbase = ((ta * (topSpeed.eSpeed-startSpeed.eSpeed)) / 2 + ta*startSpeed.eSpeed) * self.e_steps_per_mm
@@ -318,6 +316,7 @@ class Advance (object):
 
                         roundErrorSum += roundError
                         plannedEstepsNA += sbase
+                        estepSum -= sbase + sadv
 
                     if move.advanceData.linESteps:
 
@@ -328,6 +327,7 @@ class Advance (object):
 
                         roundErrorSum += roundError
                         plannedEstepsNA += sbase
+                        estepSum -= sbase
 
                     if move.advanceData.endESteps:
                         sbase = ((td * (topSpeed.eSpeed-endSpeed.eSpeed)) / 2 + td*endSpeed.eSpeed) * self.e_steps_per_mm
@@ -339,6 +339,7 @@ class Advance (object):
 
                         roundErrorSum += roundError
                         plannedEstepsNA += sbase
+                        estepSum -= sbase + sadv
 
                     if move.advanceData.endEStepsC or move.advanceData.endEStepsD:
 
@@ -366,6 +367,10 @@ class Advance (object):
 
                         roundErrorSum += roundError
                         plannedEstepsNA += sbase
+                        estepSum -= endStepsC + endStepsD # sbase + endStepsC + endStepsD
+
+                    print "recomputed estepSum:", estepSum
+                    assert(util.circaf(estepSum, 0, 0.001)) 
 
                 else: # no advance
 
@@ -393,7 +398,7 @@ class Advance (object):
             print "roundErrorSum:", roundErrorSum
             assert(roundErrorSum < 0.001)
             # end heavy debug
-            # """
+            """
 
             if abs(self.skippedAdvance) > 1.0/self.e_steps_per_mm:
 
@@ -502,7 +507,6 @@ class Advance (object):
         self.planner.stepRounders.check()
 
         if self.kAdv:
-            # assert(util.circaf(self.moveEsteps, 0, 0.2))
             assert(abs(self.moveEsteps) < 1.0)
 
         # Debug, check chain
@@ -1127,21 +1131,22 @@ class Advance (object):
 
                 else:
                     
-                    assert(len(baseMove.advanceData.accelGroup) == 1)
 
                     # Dont advance very small acceleration ramps, but sum up the missing advance.
-                    # baseMove.pprint("planAdvanceGroup skipped start adv:")
+                    for advMove in baseMove.advanceData.accelGroup:
 
-                    # E-steps of non-advanced accel ramp
-                    sa = baseMove.startRampDistance(
-                            baseMove.startSpeed.speed().eSpeed, baseMove.topSpeed.speed().eSpeed, baseMove.accelTime())
+                        advMove.pprint("planAdvanceGroup skipped start adv:")
 
-                    esteps = sa * self.e_steps_per_mm
-                    # print "dim E moves %.3f mm in accel phase -> %d steps" % (sa, esteps)
+                        # E-steps of non-advanced accel ramp
+                        sa = advMove.startRampDistance(
+                            advMove.startSpeed.speed().eSpeed, advMove.topSpeed.speed().eSpeed, advMove.accelTime())
 
-                    baseMove.advanceData.startESteps = esteps
-                    baseMove.advanceData.advStepSum += esteps
-                    self.skippedAdvance += baseMove.advanceData.sAccelSum
+                        esteps = sa * self.e_steps_per_mm
+                        # print "dim E moves %.3f mm in acel phase -> %d steps" % (sa, esteps)
+
+                        advMove.advanceData.startESteps = esteps
+                        advMove.advanceData.advStepSum += esteps
+                        self.skippedAdvance += advMove.advanceData.sAccel
 
                 self.advSum += baseMove.advanceData.sAccelSum
 
@@ -1392,6 +1397,9 @@ class Advance (object):
         dispF = move.displacement_vector_steps_raw3 + [move.eSteps, 0.0]
         dispS = self.planner.stepRounders.round(dispF)
 
+        self.moveEsteps -= move.eSteps
+        # print "planStepsSimple(): moveEsteps-: %7.3f %7.3f" % (move.eSteps, dispS[A_AXIS])
+
         if dispS == emptyVector5:
 
             if debugMoves:
@@ -1402,9 +1410,6 @@ class Advance (object):
             return
 
         self.planner.stepRounders.commit()
-
-        self.moveEsteps -= dispS[A_AXIS]
-        # print "planStepsSimple(): moveEsteps-: %7.3f %7.3f" % (move.eSteps, dispS[A_AXIS])
 
         abs_displacement_vector_steps = vectorAbs(dispS)
 
@@ -1559,6 +1564,9 @@ class Advance (object):
         dispF = move.displacement_vector_steps_raw3 + [move.eSteps, 0.0]
         dispS = self.planner.stepRounders.round(dispF)
 
+        self.moveEsteps -= move.eSteps
+        # print "planCrossedDecelSteps(): moveEsteps-: %7.3f %7.3f" % (move.eSteps, dispS[A_AXIS])
+
         if dispS == emptyVector5:
         
             if debugMoves:
@@ -1569,9 +1577,6 @@ class Advance (object):
             return
 
         self.planner.stepRounders.commit()
-
-        self.moveEsteps -= dispS[A_AXIS]
-        # print "planCrossedDecelSteps(): moveEsteps-: %7.3f %7.3f" % (move.eSteps, dispS[A_AXIS])
 
         abs_displacement_vector_steps = vectorAbs(dispS)
 
