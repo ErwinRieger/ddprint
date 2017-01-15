@@ -984,8 +984,6 @@ class Planner (object):
                     cd = int(-nLin / ((float(nAccel) / nDecel) + 1))
                     ca = -nLin - cd
 
-                    # print "ca: ", ca, "cd:", cd
-                    
                     if ca:
                         del move.stepData.accelPulses[:ca]
 
