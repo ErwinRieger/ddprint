@@ -253,7 +253,7 @@ class Advance (object):
             #
             # Correct eSpeed for feeder slip
             #
-            self.planFeederCorrection(move)
+            # self.planFeederCorrection(move)
 
         # """
         # Sanity check
@@ -276,8 +276,7 @@ class Advance (object):
 
             self.planAdvanceGroup(path)
 
-            """
-
+            # """
             # heavy debug
             plannedEsteps = 0
             roundErrorSum = 0
@@ -285,7 +284,6 @@ class Advance (object):
             for move in path:
 
                 assert(move.advanceData.endESteps==None or (move.advanceData.endEStepsC==None and move.advanceData.endEStepsD==None))
-                plannedEsteps += move.advanceData.estepSum()
 
                 ta = move.accelTime()
                 tl = move.linearTime()
@@ -295,9 +293,14 @@ class Advance (object):
                 topSpeed =  move.topSpeed.speed()
                 endSpeed =  move.endSpeed.speed()
 
+                # Step sum of the three phases without advance
                 plannedEstepsNA = 0
 
                 if move.advanceData.hasStartAdvance() or move.advanceData.hasEndAdvance():
+
+                    # Sum to check result of advanceData.estepSum()
+                    estepSum = move.advanceData.estepSum()
+                    plannedEsteps += estepSum
 
                     if move.advanceData.startESteps:
                         sbase = ((ta * (topSpeed.eSpeed-startSpeed.eSpeed)) / 2 + ta*startSpeed.eSpeed) * self.e_steps_per_mm
@@ -309,6 +312,7 @@ class Advance (object):
 
                         roundErrorSum += roundError
                         plannedEstepsNA += sbase
+                        estepSum -= sbase + sadv
 
                     if move.advanceData.linESteps:
 
@@ -319,6 +323,7 @@ class Advance (object):
 
                         roundErrorSum += roundError
                         plannedEstepsNA += sbase
+                        estepSum -= sbase
 
                     if move.advanceData.endESteps:
                         sbase = ((td * (topSpeed.eSpeed-endSpeed.eSpeed)) / 2 + td*endSpeed.eSpeed) * self.e_steps_per_mm
@@ -330,6 +335,7 @@ class Advance (object):
 
                         roundErrorSum += roundError
                         plannedEstepsNA += sbase
+                        estepSum -= sbase + sadv
 
                     if move.advanceData.endEStepsC or move.advanceData.endEStepsD:
 
@@ -357,8 +363,16 @@ class Advance (object):
 
                         roundErrorSum += roundError
                         plannedEstepsNA += sbase
+                        estepSum -= endStepsC + endStepsD # sbase + endStepsC + endStepsD
+
+                    print "recomputed estepSum:", estepSum
+                    assert(util.circaf(estepSum, 0, 0.001)) 
 
                 else: # no advance
+
+                    # if move.advanceData.estepSum() != 0:
+                        # move.pprint("no advance but estepSum() != 0")
+                        # assert(0)
 
                     plannedEstepsNA += move.eSteps
                     plannedEsteps += move.eSteps
@@ -371,8 +385,8 @@ class Advance (object):
 
                 plannedEstepsNASum += plannedEstepsNA
 
-            print "\nesteps, plannedsteps, diff:", self.moveEsteps, plannedEsteps, self.moveEsteps - plannedEsteps
-            assert(util.circaf( self.moveEsteps - plannedEsteps, 0, 0.001))
+            print "\nesteps %f, plannedsteps %f, plannedsteps+skipped: %f, diff %f" % (self.moveEsteps, plannedEsteps, plannedEsteps+self.skippedAdvance*self.e_steps_per_mm, self.moveEsteps - (plannedEsteps+self.skippedAdvance*self.e_steps_per_mm))
+            assert(util.circaf( self.moveEsteps - (plannedEsteps+self.skippedAdvance*self.e_steps_per_mm), 0, 0.001))
 
             print "NA esteps, plannedsteps, diff:", self.moveEsteps, plannedEstepsNASum, self.moveEsteps-plannedEstepsNASum
             assert(util.circaf( self.moveEsteps-plannedEstepsNASum, 0, 0.001))
@@ -380,72 +394,11 @@ class Advance (object):
             print "roundErrorSum:", roundErrorSum
             assert(roundErrorSum < 0.001)
             # end heavy debug
-            """
+            # """
 
         if debugPlot and debugPlotLevel == "plotLevelPlanned":
 
-            # xxx todo move to own function
-            for move in path:
-
-                self.plotfile.plot1Tick(move.topSpeed.speed().feedrate3(), move.moveNumber)
-
-                at = move.accelTime()
-                lt = move.linearTime()
-                dt = move.decelTime()
-
-                if at:
-
-                    self.plotfile.plot1Segments(at, (
-                        DebugPlotSegment(move.startSpeed.speed().feedrate3(), move.topSpeed.speed().feedrate3(), "green"),
-                        DebugPlotSegment(move.startSpeed.speed().eSpeed, move.topSpeed.speed().eSpeed, "green"),
-                        ))
-
-                if lt:
-
-                    self.plotfile.plot1Segments(lt, (
-                        DebugPlotSegment(move.topSpeed.speed().feedrate3(), color="blue"),
-                        DebugPlotSegment(move.topSpeed.speed().eSpeed, color="blue"),
-                        ))
-
-                if dt:
-
-                    self.plotfile.plot1Segments(dt, (
-                        DebugPlotSegment(move.topSpeed.speed().feedrate3(), move.endSpeed.speed().feedrate3(), "red"),
-                        DebugPlotSegment(move.topSpeed.speed().eSpeed, move.endSpeed.speed().eSpeed, "red"),
-                        ))
-
-                if at:
-
-                    self.plotfile.plot2Segments(0, (
-                        DebugPlotSegment(move.startSpeed.speed().eSpeed, move.advanceData.startEFeedrate(), "green"),
-                        ))
-                    self.plotfile.plot2Segments(at, (
-                        DebugPlotSegment(move.startSpeed.speed().eSpeed, move.topSpeed.speed().eSpeed),
-                        DebugPlotSegment(move.advanceData.startEFeedrate(), move.advanceData.startEReachedFeedrate(), "green"),
-                        ))
-                    self.plotfile.plot2Segments(0, (
-                        DebugPlotSegment(move.advanceData.startEReachedFeedrate(), move.topSpeed.speed().eSpeed, "green"),
-                        ))
-
-                if lt:
-                    self.plotfile.plot2Segments(lt, (
-                        DebugPlotSegment(move.topSpeed.speed().eSpeed),
-                        ))
-
-                if dt:
-
-                    self.plotfile.plot2Segments(0, (
-                        DebugPlotSegment(move.topSpeed.speed().eSpeed, move.advanceData.endEReachedFeedrate(), "red"),
-                        ))
-                    self.plotfile.plot2Segments(dt, (
-                        DebugPlotSegment(move.topSpeed.speed().eSpeed, move.endSpeed.speed().eSpeed),
-                        DebugPlotSegment(move.advanceData.endEReachedFeedrate(), move.advanceData.endEFeedrate(), "red"),
-                        ))
-                    self.plotfile.plot2Segments(0, (
-                        DebugPlotSegment(move.advanceData.endEFeedrate(), move.endSpeed.speed().eSpeed, "red"),
-                        ))
-
-            self.plotfile.close()
+            self.plotPlannedPath(path)
 
         newPath = []
         for move in path:
@@ -506,7 +459,6 @@ class Advance (object):
         self.planner.stepRounders.check()
 
         if self.kAdv:
-            # assert(util.circaf(self.moveEsteps, 0, 0.2))
             assert(abs(self.moveEsteps) < 1.0)
 
         # Debug, check chain
@@ -1126,6 +1078,24 @@ class Advance (object):
                         advMove.advanceData.linESteps = esteps
                         advMove.advanceData.advStepSum += esteps
 
+                else:
+                    
+                    # Dont advance very small acceleration ramps, but sum up the missing advance.
+                    for advMove in baseMove.advanceData.accelGroup:
+
+                        advMove.pprint("planAdvanceGroup skipped start adv:")
+
+                        # E-steps of non-advanced accel ramp
+                        sa = advMove.startRampDistance(
+                            advMove.startSpeed.speed().eSpeed, advMove.topSpeed.speed().eSpeed, advMove.accelTime())
+
+                        esteps = sa * self.e_steps_per_mm
+                        # print "dim E moves %.3f mm in acel phase -> %d steps" % (sa, esteps)
+
+                        advMove.advanceData.startESteps = esteps
+                        advMove.advanceData.advStepSum += esteps
+                        self.skippedAdvance += advMove.advanceData.sAccel
+
                 self.advSum += baseMove.advanceData.sAccelSum
 
             if baseMove.advanceData.decelGroup:
@@ -1351,6 +1321,9 @@ class Advance (object):
         dispF = move.displacement_vector_steps_raw3 + [move.eSteps, 0.0]
         dispS = self.planner.stepRounders.round(dispF)
 
+        self.moveEsteps -= move.eSteps
+        # print "planStepsSimple(): moveEsteps-: %7.3f %7.3f" % (move.eSteps, dispS[A_AXIS])
+
         if dispS == emptyVector5:
 
             if debugMoves:
@@ -1361,9 +1334,6 @@ class Advance (object):
             return
 
         self.planner.stepRounders.commit()
-
-        self.moveEsteps -= dispS[A_AXIS]
-        # print "planStepsSimple(): moveEsteps-: %7.3f %7.3f" % (move.eSteps, dispS[A_AXIS])
 
         abs_displacement_vector_steps = vectorAbs(dispS)
 
@@ -1518,6 +1488,9 @@ class Advance (object):
         dispF = move.displacement_vector_steps_raw3 + [move.eSteps, 0.0]
         dispS = self.planner.stepRounders.round(dispF)
 
+        self.moveEsteps -= move.eSteps
+        # print "planCrossedDecelSteps(): moveEsteps-: %7.3f %7.3f" % (move.eSteps, dispS[A_AXIS])
+
         if dispS == emptyVector5:
         
             if debugMoves:
@@ -1528,9 +1501,6 @@ class Advance (object):
             return
 
         self.planner.stepRounders.commit()
-
-        self.moveEsteps -= dispS[A_AXIS]
-        # print "planCrossedDecelSteps(): moveEsteps-: %7.3f %7.3f" % (move.eSteps, dispS[A_AXIS])
 
         abs_displacement_vector_steps = vectorAbs(dispS)
 
@@ -2755,5 +2725,69 @@ class Advance (object):
         assert(vectorLength(stepsMissing) < 0.000001)
 
         return newMoves
+
+    def plotPlannedPath(self, path):
+
+        for move in path:
+
+            self.plotfile.plot1Tick(move.topSpeed.speed().feedrate3(), move.moveNumber)
+
+            at = move.accelTime()
+            lt = move.linearTime()
+            dt = move.decelTime()
+
+            if at:
+
+                self.plotfile.plot1Segments(at, (
+                    DebugPlotSegment(move.startSpeed.speed().feedrate3(), move.topSpeed.speed().feedrate3(), "green"),
+                    DebugPlotSegment(move.startSpeed.speed().eSpeed, move.topSpeed.speed().eSpeed, "green"),
+                    ))
+
+            if lt:
+
+                self.plotfile.plot1Segments(lt, (
+                    DebugPlotSegment(move.topSpeed.speed().feedrate3(), color="blue"),
+                    DebugPlotSegment(move.topSpeed.speed().eSpeed, color="blue"),
+                    ))
+
+            if dt:
+
+                self.plotfile.plot1Segments(dt, (
+                    DebugPlotSegment(move.topSpeed.speed().feedrate3(), move.endSpeed.speed().feedrate3(), "red"),
+                    DebugPlotSegment(move.topSpeed.speed().eSpeed, move.endSpeed.speed().eSpeed, "red"),
+                    ))
+
+            if at:
+
+                self.plotfile.plot2Segments(0, (
+                    DebugPlotSegment(move.startSpeed.speed().eSpeed, move.advanceData.startEFeedrate(), "green"),
+                    ))
+                self.plotfile.plot2Segments(at, (
+                    DebugPlotSegment(move.startSpeed.speed().eSpeed, move.topSpeed.speed().eSpeed),
+                    DebugPlotSegment(move.advanceData.startEFeedrate(), move.advanceData.startEReachedFeedrate(), "green"),
+                    ))
+                self.plotfile.plot2Segments(0, (
+                    DebugPlotSegment(move.advanceData.startEReachedFeedrate(), move.topSpeed.speed().eSpeed, "green"),
+                    ))
+
+            if lt:
+                self.plotfile.plot2Segments(lt, (
+                    DebugPlotSegment(move.topSpeed.speed().eSpeed),
+                    ))
+
+            if dt:
+
+                self.plotfile.plot2Segments(0, (
+                    DebugPlotSegment(move.topSpeed.speed().eSpeed, move.advanceData.endEReachedFeedrate(), "red"),
+                    ))
+                self.plotfile.plot2Segments(dt, (
+                    DebugPlotSegment(move.topSpeed.speed().eSpeed, move.endSpeed.speed().eSpeed),
+                    DebugPlotSegment(move.advanceData.endEReachedFeedrate(), move.advanceData.endEFeedrate(), "red"),
+                    ))
+                self.plotfile.plot2Segments(0, (
+                    DebugPlotSegment(move.advanceData.endEFeedrate(), move.endSpeed.speed().eSpeed, "red"),
+                    ))
+
+        self.plotfile.close()
 
 
