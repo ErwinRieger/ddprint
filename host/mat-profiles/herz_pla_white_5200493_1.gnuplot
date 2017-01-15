@@ -7,6 +7,8 @@ set yrange [0:40]
 set ylabel "Flowrate [mm^3/s]"
 set xlabel "Temp [{/Symbol \260}C]"
 
+# BaseTemp=200
+
 # Startwert steigung
 a=0.5
 

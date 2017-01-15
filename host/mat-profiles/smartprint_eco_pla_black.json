@@ -1,5 +1,5 @@
 {
-  "extrusionAutoTempFactor" : 3.5 
+    "baseExtrusionRate_80" : 12.88143,
+    "extrusionAutoTempFactor" : 3.48705
 }
-
 
