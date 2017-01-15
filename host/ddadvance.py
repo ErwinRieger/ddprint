@@ -181,6 +181,8 @@ class Advance (object):
         # Reset debug counters
         # Running sum of e-distances through advance, for debugging of planAdvance()
         self.advSum = 0.0
+        # Sum of skipped small advance ramps
+        self.skippedAdvance = 0.0
         # Running sum of move esteps, for debugging of planSteps()
         self.moveEsteps = 0.0
         # End debug counters
@@ -276,7 +278,9 @@ class Advance (object):
 
             self.planAdvanceGroup(path)
 
-            # """
+            """
+            print "Path skippedAdvance: ", self.skippedAdvance, "-->", self.skippedAdvance*self.e_steps_per_mm, "e-steps"
+
             # heavy debug
             plannedEsteps = 0
             roundErrorSum = 0
@@ -396,6 +400,44 @@ class Advance (object):
             # end heavy debug
             # """
 
+            if abs(self.skippedAdvance) > 1.0/self.e_steps_per_mm:
+
+                # print "Spreading skippedAdvance..."
+
+                tAdvAccelSum = 0
+                advAccelMoves = []
+                for move in path:
+
+                    if move.advanceData.hasStartAdvance():
+                        tAdvAccelSum += move.accelTime()
+                        advAccelMoves.append(move)
+
+                # print "adv time sum:", tAdvAccelSum
+
+                vAdvanceAdjust = self.skippedAdvance / tAdvAccelSum
+
+                # print "Average startramp adjust: ", vAdvanceAdjust, "[mm/s]"
+
+                for move in advAccelMoves:
+
+                    newFeedrateIncrease = max(move.advanceData.startFeedrateIncrease+vAdvanceAdjust, 0)
+                    deltaFeedrateIncrease = newFeedrateIncrease - move.advanceData.startFeedrateIncrease
+                    move.advanceData.startFeedrateIncrease = newFeedrateIncrease
+
+                    # print "new startFeedrateIncrease:", move.advanceData.startFeedrateIncrease
+
+                    assert(move.advanceData.startFeedrateIncrease >= 0)
+
+                    sAdvAdjust = deltaFeedrateIncrease * move.accelTime()
+                    sEstepIncrease = sAdvAdjust * self.e_steps_per_mm 
+
+                    # print "Increasing startramp by: ", sEstepIncrease, "[steps]"
+
+                    move.advanceData.startESteps += sEstepIncrease
+                    move.advanceData.advStepSum += sEstepIncrease
+
+                    self.skippedAdvance -= sAdvAdjust
+
         if debugPlot and debugPlotLevel == "plotLevelPlanned":
 
             self.plotPlannedPath(path)
@@ -447,6 +489,7 @@ class Advance (object):
                 self.plotfile.close()
 
         print "\nPath advSum: ", self.advSum
+        print "Path skippedAdvance: ", self.skippedAdvance, self.skippedAdvance*self.e_steps_per_mm
         self.planner.stepRounders.pprint()
 
         if self.kAdv:
@@ -455,6 +498,9 @@ class Advance (object):
         # Summe aller advance-rampen muss nicht unbedingt null sein, je nach verteilung
         # von e-jerk jumps. Somit ist folgender test völlig willkürlich.
         assert(util.circaf(self.advSum, 0, 1))
+
+        # assert(util.circaf(self.skippedAdvance, 0, 2.0/self.e_steps_per_mm))
+        assert(util.circaf(self.skippedAdvance, 0, 1.0/self.e_steps_per_mm))
 
         self.planner.stepRounders.check()
 
@@ -1047,39 +1093,43 @@ class Advance (object):
 
                 # print "accel group: ", baseMove.moveNumber, baseMove.advanceData
 
-                for advMove in baseMove.advanceData.accelGroup:
+                # if (baseMove.advanceData.sAccelSum + self.skippedAdvance) > AdvanceMinRamp:
+                if baseMove.advanceData.sAccelSum > AdvanceMinRamp:
 
-                    startFeedrateIncrease = self.eJerk(advMove.startAccel.eAccel())
-                    advMove.advanceData.startFeedrateIncrease = startFeedrateIncrease
+                    for advMove in baseMove.advanceData.accelGroup:
 
-                    # advMove.pprint("planAdvanceGroup accel adv:")
+                        startFeedrateIncrease = self.eJerk(advMove.startAccel.eAccel())
+                        advMove.advanceData.startFeedrateIncrease = startFeedrateIncrease
 
-                    esteps = advMove.startERampSteps()
+                        # advMove.pprint("planAdvanceGroup accel adv:")
 
-                    advMove.advanceData.startESteps = esteps
-                    advMove.advanceData.advStepSum += esteps
+                        esteps = advMove.startERampSteps()
 
-                    advMove.advanceData.startSplits = 1
-                    if advMove.advanceData.startSignChange():
-                        assert(0) # should not happen
-
-                    tl = advMove.linearTime()
-                    if tl and not advMove.advanceData.linESteps:
-
-                        # E-steps in linear phase
-                        # advMove.pprint("planAdvanceGroup linear phase:")
-
-                        # E-distance ist nicht einfach der rest der e-steps, linearer e-anteil muss über
-                        # die dauer des linearen anteils (tLinear) berechnet werden.
-                        sl = tl * advMove.topSpeed.speed().eSpeed
-                        esteps = sl * self.e_steps_per_mm
-                        # print "dim E moves %.3f mm in linear phase -> %d steps" % (sl, esteps)
-
-                        advMove.advanceData.linESteps = esteps
+                        advMove.advanceData.startESteps = esteps
                         advMove.advanceData.advStepSum += esteps
+
+                        advMove.advanceData.startSplits = 1
+                        if advMove.advanceData.startSignChange():
+                            assert(0) # should not happen
+
+                        tl = advMove.linearTime()
+                        if tl and not advMove.advanceData.linESteps:
+
+                            # E-steps in linear phase
+                            # advMove.pprint("planAdvanceGroup linear phase:")
+
+                            # E-distance ist nicht einfach der rest der e-steps, linearer e-anteil muss über
+                            # die dauer des linearen anteils (tLinear) berechnet werden.
+                            sl = tl * advMove.topSpeed.speed().eSpeed
+                            esteps = sl * self.e_steps_per_mm
+                            # print "dim E moves %.3f mm in linear phase -> %d steps" % (sl, esteps)
+    
+                            advMove.advanceData.linESteps = esteps
+                            advMove.advanceData.advStepSum += esteps
 
                 else:
                     
+
                     # Dont advance very small acceleration ramps, but sum up the missing advance.
                     for advMove in baseMove.advanceData.accelGroup:
 
@@ -1102,106 +1152,130 @@ class Advance (object):
 
                 # print "decel group: ", baseMove.moveNumber, baseMove.advanceData
 
-                for advMove in baseMove.advanceData.decelGroup:
+                # if (baseMove.advanceData.sDecelSum + self.skippedAdvance) < -AdvanceMinRamp:
+                if baseMove.advanceData.sDecelSum < -AdvanceMinRamp:
 
-                    endFeedrateIncrease = - self.eJerk(advMove.endAccel.eAccel())
-                    advMove.advanceData.endFeedrateIncrease = endFeedrateIncrease
+                    for advMove in baseMove.advanceData.decelGroup:
 
-                    # advMove.pprint("planAdvanceGroup decel adv:")
+                        endFeedrateIncrease = - self.eJerk(advMove.endAccel.eAccel())
+                        advMove.advanceData.endFeedrateIncrease = endFeedrateIncrease
 
-                    advMove.advanceData.endSplits = 1
+                        # advMove.pprint("planAdvanceGroup decel adv:")
 
-                    if advMove.advanceData.endSignChange(): 
+                        advMove.advanceData.endSplits = 1
 
-                        # advMove.pprint("zero cross move")
+                        if advMove.advanceData.endSignChange(): 
 
-                        ###############################################################
-                        # Compute additional data for planSteps()
-                        # Time till the e-velocity crosses zero
+                            # advMove.pprint("zero cross move")
 
-                        td = advMove.decelTime()
-                        topSpeed = advMove.topSpeed.speed()
-                        endSpeed = advMove.endSpeed.speed()
+                            ###############################################################
+                            # Compute additional data for planSteps()
+                            # Time till the e-velocity crosses zero
 
-                        tdc = 0
+                            td = advMove.decelTime()
+                            topSpeed = advMove.topSpeed.speed()
+                            endSpeed = advMove.endSpeed.speed()
 
-                        v0 = advMove.advanceData.endEReachedFeedrate()
+                            tdc = 0
 
-                        # print "v0, accel, endFeedrateIncrease: ", v0, advMove.endAccel.eAccel(), advMove.advanceData.endFeedrateIncrease
-                        tdc = v0 / advMove.endAccel.eAccel()
+                            v0 = advMove.advanceData.endEReachedFeedrate()
 
-                        # print "Time to reach zero-crossing tdc:", tdc, ", tdd: ", td - tdc
-                        assert(tdc >= 0 and tdc <= td)
+                            # print "v0, accel, endFeedrateIncrease: ", v0, advMove.endAccel.eAccel(), advMove.advanceData.endFeedrateIncrease
+                            tdc = v0 / advMove.endAccel.eAccel()
 
-                        # Nominal speed at zero crossing
-                        if topSpeed.feedrate3() > endSpeed.feedrate3():
-                            # decel
-                            zeroCrossingS = util.vAccelPerTime(topSpeed.feedrate3(), - advMove.endAccel.xyAccel(), tdc)
+                            # print "Time to reach zero-crossing tdc:", tdc, ", tdd: ", td - tdc
+                            assert(tdc >= 0 and tdc <= td)
+
+                            # Nominal speed at zero crossing
+                            if topSpeed.feedrate3() > endSpeed.feedrate3():
+                                # decel
+                                zeroCrossingS = util.vAccelPerTime(topSpeed.feedrate3(), - advMove.endAccel.xyAccel(), tdc)
+                            else:
+                                assert(0) # does this happen?
+
+                            # XYZ speed at E zerocrossing
+                            crossingSpeed = advMove.topSpeed.speed()
+                            crossingSpeed.setSpeed(zeroCrossingS)
+
+                            # print "crossingspeed: ", crossingSpeed
+
+                            # PART C, D
+                            estepsc = advMove.endRampTriangle(v0 = v0, v1 = 0, dt = tdc) * self.e_steps_per_mm
+
+                            # print "(sdc, estepsc):", (sdc, estepsc) 
+
+                            advMove.advanceData.endEStepsC = estepsc
+                            advMove.advanceData.advStepSum += estepsc
+
+                            # print "top, zerocrossspeed:", topSpeed.feedrate3(), crossingSpeed
+
+                            advMove.advanceData.tdc = tdc
+                            advMove.advanceData.tdd = td - tdc
+                            advMove.advanceData.crossingSpeed = crossingSpeed
+
+                            estepsd = advMove.startRampTriangle(
+                                    v0 = 0,
+                                    v1 = advMove.advanceData.endEFeedrate(),
+                                    dt = advMove.advanceData.tdd)  * self.e_steps_per_mm
+
+                            # print "(sdd, estepsd):", (sdd, estepsd) 
+
+                            advMove.advanceData.endEStepsD = estepsd
+                            advMove.advanceData.advStepSum += estepsd
+
+                            advMove.advanceData.endSplits += 1 # Mark as crossing decel ramp
+
+                            ###############################################################
+
                         else:
-                            assert(0) # does this happen?
 
-                        # XYZ speed at E zerocrossing
-                        crossingSpeed = advMove.topSpeed.speed()
-                        crossingSpeed.setSpeed(zeroCrossingS)
+                            esteps = advMove.endERampSteps()
 
-                        # print "crossingspeed: ", crossingSpeed
+                            # print "sd: %f, skippedAdvance: %f, used: %f" % (sd, self.skippedAdvance)
+                            
+                            advMove.advanceData.endESteps = esteps
+                            advMove.advanceData.advStepSum += esteps
 
-                        # PART C, D
-                        estepsc = advMove.endRampTriangle(v0 = v0, v1 = 0, dt = tdc) * self.e_steps_per_mm
+                            # xxx check if move is a crossing decel move after adjust:
+                            assert(not advMove.advanceData.endSignChange())
 
-                        # print "(sdc, estepsc):", (sdc, estepsc) 
+                        tl = advMove.linearTime()
+                        if tl and not advMove.advanceData.linESteps:
 
-                        advMove.advanceData.endEStepsC = estepsc
-                        advMove.advanceData.advStepSum += estepsc
+                            # E-steps in linear phase
+                            # advMove.pprint("planAdvanceGroup linear phase:")
 
-                        # print "top, zerocrossspeed:", topSpeed.feedrate3(), crossingSpeed
+                            # E-distance ist nicht einfach der rest der e-steps, linearer e-anteil muss über
+                            # die dauer des linearen anteils (tLinear) berechnet werden.
+                            sl = tl * advMove.topSpeed.speed().eSpeed
+                            esteps = sl * self.e_steps_per_mm
+                            # print "dim E moves %.3f mm in linear phase -> %d steps" % (sl, esteps)
+    
+                            advMove.advanceData.linESteps = esteps
+                            advMove.advanceData.advStepSum += esteps
 
-                        advMove.advanceData.tdc = tdc
-                        advMove.advanceData.tdd = td - tdc
-                        advMove.advanceData.crossingSpeed = crossingSpeed
+                else:
 
-                        estepsd = advMove.startRampTriangle(
-                                v0 = 0,
-                                v1 = advMove.advanceData.endEFeedrate(),
-                                dt = advMove.advanceData.tdd)  * self.e_steps_per_mm
+                    # Dont advance very small acceleration ramps, but sum up the missing advance.
+                    for advMove in baseMove.advanceData.decelGroup:
 
-                        # print "(sdd, estepsd):", (sdd, estepsd) 
+                        # advMove.pprint("planAdvanceGroup skipped end adv:")
 
-                        advMove.advanceData.endEStepsD = estepsd
-                        advMove.advanceData.advStepSum += estepsd
+                        # E-steps of non-advanced decel ramp
+                        sd = advMove.endRampDistance(
+                            advMove.topSpeed.speed().eSpeed, advMove.endSpeed.speed().eSpeed, advMove.decelTime())
 
-                        advMove.advanceData.endSplits += 1 # Mark as crossing decel ramp
-
-                        ###############################################################
-
-                    else:
-
-                        esteps = advMove.endERampSteps()
+                        esteps = sd * self.e_steps_per_mm
+                        # print "dim E moves %.3f mm in decel phase -> %d steps" % (sd, esteps)
 
                         advMove.advanceData.endESteps = esteps
                         advMove.advanceData.advStepSum += esteps
-
-                        # xxx check if move is a crossing decel move after adjust:
-                        assert(not advMove.advanceData.endSignChange())
-
-                    tl = advMove.linearTime()
-                    if tl and not advMove.advanceData.linESteps:
-
-                        # E-steps in linear phase
-                        # advMove.pprint("planAdvanceGroup linear phase:")
-
-                        # E-distance ist nicht einfach der rest der e-steps, linearer e-anteil muss über
-                        # die dauer des linearen anteils (tLinear) berechnet werden.
-                        sl = tl * advMove.topSpeed.speed().eSpeed
-                        esteps = sl * self.e_steps_per_mm
-                        # print "dim E moves %.3f mm in linear phase -> %d steps" % (sl, esteps)
-
-                        advMove.advanceData.linESteps = esteps
-                        advMove.advanceData.advStepSum += esteps
+                        self.skippedAdvance += advMove.advanceData.sDecel
 
                 self.advSum += baseMove.advanceData.sDecelSum
 
             # print "move %d advSum: " % baseMove.moveNumber, self.advSum
+            # print "skippedAdvance: ", self.skippedAdvance, self.skippedAdvance*self.e_steps_per_mm
 
             if debugMoves:
                 print 
@@ -1280,7 +1354,7 @@ class Advance (object):
         # Debug, prüfung ob alle in planAdvance() berechneten e-steps in planSteps() 
         # verwendet werden. Summe ist im idealfall 0, kann aber aufgrund von rundungsfehlern
         # auch ungleich null sein.
-        print "estep move.sum: ", move.advanceData.advStepSum
+        # print "estep move.sum: ", move.advanceData.advStepSum
         assert(abs(move.advanceData.advStepSum) < 0.001)
 
         # print "new moves: ", newMoves
