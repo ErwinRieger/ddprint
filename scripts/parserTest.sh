@@ -7,7 +7,7 @@ for inp in $(ls -rS $* test_files/*.gcode); do
     echo "$0: running python ddprint.py pre $inp"
     echo "###################################"
 
-    for kadv in 0 0.4 0.5 1; do
+    for kadv in 0 0.1 0.4 0.5 1; do
 
         python ddprint.py -kAdvance $kadv pre $inp
 
