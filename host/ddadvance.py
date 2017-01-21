@@ -255,7 +255,7 @@ class Advance (object):
             #
             # Correct eSpeed for feeder slip
             #
-            # self.planFeederCorrection(move)
+            self.planFeederCorrection(move)
 
         # """
         # Sanity check
@@ -398,11 +398,11 @@ class Advance (object):
             print "roundErrorSum:", roundErrorSum
             assert(roundErrorSum < 0.001)
             # end heavy debug
-            # """
+            """
 
             if abs(self.skippedAdvance) > 1.0/self.e_steps_per_mm:
 
-                # print "Spreading skippedAdvance..."
+                # print "Spreading skippedAdvance...", self.skippedAdvance, self.skippedAdvance*self.e_steps_per_mm
 
                 tAdvAccelSum = 0
                 advAccelMoves = []
@@ -1093,13 +1093,69 @@ class Advance (object):
 
                 # print "accel group: ", baseMove.moveNumber, baseMove.advanceData
 
-                # if (baseMove.advanceData.sAccelSum + self.skippedAdvance) > AdvanceMinRamp:
                 if baseMove.advanceData.sAccelSum > AdvanceMinRamp:
 
                     for advMove in baseMove.advanceData.accelGroup:
 
-                        startFeedrateIncrease = self.eJerk(advMove.startAccel.eAccel())
-                        advMove.advanceData.startFeedrateIncrease = startFeedrateIncrease
+                        #
+                        # Distribute skipped advance
+                        #
+                        accelAdvance = advMove.advanceData.sAccel
+
+                        if self.skippedAdvance > 0:
+
+                            # Dont increase start advance to not exceed e-jerk
+                            print "acceladv: positive skipped advance:", self.skippedAdvance, "this advance:", advMove.advanceData.sAccel
+                            pass
+
+                        elif self.skippedAdvance < 0:
+
+                            # Feder ist zu stark gespannt und soll weiter gespannt werden -> skipped advance kann verrechnet werden:
+                            print "acceladv: negative skipped advance:", self.skippedAdvance, "this advance:", advMove.advanceData.sAccel
+                            accelAdvance = accelAdvance + self.skippedAdvance
+
+                            print "accelAdvance left:", accelAdvance
+
+                            if accelAdvance <= 0:
+
+                                # Mehr negatives advance als dieser move ausgleichen kann oder genau gleich
+                                # * self.skippedAdvance um accelAdvance verringern
+                                # * kein start-advance für diesen move 
+                                self.skippedAdvance = accelAdvance
+
+                                print "remaining skip: ", self.skippedAdvance
+
+                                # xxx duplicated code
+                                # E-steps of non-advanced accel ramp
+                                sa = advMove.startRampDistance(
+                                    advMove.startSpeed.speed().eSpeed, advMove.topSpeed.speed().eSpeed, advMove.accelTime())
+
+                                esteps = sa * self.e_steps_per_mm
+                                # print "dim E moves %.3f mm in acel phase -> %d steps" % (sa, esteps)
+
+                                advMove.advanceData.startESteps = esteps
+                                advMove.advanceData.advStepSum += esteps
+                                continue
+
+                            else:
+
+                                # Ganzes skippedAdvance verrechnet und es ist ein rest accel advance übrig
+                                self.skippedAdvance = 0
+
+                        startFeedrateIncreaseNoBalance = self.eJerk(advMove.startAccel.eAccel())
+
+                        # Aparallel = g * h; g = fri; h = ta
+                        # Sadv = fri * ta -> fri = Sadv / ta 
+                        ta = advMove.accelTime()
+                        startFeedrateIncreaseBalance = accelAdvance / ta
+
+                        print "balancing skipped advance, startFeedrateIncrease: ", startFeedrateIncreaseNoBalance, "-->", startFeedrateIncreaseBalance
+
+                        # debug
+                        if startFeedrateIncreaseBalance > startFeedrateIncreaseNoBalance:
+                            assert(util.circaf(startFeedrateIncreaseBalance - startFeedrateIncreaseNoBalance, 0, 0.000001))
+
+                        advMove.advanceData.startFeedrateIncrease = startFeedrateIncreaseBalance
 
                         # advMove.pprint("planAdvanceGroup accel adv:")
 
@@ -1133,7 +1189,7 @@ class Advance (object):
                     # Dont advance very small acceleration ramps, but sum up the missing advance.
                     for advMove in baseMove.advanceData.accelGroup:
 
-                        advMove.pprint("planAdvanceGroup skipped start adv:")
+                        # advMove.pprint("planAdvanceGroup skipped start adv:")
 
                         # E-steps of non-advanced accel ramp
                         sa = advMove.startRampDistance(
@@ -1146,19 +1202,77 @@ class Advance (object):
                         advMove.advanceData.advStepSum += esteps
                         self.skippedAdvance += advMove.advanceData.sAccel
 
+                        # print "skipped advance:", advMove.advanceData.sAccel, self.skippedAdvance
+
                 self.advSum += baseMove.advanceData.sAccelSum
 
             if baseMove.advanceData.decelGroup:
 
                 # print "decel group: ", baseMove.moveNumber, baseMove.advanceData
 
-                # if (baseMove.advanceData.sDecelSum + self.skippedAdvance) < -AdvanceMinRamp:
                 if baseMove.advanceData.sDecelSum < -AdvanceMinRamp:
 
                     for advMove in baseMove.advanceData.decelGroup:
 
-                        endFeedrateIncrease = - self.eJerk(advMove.endAccel.eAccel())
-                        advMove.advanceData.endFeedrateIncrease = endFeedrateIncrease
+                        #
+                        # Distribute skipped advance
+                        #
+                        decelAdvance = advMove.advanceData.sDecel
+
+                        if self.skippedAdvance > 0:
+
+                            # Feder ist nicht genug gespannt und soll weiter entspannt werden -> skipped advance kann verrechnet werden:
+                            print "deceladv: positive skipped advance:", self.skippedAdvance, "this advance:", advMove.advanceData.sDecel
+                            decelAdvance = decelAdvance + self.skippedAdvance
+
+                            print "decelAdvance left:", decelAdvance
+
+                            if decelAdvance >= 0:
+
+                                # Mehr positives advance als dieser move ausgleichen kann oder genau gleich
+                                # * self.skippedAdvance um decelAdvance verringern
+                                # * kein end-advance für diesen move 
+                                self.skippedAdvance = decelAdvance
+
+                                print "remaining skip: ", self.skippedAdvance
+
+                                # xxx duplicated code
+                                # E-steps of non-advanced decel ramp
+                                sd = advMove.endRampDistance(
+                                    advMove.topSpeed.speed().eSpeed, advMove.endSpeed.speed().eSpeed, advMove.decelTime())
+
+                                esteps = sd * self.e_steps_per_mm
+                                # print "dim E moves %.3f mm in decel phase -> %d steps" % (sd, esteps)
+
+                                advMove.advanceData.endESteps = esteps
+                                advMove.advanceData.advStepSum += esteps
+                                continue
+
+                            else:
+
+                                # Ganzes skippedAdvance verrechnet und es ist ein rest decel advance übrig
+                                self.skippedAdvance = 0
+
+                        elif self.skippedAdvance < 0:
+
+                            # Dont increase end advance to not exceed e-jerk
+                            print "deceladv: negative skipped advance:", self.skippedAdvance, "this advance:", advMove.advanceData.sDecel
+                            pass
+
+                        endFeedrateIncreaseNoBalance = - self.eJerk(advMove.endAccel.eAccel())
+
+                        # Aparallel = g * h; g = fri; h = td
+                        # Sadv = fri * td -> fri = Sadv / td 
+                        td = advMove.decelTime()
+                        endFeedrateIncreaseBalance = decelAdvance / td
+
+                        print "balancing skipped advance, endFeedrateIncrease: ", endFeedrateIncreaseNoBalance, "-->", endFeedrateIncreaseBalance
+
+                        # debug
+                        if endFeedrateIncreaseBalance < endFeedrateIncreaseNoBalance:
+                            assert(util.circaf(endFeedrateIncreaseNoBalance - endFeedrateIncreaseBalance, 0, 0.000001))
+
+                        advMove.advanceData.endFeedrateIncrease = endFeedrateIncreaseBalance
 
                         # advMove.pprint("planAdvanceGroup decel adv:")
 
@@ -1172,7 +1286,6 @@ class Advance (object):
                             # Compute additional data for planSteps()
                             # Time till the e-velocity crosses zero
 
-                            td = advMove.decelTime()
                             topSpeed = advMove.topSpeed.speed()
                             endSpeed = advMove.endSpeed.speed()
 
@@ -1231,13 +1344,8 @@ class Advance (object):
 
                             esteps = advMove.endERampSteps()
 
-                            # print "sd: %f, skippedAdvance: %f, used: %f" % (sd, self.skippedAdvance)
-                            
                             advMove.advanceData.endESteps = esteps
                             advMove.advanceData.advStepSum += esteps
-
-                            # xxx check if move is a crossing decel move after adjust:
-                            assert(not advMove.advanceData.endSignChange())
 
                         tl = advMove.linearTime()
                         if tl and not advMove.advanceData.linESteps:
@@ -1271,6 +1379,8 @@ class Advance (object):
                         advMove.advanceData.endESteps = esteps
                         advMove.advanceData.advStepSum += esteps
                         self.skippedAdvance += advMove.advanceData.sDecel
+
+                        # print "skipped advance:", advMove.advanceData.sDecel, self.skippedAdvance
 
                 self.advSum += baseMove.advanceData.sDecelSum
 
@@ -1496,8 +1606,6 @@ class Advance (object):
                     # Überschüssige steps im verhältnis von nAccel zu nDecel abschneiden
                     cd = int(-nLin / ((float(nAccel) / nDecel) + 1))
                     ca = -nLin - cd
-
-                    print "ca: ", ca, "cd:", cd
 
                     if ca:
                         del move.stepData.accelPulses[:ca]
