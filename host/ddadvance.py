@@ -847,7 +847,7 @@ class Advance (object):
 
             # Check acceleration of e-axis
             eAccel = (topSpeed.eSpeed - startSpeed.eSpeed) / ta
-            print "eaccel: ", eAccel, move.startAccel.eAccel()
+            # print "eaccel: ", eAccel, move.startAccel.eAccel()
             assert((eAccel / move.startAccel.eAccel()) < 1.001)
             #end debug
 
@@ -1180,6 +1180,8 @@ class Advance (object):
                             self.computeAccelAdvance(skippedMove, adv)
                             advSum += adv # xxx move to computeAccelAdvance
 
+                            self.computeConstSteps(skippedMove)
+
                             #---------------------------------------------------------------------------------------------
                             # E-steps of non-advanced decel ramp
                             sd = skippedMove.endRampDistance(
@@ -1212,6 +1214,8 @@ class Advance (object):
 
                             self.computeDecelAdvance(skippedMove, adv)
                             advSum += adv # xxx move to computeAccelAdvance
+
+                            self.computeConstSteps(skippedMove)
 
                             #---------------------------------------------------------------------------------------------
                             # E-steps of non-advanced accel ramp
@@ -1250,6 +1254,9 @@ class Advance (object):
                         self.computeDecelAdvance(advMove, decelAdvance)
                         advSum += decelAdvance # xxx move to computeAccelAdvance
 
+                    if accelAdvance or decelAdvance:
+                        self.computeConstSteps(advMove)
+
         print "advSum (should be 0):", advSum
         assert(util.circaf(advSum, 0, 0.000001)) 
         print "advance (should be 0):", advance
@@ -1266,7 +1273,7 @@ class Advance (object):
         ta = advMove.accelTime()
         startFeedrateIncreaseBalance = accelAdvance / ta
 
-        print "startFeedrateIncrease: ", startFeedrateIncreaseBalance
+        # print "startFeedrateIncrease: ", startFeedrateIncreaseBalance
 
         advMove.advanceData.startFeedrateIncrease = startFeedrateIncreaseBalance
 
@@ -1281,22 +1288,6 @@ class Advance (object):
 
         assert(not advMove.advanceData.startSignChange()) # debug
 
-        # xxx move to planAdvanceGroup
-        tl = advMove.linearTime()
-        if tl and not advMove.advanceData.linESteps:
-
-            # E-steps in linear phase
-            # advMove.pprint("computeAccelAdvance linear phase:")
-
-            # E-distance ist nicht einfach der rest der e-steps, linearer e-anteil muss über
-            # die dauer des linearen anteils (tLinear) berechnet werden.
-            sl = tl * advMove.topSpeed.speed().eSpeed
-            esteps = sl * self.e_steps_per_mm
-            # print "dim E moves %.3f mm in linear phase -> %d steps" % (sl, esteps)
-
-            advMove.advanceData.linESteps = esteps
-            advMove.advanceData.advStepSum += esteps
-
     def computeDecelAdvance(self, advMove, decelAdvance):
 
         # Aparallel = g * h; g = fri; h = td
@@ -1304,7 +1295,7 @@ class Advance (object):
         td = advMove.decelTime()
         endFeedrateIncreaseBalance = decelAdvance / td
 
-        print "endFeedrateIncrease: ", endFeedrateIncreaseBalance
+        # print "endFeedrateIncrease: ", endFeedrateIncreaseBalance
 
         advMove.advanceData.endFeedrateIncrease = endFeedrateIncreaseBalance
 
@@ -1381,21 +1372,21 @@ class Advance (object):
             advMove.advanceData.endESteps = esteps
             advMove.advanceData.advStepSum += esteps
 
-        # xxx move to planAdvanceGroup
+    # Compute E-steps of linear phase
+    def computeConstSteps(self, advMove):
+
         tl = advMove.linearTime()
-        if tl and not advMove.advanceData.linESteps:
 
-            # E-steps in linear phase
-            # advMove.pprint("computeDecelAdvance linear phase:")
+        # advMove.pprint("computeConstSteps linear phase:")
 
-            # E-distance ist nicht einfach der rest der e-steps, linearer e-anteil muss über
-            # die dauer des linearen anteils (tLinear) berechnet werden.
-            sl = tl * advMove.topSpeed.speed().eSpeed
-            esteps = sl * self.e_steps_per_mm
-            # print "dim E moves %.3f mm in linear phase -> %d steps" % (sl, esteps)
+        # E-distance ist nicht einfach der rest der e-steps, linearer e-anteil muss über
+        # die dauer des linearen anteils (tLinear) berechnet werden.
+        sl = tl * advMove.topSpeed.speed().eSpeed
+        esteps = sl * self.e_steps_per_mm
+        # print "dim E moves %.3f mm in linear phase -> %d steps" % (sl, esteps)
 
-            advMove.advanceData.linESteps = esteps
-            advMove.advanceData.advStepSum += esteps
+        advMove.advanceData.linESteps = esteps
+        advMove.advanceData.advStepSum += esteps
 
     def planSteps(self, move):
 

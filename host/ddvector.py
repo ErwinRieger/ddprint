@@ -205,25 +205,11 @@ class Vector(object):
 
         # print "speedScale: ", speedScale
 
-        if abs(1-speedScale) < 0.001:
+        if abs(1-speedScale) < 0.000001:
             return None
 
         assert(speedScale < 1)
 
-        return self.scale(speedScale)
-  
-    def constrain3(self, jerkVector):
-
-        assert(0)
-
-        speedScale = 1.0
-        for dim in range(3):
-            if abs(self.vv[dim]) > jerkVector[dim]:
-                speedScale = min(speedScale, jerkVector[dim] / abs(self.vv[dim]))
-
-        # print "speedScale: ", speedScale
-
-        assert(speedScale <= 1.0)
         return self.scale(speedScale)
   
     def isDisjointV(self, other, delta=0.000001):
@@ -281,7 +267,7 @@ class VelocityVector5(object):
             if abs(vv[dim]) > jerkVector[dim]:
                 speedScale = min(speedScale, jerkVector[dim] / abs(vv[dim]))
 
-        if abs(1-speedScale) < 0.001:
+        if abs(1-speedScale) < 0.000001:
             return None
 
         assert(speedScale < 1)
@@ -364,6 +350,22 @@ class VelocityVector32(object):
     def copy(self):
         return VelocityVector32(self.eSpeed, feedrate = self._feedrate, direction = self.direction)
 
+    def constrain(self, jerkVector):
+
+        speedScale = 1.0
+        vv = self.vv3()
+
+        for dim in range(3):
+            if abs(vv[dim]) > jerkVector[dim]:
+                speedScale = min(speedScale, jerkVector[dim] / abs(vv[dim]))
+
+        if abs(1-speedScale) < 0.000001:
+            return None
+
+        assert(speedScale < 1)
+
+        return VelocityVector32(self.eSpeed, feedrate = self._feedrate*speedScale, direction = self.direction)
+ 
     def scale(self, s):
         return VelocityVector32(self.eSpeed * s, feedrate = self._feedrate * s, direction = self.direction)
 
@@ -380,29 +382,6 @@ class VelocityVector32(object):
 
         assert(dim < 3)
         return self.direction[dim] * self._feedrate
-
-
-    """
-    # Feedrate in XY direction
-    def XY(self):
-        return Vector([self[X_AXIS], self[Y_AXIS]]).length()
-
-    def constrain(self, jerkVector):
-
-        speedScale = 1.0
-        vv = self.vv()
-
-        for dim in range(5):
-            if abs(vv[dim]) > jerkVector[dim]:
-                speedScale = min(speedScale, jerkVector[dim] / abs(vv[dim]))
-
-        if abs(1-speedScale) < 0.001:
-            return None
-
-        assert(speedScale < 1)
-
-        return VelocityVector(feedrate = self._feedrate*speedScale, direction = self.direction)
-    """
 
     def checkJerk(self, other, jerk, selfName="", otherName=""):
         # xxx add __sub__
