@@ -417,6 +417,10 @@ class AdvanceData:
         # auch ungleich null sein.
         self.advStepSum = 0
 
+        # xxx
+        self.hasAccelAdvance = False
+        self.hasDecelAdvance = False
+
     def hasStartAdvance(self):
         return self.startFeedrateIncrease != 0
 
@@ -948,6 +952,9 @@ class PrintMove(RealMove):
         self.startAccel = AccelOverride([av[:3], av[A_AXIS]], self.direction3)
         self.endAccel = AccelOverride([av[:3], av[A_AXIS]], self.direction3)
 
+        #xxx 
+        self.skipType = 0
+
     def isPrintMove(self):
         return True
 
@@ -1041,7 +1048,6 @@ class PrintMove(RealMove):
         # print "v0:", v0, "v1:", v1, "dt:", dt
 
         if not dt:
-            assert(0) # does this happen?
             return 0.0
 
         if v1 > 0: 

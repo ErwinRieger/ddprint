@@ -654,6 +654,21 @@ class GetChar:
 
 ####################################################################################################
 
+class EWMA:
+
+    def __init__(self, weight):
+        self.weight = weight
+        self._value = 0.0
+
+    def add(self, value):
+        """Adds a value to the series and updates the moving average."""
+        self._value = (value*self.weight) + (self._value*(1 - self.weight))
+
+    def value(self):
+        return self._value
+
+####################################################################################################
+
 # Compute new stepper direction bits
 def directionBits(disp, curDirBits):
 
@@ -1789,6 +1804,7 @@ def accelRamp(axis, vstart, vend, a, nSteps, forceFill=False):
 
         # print "v after this step:", vn1, s, dt, timerValue
 
+        assert(timerValue <= 0xffff)
         pulses.append((tstep, dt, timerValue))
 
         s += sPerStep
@@ -1806,6 +1822,7 @@ def accelRamp(axis, vstart, vend, a, nSteps, forceFill=False):
         p = pulses[-1]
         for i in range(stepToDo):
 
+            assert(timerValue <= 0xffff)
             pulses.append((tstep, dt, timerValue))
             tstep += dt
 

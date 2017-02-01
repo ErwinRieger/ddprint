@@ -56,7 +56,7 @@ PRIMING_HEIGHT = 20
 # Board config, move to printer-profile ?
 #
 fTimer = 2000000.0 # Hz
-maxTimerValue16 = pow(2, 16)
+maxTimerValue16 = pow(2, 16) - 1
 
 ############################################################################
 #
