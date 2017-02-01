@@ -157,13 +157,16 @@ class Advance (object):
         self.e_steps_per_mm = PrinterProfile.getStepsPerMM(A_AXIS)
         # Half full step in microsteps.
         # XXX add microstep setting to printer profile, rename
-        self.eightESteps = 8.0/self.e_steps_per_mm
+        # self.eightESteps = 8.0/self.e_steps_per_mm
 
         # Compute minimal e speed
         # maxStepTime = maxTimerValue16 / fTimer
         # v = (1.0/self.e_steps_per_mm) / maxStepTime
         # self.minESpeed = v * 1.1 # savety margin for rounding errors
         # print "min e-speed", self.minESpeed
+
+        self.maxEFeedrate = PrinterProfile.getMaxFeedrate(A_AXIS)
+        self.maxFeedrateVector = PrinterProfile.getMaxFeedrateVector()
 
     def eJerk(self, accel):
         return abs(accel) * self.kAdv
@@ -177,11 +180,14 @@ class Advance (object):
 
         vCorr = vExtruder / (1 - k)
 
-        return min(vCorr, PrinterProfile.getMaxFeedrate(A_AXIS))
+        assert(vCorr <= self.maxEFeedrate)
+        return vCorr
 
     def reset(self):
 
         # Reset debug counters
+
+        """
         # Running sum of e-distances through advance, for debugging of planAdvance()
         self.advSum = 0.0
         # Sum of skipped small advance ramps
@@ -190,6 +196,7 @@ class Advance (object):
         self.skippedAdvanceMoves = {}
         self.skippedAccelAdvanceMoveList = []
         self.skippedDecelAdvanceMoveList = []
+        """
 
         # Running sum of move esteps, for debugging of planSteps()
         self.moveEsteps = 0.0
@@ -206,29 +213,50 @@ class Advance (object):
             self.pre_plotfile = DebugPlot(path[0].moveNumber, "pre")
             self.plotfile = DebugPlot(path[0].moveNumber)
 
-        # Smooth extrusion rate
-        """
-        # xxx start
+        # Limit e flowrates for feeder slip compensation
+        # vMax = vExtruder / (1 - self.kFeederComp * vExtruder)
+        # vMax * (1 - self.kFeederComp * vExtruder) = vExtruder 
+        # vMax - vMax * self.kFeederComp * vExtruder = vExtruder 
+        # vMax/vExtruder - vMax * self.kFeederComp = 1
+        # vMax/vExtruder = 1 + vMax * self.kFeederComp
+        # vMax = (1 + vMax * self.kFeederComp) * vExtruder
+        # vExtruder = vMax / (1 + vMax * self.kFeederComp)
+        vExtruderMax = self.maxEFeedrate / (1.001 + self.maxEFeedrate * self.kFeederComp)
+
+        # print "vmax:", self.maxEFeedrate, vExtruderMax
+
+        # Smooth extrusion rate, compute average extrusion rate of this path and
+        # scale the speed of all moves in this path to get an more even flowrate.
+        # This decreases the amount of advance ramps.
         rateList = []
         for move in path:
             rateList.append(move.topSpeed.speed().eSpeed)
 
-        print "rateList:", rateList
         avgRate = sum(rateList) / len(rateList)
-        print "avgRate:", avgRate
+        avgRate = min(avgRate, vExtruderMax)
+
+        if debugMoves:
+            print "avgRate:", avgRate, ", vExtruderMax:", vExtruderMax
 
         for move in path:
+
             v = move.topSpeed.speed()
+            # xxx hack
+            # f = avgRate / v.eSpeed
             f = min(avgRate / v.eSpeed, 10)
 
-            # XXX check max feedrate
+            # scaledTopSpeed = v.scale(f)
+            # print type(scaledTopSpeed)
+            # topSpeed = scaledTopSpeed.constrain(self.maxFeedrateVector) or scaledTopSpeed
+            # print "Scale factor:", f, "topSpeed: ", topSpeed
+
+            # move.startSpeed.setSpeed(topSpeed, "planPath - Smooth FlowRate")
+            # move.topSpeed.setSpeed(topSpeed, "planPath - Smooth FlowRate")
+            # move.endSpeed.setSpeed(topSpeed, "planPath - Smooth FlowRate")
 
             move.startSpeed.setSpeed(v.scale(f), "planPath - Smooth FlowRate")
             move.topSpeed.setSpeed(v.scale(f), "planPath - Smooth FlowRate")
             move.endSpeed.setSpeed(v.scale(f), "planPath - Smooth FlowRate")
-        # xxx end
-        """
-
 
         # First move
         v0 = path[0].startSpeed.speed()
@@ -299,12 +327,8 @@ class Advance (object):
         # Step 4: handle extruder advance
         if self.kAdv:
 
-            self.groupAdvance(path)
-
+            # Sum up esteps for debugging
             for move in path:
-                # move.sanityCheck(self.planner.jerk)
-
-                # Sum up esteps
                 self.moveEsteps += move.eSteps
                 # print "moveEsteps+: %7.3f %7.3f" % ( move.eSteps, self.moveEsteps)
 
@@ -312,132 +336,17 @@ class Advance (object):
             if debugPlot and debugPlotLevel == "plotLevelPlanned":
                 self.plotPlannedPath(path, self.pre_plotfile)
 
-            self.planAdvanceGroup(path)
+            self.planAdvance(path)
 
             # #debug:
             if debugPlot and debugPlotLevel == "plotLevelPlanned":
                  self.plotPlannedPath(path)
 
-            print "Path skippedAdvance: ", self.skippedAdvance, "-->", self.skippedAdvance*self.e_steps_per_mm, "e-steps"
-
-            for move in path:
-
-                if move.skipType == 1:
-
-                    leftDA = move.advanceData.sDecel + move.advanceData.sAccel
-                    print "Move %d with skipped start advance: decreasing end advance" % move.moveNumber, move.advanceData.sDecel, "-->", leftDA
-                    
-                    if leftDA < 0:
-
-                        # xxx
-                        assert(0)
-                        move.advanceData.advStepSum = move.advanceData.advStepSum_save
-                        self.computeDecelAdvance(move, leftDA)
-
-                    elif leftDA > 0:
-
-                        assert(0)
-                        # move.advanceData.advStepSum = move.advanceData.advStepSum_save
-                        self.computeAccelAdvance(move, leftDA)
-
-                    else:
-
-                        assert(0)
-
-                    self.skippedAdvance -= move.advanceData.sAccel
-
-                    # assert(0)
-
-                elif move.skipType == 2:
-
-                    leftSA = move.advanceData.sAccel + move.advanceData.sDecel
-                    print "Move %d with skipped end advance: decreasing start advance" % move.moveNumber, move.advanceData.sAccel, "-->", leftSA
-
-                    if leftSA > 0:
-
-                        # xxx
-                        assert(0)
-                        move.advanceData.advStepSum = move.advanceData.advStepSum_save
-                        self.computeSartAdvance(move, leftSA)
-
-                    elif leftSA < 0:
-
-                        assert(0)
-                        # move.advanceData.advStepSum = move.advanceData.advStepSum_save
-                        self.computeDecelAdvance(move, leftSA)
-
-                    else:
-
-                        assert(0)
-
-                    self.skippedAdvance -= move.advanceData.sDecel
-
-                    # assert(0)
-
-                elif move.skipType == 3:
-                    assert(0)
-
 
             """
-            print "skipped accel moves: ", self.skippedAccelAdvanceMoveList
-            print "skipped decel moves: ", self.skippedDecelAdvanceMoveList
-
-            if self.skippedAdvance >= 1.0/self.e_steps_per_mm:
-
-                print "Spreading skippedAdvance (%d moves)" % len(path), self.skippedAdvance, self.skippedAdvance*self.e_steps_per_mm
-                print self.skippedAdvanceMoves
-
-                assert(0)
-
-                while self.skippedAdvance >= 1.0/self.e_steps_per_mm:
-
-                    self.skippedDecelAdvanceMoveList.sort()
-                    print self.skippedDecelAdvanceMoveList
-
-                    (biggestMove, biggestDecel) = self.skippedDecelAdvanceMoveList[-1]
-
-                    print "Apply skipped decel: ", biggestMove, biggestDecel
-                    self.computeDecelAdvance(biggestMove, biggestDecel)
-
-                assert(0)
-
-            for (advMove, _) in self.skippedDecelAdvanceMoveList:
-                # E-steps of non-advanced decel ramp
-                sd = advMove.endRampDistance(
-                    advMove.topSpeed.speed().eSpeed, advMove.endSpeed.speed().eSpeed, advMove.decelTime())
-
-                esteps = sd * self.e_steps_per_mm
-                # print "dim E moves %.3f mm in decel phase -> %d steps" % (sd, esteps)
-
-                advMove.advanceData.endESteps = esteps
-                advMove.advanceData.advStepSum += esteps
-
-            if self.skippedAdvance <= -1.0/self.e_steps_per_mm:
-
-                print "Spreading skippedAdvance (%d moves)" % len(path), self.skippedAdvance, self.skippedAdvance*self.e_steps_per_mm
-                print self.skippedAdvanceMoves
-
-                assert(0)
-
-                assert(0)
-
-            for (advMove, _) in self.skippedAccelAdvanceMoveList:
-                # E-steps of non-advanced accel ramp
-                sa = advMove.startRampDistance(
-                    advMove.startSpeed.speed().eSpeed, advMove.topSpeed.speed().eSpeed, advMove.accelTime())
-
-                esteps = sa * self.e_steps_per_mm
-                # print "dim E moves %.3f mm in acel phase -> %d steps" % (sa, esteps)
-
-                advMove.advanceData.startESteps = esteps
-                advMove.advanceData.advStepSum += esteps
-
-            """
-
-            """
-            print "Path skippedAdvance: ", self.skippedAdvance, "-->", self.skippedAdvance*self.e_steps_per_mm, "e-steps"
-
             # heavy debug
+            # print "Path skippedAdvance: ", self.skippedAdvance, "-->", self.skippedAdvance*self.e_steps_per_mm, "e-steps"
+
             plannedEsteps = 0
             roundErrorSum = 0
             plannedEstepsNASum = 0
@@ -545,8 +454,8 @@ class Advance (object):
 
                 plannedEstepsNASum += plannedEstepsNA
 
-            print "\nesteps %f, plannedsteps %f, plannedsteps+skipped: %f, diff %f" % (self.moveEsteps, plannedEsteps, plannedEsteps+self.skippedAdvance*self.e_steps_per_mm, self.moveEsteps - (plannedEsteps+self.skippedAdvance*self.e_steps_per_mm))
-            assert(util.circaf( self.moveEsteps - (plannedEsteps+self.skippedAdvance*self.e_steps_per_mm), 0, 0.001))
+            print "\nesteps %f, plannedsteps %f, diff %f" % (self.moveEsteps, plannedEsteps, self.moveEsteps - plannedEsteps)
+            assert(util.circaf( self.moveEsteps - plannedEsteps, 0, 0.001))
 
             print "NA esteps, plannedsteps, diff:", self.moveEsteps, plannedEstepsNASum, self.moveEsteps-plannedEstepsNASum
             assert(util.circaf( self.moveEsteps-plannedEstepsNASum, 0, 0.001))
@@ -556,58 +465,8 @@ class Advance (object):
             # end heavy debug
             """
 
-            if abs(self.skippedAdvance) > 1.0/self.e_steps_per_mm:
-
-                print "Spreading skippedAdvance...", self.skippedAdvance, self.skippedAdvance*self.e_steps_per_mm
-
-                assert(0)
-
-                tAdvAccelSum = 0
-                advAccelMoves = []
-
-                psum=0
-                nsum=0
-                for move in path:
-
-                    if move.advanceData.hasStartAdvance():
-                        tAdvAccelSum += move.accelTime()
-                        advAccelMoves.append(move)
-                        psum += move.advanceData.sAccel
-
-                    if move.advanceData.hasEndAdvance():
-                        nsum += move.advanceData.sDecel
-
-                print "adv time sum:", tAdvAccelSum
-                print "accelsum:", psum, "decelsum:", nsum
-
-                vAdvanceAdjust = self.skippedAdvance / tAdvAccelSum
-
-                print "Average startramp adjust: ", vAdvanceAdjust, "[mm/s]"
-
-                for move in advAccelMoves:
-
-                    newFeedrateIncrease = max(move.advanceData.startFeedrateIncrease+vAdvanceAdjust, 0)
-                    deltaFeedrateIncrease = newFeedrateIncrease - move.advanceData.startFeedrateIncrease
-                    move.advanceData.startFeedrateIncrease = newFeedrateIncrease
-
-                    print "new startFeedrateIncrease:", move.advanceData.startFeedrateIncrease
-
-                    assert(move.advanceData.startFeedrateIncrease >= 0)
-
-                    sAdvAdjust = deltaFeedrateIncrease * move.accelTime()
-                    sEstepIncrease = sAdvAdjust * self.e_steps_per_mm 
-
-                    print "Increasing startramp by: ", sEstepIncrease, "[steps]"
-
-                    move.advanceData.startESteps += sEstepIncrease
-                    move.advanceData.advStepSum += sEstepIncrease
-
-                    self.skippedAdvance -= sAdvAdjust
-
-                assert(0)
-
         #debug:
-        assert(util.circaf(self.skippedAdvance, 0, 1.0/self.e_steps_per_mm))
+        # assert(util.circaf(self.skippedAdvance, 0, 1.0/self.e_steps_per_mm))
 
         #debug if debugPlot and debugPlotLevel == "plotLevelPlanned":
             #debug self.plotPlannedPath(path)
@@ -658,19 +517,23 @@ class Advance (object):
 
                 self.plotfile.close()
 
-        print "\nPath advSum: ", self.advSum
-        print "Path skippedAdvance: ", self.skippedAdvance, self.skippedAdvance*self.e_steps_per_mm
+        # print "\nPath advSum: ", self.advSum
+        # print "Path skippedAdvance: ", self.skippedAdvance, self.skippedAdvance*self.e_steps_per_mm
+
+        print "rounding remainders:"
         self.planner.stepRounders.pprint()
 
         if self.kAdv:
             print "Path moveEsteps:", self.moveEsteps, len(newPath)
 
+        """
         # Summe aller advance-rampen muss nicht unbedingt null sein, je nach verteilung
         # von e-jerk jumps. Somit ist folgender test völlig willkürlich.
         assert(util.circaf(self.advSum, 0, 1))
 
         # assert(util.circaf(self.skippedAdvance, 0, 2.0/self.e_steps_per_mm))
         assert(util.circaf(self.skippedAdvance, 0, 1.0/self.e_steps_per_mm))
+        """
 
         self.planner.stepRounders.check()
 
@@ -678,17 +541,18 @@ class Advance (object):
             assert(abs(self.moveEsteps) < 1.0)
 
         # Debug, check chain
-        n = 2
-        m = newPath[0]
-        while m.nextMove:
-            m = m.nextMove
-            n += 1
-        m = newPath[-1]
-        while m.prevMove:
-            m = m.prevMove
-            n += 1
-        assert(n == 2*len(newPath))
-        # Debug, end check chain
+        if debugMoves:
+           
+            n = 2
+            m = newPath[0]
+            while m.nextMove:
+                m = m.nextMove
+                n += 1
+            m = newPath[-1]
+            while m.prevMove:
+                m = m.prevMove
+                n += 1
+            assert(n == 2*len(newPath))
 
         # Stream moves to printer
         if debugMoves:
@@ -812,19 +676,19 @@ class Advance (object):
        
         # New start speed
         newStartSpeedS = self.eComp(startSpeedS)
-        print "feederCorr: startSpeed %.5f -> %.5f" % (startSpeedS, newStartSpeedS)
+        # print "feederCorr: startSpeed %.5f -> %.5f" % (startSpeedS, newStartSpeedS)
         startSpeed.setESpeed(newStartSpeedS)
         move.startSpeed.setSpeed(startSpeed, "planFeederCorrection - max reachable speed")
 
         # New const speed
         newTopSpeedS = self.eComp(topSpeedS)
-        print "feederCorr: topSpeed %.5f -> %.5f" % (topSpeedS, newTopSpeedS)
+        # print "feederCorr: topSpeed %.5f -> %.5f" % (topSpeedS, newTopSpeedS)
         topSpeed.setESpeed(newTopSpeedS)
         move.topSpeed.setSpeed(topSpeed, "planFeederCorrection")
 
         # New end speed
         newEndSpeedS = self.eComp(endSpeedS)
-        print "feederCorr: endSpeed %.5f -> %.5f" % (endSpeedS, newEndSpeedS)
+        # print "feederCorr: endSpeed %.5f -> %.5f" % (endSpeedS, newEndSpeedS)
         endSpeed.setESpeed(newEndSpeedS)
         move.endSpeed.setSpeed(endSpeed, "planFeederCorrection")
 
@@ -841,19 +705,19 @@ class Advance (object):
                 newStartSpeedS,
                 newTopSpeedS,
                 ta) * self.e_steps_per_mm
-            print "feederCorr: start esteps: ", a
+            # print "feederCorr: start esteps: ", a
             eSteps += a
 
             xyzAccel = move.startAccel.xyAccel()
             eAccel = move.startAccel.eAccel()
 
             newStartAccel = (newTopSpeedS - newStartSpeedS) / ta
-            print "feederCorr: startAccel %.5f -> %.5f" % (eAccel, newStartAccel)
+            # print "feederCorr: startAccel %.5f -> %.5f" % (eAccel, newStartAccel)
             move.startAccel.setAccel(xyzAccel, newStartAccel)
 
         if tl:
             a = newTopSpeedS * tl * self.e_steps_per_mm
-            print "feederCorr: const esteps: ", a
+            # print "feederCorr: const esteps: ", a
             eSteps += a
 
         if td:
@@ -863,7 +727,7 @@ class Advance (object):
                 newTopSpeedS,
                 newEndSpeedS,
                 td) * self.e_steps_per_mm
-            print "feederCorr: end esteps: ", a
+            # print "feederCorr: end esteps: ", a
             eSteps += a
 
             xyzAccel = move.endAccel.xyAccel()
@@ -871,10 +735,10 @@ class Advance (object):
 
             newEndAccel = (newTopSpeedS - newEndSpeedS) / td
             # newEndAccel = max(newStartAccel, (newTopSpeedS - newEndSpeedS) / td)
-            print "feederCorr: endAccel %.5f -> %.5f" % (eAccel, newEndAccel)
+            # print "feederCorr: endAccel %.5f -> %.5f" % (eAccel, newEndAccel)
             move.endAccel.setAccel(xyzAccel, newEndAccel)
 
-        print "feederCorr: prev esteps: %.3f, new esteps: %.3f" % (move.eSteps, eSteps)
+        # print "feederCorr: prev esteps: %.3f, new esteps: %.3f" % (move.eSteps, eSteps)
         assert(move.eSteps <= eSteps)
 
         move.eSteps = eSteps
@@ -983,7 +847,7 @@ class Advance (object):
 
             # Check acceleration of e-axis
             eAccel = (topSpeed.eSpeed - startSpeed.eSpeed) / ta
-            # print "eaccel: ", eAccel, move.accel.eAccel()
+            print "eaccel: ", eAccel, move.startAccel.eAccel()
             assert((eAccel / move.startAccel.eAccel()) < 1.001)
             #end debug
 
@@ -1179,119 +1043,31 @@ class Advance (object):
 
     ################################################################################
 
-    # Group consecutive acceleration and deceleration advanced ramps.
-    def groupAdvance(self, path):
+    def planAdvance(self, path):
 
         if debugMoves:
-            print "***** Start groupAdvance() *****"
-            # move.pprint("groupAdvance:")
-
-        accelGroup = None
-        for move in path:
-
-            startFeedrateIncrease = self.eJerk(move.startAccel.eAccel())
-            sadv = move.startAdvSteps(startFeedrateIncrease=startFeedrateIncrease)
-
-            if sadv:
-
-                if not accelGroup:
-                    # print "start accelgroup with move", move.moveNumber
-                    accelGroup = move
-
-                move.advanceData.sAccel = sadv
-
-                print "add accelgroup:", accelGroup.moveNumber, move.moveNumber
-                accelGroup.advanceData.accelGroup.append(move)
-                accelGroup.advanceData.sAccelSum += sadv
-
-            if (not sadv) or move.linearTime() or move.decelTime():
-
-                # if accelGroup:
-                    # print "end accelgroup with move", move.moveNumber, sadv, move.linearTime(), move.decelTime()
-                accelGroup = None
-
-        decelGroup = None
-        for index in range(len(path)): 
-
-            move = path[len(path) - 1 - index]
-
-            endFeedrateIncrease = - self.eJerk(move.endAccel.eAccel())
-            sdec = move.endAdvSteps(endFeedrateIncrease=endFeedrateIncrease)
-
-            if sdec:
-
-                if not decelGroup:
-                    # print "start decelgroup with move", move.moveNumber
-                    decelGroup = move
-
-                move.advanceData.sDecel = sdec
-
-                print "add decelgroup:", decelGroup.moveNumber, move.moveNumber
-                decelGroup.advanceData.decelGroup.append(move)
-                decelGroup.advanceData.sDecelSum += sdec
-
-            if (not sdec) or move.linearTime() or move.accelTime():
-
-                # if decelGroup:
-                    # print "end decelgroup with move", move.moveNumber, move.accelTime(), move.linearTime()
-                decelGroup = None
-
-        for move in path:
-            if move.advanceData.accelGroup or move.advanceData.decelGroup:
-                print "group: ", move.moveNumber, move.advanceData
-
-
-    def planAdvanceGroup(self, path):
-
-        if debugMoves:
-            print "***** Start planAdvanceGroup() *****"
-            # move.pprint("planAdvanceGroup:")
-
-        """
-        avgSum = 0
-        nAvg = 0
-        for move in path:
-
-            avgSum = move.advanceData.sAccel - move.advanceData.sDecel
-            print "acc, dec:", move.advanceData.sAccel, - move.advanceData.sDecel
-            nAvg += 1
-
-        avgAdvance = avgSum / nAvg
-
-        print "Average advance ramp size:", avgSum, nAvg, avgAdvance
-        """
+            print "***** Start planAdvance() *****"
+            # move.pprint("planAdvance:")
 
         values = []
 
         t = 0
-        lastt = 0
-        f = open("adv_%d.dat" % path[0].moveNumber, "w")
+        # f = open("adv_%d.dat" % path[0].moveNumber, "w")
         for move in path:
+
+            # Compute area (= amount of e-advance) of the accel- and decel-ramps:
+            startFeedrateIncrease = self.eJerk(move.startAccel.eAccel())
+            sadv = move.startAdvSteps(startFeedrateIncrease=startFeedrateIncrease)
+            move.advanceData.sAccel = sadv
+
+            endFeedrateIncrease = - self.eJerk(move.endAccel.eAccel())
+            sdec = move.endAdvSteps(endFeedrateIncrease=endFeedrateIncrease)
+            move.advanceData.sDecel = sdec
 
             tmove = move.accelTime() + move.linearTime() + move.decelTime()
             tmid = t + tmove / 2
 
-            values.append((move, tmid, move.advanceData.sAccel - move.advanceData.sDecel))
-
-            """
-            sa = move.advanceData.sAccel
-            sd = -move.advanceData.sDecel
-            avgFactor = (sa+sd) / avgAdvance
-
-            # verhältnis der seiten
-            maxAdv = max(sa, sd)
-            minAdv = min(sa, sd)
-
-            sideFactor = 1
-            if not util.circaf(minAdv, 0, 0.000001):
-                sideFactor = maxAdv / minAdv
-
-            inter = avgFactor * sideFactor
-
-            print "avgfactor, sidefactor, inter:", avgFactor, sideFactor, inter
-
-            values.append((move, tmid, inter))
-            """
+            values.append((move, tmid, sadv - sdec))
 
             t += tmove
 
@@ -1317,13 +1093,9 @@ class Advance (object):
             a = (fwd[i]+bwd[i])/2
             avg.append(a)
 
-            f.write("%f %f %f %f %f\n" % (values[i][1], values[i][2], fwd[i], bwd[i], a))
+            # f.write("%f %f %f %f %f\n" % (values[i][1], values[i][2], fwd[i], bwd[i], a))
 
-        # print "fwd:", fwd
-
-        print "fadv-end"
         #----------------------------------------
-
         splitRanges = []
         skipRange = None
         nonSkipRange = None
@@ -1376,149 +1148,94 @@ class Advance (object):
 
         #----------------------------------------
 
-        # if len(splitRanges) > 1:
         advSum = 0
-
-        if True:
-
-            pos = 0
-            advance = 0
-            for skipRange in splitRanges:
-
-                toAdvance = skipRange["sum"]
-
-                # start = skipRange["index"][0]
-                # if pos == start:
-                if skipRange["skip"]:
-
-                    # Benutze moves aus dem skipped range um das fehlende
-                    # advance abzuarbeiten.
-
-                    print "Skip range: [%d:%d]" % (skipRange["index"][0], skipRange["index"][-1])
-                    print "advance at start of skiprange:", advance, ", advance of this range:", toAdvance
-                    advance += toAdvance
-                    print "advance at end of skiprange:", advance
-
-                    if toAdvance > 0:
-
-                        index = 0
-                        while toAdvance > 0 and index < len(skipRange["index"]):
-
-                            skippedMove = path[skipRange["index"][index]]
-
-                            adv = min(skippedMove.advanceData.sAccel, toAdvance)
-
-                            print "Move %d, corr. adv:" % skippedMove.moveNumber, adv
-
-                            if adv:
-
-                                self.computeAccelAdvance(skippedMove, adv)
-                                advSum += adv # xxx move to computeAccelAdvance
-
-                                #---------------------------------------------------------------------------------------------
-                                # E-steps of non-advanced decel ramp
-                                sd = skippedMove.endRampDistance(
-                                    skippedMove.topSpeed.speed().eSpeed, skippedMove.endSpeed.speed().eSpeed, skippedMove.decelTime())
-
-                                esteps = sd * self.e_steps_per_mm
-                                # print "dim E moves %.3f mm in decel phase -> %d steps" % (sd, esteps)
-
-                                skippedMove.advanceData.endESteps = esteps
-                                skippedMove.advanceData.advStepSum += esteps
-                                #---------------------------------------------------------------------------------------------
-
-                            toAdvance -= adv
-                            index += 1
-
-                            print "Advance left:", toAdvance
-
-                    elif toAdvance < 0:
-
-                        index = 0
-                        while toAdvance < 0 and index < len(skipRange["index"]):
-
-                            skippedMove = path[skipRange["index"][index]]
-
-                            adv = max(skippedMove.advanceData.sDecel, toAdvance)
-
-                            print "Move %d, corr. adv:" % skippedMove.moveNumber, adv
-
-                            if adv:
-
-                                self.computeDecelAdvance(skippedMove, adv)
-                                advSum += adv # xxx move to computeAccelAdvance
-
-                                #---------------------------------------------------------------------------------------------
-                                # E-steps of non-advanced accel ramp
-                                sa = skippedMove.startRampDistance(
-                                    skippedMove.startSpeed.speed().eSpeed, skippedMove.topSpeed.speed().eSpeed, skippedMove.accelTime())
-
-                                esteps = sa * self.e_steps_per_mm
-                                # print "dim E moves %.3f mm in acel phase -> %d steps" % (sa, esteps)
-
-                                skippedMove.advanceData.startESteps = esteps
-                                skippedMove.advanceData.advStepSum += esteps
-                                #---------------------------------------------------------------------------------------------
-
-                            toAdvance -= adv
-                            index += 1
-
-                    """
-                    print "advance at start of skiprange:", advance
-                    # comput advance sum of not skipped moves
-                    for i in skipRange["index"]:
-                        move = path[i]
-                        print "Compute skipped advance sum with move", move.moveNumber
-                        advance += move.advanceData.sAccel + move.advanceData.sDecel
-                    print "advance at end of skiprange:", advance
-                    assert(0)
-                    """
-
-                else:
-
-                    print "Non-Skip range: [%d:%d]" % (skipRange["index"][0], skipRange["index"][-1])
-                    print "advance at start of non-skiprange:", advance, ", advance of this range:", toAdvance
-                    advance += toAdvance
-                    print "advance at end of non-skiprange:", advance
-
-                    # plan advance steps
-                    for i in skipRange["index"]:
-
-                        advMove = path[i]
-                        accelAdvance = advMove.advanceData.sAccel
-                        decelAdvance = advMove.advanceData.sDecel
-
-                        if accelAdvance:
-                            self.computeAccelAdvance(advMove, accelAdvance)
-                            advSum += accelAdvance # xxx move to computeAccelAdvance
-
-                        if decelAdvance:
-                            self.computeDecelAdvance(advMove, decelAdvance)
-                            advSum += decelAdvance # xxx move to computeAccelAdvance
-
-                    # assert(0)
-                    """
-                    # comput advance sum of not skipped moves
-                    print "advance at start of non-skiprange:", advance
-                    for i in range(pos, start):
-                        move = path[i]
-                        print "Compute advance sum with move", move.moveNumber
-                        advance += move.advanceData.sAccel + move.advanceData.sDecel
-                    print "advance at end of non-skiprange:", advance
-                    """
-
-        print "advSum (should be 0):", advSum
-        assert(util.circaf(advSum, 0, 0.000001)) 
-        print "advance (should be 0):", advance
-        assert(util.circaf(advance, 0, 0.000001)) 
-
-        #----------------------------------------
-        """
-        # plan advance steps
+        advance = 0
         for skipRange in splitRanges:
-            if not skipRange["skip"]:
-                print "plan advance steps of non-skip range:", skipRange
 
+            toAdvance = skipRange["sum"]
+
+            if skipRange["skip"]:
+
+                # Benutze moves aus dem skipped range um das fehlende
+                # advance abzuarbeiten.
+
+                print "Skip range: [%d:%d]" % (skipRange["index"][0], skipRange["index"][-1])
+                print "advance at start of skiprange:", advance, ", advance of this range:", toAdvance
+                advance += toAdvance
+                print "advance at end of skiprange:", advance
+
+                if toAdvance > 0:
+
+                    index = 0
+                    while toAdvance > 0 and index < len(skipRange["index"]):
+
+                        skippedMove = path[skipRange["index"][index]]
+
+                        adv = min(skippedMove.advanceData.sAccel, toAdvance)
+
+                        print "Move %d, corr. adv:" % skippedMove.moveNumber, adv
+
+                        if adv:
+
+                            self.computeAccelAdvance(skippedMove, adv)
+                            advSum += adv # xxx move to computeAccelAdvance
+
+                            #---------------------------------------------------------------------------------------------
+                            # E-steps of non-advanced decel ramp
+                            sd = skippedMove.endRampDistance(
+                                skippedMove.topSpeed.speed().eSpeed, skippedMove.endSpeed.speed().eSpeed, skippedMove.decelTime())
+
+                            esteps = sd * self.e_steps_per_mm
+                            # print "dim E moves %.3f mm in decel phase -> %d steps" % (sd, esteps)
+
+                            skippedMove.advanceData.endESteps = esteps
+                            skippedMove.advanceData.advStepSum += esteps
+                            #---------------------------------------------------------------------------------------------
+
+                        toAdvance -= adv
+                        index += 1
+
+                        print "Advance left:", toAdvance
+
+                elif toAdvance < 0:
+
+                    index = 0
+                    while toAdvance < 0 and index < len(skipRange["index"]):
+
+                        skippedMove = path[skipRange["index"][index]]
+
+                        adv = max(skippedMove.advanceData.sDecel, toAdvance)
+
+                        print "Move %d, corr. adv:" % skippedMove.moveNumber, adv
+
+                        if adv:
+
+                            self.computeDecelAdvance(skippedMove, adv)
+                            advSum += adv # xxx move to computeAccelAdvance
+
+                            #---------------------------------------------------------------------------------------------
+                            # E-steps of non-advanced accel ramp
+                            sa = skippedMove.startRampDistance(
+                                skippedMove.startSpeed.speed().eSpeed, skippedMove.topSpeed.speed().eSpeed, skippedMove.accelTime())
+
+                            esteps = sa * self.e_steps_per_mm
+                            # print "dim E moves %.3f mm in acel phase -> %d steps" % (sa, esteps)
+
+                            skippedMove.advanceData.startESteps = esteps
+                            skippedMove.advanceData.advStepSum += esteps
+                            #---------------------------------------------------------------------------------------------
+
+                        toAdvance -= adv
+                        index += 1
+
+            else:
+
+                print "Non-Skip range: [%d:%d]" % (skipRange["index"][0], skipRange["index"][-1])
+                print "advance at start of non-skiprange:", advance, ", advance of this range:", toAdvance
+                advance += toAdvance
+                print "advance at end of non-skiprange:", advance
+
+                # plan advance steps
                 for i in skipRange["index"]:
 
                     advMove = path[i]
@@ -1527,398 +1244,20 @@ class Advance (object):
 
                     if accelAdvance:
                         self.computeAccelAdvance(advMove, accelAdvance)
+                        advSum += accelAdvance # xxx move to computeAccelAdvance
 
                     if decelAdvance:
                         self.computeDecelAdvance(advMove, decelAdvance)
-        """
-        #----------------------------------------
+                        advSum += decelAdvance # xxx move to computeAccelAdvance
+
+        print "advSum (should be 0):", advSum
+        assert(util.circaf(advSum, 0, 0.000001)) 
+        print "advance (should be 0):", advance
+        assert(util.circaf(advance, 0, 0.000001)) 
 
         if debugMoves:
             print 
-            print "***** End planAdvanceGroup() *****"
-
-    def _planAdvanceGroup(self, path):
-
-        if debugMoves:
-            print "***** Start planAdvanceGroup() *****"
-            # move.pprint("planAdvanceGroup:")
-
-        t = 0
-        lastt = 0
-        f = open("adv_%d.dat" % path[0].moveNumber, "w")
-        for baseMove in path:
-
-
-            """
-            if baseMove.advanceData.sAccel:
-                f.write( "fadv: %f %f\n" % (t, 1/baseMove.accelTime()))
-            else:
-                f.write( "fadv: %f 0\n" % t)
-            """
-
-            if baseMove.advanceData.sAccel:
-
-                if lastt and (t - lastt) <= 0.1:
-                    print "lastt_a", baseMove.moveNumber, t, t-lastt
-
-                lastt = t
-
-                """
-
-                if baseMove.advanceData.sAccel < 0.1:
-                    print "lastt_asmall", baseMove.advanceData.sAccel, t, t-lastt
-                    lastt = t
-                """
-
-            t += baseMove.accelTime() + baseMove.linearTime()
-
-            """
-            if baseMove.advanceData.sDecel:
-                f.write( "fadv: %f %f\n" % (t, 1/baseMove.decelTime()))
-            else:
-                f.write( "fadv: %f 0\n" % t)
-            """
-
-            if baseMove.advanceData.sDecel:
-
-                if lastt and (t - lastt) <= 0.1:
-                    print "lastt_d", baseMove.moveNumber, t, t-lastt
-
-                lastt = t
-
-                """
-
-                if baseMove.advanceData.sDecel > -0.1:
-                    print "lastt_dsmall", baseMove.advanceData.sDecel, t, t-lastt
-                    lastt = t
-                """
-
-            t += baseMove.decelTime()
-
-            # # No advance if there are no (accel- or decel-) ramps.
-            # if not (baseMove.advanceData.accelGroup or baseMove.advanceData.decelGroup):
-
-                # # print "group: ", baseMove.moveNumber, baseMove.advanceData
-                # continue
-
-        print "fadv-end"
-        #----------------------------------------
-
-        #----------------------------------------
-
-        if debugMoves:
-            print 
-            print "***** End planAdvanceGroup() *****"
-
-    def _planAdvanceGroup(self, path):
-
-        if debugMoves:
-            print "***** Start planAdvanceGroup() *****"
-            # move.pprint("planAdvanceGroup:")
-
-        for baseMove in path:
-
-            # No advance if there are no (accel- or decel-) ramps.
-            if not (baseMove.advanceData.accelGroup or baseMove.advanceData.decelGroup):
-
-                # print "group: ", baseMove.moveNumber, baseMove.advanceData
-                continue
-
-            if baseMove.advanceData.accelGroup:
-
-                # print "accel group: ", baseMove.moveNumber, baseMove.advanceData
-
-                if baseMove.advanceData.sAccelSum > AdvanceMinRamp:
-
-                    baseMove.advanceData.hasAccelAdvance = True
-
-                    for advMove in baseMove.advanceData.accelGroup:
-
-                        #
-                        # Distribute skipped advance
-                        #
-                        accelAdvance = advMove.advanceData.sAccel
-
-                        """
-                        if self.skippedAdvance > 0:
-
-                            # Dont increase start advance to not exceed e-jerk
-                            print "acceladv: positive skipped advance:", self.skippedAdvance, "this advance:", advMove.advanceData.sAccel
-                            pass
-
-                        elif self.skippedAdvance < 0:
-
-                            # Feder ist zu stark gespannt und soll weiter gespannt werden -> skipped advance kann verrechnet werden:
-                            print "acceladv: negative skipped advance:", self.skippedAdvance, "this advance:", advMove.advanceData.sAccel
-                            accelAdvance = accelAdvance + self.skippedAdvance
-
-                            print "accelAdvance left:", accelAdvance
-
-                            if accelAdvance <= 0:
-
-                                # Mehr negatives advance als dieser move ausgleichen kann oder genau gleich
-                                # * self.skippedAdvance um accelAdvance verringern
-                                # * kein start-advance für diesen move 
-                                self.skippedAdvance = accelAdvance
-
-                                print "remaining skip: ", self.skippedAdvance
-
-                                # xxx duplicated code
-                                # E-steps of non-advanced accel ramp
-                                sa = advMove.startRampDistance(
-                                    advMove.startSpeed.speed().eSpeed, advMove.topSpeed.speed().eSpeed, advMove.accelTime())
-
-                                esteps = sa * self.e_steps_per_mm
-                                # print "dim E moves %.3f mm in acel phase -> %d steps" % (sa, esteps)
-
-                                advMove.advanceData.startESteps = esteps
-                                advMove.advanceData.advStepSum += esteps
-                                continue
-
-                            else:
-
-                                # Ganzes skippedAdvance verrechnet und es ist ein rest accel advance übrig
-                                self.skippedAdvance = 0
-
-                        """
-                        # xxx 
-                        # advMove.advanceData.advStepSum_save = advMove.advanceData.advStepSum
-                        # self.computeAccelAdvance(advMove, accelAdvance)
-                        # advMove.advanceData.usedSAccel = accelAdvance
-                else:
-                    
-                    # Dont advance very small acceleration ramps in the range [self.eightESteps:AdvanceMinRamp], but sum up the
-                    # missing advance for later balancing.
-
-                    for advMove in baseMove.advanceData.accelGroup:
-
-                        advMove.pprint("planAdvanceGroup skipped start adv:")
-                        """
-                        # Apply small advance distancees that are smaller than a half fullstep. They will be
-                        # smoothed out by the 'stepper low pass'.
-                        if advMove.advanceData.sAccel <= self.eightESteps:
-
-                            print "small accel advance: ", advMove.advanceData.sAccel
-                            self.computeAccelAdvance(advMove, advMove.advanceData.sAccel)
-
-                            continue
-
-                        """
-
-                        """
-                        # E-steps of non-advanced accel ramp
-                        sa = advMove.startRampDistance(
-                            advMove.startSpeed.speed().eSpeed, advMove.topSpeed.speed().eSpeed, advMove.accelTime())
-
-                        esteps = sa * self.e_steps_per_mm
-                        # print "dim E moves %.3f mm in acel phase -> %d steps" % (sa, esteps)
-
-                        advMove.advanceData.startESteps = esteps
-                        advMove.advanceData.advStepSum += esteps
-                        """
-
-                        # self.skippedAdvance += advMove.advanceData.sAccel
-                        # self.skippedAdvanceMoves[advMove.moveNumber] = advMove
-                        # self.skippedAccelAdvanceMoveList.append((advMove, advMove.advanceData.sAccel))
-                        # advMove.skipType += 1
-
-                        # print "skipped advance:", advMove.advanceData.sAccel, self.skippedAdvance
-
-                self.advSum += baseMove.advanceData.sAccelSum
-
-            if baseMove.advanceData.decelGroup:
-
-                # print "decel group: ", baseMove.moveNumber, baseMove.advanceData
-
-                if baseMove.advanceData.sDecelSum < -AdvanceMinRamp:
-
-                    baseMove.advanceData.hasDecelAdvance = True
-
-                    for advMove in baseMove.advanceData.decelGroup:
-
-                        #
-                        # Distribute skipped advance
-                        #
-                        decelAdvance = advMove.advanceData.sDecel
-
-                        """
-                        if self.skippedAdvance > 0:
-
-                            # Feder ist nicht genug gespannt und soll weiter entspannt werden -> skipped advance kann verrechnet werden:
-                            print "deceladv: positive skipped advance:", self.skippedAdvance, "this advance:", advMove.advanceData.sDecel
-                            decelAdvance = decelAdvance + self.skippedAdvance
-
-                            print "decelAdvance left:", decelAdvance
-
-                            if decelAdvance >= 0:
-
-                                # Mehr positives advance als dieser move ausgleichen kann oder genau gleich
-                                # * self.skippedAdvance um decelAdvance verringern
-                                # * kein end-advance für diesen move 
-                                self.skippedAdvance = decelAdvance
-
-                                print "remaining skip: ", self.skippedAdvance
-
-                                # xxx duplicated code
-                                # E-steps of non-advanced decel ramp
-                                sd = advMove.endRampDistance(
-                                    advMove.topSpeed.speed().eSpeed, advMove.endSpeed.speed().eSpeed, advMove.decelTime())
-
-                                esteps = sd * self.e_steps_per_mm
-                                # print "dim E moves %.3f mm in decel phase -> %d steps" % (sd, esteps)
-
-                                advMove.advanceData.endESteps = esteps
-                                advMove.advanceData.advStepSum += esteps
-                                continue
-
-                            else:
-
-                                # Ganzes skippedAdvance verrechnet und es ist ein rest decel advance übrig
-                                self.skippedAdvance = 0
-
-                        elif self.skippedAdvance < 0:
-
-                            # Dont increase end advance to not exceed e-jerk
-                            print "deceladv: negative skipped advance:", self.skippedAdvance, "this advance:", advMove.advanceData.sDecel
-                            pass
-                        """
-                        # xxx 
-                        # advMove.advanceData.advStepSum_save = advMove.advanceData.advStepSum
-                        # self.computeDecelAdvance(advMove, decelAdvance)
-                        # advMove.advanceData.usedSDecel = decelAdvance
-
-                else:
-
-                    # Dont advance very small deceleration ramps in the range [self.eightESteps:AdvanceMinRamp], but sum up the
-                    # missing advance for later balancing.
-
-                    for advMove in baseMove.advanceData.decelGroup:
-
-                        advMove.pprint("planAdvanceGroup skipped end adv:")
-
-                        """
-                        # Apply small advance distancees that are smaller than a half fullstep. They will be
-                        # smoothed out by the 'stepper low pass'.
-                        if advMove.advanceData.sDecel >= -self.eightESteps:
-
-                            print "small decel advance: ", advMove.advanceData.sDecel
-                            self.computeDecelAdvance(advMove, advMove.advanceData.sDecel)
-                            continue
-                        """
-
-                        """
-                        # E-steps of non-advanced decel ramp
-                        sd = advMove.endRampDistance(
-                            advMove.topSpeed.speed().eSpeed, advMove.endSpeed.speed().eSpeed, advMove.decelTime())
-
-                        esteps = sd * self.e_steps_per_mm
-                        # print "dim E moves %.3f mm in decel phase -> %d steps" % (sd, esteps)
-
-                        advMove.advanceData.endESteps = esteps
-                        advMove.advanceData.advStepSum += esteps
-                        """
-
-                        # self.skippedAdvance += advMove.advanceData.sDecel
-                        # self.skippedAdvanceMoves[advMove.moveNumber] = advMove
-                        # self.skippedDecelAdvanceMoveList.append((advMove, advMove.advanceData.sDecel))
-                        # advMove.skipType += 2
-
-                        # print "skipped advance:", advMove.advanceData.sDecel, self.skippedAdvance
-
-                self.advSum += baseMove.advanceData.sDecelSum
-
-            # print "move %d advSum: " % baseMove.moveNumber, self.advSum
-            # print "skippedAdvance: ", self.skippedAdvance, self.skippedAdvance*self.e_steps_per_mm
-
-
-        #----------------------------------------
-
-        # move to new class advancegroup
-        # xxx mapping move -> accelgroup
-        # xxx mapping move -> decelgroup
-        agMap = {}
-        dgMap = {}
-        # moveMap = {}
-        for move in path:
-            for m in move.advanceData.accelGroup:
-                agMap[m.moveNumber] = move
-            for m in move.advanceData.decelGroup:
-                dgMap[m.moveNumber] = move
-            # xxx circ refs
-            # moveMap[move.moveNumber] = move
-
-        print "agMap:", agMap
-        print "dgMap:", dgMap
-
-        # # liste mit angrenzenden flanken
-        # ramps = []
-
-        for baseMove in path:
-
-            # No advance if there are no (accel- or decel-) ramps.
-            if not (baseMove.advanceData.accelGroup or baseMove.advanceData.decelGroup):
-
-                # print "group: ", baseMove.moveNumber, baseMove.advanceData
-                continue
-
-            hasAccelAdvance = baseMove.advanceData.hasAccelAdvance
-            hasDecelAdvance = baseMove.advanceData.hasDecelAdvance
-
-            accelSkip = (not hasAccelAdvance) and baseMove.advanceData.sAccelSum > 0
-            decelSkip = (not hasDecelAdvance) and baseMove.advanceData.sDecelSum > 0
-
-            if accelSkip and decelSkip:
-
-                assert(0)
-
-            elif accelSkip:
-
-                print "Move %d with skipped start advance" % baseMove.moveNumber
-                print "Advance data:", baseMove.advanceData
-
-                ag = agMap[baseMove.moveNumber]
-                print "Move belongs to accelgroup:", ag.moveNumber
-                print "Group accel data:", ag.advanceData
-
-                lastMove = ag.advanceData.accelGroup[-1]
-                print "Last move of accelgroup:", lastMove.moveNumber
-
-                # Konstanter teil verhindert die nutzung der decel gruppe
-                if lastMove.linearTime():
-                    assert(0)
-
-                dg = dgMap[baseMove.moveNumber]
-                print "Move belongs to decelgroup:", dg.moveNumber
-                print "Group decel data:", dg.advanceData
-
-                leftDA = dg.advanceData.sDecelSum + ag.advanceData.sAccelSum
-                print "Move %d with skipped start advance: decreasing end advanceSum" % baseMove.moveNumber, dg.advanceData.sDecelSum, "-->", leftDA
-
-                if leftDA < 0:
-                    # Deceleration ramp left
-                    # Compute 'height' of decel ramp
-                    td = 0
-                    for dMove in dg.advanceData.decelGroup:
-                        td += dMove.decelTime()
-
-                    print "Sum of decel times:", td
-
-                    assert(0)
-                elif leftDA > 0:
-                    # No Deceleration ramp left, but an acceleration ramp
-                    assert(0)
-                else:
-                    assert(0)
-
-            elif decelSkip:
-
-                assert(0)
-
-        #----------------------------------------
-
-            if debugMoves:
-                print 
-                print "***** End planAdvanceGroup() *****"
+            print "***** End planAdvance() *****"
 
     def computeAccelAdvance(self, advMove, accelAdvance):
 
@@ -2131,7 +1470,7 @@ class Advance (object):
         # Debug, prüfung ob alle in planAdvance() berechneten e-steps in planSteps() 
         # verwendet werden. Summe ist im idealfall 0, kann aber aufgrund von rundungsfehlern
         # auch ungleich null sein.
-        print "estep move.sum: ", move.advanceData.advStepSum
+        # print "estep move.sum: ", move.advanceData.advStepSum
         assert(abs(move.advanceData.advStepSum) < 0.001)
 
         # print "new moves: ", newMoves
