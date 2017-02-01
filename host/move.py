@@ -404,13 +404,13 @@ class AdvanceData:
         self.endEStepsC = None
         self.endEStepsD = None
 
-        self.accelGroup = []
+        # self.accelGroup = []
         self.sAccel = 0.0
-        self.sAccelSum = 0.0
+        # self.sAccelSum = 0.0
 
-        self.decelGroup = []
+        # self.decelGroup = []
         self.sDecel = 0.0
-        self.sDecelSum = 0.0
+        # self.sDecelSum = 0.0
 
         # Debug, prüfung ob alle in planAdvance() berechneten e-steps in planSteps() 
         # verwendet werden. Summe ist im idealfall 0, kann aber aufgrund von rundungsfehlern
@@ -418,8 +418,8 @@ class AdvanceData:
         self.advStepSum = 0
 
         # xxx
-        self.hasAccelAdvance = False
-        self.hasDecelAdvance = False
+        # self.hasAccelAdvance = False
+        # self.hasDecelAdvance = False
 
     def hasStartAdvance(self):
         return self.startFeedrateIncrease != 0
@@ -501,13 +501,13 @@ class AdvanceData:
         if esteps:
             s += "\n estep sum: %.3f" % esteps
 
-        s += "\n Group data:"
-        s += "\n Accel group:" + str(map(lambda m: m.moveNumber, self.accelGroup))
+        # s += "\n Group data:"
+        # s += "\n Accel group:" + str(map(lambda m: m.moveNumber, self.accelGroup))
         s += "\n sAccel: %.3f" % self.sAccel
-        s += "\n sAccelSum: %.3f" % self.sAccelSum
-        s += "\n Decel group:" + str(map(lambda m: m.moveNumber, self.decelGroup))
+        # s += "\n sAccelSum: %.3f" % self.sAccelSum
+        # s += "\n Decel group:" + str(map(lambda m: m.moveNumber, self.decelGroup))
         s += "\n sDecel: %.3f" % self.sDecel
-        s += "\n sDecelSum: %.3f" % self.sDecelSum
+        # s += "\n sDecelSum: %.3f" % self.sDecelSum
         return s
 
     def sanityCheck(self):
