@@ -22,13 +22,13 @@
 #
 # Enable Debugging
 #
-debugMoves = True
+debugMoves = False
 debugAutoTemp = False
 
 #
 # Enable mathplotlib plotting of planned paths
 #
-debugPlot = True
+debugPlot = False
 
 # Define which stage of path planning to plot
 # plotLevelPlanned: plot path after advance-planning
