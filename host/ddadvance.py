@@ -155,8 +155,9 @@ class Advance (object):
             self.maxAxisAcceleration = MAX_AXIS_ACCELERATION_NOADV
 
         self.e_steps_per_mm = PrinterProfile.getStepsPerMM(A_AXIS)
+
         # Half full step in microsteps.
-        # XXX add microstep setting to printer profile, rename
+        # YYY add microstep setting to printer profile, rename
         # self.eightESteps = 8.0/self.e_steps_per_mm
 
         # Compute minimal e speed
@@ -186,18 +187,6 @@ class Advance (object):
     def reset(self):
 
         # Reset debug counters
-
-        """
-        # Running sum of e-distances through advance, for debugging of planAdvance()
-        self.advSum = 0.0
-        # Sum of skipped small advance ramps
-        self.skippedAdvance = 0.0
-        # xxx 
-        self.skippedAdvanceMoves = {}
-        self.skippedAccelAdvanceMoveList = []
-        self.skippedDecelAdvanceMoveList = []
-        """
-
         # Running sum of move esteps, for debugging of planSteps()
         self.moveEsteps = 0.0
         # End debug counters
@@ -213,50 +202,52 @@ class Advance (object):
             self.pre_plotfile = DebugPlot(path[0].moveNumber, "pre")
             self.plotfile = DebugPlot(path[0].moveNumber)
 
-        # Limit e flowrates for feeder slip compensation
-        # vMax = vExtruder / (1 - self.kFeederComp * vExtruder)
-        # vMax * (1 - self.kFeederComp * vExtruder) = vExtruder 
-        # vMax - vMax * self.kFeederComp * vExtruder = vExtruder 
-        # vMax/vExtruder - vMax * self.kFeederComp = 1
-        # vMax/vExtruder = 1 + vMax * self.kFeederComp
-        # vMax = (1 + vMax * self.kFeederComp) * vExtruder
-        # vExtruder = vMax / (1 + vMax * self.kFeederComp)
-        vExtruderMax = self.maxEFeedrate / (1.001 + self.maxEFeedrate * self.kFeederComp)
+        if SmoothExtrusionRate:
 
-        # print "vmax:", self.maxEFeedrate, vExtruderMax
+            # Limit e flowrates for feeder slip compensation
+            # vMax = vExtruder / (1 - self.kFeederComp * vExtruder)
+            # vMax * (1 - self.kFeederComp * vExtruder) = vExtruder 
+            # vMax - vMax * self.kFeederComp * vExtruder = vExtruder 
+            # vMax/vExtruder - vMax * self.kFeederComp = 1
+            # vMax/vExtruder = 1 + vMax * self.kFeederComp
+            # vMax = (1 + vMax * self.kFeederComp) * vExtruder
+            # vExtruder = vMax / (1 + vMax * self.kFeederComp)
+            vExtruderMax = self.maxEFeedrate / (1.001 + self.maxEFeedrate * self.kFeederComp)
 
-        # Smooth extrusion rate, compute average extrusion rate of this path and
-        # scale the speed of all moves in this path to get an more even flowrate.
-        # This decreases the amount of advance ramps.
-        rateList = []
-        for move in path:
-            rateList.append(move.topSpeed.speed().eSpeed)
+            # print "vmax:", self.maxEFeedrate, vExtruderMax
 
-        avgRate = sum(rateList) / len(rateList)
-        avgRate = min(avgRate, vExtruderMax)
+            # Smooth extrusion rate, compute average extrusion rate of this path and
+            # scale the speed of all moves in this path to get an more even flowrate.
+            # This decreases the amount of advance ramps.
+            rateList = []
+            for move in path:
+                rateList.append(move.topSpeed.speed().eSpeed)
 
-        if debugMoves:
-            print "avgRate:", avgRate, ", vExtruderMax:", vExtruderMax
+            avgRate = sum(rateList) / len(rateList)
+            avgRate = min(avgRate, vExtruderMax)
 
-        for move in path:
+            if debugMoves:
+                print "avgRate:", avgRate, ", vExtruderMax:", vExtruderMax
 
-            v = move.topSpeed.speed()
-            # xxx hack
-            # f = avgRate / v.eSpeed
-            f = min(avgRate / v.eSpeed, 10)
+            for move in path:
 
-            # scaledTopSpeed = v.scale(f)
-            # print type(scaledTopSpeed)
-            # topSpeed = scaledTopSpeed.constrain(self.maxFeedrateVector) or scaledTopSpeed
-            # print "Scale factor:", f, "topSpeed: ", topSpeed
+                v = move.topSpeed.speed()
+                # xxx hack
+                # f = avgRate / v.eSpeed
+                f = min(avgRate / v.eSpeed, 10)
 
-            # move.startSpeed.setSpeed(topSpeed, "planPath - Smooth FlowRate")
-            # move.topSpeed.setSpeed(topSpeed, "planPath - Smooth FlowRate")
-            # move.endSpeed.setSpeed(topSpeed, "planPath - Smooth FlowRate")
+                # scaledTopSpeed = v.scale(f)
+                # print type(scaledTopSpeed)
+                # topSpeed = scaledTopSpeed.constrain(self.maxFeedrateVector) or scaledTopSpeed
+                # print "Scale factor:", f, "topSpeed: ", topSpeed
 
-            move.startSpeed.setSpeed(v.scale(f), "planPath - Smooth FlowRate")
-            move.topSpeed.setSpeed(v.scale(f), "planPath - Smooth FlowRate")
-            move.endSpeed.setSpeed(v.scale(f), "planPath - Smooth FlowRate")
+                # move.startSpeed.setSpeed(topSpeed, "planPath - Smooth FlowRate")
+                # move.topSpeed.setSpeed(topSpeed, "planPath - Smooth FlowRate")
+                # move.endSpeed.setSpeed(topSpeed, "planPath - Smooth FlowRate")
+
+                move.startSpeed.setSpeed(v.scale(f), "planPath - Smooth FlowRate")
+                move.topSpeed.setSpeed(v.scale(f), "planPath - Smooth FlowRate")
+                move.endSpeed.setSpeed(v.scale(f), "planPath - Smooth FlowRate")
 
         # First move
         v0 = path[0].startSpeed.speed()
@@ -345,7 +336,6 @@ class Advance (object):
 
             """
             # heavy debug
-            # print "Path skippedAdvance: ", self.skippedAdvance, "-->", self.skippedAdvance*self.e_steps_per_mm, "e-steps"
 
             plannedEsteps = 0
             roundErrorSum = 0
@@ -465,9 +455,6 @@ class Advance (object):
             # end heavy debug
             """
 
-        #debug:
-        # assert(util.circaf(self.skippedAdvance, 0, 1.0/self.e_steps_per_mm))
-
         #debug if debugPlot and debugPlotLevel == "plotLevelPlanned":
             #debug self.plotPlannedPath(path)
 
@@ -517,23 +504,11 @@ class Advance (object):
 
                 self.plotfile.close()
 
-        # print "\nPath advSum: ", self.advSum
-        # print "Path skippedAdvance: ", self.skippedAdvance, self.skippedAdvance*self.e_steps_per_mm
-
         print "rounding remainders:"
         self.planner.stepRounders.pprint()
 
         if self.kAdv:
             print "Path moveEsteps:", self.moveEsteps, len(newPath)
-
-        """
-        # Summe aller advance-rampen muss nicht unbedingt null sein, je nach verteilung
-        # von e-jerk jumps. Somit ist folgender test völlig willkürlich.
-        assert(util.circaf(self.advSum, 0, 1))
-
-        # assert(util.circaf(self.skippedAdvance, 0, 2.0/self.e_steps_per_mm))
-        assert(util.circaf(self.skippedAdvance, 0, 1.0/self.e_steps_per_mm))
-        """
 
         self.planner.stepRounders.check()
 
@@ -1050,6 +1025,10 @@ class Advance (object):
             # move.pprint("planAdvance:")
 
         values = []
+        revValues = []
+
+        ewma = util.EWMA(0.25)
+        fwd = []
 
         t = 0
         # f = open("adv_%d.dat" % path[0].moveNumber, "w")
@@ -1067,23 +1046,22 @@ class Advance (object):
             tmove = move.accelTime() + move.linearTime() + move.decelTime()
             tmid = t + tmove / 2
 
-            values.append((move, tmid, sadv - sdec))
+            v = sadv - sdec
+            values.append((move, tmid, v))
 
             t += tmove
 
-        ewma = util.EWMA(0.25)
-        fwd = []
-        for v in values:
-            ewma.add(v[2])
+            ewma.add(v)
             fwd.append(ewma.value())
 
+            revValues.insert(0, v)
+
         ewma = util.EWMA(0.25)
-        rev = values[:]
-        rev.reverse()
         bwd = []
-        for v in rev:
-            ewma.add(v[2])
+        for v in revValues:
+            ewma.add(v)
             bwd.append(ewma.value())
+
         bwd.reverse()
 
         avg = []
@@ -1101,7 +1079,7 @@ class Advance (object):
         nonSkipRange = None
         for i in range(len(path)):
 
-            if avg[i] < 0.05:
+            if avg[i] < AdvanceMinRamp:
 
                 if nonSkipRange:
                     splitRanges.append(nonSkipRange)
@@ -1139,12 +1117,12 @@ class Advance (object):
         for skipRange in splitRanges:
             print "Range:", skipRange
 
-        # debug
-        l = 0
-        for skipRange in splitRanges:
-            l += len(skipRange["index"])
-        assert(len(path) == l)
-        # end debug
+        if debugMoves:
+
+            l = 0
+            for skipRange in splitRanges:
+                l += len(skipRange["index"])
+            assert(len(path) == l)
 
         #----------------------------------------
 
@@ -1178,7 +1156,7 @@ class Advance (object):
                         if adv:
 
                             self.computeAccelAdvance(skippedMove, adv)
-                            advSum += adv # xxx move to computeAccelAdvance
+                            advSum += adv
 
                             self.computeConstSteps(skippedMove)
 
@@ -1194,7 +1172,8 @@ class Advance (object):
                             skippedMove.advanceData.advStepSum += esteps
                             #---------------------------------------------------------------------------------------------
 
-                        toAdvance -= adv
+                            toAdvance -= adv
+
                         index += 1
 
                         print "Advance left:", toAdvance
@@ -1213,7 +1192,7 @@ class Advance (object):
                         if adv:
 
                             self.computeDecelAdvance(skippedMove, adv)
-                            advSum += adv # xxx move to computeAccelAdvance
+                            advSum += adv
 
                             self.computeConstSteps(skippedMove)
 
@@ -1229,7 +1208,8 @@ class Advance (object):
                             skippedMove.advanceData.advStepSum += esteps
                             #---------------------------------------------------------------------------------------------
 
-                        toAdvance -= adv
+                            toAdvance -= adv
+
                         index += 1
 
             else:
@@ -1248,11 +1228,11 @@ class Advance (object):
 
                     if accelAdvance:
                         self.computeAccelAdvance(advMove, accelAdvance)
-                        advSum += accelAdvance # xxx move to computeAccelAdvance
+                        advSum += accelAdvance
 
                     if decelAdvance:
                         self.computeDecelAdvance(advMove, decelAdvance)
-                        advSum += decelAdvance # xxx move to computeAccelAdvance
+                        advSum += decelAdvance
 
                     if accelAdvance or decelAdvance:
                         self.computeConstSteps(advMove)
