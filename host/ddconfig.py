@@ -53,6 +53,12 @@ UseExtrusionAdjust = False
 
 #####################################################################
 #
+# Smooth out extrusion rates of moves by adjusting the XY speed
+#
+SmoothExtrusionRate = True
+
+#####################################################################
+#
 # Limit extrusion by hotend temperature in the firmware
 #
 # xxx not used??? UseExtrusionLimit = True
