@@ -215,8 +215,7 @@ class StepData:
                 timerValue = fTimer / e_steps_per_second_nominal
 
                 # print "StartMove, E-Timer:", nominalSpeed, timerValue
-                # payLoad += struct.pack("<H", min(timerValue, 0xffff))
-                payLoad += struct.pack("<H", timerValue)
+                payLoad += struct.pack("<H", min(timerValue, 0xffff))
             else:
                 payLoad += struct.pack("<H", 0)
 

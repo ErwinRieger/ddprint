@@ -4,7 +4,7 @@ nTests=0
 for inp in $(ls -rS $* test_files/*.gcode); do 
 
     echo "###################################"
-    echo "$0: running python ddprint.py pre $inp"
+    echo "$0: running python ddprint.py pre $inp" >&2
     echo "###################################"
 
     for kadv in 0 0.1 0.4 0.5 1; do
