@@ -390,9 +390,9 @@ class SDReader: public Protothread {
 static SDReader sDReader;
 
 #if defined(USEExtrusionRateTable)
-    #define MAXTEMPSPEED maxTempSpeed
+    // #define MAXTEMPSPEED maxTempSpeed
 #else
-    #define MAXTEMPSPEED filamentSensor.maxTempSpeed
+    // #define MAXTEMPSPEED filamentSensor.maxTempSpeed
 #endif
 
 bool FillBufferTask::Run() {
@@ -404,8 +404,9 @@ bool FillBufferTask::Run() {
             int32_t d2;
 
 #if defined(USEExtrusionRateTable)
-            uint16_t leadFactor;
-            // int16_t curTempIndex;
+            // Timervalue of max e-speed of our basemove
+            uint16_t    eSpeedTimer;
+            float maxTempSpeed;
 #endif
 
             PT_BEGIN();
@@ -478,10 +479,10 @@ bool FillBufferTask::Run() {
             HandleCmdG1:
 
                 // Read flag byte and stepper direction bits
-                sDReader.setBytesToRead1();
+                sDReader.setBytesToRead2();
                 PT_WAIT_THREAD(sDReader);
 
-                flags = *sDReader.readData;
+                flags = FromBuf(uint16_t, sDReader.readData);
                 if (flags & 0x80)
                     // Change stepper direction(s)
                     sd.dirBits = flags & 0x9F;
@@ -527,42 +528,71 @@ bool FillBufferTask::Run() {
                 nAccel = FromBuf(uint16_t, sDReader.readData);
                 // SERIAL_ECHOLN(nAccel);
 
-                //////////////////////////////////////////////////////
-                sDReader.setBytesToRead2();
-                PT_WAIT_THREAD(sDReader);
-
 #if defined(USEExtrusionRateTable)
-                leadFactor = FromBuf(uint16_t, sDReader.readData);
+                //////////////////////////////////////////////////////
+                // Check beginning of new base move
+                if (flags & 0x100) {
 
-                if (leadFactor) {
+                    sDReader.setBytesToRead2();
+                    PT_WAIT_THREAD(sDReader);
 
-                    int16_t curTempIndex = (current_temperature[0] - extrusionLimitBaseTemp) / 2;
+                    eSpeedTimer = FromBuf(uint16_t, sDReader.readData);
 
-                    if (curTempIndex < 0) {
+                    // printf("eSpeedTimer: %d\n", eSpeedTimer);
 
-                        maxTempSpeed = ((uint32_t)tempExtrusionRateTable[0] * 1000) / leadFactor;
-                    }
-                    else if (curTempIndex >= NExtrusionLimit) {
+                    if (eSpeedTimer > 0) {
 
-                        maxTempSpeed = ((uint32_t)tempExtrusionRateTable[NExtrusionLimit-1] * 1000) / leadFactor;
+                        // Lookup this e-speed in the extrusion rate table
+                        int16_t curTempIndex = (current_temperature[0] - extrusionLimitBaseTemp) / 2;
+
+                        // printf("curTempIndex: %d\n", curTempIndex);
+
+                        if (curTempIndex < 0) {
+
+                            // printf("temp very low, use first entry\n");
+                            maxTempSpeed = tempExtrusionRateTable[0];
+                        }
+                        else if (curTempIndex >= NExtrusionLimit) {
+
+                            // printf("temp very high, use last entry\n");
+                            maxTempSpeed = tempExtrusionRateTable[NExtrusionLimit-1];
+                        }
+                        else {
+
+                            // printf("temp in range\n");
+                            maxTempSpeed = tempExtrusionRateTable[curTempIndex];
+                        }
+
+                        if (eSpeedTimer < maxTempSpeed) {
+
+                            // Speed is limited by temperature
+                            // XXX cleanup temptable store temptable as floats or use integer (*1000) numeric here...
+                            timerScale = maxTempSpeed / eSpeedTimer;
+                            // printf("speed is limited by factor: %f\n", timerScale);
+                        }
+                        else {
+                            // Speed is not limited by temperature
+                            timerScale = 1.0;
+                        }
                     }
                     else {
-
-                        maxTempSpeed = ((uint32_t)tempExtrusionRateTable[curTempIndex] * 1000) / leadFactor;
+                        // Non-printmove
+                        timerScale = 1.0;
                     }
                 }
-                else {
 
-                    maxTempSpeed = 0;
-                }
-#endif
-    
+// xxx cleanup temptable
+// #if defined(HEAVYDEBUG)
+                massert(timerScale >= 1.0);
+// #endif
                 //////////////////////////////////////////////////////
+#endif
 
                 sDReader.setBytesToRead2();
                 PT_WAIT_THREAD(sDReader);
 
-                tLin = STD max ( FromBuf(uint16_t, sDReader.readData), MAXTEMPSPEED);
+                // tLin = STD max ( FromBuf(uint16_t, sDReader.readData), MAXTEMPSPEED);
+                tLin = STD min ( (uint16_t)(FromBuf(uint16_t, sDReader.readData) * timerScale), (uint16_t)0xffff);
 
                 // nDecel = sDReader.readPayloadUInt16();
                 sDReader.setBytesToRead2();
@@ -611,7 +641,8 @@ bool FillBufferTask::Run() {
                     sDReader.setBytesToRead2();
                     PT_WAIT_THREAD(sDReader);
                     lastTimer = FromBuf(uint16_t, sDReader.readData);
-                    sd.timer = STD max ( lastTimer, MAXTEMPSPEED );
+                    // sd.timer = STD max ( lastTimer, MAXTEMPSPEED );
+                    sd.timer = STD min ( (uint16_t)(lastTimer*timerScale), (uint16_t)0xffff );
 
                     computeStepBits();
                     PT_WAIT_WHILE(stepBuffer.full());
@@ -627,7 +658,8 @@ bool FillBufferTask::Run() {
                             sDReader.setBytesToRead1();
                             PT_WAIT_THREAD(sDReader);
                             lastTimer -= FromBuf(uint8_t, sDReader.readData);
-                            sd.timer = STD max ( lastTimer,  MAXTEMPSPEED );
+                            // sd.timer = STD max ( lastTimer,  MAXTEMPSPEED );
+                            sd.timer = STD min ( (uint16_t)(lastTimer * timerScale),  (uint16_t)0xffff );
 
                             computeStepBits();
                             PT_WAIT_WHILE(stepBuffer.full());
@@ -641,7 +673,8 @@ bool FillBufferTask::Run() {
 
                             sDReader.setBytesToRead2();
                             PT_WAIT_THREAD(sDReader);
-                            sd.timer = STD max ( FromBuf(uint16_t, sDReader.readData), MAXTEMPSPEED );
+                            // sd.timer = STD max ( FromBuf(uint16_t, sDReader.readData), MAXTEMPSPEED );
+                            sd.timer = STD min ( (uint16_t)(FromBuf(uint16_t, sDReader.readData) * timerScale), (uint16_t)0xffff );
 
                             computeStepBits();
                             PT_WAIT_WHILE(stepBuffer.full());
@@ -680,7 +713,8 @@ bool FillBufferTask::Run() {
                     sDReader.setBytesToRead2();
                     PT_WAIT_THREAD(sDReader);
                     lastTimer = FromBuf(uint16_t, sDReader.readData);
-                    sd.timer = STD max ( lastTimer, MAXTEMPSPEED );
+                    // sd.timer = STD max ( lastTimer, MAXTEMPSPEED );
+                    sd.timer = STD min ( (uint16_t)(lastTimer * timerScale), (uint16_t)0xffff );
 
                     computeStepBits();
                     PT_WAIT_WHILE(stepBuffer.full());
@@ -696,7 +730,8 @@ bool FillBufferTask::Run() {
                             sDReader.setBytesToRead1();
                             PT_WAIT_THREAD(sDReader);
                             lastTimer += FromBuf(uint8_t, sDReader.readData);
-                            sd.timer = STD max ( lastTimer,  MAXTEMPSPEED );
+                            // sd.timer = STD max ( lastTimer,  MAXTEMPSPEED );
+                            sd.timer = STD min ( (uint16_t)(lastTimer * timerScale),  (uint16_t)0xffff );
 
                             computeStepBits();
                             PT_WAIT_WHILE(stepBuffer.full());
@@ -710,7 +745,8 @@ bool FillBufferTask::Run() {
 
                             sDReader.setBytesToRead2();
                             PT_WAIT_THREAD(sDReader);
-                            sd.timer = STD max ( FromBuf(uint16_t, sDReader.readData), MAXTEMPSPEED );
+                            // sd.timer = STD max ( FromBuf(uint16_t, sDReader.readData), MAXTEMPSPEED );
+                            sd.timer = STD min ( (uint16_t)(FromBuf(uint16_t, sDReader.readData) * timerScale), (uint16_t)0xffff );
 
                             computeStepBits();
                             PT_WAIT_WHILE(stepBuffer.full());
@@ -745,42 +781,63 @@ bool FillBufferTask::Run() {
                 nAccel = FromBuf(uint16_t, sDReader.readData);
                 // SERIAL_ECHOLN(nAccel);
 
-                //////////////////////////////////////////////////////
-                sDReader.setBytesToRead2();
-                PT_WAIT_THREAD(sDReader);
-
 #if defined(USEExtrusionRateTable)
-                leadFactor = FromBuf(uint16_t, sDReader.readData);
+                //////////////////////////////////////////////////////
+                // Check beginning of new base move
+                if (flags & 0x20) {
 
-                if (leadFactor) {
+                    sDReader.setBytesToRead2();
+                    PT_WAIT_THREAD(sDReader);
 
+                    eSpeedTimer = FromBuf(uint16_t, sDReader.readData);
+
+                    // printf("eSpeedTimer: %d\n", eSpeedTimer);
+
+                    // Lookup this e-speed in the extrusion rate table
                     int16_t curTempIndex = (current_temperature[0] - extrusionLimitBaseTemp) / 2;
+
+                    // printf("curTempIndex: %d\n", curTempIndex);
 
                     if (curTempIndex < 0) {
 
-                        maxTempSpeed = ((uint32_t)tempExtrusionRateTable[0] * 1000) / leadFactor;
+                        // printf("temp very low, use first entry\n");
+                        maxTempSpeed = tempExtrusionRateTable[0];
                     }
                     else if (curTempIndex >= NExtrusionLimit) {
 
-                        maxTempSpeed = ((uint32_t)tempExtrusionRateTable[NExtrusionLimit-1] * 1000) / leadFactor;
+                        // printf("temp very high, use last entry\n");
+                        maxTempSpeed = tempExtrusionRateTable[NExtrusionLimit-1];
                     }
                     else {
 
-                        maxTempSpeed = ((uint32_t)tempExtrusionRateTable[curTempIndex] * 1000) / leadFactor;
+                        // printf("temp in range\n");
+                        maxTempSpeed = tempExtrusionRateTable[curTempIndex];
+                    }
+
+                    if (eSpeedTimer < maxTempSpeed) {
+                        // Speed is limited by temperature
+                        // XXX cleanup temptable store temptable as floats or use integer (*1000) numeric here...
+                        timerScale = maxTempSpeed / eSpeedTimer;
+                        // printf("speed is limited by factor: %f\n", timerScale);
+                    }
+                    else {
+                        // Speed is not limited by temperature
+                        timerScale = 1.0;
                     }
                 }
-                else {
-
-                    maxTempSpeed = 0;
-                }
-#endif
     
+// xxx cleanup temptable
+// #if defined(HEAVYDEBUG)
+                massert(timerScale >= 1.0);
+// #endif
                 //////////////////////////////////////////////////////
+#endif
 
                 sDReader.setBytesToRead2();
                 PT_WAIT_THREAD(sDReader);
                 lastTimer = FromBuf(uint16_t, sDReader.readData);
-                sd.timer = STD max ( lastTimer, MAXTEMPSPEED );
+                // sd.timer = STD max ( lastTimer, MAXTEMPSPEED );
+                sd.timer = STD min ( (uint16_t)(lastTimer * timerScale), (uint16_t)0xffff );
 
                 sDReader.setBytesToRead1();
                 PT_WAIT_THREAD(sDReader);
@@ -801,7 +858,8 @@ bool FillBufferTask::Run() {
                         sDReader.setBytesToRead1();
                         PT_WAIT_THREAD(sDReader);
                         lastTimer += FromBuf(int8_t, sDReader.readData);
-                        sd.timer = STD max ( lastTimer, MAXTEMPSPEED );
+                        // sd.timer = STD max ( lastTimer, MAXTEMPSPEED );
+                        sd.timer = STD min ( (uint16_t)(lastTimer * timerScale), (uint16_t)0xffff );
 
                         sDReader.setBytesToRead1();
                         PT_WAIT_THREAD(sDReader);
@@ -819,7 +877,8 @@ bool FillBufferTask::Run() {
 
                         sDReader.setBytesToRead2();
                         PT_WAIT_THREAD(sDReader);
-                        sd.timer = STD max ( FromBuf(uint16_t, sDReader.readData), MAXTEMPSPEED );
+                        // sd.timer = STD max ( FromBuf(uint16_t, sDReader.readData), MAXTEMPSPEED );
+                        sd.timer = STD min ( (uint16_t)(FromBuf(uint16_t, sDReader.readData) * timerScale), (uint16_t)0xffff );
 
                         sDReader.setBytesToRead1();
                         PT_WAIT_THREAD(sDReader);

@@ -173,7 +173,7 @@ extern Printer printer;
 
 class FillBufferTask : public Protothread {
 
-        uint8_t flags;
+        uint16_t flags;
         uint8_t timerLoop;
         uint16_t lastTimer;
 
@@ -182,11 +182,6 @@ class FillBufferTask : public Protothread {
         uint16_t tLin;
         uint16_t nDecel;
         int32_t absSteps[5];
-#if defined(USEExtrusionRateTable)
-        uint16_t maxTempSpeed;
-#endif
-            // uint16_t leadFactor;
-            // int16_t curTempIndex;
 
         // Bresenham factors
         int32_t d_axis[5];
@@ -202,6 +197,11 @@ class FillBufferTask : public Protothread {
         unsigned long dwellEnd;
 
         bool cmdSync;
+
+#if defined(USEExtrusionRateTable)
+        // Scaling factor for timerValues to implement temperature speed limit 
+        float timerScale;
+#endif
 
         stepData sd;
 
