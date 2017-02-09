@@ -693,7 +693,7 @@ def commonInit(args, parser):
     printer.commandInit(args)
 
     ddhome.home(parser, args.fakeendstop)
-    downloadTempTable(printer)
+    downloadTempTable(planner)
     printer.sendPrinterInit()
 
 ####################################################################################################
@@ -1506,7 +1506,7 @@ def getResponseString(s, offset):
 ####################################################################################################
 
 
-def genTempTable(printer):
+def genTempTable(planner):
 
     baseTemp = MatProfile.getHotendBaseTemp()
 
@@ -1531,7 +1531,7 @@ def genTempTable(printer):
         t = baseTemp + i*2
 
         dspeed = i*2 / f
-        speed = extrusionLow + dspeed
+        speed = planner.advance.eComp(extrusionLow + dspeed)
 
         steprate = speed * mmpermm3 * spm
         tvs = 1.0/steprate
@@ -1548,7 +1548,7 @@ def genTempTable(printer):
 
 ####################################################################################################
 
-def printTempTable(printer, temp, tempTable):
+def printTempTable(temp, tempTable):
 
     of = open("/tmp/temptable_printer.txt", "w")
     of.write("# xxx mat, nozzle, settings...\n")
@@ -1576,10 +1576,9 @@ def printTempTable(printer, temp, tempTable):
 
 ####################################################################################################
 
-def downloadTempTable(printer):
+def downloadTempTable(planner):
 
-
-    (baseTemp, table) = genTempTable(printer)
+    (baseTemp, table) = genTempTable(planner)
 
     payload = struct.pack("<HB", baseTemp, NExtrusionLimit)
 
@@ -1587,7 +1586,7 @@ def downloadTempTable(printer):
 
     for timerValue in table:
         payload += struct.pack("<H", timerValue)
-    resp = printer.query(CmdSetTempTable, binPayload=payload)
+    resp = planner.printer.query(CmdSetTempTable, binPayload=payload)
     assert(handleGenericResponse(resp))
 
 

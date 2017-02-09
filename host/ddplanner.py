@@ -898,6 +898,8 @@ class Planner (object):
             self.stepRounders.rollback()
             return
 
+        move.isStartMove = True
+
         self.stepRounders.commit()
 
         abs_displacement_vector_steps = vectorAbs(dispS)
@@ -1013,5 +1015,5 @@ class Planner (object):
 
         if debugMoves:
             print "***** End planTravelSteps() *****"
-
+    
 

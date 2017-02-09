@@ -751,7 +751,7 @@ def main():
 
     elif args.mode == 'genTempTable':
 
-        util.genTempTable(printer)
+        util.genTempTable(planner)
 
     elif args.mode == 'getEndstops':
 
@@ -794,7 +794,7 @@ def main():
         printer.commandInit(args)
         (baseTemp, tempTable) = printer.getTempTable()
         print "tempTable: ", pprint.pprint(tempTable)
-        util.printTempTable(printer, baseTemp, tempTable)
+        util.printTempTable(baseTemp, tempTable)
 
     elif args.mode == 'getStatus':
 

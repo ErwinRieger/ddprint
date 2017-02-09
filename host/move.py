@@ -27,7 +27,8 @@ from ddprintconstants import AdvanceEThreshold, StepDataTypeBresenham, StepDataT
 from ddprintutil import X_AXIS, Y_AXIS, Z_AXIS, A_AXIS, B_AXIS, circaf, sign
 from ddvector import Vector, VelocityVector32, VelocityVector5, vectorLength, vectorSub, vectorAbs
 from ddprintutil import pdbAssert
-from ddprintcommands import CommandNames
+from ddprintcommands import CommandNames, DecelByteFlagBit, AccelByteFlagBit, DirBitsBit, MoveStartBit
+from ddprintcommands import TimerByteFlagBit, MoveStartBitRaw
 from ddprofile import PrinterProfile
 from types import ListType
 
@@ -153,10 +154,10 @@ class StepData:
 
         flags = 0
         if self.setDirBits:
-            flags = self.dirBits | 0x80
+            flags = self.dirBits | DirBitsBit
 
         # Check if acceleration timer values can be sent as difference bytes
-        accelByteFlag = 1 << 6;
+        accelByteFlag = AccelByteFlagBit
         if self.accelPulses:
             lastTimer = self.accelPulses[0]
             for tv in self.accelPulses[1:]:
@@ -171,7 +172,7 @@ class StepData:
                 lastTimer = tv
         
         # Check if deceleration timer values can be sent as difference bytes
-        decelByteFlag = 1 << 5;
+        decelByteFlag = DecelByteFlagBit
         if self.decelPulses:
             lastTimer = self.decelPulses[0]
             for tv in self.decelPulses[1:]:
@@ -185,11 +186,15 @@ class StepData:
 
                 lastTimer = tv
        
+        startMoveFlag = 0
+        if move.isStartMove:
+            startMoveFlag = MoveStartBit
+
         # print "flags: 0x%x, dirbits: 0x%x" % (flags | accelByteFlag | decelByteFlag, flags)
         # print "ald:", len(self.accelPulses), self.abs_vector_steps[self.leadAxis]-(len(self.accelPulses)+len(self.decelPulses)), len(self.decelPulses)
 
-        payLoad = struct.pack("<BBiiiiiH",
-                flags | accelByteFlag | decelByteFlag,
+        payLoad = struct.pack("<HBiiiiiH",
+                flags | accelByteFlag | decelByteFlag | startMoveFlag,
                 self.leadAxis,
                 self.abs_vector_steps[0],
                 self.abs_vector_steps[1],
@@ -198,14 +203,24 @@ class StepData:
                 self.abs_vector_steps[4],
                 len(self.accelPulses))
 
-        # print "commands(): ignoring isExtrudingMove!"
-        if False: # self.isExtrudingMove(A_AXIS):
-            leadFactor = int((self.abs_vector_steps[self.leadAxis]*1000) / self.abs_vector_steps[A_AXIS])
-            payLoad += struct.pack("<H", min(leadFactor, 0xffff))
-        else:
-            payLoad += struct.pack("<H", 0)
+        if move.isStartMove:
 
-        payLoad += struct.pack("<HH", 
+            # Store timervalue of max e-speed
+            baseMove = move.getBaseMove()
+            if baseMove.isPrintMove():
+
+                # xxx move to own method  
+                nominalSpeed = abs( baseMove.topSpeed.speed().eSpeed )
+                e_steps_per_second_nominal = nominalSpeed * baseMove.e_steps_per_mm
+                timerValue = fTimer / e_steps_per_second_nominal
+
+                # print "StartMove, E-Timer:", nominalSpeed, timerValue
+                # payLoad += struct.pack("<H", min(timerValue, 0xffff))
+                payLoad += struct.pack("<H", timerValue)
+            else:
+                payLoad += struct.pack("<H", 0)
+
+        payLoad += struct.pack("<HH",
                 self.linearTimer,
                 len(self.decelPulses))
 
@@ -311,10 +326,10 @@ class RawStepData:
 
         flags = 0
         if self.setDirBits:
-            flags = self.dirBits | 0x80
+            flags = self.dirBits | DirBitsBit
 
         # Check if timer values can be sent as difference bytes
-        timerByteFlag = 1 << 6;
+        timerByteFlag = TimerByteFlagBit
         if self.pulses:
             lastTimer = self.pulses[0][0]
             for (tv, _) in self.pulses[1:]:
@@ -325,17 +340,27 @@ class RawStepData:
                     break
 
                 lastTimer = tv
-        
+       
+        startMoveFlag = 0
+        if move.isStartMove:
+            startMoveFlag = MoveStartBitRaw
+
         payLoad = struct.pack("<BH",
-                flags | timerByteFlag,
+                flags | timerByteFlag | startMoveFlag,
                 len(self.pulses))
 
-        # print "commands(): ignoring isExtrudingMove!"
-        if False: # self.isExtrudingMove(A_AXIS):
-            leadFactor = int((self.abs_vector_steps[self.leadAxis]*1000) / self.abs_vector_steps[A_AXIS])
-            payLoad += struct.pack("<H", min(leadFactor, 0xffff))
-        else:
-            payLoad += struct.pack("<H", 0)
+        if move.isStartMove:
+
+            # Store timervalue of max e-speed
+            baseMove = move.getBaseMove()
+
+            # xxx move to own method  
+            nominalSpeed = abs( baseMove.topSpeed.speed().eSpeed )
+            e_steps_per_second_nominal = nominalSpeed * baseMove.e_steps_per_mm
+            timerValue = fTimer / e_steps_per_second_nominal
+
+            # print "StartMove, E-Timer:", nominalSpeed, timerValue
+            payLoad += struct.pack("<H", min(timerValue, 0xffff))
 
         if timerByteFlag:
 
@@ -346,7 +371,6 @@ class RawStepData:
                 dtv = lastTimer - tv
                 payLoad += struct.pack("<bB", dtv, self.stepBits(stepBits))
                 lastTimer = tv
-        
 
         else:
 
@@ -624,8 +648,14 @@ class MoveBase(object):
 
         self.stepData = None
 
+        self.isStartMove = False
+
     def isSubMove(self):
         return False
+
+    # Returns base move, eg our self
+    def getBaseMove(self):
+        return self
 
     def setDuration(self, accelTime, linearTime, decelTime):
 
@@ -1265,6 +1295,10 @@ class SubMove(MoveBase):
 
     def isSubMove(self):
         return True
+
+    # Returns base move, eg our parent move
+    def getBaseMove(self):
+        return self.parentMove
 
     def setSpeeds(self, sv, tv, ev):
 

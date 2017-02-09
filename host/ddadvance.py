@@ -181,7 +181,6 @@ class Advance (object):
 
         vCorr = vExtruder / (1 - k)
 
-        assert(vCorr <= self.maxEFeedrate)
         return vCorr
 
     def reset(self):
@@ -657,6 +656,7 @@ class Advance (object):
 
         # New const speed
         newTopSpeedS = self.eComp(topSpeedS)
+        assert(newTopSpeedS <= self.maxEFeedrate)
         # print "feederCorr: topSpeed %.5f -> %.5f" % (topSpeedS, newTopSpeedS)
         topSpeed.setESpeed(newTopSpeedS)
         move.topSpeed.setSpeed(topSpeed, "planFeederCorrection")
@@ -1384,7 +1384,8 @@ class Advance (object):
 
             # Single move with simple ramps
             # xxx can we use plantravelsteps here
-            self.planStepsSimple(move)
+            if self.planStepsSimple(move):
+                move.isStartMove = True
 
             if debugMoves:
                 print "***** End planSteps() *****"
@@ -1454,13 +1455,18 @@ class Advance (object):
             move.nextMove.prevMove = newMoves[-1]
             newMoves[-1].nextMove = move.nextMove
 
+        startMove = True
         for move in newMoves:
             move.sanityCheck()
 
             if move.crossedDecelStep():
-                self.planCrossedDecelSteps(move)
+                if self.planCrossedDecelSteps(move):
+                    move.isStartMove = startMove
+                    startMove = False
             else:
-                self.planStepsSimple(move)
+                if self.planStepsSimple(move):
+                    move.isStartMove = startMove
+                    startMove = False
 
         if debugMoves:
             print "***** End planSteps() *****"
@@ -1492,7 +1498,7 @@ class Advance (object):
                 print "***** End PlanSTepsSimple() *****"
 
             self.planner.stepRounders.rollback()
-            return
+            return False
 
         self.planner.stepRounders.commit()
 
@@ -1611,6 +1617,8 @@ class Advance (object):
         if debugMoves:
             print "***** End planStepsSimple() *****"
 
+        return True
+
     def planCrossedDecelSteps(self, move):
 
         if debugMoves:
@@ -1657,7 +1665,7 @@ class Advance (object):
                 print "***** End planCrossedDecelSteps() *****"
 
             self.planner.stepRounders.rollback()
-            return
+            return False
 
         self.planner.stepRounders.commit()
 
@@ -1703,7 +1711,7 @@ class Advance (object):
                 move.pprint("planCrossedDecelSteps:")
                 print "***** End planCrossedDecelSteps() *****"
 
-            return 
+            return True
 
         ############################################################################################
         #
@@ -1884,244 +1892,7 @@ class Advance (object):
             move.pprint("planCrossedDecelSteps:")
             print "***** End planCrossedDecelSteps() *****"
 
-        return 
-
-        ############################################################################################
-        #
-        # Create a list of X-stepper pulses
-        #
-        xStepsToMove = abs_displacement_vector_steps[X_AXIS]
-        xClocks = util.decelRamp(
-                X_AXIS,
-                abs( topSpeed[X_AXIS] ),
-                abs(endSpeed[X_AXIS]),
-                abs(move.accel.accel(X_AXIS)),
-                xStepsToMove,
-                forceFill=True)
-
-        if debugMoves:
-            print "Generated %d/%d X steps" % (len(xClocks), xStepsToMove)
-
-        ############################################################################################
-
-        ############################################################################################
-        #
-        # Create a list of Y-stepper pulses
-        #
-        yStepsToMove = abs_displacement_vector_steps[Y_AXIS]
-        yClocks = util.decelRamp(
-                Y_AXIS,
-                abs( topSpeed[Y_AXIS] ),
-                abs(endSpeed[Y_AXIS]),
-                abs(move.accel.accel(Y_AXIS)),
-                yStepsToMove,
-                forceFill=True)
-
-        if debugMoves:
-            print "Generated %d/%d Y steps" % (len(yClocks), yStepsToMove)
-
-        ############################################################################################
-
-        ############################################################################################
-        #
-        # Steps for E acceleration
-        #
-        eStepsToMove = abs_displacement_vector_steps[A_AXIS]
-        eClocks = util.accelRamp(
-                A_AXIS,
-                abs( topSpeed.eSpeed ),
-                abs( endSpeed.eSpeed ),
-                abs(move.accel.eAccel()),
-                eStepsToMove,
-                forceFill=True)
-
-        if debugMoves:
-            print "generated %d/%d E steps" % (len(eClocks), eStepsToMove)
-
-        ###########################################################################
-        tv75khz = int(fTimer / 75000.0)
-
-        print "Timer value of a 75khz stepper: %d" % tv75khz
-
-        leadAxis = move.leadAxis(disp=disp)
-        leadAxis_steps = abs_displacement_vector_steps[leadAxis]
-
-        print "lead axis is:", leadAxis, "lead steps:", leadAxis_steps
-
-        axisClocks = [xClocks, yClocks, None, eClocks]
-
-        if leadAxis == X_AXIS:
-            leadClocks = xClocks
-            otherAxes = [Y_AXIS, A_AXIS]
-        elif leadAxis == Y_AXIS:
-            leadClocks = yClocks
-            otherAxes = [X_AXIS, A_AXIS]
-        elif leadAxis == A_AXIS:
-            leadClocks = eClocks
-            otherAxes = [X_AXIS, Y_AXIS]
-        else:
-            assert(0)
-
-        tvsum = 0
-        tvIndex = []
-        tMap = {}
-        for (t, dt, tv) in leadClocks:
-            tvIndex.append(tvsum)
-            leadSteps = [0, 0, 0, 0, 0]
-            leadSteps[leadAxis] = 1
-            tMap[tvsum] = Namespace(t=t, dt=dt, tv=tv, steps=leadSteps)
-            tvsum += tv
-
-        tMoveLead = leadClocks[-1][0] + leadClocks[-1][1]
-        # print "move time:", tMoveLead
-
-        dt0Lead = leadClocks[0][1]
-
-        # print "lead tMap:"
-        # pprint.pprint(tMap)
-
-        # XXXXXXXXX todo: mit aktueller methode machen aller stepper einen schritt bei t=0 , das sollte evtl
-        # besser verteilt werden...
-        nMerges = 0
-        for otherAxis in otherAxes:
-
-            dimAxis_steps = abs_displacement_vector_steps[otherAxis]
-
-            if not dimAxis_steps:
-                continue
-
-            print "merging other axis:", otherAxis
-            otherClocks = axisClocks[otherAxis]
-
-            f = float(leadAxis_steps) / dimAxis_steps
-            tDelay = (f - 1) * dt0Lead
-
-            assert(tDelay >= 0)
-
-            # tvsum = 0
-            tvsum = int(tDelay * fTimer)
-
-            print "dt0Lead: %f, f: %f, tDelay: %f, tvsum %d" % (dt0Lead, f, tDelay, tvsum)
-
-            for (_, _, tv) in otherClocks:
-
-                if tvsum in tvIndex:
-                    tMap[tvsum].steps[otherAxis] = 1
-                    # print "merged :", tMap[tvsum]
-                    nMerges += 1
-                else:
-
-                    # XXX user faster inserting algo...
-                    minDist = maxTimerValue16
-                    bestIndex = -1
-                    for i in range(len(tvIndex)):
-                        tvSearch = tvIndex[i]
-                        if abs(tvSearch - tvsum) < minDist:
-                            minDist = abs(tvSearch - tvsum)
-                            bestIndex = i
-
-                    tvBestIndex = tvIndex[bestIndex]
-
-                    # print "best index", tvsum, bestIndex, tvBestIndex, minDist
-
-                    if minDist < tv75khz:
-
-                        tMap[tvBestIndex].steps[otherAxis] = 1
-                        # print "merged :", tMap[tvBestIndex]
-                        nMerges += 1
-
-                    else:
-
-                        stepBits = [0, 0, 0, 0, 0]
-                        stepBits[otherAxis] = 1
-
-                        if tvsum > tvBestIndex:
-                            # insert above best match
-                            # print "insert above:", tvBestIndex, tvsum
-
-                            prevStepDesc = tMap[tvBestIndex]
-
-                            prevTv = prevStepDesc.tv
-
-                            if prevTv < minDist:
-                                # append at end
-                                assert(bestIndex == len(tvIndex) -1)
-
-                                newTv2 = minDist - prevTv
-
-                                assert(prevTv+newTv2 == minDist)
-
-                                newStepDesc = Namespace(t=None, dt=None, tv=newTv2, steps=stepBits)
-                                tvIndex.append(tvsum)
-
-                            else:
-                                newTv2 = prevTv - minDist
-
-                                # print "modify prev tv:", prevTv, " --> ", minDist
-                                # print "insert new  tv:", newTv2
-
-                                assert(minDist > 0)
-                                assert(newTv2 > 0)
-                                assert(minDist+newTv2 == prevTv)
-
-                                newStepDesc = Namespace(t=None, dt=None, tv=newTv2, steps=stepBits)
-                                tvIndex.insert(bestIndex+1, tvsum)
-
-                            prevStepDesc.tv = minDist
-                            prevStepDesc.dt = None
-
-                            tMap[tvsum] = newStepDesc
-
-                        else:
-                            # insert below best match
-                            # print "insert below:", tvsum, tvBestIndex
-
-                            prevTvSum = tvIndex[bestIndex-1]
-                            prevStepDesc = tMap[prevTvSum]
-                            prevTv = prevStepDesc.tv
-                            newTv1 = prevTv - minDist
-
-                            # print "modify prev tv:", prevTv, " --> ", newTv1
-                            # print "insert new  tv:", minDist
-
-                            assert(newTv1 > 0)
-                            assert(minDist > 0)
-                            assert(newTv1+minDist == prevTv)
-
-                            prevStepDesc.dt = None
-                            prevStepDesc.tv = newTv1
-
-                            newStepDesc = Namespace(t=None, dt=None, tv=minDist, steps=stepBits)
-                            tvIndex.insert(bestIndex, tvsum)
-                            tMap[tvsum] = newStepDesc
-
-                            # print newStepDesc
-                            # pprint.pprint(tMap)
-
-                tvsum += tv
-
-            # print "other tMap:", otherAxis
-            # pprint.pprint(tvIndex)
-            # pprint.pprint(tMap)
-
-        # if move.moveNumber == 9713:
-            # assert(1)
-
-        assert((xStepsToMove + yStepsToMove + eStepsToMove) == (len(tvIndex) + nMerges))
-
-        for ttv in tvIndex:
-
-            stepDesc = tMap[ttv]
-            
-            move.stepData.addPulse(stepDesc.tv, stepDesc.steps)
-
-        assert(len(tvIndex) == len(move.stepData.pulses))
-
-        if debugMoves:
-            move.pprint("planCrossedDecelSteps:")
-            print "***** End planCrossedDecelSteps() *****"
-
-        return 
+        return True
 
     #
     # Single advanceed ramp at start

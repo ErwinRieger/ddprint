@@ -148,6 +148,18 @@ CommandNames = {
 }
 
 #
+# Flag bits for CmdG1x commands
+#
+# Bits 0, 1, 2, 3, 4 reserved for direction bits
+DecelByteFlagBit = (1 << 5)
+AccelByteFlagBit = (1 << 6)
+DirBitsBit       = (1 << 7)
+MoveStartBit     = (1 << 8)
+# Raw moves
+TimerByteFlagBit = (1 << 6)
+MoveStartBitRaw  = (1 << 5)
+
+#
 # Response codes
 #
 RespUnknownCommand =            1
