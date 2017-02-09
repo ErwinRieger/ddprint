@@ -918,8 +918,8 @@ def removeFilament(args, parser, feedrate):
     t1 = MatProfile.getHotendBaseTemp()
     printer.heatUp(HeaterEx1, t1, wait=t1)
 
-    # Etwas vorwärts um den retract-pfropfen einzuschmelzen
-    manualMove(parser, A_AXIS, PrinterProfile.getRetractLength() + 10, 5)
+    # Etwas warten und filament vorwärts feeden um den retract-pfropfen einzuschmelzen
+    manualMove(parser, A_AXIS, PrinterProfile.getRetractLength() + 50, 5)
 
     manualMove(parser, A_AXIS, -1.3*FILAMENT_REVERSAL_LENGTH, feedrate)
 
@@ -1505,7 +1505,6 @@ def getResponseString(s, offset):
 
 ####################################################################################################
 
-
 def genTempTable(planner):
 
     baseTemp = MatProfile.getHotendBaseTemp()
@@ -1589,6 +1588,19 @@ def downloadTempTable(planner):
     resp = planner.printer.query(CmdSetTempTable, binPayload=payload)
     assert(handleGenericResponse(resp))
 
+####################################################################################################
+
+def downloadDummyTempTable(printer):
+
+    print "Downloading Dummy TempTable..."
+    payload = struct.pack("<HB", 100, NExtrusionLimit)
+
+    for i in range(NExtrusionLimit):
+        print "temp %d, timerValue 50" % (100 + i*2)
+        payload += struct.pack("<H", 50)
+
+    resp = printer.query(CmdSetTempTable, binPayload=payload)
+    assert(handleGenericResponse(resp))
 
 ####################################################################################################
 
@@ -1622,6 +1634,8 @@ def measureTempFlowrateCurve(args, parser):
 
     # Disable flowrate limit
     printer.sendCommandParamV(CmdEnableFRLimit, [packedvalue.uint8_t(0)])
+    # Disable temp-flowrate limit
+    downloadDummyTempTable(printer)
 
     # Move to mid-position
     printer.sendPrinterInit()
@@ -1640,7 +1654,7 @@ def measureTempFlowrateCurve(args, parser):
     # flowrate = MatProfile.getBaseExtrusionRate() * (NozzleProfile.getArea() / area04)
 
     f = MatProfile.getAutoTempFactor()
-    extrusionLow = MatProfile.getBaseExtrusionRate(NozzleProfile.getSize()) + (t1 - 200) / f
+    flowrate = MatProfile.getBaseExtrusionRate(NozzleProfile.getSize()) + (t1 - 200) / f
 
     aFilament = MatProfile.getMatArea()
 
@@ -1676,6 +1690,8 @@ fit f(x) "-" using 1:3 noerror via a,b\n""" % (t1, t1))
     printer.sendCommandParamV(CmdFanSpeed, [packedvalue.uint8_t(100)])
 
     retracted = False
+
+    flowrateIncrease = 0.5 # XXX better way to increase target flowrate?
 
     while t1 <= MatProfile.getHotendMaxTemp():
 
@@ -1733,11 +1749,12 @@ fit f(x) "-" using 1:3 noerror via a,b\n""" % (t1, t1))
 
             print "t1, flowrate, fsdist, distance, ratio:",  t1, flowrate, fsdist, fsTargetDistance, ratio
 
-            flowrate += 1
+            # flowrate += 1
+            flowrate += flowrateIncrease
             retracted = True
 
-        print "Feeder grip:",  t1, flowrate-1, ratio
-        dataStr = "%f %f %.2f %.3f" % (t1, flowrate - 1, actualFlowrate, ratio)
+        print "Feeder grip:",  t1, flowrate-flowrateIncrease, ratio
+        dataStr = "%f %f %.2f %.3f" % (t1, flowrate - flowrateIncrease, actualFlowrate, ratio)
         f.write(dataStr + "\n")
         f.flush()
 
