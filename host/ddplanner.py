@@ -228,9 +228,9 @@ class PathData (object):
             # self.ExtrusionAmountLow = MatProfile.getBaseExtrusionRate() * (NozzleProfile.getArea() / area04)
 
             # Max flowrate at 200°C
-            f = MatProfile.getAutoTempFactor()
-            self.ExtrusionAmountLow = MatProfile.getBaseExtrusionRate(NozzleProfile.getSize()) + (MatProfile.getHotendBaseTemp() - 200) / f
-            print "flowrate at 200°C: ", MatProfile.getBaseExtrusionRate(NozzleProfile.getSize()), self.ExtrusionAmountLow
+            # f = MatProfile.getAutoTempFactor()
+            # self.ExtrusionAmountLow = MatProfile.getBaseExtrusionRate(NozzleProfile.getSize()) + (MatProfile.getHotendBaseTemp() - 200) / f
+            # print "flowrate at 200°C: ", MatProfile.getBaseExtrusionRate(NozzleProfile.getSize()), self.ExtrusionAmountLow
 
         # Some statistics
         self.maxExtrusionRate = MaxExtrusionRate()
@@ -254,6 +254,7 @@ class PathData (object):
             # Average speed:
             avgSpeed = self.extrusionAmount / self.time
 
+            """
             # UseExtrusionAutoTemp: Adjust temp between Tbase and HotendMaxTemp, if speed is greater than 5 mm³/s
             newTemp = MatProfile.getHotendBaseTemp() # Extruder 1 temp
 
@@ -261,8 +262,13 @@ class PathData (object):
                 f = MatProfile.getAutoTempFactor()
                 newTemp += (avgSpeed - self.ExtrusionAmountLow) * f
                 newTemp = int(min(newTemp, MatProfile.getHotendMaxTemp()))
+            """
+
+            newTemp = MatProfile.getTempForFlowrate(avgSpeed, NozzleProfile.getSize())
 
             if newTemp != self.lastTemp: #  and self.mode != "pre":
+
+                print "Newtemp:", avgSpeed, newTemp
 
                 # Schedule target temp command
                 self.planner.addSynchronizedCommand(
@@ -597,14 +603,14 @@ class Planner (object):
                     self.plotfile.close()
                     self.plotfile = None
 
-                print "\nStatistics:"
-                print "-----------"
-                self.pathData.maxExtrusionRate.printStat()
-
             else:
 
                 # print "finishMoves(): ending travel path with %d moves" % len(self.pathData.path)
                 self.planTravelPath(self.pathData.path)
+
+            print "\nStatistics:"
+            print "-----------"
+            self.pathData.maxExtrusionRate.printStat()
 
         assert(not self.syncCommands)
         self.reset()

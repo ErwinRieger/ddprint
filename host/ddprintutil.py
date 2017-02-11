@@ -1512,15 +1512,16 @@ def genTempTable(planner):
     # area04 = pow(0.4, 2)*math.pi/4
     # extrusionLow = MatProfile.getBaseExtrusionRate() * (NozzleProfile.getArea() / area04)
 
-    f = MatProfile.getAutoTempFactor()
-    extrusionLow = MatProfile.getBaseExtrusionRate(NozzleProfile.getSize()) + (baseTemp - 200) / f
+    # f = MatProfile.getAutoTempFactor()
+    # extrusionLow = MatProfile.getBaseExtrusionRate(NozzleProfile.getSize()) + (baseTemp - 200) / f
 
     mmpermm3 = 1 / MatProfile.getMatArea()
     spm = PrinterProfile.getStepsPerMM(A_AXIS)
 
     of = open("/tmp/temptable0.txt", "w")
     of.write("# xxx mat, nozzle, settings...\n")
-    of.write("# basetemp: %d, autoTempFactor: %f\n" % (baseTemp, f))
+    # of.write("# basetemp: %d, autoTempFactor: %f\n" % (baseTemp, f))
+    of.write("# basetemp: %d\n" % baseTemp)
     of.write("# temp rate steprate timer\n")
 
     print "TempTable (basetemp: %d):" % baseTemp
@@ -1529,8 +1530,9 @@ def genTempTable(planner):
 
         t = baseTemp + i*2
 
-        dspeed = i*2 / f
-        speed = planner.advance.eComp(extrusionLow + dspeed)
+        # dspeed = i*2 / f
+        # speed = planner.advance.eComp(extrusionLow + dspeed)
+        speed = planner.advance.eComp(MatProfile.getFlowrateForTemp(t, NozzleProfile.getSize()))
 
         steprate = speed * mmpermm3 * spm
         tvs = 1.0/steprate
