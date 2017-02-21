@@ -185,7 +185,7 @@ def joinMoves2(move1, move2, advInstance): # jerk):
             #
             # Join in bezug auf den maximalen jerk aller achsen betrachten:
             #
-            jerk = advInstance.planner.jerk
+            jerk = advInstance.planner.getJerk()
             speedDiff = {}
             toMuch = False
             for dim in range(3):
@@ -314,7 +314,7 @@ def joinMoves3(move1, move2, advInstance): # jerk):
         endSpeedV1 = endSpeed1.vv3()
         startSpeedV2 = startSpeed2.vv3()
 
-        jerk = advInstance.planner.jerk
+        jerk = advInstance.planner.getJerk()
         speedDiff = {}
         toMuch = False
         for dim in range(3):
@@ -667,6 +667,9 @@ class EWMA:
     def value(self):
         return self._value
 
+    def setValue(self, v):
+        self._value = v
+
 ####################################################################################################
 
 # Compute new stepper direction bits
@@ -700,8 +703,7 @@ def commonInit(args, parser):
 
 def getVirtualPos(parser):
 
-    planner = parser.planner
-    printer = planner.printer
+    printer = parser.planner.printer
 
     # Get currend stepped pos
     res = printer.getPos()
@@ -1608,13 +1610,10 @@ def downloadDummyTempTable(printer):
 
 #
 # * set temp t
-# * set flowrate 7 (bzw. feedrate dazu)
-# * schleife:
-#   + extrude xxx cm filament
-#   + get measured filament value
-#   + compute ratio
-#   + plot values
-#   + break if ratio < 0.8
+# * set start flowrate (bzw. feedrate dazu)
+# * plan a long move with very low e-acceleartion from start flowrate to a very big flowrate
+# * loop:
+#   + compute ewma of grip, stop if grip < 0.9
 # * if temp < 250: set next temp and repeat
 #
 def measureTempFlowrateCurve(args, parser):
@@ -1634,6 +1633,14 @@ def measureTempFlowrateCurve(args, parser):
 
     ddhome.home(parser, args.fakeendstop)
 
+    # Set slow E-acceleration, no jerk
+    eAccel = 1.0
+    PrinterProfile.overrideEAccel(eAccel)
+    PrinterProfile.overrideEJerk(0.001)
+
+    print "Accel: ", PrinterProfile.getMaxAxisAcceleration()
+    print "Jerk: ", planner.getJerk()
+
     # Disable flowrate limit
     printer.sendCommandParamV(CmdEnableFRLimit, [packedvalue.uint8_t(0)])
     # Disable temp-flowrate limit
@@ -1651,26 +1658,24 @@ def measureTempFlowrateCurve(args, parser):
 
     printer.waitForState(StateIdle)
 
-    t1 = MatProfile.getHotendBaseTemp() # start temperature
-    # area04 = pow(0.4, 2)*math.pi/4
-    # flowrate = MatProfile.getBaseExtrusionRate() * (NozzleProfile.getArea() / area04)
-
-    f = MatProfile.getAutoTempFactor()
-    flowrate = MatProfile.getBaseExtrusionRate(NozzleProfile.getSize()) + (t1 - 200) / f
+    t1 = args.tstart
 
     aFilament = MatProfile.getMatArea()
 
+    maxFlowrate = NozzleProfile.getMaxExtrusionRate() * 2
+    # Distance needed to accelerate to maxFlowrate
+    maxFeedrate = maxFlowrate / aFilament
+    accelTime = maxFeedrate / eAccel
+    accelDistance = accelDist(0, eAccel, accelTime)
+
     print "t1: ", t1
-    print "flowrate: ", flowrate
     print "aFilament: ", aFilament
-    print "feedrate: ", flowrate / aFilament
+    print "accelDistance: ", accelDistance
 
     # xxx todo if using small nozzles
-    assert(flowrate > 2)
 
-    f = open("temp-flowrate-curve.gnuplot", "w")
-
-    f.write("""
+    gnuplotFile = open("temp-flowrate-curve.gnuplot", "w")
+    gnuplotFile.write("""
 
 set grid
 set yrange [0:35]
@@ -1686,104 +1691,134 @@ f(x)=b+a*(x-%d)
 
 fit f(x) "-" using 1:3 noerror via a,b\n""" % (t1, t1))
 
+    jsonFile = open("temp-flowrate-curve.json", "w")
+    jsonFile.write('"tempFlowrateCurve_%d": [\n' % (NozzleProfile.getSize()*100))
     
     dataSet = []
 
-    printer.sendCommandParamV(CmdFanSpeed, [packedvalue.uint8_t(100)])
+    ###############################################
+    fssteps_per_mm = 265.0 # xxx hardcoded, get from profile or printer...
+    ############################################################
 
-    retracted = False
+    while t1 <= min(args.tend, MatProfile.getHotendMaxTemp()):
 
-    flowrateIncrease = 0.5 # XXX better way to increase target flowrate?
+        print "#######################################################################"
+        print "### Running temp %d" % t1
+        print "#######################################################################"
+        printer.sendCommandParamV(CmdFanSpeed, [packedvalue.uint8_t(100)])
 
-    while t1 <= MatProfile.getHotendMaxTemp():
-
-        print "Heating:", t1
+        # print "Heating:", t1
         printer.heatUp(HeaterEx1, t1, wait=t1)
 
         # time.sleep(10) # temp settle
         wait = 5
         while wait:
+
             time.sleep(1)
-            temps = printer.getTemps()
-            if abs(t1 - int(temps[HeaterEx1])) <= 1:
+            temps = printer.getTemp()
+            actT1 = temps[HeaterEx1]
+            print "Current temp: %f/%f" % (actT1, t1)
+
+            if actT1 >= t1 and actT1 < (t1+min(args.tstep, 3)):
                 wait -= 1
             else:
                 wait = 5
-            print "temp wait: ", wait
+            # print "temp wait: ", wait
 
-        flowrate -= 1
+        # xxx plan startup path
+        # plan long low acceleration path
+        printer.sendPrinterInit()
 
-        ratio = 1.0
+        current_position = parser.getPos()
 
-        while ratio >= 0.9:
+        parser.execute_line("G0 F%d %s%f" % (20*60, dimNames[A_AXIS], current_position[A_AXIS] + 2*accelDistance))
 
-            feedrate = flowrate / aFilament
-            # distance = 5 * feedrate # xxx
-            distance = 50
-            fsTargetDistance = distance - PrinterProfile.getRetractLength()
+        planner.finishMoves()
+        printer.sendCommand(CmdEOT)
+        printer.sendCommandParamV(CmdMove, [MoveTypeNormal])
 
-            print "Feedrate for flowrate:", feedrate, flowrate
+        ratioEwma = EWMA(0.01)
+        ratio = 1
+        ratioEwma.setValue(ratio)
 
-            printer.sendPrinterInit()
+        fractEwma = EWMA(0.25)
 
-            if retracted:
-                parser.execute_line("G11")
-                fsTargetDistance += PrinterProfile.getRetractLength()
+        frtargetEwma = EWMA(0.25)
 
-            current_position = parser.getPos()
-            parser.execute_line("G0 F%d %s%f" % (feedrate*60, dimNames[A_AXIS], current_position[A_AXIS] + distance))
+        startup = True
 
-            parser.execute_line("G10")
+        minRatio = 0.75
 
-            planner.finishMoves()
-            printer.sendCommand(CmdEOT)
-            printer.sendCommandParamV(CmdMove, [MoveTypeNormal])
-            printer.waitForState(StateIdle)
+        maxFr = 0
 
-            time.sleep(0.25)
+        while startup or (ratioEwma.value() > minRatio):
 
-            fssteps = printer.getFilSensor()
-            fsdist = fssteps / fssteps_per_mm
+            status = printer.getStatus()
+            st = status["targetExtrusionSpeed"]
+            sa = status["actualExtrusionSpeed"]
 
-            ratio = fsdist / fsTargetDistance
+            frtargetEwma.add(st)
+            fractEwma.add(sa)
 
-            actualFlowrate = flowrate * ratio
+            tAvg = frtargetEwma.value()
+            aAvg = fractEwma.value()
 
-            print "t1, flowrate, fsdist, distance, ratio:",  t1, flowrate, fsdist, fsTargetDistance, ratio
+            if aAvg > maxFr:
+                maxFr = aAvg
 
-            # flowrate += 1
-            flowrate += flowrateIncrease
-            retracted = True
+            if tAvg > 1:
+                startup = False
 
-        print "Feeder grip:",  t1, flowrate-flowrateIncrease, ratio
-        dataStr = "%f %f %.2f %.3f" % (t1, flowrate - flowrateIncrease, actualFlowrate, ratio)
-        f.write(dataStr + "\n")
-        f.flush()
+            if tAvg > 0:
+                ratio = aAvg / tAvg
+                ratioEwma.add(ratio)
+
+            minRatio = min(0.75 + (0.15/3)*tAvg, 0.9)
+            print "current ratio: %f, ewma: %f/%f" % (ratio, ratioEwma.value(), minRatio)
+            time.sleep(0.01)
+
+        # stop move
+        printer.sendCommand(CmdStopMove)
+        printer.waitForState(StateIdle)
+        time.sleep(0.25)
+
+        print "temp: %f, target flowrate: %f, actual flowrate %f, feeder grip: %f\n" % ( t1, st*aFilament, maxFr*aFilament, ratio )
+
+        dataStr = "%f %.2f %.2f %.3f" % (t1, st*aFilament, maxFr*aFilament, ratioEwma.value())
+        gnuplotFile.write(dataStr + "\n")
+        gnuplotFile.flush()
 
         dataSet.append(dataStr)
 
-        t1 += 2 # next temp
+        if (t1+args.tstep) <= min(args.tend, MatProfile.getHotendMaxTemp()):
+            jsonFile.write("        [%f, %f],\n" % (t1, maxFr*aFilament))
+        else:
+            jsonFile.write("        [%f, %f]\n" % (t1, maxFr*aFilament))
+        jsonFile.flush()
 
-    f.write("E\n")
+        t1 += args.tstep
 
-    f.write("""
+    gnuplotFile.write("E\n")
+
+    gnuplotFile.write("""
 plot "-" using 1:2 with linespoints title "Target Flowrate", \\
      "-" using 1:3 with linespoints title "Actual Flowrate", \\
      "-" using 1:3 with linespoints smooth bezier title "Actual Flowrate smooth", \\
      f(x) title sprintf("y=B+A*x, A=%.2f, B=%.1f, TempFactor 1/A: %.2f", a, b, 1/a)\n""")
 
-    writeDataSet(f, dataSet)
-    writeDataSet(f, dataSet)
-    writeDataSet(f, dataSet)
+    writeDataSet(gnuplotFile, dataSet)
+    writeDataSet(gnuplotFile, dataSet)
+    writeDataSet(gnuplotFile, dataSet)
+    gnuplotFile.close()
 
-    f.close()
+    jsonFile.write("]\n")
+    jsonFile.close()
 
     printer.coolDown(HeaterEx1)
     # Enable flowrate limit
     printer.sendCommandParamV(CmdEnableFRLimit, [packedvalue.uint8_t(1)])
 
     # print "Average fssteps/mm: %.4f" % (fsstepsum/distsum)
-
 
 ####################################################################################################
 #
