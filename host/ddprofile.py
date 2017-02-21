@@ -130,6 +130,11 @@ class PrinterProfile(ProfileBase):
     def getRetractLength(cls):
         return float(cls.getValues()["RetractLength"])
 
+    @classmethod
+    def getMaxAxxisAcceleration(cls):
+        accel = cls.getValues()["MaxAxxisAcceleration"]
+        return accel
+
 ####################################################################################################
 #
 # To access tempearture curve data
