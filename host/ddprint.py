@@ -424,7 +424,6 @@ def initParser(args, mode=None, gui=None):
     planner = Planner(args, gui)
 
     # Create parser singleton instance
-    # parser = gcodeparser.UM2GcodeParser()
     parser = gcodeparser.UM2GcodeParser()
 
     return (parser, planner, printer)
@@ -491,6 +490,8 @@ def main():
     sp = subparsers.add_parser("home", help=u"Home the printer.")
 
     sp = subparsers.add_parser("measureTempFlowrateCurve", help=u"Determine temperature/flowrate characteristic.")
+    sp.add_argument("tstart", action="store", type=int, help="Start temperature.")
+    sp.add_argument("tend", action="store", type=int, help="End temperature.")
 
     sp = subparsers.add_parser("moverel", help=u"Debug: Move axis manually, relative coords.")
     sp.add_argument("axis", help="Axis (XYZAB).", type=str)
