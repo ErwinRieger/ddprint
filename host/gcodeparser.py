@@ -467,7 +467,7 @@ class UM2GcodeParser:
                 displacement_vector=displacement_vector,
                 displacement_vector_steps=displacement_vector_steps,
                 feedrate=feedrate, # mm/s
-                maxAccelV = self.planner.advance.maxAxisAcceleration,
+                maxAccelV = self.planner.advance.maxAxisAcceleration(),
                 ))
         else:
             self.planner.addMove(TravelMove(
