@@ -79,7 +79,6 @@
 
     #define LED_PIN            13
 
-    // #error 770
     #define FAN_PIN            9 // (Sprinter config)
 
   #define PS_ON_PIN          12
