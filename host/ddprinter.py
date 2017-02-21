@@ -678,8 +678,7 @@ class Printer(Serial):
 
             statusDict[valueName] = tup[i]
 
-        # xxx debug
-        print "statusDict:", statusDict
+        # print "statusDict:", statusDict
 
         self.gui.statusCb(statusDict)
         return statusDict
@@ -719,13 +718,19 @@ class Printer(Serial):
 
         return status['state'] == StateStart or status['state'] == StateDwell
 
-    def getTemps(self):
+    def getTemp(self):
 
         (cmd, payload) = self.query(CmdGetCurrentTemps)
         if len(payload) == 8:
             temps = struct.unpack("<ff", payload)
         else:
             temps = struct.unpack("<fff", payload)
+
+        return temps
+
+    def getTemps(self):
+
+        temps = self.getTemp()
 
         (cmd, payload) = self.query(CmdGetTargetTemps)
         if len(payload) == 3:
