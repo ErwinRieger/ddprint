@@ -19,9 +19,6 @@
 
 
 ############################################################################
-# Maximum acceleration of each axis X, Y, Z, (A/B/E)
-#define DEFAULT_MAX_ACCELERATION      {9000,9000,100,10000}
-MAX_AXIS_ACCELERATION_NOADV = [9000, 9000, 100, 10000, 10000] # [ mm/s^s ]
 
 # Maximum combined acceleration of the X, Y, Z and E axes 
 #define DEFAULT_ACCELERATION          3000
