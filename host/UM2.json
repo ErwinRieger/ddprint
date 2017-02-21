@@ -38,7 +38,7 @@
     "B" : {
       "max_feedrate"  : 45,
       "steps_per_mm"  : 141,
-      "jerk"          : 5
+      "jerk"          : 7.5
     }
   },
   # 3 mm filament, [mm/s]
@@ -51,7 +51,7 @@
   "RetractFeedrate"  : 50,
   "RetractLength"  : 1.0,
   # Maximum acceleration of each axis X, Y, Z, A, B [mm/s²]
-  "MaxAxxisAcceleration": [9000, 9000, 100, 10000, 10000]
+  "MaxAxisAcceleration": [9000, 9000, 100, 10000, 10000]
 }
 
 
