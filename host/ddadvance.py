@@ -128,31 +128,12 @@ class Advance (object):
         else:
             self.kAdv = MatProfile.getKAdv()
 
+        print "Advance: usinge K-Advance %.3f" % self.kAdv
+
         self.kFeederComp = MatProfile.getKFeederCompensation()
 
         if self.kFeederComp:
             print "Feeder Compensation: usinge K-FeederCompensation %.3f" % self.kFeederComp
-
-        if self.kAdv:
-
-            print "Advance: usinge K-Advance %.3f" % self.kAdv
-
-            advJerk = planner.jerk[A_AXIS]
-            maxEAccel = advJerk / self.kAdv
-
-            #
-            # Limit E-acceleration by DEFAULT_ACCELERATION/DEFAULT_MAX_ACCELERATION
-            #
-            print "ADV: max E-acceleration:", maxEAccel, ", unlimited accel vector: ", MAX_AXIS_ACCELERATION_NOADV, " [mm/s²]"
-            maxEAccel = min(maxEAccel, MAX_AXIS_ACCELERATION_NOADV[A_AXIS])
-
-            self.maxAxisAcceleration = MAX_AXIS_ACCELERATION_NOADV[:3] + [maxEAccel, maxEAccel]
-
-            print "ADV: max E-acceleration, limited acceleration vector:", self.maxAxisAcceleration, " [mm/s²]"
-
-        else:
-
-            self.maxAxisAcceleration = MAX_AXIS_ACCELERATION_NOADV
 
         self.e_steps_per_mm = PrinterProfile.getStepsPerMM(A_AXIS)
 
@@ -171,6 +152,29 @@ class Advance (object):
 
     def eJerk(self, accel):
         return abs(accel) * self.kAdv
+
+    def maxAxisAcceleration(self):
+
+        if self.kAdv:
+
+            advJerk = self.planner.jerk[A_AXIS]
+            maxEAccel = advJerk / self.kAdv
+
+            #
+            # Limit E-acceleration by DEFAULT_ACCELERATION/DEFAULT_MAX_ACCELERATION
+            #
+            max_axis_acceleration_noadv = PrinterProfile.getMaxAxxisAcceleration()
+            # print "ADV: max E-acceleration:", maxEAccel, ", unlimited accel vector: ", max_axis_acceleration_noadv, " [mm/s²]"
+            maxEAccel = min(maxEAccel, max_axis_acceleration_noadv[A_AXIS])
+
+            maxAccel = max_axis_acceleration_noadv[:3] + [maxEAccel, maxEAccel]
+
+            # print "ADV: max E-acceleration, limited acceleration vector:", maxAccel, " [mm/s²]"
+            return maxAccel
+
+        else:
+
+            return PrinterProfile.getMaxAxxisAcceleration()
 
     # Compensation of feeder slip
     def eComp(self, vExtruder):
@@ -806,6 +810,8 @@ class Advance (object):
 
         deltaStartSpeedS = topSpeed.feedrate3() - startSpeedS
 
+        maxAccel = self.maxAxisAcceleration()
+
         if deltaStartSpeedS > AccelThreshold:
 
             ta = deltaStartSpeedS / accel3
@@ -816,8 +822,8 @@ class Advance (object):
             for dim in range(3):
                 dimAccel = abs(deltaSpeedV[dim]) / ta
                 # print "dimaccel ", dim, dimAccel
-                if (dimAccel / self.maxAxisAcceleration[dim]) > 1.001:
-                    print "dim %d verletzt max accel: " % dim, dimAccel, " > ", self.maxAxisAcceleration[dim]
+                if (dimAccel / maxAccel[dim]) > 1.001:
+                    print "dim %d verletzt max accel: " % dim, dimAccel, " > ", maxAccel[dim]
                     assert(0)
 
             # Check acceleration of e-axis
@@ -845,8 +851,8 @@ class Advance (object):
             deltaSpeedV = move.direction3.scale(deltaEndSpeedS)
             for dim in range(3):
                 dimDecel = abs(deltaSpeedV[dim]) / tb  
-                if (dimDecel / self.maxAxisAcceleration[dim]) > 1.001:
-                    print "dim %d verletzt max accel: " % dim, dimDecel, " [mm/s] > ", self.maxAxisAcceleration[dim], " [mm/s]"
+                if (dimDecel / maxAccel[dim]) > 1.001:
+                    print "dim %d verletzt max accel: " % dim, dimDecel, " [mm/s] > ", maxAccel[dim], " [mm/s]"
                     assert(0)
 
             # Check acceleration of e-axis
