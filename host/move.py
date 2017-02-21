@@ -22,7 +22,7 @@ import math, struct
 
 import ddprintcommands, cobs, cStringIO
 
-from ddprintconstants import maxTimerValue16, fTimer, _MAX_ACCELERATION, MAX_AXIS_ACCELERATION_NOADV
+from ddprintconstants import maxTimerValue16, fTimer, _MAX_ACCELERATION
 from ddprintconstants import AdvanceEThreshold, StepDataTypeBresenham, StepDataTypeRaw
 from ddprintutil import X_AXIS, Y_AXIS, Z_AXIS, A_AXIS, B_AXIS, circaf, sign
 from ddvector import Vector, VelocityVector32, VelocityVector5, vectorLength, vectorSub, vectorAbs
@@ -882,7 +882,7 @@ class TravelMove(RealMove):
     def getMaxAllowedAccelVectorNoAdv5(self):
 
         accelVector = self.direction5.scale(_MAX_ACCELERATION)
-        return abs(accelVector.constrain(MAX_AXIS_ACCELERATION_NOADV) or accelVector)
+        return abs(accelVector.constrain(PrinterProfile.getMaxAxxisAcceleration()) or accelVector)
 
     # Note: always positive
     def getMaxAllowedAccelNoAdv5(self):
