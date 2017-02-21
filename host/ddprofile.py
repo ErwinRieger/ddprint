@@ -20,7 +20,7 @@
 import math, os, types
 import ddprintutil as util
 
-from ddprintconstants import dimNames
+from ddprintconstants import dimNames, A_AXIS, B_AXIS
 
 ####################################################################################################
 #
@@ -103,6 +103,16 @@ class PrinterProfile(ProfileBase):
         return cls._single
 
     @classmethod
+    def overrideEJerk(cls, jerk):
+        cls.get().values["axes"]["A"]["jerk"] = jerk
+        cls.get().values["axes"]["B"]["jerk"] = jerk
+
+    @classmethod
+    def overrideEAccel(cls, accel):
+        cls.get().values["MaxAxisAcceleration"][A_AXIS] = accel
+        cls.get().values["MaxAxisAcceleration"][B_AXIS] = accel
+
+    @classmethod
     def getValues(cls):
         return cls.get().values
 
@@ -131,8 +141,8 @@ class PrinterProfile(ProfileBase):
         return float(cls.getValues()["RetractLength"])
 
     @classmethod
-    def getMaxAxxisAcceleration(cls):
-        accel = cls.getValues()["MaxAxxisAcceleration"]
+    def getMaxAxisAcceleration(cls):
+        accel = cls.getValues()["MaxAxisAcceleration"]
         return accel
 
 ####################################################################################################

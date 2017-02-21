@@ -882,7 +882,7 @@ class TravelMove(RealMove):
     def getMaxAllowedAccelVectorNoAdv5(self):
 
         accelVector = self.direction5.scale(_MAX_ACCELERATION)
-        return abs(accelVector.constrain(PrinterProfile.getMaxAxxisAcceleration()) or accelVector)
+        return abs(accelVector.constrain(PrinterProfile.getMaxAxisAcceleration()) or accelVector)
 
     # Note: always positive
     def getMaxAllowedAccelNoAdv5(self):
@@ -980,9 +980,6 @@ class PrintMove(RealMove):
         # xxx rework accel, store default xyz and eaccel, make start- and eaccel overridable
         self.startAccel = AccelOverride([av[:3], av[A_AXIS]], self.direction3)
         self.endAccel = AccelOverride([av[:3], av[A_AXIS]], self.direction3)
-
-        #xxx 
-        self.skipType = 0
 
     def isPrintMove(self):
         return True

@@ -157,13 +157,13 @@ class Advance (object):
 
         if self.kAdv:
 
-            advJerk = self.planner.jerk[A_AXIS]
+            advJerk = self.planner.getJerk()[A_AXIS]
             maxEAccel = advJerk / self.kAdv
 
             #
             # Limit E-acceleration by DEFAULT_ACCELERATION/DEFAULT_MAX_ACCELERATION
             #
-            max_axis_acceleration_noadv = PrinterProfile.getMaxAxxisAcceleration()
+            max_axis_acceleration_noadv = PrinterProfile.getMaxAxisAcceleration()
             # print "ADV: max E-acceleration:", maxEAccel, ", unlimited accel vector: ", max_axis_acceleration_noadv, " [mm/s²]"
             maxEAccel = min(maxEAccel, max_axis_acceleration_noadv[A_AXIS])
 
@@ -174,7 +174,7 @@ class Advance (object):
 
         else:
 
-            return PrinterProfile.getMaxAxxisAcceleration()
+            return PrinterProfile.getMaxAxisAcceleration()
 
     # Compensation of feeder slip
     def eComp(self, vExtruder):
@@ -278,7 +278,7 @@ class Advance (object):
         # Sanity check
         for move in path:
             # move.pprint("sanicheck")
-            move.sanityCheck(self.planner.jerk)
+            move.sanityCheck(self.planner.getJerk())
         """
 
         # Step 2: join moves backwards
@@ -287,7 +287,7 @@ class Advance (object):
         """
         # Sanity check
         for move in path:
-            move.sanityCheck(self.planner.jerk)
+            move.sanityCheck(self.planner.getJerk())
         """
 
         # Step 3: plan acceleration
@@ -314,7 +314,7 @@ class Advance (object):
         # """
         # Sanity check
         for move in path:
-            move.sanityCheck(self.planner.jerk)
+            move.sanityCheck(self.planner.getJerk())
         # """
         # assert(0)
 
@@ -1382,7 +1382,7 @@ class Advance (object):
 
         if (move.advanceData.startSplits + move.advanceData.endSplits) == 0:
 
-            move.sanityCheck(self.planner.jerk)
+            move.sanityCheck(self.planner.getJerk())
 
             esteps = move.advanceData.estepSum()
             # if esteps:

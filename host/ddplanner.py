@@ -332,13 +332,6 @@ class Planner (object):
         self.printer = Printer.get()
         # self.parser = UM2GcodeParser.get()
 
-        jerk = []
-        for dim in dimNames:
-            jerk.append(PrinterProfile.getValues()['axes'][dim]['jerk'])
-
-        self.jerk = Vector(jerk)
-        self.gui.log("Jerk vector: ", self.jerk)
-
         self.zeroPos = util.MyPoint()
 
         #
@@ -397,6 +390,18 @@ class Planner (object):
     @classmethod
     def get(cls):
         return cls.__single
+
+    def getJerk(self):
+
+        jerk = []
+        for dim in dimNames:
+            jerk.append(PrinterProfile.getValues()['axes'][dim]['jerk'])
+
+        # self.jerk = Vector(jerk)
+        # self.gui.log("Jerk vector: ", self.jerk)
+        # self.gui.log("Jerk vector: ", jerk)
+
+        return jerk
 
     def getHomePos(self):
 
@@ -506,23 +511,20 @@ class Planner (object):
         
     def planTravelPath(self, path):
 
-        # old ################################################################
-        """
-        """
-        # end old ################################################################
-
         if debugMoves:
             print "***** Start planTravelPath() *****"
 
+        jerk = self.getJerk()
+
         # Set startspeed of first move
-        path[0].setPlannedJerkStartSpeed(self.jerk, "planTravelPath() first move")
+        path[0].setPlannedJerkStartSpeed(jerk, "planTravelPath() first move")
 
         prevMove = path[0]
 
         # Step 1: join moves forward
         for move in path[1:]:
         
-            util.joinTravelMoves(prevMove, move, self.jerk)
+            util.joinTravelMoves(prevMove, move, jerk)
             prevMove = move
 
         for move in path:
@@ -536,7 +538,7 @@ class Planner (object):
         allowedAccel5 = lastMove.getMaxAllowedAccelNoAdv5()
         maxEndSpeed = util.vAccelPerDist(lastMove.startSpeed.speed().feedrate5(), allowedAccel5, lastMove.distance5)
 
-        v = lastMove.getJerkSpeed(self.jerk) or lastMove.topSpeed.speed()
+        v = lastMove.getJerkSpeed(jerk) or lastMove.topSpeed.speed()
 
         endSpeed = lastMove.endSpeed.speed()
         endSpeed.setSpeed(min(v.feedrate5(), maxEndSpeed))
@@ -545,7 +547,7 @@ class Planner (object):
         """
         # Sanity check
         for move in path:
-            move.sanityCheck(self.jerk)
+            move.sanityCheck(jerk)
         """
 
         # Step 2: join moves backwards
@@ -554,7 +556,7 @@ class Planner (object):
         """
         # Sanity check
         for move in path:
-            move.sanityCheck(self.jerk)
+            move.sanityCheck(jerk)
         """
 
         # Step 3: plan acceleration
@@ -563,7 +565,7 @@ class Planner (object):
 
         # Sanity check
         for move in path:
-            move.sanityCheck(self.jerk)
+            move.sanityCheck(jerk)
 
         # Step 4: plan steps and stream moves to printer
         if debugMoves:
@@ -752,6 +754,8 @@ class Planner (object):
 
         deltaStartSpeedS = move.topSpeed.speed().feedrate - startSpeedS
 
+        maxAccel = PrinterProfile.getMaxAxisAcceleration()
+
         if deltaStartSpeedS:
 
             ta = deltaStartSpeedS / allowedAccel
@@ -761,8 +765,8 @@ class Planner (object):
             deltaSpeedV = move.direction5.scale(deltaStartSpeedS)
             for dim in range(5):
                 dimAccel = abs(deltaSpeedV[dim]) / ta
-                if (dimAccel / MAX_AXIS_ACCELERATION_NOADV[dim]) > 1.001:
-                    print "dim %d verletzt max accel: " % dim, dimAccel, " > ", MAX_AXIS_ACCELERATION_NOADV[dim]
+                if (dimAccel / maxAccel[dim]) > 1.001:
+                    print "dim %d verletzt max accel: " % dim, dimAccel, " > ", maxAccel[dim]
                     assert(0)
             #end debug
 
@@ -785,8 +789,8 @@ class Planner (object):
             deltaSpeedV = move.direction5.scale(deltaEndSpeedS)
             for dim in range(5):
                 dimDecel = abs(deltaSpeedV[dim]) / tb  
-                if (dimDecel / MAX_AXIS_ACCELERATION_NOADV[dim]) > 1.001:
-                    print "dim %d verletzt max accel: " % dim, dimDecel, " [mm/s] > ", MAX_AXIS_ACCELERATION_NOADV[dim], " [mm/s]"
+                if (dimDecel / maxAccel[dim]) > 1.001:
+                    print "dim %d verletzt max accel: " % dim, dimDecel, " [mm/s] > ", maxAccel[dim], " [mm/s]"
                     assert(0)
             # end debug
 
@@ -899,8 +903,10 @@ class Planner (object):
 
         if dispS == emptyVector5:
 
-            print "Empty move..."
-            print "***** End planTravelSteps() *****"
+            if debugMoves:
+                print "Empty move..."
+                print "***** End planTravelSteps() *****"
+
             self.stepRounders.rollback()
             return
 
