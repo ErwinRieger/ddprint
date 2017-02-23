@@ -135,7 +135,7 @@ def calibrateFilSensor(args, parser):
     startPos = parser.getPos()[util.A_AXIS]
 
     calFile = open("calibrateFilSensor.json", "w")
-    calFile.write("    filSensorCalibration = [\n")
+    calFile.write('{\n    "filSensorCalibration": [\n')
 
     calValues = []
 
@@ -243,6 +243,7 @@ plot "-" using 1:2 with linespoints title "TargetSpeed", \\
 
     calFile.write(",\n".join(map(lambda tup: "        [%f, %f]" % tup, calValues)))
     calFile.write("\n    ]\n")
+    calFile.write("}\n")
     calFile.close()
 
     printer.sendPrinterInit()
