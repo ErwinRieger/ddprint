@@ -1250,8 +1250,10 @@ void Printer::cmdGetStatus() {
 
     // Flowrate sensor
 #if defined(HASFILAMENTSENSOR)
-    txBuffer.sendResponseInt16(filamentSensor.targetSpeed.value());
+    // txBuffer.sendResponseInt16(filamentSensor.targetSpeed.value());
+    txBuffer.sendResponseInt16(filamentSensor.targetSpeed);
     txBuffer.sendResponseInt16(filamentSensor.actualSpeed.value());
+    // txBuffer.sendResponseInt16(filamentSensor.actualSpeed);
 #else
     txBuffer.sendResponseInt16(0);
     txBuffer.sendResponseInt16(0);
@@ -1778,7 +1780,6 @@ FWINLINE void loop() {
 
     // Timer for slow running tasks (temp, encoder)
     static unsigned long timer10mS = millis();
-    // static unsigned long timer50mS = millis();
     static unsigned long timer100mS = millis();
 
     if (printer.printerState == Printer::StateStart) {
@@ -1800,7 +1801,7 @@ FWINLINE void loop() {
         }
     }
 
-    if ((loopTS - timer10mS) > 10) { // Every 10 mS
+    if ((loopTS - timer10mS) >= 10) { // Every 10 mS
 
         // Check hardware and software endstops:
         if (printer.moveType == Printer::MoveTypeNormal) {
@@ -1848,7 +1849,12 @@ FWINLINE void loop() {
         //
         tempControl.Run();
 
-        if ((loopTS - timer100mS) > 100) { // Every 100 mS
+#if defined(HASFILAMENTSENSOR)
+        // Read filament sensor
+        filamentSensor.run();
+#endif
+
+        if ((loopTS - timer100mS) >= 100) { // Every 100 mS
 
             //
             // Control heater 
@@ -1857,10 +1863,10 @@ FWINLINE void loop() {
 
             printer.checkMoveFinished();
 
-#if defined(HASFILAMENTSENSOR)
-            // Read filament sensor
-            filamentSensor.run();
-#endif
+// #if defined(HASFILAMENTSENSOR)
+            // // Read filament sensor
+            // filamentSensor.run();
+// #endif
 
             timer100mS = loopTS;
         }
