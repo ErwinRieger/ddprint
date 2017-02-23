@@ -1,4 +1,24 @@
 
+/*
+* This file is part of ddprint - a direct drive 3D printer firmware.
+* 
+* Copyright 2015 erwin.rieger@ibrieger.de
+* 
+* ddprint is free software: you can redistribute it and/or modify
+* it under the terms of the GNU General Public License as published by
+* the Free Software Foundation, either version 3 of the License, or
+* (at your option) any later version.
+* 
+* ddprint is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU General Public License for more details.
+* 
+* You should have received a copy of the GNU General Public License
+* along with ddprint.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
+
 #include <Arduino.h>
 
 #include "ddprint.h"
@@ -9,6 +29,8 @@
 #include "ddserial.h"
 #include "ddcommands.h"
 #include "ddlcd.h"
+#include "ddmacro.h"
+#include "ddmisc.h"
 
 #if defined(ADNSFS)
     // #include "adns9800fwa4.h"
@@ -64,15 +86,21 @@ void FilamentSensorADNS9800::spiInit(uint8_t spiRate) {
 void FilamentSensorADNS9800::init() {
 
     yPos = 0;
+    lastYPos = 0;
     lastASteps = current_pos_steps[E_AXIS];
-    lastTS = millis();
+    lastTSs = millis();
+    lastTSf = millis();
+
+    targetSpeed = 0;
+    // targetSpeed.reset();
+
+    // actualSpeed = 0;
+    actualSpeed.reset();
 
     // iRAvg = 0;
     // nRAvg = 0;
 
     // grip = 200;
-    // targetSpeed = 0;
-    // actualSpeed = 0;
 }
 
 uint8_t FilamentSensorADNS9800::readLoc(uint8_t addr){
@@ -100,9 +128,10 @@ void FilamentSensorADNS9800::writeLoc(uint8_t addr, uint8_t value) {
 #define FTIMER (F_CPU/8.0)
 #include <pins_arduino.h>
 
+// xxx retval not used
 int16_t FilamentSensorADNS9800::getDY() {
 
-    uint8_t mot = readLoc(REG_Motion);
+    uint8_t mot = readLoc(REG_Motion); // this freezes the X/Y registers until they are read
 
     if (mot & 0x80) { // Motion register
 
@@ -113,7 +142,6 @@ int16_t FilamentSensorADNS9800::getDY() {
 
         uint8_t y = readLoc(REG_Delta_Y_L); // Y_L
         int8_t yh = readLoc(REG_Delta_Y_H);
-
 #endif
 
         int16_t dy = ((int16_t)yh << 8) | y;
@@ -139,40 +167,47 @@ void FilamentSensorADNS9800::run() {
 
     // Berechne soll flowrate, filamentsensor ist sehr ungenau bei kleiner geschwindigkeit.
 
+    CRITICAL_SECTION_START
     long astep = current_pos_steps[E_AXIS];
-    uint32_t ts = millis();
+    CRITICAL_SECTION_END
 
     int32_t ds = astep - lastASteps; // Requested extruded length
-    int32_t dy = getDY(); // Real extruded length
 
-    int32_t dt = ts - lastTS;
+    // Note: Konstante 50 steps wird auch in ddtest.py:calibrateFilSensor() verwendet.
+    if (ds > 50) {
 
-    // rAvgS[iRAvg] = ds;
-    // rAvg[iRAvg++] = dy;
+        uint32_t ts = micros();
+        int32_t dt = ts - lastTSs;
 
-    // if (iRAvg == RAVGWINDOW)
-        // iRAvg = 0;
+        // i16          = int         / int
+        // int16_t tgtSpeed = (ds * (100000000/AXIS_STEPS_PER_MM_E)) / dt;
+        // targetSpeed.addValue(tgtSpeed);
+        targetSpeed = (ds * (100000000/AXIS_STEPS_PER_MM_E)) / dt;
 
-    // if (nRAvg < RAVGWINDOW)
-        // nRAvg++;
+        lastTSs = ts;
+        lastASteps = astep;
+    }
 
-    // int32_t ssum = 0;
-    // int32_t rsum = 0;
-    // for (int i=0; i<nRAvg; i++) {
-        // ssum += rAvgS[i];
-        // rsum += rAvg[i];
-    // }
+    getDY();
+    ds = yPos - lastYPos; // Real extruded length
 
-    // i16          = int         / int
-    // targetSpeed = (ssum*100000) / ((int32_t)nRAvg * AXIS_STEPS_PER_MM_E * dt);
-    int16_t tgtSpeed = (ds * 100000) / (AXIS_STEPS_PER_MM_E * dt);
-    targetSpeed.addValue(tgtSpeed);
+    if (ds > 50) {
 
-    // i16          = int         / float
-    // actualSpeed = (rsum*100000) / (nRAvg * FS_STEPS_PER_MM * dt);
-    int16_t actSpeed = (dy * 100000) / (FS_STEPS_PER_MM * dt);
-    actualSpeed.addValue(actSpeed);
+        uint32_t ts = micros();
+        int32_t dt = ts - lastTSf;
 
+        // i16          = int         / float
+        int16_t actSpeed = (ds * (100000000/FS_STEPS_PER_MM)) / dt;
+        actualSpeed.addValue(actSpeed);
+        // actualSpeed = (ds * (100000000/FS_STEPS_PER_MM)) / dt;
+
+        lastTSf = ts;
+        lastYPos = yPos;
+    }
+
+    // xxx falls limiter wieder aktiviert werden soll, so muss die kalibrierungstabelle vom host geladen und hier
+    // bentzt werden.
+    /*
     if (feedrateLimiterEnabled && (actualSpeed.value() > 300) && fillBufferTask.synced() && stepBuffer.synced()) { // 3mm/s bzw. 7.2mm³/s
 
         int16_t grip = ((int32_t)actualSpeed.value()*100) / targetSpeed.value();
@@ -223,9 +258,7 @@ void FilamentSensorADNS9800::run() {
             }
         }
     }
-
-    lastASteps = astep;
-    lastTS = ts;
+    */
 }
 
 void FilamentSensorADNS9800::reset(){

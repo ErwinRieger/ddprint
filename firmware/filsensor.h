@@ -1,5 +1,25 @@
 
 /*
+* This file is part of ddprint - a direct drive 3D printer firmware.
+* 
+* Copyright 2015 erwin.rieger@ibrieger.de
+* 
+* ddprint is free software: you can redistribute it and/or modify
+* it under the terms of the GNU General Public License as published by
+* the Free Software Foundation, either version 3 of the License, or
+* (at your option) any later version.
+* 
+* ddprint is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU General Public License for more details.
+* 
+* You should have received a copy of the GNU General Public License
+* along with ddprint.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
+
+/*
  * Parts of this code come from https://github.com/mrjohnk/ADNS-9800
  */
 
@@ -11,11 +31,10 @@
 
 #if defined(ADNSFS)
 
-    // #define FSFACTOR 0.73
-    // #define FS_STEPS_PER_MM ((8200.0*FSFACTOR)/25.4)
-
-    // calibrateFilSensor
-    #define FS_STEPS_PER_MM 265
+    // See also: calibrateFilSensor function of host part.
+    // #define FS_STEPS_PER_MM 265
+    // 8200.0/25.4 = 322.8
+    #define FS_STEPS_PER_MM 323
 #endif
 
 #if defined(BournsEMS22AFS)
@@ -75,12 +94,9 @@
 #define REG_Pixel_Burst                          0x64
 
 
-// Window size running average filament speed
-// #define RAVGWINDOW 3
-// #define RAVGWINDOW 5
-
+#if 0
 // Weight for exponential filter of e-speed [percent]
-#define ESpeedWeight 0.25
+#define ESpeedWeight 0.33
 
 class SpeedExpoFilter {
 
@@ -105,25 +121,53 @@ class SpeedExpoFilter {
 
     void reset() { current = 0; }
 };
+#endif
+
+// Window size running average filament speed
+#define RAVGWINDOW 3
+
+class RunninAvg {
+
+    int16_t values[RAVGWINDOW];
+    uint8_t i;
+    uint8_t n;
+    int16_t avg;
+
+  public:
+
+    RunninAvg() {
+        i = n = 0;
+        avg = 0;
+    }
+
+    inline void addValue(int16_t v) {
+
+        values[i++] = v;
+        if (i == RAVGWINDOW)
+            i = 0;
+        if (n < RAVGWINDOW)
+            n++;
+
+        avg = 0;
+        for (uint8_t j=0; j<n; j++)
+            avg += values[j];
+        avg /= n;
+    }
+
+    inline int16_t value() { return avg; }
+
+    void reset() { n = 0; avg = 0;}
+};
 
 /*
  * Inteface to a ADNS9800 'Mousesensor'
  */
 class FilamentSensorADNS9800 {
 
+        uint32_t lastTSs;
         int32_t lastASteps;
-        uint32_t lastTS;
-
-        // Running average of stepper speed
-        // float rAvgS[RAVGWINDOW];
-        // int16_t rAvgS[RAVGWINDOW];
-
-        // Running average measured filament speed
-        // float rAvg[RAVGWINDOW];
-        // int16_t rAvg[RAVGWINDOW];
-
-        // uint8_t iRAvg; // index
-        // uint8_t nRAvg; // # of values
+        uint32_t lastTSf;
+        int32_t lastYPos;
 
         void spiInit(uint8_t spiRate);
         uint8_t readLoc(uint8_t addr);
@@ -140,12 +184,15 @@ class FilamentSensorADNS9800 {
         int32_t yPos;
 
         // Measured stepper speed [0.01 mm/s]
-        // int16_t targetSpeed;
-        SpeedExpoFilter targetSpeed;
+        int16_t targetSpeed;
+        // SpeedExpoFilter targetSpeed;
 
         // Measured filament speed [0.01 mm/s]
+        // SpeedExpoFilter actualSpeed;
+
+        // Running average measured filament speed
+        RunninAvg actualSpeed;
         // int16_t actualSpeed;
-        SpeedExpoFilter actualSpeed;
 
         FilamentSensorADNS9800();
         void init();
