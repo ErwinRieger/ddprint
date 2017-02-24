@@ -30,7 +30,6 @@
 #include "ddcommands.h"
 #include "ddlcd.h"
 #include "ddmacro.h"
-#include "ddmisc.h"
 
 #if defined(ADNSFS)
     // #include "adns9800fwa4.h"
