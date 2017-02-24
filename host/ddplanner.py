@@ -221,16 +221,7 @@ class PathData (object):
             self.time = 0
             # Head move distance sum or extrusion volume, extruding moves only
             self.extrusionAmount = 0
-            self.lastTemp = MatProfile.getHotendBaseTemp()
-
-            # # Extrusionspeed where autotemp increase starts
-            # area04 = pow(0.4, 2)*math.pi/4
-            # self.ExtrusionAmountLow = MatProfile.getBaseExtrusionRate() * (NozzleProfile.getArea() / area04)
-
-            # Max flowrate at 200°C
-            # f = MatProfile.getAutoTempFactor()
-            # self.ExtrusionAmountLow = MatProfile.getBaseExtrusionRate(NozzleProfile.getSize()) + (MatProfile.getHotendBaseTemp() - 200) / f
-            # print "flowrate at 200°C: ", MatProfile.getBaseExtrusionRate(NozzleProfile.getSize()), self.ExtrusionAmountLow
+            self.lastTemp = MatProfile.getHotendStartTemp()
 
         # Some statistics
         self.maxExtrusionRate = MaxExtrusionRate()
@@ -253,16 +244,6 @@ class PathData (object):
             # Compute temperature for this segment and add tempcommand into the stream
             # Average speed:
             avgSpeed = self.extrusionAmount / self.time
-
-            """
-            # UseExtrusionAutoTemp: Adjust temp between Tbase and HotendMaxTemp, if speed is greater than 5 mm³/s
-            newTemp = MatProfile.getHotendBaseTemp() # Extruder 1 temp
-
-            if avgSpeed > self.ExtrusionAmountLow:
-                f = MatProfile.getAutoTempFactor()
-                newTemp += (avgSpeed - self.ExtrusionAmountLow) * f
-                newTemp = int(min(newTemp, MatProfile.getHotendMaxTemp()))
-            """
 
             newTemp = MatProfile.getTempForFlowrate(avgSpeed, NozzleProfile.getSize())
 
