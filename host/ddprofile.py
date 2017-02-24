@@ -98,6 +98,10 @@ class PrinterProfile(ProfileBase):
 
         super(PrinterProfile, self).__init__(PrinterProfile, name)
 
+        self.calTable = self.getValues()["filSensorCalibration"]
+        self.minFlowRate = self.calTable[0][0]
+        self.maxFlowRate = self.calTable[-1][0]
+
     @classmethod
     def get(cls):
         return cls._single
@@ -145,6 +149,37 @@ class PrinterProfile(ProfileBase):
         accel = cls.getValues()["MaxAxisAcceleration"]
         return accel
 
+    def getFlowrateFromSensorRate(self, fr):
+
+        if fr < self.minFlowRate:
+            # print "minflowrate:", fr, self.calTable[0][1], fr * self.calTable[0][1]
+            return fr * self.calTable[0][1]
+
+        if fr >= self.maxFlowRate:
+            # print "maxflowrate:", fr, self.calTable[-1][1], fr * self.calTable[-1][1]
+            return fr * self.calTable[-1][1]
+
+        index = int(fr/0.5) - 1
+
+        (fr1, f1) = self.calTable[index]
+        (fr2, f2) = self.calTable[index+1]
+
+        print "fr1, fr, fr2", fr1, fr, fr2
+
+        assert(fr >= fr1 and fr < fr2)
+
+        dx = fr2 - fr1
+        assert(dx == 0.5)
+
+        dy = f2 - f1
+        a = dy / dx
+
+        f = f1 + a * (fr-fr1)
+
+        print "a, f1, f, f2", a, f1, f, f2
+        print "interpol:", fr, f, fr*f
+        return fr*f
+
 ####################################################################################################
 #
 # To access tempearture curve data
@@ -157,12 +192,16 @@ class TempCurve:
         self.curveList = curveList
         
         (minTemp, minFlowrate) = curveList[0]
-        self.minTemp = int(minTemp)
-        self.minFlowrate = int(minFlowrate*10)
+        # self.minTemp = int(minTemp)
+        self.minTemp = minTemp
+        # self.minFlowrate = int(minFlowrate*10)
+        self.minFlowrate = minFlowrate
 
         (maxTemp, maxFlowrate) = curveList[-1]
-        self.maxTemp = int(maxTemp)
-        self.maxFlowrate = int(maxFlowrate*10)
+        # self.maxTemp = int(maxTemp)
+        self.maxTemp = maxTemp
+        # self.maxFlowrate = int(maxFlowrate*10)
+        self.maxFlowrate = maxFlowrate
 
         # Init dict for faster lookup
         self.tempCurveDict = {}
@@ -170,7 +209,7 @@ class TempCurve:
 
             key = int(frate*10)
             if key not in self.tempCurveDict:
-                self.tempCurveDict[key] = int(temp)
+                self.tempCurveDict[key] = temp
 
         print"tempDict:", self.tempCurveDict
 
@@ -180,25 +219,31 @@ class TempCurve:
         if key in self.tempCurveDict:
             return self.tempCurveDict[key]
 
-        if key <= self.minFlowrate:
+        if flowrate <= self.minFlowrate:
             return self.minTemp
 
-        if key >= self.maxFlowrate:
+        if flowrate >= self.maxFlowrate:
             return self.maxTemp
 
-        print "flowrate not found:", key
+        print "flowrate not found:", flowrate, key
 
         # Linear interpolation
         for i in range(len(self.curveList)-1):
+
             temp1, fr1 = self.curveList[i]
             temp2, fr2 = self.curveList[i+1]
 
-            k1 = int(fr1*10)
-            k2 = int(fr2*10)
-            if key > k1 and key < k2:
-                print "found range:", k1, key, k2
+            # k1 = int(fr1*10)
+            # k2 = int(fr2*10)
 
-                t = int( temp1 + ((temp2 - temp1) / (k2 - k1)) * (key - k1) )
+            if flowrate >= fr1 and flowrate < fr2 :
+                # print "found range:", k1, key, k2
+                print "found range:", fr1, flowrate, fr2
+
+                dx = fr2 - fr1
+                dy = temp2 - temp1
+
+                t = temp1 + (dy / dx) * (flowrate - fr1)
 
                 print "interplated temp: ", t
                 self.tempCurveDict[key] = t
@@ -211,29 +256,28 @@ class TempCurve:
     # and therefore not optimized.
     def lookupTemp(self, temp):
 
-        assert(type(temp) == types.IntType)
-
         if temp <= self.minTemp:
             print "match mintemp:", temp, self.minTemp
-            return self.minFlowrate / 10
+            return self.minFlowrate
 
         if temp >= self.maxTemp:
             print "match maxtemp:", temp, self.maxTemp
-            return self.maxFlowrate / 10
+            return self.maxFlowrate
 
         print "temp not found:", temp
 
         # Linear interpolation
         for i in range(len(self.curveList)-1):
+
             temp1, fr1 = self.curveList[i]
             temp2, fr2 = self.curveList[i+1]
 
             t1 = int(temp1)
             t2 = int(temp2)
 
-            if temp >= t1 and temp <= t2:
+            if temp >= t1 and temp < t2:
 
-                fr = int( fr1 + ((fr2 - fr1) / (t2 - t1)) * (temp - t1) )
+                fr = fr1 + ((fr2 - fr1) / (t2 - t1)) * (temp - t1)
 
                 print "interplated feedrate: ", fr
                 return fr
@@ -273,10 +317,13 @@ class MatProfile(ProfileBase):
     def getMatDiameter(cls):
         return float(cls.getValues()["material_diameter"])
 
-    # XXX use first entry of temptable here...
     @classmethod
-    def getHotendBaseTemp(cls):
-        return int(cls.getValues()["hotendBaseTemp"])
+    def getHotendBaseTemp(cls, nozzleDiam):
+        return  cls.get().getTempCurve(nozzleDiam).minTemp
+
+    @classmethod
+    def getHotendStartTemp(cls):
+        return int(cls.getValues()["hotendStartTemp"])
 
     @classmethod
     def getHotendMaxTemp(cls):
@@ -326,12 +373,7 @@ class MatProfile(ProfileBase):
 
     def _getTempForFlowrate(self, flowrate, nozzleDiam):
 
-        if nozzleDiam not in self.tempCurves:
-
-            tempCurve = TempCurve(self.getValues()["tempFlowrateCurve_%d" % (nozzleDiam*100)])
-            self.tempCurves[nozzleDiam] = tempCurve
-
-        tempCurve = self.tempCurves[nozzleDiam]
+        tempCurve = self.getTempCurve(nozzleDiam)
         return tempCurve.lookupFlowrate(flowrate)
 
     @classmethod
@@ -340,13 +382,17 @@ class MatProfile(ProfileBase):
 
     def _getFlowrateForTemp(self, temp, nozzleDiam):
 
+        tempCurve = self.getTempCurve(nozzleDiam)
+        return tempCurve.lookupTemp(temp)
+
+    def getTempCurve(self, nozzleDiam):
+
         if nozzleDiam not in self.tempCurves:
 
             tempCurve = TempCurve(self.getValues()["tempFlowrateCurve_%d" % (nozzleDiam*100)])
             self.tempCurves[nozzleDiam] = tempCurve
 
-        tempCurve = self.tempCurves[nozzleDiam]
-        return tempCurve.lookupTemp(temp)
+        return self.tempCurves[nozzleDiam]
 
 ####################################################################################################
 #
@@ -400,6 +446,17 @@ class NozzleProfile(ProfileBase):
 
 
 
+if __name__ == "__main__":
+
+    printerProfile = PrinterProfile("UM2.json")
+
+    import pprint
+    print "table:", pprint.pprint(printerProfile.calTable)
+
+    for sa in [0.25, 1.25, 10.25, 20.25]:
+
+        print "flowrate for %f: %f" % (sa, printerProfile.getFlowrateFromSensorRate(sa))
+        print
 
 
 
