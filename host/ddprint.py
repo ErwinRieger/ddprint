@@ -576,13 +576,13 @@ def main():
         util.commonInit(args, parser)
 
         t0 = MatProfile.getBedTemp()
-        t1 = MatProfile.getHotendBaseTemp()
+        t1 = MatProfile.getHotendStartTemp()
 
         # Send heat up  command
         print "\nPre-Heating bed...\n"
         printer.heatUp(HeaterBed, t0)
         print "\nPre-Heating extruder...\n"
-        printer.heatUp(HeaterEx1, 150)
+        printer.heatUp(HeaterEx1, t1/2)
 
         # Send printing moves
         # f = open(args.gfile)

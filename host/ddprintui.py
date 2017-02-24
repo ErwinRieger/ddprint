@@ -233,7 +233,7 @@ class MainForm(npyscreen.Form):
             return
 
         self.mat_t0 = MatProfile.getBedTemp()
-        self.mat_t1 = MatProfile.getHotendBaseTemp()
+        self.mat_t1 = MatProfile.getHotendStartTemp()
 
         # self.fn.set_value(self.args.file)
         self.guiQueue.put(SyncCall(self.fn.set_value, self.args.file))
