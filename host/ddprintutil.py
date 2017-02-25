@@ -1947,7 +1947,20 @@ plot "-" using 1:2 with linespoints title "Target Flowrate", \\
         writeGnuplot(args.tstart, dataSet)
         writeJson(dataSet)
 
+    #
+    # Retract
+    #
+    printer.sendPrinterInit()
+    parser.execute_line("G10")
+    planner.finishMoves()
+
+    printer.sendCommandParamV(CmdMove, [MoveTypeNormal])
+    printer.sendCommand(CmdEOT)
+
+    printer.waitForState(StateIdle)
+
     printer.coolDown(HeaterEx1)
+
     # Enable flowrate limit
     printer.sendCommandParamV(CmdEnableFRLimit, [packedvalue.uint8_t(1)])
 
