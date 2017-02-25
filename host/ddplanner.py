@@ -219,9 +219,9 @@ class PathData (object):
 
             # Time needed to complete the moves, extruding moves only
             self.time = 0
-            # Head move distance sum or extrusion volume, extruding moves only
-            self.extrusionAmount = 0
             self.lastTemp = MatProfile.getHotendStartTemp()
+            # Max extrusion speed of this interval
+            self.maxEspeed = 0
 
         # Some statistics
         self.maxExtrusionRate = MaxExtrusionRate()
@@ -236,20 +236,18 @@ class PathData (object):
         # Collect moves and sum up path time
         self.time += move.accelData.getTime()
 
-        # Sum extrusion volume
-        self.extrusionAmount += move.getExtrusionVolume(MatProfile)
+        # Determine max extrusion speed
+        self.maxEspeed = max(self.maxEspeed, move.topSpeed.speed().eSpeed)
 
         if self.time >= ATInterval:
 
             # Compute temperature for this segment and add tempcommand into the stream
-            # Average speed:
-            avgSpeed = self.extrusionAmount / self.time
-
-            newTemp = MatProfile.getTempForFlowrate(avgSpeed, NozzleProfile.getSize())
+            maxExtrusionRate = self.maxEspeed * MatProfile.getMatArea()
+            newTemp = int(MatProfile.getTempForFlowrate(maxExtrusionRate, NozzleProfile.getSize()))
 
             if newTemp != self.lastTemp: #  and self.mode != "pre":
 
-                print "Newtemp:", avgSpeed, newTemp
+                print "Newtemp:", maxExtrusionRate, newTemp
 
                 # Schedule target temp command
                 self.planner.addSynchronizedCommand(
@@ -262,11 +260,11 @@ class PathData (object):
 
             if debugAutoTemp:
                 print "AutoTemp: collected moves with %.2f s duration." % self.time
-                print "AutoTemp: amount: %.2f mm³, avg extrusion rate: %.2f mm³/s." % (self.extrusionAmount, avgSpeed)
+                print "AutoTemp: max. extrusion rate: %.2f mm³/s." % maxExtrusionRate
                 print "AutoTemp: new temp: %d." % newTemp
-                self.maxExtrusionRate.avgStat(avgSpeed)
+                self.maxExtrusionRate.avgStat(maxExtrusionRate)
 
-            self.time = self.extrusionAmount = 0 # Reset path time
+            self.time = self.maxEspeed = 0 # Reset path time
 
 #####################################################################
 
