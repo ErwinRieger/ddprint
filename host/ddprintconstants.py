@@ -107,4 +107,18 @@ AdvanceMinRamp = 0.05
 # AdvanceMinRamp = 0.1
 
 
+############################################################################
+#
+# Auto-temp algorithm
+#
+# Safety margin for temperature calculations and speed limiter. We assume
+# a bit more flowrate to get more temperature.
+AutotempSafetyMargin = 0.1 # 10% margin
+
+
+
+
+
+
+
 

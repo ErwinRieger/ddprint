@@ -241,9 +241,9 @@ class PathData (object):
 
         if self.time >= ATInterval:
 
-            # Compute temperature for this segment and add tempcommand into the stream
+            # Compute temperature for this segment and add tempcommand into the stream. 
             maxExtrusionRate = self.maxEspeed * MatProfile.getMatArea()
-            newTemp = int(MatProfile.getTempForFlowrate(maxExtrusionRate, NozzleProfile.getSize()))
+            newTemp = int(MatProfile.getTempForFlowrate(maxExtrusionRate * (1.0+AutotempSafetyMargin), NozzleProfile.getSize()))
 
             if newTemp != self.lastTemp: #  and self.mode != "pre":
 

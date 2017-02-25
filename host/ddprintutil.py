@@ -884,7 +884,7 @@ def insertFilament(args, parser, feedrate):
 
     printer.waitForState(StateIdle)
 
-    t1 = MatProfile.getHotendBaseTemp()
+    t1 = args.t1 or MatProfile.getHotendBaseTemp()
     printer.heatUp(HeaterEx1, t1, wait=t1 - 5)
 
     print "\nInsert filament.\n"
@@ -935,7 +935,7 @@ def removeFilament(args, parser, feedrate):
 
     printer.waitForState(StateIdle)
 
-    t1 = MatProfile.getHotendBaseTemp()
+    t1 = args.t1 or MatProfile.getHotendBaseTemp()
     printer.heatUp(HeaterEx1, t1, wait=t1)
 
     # Etwas warten und filament vorwärts feeden um den retract-pfropfen einzuschmelzen
@@ -955,11 +955,9 @@ def retract(args, parser, doCooldown = True):
 
     commonInit(args, parser)
 
-    t1 = MatProfile.getHotendBaseTemp()
+    t1 = MatProfile.getHotendStartTemp()
     printer.heatUp(HeaterEx1, t1, wait=t1 - 5)
 
-    # hack
-    # parser.retracted = False
     parser.execute_line("G10")
 
     planner.finishMoves()
@@ -1544,7 +1542,7 @@ def genTempTable(planner):
 
         t = baseTemp + i*2
 
-        flowrate = MatProfile.getFlowrateForTemp(t, nozzleDiam)
+        flowrate = MatProfile.getFlowrateForTemp(t, nozzleDiam) / (1.0+AutotempSafetyMargin)
         espeed = flowrate / aFilament
         print "flowrate for temp %f: %f -> espeed %f" % (t, flowrate, espeed)
 
