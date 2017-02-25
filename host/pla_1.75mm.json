@@ -6,12 +6,6 @@
   "bedTemp"           : 65,
   "bedTempReduced"    : 60,
   "fanPercent"        : 100,
-  # Max extrusion rate at 200°C with a 0.40 mm nozzle [mm³/s]
-  # "baseExtrusionRate_40" : 1.75,
-  # Max extrusion rate at 200°C with a 0.80 mm nozzle [mm³/s]
-  # "baseExtrusionRate_80" : 7,
-  # xxx abhängig von düsen durchmesser?
-  # "extrusionAutoTempFactor" : 2.5,
   "kAdvance" : 0.4,
   "kFeederCompensation": 0.0125,
 
@@ -39,6 +33,7 @@
       [255.000000, 24.250000],
       [260.000000, 25.500000]
   ],
+
   # This is the temp-flowrate curve for a 0.8mm nozzle.
   # XXX dummy values, replace with measured ones
   "tempFlowrateCurve_40" : [
