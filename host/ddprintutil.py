@@ -1724,10 +1724,12 @@ plot "-" using 1:2 with linespoints title "Target Flowrate", \\
         gnuplotFile.write("pause mouse close")
         gnuplotFile.close()
 
+    nozzleSize = NozzleProfile.getSize()
+
     def writeJson(dataSet):
 
         jsonFile = open("temp-flowrate-curve.json", "w")
-        jsonFile.write('    "tempFlowrateCurve_%d": [\n' % (NozzleProfile.getSize()*100))
+        jsonFile.write('    "tempFlowrateCurve_%d": [\n' % (nozzleSize*100))
     
         temps = dataSet.keys()
         temps.sort()
@@ -1794,7 +1796,13 @@ plot "-" using 1:2 with linespoints title "Target Flowrate", \\
     printer.sendCommandParamV(CmdFanSpeed, [packedvalue.uint8_t(100)])
 
     # start with 1mm³/s
-    feedrate = 1 / aFilament
+    feedrate = 1.0 / aFilament
+    feedrateStep = 1.0
+    if nozzleSize <= 50:
+        # Start slower for smaller nozzles (0.4)
+        # Note: lowest feedrate about 0.51mm/s
+        # feedrate = 0.55 / aFilament
+        feedrateStep = 0.5
 
     twait = 0.01
 
@@ -1828,7 +1836,7 @@ plot "-" using 1:2 with linespoints title "Target Flowrate", \\
                 actT1 = printer.getTemp()[HeaterEx1]
 
             # Comput startup time
-            tStartup = getStartupTime(feedrate)
+            tStartup = getStartupTime(feedrate) * 2
             # Startup distance approx
             sStartup = feedrate * tStartup
 
@@ -1853,22 +1861,17 @@ plot "-" using 1:2 with linespoints title "Target Flowrate", \\
             printer.sendCommand(CmdEOT)
             printer.sendCommandParamV(CmdMove, [MoveTypeNormal])
 
-            # fractEwma = EWMA(0.1)
-            # frtargetEwma = EWMA(0.1)
-            # tempEwma = EWMA(0.1)
-            # tempEwma.setValue(t1)
             fractAvg = Average()
             frtargetAvg = Average()
             tempAvg = Average()
 
             status = printer.getStatus()
-            while status["targetExtrusionSpeed"] < 0.1 or status["actualExtrusionSpeed"] < 0.1:
+            while status["targetExtrusionSpeed"] < 0.01 or status["actualExtrusionSpeed"] < 0.01:
                 print "wait for startup..."
                 status = printer.getStatus()
                 time.sleep(0.01)
 
             t = time.time()
-            # while ratio > 0.8 and status["state"] != StateIdle:
             while status["state"] >= StateStart:
 
                 status = printer.getStatus()
@@ -1882,18 +1885,6 @@ plot "-" using 1:2 with linespoints title "Target Flowrate", \\
                     realsa = printerProfile.getFlowrateFromSensorRate(sa)
 
                     print "st: %f, sa: %f, corrected sa: %f" % (st, sa, realsa)
-
-                    """
-                    frtargetEwma.add(st)
-                    fractEwma.add(realsa)
-                    tempEwma.add(status["t1"])
-
-                    tAvg = frtargetEwma.value()
-                    aAvg = fractEwma.value()
-
-                    #if tAvg > 0:
-                    ratio = aAvg / tAvg
-                    """
 
                     frtargetAvg.add(st)
                     fractAvg.add(realsa)
@@ -1920,11 +1911,8 @@ plot "-" using 1:2 with linespoints title "Target Flowrate", \\
                 break
 
             # feedrate += 0.5
-            afr = 1 / (1 - minGrip)
-
-            # feedrate += 0.5
-
-            dfr = (ratio - minGrip) * afr + 0.1
+            afr = feedrateStep / (1 - minGrip)
+            dfr = (ratio - minGrip) * afr + 0.01
             print "new feedrate:", feedrate, feedrate + dfr
             feedrate += dfr
 
