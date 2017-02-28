@@ -1187,7 +1187,7 @@ def heatHotend(args, parser):
 
     printer.commandInit(args)
 
-    t1 = MatProfile.getHotendBaseTemp()
+    t1 = args.t1 or MatProfile.getHotendStartTemp()
 
     printer.heatUp(HeaterEx1, t1, wait=t1-5)
 

@@ -405,11 +405,15 @@ def initParser(args, mode=None, gui=None):
     # parser.setProfile(profile)
 
     # Create printer profile singleton instance
-    PrinterProfile(printerProfileName)
+    printerProfile = PrinterProfile(printerProfileName)
     # Create material profile singleton instance
     mat = MatProfile(args.mat, args.smat)
 
-    # Overwrite settings from profile with command line arguments:
+    # Overwrite settings from printer profile with command line arguments:
+    if args.retractLength:
+        printerProfile.override("RetractLength", args.retractLength)
+
+    # Overwrite settings from material profile with command line arguments:
     if args.t0:
         mat.override("bedTemp", args.t0)
     if args.t1:
@@ -453,6 +457,7 @@ def main():
     argParser.add_argument("-nc", dest="noCoolDown", action="store", type=bool, help="Debug: don't wait for heater cool down after print.", default=False)
 
     argParser.add_argument("-fr", dest="feedrate", action="store", type=float, help="Feedrate for move commands.", default=0)
+    argParser.add_argument("-rl", dest="retractLength", action="store", type=float, help="Retraction length, default comes from printer profile.", default=0)
 
     subparsers = argParser.add_subparsers(dest="mode", help='Mode: mon(itor)|print|store|reset|pre(process).')
 

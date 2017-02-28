@@ -85,6 +85,9 @@ class ProfileBase(object):
         print "\nERROR: Profile ", name, " not found"
         assert(0)
 
+    def override(self, key, value):
+        self.values[key] = value
+
 ####################################################################################################
 #
 # Printer profile, singleton
@@ -303,7 +306,7 @@ class MatProfile(ProfileBase):
 
     def override(self, key, value):
         assert(key != "material_diameter")
-        self.values[key] = value
+        ProfileBase.override(self, key, value)
 
     @classmethod
     def get(cls):
