@@ -528,7 +528,7 @@ def main():
 
     sp = subparsers.add_parser("getTemps", help=u"Get current temperatures (Bed, Extruder1, [Extruder2]).")
 
-    sp = subparsers.add_parser("getTempTable", help=u"Output temperature-speed table.")
+    sp = subparsers.add_parser("getTempTable", help=u"Get temperature-speed table from printer, print it to stdout and to /tmp/temptable_printer.txt.")
 
     sp = subparsers.add_parser("getStatus", help=u"Get current printer status.")
 

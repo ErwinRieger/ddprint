@@ -1564,12 +1564,12 @@ def genTempTable(planner):
 
 ####################################################################################################
 
-def nu_printTempTable(temp, tempTable):
+def printTempTable(temp, tempTable):
 
     of = open("/tmp/temptable_printer.txt", "w")
-    of.write("# xxx mat, nozzle, settings...\n")
-    of.write("# basetemp: %d, autoTempFactor: %f\n" % (temp, 0))
-    of.write("# temp rate steprate timer\n")
+    of.write("# XXX output mat, nozzle, settings...\n")
+    of.write("# Basetemp: %d\n" % temp)
+    of.write("# Columns: temp rate steprate timer\n")
 
     print "TempTable (basetemp: %d):" % temp
 
