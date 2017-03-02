@@ -417,7 +417,7 @@ def initParser(args, mode=None, gui=None):
     if args.t0:
         mat.override("bedTemp", args.t0)
     if args.t1:
-        mat.override("hotendBaseTemp", args.t1)
+        mat.override("hotendStartTemp", args.t1)
 
     nozzle = NozzleProfile(args.nozzle)
 

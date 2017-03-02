@@ -884,7 +884,7 @@ def insertFilament(args, parser, feedrate):
 
     printer.waitForState(StateIdle)
 
-    t1 = args.t1 or MatProfile.getHotendBaseTemp()
+    t1 = MatProfile.getHotendStartTemp()
     printer.heatUp(HeaterEx1, t1, wait=t1 - 5)
 
     print "\nInsert filament.\n"
@@ -935,7 +935,7 @@ def removeFilament(args, parser, feedrate):
 
     printer.waitForState(StateIdle)
 
-    t1 = args.t1 or MatProfile.getHotendBaseTemp()
+    t1 = MatProfile.getHotendStartTemp()
     printer.heatUp(HeaterEx1, t1, wait=t1)
 
     # Etwas warten und filament vorwärts feeden um den retract-pfropfen einzuschmelzen
@@ -1187,7 +1187,7 @@ def heatHotend(args, parser):
 
     printer.commandInit(args)
 
-    t1 = args.t1 or MatProfile.getHotendStartTemp()
+    t1 = MatProfile.getHotendStartTemp()
 
     printer.heatUp(HeaterEx1, t1, wait=t1-5)
 
