@@ -23,6 +23,7 @@
 # Enable Debugging
 #
 debugMoves = False
+debugAdvance = False
 debugAutoTemp = False
 
 #
