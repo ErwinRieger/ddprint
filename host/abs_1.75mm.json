@@ -1,0 +1,28 @@
+{
+  "material_diameter" : 1.75,
+  "flow"              : 100,
+  # xxx beware of initial temp overshot "hotendStartTemp"   : 220,
+  "hotendStartTemp"   : 205,
+  "hotendMaxTemp"     : 275,
+  "bedTemp"           : 105,
+  "bedTempReduced"    : 105,
+  "fanPercent"        : 100,
+  "kAdvance"          : 0.4,
+  "kFeederCompensation": 0.0125,
+  # Generic temp-flowrate table, this could/should be overridden
+  # by a specific material profile with a measured temp-flowrate curve.
+  # This table is used by the "auto-temp" algorithm to detemine the
+  # needed hotend temperature for a given flowrate.
+  # It is used by the firmware part to limit the printing speed if
+  # the temperature is to low.
+  # This is the temp-flowrate curve for a 0.8mm nozzle.
+  "tempFlowrateCurve_80" : [
+  ],
+
+  # This is the temp-flowrate curve for a 0.8mm nozzle.
+  # XXX dummy values, replace with measured ones
+  "tempFlowrateCurve_40" : [
+  ]
+}
+
+

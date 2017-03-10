@@ -4,7 +4,7 @@
   "hotendBaseTemp"    : 240,
   "hotendMaxTemp"     : 275,
   "bedTemp"           : 105,
-  "bedTempReduced"    : 95,
+  "bedTempReduced"    : 105,
   "fanPercent"        : 100,
   # Max extrusion rate at base temp [mm³] with a
   # 0.4mm nozzle
