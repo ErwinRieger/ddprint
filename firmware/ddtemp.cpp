@@ -30,6 +30,11 @@
 #include "fastio.h"
 #include "ddlcd.h"
 
+//
+// ADC is running with a clock of 125 khz. One ADC conversion needs 13 ADC clock cycles,
+// this gives us about 10khz max. sampling rate (one conversion is ~100 uS).
+//
+
 // Redundant definitions to avoid include of ddprint.h
 extern void watchdog_reset();
 extern void kill();
@@ -120,6 +125,8 @@ void TempControl::init() {
     eSum = 0;
     eAlt = 0;
 
+    pwmSum = 0;
+
     //
     // Timestamp of last pid computation
     //
@@ -155,9 +162,7 @@ bool TempControl::Run() {
     PT_WAIT_WHILE( ADCSRA & (1<<ADSC) );
 
     raw_temp_0_value = raw_temp_0_value - (raw_temp_0_value / OVERSAMPLENR) + ADC;
-    // printf("read hotend raw temp: %d\n", raw_temp_0_value);
-
-    current_temperature[0] = analog2temp(raw_temp_0_value, 0);
+    current_temperature[0] = tempFromRawADC(raw_temp_0_value);
 
     ////////////////////////////////
     // Handle heated bed 
@@ -181,14 +186,31 @@ bool TempControl::Run() {
     PT_WAIT_WHILE( ADCSRA & (1<<ADSC) );
 
     raw_temp_bed_value = raw_temp_bed_value - (raw_temp_bed_value / OVERSAMPLENR) + ADC;
-    // printf("read hotend raw temp: %d\n", raw_temp_bed_value);
-
-    current_temperature_bed = analog2tempBed(raw_temp_bed_value);
+    current_temperature_bed = tempFromRawADC(raw_temp_bed_value);
 
     PT_RESTART();
         
     // Not reached
     PT_END();
+}
+
+void TempControl::setTemp(uint8_t heater, uint16_t temp) {
+
+    if (heater == 0)
+        target_temperature_bed = temp;
+    else {
+
+        // Keep integral eSum if changing setpont from a
+        // already stable setpoint. Reset integral sum if
+        // we switch "from manual mode to automatic".
+        if (target_temperature[heater-1] == 0)
+            eSum = 0;
+
+        target_temperature[heater-1] = temp;
+
+        pwmSum = 0;
+        eAlt = 0;
+    }
 }
 
 void TempControl::heater() {
@@ -215,50 +237,62 @@ void TempControl::heater() {
             unsigned long ts = millis();
             float pid_dt = (ts - lastPidCompute) / 1000.0;
 
-            // Regelabweichung
+            // Regeldifferenz, grösser 0 falls temperatur zu klein
             float e = target_temperature[0] - current_temperature[0];
 
-            float ki = Ki * pid_dt;
-            // float kd = Kd / pid_dt;
+            eSum = constrain(
+                    eSum + e,
+                    -PID_DRIVE_MAX,
+                    PID_DRIVE_MAX);
 
             float pTerm = Kp * e;
 
-            // eSum += e;
-            eSum = constrain(eSum + e, -PID_INTEGRAL_DRIVE_MAX/ki, PID_INTEGRAL_DRIVE_MAX/ki);
+            float iTerm = Ki * pid_dt *eSum;
 
-            float iTerm = ki*eSum;
+            // float dTerm = Kd * (e - eAlt) / pid_dt;
+            float dTerm = 0;
+            if (target_temperature[0] > 0)
+                // dTerm = Kd * (e - eAlt) / pid_dt;
+                dTerm = Kd * (e - eAlt);
 
-            float dTerm = (Kd/pid_dt) * (e - eAlt);
+            // float pid_output = pTerm + iTerm + dTerm + 0.5;
+            // pwmSum += (pTerm + iTerm + dTerm) * pid_dt;
+            // pwmSum += (pTerm + iTerm) * pid_dt + dTerm;
+            pwmSum = constrain(
+                    pwmSum + (pTerm + iTerm) * pid_dt + dTerm,
+                    -PID_DRIVE_MAX,
+                    PID_DRIVE_MAX);
 
-            float pid_output = pTerm + iTerm + dTerm;
+            int32_t pid_output = pwmSum / pid_dt + 0.5;
 
-            if (pid_output > PID_MAX)
+            if (pid_output > PID_MAX) {
                 pid_output = PID_MAX;
-            else if (pid_output < 0)
-                pid_output = 0;
+            }
+            else if (pid_output < -PID_MAX) {
+                pid_output = -PID_MAX;
+            }
 
-            analogWrite(HEATER_0_PIN, (int)pid_output);
+            pwmSum -= pid_output * pid_dt;
+
+            analogWrite(HEATER_0_PIN, max(pid_output, 0));
 
             eAlt = e;
 
 #ifdef PID_DEBUG
-            static int dbgcount=0;
 
+            static int dbgcount=0;
+            
             if ((dbgcount++ % 10) == 0) {
 
-                SERIAL_ECHOPGM(" PIDDEBUG ");
-                SERIAL_ECHOPGM(": Input ");
-                SERIAL_ECHO(current_temperature[0]);
-                SERIAL_ECHOPGM(" pid_dt ");
-                SERIAL_ECHO(pid_dt);
-                SERIAL_ECHOPGM(" pTerm ");
-                SERIAL_ECHO(pTerm);
-                SERIAL_ECHOPGM(" iTerm ");
-                SERIAL_ECHO(iTerm);
-                SERIAL_ECHOPGM(" dTerm ");
-                SERIAL_ECHO(dTerm);
-                SERIAL_ECHOPGM(" Output ");
-                SERIAL_ECHOLN(pid_output);
+                txBuffer.sendResponseStart(RespUnsolicitedMsg);
+                txBuffer.sendResponseUint8(PidDebug);
+                txBuffer.sendResponseValue(pid_dt);
+                txBuffer.sendResponseValue(pTerm);
+                txBuffer.sendResponseValue(iTerm);
+                txBuffer.sendResponseValue(dTerm);
+                txBuffer.sendResponseValue(pwmSum);
+                txBuffer.sendResponseInt32(pid_output);
+                txBuffer.sendResponseEnd();
             }
 
 #endif //PID_DEBUG

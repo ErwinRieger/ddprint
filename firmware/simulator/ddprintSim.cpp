@@ -485,6 +485,11 @@ uint16_t pgm_read_word(const void* ptr)
         return *(const uint16_t*)ptr;
 }
 
+float pgm_read_float(const void* ptr)
+{
+        return *(const float*)ptr;
+}
+
 FilSensorSim filSensorSim;
 
 extern bool sdChipSelect;
@@ -666,6 +671,13 @@ ulong millis()
     struct timeb timebuffer;
     ftime(&timebuffer);
     return (timebuffer.time * 1000) + timebuffer.millitm;
+}
+
+ulong micros()
+{
+    struct timeb timebuffer;
+    ftime(&timebuffer);
+    return (timebuffer.time * 1000000) + (timebuffer.millitm*1000);
 }
 
 

@@ -253,6 +253,7 @@ extern RegUDR0 UDR0;
     extern int ADC;
 
     uint16_t pgm_read_word(const void* ptr);
+    float pgm_read_float(const void* ptr);
     typedef std::string String;
 
     void SET_OUTPUT(int pin);
@@ -268,6 +269,7 @@ extern RegUDR0 UDR0;
     void pinMode(int pin, uint8_t m);
 
     unsigned long millis();
+    unsigned long micros();
 
     // uint8_t eeprom_read_byte (const uint8_t *__p);
 

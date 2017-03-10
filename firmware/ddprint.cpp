@@ -1073,10 +1073,7 @@ void Printer::setHomePos(int32_t x, int32_t y, int32_t z) {
 
 void Printer::cmdSetTargetTemp(uint8_t heater, uint16_t temp) {
 
-    if (heater == 0)
-        target_temperature_bed = temp;
-    else
-        target_temperature[heater-1] = temp;
+    tempControl.setTemp(heater, temp);
 }
 
 void Printer::cmdFanSpeed(uint8_t speed) {
@@ -1086,8 +1083,8 @@ void Printer::cmdFanSpeed(uint8_t speed) {
 
 void Printer::cmdStopMove() {
 
-    cmdSetTargetTemp(0, 20);
-    cmdSetTargetTemp(1, 20);
+    cmdSetTargetTemp(0, 0);
+    cmdSetTargetTemp(1, 0);
 
     DISABLE_STEPPER_DRIVER_INTERRUPT();
     DISABLE_STEPPER1_DRIVER_INTERRUPT();
@@ -1207,13 +1204,13 @@ void Printer::cmdGetEndstops() {
     txBuffer.sendResponseStart(CmdGetEndstops);
 
     txBuffer.sendResponseUint8(X_ENDSTOP_PRESSED);
-    txBuffer.sendResponseValue((int32_t)current_pos_steps[X_AXIS]);
+    txBuffer.sendResponseValue(current_pos_steps[X_AXIS]);
 
     txBuffer.sendResponseUint8(Y_ENDSTOP_PRESSED);
-    txBuffer.sendResponseValue((int32_t)current_pos_steps[Y_AXIS]);
+    txBuffer.sendResponseValue(current_pos_steps[Y_AXIS]);
 
     txBuffer.sendResponseUint8(Z_ENDSTOP_PRESSED);
-    txBuffer.sendResponseValue((int32_t)current_pos_steps[Z_AXIS]);
+    txBuffer.sendResponseValue(current_pos_steps[Z_AXIS]);
 
     txBuffer.sendResponseEnd();
 }

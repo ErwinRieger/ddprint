@@ -44,17 +44,13 @@ extern void kill(const char* msg);
 //===========================================================================
 //=============================public variables============================
 //===========================================================================
+// XXX todo: make member of TempControl
 uint16_t target_temperature[EXTRUDERS] = { 0 };
+// XXX todo: make member of TempControl
 uint8_t target_temperature_bed = 0;
 
 float current_temperature_bed = BED_MINTEMP;
 float current_temperature[EXTRUDERS] = ARRAY_BY_EXTRUDERS(HEATER_1_MINTEMP, HEATER_2_MINTEMP, HEATER_3_MINTEMP);
-
-static const void *heater_ttbl_map[EXTRUDERS] = ARRAY_BY_EXTRUDERS(
-        (void *)HEATER_0_TEMPTABLE, (void *)HEATER_1_TEMPTABLE, (void *)HEATER_2_TEMPTABLE );
-
-static const uint8_t heater_ttbllen_map[EXTRUDERS] = ARRAY_BY_EXTRUDERS(
-        HEATER_0_TEMPTABLE_LEN, HEATER_1_TEMPTABLE_LEN, HEATER_2_TEMPTABLE_LEN );
 
 void tp_init()
 {
@@ -82,40 +78,6 @@ void tp_init()
     #endif
   #endif
 
-#if 0
-#ifdef HEATER_0_MINTEMP
-  // minttemp[0] = HEATER_0_MINTEMP;
-  while(analog2temp(minttemp_raw[0], 0) < HEATER_0_MINTEMP) {
-#if HEATER_0_RAW_LO_TEMP < HEATER_0_RAW_HI_TEMP
-    minttemp_raw[0] += OVERSAMPLENR;
-#else
-    minttemp_raw[0] -= OVERSAMPLENR;
-#endif
-  }
-#endif //MINTEMP
-#ifdef HEATER_0_MAXTEMP
-  // maxttemp[0] = HEATER_0_MAXTEMP;
-  while(analog2temp(maxttemp_raw[0], 0) > HEATER_0_MAXTEMP) {
-#if HEATER_0_RAW_LO_TEMP < HEATER_0_RAW_HI_TEMP
-    maxttemp_raw[0] -= OVERSAMPLENR;
-#else
-    maxttemp_raw[0] += OVERSAMPLENR;
-#endif
-  }
-#endif //MAXTEMP
-
-#if (EXTRUDERS > 1) && defined(HEATER_1_MINTEMP)
-  // minttemp[1] = HEATER_1_MINTEMP;
-  while(analog2temp(minttemp_raw[1], 1) < HEATER_1_MINTEMP) {
-#if HEATER_1_RAW_LO_TEMP < HEATER_1_RAW_HI_TEMP
-    minttemp_raw[1] += OVERSAMPLENR;
-#else
-    minttemp_raw[1] -= OVERSAMPLENR;
-#endif
-  }
-#endif // MINTEMP 1
-#endif
-
 #if (EXTRUDERS > 1) && defined(HEATER_1_MAXTEMP)
   // maxttemp[1] = HEATER_1_MAXTEMP;
   while(analog2temp(maxttemp_raw[1], 1) > HEATER_1_MAXTEMP) {
@@ -126,31 +88,6 @@ void tp_init()
 #endif
   }
 #endif //MAXTEMP 1
-
-#ifdef BED_MINTEMP
-  /* No bed MINTEMP error implemented?!? */ /*
-  while(analog2tempBed(bed_minttemp_raw) < BED_MINTEMP) {
-#if HEATER_BED_RAW_LO_TEMP < HEATER_BED_RAW_HI_TEMP
-    bed_minttemp_raw += OVERSAMPLENR;
-#else
-    bed_minttemp_raw -= OVERSAMPLENR;
-#endif
-  }
-  */
-#endif //BED_MINTEMP
-
-#if 0
-
-#ifdef BED_MAXTEMP
-  while(analog2tempBed(bed_maxttemp_raw) > BED_MAXTEMP) {
-#if HEATER_BED_RAW_LO_TEMP < HEATER_BED_RAW_HI_TEMP
-    bed_maxttemp_raw -= OVERSAMPLENR;
-#else
-    bed_maxttemp_raw += OVERSAMPLENR;
-#endif
-  }
-#endif //BED_MAXTEMP
-#endif
 
     tempControl.init();
 }
@@ -163,77 +100,6 @@ void disable_heater()
 
     setTargetBed(0);
     WRITE(HEATER_BED_PIN,LOW);
-}
-
-#define PGM_RD_W(x)   (short)pgm_read_word(&x)
-// Derived from RepRap FiveD extruder::getTemperature()
-// For hot end temperature measurement.
-float analog2temp(int raw, uint8_t e) {
-
-#if 0
-  if(e >= EXTRUDERS)
-  {
-      SERIAL_ERROR_START;
-      SERIAL_ERROR((int)e);
-      SERIAL_ERRORLNPGM(" - Invalid extruder number !");
-      kill("Invalid extruder number!");
-  }
-#endif
-
-  if(heater_ttbl_map[e] != NULL)
-  {
-    float celsius = 0;
-    uint8_t i;
-    short (*tt)[][2] = (short (*)[][2])(heater_ttbl_map[e]);
-
-    for (i=1; i<heater_ttbllen_map[e]; i++)
-    {
-      if (PGM_RD_W((*tt)[i][0]) > raw)
-      {
-        celsius = PGM_RD_W((*tt)[i-1][1]) +
-          (raw - PGM_RD_W((*tt)[i-1][0])) *
-          (float)(PGM_RD_W((*tt)[i][1]) - PGM_RD_W((*tt)[i-1][1])) /
-          (float)(PGM_RD_W((*tt)[i][0]) - PGM_RD_W((*tt)[i-1][0]));
-        break;
-      }
-    }
-
-    // Overflow: Set to last value in the table
-    if (i == heater_ttbllen_map[e]) celsius = PGM_RD_W((*tt)[i-1][1]);
-
-    return celsius;
-  }
-  return ((raw * ((5.0 * 100.0) / 1024.0) / OVERSAMPLENR) * TEMP_SENSOR_AD595_GAIN) + TEMP_SENSOR_AD595_OFFSET;
-}
-
-// Derived from RepRap FiveD extruder::getTemperature()
-// For bed temperature measurement.
-float analog2tempBed(int raw) {
-  #ifdef BED_USES_THERMISTOR
-    float celsius = 0;
-    uint8_t i;
-
-    for (i=1; i<BEDTEMPTABLE_LEN; i++)
-    {
-      if (PGM_RD_W(BEDTEMPTABLE[i][0]) > raw)
-      {
-        celsius  = PGM_RD_W(BEDTEMPTABLE[i-1][1]) +
-          (raw - PGM_RD_W(BEDTEMPTABLE[i-1][0])) *
-          (float)(PGM_RD_W(BEDTEMPTABLE[i][1]) - PGM_RD_W(BEDTEMPTABLE[i-1][1])) /
-          (float)(PGM_RD_W(BEDTEMPTABLE[i][0]) - PGM_RD_W(BEDTEMPTABLE[i-1][0]));
-        break;
-      }
-    }
-
-    // Overflow: Set to last value in the table
-    if (i == BEDTEMPTABLE_LEN) celsius = PGM_RD_W(BEDTEMPTABLE[i-1][1]);
-
-    return celsius;
-  #elif defined BED_USES_AD595
-    return ((raw * ((5.0 * 100.0) / 1024.0) / OVERSAMPLENR) * TEMP_SENSOR_AD595_GAIN) + TEMP_SENSOR_AD595_OFFSET;
-  #else
-    return 0;
-  #endif
 }
 
 #if 0

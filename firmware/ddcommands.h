@@ -132,6 +132,7 @@
 // Unsolicited message types
 //
 #define ExtrusionLimitDbg       0x0
+#define PidDebug                0x1
 
 
 
