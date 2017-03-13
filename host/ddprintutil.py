@@ -1242,7 +1242,10 @@ def changeNozzle(args, parser):
 
 ####################################################################################################
 #
-# Measure closed loop step-response of the hotend and plot it with gnuplot
+# Measure closed loop step-response of the hotend and plot it with gnuplot.
+# Do three setpoint changes: the first is from current temperature to args.t1 or 200 °C, then
+# after reaching this first set temperature a step upwards to 120%, then a downward step to 90% of
+# the first temperature is done.
 #
 def stepResponse(args, parser):
 
@@ -1255,25 +1258,31 @@ def stepResponse(args, parser):
         printer.sendCommandParamV(CmdFanSpeed, [packedvalue.uint8_t(0)])
 
     # Destination temperature
-    tDest = 200
+    tDest1 = args.t1 or 200
+    tDest2 = tDest1 * 1.2
+    tDest3 = tDest1 * 0.9
+    assert(tDest1 <= 275)
+
     # Bail out if tmax reached
-    tmax = 240
+    tmax = tDest1 * 1.5
+
+    printer.commandInit(args)
+    es = printer.getEepromSettings()
 
     # Open output gnuplot file
     f = open("stepresponse_closed.gnuplot", "w")
 
-    f.write("set grid\n")
-    f.write("set xrange [0:140]\n")
-    f.write("set yrange [0:250]\n")
+    f.write("# Kp: %f\n" % es["Kp"])
+    f.write("# Ki: %f\n" % es["Ki"])
+    f.write("# Kd: %f\n" % es["Kd"])
+    f.write("set yrange [0:%d]\n" % tmax)
     f.write("set grid\n")
     f.write("plot \"-\" using 1:2 with linespoints title \"StepResponse\",")
-    f.write("%d title \"tDest\"\n" % tDest)
+    f.write("%d title \"tDest1\", %d title \"tDest2\", %d title \"tDest3\"\n" % (tDest1, tDest2, tDest3))
 
-    printer.commandInit(args)
-
-    # Do the step
-    print "Starting input step to %d °" % tDest
-    payload = struct.pack("<BH", HeaterEx1, tDest) # Parameters: heater, temp
+    # Do the first step
+    print "Starting input step to %d °" % tDest1
+    payload = struct.pack("<BH", HeaterEx1, tDest1) # Parameters: heater, temp
     printer.sendCommand(CmdSetTargetTemp, binPayload=payload)
     printer.sendCommandParamV(CmdFanSpeed, [packedvalue.uint8_t(100)])
 
@@ -1287,13 +1296,15 @@ def stepResponse(args, parser):
     lastTime = timeStart 
     lastTemp = tempStart
 
-    # Build 10 second average of the temperature change derivation
-    nAvg = 10
+    # Build 60 second average of the temperature change derivation
+    nAvg = 60
     aAvg = nAvg * 1.0
 
     # Stop if temp curve gets flat enough
-    while abs((aAvg/nAvg)) > 0.02:
-
+    wait = 60
+    flatReached = False
+    while wait:
+        
         if lastTemp > tmax:
             print "Error, max temp (%d) reached: " % tmax, lastTemp
             stopHeater()
@@ -1313,30 +1324,115 @@ def stepResponse(args, parser):
         dx = tim - lastTime
 
         a = dy / dx
-        print "Temp:", temp
+        print "Temp:", temp, "Wait:", wait
 
         aAvg = aAvg - (aAvg/nAvg) + a
         print "Steigung: %7.4f %7.4f" % (a, aAvg/nAvg)
 
+        if abs((aAvg/nAvg)) < 0.2 and not flatReached:
+            flatReached = True
+
+        if flatReached:
+            wait -= 1
+
         lastTime = tim
         lastTemp = temp
         
-    f.write("e\n")
+    # Do the second step
+    print "Starting input step to %d °" % tDest2
+    payload = struct.pack("<BH", HeaterEx1, tDest2) # Parameters: heater, temp
+    printer.sendCommand(CmdSetTargetTemp, binPayload=payload)
+
+    aAvg = nAvg * 1.0
+
+    # Stop if temp curve gets flat enough
+    wait = 60
+    flatReached = False
+    while wait:
+        
+        if lastTemp > tmax:
+            print "Error, max temp (%d) reached: " % tmax, lastTemp
+            stopHeater()
+            return
+
+        time.sleep(1)
+
+        tim = time.time()
+        status = printer.getStatus()
+        temp = status["t1"]
+
+        relTime = tim-timeStart
+
+        f.write("%f %f\n" % (relTime, temp))
+
+        dy = temp - lastTemp
+        dx = tim - lastTime
+
+        a = dy / dx
+        print "Temp:", temp, "Wait:", wait
+
+        aAvg = aAvg - (aAvg/nAvg) + a
+        print "Steigung: %7.4f %7.4f" % (a, aAvg/nAvg)
+
+        if abs((aAvg/nAvg)) < 0.2 and not flatReached:
+            flatReached = True
+
+        if flatReached:
+            wait -= 1
+
+        lastTime = tim
+        lastTemp = temp
+        
+    # Do the third step
+    print "Starting input step to %d °" % tDest3
+    payload = struct.pack("<BH", HeaterEx1, tDest3) # Parameters: heater, temp
+    printer.sendCommand(CmdSetTargetTemp, binPayload=payload)
+
+    aAvg = nAvg * 1.0
+
+    # Stop if temp curve gets flat enough
+    wait = 60
+    flatReached = False
+    while wait:
+        
+        if lastTemp > tmax:
+            print "Error, max temp (%d) reached: " % tmax, lastTemp
+            stopHeater()
+            return
+
+        time.sleep(1)
+
+        tim = time.time()
+        status = printer.getStatus()
+        temp = status["t1"]
+
+        relTime = tim-timeStart
+
+        f.write("%f %f\n" % (relTime, temp))
+
+        dy = temp - lastTemp
+        dx = tim - lastTime
+
+        a = dy / dx
+        print "Temp:", temp, "Wait:", wait
+
+        aAvg = aAvg - (aAvg/nAvg) + a
+        print "Steigung: %7.4f %7.4f" % (a, aAvg/nAvg)
+
+        if abs((aAvg/nAvg)) < 0.2 and not flatReached:
+            flatReached = True
+
+        if flatReached:
+            wait -= 1
+
+        lastTime = tim
+        lastTemp = temp
+        
+    f.write("e\npause mouse close\n")
     stopHeater()
 
-
-####################################################################################################
-#
-# amax: 2.32109877421 , Tinflection: 12.5696818829 , tinflection: 15.64
-# Tdead: 5.83149384288
-# Mu, T: 205.63 94.4231566728
-# Ko:  10.0791100704
-# Kc: 12.0949, Ki:  1.0370, Kd: 35.2658
-#
-# https://controls.engin.umich.edu/wiki/index.php/PIDTuningClassical
-# http://rn-wissen.de/wiki/index.php/Regelungstechnik
-#
-def zieglerNichols(args, parser):
+# Open loop step response to determine control parameters.
+def measureHotendStepResponse(args, parser):
 
     planner = parser.planner
     printer = planner.printer
@@ -1344,147 +1440,81 @@ def zieglerNichols(args, parser):
     def stopHeater():
         payload = struct.pack("<BB", HeaterEx1, 0) # heater, pwmvalue
         printer.sendCommand(CmdSetHeaterY, binPayload=payload)
-        # Keep fans running for faster cooldown...
-        # printer.sendCommandParamV(CmdFanSpeed, [packedvalue.uint8_t(0)])
-
-    f = open("stepresponse.gnuplot", "w")
-    # f.write("set xyplane 0\n")
-    f.write("set grid\n")
-    f.write("plot \"-\" using 1:2 with linespoints title \"StepResponse\",")
-    f.write("\"-\" using 1:($2*10) with linespoints title \"a\",")
-    f.write("\"-\" using 1:($2*10) with linespoints title \"a-avg\",")
-    f.write("\"-\" using 1:2 with linespoints title \"tangente\"\n")
 
     printer.commandInit(args)
 
-    tmax = 250
+    tmax = 260
 
-    # Eingangssprung, nicht die volle leistung, da sonst die temperatur am ende
-    # der sprungantwort zu hoch wird.
+    ## # Eingangssprung, nicht die volle leistung, da sonst die temperatur am ende
+    ## # der sprungantwort zu hoch wird.
     Xo = 100.0
+    interval = 0.01
 
-    print "Starting input step"
-    printer.sendCommandParamV(CmdFanSpeed, [packedvalue.uint8_t(100)])
+    # Output file for raw data
+    fraw = open("autotune.raw.json", "w")
+    fraw.write("""{
+    "Xo": %d,
+    "dt": %f,
+    "columns":  "time temperature",
+    """ % (Xo, interval))
+
+    print "Starting input step, tmax is:", tmax
+
+    # Fan is running while printing (and filament has to be molten), so run fan 
+    # at max speed to simulate this energy-loss.
+    printer.sendCommandParamV(CmdFanSpeed, [packedvalue.uint8_t(255)])
     payload = struct.pack("<BB", HeaterEx1, Xo) # heater, pwmvalue
     printer.sendCommand(CmdSetHeaterY, binPayload=payload)
 
     timeStart = time.time()
-    status = printer.getStatus()
-    tempStart = status["t1"]
+    temp = tempStart = printer.getTemp(doLog = False)[1]
 
-    print "Temp:", tempStart
-    f.write("0 0\n")
+    print "Starting temp:", tempStart
+    data = []
 
-    lastTime = timeStart 
-    lastTemp = tempStart
+    # Abbruch, falls 10 sekunden lang keine steigerung der temperatur mehr auftritt
+    maxTemp = 0
+    tMaxTemp = timeStart
 
-    temps = {}
-    aPlot = []
+    while (time.time() - tMaxTemp) < 30:
 
-    nAvg = 26
-    aAvg = nAvg * 1.0
-
-    while abs((aAvg/nAvg)) > 0.02:
-
-        if lastTemp > tmax:
-            print "Error, max temp (%d) reached (you should decrease Xo): " % tmax, lastTemp
+        if temp > tmax:
+            print "Error, max temp (%d) reached (you should decrease Xo): " % tmax, temp
             stopHeater()
             return
 
-        time.sleep(0.1)
-
         tim = time.time()
-        status = printer.getStatus()
-        temp = status["t1"]
+        temp = printer.getTemp(doLog = False)[1]
 
         relTime = tim-timeStart
         Mu = temp-tempStart
 
-        temps[relTime] = Mu
+        data.append("       [%f, %f]" % (relTime, Mu))
 
-        f.write("%f %f\n" % (relTime, Mu))
+        if Mu > maxTemp:
+            maxTemp = Mu
+            tMaxTemp = tim
 
-        dy = temp - lastTemp
-        dx = tim - lastTime
-
-        a = dy / dx
-        print "Temp:", temp
-
-        aPlot.append((relTime, a))
-
-        aAvg = aAvg - (aAvg/nAvg) + a
-        print "Steigung: %7.4f %7.4f" % (a, aAvg/nAvg)
+        print "Time, Temp, tconst:", relTime, temp, tim-tMaxTemp
 
         lastTime = tim
         lastTemp = temp
-        
+        time.sleep(interval)
+
     stopHeater()
 
-    f.write("e\n")
+    fraw.write("""
+    "tEnd": %f,
+    "data": [
+    """ % maxTemp)
+    fraw.write("    " + ",\n".join(data))
+    fraw.write("    ]\n}\n")
+    fraw.close()
 
-    for (x, y) in aPlot:
-        f.write("%f %f\n" % (x, y))
-    f.write("e\n")
+    print "Step response done, result in autotune.raw."
 
-    nAvg = 20
-    aMax = 0
-    Tinflection = 0
-
-    aavg = []
-    for i in range(len(aPlot)-nAvg):
-
-        sum = 0.0
-        for j in range(nAvg):
-            sum += aPlot[i - (nAvg/2) + j][1]
-
-        avg = sum/nAvg
-        aavg.append((aPlot[i][0], avg))
-
-        f.write("%f %f\n" % (aPlot[i][0], avg))
-
-        if avg > aMax:
-            aMax = avg
-            Tinflection = aPlot[i][0]
-
-    f.write("e\n")
-
-    tinflection = temps[Tinflection]
-    print "amax:", aMax, ", Tinflection:", Tinflection, ", tinflection:", tinflection
-
-    # Tdead or Tu
-    Tdead = Tinflection - (tinflection / aMax)
-
-    print "Tdead:", Tdead
-
-    # T or Tg
-    T = Tinflection + ((Mu - tinflection) / aMax)
-
-    print "Mu, T:", Mu, T
-
-    f.write("%f 0\n" % Tdead)
-    f.write("%f %f\n" % (T, Mu))
-    f.write("e\n")
-
-    # Ko = (Xo * T) / (Mu * Tdead)
-    # print "Ko: ", Ko
-
-    Ks = Mu / Xo
-    # Ko = Ks * T / Tdead
-    # print "Ks, Ko: ", Ks, Ko
-    print "Ks: ", Ks
-
-    # Kc or Kp
-    Kc = (1.2 / Ks) * (T / Tdead)
-    # Ti or Tn (Nachstellzeit)
-    Ti = 2 * Tdead
-    # Td or Tv (Vorhaltezeit)
-    Td = 0.5 * Tdead
-
-    print "Kp %7.4f, Ki: %7.4f, Kd: %7.4f" % (Kc, Kc/Ti, Kc*Td)
-
-    # Ki = Kp/Tn
-    # Kd = Kp·Tv
-    # y = Kp * e + Ki * Ta * esum + Kd * (e – ealt)/Ta
+    printer.coolDown(HeaterEx1, wait=100)
+    printer.sendCommandParamV(CmdFanSpeed, [packedvalue.uint8_t(0)])
 
 ####################################################################################################
 #
