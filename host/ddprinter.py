@@ -227,6 +227,9 @@ class Printer(Serial):
             if msgType == ExtrusionLimitDbg:
                 (tempIndex, actSpeed, targetSpeed, grip) = struct.unpack("<hhhh", payload[1:])
                 self.gui.logRecv("Limit extrusion index: %d, act: %d, target: %d, grip: %d" % (tempIndex, actSpeed, targetSpeed, grip))
+            elif msgType == PidDebug:
+                (pid_dt, pTerm, iTerm, dTerm, pwmSum, pwmOutput) = struct.unpack("<fffffi", payload[1:])
+                self.gui.logRecv("PidDebug: pid_dt: %f, pTerm: %f, iTerm: %f, dTerm: %f, pwmSum: %f, pwmOutput: %d" % (pid_dt, pTerm, iTerm, dTerm, pwmSum, pwmOutput))
 
             return True # consume message
 
@@ -403,8 +406,8 @@ class Printer(Serial):
         # Read left over garbage
         recvLine = self.safeReadline()        
         while recvLine:
-            self.gui.logRecv("Initial read: '%s'" % recvLine)
-            self.gui.logRecv(recvLine.encode("hex"), "\n")
+            # self.gui.logRecv("Initial read: '%s'" % recvLine)
+            self.gui.logRecv("Initail read: " + recvLine.encode("hex"), "\n")
             recvLine = self.safeReadline()        
 
     def commandInit(self, args):
@@ -718,9 +721,12 @@ class Printer(Serial):
 
         return status['state'] == StateStart or status['state'] == StateDwell
 
-    def getTemp(self):
+    def getTemp(self, doLog = True):
 
-        (cmd, payload) = self.query(CmdGetCurrentTemps)
+        #
+        # CmdGetCurrentTemps returns (bedtemp, T1 [, T2])
+        #
+        (cmd, payload) = self.query(CmdGetCurrentTemps, doLog=doLog)
         if len(payload) == 8:
             temps = struct.unpack("<ff", payload)
         else:
@@ -728,11 +734,10 @@ class Printer(Serial):
 
         return temps
 
-    def getTemps(self):
+    def getTemps(self, doLog = True):
 
         temps = self.getTemp()
-
-        (cmd, payload) = self.query(CmdGetTargetTemps)
+        (cmd, payload) = self.query(CmdGetTargetTemps, doLog=doLog)
         if len(payload) == 3:
             targetTemps = struct.unpack("<BH", payload)
         else:

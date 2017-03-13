@@ -87,6 +87,9 @@ RespCodeNames = {
 # Unsolicited message types
 #
 ExtrusionLimitDbg = 0x0
+PidDebug          = 0x1
+
+
 
 
 
