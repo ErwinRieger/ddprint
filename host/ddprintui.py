@@ -234,6 +234,7 @@ class MainForm(npyscreen.Form):
             return
 
         self.mat_t0 = MatProfile.getBedTemp()
+        self.mat_t0_reduced = MatProfile.getBedTempReduced()
         self.mat_t1 = MatProfile.getHotendStartTemp()
 
         # self.fn.set_value(self.args.file)
@@ -272,11 +273,11 @@ class MainForm(npyscreen.Form):
     def updateTemps(self, t0, t1, targetT1):
 
         if t0 != None:
-            self.curT0.set_value("%8.1f / %3.0f" % (t0, self.mat_t0))
+            self.curT0.set_value("%8.1f / %.0f (%.0f)" % (t0, self.mat_t0, self.mat_t0_reduced))
             self.curT0.update()
 
         if t1 != None:
-            self.curT1.set_value( "%8.1f / %3.0f" % (t1, targetT1))
+            self.curT1.set_value( "%8.1f / %.0f" % (t1, targetT1))
             self.curT1.update()
 
     def updateStatus(self, status):
@@ -304,7 +305,7 @@ class MainForm(npyscreen.Form):
         rt = st * MatProfile.getMatArea()
         ra = sa * MatProfile.getMatArea()
 
-        self.extRate.set_value( "%8.1f / %4.1f" % (ra, rt) )
+        self.extRate.set_value( "%8.1f / %.1f" % (ra, rt) )
         self.extRate.update()
 
         self.extGrip.set_value( "%4.1f %%" % grip )
@@ -400,7 +401,7 @@ class MainForm(npyscreen.Form):
                         self.log( "\nHeating bed (t0: %d)...\n" % self.mat_t0 )
                         self.printer.heatUp(HeaterBed, self.mat_t0, wait=self.mat_t0)
                         self.log( "\nHeating extruder (t1: %d)...\n" % self.mat_t1 )
-                        self.printer.heatUp(HeaterEx1, self.mat_t1, wait=self.mat_t1 - 10)
+                        self.printer.heatUp(HeaterEx1, self.mat_t1, self.mat_t1-1)
 
                         # Send print command
                         self.printer.sendCommandParamV(CmdMove, [MoveTypeNormal])
@@ -432,7 +433,7 @@ class MainForm(npyscreen.Form):
                 self.log( "\nHeating bed (t0: %d)...\n" % self.mat_t0 )
                 self.printer.heatUp(HeaterBed, self.mat_t0, self.mat_t0)
                 self.log( "\nHeating extruder (t1: %d)...\n" % self.mat_t1 )
-                self.printer.heatUp(HeaterEx1, self.mat_t1, wait=self.mat_t1 - 10)
+                self.printer.heatUp(HeaterEx1, self.mat_t1, self.mat_t1-1)
 
                 # Send print command
                 self.printer.sendCommandParamV(CmdMove, [MoveTypeNormal])
