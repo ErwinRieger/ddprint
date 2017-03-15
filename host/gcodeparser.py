@@ -293,6 +293,14 @@ class UM2GcodeParser:
     def m106_fan_on(self, line, values):
         # print "m106_fan_on", values
         fanSpeed = (values["S"] * MatProfile.getFanPercent()) / 100
+
+        # "Blip fan" for Cura (S3D supports blip fan)
+        if fanSpeed < 50 and self.ultiGcodeFlavor:
+            # Start fan with full power
+            self.planner.addSynchronizedCommand(CmdSyncFanSpeed, p1=packedvalue.uint8_t(255))
+            # Dwell 0.25s
+            self.planner.addSynchronizedCommand(CmdDwellMS, p1=packedvalue.uint16_t(250))
+
         self.planner.addSynchronizedCommand(CmdSyncFanSpeed, p1=packedvalue.uint8_t(fanSpeed))
 
     def m107_fan_off(self, line, values):
