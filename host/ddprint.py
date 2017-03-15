@@ -558,7 +558,7 @@ def main():
 
     if args.mode == 'autoTune':
 
-        util.zieglerNichols(args, parser)
+        util.measureHotendStepResponse(args, parser)
 
     elif args.mode == 'changenozzle':
 
@@ -614,7 +614,7 @@ def main():
                     print "\nHeating bed (t0: %d)...\n" % t0
                     printer.heatUp(HeaterBed, t0, t0)
                     print "\nHeating extruder (t1: %d)...\n" % t1
-                    printer.heatUp(HeaterEx1, t1, wait=0.95 * t1)
+                    printer.heatUp(HeaterEx1, t1, t1-1)
 
                     # Send print command
                     printer.sendCommandParamV(CmdMove, [MoveTypeNormal])
@@ -647,7 +647,7 @@ def main():
             print "\nHeating bed (t0: %d)...\n" % t0
             printer.heatUp(HeaterBed, t0, t0)
             print "\nHeating extruder (t1: %d)...\n" % t1
-            printer.heatUp(HeaterEx1, t1, wait=0.95 * t1)
+            printer.heatUp(HeaterEx1, t1, t1-1)
 
             # Send print command
             printer.sendCommandParamV(CmdMove, [MoveTypeNormal])
@@ -846,9 +846,19 @@ def main():
     elif args.mode == 'test':
 
         printer.commandInit(args)
+        """
         dirbits = printer.getDirBits()
         print "dirbits:", dirbits
         # printer.readMore()
+        """
+
+        import time
+        while True:
+
+            temp = printer.getTemp(doLog=False)[1]
+            print "T1:", temp
+            time.sleep(0.1)
+
 
     elif args.mode == "writeEepromFloat":
 
