@@ -1,10 +1,9 @@
 {
   "material_diameter" : 1.75,
   "flow"              : 100,
-  # xxx beware of initial temp overshot "hotendStartTemp"   : 220,
   "hotendStartTemp"   : 225,
   "hotendMaxTemp"     : 275,
-  "bedTemp"           : 105,
+  "bedTemp"           : 100,
   "bedTempReduced"    : 95,
   "fanPercent"        : 100,
   "kAdvance"          : 0.4,
