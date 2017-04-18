@@ -309,7 +309,8 @@ class Advance (object):
             #
             # Correct eSpeed for feeder slip
             #
-            self.planFeederCorrection(move)
+            if self.kFeederComp:
+                self.planFeederCorrection(move)
 
         # """
         # Sanity check
