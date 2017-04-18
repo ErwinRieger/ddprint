@@ -3,7 +3,7 @@
   "flow"              : 100,
   "hotendBaseTemp"    : 240,
   "hotendMaxTemp"     : 275,
-  "bedTemp"           : 105,
+  "bedTemp"           : 100,
   "bedTempReduced"    : 95,
   "fanPercent"        : 100,
   # Max extrusion rate at base temp [mm³] with a
