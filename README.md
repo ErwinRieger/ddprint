@@ -4,8 +4,6 @@ ddprint 3D printer firmware
 
 Ultimaker direct drive firmware with host side preprocessing.
 
-Note that the Current development takes place in the *pressure-advance* branch.
-
 This is a firmware for Arduino Mega based (cartesian) 3D printers. I use it to print on a Ultimaker2 over USB, 
 the slicers used are Cura, Slic3r and Simplify3D. Todo: link to pimped um2 here...
 
