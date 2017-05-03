@@ -17,11 +17,15 @@
 # along with ddprint.  If not, see <http://www.gnu.org/licenses/>.
 #*/
 
-all:
+all: fw
+
+fw:
 	make -f Makefile.fw 
 
-world: all
+ramps:
 	make -f Makefile.ramps 
+
+world: fw ramps
 	make -f Makefile.sim 
 
 clean: 
