@@ -39,8 +39,7 @@
 
 #pragma once
 
-#include <Arduino.h>
-
+#include "ddmacro.h"
 #include "pins.h"
 #include "move.h"
 #include "mdebug.h"
@@ -51,6 +50,43 @@
 #define ENABLE_STEPPER1_DRIVER_INTERRUPT()  TIMSK1 |= (1<<OCIE1B)
 #define DISABLE_STEPPER1_DRIVER_INTERRUPT() TIMSK1 &= ~(1<<OCIE1B)
 #define STEPPER1_DRIVER_INTERRUPT_ENABLED() (TIMSK1 & (1<<OCIE1B))
+
+#if defined(X_ENABLE_PIN) && X_ENABLE_PIN > -1
+  #define  enable_x() WRITE(X_ENABLE_PIN, X_ENABLE_ON)
+  #define disable_x() WRITE(X_ENABLE_PIN,!X_ENABLE_ON)
+#else
+  #define enable_x() ;
+  #define disable_x() ;
+#endif
+
+#if defined(Y_ENABLE_PIN) && Y_ENABLE_PIN > -1
+  #define  enable_y() WRITE(Y_ENABLE_PIN, Y_ENABLE_ON)
+  #define disable_y() WRITE(Y_ENABLE_PIN,!Y_ENABLE_ON)
+#else
+  #define enable_y() ;
+  #define disable_y() ;
+#endif
+
+#if defined(Z_ENABLE_PIN) && Z_ENABLE_PIN > -1
+  #ifdef Z_DUAL_STEPPER_DRIVERS
+    #define  enable_z() { WRITE(Z_ENABLE_PIN, Z_ENABLE_ON); WRITE(Z2_ENABLE_PIN, Z_ENABLE_ON); }
+    #define disable_z() { WRITE(Z_ENABLE_PIN,!Z_ENABLE_ON); WRITE(Z2_ENABLE_PIN,!Z_ENABLE_ON); }
+  #else
+    #define  enable_z() WRITE(Z_ENABLE_PIN, Z_ENABLE_ON)
+    #define disable_z() WRITE(Z_ENABLE_PIN,!Z_ENABLE_ON)
+  #endif
+#else
+  #define enable_z() ;
+  #define disable_z() ;
+#endif
+
+#if defined(E0_ENABLE_PIN) && (E0_ENABLE_PIN > -1)
+  #define enable_e0() WRITE(E0_ENABLE_PIN, E_ENABLE_ON)
+  #define disable_e0() WRITE(E0_ENABLE_PIN,!E_ENABLE_ON)
+#else
+  #define enable_e0()  /* nothing */
+  #define disable_e0() /* nothing */
+#endif
 
 #if MOTOR_CURRENT_PWM_XY_PIN > -1
 extern const int motor_current_setting[3];
@@ -449,12 +485,28 @@ class StepBuffer {
             uint8_t head, tail;
             uint8_t syncCount;
 
+            // Mode of misc stepper timer:
+            enum {
+                HOMINGMODE,   // Misc stepper timer is used for homing
+                CONTINUOSMODE // Misc stepper timer is used for continuous E move
+            } miscStepperMode;
+
+            uint16_t continuosTimer;
+
         public:
 
             StepBuffer() {
                 head = tail = 0;
                 syncCount = 0;
+                miscStepperMode = HOMINGMODE;
             };
+
+            void setContinuosTimer(uint16_t timerValue) {
+    
+                CRITICAL_SECTION_START;
+                continuosTimer = timerValue;
+                CRITICAL_SECTION_END;
+            }
 
             FWINLINE uint8_t byteSize() {
                 return (uint16_t)(StepBufferLen + head) - tail;
@@ -492,6 +544,36 @@ class StepBuffer {
             void flush() {
                 head = tail = 0;
                 syncCount = 0;
+            }
+
+            void homingMode() {
+
+                miscStepperMode = HOMINGMODE;
+
+                // Start interrupt
+                ENABLE_STEPPER1_DRIVER_INTERRUPT();
+            }
+
+            void continuosMode(uint16_t timerValue) {
+
+                if (timerValue > 0) {
+
+                    miscStepperMode = CONTINUOSMODE;
+                    continuosTimer = timerValue;
+
+                    enable_e0();
+
+                    // Direction forward
+                    st_write_dir_pin<EMove>( st_get_positive_dir<EMove>() );
+
+                    // Start interrupt
+                    ENABLE_STEPPER1_DRIVER_INTERRUPT();
+                }
+                else {
+
+                    disable_e0();
+                    DISABLE_STEPPER1_DRIVER_INTERRUPT();
+                }
             }
 
             // * Timer 1A is running in CTC mode.
@@ -532,6 +614,15 @@ class StepBuffer {
                 }
             }
 
+        // FWINLINE void runHomingSteps() {
+        FWINLINE void runMiscSteps() {
+
+            if (miscStepperMode == HOMINGMODE)
+                runHomingSteps();
+            else
+                runContinuosSteps();
+        }
+
         FWINLINE void runHomingSteps() {
 
             if (empty()) {
@@ -562,6 +653,13 @@ class StepBuffer {
                 st_step_motor_es<ZMove>(sd.stepBits, sd.dirBits);
             }
         }
+
+        FWINLINE void runContinuosSteps() {
+
+            OCR1A = OCR1B = continuosTimer;
+            st_step_motor<EMove>(st_get_move_bit_mask<EMove>(), st_get_move_bit_mask<EMove>());
+        }
+
 };
 
 extern StepBuffer stepBuffer;

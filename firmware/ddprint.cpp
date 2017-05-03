@@ -1025,7 +1025,8 @@ void Printer::cmdMove(MoveType mt) {
     }
 
     if (mt == MoveTypeHoming) {
-        ENABLE_STEPPER1_DRIVER_INTERRUPT();
+        // ENABLE_STEPPER1_DRIVER_INTERRUPT();
+        stepBuffer.homingMode();
     }
     else {
         ENABLE_STEPPER_DRIVER_INTERRUPT();
@@ -1079,6 +1080,12 @@ void Printer::cmdSetTargetTemp(uint8_t heater, uint16_t temp) {
 void Printer::cmdFanSpeed(uint8_t speed) {
 
     analogWrite(FAN_PIN, speed);
+}
+
+void Printer::cmdContinuousE(uint16_t timerValue) {
+
+    // xxx add new printerstate for continuos mode here...
+    stepBuffer.continuosMode(timerValue);
 }
 
 void Printer::cmdStopMove() {
@@ -1650,6 +1657,15 @@ class UsbCommand : public Protothread {
                         txBuffer.sendACK();
                         break;
 #endif
+
+                    case CmdSetContTimer:
+                        stepBuffer.setContinuosTimer(MSerial.readUInt16NoCheckCobs());
+                        txBuffer.sendACK();
+                        break;
+                    case CmdContinuousE:
+                        printer.cmdContinuousE(MSerial.readUInt16NoCheckCobs());
+                        txBuffer.sendACK();
+                        break;
 
 
                     //
