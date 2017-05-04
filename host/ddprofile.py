@@ -255,6 +255,7 @@ class TempCurve:
 
         assert(0)
 
+    # Lookup allowed flowrate for a given temp.
     # Used for temp-table download, so this is not time-critical
     # and therefore not optimized.
     def lookupTemp(self, temp):
@@ -275,12 +276,12 @@ class TempCurve:
             temp1, fr1 = self.curveList[i]
             temp2, fr2 = self.curveList[i+1]
 
-            t1 = int(temp1)
-            t2 = int(temp2)
+            # t1 = int(temp1)
+            # t2 = int(temp2)
 
-            if temp >= t1 and temp < t2:
+            if temp >= temp1 and temp < temp2:
 
-                fr = fr1 + ((fr2 - fr1) / (t2 - t1)) * (temp - t1)
+                fr = fr1 + ((fr2 - fr1) / (temp2 - temp1)) * (temp - temp1)
 
                 print "interplated feedrate: ", fr
                 return fr
@@ -384,7 +385,12 @@ class MatProfile(ProfileBase):
 
         if nozzleDiam not in self.tempCurves:
 
-            tempCurve = TempCurve(self.getValues()["tempFlowrateCurve_%d" % (nozzleDiam*100)])
+            data = self.getValues()["tempFlowrateCurve_%d" % (nozzleDiam*100)]
+
+            if type(data) == types.DictType:
+                data = data["data"]
+
+            tempCurve = TempCurve(data)
             self.tempCurves[nozzleDiam] = tempCurve
 
         return self.tempCurves[nozzleDiam]
