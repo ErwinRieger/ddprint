@@ -850,7 +850,6 @@ def main():
         dirbits = printer.getDirBits()
         print "dirbits:", dirbits
         # printer.readMore()
-        """
 
         import time
         while True:
@@ -858,6 +857,16 @@ def main():
             temp = printer.getTemp(doLog=False)[1]
             print "T1:", temp
             time.sleep(0.1)
+        """
+        if args.feedrate == 0:
+            printer.sendCommandParamV(CmdContinuousE, [packedvalue.uint16_t(0)])
+        else:
+
+            import time
+            printer.sendCommandParamV(CmdContinuousE, [packedvalue.uint16_t(util.eTimerValue(planner, 0.5))])
+            for s in range(int(args.feedrate)):
+                time.sleep(1)
+                printer.sendCommandParamV(CmdSetContTimer, [packedvalue.uint16_t(util.eTimerValue(planner, 1+s))])
 
 
     elif args.mode == "writeEepromFloat":

@@ -86,6 +86,9 @@ CmdGetTempTable = 163 # ExtrusionLimit: get tempTable
 CmdSetTempTable = 164 # ExtrusionLimit: set tempTable
 CmdEnableFRLimit = 165 # Enable/disable flowrate limit
 
+CmdSetContTimer = 166 # Timer value for CmdContinuousE -> E-Speed
+CmdContinuousE = 167 # Start/Stop continuous e-move for filament measurement
+
 CommandNames = {
     CmdNull: "CmdNull",
     CmdG1: "CmdG1",
@@ -145,6 +148,9 @@ CommandNames = {
     CmdGetTempTable: "CmdGetTempTable",
     CmdSetTempTable: "CmdSetTempTable",
     CmdEnableFRLimit: "CmdEnableFRLimit",
+    CmdSetContTimer: "CmdSetContTimer",
+    CmdContinuousE: "CmdContinuousE",
+
 }
 
 #
