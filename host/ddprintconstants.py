@@ -73,7 +73,7 @@ dimIndex = { "X": X_AXIS, "Y": Y_AXIS, "Z": Z_AXIS, "A": A_AXIS, "B": B_AXIS }
 #
 # Cobs encoding
 #
-SOH = 0x0 # COBS encoding
+SOH = 0x0 # 'Start of header', startbit for COBS encoded data block.
 
 ############################################################################
 #
