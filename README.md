@@ -38,11 +38,23 @@ Some features:
     illuminarti for his work on http://www.extrudable.me/2013/04/18/exploring-extrusion-variability-and-limits.
 *   Support for a ADNS9800 based flowrate sensor.
 *   Look ahead path planning with linear acceleration ramps.
+*   Hardened USB communication using COBS encoding and CCITT checksums in both directions.
 *   Hardware and software endstop support.
 *   EEPROM storage of parameters.
 *   PID auto-tuning. Measuring and plotting (gnuplot) of the hotend temperature stepresponse.
 *   Simulator mode for testing/development: Firmware runs as a host-program with serial communication over a ptty device.
 *   Preprocessor keeps track of the used extrusion rates and emits warnings if they get to high.
+
+
+Similar Firmware Projects
+--------------------------
+
+Other firmware projects that split the work into two parts, a firmware part running on the printer and a host part running
+on a more powerful computer (PC, Raspi etc.):
+
+* Pacemaker: https://github.com/JustAnother1/Pacemaker
+* https://github.com/mtu-most/franklin
+* Klipper: https://github.com/KevinOConnor/klipper
 
 
 Links
@@ -64,3 +76,5 @@ Here are some links where i got ideas and inspiration from:
 * http://www.embedded.com/design/mcus-processors-and-socs/4006438/Generate-stepper-motor-speed-profiles-in-real-time
 * http://www.extrudable.me/2013/04/18/exploring-extrusion-variability-and-limits/
 * http://bernhardkubicek.soup.io/post/168776124/Another-acceleration-extrusion-compensation-for-repraps
+
+
