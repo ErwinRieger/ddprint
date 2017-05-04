@@ -309,7 +309,8 @@ class Printer(Serial):
     def readResponse(self):
 
         s = self.readWithTimeout(1) # SOH
-# xxx loop til 0x0 found
+
+        # xxx loop til SOH found
         assert(s == cobs.nullByte)
 
         rc = self.readWithTimeout(1) # read response code
