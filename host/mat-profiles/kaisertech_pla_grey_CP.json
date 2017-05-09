@@ -1,7 +1,5 @@
 {
-  # Max extrusion rate at 200°C with a 0.80 mm nozzle [mm³/s]
-  # "baseExtrusionRate_80" : 9,
-  # "extrusionAutoTempFactor" : 3.2,
+  # CP: CopperPaste
   "tempFlowrateCurve_80": [
          [200.000000, 15.638013],
          [202.000000, 17.937450],
