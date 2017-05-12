@@ -38,7 +38,7 @@
 // Limit for the integral term and for pwmSum if heater is
 // switched off (target temp == 0) or if setpoint temperature
 // could not be reached.
-#define PID_DRIVE_MAX 100000
+#define PID_DRIVE_MAX 100000.0
 
 
 

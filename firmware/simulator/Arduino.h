@@ -279,5 +279,7 @@ extern RegUDR0 UDR0;
     void delay(int);
     void delayMicroseconds(int);
 
+    int32_t max(int32_t a ,int32_t b);
+
 // #endif
 

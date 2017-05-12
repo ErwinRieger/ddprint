@@ -41,7 +41,7 @@ uint8_t Sd2Card::cardCommand(uint8_t cmd, uint32_t arg) {
     assert(0);
 }
 
-bool Sd2Card::init(uint8_t sckRateID, uint8_t chipSelectPin) {
+uint8_t Sd2Card::initEC(uint8_t sckRateID, uint8_t chipSelectPin) {
 
     assert(swapFile == NULL);
 
@@ -59,10 +59,10 @@ bool Sd2Card::init(uint8_t sckRateID, uint8_t chipSelectPin) {
     // assert((swapFile = fopen("swapfile", "a+")) != NULL);
     assert((swapFile = fopen("swapfile", "w+")) != NULL);
 
-    return true;
+    return 0;
 }
 
-bool Sd2Card::writeData(uint8_t token, const uint8_t* src) {
+uint8_t Sd2Card::writeDataEC(uint8_t token, const uint8_t* src) {
 
     // printf("Write pos: 0x%x\n", sdWritePos);
 
@@ -73,10 +73,13 @@ bool Sd2Card::writeData(uint8_t token, const uint8_t* src) {
     int written = fwrite(src, 1, 512, swapFile);
     
     fflush(swapFile);
-    return (written == 512);
+
+    return written - 512;
 }
 
-bool Sd2Card::readBlock(uint32_t blockNumber, uint8_t* dst) {
+uint8_t Sd2Card::readBlockEC(uint32_t blockNumber, uint8_t* dst) {
+
+    // return SD_CARD_ERROR_CMD17;
 
     if (fseek(swapFile, blockNumber << 9, SEEK_SET) != 0 ) {
         assert(0);
@@ -91,11 +94,11 @@ uint32_t Sd2Card::cardSize() {
   return 4194304; // 2Gb in 512byte blocks
 }
 //------------------------------------------------------------------------------
-bool Sd2Card::erase(uint32_t firstBlock, uint32_t lastBlock) {
-    return true;
+uint8_t Sd2Card::eraseEC(uint32_t firstBlock, uint32_t lastBlock) {
+    return 0;
 }
 //------------------------------------------------------------------------------
-bool Sd2Card::eraseSingleBlockEnable() {
-    return true;
+uint8_t Sd2Card::eraseSingleBlockEnableEC() {
+    return 0;
 }
 //------------------------------------------------------------------------------
