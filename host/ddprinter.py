@@ -165,6 +165,11 @@ class Printer(Serial):
                 filename = payload[4:4+slen]
                 self.gui.logError("ERROR: PRINTER KILLED! Reason: %s, Line: %d, File: %s" % (RespCodeNames[reason], line, filename))
 
+            elif reason == RespSDReadError:
+
+                (errorCode,) = struct.unpack("<B", payload[1])
+                self.gui.logError("ERROR: PRINTER KILLED! Reason: %s, ErrorCode: %d" % (RespCodeNames[reason], errorCode))
+
             else:
 
                 self.gui.logError("ERROR: PRINTER KILLED! Reason: %s" % RespCodeNames[reason])
