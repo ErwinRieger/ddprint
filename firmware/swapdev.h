@@ -22,7 +22,7 @@
 #include <Arduino.h>
 
 #include "sdcard/Sd2Card.h"
-// #include "MarlinSerial.h"
+
 #include "Protothread.h"
 #include "Configuration.h"
 #include "pins.h"
@@ -35,8 +35,8 @@
     #define STD
 #endif
 
-#define MSG_SD_INIT_FAIL "SD init fail"
-// #define MSG_SD_INIT_NO_SDHC "SD init: No SDHC Card"
+// Redefined here from ddcommands.h
+#define RespSDReadError         9  
 
 // The buffersizes for reading and writing to th SD card
 #define RCMD_BUFFER_SIZE 512
@@ -71,10 +71,9 @@ public:
 
     bool swapInit() {
 
-        if (!init(SPI_FULL_SPEED, SDSS)) {
+        if (initEC(SPI_FULL_SPEED, SDSS)) {
 
             // SERIAL_ECHO_START;
-            // SERIAL_ECHOLNPGM(MSG_SD_INIT_FAIL);
             return false;
         }
 
@@ -90,7 +89,7 @@ public:
             // return false;
         // }
 
-        massert(eraseSingleBlockEnable());
+        massert(eraseSingleBlockEnableEC() == 0);
 
         return true;
     }
@@ -173,9 +172,14 @@ public:
         massert(! busyWriting);
         massert((readPos % RCMD_BUFFER_SIZE) == 0); // read pos should be block-aligned
 
-        if (! Sd2Card::readBlock(readPos >> 9, dst)) {
-            // xxx errorhandling here
-            massert(0);
+        uint8_t res;
+
+        if (res = readBlockEC(readPos >> 9, dst)) {
+
+            // XXX how shold we handle this? Retry the read?
+            // Note: readBlockEC() retried three times already.
+
+            killMessage(RespSDReadError, res);
             return -1;
         }
 
@@ -228,7 +232,8 @@ public:
 
         //////////////////////////////////////////////////////////////////////////////////          
 
-        if (!writeData(DATA_START_BLOCK, writeBuffer)) {
+        // if (!writeData(DATA_START_BLOCK, writeBuffer)) {
+        if (writeDataEC(DATA_START_BLOCK, writeBuffer)) {
             // writeData raises chipselect on error
             massert(0); // xxx set errorCode_
         }
@@ -246,10 +251,13 @@ public:
         // response is r2 so get and check two bytes for nonzero
         // xxx cardCommand() does some unneccessary stuff like waitNotBusy();
         if (cardCommand(CMD13, 0) || spiRec()) {
-            error(SD_CARD_ERROR_WRITE_PROGRAMMING);
-            // goto fail;
+
+            // XXX how shold we handle this? Retry the write?
+            massert(0);
+
+            // error(SD_CARD_ERROR_WRITE_PROGRAMMING);
             chipSelectHigh();
-            PT_EXIT(); // xxx or use pt_restart here?
+            PT_RESTART();
         }
 
         chipSelectHigh();

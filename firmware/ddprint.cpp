@@ -173,6 +173,13 @@ void mAssert(uint16_t line, char* file) {
     kill();
 }
 
+void killMessage(uint8_t errorCode, uint8_t errorParam, char *msg) {
+
+    LCDMSGKILL(errorCode, errorParam, msg);
+    txBuffer.sendSimpleResponse(RespKilled, errorCode, errorParam);
+    kill();
+}
+
 // bool IsStopped() { return Stopped; };
 // uint8_t StoppedReason() { return Stopped; };
 
@@ -468,12 +475,7 @@ bool FillBufferTask::Run() {
                     SERIAL_ECHOLN(sDReader.getBufferPtr());
 #endif
 
-                    LCDMSGKILL(RespUnknownBCommand, cmd, "");
-                    txBuffer.sendResponseStart(RespKilled);
-                    txBuffer.sendResponseUint8(RespUnknownBCommand);
-                    txBuffer.sendResponseUint8(cmd);
-                    txBuffer.sendResponseEnd();
-                    kill();
+                    killMessage(RespUnknownBCommand, cmd);
             }
 
             HandleCmdG1:
@@ -967,7 +969,10 @@ void Printer::printerInit() {
 
         // unsigned long eStart = millis();
 
-        massert(swapDev.erase(0, swapDev.cardSize() - 1));
+        uint32_t sdsize = swapDev.cardSize();
+
+        massert(sdsize > 0);
+        massert(swapDev.eraseEC(0, sdsize - 1) == 0);
 
         // SERIAL_ECHO("erase time ");
         // SERIAL_ECHO(swapDev.cardSize());
@@ -1896,13 +1901,6 @@ FWINLINE void loop() {
     // the print buffer.
     fillBufferTask.Run();
     swapDev.Run();
-
-    // Check swap dev error
-    if (swapDev.errorCode()) {
-        LCDMSGKILL(RespSDError, swapDev.errorCode(), "");
-        txBuffer.sendSimpleResponse(RespKilled, RespSDError, swapDev.errorCode());
-        kill();
-    }
 }
 
 

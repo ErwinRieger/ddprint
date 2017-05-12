@@ -127,7 +127,7 @@
 #define RespAssertion           6 // payload: line, file
 #define RespADNS9800Init        7 // 
 #define RespSDInit              8 // 
-#define RespSDError             9 // 
+#define RespSDReadError         9 // 
 #define RespMinTemp            10 // 
 #define RespMaxTemp            11 // 
 
