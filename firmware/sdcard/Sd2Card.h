@@ -167,16 +167,21 @@ class Sd2Card {
   Sd2Card() : errorCode_(SD_CARD_ERROR_INIT_NOT_CALLED), type_(0) {}
   uint32_t cardSize();
   bool erase(uint32_t firstBlock, uint32_t lastBlock);
+  uint8_t eraseEC(uint32_t firstBlock, uint32_t lastBlock);
   bool eraseSingleBlockEnable();
+  uint8_t eraseSingleBlockEnableEC();
   /**
    *  Set SD error code.
    *  \param[in] code value for error code.
    */
-  void error(uint8_t code) {errorCode_ = code; }
+  // void error(uint8_t code) {errorCode_ = code; }
+  void error(uint8_t code); // notused
+
   /**
    * \return error code for last error. See Sd2Card.h for a list of error codes.
    */
-  int errorCode() const {return errorCode_;}
+  // int errorCode() const {return errorCode_;}
+
   /** \return error data for last error. */
   int errorData() const {return status_;}
   /**
@@ -185,9 +190,12 @@ class Sd2Card {
    *
    * \return true for success or false for failure.
    */
-  bool init(uint8_t sckRateID = SPI_FULL_SPEED,
-    uint8_t chipSelectPin = SDSS);
+  bool init(uint8_t sckRateID = SPI_FULL_SPEED, uint8_t chipSelectPin = SDSS);
+  uint8_t initEC(uint8_t sckRateID = SPI_FULL_SPEED, uint8_t chipSelectPin = SDSS);
+
   bool readBlock(uint32_t block, uint8_t* dst);
+  uint8_t readBlockEC(uint32_t block, uint8_t* dst);
+
   /**
    * Read a card's CID register. The CID contains card identification
    * information such as Manufacturer ID, Product name, Product serial
@@ -197,9 +205,11 @@ class Sd2Card {
    *
    * \return true for success or false for failure.
    */
-  bool readCID(cid_t* cid) {
+  bool readCID(cid_t* cid);
+ /* {
     return readRegister(CMD10, cid);
-  }
+  } */
+
   /**
    * Read a card's CSD register. The CSD contains Card-Specific Data that
    * provides information regarding access to the card's contents.
@@ -208,13 +218,20 @@ class Sd2Card {
    *
    * \return true for success or false for failure.
    */
-  bool readCSD(csd_t* csd) {
+  bool readCSD(csd_t* csd);
+ /* {
     return readRegister(CMD9, csd);
+  } */
+
+  uint8_t readCSDEC(csd_t* csd) {
+    return readRegisterEC(CMD9, csd);
   }
+
   bool readData(uint8_t *dst);
   bool readStart(uint32_t blockNumber);
   bool readStop();
   bool setSckRate(uint8_t sckRateID);
+  uint8_t setSckRateEC(uint8_t sckRateID);
   /** Return the card type: SD V1, SD V2 or SDHC
    * \return 0 - SD V1, 1 - SD V2, or 3 - SDHC.
    */
@@ -229,6 +246,8 @@ class Sd2Card {
 
   uint8_t cardCommand(uint8_t cmd, uint32_t arg);
   bool writeData(uint8_t token, const uint8_t* src);
+  uint8_t writeDataEC(uint8_t token, const uint8_t* src);
+
   void chipSelectHigh();
   void chipSelectLow();
 
@@ -245,7 +264,11 @@ class Sd2Card {
   }
 
   bool readData(uint8_t* dst, uint16_t count);
+  uint8_t readDataEC(uint8_t* dst, uint16_t count);
+
   bool readRegister(uint8_t cmd, void* buf);
+  uint8_t readRegisterEC(uint8_t cmd, void* buf);
+
   void type(uint8_t value) {type_ = value;}
   bool waitNotBusy(uint16_t timeoutMillis);
 };

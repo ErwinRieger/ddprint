@@ -178,6 +178,7 @@ uint8_t Sd2Card::cardCommand(uint8_t cmd, uint32_t arg) {
   for (uint8_t i = 0; ((status_ = spiRec()) & 0X80) && i != 0XFF; i++) { /* Intentionally left empty */ }
   return status_;
 }
+
 //------------------------------------------------------------------------------
 /**
  * Determine the size of an SD flash memory card.
@@ -186,24 +187,34 @@ uint8_t Sd2Card::cardCommand(uint8_t cmd, uint32_t arg) {
  *         or zero if an error occurs.
  */
 uint32_t Sd2Card::cardSize() {
+
   csd_t csd;
-  if (!readCSD(&csd)) return 0;
+
+  if (readCSDEC(&csd)) return 0;
+
   if (csd.v1.csd_ver == 0) {
+
     uint8_t read_bl_len = csd.v1.read_bl_len;
     uint16_t c_size = (csd.v1.c_size_high << 10)
                       | (csd.v1.c_size_mid << 2) | csd.v1.c_size_low;
     uint8_t c_size_mult = (csd.v1.c_size_mult_high << 1)
                           | csd.v1.c_size_mult_low;
     return (uint32_t)(c_size + 1) << (c_size_mult + read_bl_len - 7);
+
   } else if (csd.v2.csd_ver == 1) {
+
     uint32_t c_size = ((uint32_t)csd.v2.c_size_high << 16)
                       | (csd.v2.c_size_mid << 8) | csd.v2.c_size_low;
     return (c_size + 1) << 10;
+
   } else {
-    error(SD_CARD_ERROR_BAD_CSD);
+
+    // error(SD_CARD_ERROR_BAD_CSD);
     return 0;
+
   }
 }
+
 //------------------------------------------------------------------------------
 void Sd2Card::chipSelectHigh() {
   digitalWrite(chipSelectPin_, HIGH);
@@ -217,6 +228,8 @@ void Sd2Card::chipSelectLow() {
   digitalWrite(chipSelectPin_, LOW);
   spiRec(); // Activate MISO "The card will resume busy signal (pulling DataOut low) one clock after the falling edge of CS."
 }
+
+#if 0
 //------------------------------------------------------------------------------
 /** Erase a range of blocks.
  *
@@ -265,16 +278,89 @@ bool Sd2Card::erase(uint32_t firstBlock, uint32_t lastBlock) {
   chipSelectHigh();
   return false;
 }
+#endif
+
+//------------------------------------------------------------------------------
+/** Erase a range of blocks.
+ *
+ * \param[in] firstBlock The address of the first block in the range.
+ * \param[in] lastBlock The address of the last block in the range.
+ *
+ * \note This function requests the SD card to do a flash erase for a
+ * range of blocks.  The data on the card after an erase operation is
+ * either 0 or 1, depends on the card vendor.  The card must support
+ * single block erase.
+ *
+ * \return The value one, true, is returned for success and
+ * the value zero, false, is returned for failure.
+ */
+uint8_t Sd2Card::eraseEC(uint32_t firstBlock, uint32_t lastBlock) {
+
+  csd_t csd;
+
+  if (readCSDEC(&csd)) {
+      chipSelectHigh();
+      return -1;
+  }
+
+  // check for single block erase
+  if (!csd.v1.erase_blk_en) {
+
+    // erase size mask
+    uint8_t m = (csd.v1.sector_size_high << 1) | csd.v1.sector_size_low;
+    if ((firstBlock & m) != 0 || ((lastBlock + 1) & m) != 0) {
+      // error card can't erase specified area
+      // error(SD_CARD_ERROR_ERASE_SINGLE_BLOCK);
+      chipSelectHigh();
+      return SD_CARD_ERROR_ERASE_SINGLE_BLOCK;
+    }
+  }
+  if (type_ != SD_CARD_TYPE_SDHC) {
+    firstBlock <<= 9;
+    lastBlock <<= 9;
+  }
+  if (cardCommand(CMD32, firstBlock)
+    || cardCommand(CMD33, lastBlock)
+    || cardCommand(CMD38, 0)) {
+      // error(SD_CARD_ERROR_ERASE);
+      chipSelectHigh();
+      return SD_CARD_ERROR_ERASE;
+  }
+  if (!waitNotBusy(SD_ERASE_TIMEOUT)) {
+    // error(SD_CARD_ERROR_ERASE_TIMEOUT);
+    chipSelectHigh();
+    return SD_CARD_ERROR_ERASE_TIMEOUT;
+  }
+
+  chipSelectHigh();
+  return 0;
+}
+
 //------------------------------------------------------------------------------
 /** Determine if card supports single block erase.
  *
  * \return The value one, true, is returned if single block erase is supported.
  * The value zero, false, is returned if single block erase is not supported.
  */
+#if 0
 bool Sd2Card::eraseSingleBlockEnable() {
   csd_t csd;
   return readCSD(&csd) ? csd.v1.erase_blk_en : false;
 }
+#endif
+
+//------------------------------------------------------------------------------
+/** Determine if card supports single block erase.
+ *
+ * \return The value one, true, is returned if single block erase is supported.
+ * The value zero, false, is returned if single block erase is not supported.
+ */
+uint8_t Sd2Card::eraseSingleBlockEnableEC() {
+
+  csd_t csd;
+  return readCSDEC(&csd) ? csd.v1.erase_blk_en : false;
+}
+
 //------------------------------------------------------------------------------
 /**
  * Initialize an SD flash memory card.
@@ -286,6 +372,7 @@ bool Sd2Card::eraseSingleBlockEnable() {
  * the value zero, false, is returned for failure.  The reason for failure
  * can be determined by calling errorCode() and errorData().
  */
+#if 0
 bool Sd2Card::init(uint8_t sckRateID, uint8_t chipSelectPin) {
   errorCode_ = type_ = 0;
   chipSelectPin_ = chipSelectPin;
@@ -367,6 +454,101 @@ bool Sd2Card::init(uint8_t sckRateID, uint8_t chipSelectPin) {
   chipSelectHigh();
   return false;
 }
+#endif
+
+//------------------------------------------------------------------------------
+/**
+ * Initialize an SD flash memory card.
+ *
+ * \param[in] sckRateID SPI clock rate selector. See setSckRate().
+ * \param[in] chipSelectPin SD chip select pin number.
+ *
+ * \return The value one, true, is returned for success and
+ * the value zero, false, is returned for failure.  The reason for failure
+ * can be determined by calling errorCode() and errorData().
+ */
+uint8_t Sd2Card::initEC(uint8_t sckRateID, uint8_t chipSelectPin) {
+  errorCode_ = type_ = 0;
+  chipSelectPin_ = chipSelectPin;
+  // 16-bit init start time allows over a minute
+  uint16_t t0 = (uint16_t)millis();
+  uint32_t arg;
+
+  // set pin modes
+  pinMode(chipSelectPin_, OUTPUT);
+  // chipSelectHigh();
+  digitalWrite(chipSelectPin_, HIGH);
+  pinMode(MISO_PIN, INPUT);
+  pinMode(MOSI_PIN, OUTPUT);
+  pinMode(SCK_PIN, OUTPUT);
+
+#ifndef SOFTWARE_SPI
+  // SS must be in output mode even it is not chip select
+  pinMode(SDSS, OUTPUT);
+  // set SS high - may be chip select for another SPI device
+#if SET_SPI_SS_HIGH
+  digitalWrite(SDSS, HIGH);
+#endif  // SET_SPI_SS_HIGH
+  // set SCK rate for initialization commands
+  spiRate_ = SPI_SD_INIT_RATE;
+  spiInit(spiRate_);
+#endif  // SOFTWARE_SPI
+
+  // must supply min of 74 clock cycles with CS high.
+  for (uint8_t i = 0; i < 10; i++) spiSend(0XFF);
+
+  // command to go idle in SPI mode
+  while ((status_ = cardCommand(CMD0, 0)) != R1_IDLE_STATE) {
+    if (((uint16_t)millis() - t0) > SD_INIT_TIMEOUT) {
+      // error(SD_CARD_ERROR_CMD0);
+      chipSelectHigh();
+      return SD_CARD_ERROR_CMD0;
+    }
+  }
+  // check SD version
+  if ((cardCommand(CMD8, 0x1AA) & R1_ILLEGAL_COMMAND)) {
+    type(SD_CARD_TYPE_SD1);
+  } else {
+    // only need last byte of r7 response
+    for (uint8_t i = 0; i < 4; i++) status_ = spiRec();
+    if (status_ != 0XAA) {
+      // error(SD_CARD_ERROR_CMD8);
+      chipSelectHigh();
+      return SD_CARD_ERROR_CMD8;
+    }
+    type(SD_CARD_TYPE_SD2);
+  }
+  // initialize card and send host supports SDHC if SD2
+  arg = type() == SD_CARD_TYPE_SD2 ? 0X40000000 : 0;
+
+  while ((status_ = cardAcmd(ACMD41, arg)) != R1_READY_STATE) {
+    // check for timeout
+    if (((uint16_t)millis() - t0) > SD_INIT_TIMEOUT) {
+      // error(SD_CARD_ERROR_ACMD41);
+      chipSelectHigh();
+      return SD_CARD_ERROR_ACMD41;
+    }
+  }
+  // if SD2 read OCR register to check for SDHC card
+  if (type() == SD_CARD_TYPE_SD2) {
+    if (cardCommand(CMD58, 0)) {
+      // error(SD_CARD_ERROR_CMD58);
+      chipSelectHigh();
+      return SD_CARD_ERROR_CMD58;
+    }
+    if ((spiRec() & 0XC0) == 0XC0) type(SD_CARD_TYPE_SDHC);
+    // discard rest of ocr - contains allowed voltage range
+    for (uint8_t i = 0; i < 3; i++) spiRec();
+  }
+  chipSelectHigh();
+
+#ifndef SOFTWARE_SPI
+  return setSckRateEC(sckRateID);
+#else  // SOFTWARE_SPI
+  return 0;
+#endif  // SOFTWARE_SPI
+}
+
 //------------------------------------------------------------------------------
 /**
  * Read a 512 byte block from an SD card.
@@ -403,6 +585,52 @@ bool Sd2Card::readBlock(uint32_t blockNumber, uint8_t* dst) {
   chipSelectHigh();
   return false;
 }
+
+//------------------------------------------------------------------------------
+/**
+ * Read a 512 byte block from an SD card.
+ *
+ * \param[in] blockNumber Logical block to be read.
+ * \param[out] dst Pointer to the location that will receive the data.
+ * \return The value one, true, is returned for success and
+ * the value zero, false, is returned for failure.
+ */
+uint8_t Sd2Card::readBlockEC(uint32_t blockNumber, uint8_t* dst) {
+
+  uint8_t retryCnt = 3, res;
+
+  // use address if not SDHC card
+  if (type()!= SD_CARD_TYPE_SDHC) blockNumber <<= 9;
+
+ retry2:
+
+  retryCnt --;
+  if (cardCommand(CMD17, blockNumber)) {
+
+    // error(SD_CARD_ERROR_CMD17);
+    if (retryCnt > 0) goto retry;
+
+    chipSelectHigh();
+    return SD_CARD_ERROR_CMD17;
+  }
+
+  if ((res = readDataEC(dst, 512)))
+  {
+    if (retryCnt > 0) goto retry;
+
+    chipSelectHigh();
+    return res;
+  }
+
+  return 0;
+
+ retry:
+   chipSelectHigh();
+   cardCommand(CMD12, 0); //Try sending a stop command, but ignore the result.
+   // errorCode_ = 0;
+   goto retry2;
+}
+
 //------------------------------------------------------------------------------
 /** Read one data block in a multiple block read sequence
  *
@@ -459,6 +687,7 @@ static uint16_t CRC_CCITT(const uint8_t* data, size_t n) {
 }
 
 //------------------------------------------------------------------------------
+#if 0
 bool Sd2Card::readData(uint8_t* dst, uint16_t count) {
   // wait for start block token
   uint16_t t0 = millis();
@@ -498,6 +727,55 @@ bool Sd2Card::readData(uint8_t* dst, uint16_t count) {
   chipSelectHigh();
   return false;
 }
+#endif
+
+//------------------------------------------------------------------------------
+uint8_t Sd2Card::readDataEC(uint8_t* dst, uint16_t count) {
+
+  // wait for start block token
+  uint16_t t0 = millis();
+
+  while ((status_ = spiRec()) == 0XFF) {
+    if (((uint16_t)millis() - t0) > SD_READ_TIMEOUT) {
+
+      // error(SD_CARD_ERROR_READ_TIMEOUT);
+      chipSelectHigh();
+      return SD_CARD_ERROR_READ_TIMEOUT;
+    }
+  }
+
+  if (status_ != DATA_START_BLOCK) {
+
+    // error(SD_CARD_ERROR_READ);
+    chipSelectHigh();
+    return SD_CARD_ERROR_READ;
+  }
+
+  // transfer data
+  spiRead(dst, count);
+
+  // discard CRC
+{
+    uint16_t calcCrc = CRC_CCITT(dst, count);
+    uint16_t recvCrc = spiRec() << 8;
+    recvCrc |= spiRec();
+    if (calcCrc != recvCrc)
+    {
+        //MSerial.print("CRC:");
+        //MSerial.print(recvCrc, HEX);
+        //MSerial.print(' ');
+        //MSerial.print(calcCrc, HEX);
+        //MSerial.print('\n');
+        // error(SD_CARD_ERROR_CRC);
+        chipSelectHigh();
+        return SD_CARD_ERROR_CRC;
+    }
+}
+  chipSelectHigh();
+  return 0;
+}
+
+#if 0
 //------------------------------------------------------------------------------
 /** read CID or CSR register */
 bool Sd2Card::readRegister(uint8_t cmd, void* buf) {
@@ -512,6 +790,23 @@ bool Sd2Card::readRegister(uint8_t cmd, void* buf) {
   chipSelectHigh();
   return false;
 }
+#endif
+
+//------------------------------------------------------------------------------
+/** read CID or CSR register */
+uint8_t Sd2Card::readRegisterEC(uint8_t cmd, void* buf) {
+
+  uint8_t* dst = reinterpret_cast<uint8_t*>(buf);
+
+  if (cardCommand(cmd, 0)) {
+
+    // error(SD_CARD_ERROR_READ_REG);
+    chipSelectHigh();
+    return SD_CARD_ERROR_READ_REG;
+  }
+  return readDataEC(dst, 16);
+}
+
 //------------------------------------------------------------------------------
 /** Start a read multiple blocks sequence.
  *
@@ -555,6 +850,7 @@ bool Sd2Card::readStop() {
   chipSelectHigh();
   return false;
 }
+
 //------------------------------------------------------------------------------
 /**
  * Set the SPI clock rate.
@@ -568,6 +864,7 @@ bool Sd2Card::readStop() {
  * \return The value one, true, is returned for success and the value zero,
  * false, is returned for an invalid value of \a sckRateID.
  */
+#if 0
 bool Sd2Card::setSckRate(uint8_t sckRateID) {
   if (sckRateID > 6) {
     error(SD_CARD_ERROR_SCK_RATE);
@@ -576,6 +873,32 @@ bool Sd2Card::setSckRate(uint8_t sckRateID) {
   spiRate_ = sckRateID;
   return true;
 }
+#endif
+
+//------------------------------------------------------------------------------
+/**
+ * Set the SPI clock rate.
+ *
+ * \param[in] sckRateID A value in the range [0, 6].
+ *
+ * The SPI clock will be set to F_CPU/pow(2, 1 + sckRateID). The maximum
+ * SPI rate is F_CPU/2 for \a sckRateID = 0 and the minimum rate is F_CPU/128
+ * for \a scsRateID = 6.
+ *
+ * \return The value one, true, is returned for success and the value zero,
+ * false, is returned for an invalid value of \a sckRateID.
+ */
+uint8_t Sd2Card::setSckRateEC(uint8_t sckRateID) {
+
+  if (sckRateID > 6) {
+    // error(SD_CARD_ERROR_SCK_RATE);
+    return SD_CARD_ERROR_SCK_RATE;
+  }
+
+  spiRate_ = sckRateID;
+  return 0;
+}
+
 //------------------------------------------------------------------------------
 // wait for card to go not busy
 bool Sd2Card::waitNotBusy(uint16_t timeoutMillis) {
@@ -642,6 +965,8 @@ bool Sd2Card::writeData(const uint8_t* src) {
   chipSelectHigh();
   return false;
 }
+
+#if 0
 //------------------------------------------------------------------------------
 // send one block of data for write block or write multiple blocks
 bool Sd2Card::writeData(uint8_t token, const uint8_t* src) {
@@ -661,6 +986,30 @@ bool Sd2Card::writeData(uint8_t token, const uint8_t* src) {
   chipSelectHigh();
   return false;
 }
+#endif
+
+//------------------------------------------------------------------------------
+// send one block of data for write block or write multiple blocks
+uint8_t Sd2Card::writeDataEC(uint8_t token, const uint8_t* src) {
+
+  spiSendBlock(token, src);
+
+  spiSend(0xff);  // dummy crc
+  spiSend(0xff);  // dummy crc
+
+  status_ = spiRec();
+  if ((status_ & DATA_RES_MASK) != DATA_RES_ACCEPTED) {
+
+    // error(SD_CARD_ERROR_WRITE);
+
+    chipSelectHigh();
+    return SD_CARD_ERROR_WRITE;
+  }
+
+  return 0;
+}
+
+
 //------------------------------------------------------------------------------
 /** Start a write multiple blocks sequence.
  *
