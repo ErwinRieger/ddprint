@@ -459,7 +459,7 @@ class MainForm(npyscreen.Form):
             return
 
         except FatalPrinterError, ex:
-            self.log("printFile(): Caught FatalPrinterError", ex.msg)
+            self.log("printFile(): Caught FatalPrinterError: ", ex.msg)
             # Reset line numbers in case of a printer restart.
             self.printer.resetLineNumber()
 
