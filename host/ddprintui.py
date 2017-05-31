@@ -104,9 +104,29 @@ class MainForm(npyscreen.Form):
         h = self.lines/2
 
         #
-        # Upper left side: the action area
+        # Upper left side: the input/configuration area
         #
         rely = 2
+        e = self.add(npyscreen.TitleFixedText, name = "PrinterProfile       :", relx=1, rely=rely, use_two_lines=False, begin_entry_at=23,
+                width=w-1)
+        e.editable = False
+
+        rely += 1
+        e = self.add(npyscreen.TitleFixedText, name = "Nozzle Profile       :", relx=1, rely=rely, use_two_lines=False, begin_entry_at=23,
+                width=w-1)
+        e.editable = False
+
+        rely += 1
+        e = self.add(npyscreen.TitleFixedText, name = "Materia Profile      :", relx=1, rely=rely, use_two_lines=False, begin_entry_at=23,
+                width=w-1)
+        e.editable = False
+
+        rely += 1
+        e = self.add(npyscreen.TitleFixedText, name = "Specific Mat Profile :", relx=1, rely=rely, use_two_lines=False, begin_entry_at=23,
+                width=w-1)
+        e.editable = False
+
+        rely += 2
         self.fn = self.add(npyscreen.TitleFilename, name = "GCode File:", relx=1, rely=rely, use_two_lines=False, begin_entry_at=23,
                 width=w-1)
 
