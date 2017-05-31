@@ -49,6 +49,9 @@ class ProfileBase(object):
 
         cls._single = self
 
+    def getBaseName(self):
+        return os.path.basename(self.name)
+
     def getValue(self, valueName):
         try:
             return self.values[valueName]
