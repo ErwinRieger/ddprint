@@ -814,7 +814,7 @@ def manualMove(parser, axis, distance, feedrate=0, absolute=False):
 
     current_position = parser.getPos()
     if absolute:
-        d = distance - current_position[A_AXIS] 
+        d = distance - current_position[axis] 
         assert(abs(d) <= 1000)
         parser.execute_line("G0 F%d %s%f" % (feedrate*60, dimNames[axis], distance))
     else:
