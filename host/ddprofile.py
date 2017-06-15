@@ -198,13 +198,11 @@ class TempCurve:
         self.curveList = curveList
         
         (minTemp, minFlowrate) = curveList[0]
-        # self.minTemp = int(minTemp)
         self.minTemp = minTemp
         # self.minFlowrate = int(minFlowrate*10)
         self.minFlowrate = minFlowrate
 
         (maxTemp, maxFlowrate) = curveList[-1]
-        # self.maxTemp = int(maxTemp)
         self.maxTemp = maxTemp
         # self.maxFlowrate = int(maxFlowrate*10)
         self.maxFlowrate = maxFlowrate
@@ -238,9 +236,6 @@ class TempCurve:
 
             temp1, fr1 = self.curveList[i]
             temp2, fr2 = self.curveList[i+1]
-
-            # k1 = int(fr1*10)
-            # k2 = int(fr2*10)
 
             if flowrate >= fr1 and flowrate < fr2 :
                 # print "found range:", k1, key, k2
@@ -278,9 +273,6 @@ class TempCurve:
 
             temp1, fr1 = self.curveList[i]
             temp2, fr2 = self.curveList[i+1]
-
-            # t1 = int(temp1)
-            # t2 = int(temp2)
 
             if temp >= temp1 and temp < temp2:
 
@@ -330,19 +322,19 @@ class MatProfile(ProfileBase):
 
     @classmethod
     def getHotendStartTemp(cls):
-        return int(cls.getValues()["hotendStartTemp"])
+        return float(cls.getValues()["hotendStartTemp"])
 
     @classmethod
     def getHotendMaxTemp(cls):
-        return int(cls.getValues()["hotendMaxTemp"])
+        return float(cls.getValues()["hotendMaxTemp"])
 
     @classmethod
     def getBedTemp(cls):
-        return int(cls.getValues()["bedTemp"])
+        return float(cls.getValues()["bedTemp"])
 
     @classmethod
     def getBedTempReduced(cls):
-        return int(cls.getValues()["bedTempReduced"])
+        return float(cls.getValues()["bedTempReduced"])
 
     @classmethod
     def getFanPercent(cls):
