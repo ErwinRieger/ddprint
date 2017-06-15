@@ -49,7 +49,8 @@
   # "RetractLength"  : 5.0
   # 1.75 mm filament, with advance [mm/s]
   "RetractFeedrate"  : 50,
-  "RetractLength"  : 1.0,
+  # "RetractLength"  : 1.0,
+  "RetractLength"  : 2.0,
   # Maximum acceleration of each axis X, Y, Z, A, B [mm/s²]
   "MaxAxisAcceleration": [9000, 9000, 100, 10000, 10000],
   # Filamentsensor calibration data:
