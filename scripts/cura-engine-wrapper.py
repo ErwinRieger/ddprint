@@ -216,6 +216,9 @@ dummyApp.setGlobalContainerStack(machine)
 for key in machine.getAllKeys():
 
     value = machine.getProperty(key, "value")
+
+    # XXX todo: use resolved values here
+    # The "resolved" value of a setting is the value that should be used when two extruders have a conflicting value.
     resolved = machine.getProperty(key, "resolve")
 
     if resolved != None and resolved != value:
@@ -228,6 +231,8 @@ profile = cr.findInstanceContainers(type = "quality_changes", name = qualityProf
 
 for key in profile.getAllKeys():
 
+    # XXX todo: use resolved values here
+    # The "resolved" value of a setting is the value that should be used when two extruders have a conflicting value.
     assert(profile.getProperty(key, "resolve") == None)
     allValues[key] = profile.getProperty(key, "value")
 
