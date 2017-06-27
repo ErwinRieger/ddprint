@@ -58,8 +58,9 @@
     // #define LCD_ALERTMESSAGEPGM(s) SERIAL_PROTOCOLLNPGM(s)
 // #endif
 
-// Number of entries in ExtrusionRateLimit table
-#define NExtrusionLimit 40
+// Number of entries in ExtrusionRateLimit table, this must match the value
+// in the host (ddprintconstants.py).
+#define NExtrusionLimit 100
 extern uint16_t tempExtrusionRateTable[];
 extern uint16_t extrusionLimitBaseTemp;
 
