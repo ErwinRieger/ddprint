@@ -37,12 +37,6 @@ from ddvector import vectorLength, vectorMul
 # UM2:
 FILAMENT_REVERSAL_LENGTH = 750
 
-# To prevent false assertions because of rounding errors
-# RoundSafe = 0.995
-# RoundSafe = 0.999999
-# RoundSafe = 1.0
-# xRoundSafe = 0.999999999
-
 ####################################################################################################
 def sign(x):
     if x == 0:
@@ -428,7 +422,7 @@ def joinTravelMoves(move1, move2, jerk):
         startSpeedMove2 = move2.startSpeed.speed()
 
         # Compute max reachable endspeed of move1
-        maxEndSpeed = vAccelPerDist(startSpeedMove1S, allowedAccel, move1.distance5) #  * RoundSafe
+        maxEndSpeed = vAccelPerDist(startSpeedMove1S, allowedAccel, move1.distance5)
 
         """
         if endSpeedVMove1.isDisjointV(startSpeedMove2.vv()):
@@ -1555,8 +1549,13 @@ def getResponseString(s, offset):
 
 def genTempTable(planner):
 
+    hwVersion = PrinterProfile.getHwVersion()
     nozzleDiam = NozzleProfile.getSize()
-    baseTemp = MatProfile.getHotendBaseTemp(nozzleDiam)
+    baseTemp = MatProfile.getHotendBaseTemp(hwVersion, nozzleDiam)
+    baseFlowrate = MatProfile.getFlowrateForTemp(baseTemp, hwVersion, nozzleDiam) * (1.0-AutotempSafetyMargin)
+
+    # Temps lower than 170 not handled yet
+    assert(baseTemp >= 170)
 
     aFilament = MatProfile.getMatArea()
     spm = PrinterProfile.getStepsPerMM(A_AXIS)
@@ -1570,18 +1569,27 @@ def genTempTable(planner):
     table = []
     for i in range(NExtrusionLimit):
 
-        t = baseTemp + i*2
+        # t = baseTemp + i*2
+        # t = baseTemp + i
+        t = 170 + i
 
-        flowrate = MatProfile.getFlowrateForTemp(t, nozzleDiam) / (1.0+AutotempSafetyMargin)
+        if t < baseTemp:
+            # Note: simple interpolation for values between 170° and start of profile basetemp
+            f = (baseFlowrate-0.1) / (baseTemp-170)
+            flowrate = 0.1 + i*f
+        else:
+            # flowrate = MatProfile.getFlowrateForTemp(t, nozzleDiam) / (1.0+AutotempSafetyMargin)
+            flowrate = MatProfile.getFlowrateForTemp(t, hwVersion, nozzleDiam) * (1.0-AutotempSafetyMargin)
+
         espeed = flowrate / aFilament
         print "flowrate for temp %f: %f -> espeed %f" % (t, flowrate, espeed)
 
-        espeed = planner.advance.eComp(espeed)
-        print "corrected espeed:", espeed
+        # espeed = planner.advance.eComp(espeed)
+        # print "corrected espeed:", espeed
 
         steprate = espeed * spm
         tvs = 1.0/steprate
-        timerValue = int(fTimer / steprate)
+        timerValue = min(int(fTimer / steprate), 0xffff)
 
         print "    Temp: %f, max flowrate: %.1f mm³/s, max espeed: %.1f mm/s, steps/s: %d, steprate: %d us, timervalue: %d" % (t, flowrate, espeed, int(steprate), int(tvs*1000000), timerValue)
         table.append(timerValue)
@@ -1590,7 +1598,7 @@ def genTempTable(planner):
 
     of.close()
 
-    return (baseTemp, table)
+    return (170, table)
 
 ####################################################################################################
 
@@ -1626,7 +1634,8 @@ def printTempTable(temp, tempTable):
 
         of.write("%d %4.1f %d %d\n" % (temp, speed, int(steprate), timerValue))
 
-        temp += 2
+        # temp += 2
+        temp += 1
 
     of.close()
 
@@ -1857,6 +1866,7 @@ plot "-" using 1:2 with linespoints title "Target Flowrate", \\
 
         minGrip = 0.85
         minGrip = 0.90
+        minGrip = 0.95
         ratio = 1.0
 
         fractAvg.setValue(feedrate)
@@ -1887,8 +1897,7 @@ plot "-" using 1:2 with linespoints title "Target Flowrate", \\
             print "tempAvg: %f, tAvg: %f, aAvg: %f, current ratio: %f" % (t1Avg, tAvg, aAvg, ratio)
 
             if tempGood(actT1, t1):
-                # feedrate += 0.01 # increase by 0.1mm/s per second
-                frincrease = 0.1 * (ratio - minGrip)
+                frincrease = max(0.1 * (ratio - minGrip), 0.001)
                 feedrate += frincrease
                 print "increased feedrate by %.2f to %.2f" % (frincrease, feedrate)
 

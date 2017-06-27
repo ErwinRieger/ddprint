@@ -186,6 +186,10 @@ class PrinterProfile(ProfileBase):
         print "interpol:", fr, f, fr*f
         return fr*f
 
+    @classmethod
+    def getHwVersion(cls):
+        return cls.getValues()["hwVersion"]
+
 ####################################################################################################
 #
 # To access tempearture curve data
@@ -214,8 +218,6 @@ class TempCurve:
             key = int(frate*10)
             if key not in self.tempCurveDict:
                 self.tempCurveDict[key] = temp
-
-        print"tempDict:", self.tempCurveDict
 
     def lookupFlowrate(self, flowrate):
 
@@ -317,8 +319,8 @@ class MatProfile(ProfileBase):
         return float(cls.getValues()["material_diameter"])
 
     @classmethod
-    def getHotendBaseTemp(cls, nozzleDiam):
-        return  cls.get().getTempCurve(nozzleDiam).minTemp
+    def getHotendBaseTemp(cls, hwVersion, nozzleDiam):
+        return  cls.get().getTempCurve(hwVersion, nozzleDiam).minTemp
 
     @classmethod
     def getHotendStartTemp(cls):
@@ -354,41 +356,52 @@ class MatProfile(ProfileBase):
     def getKAdv(cls):
         return float(cls.getValues()["kAdvance"])
 
-    @classmethod
-    def getKFeederCompensation(cls):
-        return float(cls.getValues()["kFeederCompensation"])
+    # @classmethod
+    # def getKFeederCompensation(cls):
+        # return float(cls.getValues()["kFeederCompensation"])
 
     @classmethod
-    def getTempForFlowrate(cls, flowrate, nozzleDiam):
-        return cls.get()._getTempForFlowrate(flowrate, nozzleDiam)
+    def getTempForFlowrate(cls, flowrate, hwVersion, nozzleDiam):
+        return cls.get()._getTempForFlowrate(flowrate, hwVersion, nozzleDiam)
 
-    def _getTempForFlowrate(self, flowrate, nozzleDiam):
+    def _getTempForFlowrate(self, flowrate, hwVersion, nozzleDiam):
 
-        tempCurve = self.getTempCurve(nozzleDiam)
+        tempCurve = self.getTempCurve(hwVersion, nozzleDiam)
         return tempCurve.lookupFlowrate(flowrate)
 
     @classmethod
-    def getFlowrateForTemp(cls, temp, nozzleDiam):
-        return cls.get()._getFlowrateForTemp(temp, nozzleDiam)
+    def getFlowrateForTemp(cls, temp, hwVersion, nozzleDiam):
+        return cls.get()._getFlowrateForTemp(temp, hwVersion, nozzleDiam)
 
-    def _getFlowrateForTemp(self, temp, nozzleDiam):
+    def _getFlowrateForTemp(self, temp, hwVersion, nozzleDiam):
 
-        tempCurve = self.getTempCurve(nozzleDiam)
+        tempCurve = self.getTempCurve(hwVersion, nozzleDiam)
         return tempCurve.lookupTemp(temp)
 
-    def getTempCurve(self, nozzleDiam):
+    def getTempCurve(self, hwVersion, nozzleDiam):
 
         if nozzleDiam not in self.tempCurves:
 
-            data = self.getValues()["tempFlowrateCurve_%d" % (nozzleDiam*100)]
+            flowrateData = self.getValues()["tempFlowrateCurve_%d" % (nozzleDiam*100)]
 
-            if type(data) == types.DictType:
-                data = data["data"]
+            # if type(data) == types.DictType:
+                # data = data["data"]
+            # assert(type(data) == types.ListType)
 
-            tempCurve = TempCurve(data)
+            # Check hardware version
+            assert(flowrateData["version"] == hwVersion)
+
+            tempCurve = TempCurve(flowrateData["data"])
             self.tempCurves[nozzleDiam] = tempCurve
 
         return self.tempCurves[nozzleDiam]
+
+    @classmethod
+    def getSlippage(cls, hwVersion, nozzleDiam):
+
+        flowrateData = cls.get().getValues()["tempFlowrateCurve_%d" % (nozzleDiam*100)]
+        assert(flowrateData["version"] == hwVersion)
+        return flowrateData["slippage"]
 
 ####################################################################################################
 #

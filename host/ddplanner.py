@@ -243,7 +243,7 @@ class PathData (object):
 
             # Compute temperature for this segment and add tempcommand into the stream. 
             maxExtrusionRate = self.maxEspeed * MatProfile.getMatArea()
-            newTemp = int(MatProfile.getTempForFlowrate(maxExtrusionRate * (1.0+AutotempSafetyMargin), NozzleProfile.getSize()))
+            newTemp = MatProfile.getTempForFlowrate(maxExtrusionRate * (1.0+AutotempSafetyMargin), PrinterProfile.getHwVersion(), NozzleProfile.getSize())
             # Don't go below startTemp from material profile
             newTemp = max(newTemp, MatProfile.getHotendStartTemp())
 

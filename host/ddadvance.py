@@ -24,7 +24,7 @@ from argparse import Namespace
 
 from ddprintconstants import *
 from ddconfig import *
-from ddprofile import PrinterProfile, MatProfile # , NozzleProfile
+from ddprofile import PrinterProfile, MatProfile, NozzleProfile
 from ddvector import VelocityVector32, vectorAdd, vectorSub, vectorLength, vectorAbs
 
 import ddprintutil as util
@@ -130,10 +130,22 @@ class Advance (object):
 
         print "Advance: usinge K-Advance %.3f" % self.kAdv
 
-        self.kFeederComp = MatProfile.getKFeederCompensation()
+        # self.kFeederComp = MatProfile.getKFeederCompensation()
 
-        if self.kFeederComp:
-            print "Feeder Compensation: usinge K-FeederCompensation %.3f" % self.kFeederComp
+        hwVersion = PrinterProfile.getHwVersion()
+        nozzleDiam = NozzleProfile.getSize()
+        slippage = MatProfile.getSlippage(hwVersion, nozzleDiam)
+
+        tempCurve = MatProfile.get().getTempCurve(hwVersion, nozzleDiam)
+
+        area = MatProfile.getMatArea()
+        flowRate = tempCurve.maxFlowrate                           # [mm³/s]
+        feedRate = flowRate / area                                 # [mm/s]
+
+        self.kFeederComp = 1.0/feedRate - 1.0/((1.0+slippage) * feedRate)
+
+        # if self.kFeederComp:
+        print "Feeder Compensation: usinge K-FeederCompensation %.3f" % self.kFeederComp
 
         self.e_steps_per_mm = PrinterProfile.getStepsPerMM(A_AXIS)
 

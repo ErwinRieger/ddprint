@@ -77,9 +77,10 @@ SOH = 0x0 # 'Start of header', startbit for COBS encoded data block.
 
 ############################################################################
 #
-# Extrusion limit, tempTable
+# Extrusion limit, tempTable. This must match the value in the
+# firmware (ddprint.h).
 #
-NExtrusionLimit = 40
+NExtrusionLimit = 100
 # ExtrusionLimitBaseTemp = 190
 
 
