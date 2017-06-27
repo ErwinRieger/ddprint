@@ -7,7 +7,7 @@
   "bedTempReduced"    : 95,
   "fanPercent"        : 100,
   "kAdvance"          : 0.3,
-  "kFeederCompensation": 0.015,
+  # "kFeederCompensation": 0.015,
   # Generic temp-flowrate table, this could/should be overridden
   # by a specific material profile with a measured temp-flowrate curve.
   # This table is used by the "auto-temp" algorithm to detemine the
