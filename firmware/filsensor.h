@@ -237,7 +237,7 @@ class FilamentSensorADNS9800 {
         void run();
         void selfTest();
 
-        void enableFeedrateLimiter(bool flag) { /* feedrateLimiterEnabled = flag; */ }
+        void enableFeedrateLimiter(bool flag) { feedrateLimiterEnabled = flag; }
 };
 
 extern FilamentSensorADNS9800 filamentSensor;

@@ -29,6 +29,7 @@ from ddprofile import PrinterProfile
 from ddprinter import Printer
 from ddprintcommands import *
 from ddprintstates import *
+from ddprintconstants import A_AXIS
 
 def testFilSensor(args, parser):
 
@@ -47,55 +48,7 @@ def testFilSensor(args, parser):
 # Calibrate filament sensor, determine ratio between extruder stepper feedrate and the speed
 # measured by the flowrate sensor.
 #
-
 def old_calibrateFilSensor(args, parser):
-
-    planner = parser.planner
-    printer = planner.printer
-
-    printer.commandInit(args)
-
-    # ddhome.home(parser, args.fakeendstop)
-
-    current_position = parser.getPos()
-    apos = current_position[util.A_AXIS]
-
-    fsstepsum = 0
-    distsum = 0
-
-    # ramp up speed from 3mm/s to 13mm/s, that is about 7.2 to 31 mm³/s flowrate (1.75mm filament)
-    for feedrate in range(11):
-
-        feedrate += 3
-
-        # choose length of move to get about 25 points per feedrate step
-        distance = 2.5 * feedrate
-
-        apos += distance
-
-        printer.sendPrinterInit()
-
-        parser.execute_line("G0 F%d %s%f" % (feedrate*60, util.dimNames[util.A_AXIS], apos))
-
-        planner.finishMoves()
-        printer.sendCommand(CmdEOT)
-        printer.sendCommandParamV(CmdMove, [MoveTypeNormal])
-        printer.waitForState(StateIdle)
-
-        time.sleep(0.25)
-
-        fssteps = printer.getFilSensor()
-
-        print "Speed: %d, dist: %.2f, FSsteps: %d, fssteps/mm: %.4f" % (feedrate, distance, fssteps, fssteps/distance)
-
-        distsum += distance
-        fsstepsum += fssteps
-
-
-    print "Average fssteps/mm: %.4f" % (fsstepsum/distsum)
-
-
-def calibrateFilSensor(args, parser):
 
     def writeDataSet(f, data):
 
@@ -130,7 +83,7 @@ def calibrateFilSensor(args, parser):
     # accelDistance = util.accelDist(0, eAccel, accelTime)
 
     feedrate = 0.5
-    startPos = parser.getPos()[util.A_AXIS]
+    startPos = parser.getPos()[A_AXIS]
 
     calFile = open("calibrateFilSensor.json", "w")
     calFile.write('{\n    "filSensorCalibration": [\n')
@@ -149,11 +102,11 @@ def calibrateFilSensor(args, parser):
             frtargetEwma = util.EWMA(0.1)
 
         current_position = parser.getPos()
-        apos = current_position[util.A_AXIS]
+        apos = current_position[A_AXIS]
 
         printer.sendPrinterInit()
 
-        parser.execute_line("G0 F%d %s%f" % (feedrate*60, util.dimNames[util.A_AXIS], apos+accelDistance))
+        parser.execute_line("G0 F%d %s%f" % (feedrate*60, util.dimNames[A_AXIS], apos+accelDistance))
 
         planner.finishMoves()
         printer.sendCommand(CmdEOT)
@@ -230,7 +183,7 @@ plot "-" using 1:2 with linespoints title "TargetSpeed", \\
 
     printer.sendPrinterInit()
 
-    parser.execute_line("G0 F%d %s%f" % (maxFeedrate*60, util.dimNames[util.A_AXIS], startPos))
+    parser.execute_line("G0 F%d %s%f" % (maxFeedrate*60, util.dimNames[A_AXIS], startPos))
 
     planner.finishMoves()
     printer.sendCommand(CmdEOT)
@@ -238,6 +191,134 @@ plot "-" using 1:2 with linespoints title "TargetSpeed", \\
 
     printer.waitForState(StateIdle)
 
+    # Enable flowrate limit
+    printer.sendCommandParamV(CmdEnableFRLimit, [packedvalue.uint8_t(1)])
+
+
+#
+# Calibrate filament sensor, determine ratio between extruder steps and the value 
+# measured by the flowrate sensor.
+#
+def calibrateFilSensor(args, parser):
+
+    def writeDataSet(f, data):
+
+        for tup in data:
+            f.write("%f %f\n" % tup)
+        f.write("E\n")
+
+    planner = parser.planner
+    printer = planner.printer
+
+    maxFeedrate = args.feedrate or 15
+
+    eAccel = PrinterProfile.getMaxAxisAcceleration()[A_AXIS]
+
+    printer.commandInit(args)
+
+    ddhome.home(parser, args.fakeendstop)
+
+    # Disable flowrate limit
+    printer.sendCommandParamV(CmdEnableFRLimit, [packedvalue.uint8_t(0)])
+
+    # Disable temp-flowrate limit
+    util.downloadDummyTempTable(printer)
+
+    feedrate = 0.25
+    startPos = parser.getPos()[A_AXIS]
+
+    calFile = open("calibrateFilSensor.json", "w")
+    calFile.write('{\n    "filSensorCalibration": [\n')
+
+    calValues = []
+
+    while feedrate <= maxFeedrate:
+
+        tStartup = util.getStartupTime(feedrate)
+        tAccel = feedrate / eAccel
+
+        accelDistance = 5*feedrate
+        print "accelDistance: ", accelDistance
+
+        # if False:
+            # fractEwma = util.EWMA(0.1)
+            # frtargetEwma = util.EWMA(0.1)
+
+        current_position = parser.getPos()
+        apos = current_position[A_AXIS]
+
+        printer.sendPrinterInit()
+
+        parser.execute_line("G0 F%d %s%f" % (feedrate*60, util.dimNames[A_AXIS], apos+accelDistance))
+
+        planner.finishMoves()
+        printer.sendCommand(CmdEOT)
+        printer.sendCommandParamV(CmdMove, [MoveTypeNormal])
+
+        status = printer.getStatus()
+
+        while status["actualGrip"] < 0.1:
+            print "wait for startup..."
+            status = printer.getStatus()
+            time.sleep(0.1)
+
+        data = []
+        t = time.time()
+        while status["state"] != StateIdle:
+
+            # st = status["targetExtrusionSpeed"]
+            # sa = status["actualExtrusionSpeed"]
+            tMeasure = time.time()-t
+
+            if tMeasure >= tStartup:
+
+                data.append(status["actualGrip"])
+
+            status = printer.getStatus()
+            time.sleep(0.01)
+
+        # Cut the last tAccel:
+        cut = int(tAccel/0.01+1)
+        del data[-cut:]
+
+        # Average of ratio for this speed
+        grip = sum(data) / len(data)
+
+        # Calibration value, targetSpeed/measuredSensorSpeed, this ist the value
+        # to multiply the measured sensor speed to get the real speed:
+        print "speed:", feedrate, "ratio:", grip
+
+        calValues.append((feedrate, grip))
+
+        feedrate += 0.25
+
+    f = open("calibrateFilSensor.gnuplot", "w")
+    f.write("""
+set grid
+set yrange [0:%f]
+plot '-' using 1:2 with linespoints title 'ratio'
+""" % max(1.5, feedrate*2))
+
+    writeDataSet(f, calValues)
+    f.write("pause mouse close\n")
+
+    calFile.write(",\n".join(map(lambda tup: "        [%f, %f]" % tup, calValues)))
+    calFile.write("\n    ]\n")
+    calFile.write("}\n")
+    calFile.close()
+
+    printer.sendPrinterInit()
+
+    parser.execute_line("G0 F%d %s%f" % (maxFeedrate*60, util.dimNames[A_AXIS], startPos))
+
+    planner.finishMoves()
+    printer.sendCommand(CmdEOT)
+    printer.sendCommandParamV(CmdMove, [MoveTypeNormal])
+
+    printer.waitForState(StateIdle)
+
+    # Enable flowrate limit
+    printer.sendCommandParamV(CmdEnableFRLimit, [packedvalue.uint8_t(1)])
 
 
 

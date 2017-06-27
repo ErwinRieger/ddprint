@@ -70,8 +70,7 @@ FilamentSensorADNS9800::FilamentSensorADNS9800() {
     WRITE(FILSENSNCS, HIGH);
     SET_OUTPUT(FILSENSNCS);
 
-    // feedrateLimiterEnabled = true;
-    feedrateLimiterEnabled = false;
+    feedrateLimiterEnabled = true;
 
     init();
 }
@@ -91,8 +90,8 @@ void FilamentSensorADNS9800::init() {
     grip = 1.0;
 
     lastASteps = current_pos_steps[E_AXIS];
-    lastTSs = millis();
-    lastTSf = millis();
+    lastTSs = micros();
+    lastTSf = micros();
 
     targetSpeed = 0;
     // targetSpeed.reset();
@@ -265,6 +264,70 @@ void FilamentSensorADNS9800::run() {
 }
 #endif
 
+// xxx hardcoded, download from printer profile...
+#define NFilSensorCalibration 60
+static float filSensorCalibration[60] = {
+ 1.352941,
+ 1.612813,
+ 1.679418,
+ 1.770331,
+ 1.701769,
+ 1.825974,
+ 1.747586,
+ 1.809160,
+ 1.849475,
+ 1.830849,
+ 1.921773,
+ 1.884950,
+ 1.903342,
+ 1.848799,
+ 1.875777,
+ 1.891645,
+ 1.899160,
+ 1.886221,
+ 1.887608,
+ 1.878118,
+ 1.893097,
+ 1.886515,
+ 1.896903,
+ 1.877345,
+ 1.881102,
+ 1.904951,
+ 1.882091,
+ 1.905633,
+ 1.891291,
+ 1.900309,
+ 1.893599,
+ 1.896616,
+ 1.893077,
+ 1.900136,
+ 1.889184,
+ 1.891020,
+ 1.893207,
+ 1.898567,
+ 1.899326,
+ 1.900814,
+ 1.902579,
+ 1.898798,
+ 1.901320,
+ 1.898721,
+ 1.896739,
+ 1.899092,
+ 1.905391,
+ 1.894495,
+ 1.900616,
+ 1.911575,
+ 1.896576,
+ 1.901797,
+ 1.908106,
+ 1.905327,
+ 1.901421,
+ 1.903541,
+ 1.904031,
+ 1.901099,
+ 1.910934,
+ 1.898067,
+};
 
 void FilamentSensorADNS9800::run() {
 
@@ -310,20 +373,38 @@ void FilamentSensorADNS9800::run() {
         // lastYPos = yPos;
     // }
 
-    if (ds < 0) {
+    if (ds <= 0) {
+
         // reverse
+        lastTSs = micros();
         lastASteps = astep;
         lastYPos = yPos;
+
         // actualGrip.reset();
         // grip = 1;
     }
     else if (ds > 50) {
 
+        uint32_t ts = micros();
+        int32_t dt = ts - lastTSs;
+
         float ratio = (float)dy / ds;
 
         actualGrip.addValue(ratio);
 
-        grip = max(1.0, 1.95 / actualGrip.value());
+        float tgtSpeed = (ds * (1000000.0 / AXIS_STEPS_PER_MM_E)) / dt;
+
+        uint8_t calIndex = min(NFilSensorCalibration-1, tgtSpeed/0.25);
+
+        float cal = filSensorCalibration[calIndex] * 0.95; // allow 5% slip
+
+        if (feedrateLimiterEnabled)
+            grip = max(1.0, cal / actualGrip.value());
+
+        /*
+        lcd.setCursor(0, 0); lcd.print("Speed:"); lcd.print(tgtSpeed); lcd.print("I:"); lcd.print(calIndex); lcd.print("     ");
+        lcd.setCursor(0, 1); lcd.print("Cal  :"); lcd.print(cal); lcd.print("     ");
+        */
 
         /*
         lcd.setCursor(0, 0); lcd.print("DS:"); lcd.print(ds); lcd.print("     ");
@@ -332,64 +413,10 @@ void FilamentSensorADNS9800::run() {
         lcd.setCursor(0, 3); lcd.print("RA:"); lcd.print(actualGrip.value()); lcd.print(" "); lcd.print(grip); lcd.print("     ");
         */
 
+        lastTSs = ts;
         lastASteps = astep;
         lastYPos = yPos;
     }
-
-    // xxx falls limiter wieder aktiviert werden soll, so muss die kalibrierungstabelle vom host geladen und hier
-    // bentzt werden.
-    /*
-    if (feedrateLimiterEnabled && (actualSpeed.value() > 300) && fillBufferTask.synced() && stepBuffer.synced()) { // 3mm/s bzw. 7.2mm³/s
-
-        int16_t grip = ((int32_t)actualSpeed.value()*100) / targetSpeed.value();
-
-        if ((grip > 0) && (grip < 50)) {
-
-            // printf("grip < 75: %d, %4.1f %4.1f\n", grip, actualSpeed*100, targetSpeed*0.4);
-
-            int16_t curTempIndex = (int16_t)(current_temperature[0] - extrusionLimitBaseTemp) / 2;
-            if ((curTempIndex > 0) && (curTempIndex < NExtrusionLimit)) {
-
-                // printf("found temptable index: %d\n", curTempIndex);
-                txBuffer.sendResponseStart(RespUnsolicitedMsg);
-                txBuffer.sendResponseUint8(ExtrusionLimitDbg);
-                txBuffer.sendResponseInt16(curTempIndex);
-                txBuffer.sendResponseInt16(actualSpeed.value());
-                txBuffer.sendResponseInt16(targetSpeed.value());
-                txBuffer.sendResponseInt16(grip);
-                txBuffer.sendResponseEnd();
-
-                // Increase table values, decrease allowed speed for this and the following temperaturew
-                // //////////////////////////////////////////
-                uint16_t prev_old_timer = tempExtrusionRateTable[curTempIndex-1];
-                uint16_t prev_old_rate = FTIMER / prev_old_timer;
-                uint16_t prev_new_rate = prev_old_rate;
-
-                while (curTempIndex < NExtrusionLimit) {
-
-                    uint16_t this_old_timer = tempExtrusionRateTable[curTempIndex];
-                    uint16_t this_old_rate = FTIMER / this_old_timer;
-
-                    uint16_t new_dy = (this_old_rate - prev_old_rate) * 0.95; // xxx arbitrary
-
-                    uint16_t this_new_rate = prev_new_rate + new_dy;
-
-                    // printf("adjust rate: %d -> %d\n", this_old_rate, this_new_rate);
-
-                    tempExtrusionRateTable[curTempIndex] = FTIMER / this_new_rate;
-
-                    prev_old_rate = this_old_rate;
-                    prev_new_rate = this_new_rate;
-
-                    curTempIndex++;
-                }
-
-                fillBufferTask.sync();
-                stepBuffer.sync();
-            }
-        }
-    }
-    */
 }
 
 void FilamentSensorADNS9800::reset(){
