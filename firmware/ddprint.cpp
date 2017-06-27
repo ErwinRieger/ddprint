@@ -630,12 +630,12 @@ bool FillBufferTask::Run() {
 
                             // Speed is limited by temperature
                             // XXX cleanup temptable store temptable as floats or use integer (*1000) numeric here...
-                            timerScale = maxTempSpeed / eSpeedTimer;
+                            timerScale = (maxTempSpeed / eSpeedTimer) * filamentSensor.grip;
                             // printf("speed is limited by factor: %f\n", timerScale);
                         }
                         else {
                             // Speed is not limited by temperature
-                            timerScale = 1.0;
+                            timerScale = /* 1.0 * */  filamentSensor.grip;
                         }
                     }
                     else {
@@ -705,7 +705,7 @@ bool FillBufferTask::Run() {
                     PT_WAIT_THREAD(sDReader);
                     lastTimer = FromBuf(uint16_t, sDReader.readData);
                     // sd.timer = STD max ( lastTimer, MAXTEMPSPEED );
-                    sd.timer = STD min ( (uint16_t)(lastTimer*timerScale), (uint16_t)0xffff );
+                    sd.timer = STD min ( (uint16_t)(lastTimer * timerScale), (uint16_t)0xffff );
 
                     computeStepBits();
                     PT_WAIT_WHILE(stepBuffer.full());
@@ -881,12 +881,12 @@ bool FillBufferTask::Run() {
                     if (eSpeedTimer < maxTempSpeed) {
                         // Speed is limited by temperature
                         // XXX cleanup temptable store temptable as floats or use integer (*1000) numeric here...
-                        timerScale = maxTempSpeed / eSpeedTimer;
+                        timerScale = (maxTempSpeed / eSpeedTimer) * filamentSensor.grip;
                         // printf("speed is limited by factor: %f\n", timerScale);
                     }
                     else {
                         // Speed is not limited by temperature
-                        timerScale = 1.0;
+                        timerScale = /* 1.0 * */ filamentSensor.grip;
                     }
                 }
     
@@ -1324,7 +1324,8 @@ void Printer::cmdGetStatus() {
     // txBuffer.sendResponseInt16(filamentSensor.targetSpeed.value());
     txBuffer.sendResponseInt16(filamentSensor.targetSpeed);
     txBuffer.sendResponseInt16(filamentSensor.actualSpeed.value());
-    // txBuffer.sendResponseInt16(filamentSensor.actualSpeed);
+    txBuffer.sendResponseValue(filamentSensor.actualGrip.value());
+    txBuffer.sendResponseValue(filamentSensor.grip);
 #else
     txBuffer.sendResponseInt16(0);
     txBuffer.sendResponseInt16(0);

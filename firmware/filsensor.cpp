@@ -86,6 +86,10 @@ void FilamentSensorADNS9800::init() {
 
     yPos = 0;
     lastYPos = 0;
+
+    actualGrip.reset();
+    grip = 1.0;
+
     lastASteps = current_pos_steps[E_AXIS];
     lastTSs = millis();
     lastTSf = millis();
@@ -154,12 +158,12 @@ int16_t FilamentSensorADNS9800::getDY() {
         // uint16_t shutter = ((uint16_t)readLoc(REG_Shutter_Upper)<<8) | readLoc(REG_Shutter_Lower);
 #endif
 
-        return dy; 
+        return dy; // xxx result not used
     }
 
     return 0;
 }
-
+#if 0
 void FilamentSensorADNS9800::run() {
 
     spiInit(3); // scale = pow(2, 3+1), 1Mhz
@@ -201,6 +205,134 @@ void FilamentSensorADNS9800::run() {
         // actualSpeed = (ds * (100000000/FS_STEPS_PER_MM)) / dt;
 
         lastTSf = ts;
+        lastYPos = yPos;
+    }
+
+    // xxx falls limiter wieder aktiviert werden soll, so muss die kalibrierungstabelle vom host geladen und hier
+    // bentzt werden.
+    /*
+    if (feedrateLimiterEnabled && (actualSpeed.value() > 300) && fillBufferTask.synced() && stepBuffer.synced()) { // 3mm/s bzw. 7.2mm³/s
+
+        int16_t grip = ((int32_t)actualSpeed.value()*100) / targetSpeed.value();
+
+        if ((grip > 0) && (grip < 50)) {
+
+            // printf("grip < 75: %d, %4.1f %4.1f\n", grip, actualSpeed*100, targetSpeed*0.4);
+
+            int16_t curTempIndex = (int16_t)(current_temperature[0] - extrusionLimitBaseTemp) / 2;
+            if ((curTempIndex > 0) && (curTempIndex < NExtrusionLimit)) {
+
+                // printf("found temptable index: %d\n", curTempIndex);
+                txBuffer.sendResponseStart(RespUnsolicitedMsg);
+                txBuffer.sendResponseUint8(ExtrusionLimitDbg);
+                txBuffer.sendResponseInt16(curTempIndex);
+                txBuffer.sendResponseInt16(actualSpeed.value());
+                txBuffer.sendResponseInt16(targetSpeed.value());
+                txBuffer.sendResponseInt16(grip);
+                txBuffer.sendResponseEnd();
+
+                // Increase table values, decrease allowed speed for this and the following temperaturew
+                // //////////////////////////////////////////
+                uint16_t prev_old_timer = tempExtrusionRateTable[curTempIndex-1];
+                uint16_t prev_old_rate = FTIMER / prev_old_timer;
+                uint16_t prev_new_rate = prev_old_rate;
+
+                while (curTempIndex < NExtrusionLimit) {
+
+                    uint16_t this_old_timer = tempExtrusionRateTable[curTempIndex];
+                    uint16_t this_old_rate = FTIMER / this_old_timer;
+
+                    uint16_t new_dy = (this_old_rate - prev_old_rate) * 0.95; // xxx arbitrary
+
+                    uint16_t this_new_rate = prev_new_rate + new_dy;
+
+                    // printf("adjust rate: %d -> %d\n", this_old_rate, this_new_rate);
+
+                    tempExtrusionRateTable[curTempIndex] = FTIMER / this_new_rate;
+
+                    prev_old_rate = this_old_rate;
+                    prev_new_rate = this_new_rate;
+
+                    curTempIndex++;
+                }
+
+                fillBufferTask.sync();
+                stepBuffer.sync();
+            }
+        }
+    }
+    */
+}
+#endif
+
+
+void FilamentSensorADNS9800::run() {
+
+    spiInit(3); // scale = pow(2, 3+1), 1Mhz
+
+    // Berechne soll flowrate, filamentsensor ist sehr ungenau bei kleiner geschwindigkeit.
+
+    CRITICAL_SECTION_START
+    long astep = current_pos_steps[E_AXIS];
+    CRITICAL_SECTION_END
+
+    int32_t ds = astep - lastASteps; // Requested extruded length
+
+    // Note: Konstante 50 steps wird auch in ddtest.py:calibrateFilSensor() verwendet.
+    // if (ds > 50) {
+
+        // uint32_t ts = micros();
+        // int32_t dt = ts - lastTSs;
+
+        // i16          = int         / int
+        // int16_t tgtSpeed = (ds * (100000000/AXIS_STEPS_PER_MM_E)) / dt;
+        // targetSpeed.addValue(tgtSpeed);
+        // targetSpeed = (ds * (100000000/AXIS_STEPS_PER_MM_E)) / dt;
+
+        // lastTSs = ts;
+        // lastASteps = astep;
+    // }
+
+    getDY();
+    int32_t dy = yPos - lastYPos; // Real extruded length
+
+    // if (dy > 50) {
+
+        // uint32_t ts = micros();
+        // int32_t dt = ts - lastTSf;
+
+        // i16          = int         / float
+        // int16_t actSpeed = (ds * (100000000/FS_STEPS_PER_MM)) / dt;
+        // actualSpeed.addValue(actSpeed);
+        // actualSpeed = (ds * (100000000/FS_STEPS_PER_MM)) / dt;
+
+        // lastTSf = ts;
+        // lastYPos = yPos;
+    // }
+
+    if (ds < 0) {
+        // reverse
+        lastASteps = astep;
+        lastYPos = yPos;
+        // actualGrip.reset();
+        // grip = 1;
+    }
+    else if (ds > 50) {
+
+        float ratio = (float)dy / ds;
+
+        actualGrip.addValue(ratio);
+
+        grip = max(1.0, 1.95 / actualGrip.value());
+
+        /*
+        lcd.setCursor(0, 0); lcd.print("DS:"); lcd.print(ds); lcd.print("     ");
+        lcd.setCursor(0, 1); lcd.print("DY:"); lcd.print(dy); lcd.print("     ");
+        lcd.setCursor(0, 2); lcd.print("RA:"); lcd.print(ratio); lcd.print("     ");
+        lcd.setCursor(0, 3); lcd.print("RA:"); lcd.print(actualGrip.value()); lcd.print(" "); lcd.print(grip); lcd.print("     ");
+        */
+
+        lastASteps = astep;
         lastYPos = yPos;
     }
 

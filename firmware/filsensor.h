@@ -94,15 +94,15 @@
 #define REG_Pixel_Burst                          0x64
 
 
-#if 0
+// #if 0
 // Weight for exponential filter of e-speed [percent]
 #define ESpeedWeight 0.33
 
 class SpeedExpoFilter {
 
     // float weight;
-    // float current;
-    int16_t current;
+    float current;
+    // int16_t current;
 
   public:
 
@@ -111,17 +111,17 @@ class SpeedExpoFilter {
         current = 0;
     }
 
-    void /*int16_t*/ addValue(int16_t v) {
+    void /*int16_t*/ addValue(float v) {
 
         current = (ESpeedWeight * v + (1.0 - ESpeedWeight) * current);
         // return current;
     }
 
-    int16_t value() { return current; }
+    float value() { return current; }
 
     void reset() { current = 0; }
 };
-#endif
+// #endif
 
 // Window size running average filament speed
 #define RAVGWINDOW 3
@@ -159,6 +159,39 @@ class RunninAvg {
     void reset() { n = 0; avg = 0;}
 };
 
+class RunningAvgF {
+
+    float values[RAVGWINDOW];
+    uint8_t i;
+    uint8_t n;
+    float avg;
+
+  public:
+
+    RunningAvgF() {
+        i = n = 0;
+        avg = 0;
+    }
+
+    inline void addValue(float v) {
+
+        values[i++] = v;
+        if (i == RAVGWINDOW)
+            i = 0;
+        if (n < RAVGWINDOW)
+            n++;
+
+        avg = 0;
+        for (uint8_t j=0; j<n; j++)
+            avg += values[j];
+        avg /= n;
+    }
+
+    inline float value() { return avg; }
+
+    void reset() { n = 0; avg = 0;}
+};
+
 /*
  * Inteface to a ADNS9800 'Mousesensor'
  */
@@ -192,6 +225,9 @@ class FilamentSensorADNS9800 {
 
         // Running average measured filament speed
         RunninAvg actualSpeed;
+        RunningAvgF actualGrip;
+        float grip; // >= 1.0
+
         // int16_t actualSpeed;
 
         FilamentSensorADNS9800();

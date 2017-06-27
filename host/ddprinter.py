@@ -670,11 +670,11 @@ class Printer(Serial):
 
     def getStatus(self):
 
-        valueNames = ["state", "t0", "t1", "Swap", "SDReader", "StepBuffer", "StepBufUnderRuns", "targetT1", "targetExtrusionSpeed", "actualExtrusionSpeed"]
+        valueNames = ["state", "t0", "t1", "Swap", "SDReader", "StepBuffer", "StepBufUnderRuns", "targetT1", "targetExtrusionSpeed", "actualExtrusionSpeed", "actualGrip", "grip"]
 
         (cmd, payload) = self.query(CmdGetStatus, doLog=False)
 
-        tup = struct.unpack("<BffIHBhHhh", payload)
+        tup = struct.unpack("<BffIHBhHhhff", payload)
 
         statusDict = {}
         for i in range(len(valueNames)):
@@ -687,7 +687,7 @@ class Printer(Serial):
 
             statusDict[valueName] = tup[i]
 
-        # print "statusDict:", statusDict
+        print "statusDict:", statusDict
 
         self.gui.statusCb(statusDict)
         return statusDict
