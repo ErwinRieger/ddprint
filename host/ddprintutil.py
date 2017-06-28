@@ -1748,10 +1748,14 @@ plot "-" using 1:2 with linespoints title "Target Flowrate", \\
 
     nozzleSize = NozzleProfile.getSize()
 
-    def writeJson(dataSet):
+    def writeJson(dataSet, slippage):
 
         jsonFile = open("temp-flowrate-curve.json", "w")
-        jsonFile.write('    "tempFlowrateCurve_%d": {\n        "version": 1,\n        "data": [\n' % (nozzleSize*100))
+        jsonFile.write("""
+    "tempFlowrateCurve_%d": {
+        "version": %d,
+        "slippage": %f,
+        "data": [\n""" % (nozzleSize*100, PrinterProfile.getHwVersion(), slippage))
     
         temps = dataSet.keys()
         temps.sort()
@@ -1794,7 +1798,6 @@ plot "-" using 1:2 with linespoints title "Target Flowrate", \\
     printer.sendCommand(CmdEOT)
     printer.waitForState(StateIdle)
 
-
     t1 = args.tstart
 
     aFilament = MatProfile.getMatArea()
@@ -1829,7 +1832,12 @@ plot "-" using 1:2 with linespoints title "Target Flowrate", \\
 
     fractAvg = EWMA(0.01)
     frtargetAvg = EWMA(0.01)
-    tempAvg = EWMA(0.01)
+    ratioAvg = EWMA(0.05)
+    tempAvg = EWMA(0.05)
+
+    # minGrip = 0.85
+    minGrip = 0.90
+    # minGrip = 0.95
 
     while t1 <= min(args.tend, MatProfile.getHotendMaxTemp()):
 
@@ -1864,37 +1872,44 @@ plot "-" using 1:2 with linespoints title "Target Flowrate", \\
 
             eMotorRunning = True
 
-        minGrip = 0.85
-        minGrip = 0.90
-        minGrip = 0.95
-        ratio = 1.0
-
         fractAvg.setValue(feedrate)
         frtargetAvg.setValue(feedrate)
         tempAvg.setValue(t1)
+        ratioAvg.setValue(1.0)
+
+        ratio = 1.0
 
         while ratio >= minGrip:
 
             status = printer.getStatus()
-            st = status["targetExtrusionSpeed"]
-            sa = status["actualExtrusionSpeed"]
+            # st = status["targetExtrusionSpeed"]
+            # sa = status["actualExtrusionSpeed"]
             actT1 = status["t1"]
 
-            realsa = printerProfile.getFlowrateFromSensorRate(sa)
+            # realsa = printerProfile.getFlowrateFromSensorRate(sa)
 
-            print "st: %f, sa: %f, corrected sa: %f" % (st, sa, realsa)
+            # print "st: %f, sa: %f, corrected sa: %f" % (st, sa, realsa)
 
-            frtargetAvg.add(st)
-            fractAvg.add(realsa)
+            flowRate = feedrate * aFilament
+
+            # frtargetAvg.add(st)
+            # fractAvg.add(realsa)
+            sollGrip = PrinterProfile.get().getFilSensorCalibration(feedrate)
+            istGrip = status["actualGrip"]
+
+            r = istGrip / sollGrip
+            ratioAvg.add(r)
+
             tempAvg.add(actT1)
 
-            tAvg = frtargetAvg.value()
-            aAvg = fractAvg.value()
+            # tAvg = frtargetAvg.value()
+            # aAvg = fractAvg.value()
             t1Avg = tempAvg.value()
+            ratio = ratioAvg.value()
 
-            ratio = aAvg / tAvg
+            # ratio = aAvg / tAvg
 
-            print "tempAvg: %f, tAvg: %f, aAvg: %f, current ratio: %f" % (t1Avg, tAvg, aAvg, ratio)
+            print "tempAvg: %f, current ratio: %f, ratio avg: %f" % (t1Avg, r, ratio)
 
             if tempGood(actT1, t1):
                 frincrease = max(0.1 * (ratio - minGrip), 0.001)
@@ -1906,13 +1921,14 @@ plot "-" using 1:2 with linespoints title "Target Flowrate", \\
             time.sleep(twait)
 
         # Beziehe flowrate auf 90%
-        aAvg90 = aAvg # xxx aAvg * (ratio / 0.9)
+        # aAvg90 = aAvg # xxx aAvg * (ratio / 0.9)
 
         print "################################################################"
-        print "temp: %f, target flowrate: %f, actual flowrate: %f(90%%: %f), feeder grip: %f\n" % ( t1Avg, tAvg*aFilament, aAvg*aFilament, aAvg90*aFilament, ratio )
+        print "temp: %f, target flowrate: %f, actual flowrate: %f, feeder grip: %f\n" % ( t1Avg, flowRate, flowRate*ratio, ratio )
         print "################################################################"
 
-        dataSet[t1Avg] = (tAvg*aFilament, aAvg90*aFilament, ratio)
+        # dataSet[t1Avg] = (tAvg*aFilament, aAvg90*aFilament, ratio)
+        dataSet[t1Avg] = (flowRate, flowRate*ratio, ratio)
 
         print "current dataset:"
         pprint.pprint(dataSet)
@@ -1920,7 +1936,7 @@ plot "-" using 1:2 with linespoints title "Target Flowrate", \\
         t1 += args.tstep
 
         writeGnuplot(args.tstart, dataSet)
-        writeJson(dataSet)
+        writeJson(dataSet, 1.0-minGrip)
 
     # Done
     printer.coolDown(HeaterEx1)
