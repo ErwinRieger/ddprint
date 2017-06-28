@@ -186,6 +186,15 @@ class PrinterProfile(ProfileBase):
         print "interpol:", fr, f, fr*f
         return fr*f
 
+    def getFilSensorCalibration(self, fr):
+
+        index = int(fr / 0.25)
+
+        if index >= len(self.calTable):
+            return self.calTable[-1][1]
+
+        return self.calTable[index][1]
+
     @classmethod
     def getHwVersion(cls):
         return cls.getValues()["hwVersion"]
