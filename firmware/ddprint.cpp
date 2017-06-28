@@ -1338,7 +1338,8 @@ void Printer::cmdGetStatus() {
 void Printer::cmdGetFilSensor() {
 
     txBuffer.sendResponseStart(CmdGetFilSensor);
-    txBuffer.sendResponseValue(filamentSensor.yPos);
+    // txBuffer.sendResponseValue(filamentSensor.yPos);
+    txBuffer.sendResponseValue((int32_t)0);
     txBuffer.sendResponseEnd();
 }
 #endif

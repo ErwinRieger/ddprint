@@ -83,21 +83,22 @@ void FilamentSensorADNS9800::spiInit(uint8_t spiRate) {
 
 void FilamentSensorADNS9800::init() {
 
-    yPos = 0;
-    lastYPos = 0;
+    // yPos = 0;
+    // lastYPos = 0;
+    // getDY();
 
     actualGrip.reset();
     grip = 1.0;
 
     lastASteps = current_pos_steps[E_AXIS];
     lastTSs = micros();
-    lastTSf = micros();
+    // lastTSf = micros();
 
-    targetSpeed = 0;
+    // targetSpeed = 0;
     // targetSpeed.reset();
 
     // actualSpeed = 0;
-    actualSpeed.reset();
+    // actualSpeed.reset();
 
     // iRAvg = 0;
     // nRAvg = 0;
@@ -150,7 +151,7 @@ int16_t FilamentSensorADNS9800::getDY() {
 
         if (! dy) return 0;
 
-        yPos += dy;
+        // yPos += dy;
 
 #if !defined(burst)
         // uint8_t squal = readLoc(REG_SQUAL);
@@ -329,6 +330,8 @@ static float filSensorCalibration[60] = {
  1.898067,
 };
 
+#define kLimit 2.5
+
 void FilamentSensorADNS9800::run() {
 
     spiInit(3); // scale = pow(2, 3+1), 1Mhz
@@ -356,9 +359,6 @@ void FilamentSensorADNS9800::run() {
         // lastASteps = astep;
     // }
 
-    getDY();
-    int32_t dy = yPos - lastYPos; // Real extruded length
-
     // if (dy > 50) {
 
         // uint32_t ts = micros();
@@ -373,6 +373,7 @@ void FilamentSensorADNS9800::run() {
         // lastYPos = yPos;
     // }
 
+    /*
     if (ds <= 0) {
 
         // reverse
@@ -383,7 +384,11 @@ void FilamentSensorADNS9800::run() {
         // actualGrip.reset();
         // grip = 1;
     }
-    else if (ds > 50) {
+    else */
+    if (ds > 50) {
+
+        int16_t dy = getDY();
+        // int32_t dy = yPos - lastYPos; // Real extruded length
 
         uint32_t ts = micros();
         int32_t dt = ts - lastTSs;
@@ -396,10 +401,11 @@ void FilamentSensorADNS9800::run() {
 
         uint8_t calIndex = min(NFilSensorCalibration-1, tgtSpeed/0.25);
 
-        float cal = filSensorCalibration[calIndex] * 0.95; // allow 5% slip
+        // float cal = filSensorCalibration[calIndex] * 0.95; // allow 5% slip
+        float cal = filSensorCalibration[calIndex] * 0.90; // allow 10% slip
 
         if (feedrateLimiterEnabled)
-            grip = max(1.0, cal / actualGrip.value());
+            grip = max(1.0, (cal / actualGrip.value() - 1) * kLimit + 1);
 
         /*
         lcd.setCursor(0, 0); lcd.print("Speed:"); lcd.print(tgtSpeed); lcd.print("I:"); lcd.print(calIndex); lcd.print("     ");
@@ -415,7 +421,7 @@ void FilamentSensorADNS9800::run() {
 
         lastTSs = ts;
         lastASteps = astep;
-        lastYPos = yPos;
+        // lastYPos = yPos;
     }
 }
 

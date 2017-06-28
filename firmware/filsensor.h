@@ -199,8 +199,8 @@ class FilamentSensorADNS9800 {
 
         uint32_t lastTSs;
         int32_t lastASteps;
-        uint32_t lastTSf;
-        int32_t lastYPos;
+        // uint32_t lastTSf;
+        // int32_t lastYPos;
 
         void spiInit(uint8_t spiRate);
         uint8_t readLoc(uint8_t addr);
@@ -214,7 +214,7 @@ class FilamentSensorADNS9800 {
 
     public:
 
-        int32_t yPos;
+        // int32_t yPos;
 
         // Measured stepper speed [0.01 mm/s]
         int16_t targetSpeed;
