@@ -171,10 +171,16 @@ class MainForm(npyscreen.Form):
         # self.errors.editable = False
 
         rely += 1
+        """
         self.extRate = self.add(npyscreen.TitleFixedText, name = "Extrusion Rate A/T   :", relx=w, rely=rely, use_two_lines=False,
             begin_entry_at=23, width = w/2) 
         self.extRate.editable = False
         self.extGrip = self.add(npyscreen.TitleFixedText, name = "E-Grip:", relx=int(w*1.5), rely=rely, use_two_lines=False, begin_entry_at=8) 
+        self.extGrip.editable = False
+        """
+
+        self.extGrip = self.add(npyscreen.TitleFixedText, name = "Feeder Grip          :", relx=w, rely=rely, use_two_lines=False,
+            begin_entry_at=23, width = w/2) 
         self.extGrip.editable = False
 
         #
@@ -315,20 +321,25 @@ class MainForm(npyscreen.Form):
         self.underrun.set_value( "%8s" % str(status["StepBufUnderRuns"]))
         self.underrun.update()
 
-        st = status["targetExtrusionSpeed"]
-        sa = status["actualExtrusionSpeed"]
+        # st = status["targetExtrusionSpeed"]
+        # sa = status["actualExtrusionSpeed"]
 
-        grip = 100.0
-        if st:
-            grip = (sa*100.0) / st
+        # grip = 100.0
+        # if st:
+            # grip = (sa*100.0) / st
 
-        rt = st * MatProfile.getMatArea()
-        ra = sa * MatProfile.getMatArea()
+        # rt = st * MatProfile.getMatArea()
+        # ra = sa * MatProfile.getMatArea()
 
-        self.extRate.set_value( "%8.1f / %.1f" % (ra, rt) )
-        self.extRate.update()
+        # self.extRate.set_value( "%8.1f / %.1f" % (ra, rt) )
+        # self.extRate.update()
 
-        self.extGrip.set_value( "%4.1f %%" % grip )
+        # self.extGrip.set_value( "%4.1f %%" % grip )
+        # self.extGrip.update()
+
+        slippage = status["slippage"]
+
+        self.extGrip.set_value( "%7.1f%%" % (100.0/slippage) )
         self.extGrip.update()
 
     def display(self, clear=False):

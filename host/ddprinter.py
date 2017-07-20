@@ -670,18 +670,20 @@ class Printer(Serial):
 
     def getStatus(self):
 
-        valueNames = ["state", "t0", "t1", "Swap", "SDReader", "StepBuffer", "StepBufUnderRuns", "targetT1", "targetExtrusionSpeed", "actualExtrusionSpeed", "actualGrip", "grip"]
+        # valueNames = ["state", "t0", "t1", "Swap", "SDReader", "StepBuffer", "StepBufUnderRuns", "targetT1", "targetExtrusionSpeed", "actualExtrusionSpeed", "actualGrip", "grip"]
+        valueNames = ["state", "t0", "t1", "Swap", "SDReader", "StepBuffer", "StepBufUnderRuns", "targetT1", "slippage"]
 
         (cmd, payload) = self.query(CmdGetStatus, doLog=False)
 
-        tup = struct.unpack("<BffIHBhHhhff", payload)
+        tup = struct.unpack("<BffIHBhHh", payload)
 
         statusDict = {}
         for i in range(len(valueNames)):
 
             valueName = valueNames[i]
 
-            if valueName in ["targetExtrusionSpeed", "actualExtrusionSpeed"]:
+            # if valueName in ["targetExtrusionSpeed", "actualExtrusionSpeed"]:
+            if valueName in ["slippage"]:
                 statusDict[valueName] = tup[i] * 0.01
                 continue
 

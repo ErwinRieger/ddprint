@@ -1894,10 +1894,10 @@ plot "-" using 1:2 with linespoints title "Target Flowrate", \\
 
             # frtargetAvg.add(st)
             # fractAvg.add(realsa)
-            sollGrip = PrinterProfile.get().getFilSensorCalibration(feedrate)
-            istGrip = status["actualGrip"]
+            # sollGrip = PrinterProfile.get().getFilSensorCalibration(feedrate)
+            # istGrip = status["slippage"]
 
-            r = istGrip / sollGrip
+            r = 1.0 / status["slippage"]
             ratioAvg.add(r)
 
             tempAvg.add(actT1)
