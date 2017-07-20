@@ -126,6 +126,7 @@ class SpeedExpoFilter {
 // Window size running average filament speed
 #define RAVGWINDOW 3
 
+/*
 class RunninAvg {
 
     int16_t values[RAVGWINDOW];
@@ -156,8 +157,9 @@ class RunninAvg {
 
     inline int16_t value() { return avg; }
 
-    void reset() { n = 0; avg = 0;}
+    void reset(int16_t av = 0) { n = 0; avg = av;}
 };
+*/
 
 class RunningAvgF {
 
@@ -189,7 +191,7 @@ class RunningAvgF {
 
     inline float value() { return avg; }
 
-    void reset() { n = 0; avg = 0;}
+    void reset(float av = 0) { n = 0; avg = av;}
 };
 
 /*
@@ -217,16 +219,21 @@ class FilamentSensorADNS9800 {
         // int32_t yPos;
 
         // Measured stepper speed [0.01 mm/s]
-        int16_t targetSpeed;
+        // int16_t targetSpeed;
         // SpeedExpoFilter targetSpeed;
 
         // Measured filament speed [0.01 mm/s]
         // SpeedExpoFilter actualSpeed;
 
         // Running average measured filament speed
-        RunninAvg actualSpeed;
-        RunningAvgF actualGrip;
-        float grip; // >= 1.0
+        // RunninAvg actualSpeed;
+
+        // Ratio of target e-steps and filament sensor steps, this is a 
+        // measure of the *feeder slippage*.
+        RunningAvgF slippage;
+
+        // Factor to slow down movement because feeder slippage is greater than 10%.
+        float grip;
 
         // int16_t actualSpeed;
 

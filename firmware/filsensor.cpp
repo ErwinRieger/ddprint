@@ -87,7 +87,7 @@ void FilamentSensorADNS9800::init() {
     // lastYPos = 0;
     // getDY();
 
-    actualGrip.reset();
+    slippage.reset(1.0);
     grip = 1.0;
 
     lastASteps = current_pos_steps[E_AXIS];
@@ -330,7 +330,7 @@ static float filSensorCalibration[60] = {
  1.898067,
 };
 
-#define kLimit 2.5
+#define kLimit 2.0
 
 void FilamentSensorADNS9800::run() {
 
@@ -342,7 +342,7 @@ void FilamentSensorADNS9800::run() {
     long astep = current_pos_steps[E_AXIS];
     CRITICAL_SECTION_END
 
-    int32_t ds = astep - lastASteps; // Requested extruded length
+    // int32_t ds = astep - lastASteps; // Requested extruded length
 
     // Note: Konstante 50 steps wird auch in ddtest.py:calibrateFilSensor() verwendet.
     // if (ds > 50) {
@@ -373,6 +373,8 @@ void FilamentSensorADNS9800::run() {
         // lastYPos = yPos;
     // }
 
+    float ds = astep - lastASteps; // Requested extruded length
+
     /*
     if (ds <= 0) {
 
@@ -381,7 +383,7 @@ void FilamentSensorADNS9800::run() {
         lastASteps = astep;
         lastYPos = yPos;
 
-        // actualGrip.reset();
+        // slippage.reset();
         // grip = 1;
     }
     else */
@@ -393,19 +395,30 @@ void FilamentSensorADNS9800::run() {
         uint32_t ts = micros();
         int32_t dt = ts - lastTSs;
 
-        float ratio = (float)dy / ds;
+        float ratio = dy / ds;
 
-        actualGrip.addValue(ratio);
+        // slippage.addValue(ratio);
 
+        // Compute current speed to get flowrate sensor calibration factor
         float tgtSpeed = (ds * (1000000.0 / AXIS_STEPS_PER_MM_E)) / dt;
 
-        uint8_t calIndex = min(NFilSensorCalibration-1, tgtSpeed/0.25);
+        uint8_t calIndex = min(NFilSensorCalibration-1, (uint8_t)(tgtSpeed/0.25));
 
         // float cal = filSensorCalibration[calIndex] * 0.95; // allow 5% slip
-        float cal = filSensorCalibration[calIndex] * 0.90; // allow 10% slip
 
-        if (feedrateLimiterEnabled)
-            grip = max(1.0, (cal / actualGrip.value() - 1) * kLimit + 1);
+        // Slippage >= 0.0
+        if (ratio > 0)
+            slippage.addValue(filSensorCalibration[calIndex] / ratio);
+        else
+            slippage.addValue(10.0);
+
+        if (feedrateLimiterEnabled) {
+
+            // float g = max(1.0, (cal / slippage.value() - 1) * kLimit + 1);
+            float allowedSlippage = slippage.value() * 0.90; // allow for 10% slip
+            float g = max(1.0, (allowedSlippage - 1.0) * kLimit + 1.0);
+            grip = min(3.0, g);
+        }
 
         /*
         lcd.setCursor(0, 0); lcd.print("Speed:"); lcd.print(tgtSpeed); lcd.print("I:"); lcd.print(calIndex); lcd.print("     ");
@@ -416,7 +429,7 @@ void FilamentSensorADNS9800::run() {
         lcd.setCursor(0, 0); lcd.print("DS:"); lcd.print(ds); lcd.print("     ");
         lcd.setCursor(0, 1); lcd.print("DY:"); lcd.print(dy); lcd.print("     ");
         lcd.setCursor(0, 2); lcd.print("RA:"); lcd.print(ratio); lcd.print("     ");
-        lcd.setCursor(0, 3); lcd.print("RA:"); lcd.print(actualGrip.value()); lcd.print(" "); lcd.print(grip); lcd.print("     ");
+        lcd.setCursor(0, 3); lcd.print("RA:"); lcd.print(slippage.value()); lcd.print(" "); lcd.print(grip); lcd.print("     ");
         */
 
         lastTSs = ts;
