@@ -28,9 +28,23 @@
 # Collect CuraEngine settings from Cura Machine- and Qualityprofiles and call
 # CuraEngine to produce a gcode file from a stl input.
 #
+# See also: http://ibrieger.de/cura-engine-wrapperpy-helper-to-call-curaengine-from-command-line.html
+#
 
 import os, copy, sys, subprocess
 import urllib.parse
+
+debug = False
+
+# XXX todo: use proper python argparse module here, add "-d" debug option
+if len(sys.argv) < 3 or sys.argv[1] == "-h":
+    print("Usage:")
+    print("  %s -h: print help" % os.path.basename(sys.argv[0]))
+    print("  %s <curapath> -l: list all container names" % os.path.basename(sys.argv[0]))
+    print("  %s <curapath> -pm: <machine name>: print values of machine container" % os.path.basename(sys.argv[0]))
+    print("  %s <curapath> -pp: <profile name>: print values of profile" % os.path.basename(sys.argv[0]))
+    print("  %s <curapath> <machine name> <profile name> <input-stl> <output-gcode>: Collect settings from profiles and call curaEngine to produce gcode ouput from stl." % os.path.basename(sys.argv[0]))
+    sys.exit(0)
 
 from UM.Application import Application
 from UM.Resources import Resources
@@ -42,18 +56,6 @@ from UM.PluginRegistry import PluginRegistry
 from UM.Logger import Logger
 
 import cura.Settings
-
-debug = False
-
-# XXX todo: use proper python argparse module here, add "-d" debug option
-if len(sys.argv) < 3 or sys.argv[1] == "-h":
-    print("Usage:")
-    print("  %s -h: print help" % os.path.basename(sys.argv[0]))
-    print("  %s -l: <curapath> list all container names" % os.path.basename(sys.argv[0]))
-    print("  %s -pm <curapath> <machine name>: print values of machine container" % os.path.basename(sys.argv[0]))
-    print("  %s -pp <curapath> <profile name>: print values of profile" % os.path.basename(sys.argv[0]))
-    print("  %s <curapath> <machine name> <profile name> <input-stl> <output-gcode>: Collect settings from profiles and call curaEngine to produce gcode ouput from stl." % os.path.basename(sys.argv[0]))
-    sys.exit(0)
 
 curaDir = sys.argv[1]
 
@@ -189,7 +191,10 @@ if sys.argv[2] == "-pp":
 
     qualityProfile = sys.argv[3]
 
-    profile = cr.findInstanceContainers(type = "quality_changes", name = qualityProfile)[0]
+    profiles = cr.findInstanceContainers(type = "quality_changes", name = qualityProfile)
+    if not profiles:
+        profiles = cr.findInstanceContainers(type = "quality", name = qualityProfile)
+    profile = profiles[0]
 
     print("\nProfile container:\n")
     for key in profile.getAllKeys():
