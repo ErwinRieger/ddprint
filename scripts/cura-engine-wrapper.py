@@ -49,7 +49,6 @@ if len(sys.argv) < 3 or sys.argv[1] == "-h":
 from UM.Application import Application
 from UM.Resources import Resources
 from UM.Settings.SettingDefinition import SettingDefinition, DefinitionPropertyType
-from UM.Settings.ContainerRegistry import ContainerRegistry
 from UM.Settings.Validator import Validator
 from UM.Settings.SettingFunction import SettingFunction
 from UM.PluginRegistry import PluginRegistry
@@ -131,7 +130,7 @@ SettingFunction.registerOperator("extruderValues", cura.Settings.ExtruderManager
 SettingFunction.registerOperator("extruderValue", cura.Settings.ExtruderManager.getExtruderValue)
 SettingFunction.registerOperator("resolveOrValue", cura.Settings.ExtruderManager.getResolveOrValue)
 
-cr = ContainerRegistry.getInstance()
+cr = cura.Settings.CuraContainerRegistry.getInstance()
 cr.setApplication(dummyApp)
 
 cr.addResourceType(dummyApp.ResourceTypes.QualityInstanceContainer)
@@ -146,17 +145,17 @@ empty_container = cr.getInstance().getEmptyInstanceContainer()
 empty_variant_container = copy.deepcopy(empty_container)
 empty_variant_container._id = "empty_variant"
 empty_variant_container.addMetaDataEntry("type", "variant")
-ContainerRegistry.getInstance().addContainer(empty_variant_container)
+cr.addContainer(empty_variant_container)
 
 empty_material_container = copy.deepcopy(empty_container)
 empty_material_container._id = "empty_material"
 empty_material_container.addMetaDataEntry("type", "material")
-ContainerRegistry.getInstance().addContainer(empty_material_container)
+cr.addContainer(empty_material_container)
 
 empty_quality_changes_container = copy.deepcopy(empty_container)
 empty_quality_changes_container._id = "empty_quality_changes"
 empty_quality_changes_container.addMetaDataEntry("type", "quality_changes")
-ContainerRegistry.getInstance().addContainer(empty_quality_changes_container)
+cr.addContainer(empty_quality_changes_container)
 
 cr.load()
 
@@ -226,7 +225,7 @@ for key in machine.getAllKeys():
     # The "resolved" value of a setting is the value that should be used when two extruders have a conflicting value.
     resolved = machine.getProperty(key, "resolve")
 
-    if resolved != None and resolved != value:
+    if debug and resolved != None and resolved != value:
         print(key, "resolved:", resolved, value)
         assert(0)
 
@@ -238,7 +237,9 @@ for key in profile.getAllKeys():
 
     # XXX todo: use resolved values here
     # The "resolved" value of a setting is the value that should be used when two extruders have a conflicting value.
-    assert(profile.getProperty(key, "resolve") == None)
+    if debug:
+        assert(profile.getProperty(key, "resolve") == None)
+
     allValues[key] = profile.getProperty(key, "value")
 
 for key in additionalSettings:
@@ -285,9 +286,11 @@ engineArgs += [
         ]
 
 if debug:
+    for key in sorted(allValues.keys()):
+        print(key, allValues[key])
     print("engineArgs:", engineArgs)
 
-subprocess.call(engineArgs)
+# subprocess.call(engineArgs)
 
 
 
