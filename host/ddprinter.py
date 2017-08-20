@@ -19,19 +19,11 @@
 # along with ddprint.  If not, see <http://www.gnu.org/licenses/>.
 #*/
 
-# # This needs pyserial version >= 2.6:
-# try:
-    # from serial.tools import list_ports
-# except ImportError:
-    # print "\nWARNING your python-serial version seems to be to old!\n"
-
 #
 # Note: pyserial 2.6.1 seems to have a bug with reconnect (read only garbage 
 # at second connect).
-# So i've mixed pyserial 2.5.x with the list_ports functions from 2.6.x
 #
 import time, struct, crc_ccitt_kermit
-import list_ports
 import dddumbui, cobs
 
 from serial import Serial, SerialException, SerialTimeoutException
@@ -95,8 +87,6 @@ class Printer(Serial):
             self.gui = dddumbui.DumbGui()
 
         Serial.__init__(self)
-
-        self.usbId = None
 
         # Command sequence number [1..255]
         self.lineNr = 1
@@ -387,27 +377,17 @@ class Printer(Serial):
                 else:
                     self.gui.logRecv("Reply: 0x%s" % recvLine.encode("hex"))
 
-    def initSerial(self, device, br=250000):
+    def initSerial(self, device, br, bootloaderWait=False):
+
         self.port = device
         self.baudrate = br
         self.timeout = 0.05
         self.writeTimeout = 10
         self.open()
 
-        if not self.usbId:
+        if bootloaderWait:
             print "Initial bootloader wait..."
             time.sleep(1)
-
-        # Store usb information for later re-connection even if device
-        # name has changed:
-        comports = list_ports.comports()
-
-        # ('/dev/ttyACM0', 'ttyACM0', 'USB VID:PID=2341:0042 SNR=75237333536351815111')]
-        for (dev, name, usbid) in comports:
-            if dev == device or name == device:
-                self.gui.log("Found usbid %s for device %s" % (usbid, dev))
-                self.usbId = usbid
-                break
 
         # Read left over garbage
         recvLine = self.safeReadline()        
@@ -417,7 +397,7 @@ class Printer(Serial):
             recvLine = self.safeReadline()        
 
     def commandInit(self, args):
-        self.initSerial(args.device, args.baud)
+        self.initSerial(args.device, args.baud, True)
         self.resetLineNumber()
 
     def resetLineNumber(self):
@@ -559,25 +539,14 @@ class Printer(Serial):
     def reconnect(self):
 
         # XXX add timeout, or otherwise prevent re-connection to power-cycled printer?!
+        self.close()
 
-        comports = list_ports.comports()
-
-        # ('/dev/ttyACM0', 'ttyACM0', 'USB VID:PID=2341:0042 SNR=75237333536351815111')]
-        for (dev, name, usbid) in comports:
-            if usbid == self.usbId:
-                self.gui.log("reconnect(): found device %s, previous device: %s" % (dev, self.port))
-                self.close()
-
-                try:
-                    self.initSerial(dev, br=self.baudrate)
-                except SerialException as ex:
-                    self.gui.log("reconnect() Exception raised:", ex)
-                    time.sleep(1)
-                    self.reconnect()
-
-                return
-
-        time.sleep(0.1)
+        try:
+            self.initSerial(self.port, br=self.baudrate)
+        except SerialException as ex:
+            self.gui.log("reconnect() Exception raised:", ex)
+            time.sleep(1)
+            self.reconnect()
 
     # Send command or Query info from printer
     def send2(self, sendCmd, binary):
