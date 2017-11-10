@@ -6,7 +6,7 @@
   "bedTemp"           : 65,
   "bedTempReduced"    : 60,
   "fanPercent"        : 100,
-  "kAdvance" : 0.3,
+  "kAdvance"          : 0.2,
   # "kFeederCompensation": 0.0125,
 
   # Generic temp-flowrate table, this could/should be overridden

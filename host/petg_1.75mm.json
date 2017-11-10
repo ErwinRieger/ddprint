@@ -6,7 +6,7 @@
   "bedTemp"           : 85,
   "bedTempReduced"    : 80,
   "fanPercent"        : 100,
-  "kAdvance"          : 0.3,
+  "kAdvance"          : 0.2,
   # Additional 10% filament at 10mm³/s
   # "kFeederCompensation": 0.022,
   # Generic temp-flowrate table, this could/should be overridden
