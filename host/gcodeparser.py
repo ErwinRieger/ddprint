@@ -45,7 +45,8 @@ def getSimplifyLayer(line):
 
     lstr = line.split(" ")[2].split(",")[0]
     if lstr != "end":
-        return int(lstr)
+        # Note: S3D layer numbering starts with 1
+        return int(lstr) - 1
 
     return None
 
