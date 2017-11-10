@@ -19,6 +19,12 @@
 */
 
 
+/*
+ * ADNS9800:
+ * This guy uses fixed frame rate for "robotics use": https://github.com/svofski/ADNS-9800-Energia/blob/master/ADNS-9800-Energia.ino.
+ * Don't know if this leads to better results here.
+ */
+
 #include <Arduino.h>
 
 #include "ddprint.h"
