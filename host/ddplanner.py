@@ -419,6 +419,8 @@ class Planner (object):
     # Called from gcode parser
     def layerChange(self, layer):
 
+        self.advance.layerChange(layer)
+
         if layer == 2:
 
             self.partNumber -= 1
