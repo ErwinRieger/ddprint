@@ -121,8 +121,19 @@ class Advance (object):
         # dvin = dvout + ka * acceleration [ m/s + s * m/s² = m/s ]
         #
 
+        self.kAdv = None
+        self.startAdvance = None
+
         # K-Advance is defined in material profile and overridable by the
-        # commandline
+        # commandline.
+        # Gradual advance mode: 
+        #   * startadvance (example: 0.1)
+        #   * advance increase (example: 0.1)
+        #   * stepheight in layers (example: 10)
+        if "startAdvance" in args:
+            self.startAdvance = args.startAdvance
+            self.advIncrease = args.advIncrease
+            self.advStepHeight = args.advStepHeight
         if args.kAdvance != None:
             self.kAdv = args.kAdvance
         else:
@@ -187,6 +198,16 @@ class Advance (object):
         else:
 
             return PrinterProfile.getMaxAxisAcceleration()
+
+    # Implement gradual advance on layer change
+    def layerChange(self, layer):
+
+        print "adv: layer changed:", layer
+
+        if layer != None and self.startAdvance != None:
+            self.kAdv = self.startAdvance + (layer / self.advStepHeight) * self.advIncrease
+            print "adv: layer changed:", self.kAdv
+
 
     # Compensation of feeder slip
     def eComp(self, vExtruder):
