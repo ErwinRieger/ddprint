@@ -1234,6 +1234,7 @@ class PrintMove(RealMove):
 
         self.advanceData.sanityCheck()
 
+    # not used
     def checkAdvance(self):
 
         # Check direction of start advance increase
