@@ -257,7 +257,7 @@ class TempCurve:
 
                 t = temp1 + (dy / dx) * (flowrate - fr1)
 
-                print "interplated temp: ", t
+                print "interpolated temp: ", t
                 self.tempCurveDict[key] = t
                 return t
 
@@ -289,7 +289,7 @@ class TempCurve:
 
                 fr = fr1 + ((fr2 - fr1) / (temp2 - temp1)) * (temp - temp1)
 
-                print "interplated feedrate: ", fr
+                print "interpolated feedrate: ", fr
                 return fr
 
         assert(0)
