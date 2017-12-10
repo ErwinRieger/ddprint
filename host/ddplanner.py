@@ -38,16 +38,6 @@ from ddadvance import Advance
 if debugPlot:
     import pickle
 
-#####################################################################
-#
-# "AutoTemp" constants
-#
-# Don't adjust hotend temperature on every move, collect moves for
-# ATInterval time and compute/set the temp for that interval.
-#
-ATInterval = 3 # [s]
-# ATMaxTempIncrease = 50
-
 emptyVector5 = [0] * 5
 
 #####################################################################
@@ -217,11 +207,7 @@ class PathData (object):
         # AutoTemp
         if UseExtrusionAutoTemp:
 
-            # Time needed to complete the moves, extruding moves only
-            self.time = 0
             self.lastTemp = MatProfile.getHotendStartTemp()
-            # Max extrusion speed of this interval
-            self.maxEspeed = 0
 
         # Some statistics
         self.maxExtrusionRate = MaxExtrusionRate()
@@ -231,42 +217,43 @@ class PathData (object):
         self.count += 10 # leave space for advance-submoves
         return self.count
 
-    def doAutoTemp(self, move):
+    def doAutoTemp(self, moves):
 
-        # Collect moves and sum up path time
-        self.time += move.accelData.getTime()
+        # Sum up path time and extrusion volume of moves
+        tsum = 0
+        vsum = 0
+        for move in moves:
+            tsum += move.accelData.getTime()
+            vsum += move.getExtrusionVolume(MatProfile.get())
 
-        # Determine max extrusion speed
-        self.maxEspeed = max(self.maxEspeed, move.topSpeed.speed().eSpeed)
+        avgERate = vsum / tsum
 
-        if self.time >= ATInterval:
+        print "Average extrusion rate: ", avgERate, "mm³/s"
 
-            # Compute temperature for this segment and add tempcommand into the stream. 
-            maxExtrusionRate = self.maxEspeed * MatProfile.getMatArea()
-            newTemp = MatProfile.getTempForFlowrate(maxExtrusionRate * (1.0+AutotempSafetyMargin), PrinterProfile.getHwVersion(), NozzleProfile.getSize())
-            # Don't go below startTemp from material profile
-            newTemp = max(newTemp, MatProfile.getHotendStartTemp())
+        # Compute temperature for this segment and add tempcommand into the stream. 
+        newTemp = MatProfile.getTempForFlowrate(avgERate * (1.0+AutotempSafetyMargin), PrinterProfile.getHwVersion(), NozzleProfile.getSize())
 
-            if newTemp != self.lastTemp: #  and self.mode != "pre":
+        # Don't go below startTemp from material profile
+        newTemp = max(newTemp, MatProfile.getHotendStartTemp())
 
-                print "Newtemp:", maxExtrusionRate, newTemp
+        if newTemp != self.lastTemp: #  and self.mode != "pre":
 
-                # Schedule target temp command
-                self.planner.addSynchronizedCommand(
-                    CmdSyncTargetTemp, 
-                    p1 = packedvalue.uint8_t(HeaterEx1),
-                    p2 = packedvalue.uint16_t(newTemp), 
-                    moveNumber = move.moveNumber)
+            print "Newtemp:", avgERate, newTemp
 
-                self.lastTemp = newTemp
+            # Schedule target temp command
+            self.planner.addSynchronizedCommand(
+                CmdSyncTargetTemp, 
+                p1 = packedvalue.uint8_t(HeaterEx1),
+                p2 = packedvalue.uint16_t(newTemp), 
+                moveNumber = move.moveNumber)
 
-            if debugAutoTemp:
-                print "AutoTemp: collected moves with %.2f s duration." % self.time
-                print "AutoTemp: max. extrusion rate: %.2f mm³/s." % maxExtrusionRate
-                print "AutoTemp: new temp: %d." % newTemp
-                self.maxExtrusionRate.avgStat(maxExtrusionRate)
+            self.lastTemp = int(newTemp)
 
-            self.time = self.maxEspeed = 0 # Reset path time
+        if debugAutoTemp:
+            print "AutoTemp: collected moves with %.2f s duration." % tsum
+            print "AutoTemp: max. extrusion rate: %.2f mm³/s." % avgERate
+            print "AutoTemp: new temp: %d." % newTemp
+            # self.avgERate.avgStat(maxExtrusionRate)
 
 #####################################################################
 
@@ -277,7 +264,6 @@ class DebugPlot (object):
         self.plotfile = "/tmp/ddsteps_%04d.pkl" % nr
 
         self.plot = Namespace()
-        # pl.time = 0.01
         self.plot.moves = []
 
     def plotSteps(self, move):
