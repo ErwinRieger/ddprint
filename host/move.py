@@ -804,34 +804,6 @@ class RealMove(MoveBase):
 
         MoveBase.sanityCheck(self)
 
-    def xpprint(self, title):
-
-        print "\n------ Move %s, #: %d, '%s' ------" % (title, self.moveNumber, self.comment)
-
-        if self.isPrintMove():
-            print "Print-move, distance: %.2f" % self.distance
-        else:
-            print "Travel-move, distance: %.2f" % self.distance
-
-        print "displacement_vector:", self.rawDisplacementV(), ", steps:", self.rawDisplacementStepsL()
-
-        print "Startspeed: ",
-        print self.startSpeed
-        print "Top  speed: ",
-        print self.topSpeed
-        print "End  speed: ",
-        print self.endSpeed
-
-        if self.state > 1:
-            print ""
-            print self.accelData
-
-        if self.state > 2:
-            print ""
-            print self.stepData
-
-        print "---------------------"
-
 class TravelMove(RealMove):
 
     def __init__(self,
