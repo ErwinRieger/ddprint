@@ -157,8 +157,8 @@ class Printer(Serial):
 
             elif reason == RespSDReadError:
 
-                (errorCode,) = struct.unpack("<B", payload[1])
-                self.gui.logError("ERROR: PRINTER KILLED! Reason: %s, ErrorCode: %d" % (RespCodeNames[reason], errorCode))
+                (errorCode, spiStatus) = struct.unpack("<BB", payload[1:])
+                self.gui.logError("ERROR: PRINTER KILLED! Reason: %s, ErrorCode: %d, spiStatus: 0x%x" % (RespCodeNames[reason], errorCode, spiStatus))
 
             else:
 
