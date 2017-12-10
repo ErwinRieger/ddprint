@@ -333,17 +333,25 @@ class Advance (object):
             #
             self.planner.pathData.maxExtrusionRate.stat(move)
 
+            """
             #
             # Compute auto hotend temperature
             #
             if UseExtrusionAutoTemp:
                 self.planner.pathData.doAutoTemp(move)
+            """
 
             #
             # Correct eSpeed for feeder slip
             #
             if self.kFeederComp:
                 self.planFeederCorrection(move)
+
+        #
+        # Compute auto hotend temperature
+        #
+        if UseExtrusionAutoTemp:
+            self.planner.pathData.doAutoTemp(path)
 
         # """
         # Sanity check
