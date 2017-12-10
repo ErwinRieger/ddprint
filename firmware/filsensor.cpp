@@ -408,7 +408,7 @@ void FilamentSensorADNS9800::run() {
         // Compute current speed to get flowrate sensor calibration factor
         float tgtSpeed = (ds * (1000000.0 / AXIS_STEPS_PER_MM_E)) / dt;
 
-        uint8_t calIndex = min(NFilSensorCalibration-1, (uint8_t)(tgtSpeed/0.25));
+        uint8_t calIndex = STD min((uint8_t)(NFilSensorCalibration-1), (uint8_t)(tgtSpeed/0.25));
 
         // float cal = filSensorCalibration[calIndex] * 0.95; // allow 5% slip
 
@@ -423,7 +423,7 @@ void FilamentSensorADNS9800::run() {
             // float g = max(1.0, (cal / slippage.value() - 1) * kLimit + 1);
             float allowedSlippage = slippage.value() * 0.90; // allow for 10% slip
             float g = max(1.0, (allowedSlippage - 1.0) * kLimit + 1.0);
-            grip = min(3.0, g);
+            grip = STD min((float)3.0, g);
         }
 
         /*

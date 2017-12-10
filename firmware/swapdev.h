@@ -179,7 +179,10 @@ public:
             // XXX how shold we handle this? Retry the read?
             // Note: readBlockEC() retried three times already.
 
-            killMessage(RespSDReadError, res);
+            // Return Sd2Card error code and SPI status byte from sd card.
+            // In case of SD_CARD_ERROR_CMD17 this is the return status of
+            // CMD17 in Sd2Card::cardCommand().
+            killMessage(RespSDReadError, res, errorData());
             return -1;
         }
 

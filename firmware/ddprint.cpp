@@ -240,6 +240,13 @@ void killMessage(uint8_t errorCode, uint8_t errorParam, char *msg) {
     kill();
 }
 
+void killMessage(uint8_t errorCode, uint8_t errorParam1, uint8_t errorParam2, char *msg) {
+
+    LCDMSGKILL(errorCode, errorParam1, msg);
+    txBuffer.sendSimpleResponse(RespKilled, errorCode, errorParam1, errorParam2);
+    kill();
+}
+
 // bool IsStopped() { return Stopped; };
 // uint8_t StoppedReason() { return Stopped; };
 

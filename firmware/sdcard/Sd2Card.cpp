@@ -607,7 +607,6 @@ uint8_t Sd2Card::readBlockEC(uint32_t blockNumber, uint8_t* dst) {
   retryCnt --;
   if (cardCommand(CMD17, blockNumber)) {
 
-    // error(SD_CARD_ERROR_CMD17);
     if (retryCnt > 0) goto retry;
 
     chipSelectHigh();

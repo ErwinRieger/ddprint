@@ -22,6 +22,7 @@
 
 void mAssert(uint16_t line, char* file);
 void killMessage(uint8_t errorCode, uint8_t errorParam, char *msg = "");
+void killMessage(uint8_t errorCode, uint8_t errorParam1, uint8_t errorParam2, char *msg = "");
 
 //
 // Add heavy and time consuming debugging
