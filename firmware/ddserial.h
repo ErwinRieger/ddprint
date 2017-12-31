@@ -267,7 +267,7 @@ class TxBuffer: public Protothread {
         }
 
         // Send string, one byte length, then the string
-        void sendResponseString(char *s, uint8_t l) {
+        void sendResponseString(const char *s, uint8_t l) {
 
             sendResponseUint8(l);
             for (uint8_t i=0; i<l; i++)

@@ -67,14 +67,20 @@ uint8_t MarlinSerial::readNoCheckNoCobs(void)
 float MarlinSerial::readFloatNoCheckCobs()
 {
 
-    uint8_t  b1 = readNoCheckCobs();
-    uint32_t b2 = readNoCheckCobs();
-    uint32_t b3 = readNoCheckCobs();
-    uint32_t b4 = readNoCheckCobs();
-    uint32_t i = (b4<<24) + (b3<<16) + (b2<<8) + b1;
-    return *(float*)&i;;
+    union {
+        uint8_t buf[4];
+        float f;
+    } floatBuf;
+
+    floatBuf.buf[0] = readNoCheckCobs();
+    floatBuf.buf[1] = readNoCheckCobs();
+    floatBuf.buf[2] = readNoCheckCobs();
+    floatBuf.buf[3] = readNoCheckCobs();
+
+    return floatBuf.f;
 }
 
+#if 0
 uint16_t MarlinSerial::readUInt16NoCheckNoCobs()
 {
 
@@ -82,6 +88,7 @@ uint16_t MarlinSerial::readUInt16NoCheckNoCobs()
     tail += 2;
     return i;
 }
+#endif
 
 uint16_t MarlinSerial::readUInt16NoCheckCobs()
 {

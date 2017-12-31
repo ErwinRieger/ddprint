@@ -161,7 +161,7 @@ void kill() {
     }
 }
 
-void mAssert(uint16_t line, char* file) {
+void mAssert(uint16_t line, const char* file) {
 
     LCDMSGKILL(RespAssertion, line, file);
 
@@ -1443,7 +1443,7 @@ class UsbCommand : public Protothread {
 
             PT_BEGIN();
 
-            uint8_t e, c, flags, cs1, cs2;
+            uint8_t c, flags, cs1, cs2;
 
             SerAvailableState av;
 
@@ -1791,7 +1791,7 @@ class UsbCommand : public Protothread {
                         break;
             }
 
-            if (((cs2<<8)|cs1) != computedCrc) {
+            if ((((uint16_t)cs2<<8)|cs1) != computedCrc) {
 
                     // printf("Checksum Error: 0x%x, computed: 0x%x\n", (cs2<<8)|cs1,  computedCrc);
                     crcError();

@@ -90,10 +90,10 @@ class MarlinSerial //: public Stream
     void cobsInit(uint16_t payloadLength);
     bool cobsAvailable() { return (cobsLen > 0) || (cobsCodeLen == 1); }
 
-    uint8_t serReadNoCheck(void) { simassert(0); }
+    /* uint8_t serReadNoCheck(void) { simassert(0); } */
 
     uint8_t readNoCheckNoCobs(void);
-    uint16_t readUInt16NoCheckNoCobs();
+    /* uint16_t readUInt16NoCheckNoCobs(); */
 
     uint8_t readNoCheckCobs(void);
     uint16_t readUInt16NoCheckCobs();

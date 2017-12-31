@@ -20,7 +20,7 @@
 #ifndef __mdebug_h__
 #define __mdebug_h__
 
-void mAssert(uint16_t line, char* file);
+void mAssert(uint16_t line, const char* file);
 
 //
 // Add heavy and time consuming debugging

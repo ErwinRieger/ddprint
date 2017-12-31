@@ -303,7 +303,7 @@ void FilamentSensorADNS9800::reset(){
 
     // send all bytes of the firmware
     unsigned char c;
-    for(int i = 0; i < sizeof(sromData); i++) { 
+    for(uint16_t i = 0; i < sizeof(sromData); i++) { 
         c = (unsigned char)pgm_read_byte(sromData + i);
         spiSend(c);
         delayMicroseconds(15);

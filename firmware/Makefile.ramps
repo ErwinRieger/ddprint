@@ -5,10 +5,6 @@ TARGET       = firmware.ramps
 
 OBJDIR := build.ramps
 
-# Uno board
-# BOARD_TAG    = uno
-# End Uno
-
 # Mega/Ramps board
 BOARD_TAG    = mega
 MCU = atmega2560
@@ -24,9 +20,21 @@ AVRDUDE = $(ARDUINO_DIR)/hardware/tools/avrdude
 AVRDUDE_ARD_BAUDRATE = 115200
 AVRDUDE_ARD_EXTRAOPTS = -D 
 
-include ./Arduino.mk
+include /usr/share/arduino/Arduino.mk
 
 # Mega/Ramps board
 CPPFLAGS      +=  -DMOTHERBOARD=33 -I./fw
 # End Mega
+
+#
+# Hack, prevent warnings from (the not used) arduino HardwareSerial module:
+#
+$(OBJDIR)/core/HardwareSerial.o: $(ARDUINO_CORE_PATH)/HardwareSerial.cpp
+	touch $(OBJDIR)/core/HardwareSerial.o
+
+
+
+
+
+
 
