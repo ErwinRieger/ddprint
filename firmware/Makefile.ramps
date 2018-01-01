@@ -14,7 +14,7 @@ MCU = atmega2560
 AVRDUDE_ARD_PROGRAMMER = wiring
 # End Mega
 
-ARDUINO_LIBS = SPI fw sdcard LiquidCrystal
+ARDUINO_LIBS = SPI fw SdCard LiquidCrystal
 USER_LIB_PATH = .
 
 ARDUINO_PORT = /dev/ttyACM0
@@ -27,6 +27,7 @@ include ../../Arduino-Makefile/Arduino.mk
 
 # Mega/Ramps board
 CPPFLAGS      +=  -DMOTHERBOARD=33 -I. -I./fw
+CPPFLAGS      +=  -I./SdFat/src 
 
 # Temp. fix depreciated warning in arduino:Print.cpp
 CPPFLAGS      +=  -D"PGM_P=const char*"
@@ -34,6 +35,5 @@ CPPFLAGS      +=  -D"PGM_P=const char*"
 # Disable colored gcc output (don't confuse vim)
 CXXFLAGS      +=  -fno-diagnostics-color
 
-# CPPFLAGS      +=  -DMOTHERBOARD=33 -I. -I./fw -I./SdFat/src 
 # End Mega
 

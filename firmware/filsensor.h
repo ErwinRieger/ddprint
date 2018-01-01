@@ -106,7 +106,6 @@ class FilamentSensorADNS9800 {
         uint8_t nRAvg; // # of values
 #endif
 
-        void spiInit(uint8_t spiRate);
         uint8_t readLoc(uint8_t addr);
         void writeLoc(uint8_t addr, uint8_t value);
         uint8_t pullbyte();

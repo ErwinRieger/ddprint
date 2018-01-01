@@ -21,8 +21,8 @@
 
 #include <Arduino.h>
 
-#include "sdcard/Sd2Card.h"
-// #include "MarlinSerial.h"
+#include "SdCard/SdSpiCard.h"
+
 #include "Protothread.h"
 #include "Configuration.h"
 #include "pins.h"
@@ -46,7 +46,7 @@
 // uint8_t const SD_CARD_ERROR_SETBLOCKSIZE = 0X21;
 // uint8_t const CMD16 = 0X10;
 
-class SDSwap: public Sd2Card, public Protothread {
+class SDSwap: public SdSpiCard, public Protothread {
 
     uint8_t writeBuffer[WCMD_BUFFER_SIZE];
     // Pointer to current write position in writeBuffer
@@ -62,6 +62,8 @@ class SDSwap: public Sd2Card, public Protothread {
     // Number of bytes to shift the block address for non-sdhc cards
     uint8_t blockShift;
 
+    SdSpiAltDriver m_spi;
+
 public:
     SDSwap() {
         // SERIAL_PROTOCOLLNPGM("sdstart");
@@ -71,7 +73,10 @@ public:
 
     bool swapInit() {
 
-        if (!init(SPI_FULL_SPEED, SDSS)) {
+        SPISettings spiSettingsSD(8000000, MSBFIRST, SPI_MODE0);
+        m_spi.setSpiSettings(spiSettingsSD);
+
+        if (! begin(&m_spi, SDSS, SPI_FULL_SPEED)) {
 
             // SERIAL_ECHO_START;
             // SERIAL_ECHOLNPGM(MSG_SD_INIT_FAIL);
@@ -140,7 +145,7 @@ public:
             simassert(! busyWriting);
             simassert(readPos < (wbn<<9));
 
-            if (! Sd2Card::readBlock(wbn, writeBuffer)) {
+            if (! SdSpiCard::readBlock(wbn, writeBuffer)) {
 
                 // xxx errorhandling here
                 massert(0);
@@ -173,7 +178,7 @@ public:
         massert(! busyWriting);
         massert((readPos % RCMD_BUFFER_SIZE) == 0); // read pos should be block-aligned
 
-        if (! Sd2Card::readBlock(readPos >> 9, dst)) {
+        if (! SdSpiCard::readBlock(readPos >> 9, dst)) {
             // xxx errorhandling here
             massert(0);
             return -1;
@@ -188,6 +193,7 @@ public:
         return readBytes;
     }
 
+    // Async block write.
     bool Run() {
 
         PT_BEGIN();
@@ -204,27 +210,42 @@ public:
         // }
 
         // select card
-        chipSelectLow();
+        // chipSelectLow();
+        spiStart();
 
         // wait up to 300 ms if busy
         // xxx no timeout yet
         // waitNotBusy(300);
         // PT_WAIT_UNTIL(spiRec() == 0XFF);
-        massert(spiRec() == 0XFF);
+        // xxx changed 1
+        PT_WAIT_UNTIL(m_spi.receive() == 0XFF);
+
+        // massert(spiRec() == 0XFF);
+        // massert(m_spi.receive() == 0XFF);
 
         // send command
-        spiSend(CMD24 | 0x40);
+        // spiSend(CMD24 | 0x40);
+        m_spi.send(CMD24 | 0x40);
 
         // send argument, 4 byte sequence
-        for (int8_t s = 24; s >= 0; s -= 8) spiSend((writeBlockNumber << blockShift) >> s);
+        // for (int8_t s = 24; s >= 0; s -= 8) spiSend((writeBlockNumber << blockShift) >> s);
+        for (int8_t s = 24; s >= 0; s -= 8) m_spi.send((writeBlockNumber << blockShift) >> s);
 
         // send CRC
-        spiSend(0XFF);
+        // spiSend(0XFF);
+        m_spi.send(0XFF);
 
         // wait for response 
-        for (uint8_t i = 0; ((status_ = spiRec()) & 0X80) && i != 0XFF; i++) { /* Intentionally left empty */ }
+        // for (uint8_t i = 0; ((status_ = spiRec()) & 0X80) && i != 0XFF; i++) { /* Intentionally left empty */ }
+        for (uint8_t i = 0; ((m_status = m_spi.receive()) & 0X80) && i != 0XFF; i++) { /* Intentionally left empty */ }
+
         // return status_;
-        massert(status_ == 0); // xxx set errorCode_
+        // massert(status_ == 0); // xxx set errorCode_
+
+        // xxx changed 2
+        // massert(m_status == 0); // xxx set errorCode_
+        if (m_status != 0) {
+        }
 
         //////////////////////////////////////////////////////////////////////////////////          
 
@@ -241,18 +262,23 @@ public:
             // goto fail;
         // }
         // xxx no timeout yet
-        PT_WAIT_UNTIL(notBusy());
+        // PT_WAIT_UNTIL(notBusy());
+        PT_WAIT_WHILE(isBusy());
 
         // response is r2 so get and check two bytes for nonzero
         // xxx cardCommand() does some unneccessary stuff like waitNotBusy();
-        if (cardCommand(CMD13, 0) || spiRec()) {
-            error(SD_CARD_ERROR_WRITE_PROGRAMMING);
+        // if (cardCommand(CMD13, 0) || spiRec()) {
+        if (cardCommand(CMD13, 0) || m_spi.receive()) {
+            // error(SD_CARD_ERROR_WRITE_PROGRAMMING);
+            error(SD_CARD_ERROR_CMD13);
             // goto fail;
-            chipSelectHigh();
+            // chipSelectHigh();
+            spiStop();
             PT_EXIT(); // xxx or use pt_restart here?
         }
 
-        chipSelectHigh();
+        // chipSelectHigh();
+        spiStop();
             
         // return true;
         //////////////////////////////////////////////////////////////////////////////////          
@@ -271,22 +297,6 @@ public:
         PT_RESTART();
         PT_END();
     };
-
-    bool notBusy() {
-
-        // Check if card is selected
-        if (READ(SDSS)) {
-            chipSelectLow();
-        }
-
-        if (spiRec() == 0XFF) {
-            return true;
-        }
-
-        chipSelectHigh();
-        return false;
-    }
-
 };
 
 extern SDSwap swapDev;

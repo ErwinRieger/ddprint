@@ -35,12 +35,11 @@
 // Factor to compute Extruder steps from filament sensor count
 // #define ASTEPS_PER_COUNT (25.4*141/1000.0)
 
-// mm/s, ca. 7.2 mm³/s
-#define FilSensorMinSpeed 3
-
 #define FilSensorDebug 1
 
 #if defined(ADNSFS)
+
+SPISettings spiSettingsFS(8000000, MSBFIRST, SPI_MODE3);
 
 FilamentSensorADNS9800 filamentSensor;
 
@@ -61,12 +60,6 @@ FilamentSensorADNS9800::FilamentSensorADNS9800() {
     init();
 }
 
-void FilamentSensorADNS9800::spiInit(uint8_t spiRate) {
-  // See avr processor documentation
-  SPCR = (1 << SPE) | (1 << MSTR) | (spiRate >> 1) | (1<<CPHA) | (1<<CPOL); // Mode 3
-  SPSR = spiRate & 1 || spiRate == 6 ? 0 : 1 << SPI2X;
-}
-
 void FilamentSensorADNS9800::init() {
 
     yPos = 0;
@@ -84,10 +77,10 @@ void FilamentSensorADNS9800::init() {
 uint8_t FilamentSensorADNS9800::readLoc(uint8_t addr){
 
   WRITE(FILSENSNCS, LOW);
-  spiSend(addr);
+  SPI.transfer(addr);
   delayMicroseconds(100); // Tsrad
 
-  uint8_t ret=spiRec();
+  uint8_t ret = SPI.transfer(0);
   WRITE(FILSENSNCS, HIGH);
   delayMicroseconds(20); // Tsrw/Tsrr
   return(ret);
@@ -96,9 +89,9 @@ uint8_t FilamentSensorADNS9800::readLoc(uint8_t addr){
 void FilamentSensorADNS9800::writeLoc(uint8_t addr, uint8_t value) {
 
   WRITE(FILSENSNCS, LOW);
-  spiSend(addr | 0x80);
+  SPI.transfer(addr | 0x80);
 
-  spiSend(value);
+  SPI.transfer(value);
   delayMicroseconds(100); // Tsww/Tswr 
   WRITE(FILSENSNCS, HIGH);
 }
@@ -141,7 +134,7 @@ int16_t FilamentSensorADNS9800::getDY() {
 
 void FilamentSensorADNS9800::run() {
 
-    spiInit(3); // scale = pow(2, 3+1), 1Mhz
+    SPI.beginTransaction(spiSettingsFS);
 
     // Berechne soll flowrate, filamentsensor ist sehr ungenau bei kleiner geschwindigkeit.
 
@@ -150,6 +143,8 @@ void FilamentSensorADNS9800::run() {
 
     int16_t ds = astep - lastASteps; // Requested extruded length
     int16_t dy = getDY(); // Real extruded length
+
+    SPI.endTransaction();
 
 #if 0
     if (ds < 0) {
@@ -244,7 +239,7 @@ void FilamentSensorADNS9800::run() {
 
 void FilamentSensorADNS9800::reset(){
 
-    spiInit(3); // scale = pow(2, 3+1), 1Mhz
+    SPI.beginTransaction(spiSettingsFS);
 
 #if 0
     uint8_t productId = readLoc(REG_Product_ID); // Product
@@ -298,14 +293,14 @@ void FilamentSensorADNS9800::reset(){
   
     // write the SROM file (=firmware data) 
     WRITE(FILSENSNCS, LOW);
-    spiSend(REG_SROM_Load_Burst | 0x80); // write burst destination adress
+    SPI.transfer(REG_SROM_Load_Burst | 0x80); // write burst destination adress
     delayMicroseconds(15);
 
     // send all bytes of the firmware
     unsigned char c;
     for(uint16_t i = 0; i < sizeof(sromData); i++) { 
         c = (unsigned char)pgm_read_byte(sromData + i);
-        spiSend(c);
+        SPI.transfer(c);
         delayMicroseconds(15);
     }
     WRITE(FILSENSNCS, HIGH);
@@ -395,6 +390,7 @@ void FilamentSensorADNS9800::reset(){
     massert((uint8_t)(~productId) == invProductId);
 
     // SERIAL_ECHOLNPGM("Optical Chip Initialized");
+    SPI.endTransaction();
 }
 
 #endif // #if defined(ADNSFS)
