@@ -20,13 +20,14 @@
 #*/
 
 import struct, time, math, tty, termios, sys, types, json
-import ddprintconstants, ddhome
+import ddprintconstants, ddhome, ddadvance, pprint
 
 from ddprintcommands import *
 from ddprintstates import *
 from ddprintconstants import *
 from ddconfig import *
 from ddprofile import PrinterProfile, MatProfile, NozzleProfile
+from ddvector import vectorLength, vectorMul
 
 ####################################################################################################
 #
@@ -36,51 +37,17 @@ from ddprofile import PrinterProfile, MatProfile, NozzleProfile
 # UM2:
 FILAMENT_REVERSAL_LENGTH = 750
 
-# To prevent false assertions because of rounding errors
-RoundSafe = 0.995
-
 ####################################################################################################
-def vectorAdd(v1, v2):
-
-    sum = []
-    for a, b in zip(v1, v2):
-        sum.append(a + b)
-
-    return sum
-
-####################################################################################################
-def vectorSub(v1, v2):
-
-    diff = []
-    for a, b in zip(v1, v2):
-        diff.append(a - b)
-
-    return diff
-
-####################################################################################################
-def vectorLength(vv):
-
-    sum = 0
-    for v in vv:
-        sum += pow(v, 2)
-    return math.sqrt(sum)
-
-####################################################################################################
-def vectorMul(v1, v2):
-
-    product = []
-    for i in range(len(v2)):
-        product.append(v1[i] * v2[i])
-
-    return product
-
-####################################################################################################
-def vectorDistance(a, b):
-    return vectorLength(vectorSub(a, b))
+def sign(x):
+    if x == 0:
+        return 1.0
+    return math.copysign(1, x)
 
 ####################################################################################################
 def circaf(a, b, delta):
     return abs(a-b) < delta
+
+####################################################################################################
 
 # Speed after accelerating for a certain time
 def vAccelPerTime(v0, a, t):
@@ -92,7 +59,12 @@ def vAccelPerTime(v0, a, t):
 # Distance traveled after accelerating for a certain time
 def accelDist(v0, a, t):
     # s = 0,5 * a * t² + vo * t
-    return 0.5 * a * pow(t, 2) + v0 * t
+    s = 0.5 * a * pow(t, 2) + v0 * t
+
+    # if s < 0:
+        # print "Error in accelDist(), negative distance computed: v0=%.3f, a=%.3f, t=%.3f, s=%.3f" % (v0, a, t, s)
+        # assert(0)
+    return s
 
 ####################################################################################################
 
@@ -101,60 +73,389 @@ def vAccelPerDist(v0, a, s):
 
     assert(v0 >= 0)
 
-    term = 2 * a * s + pow(v0, 2)
-    if term >= 0:
-        return math.sqrt( term )
-    else:
-        return - math.sqrt( abs(term) )
+    t1 = pow(v0, 2)
+    t2 = 2.0 * a * s
+
+    # print "t1: ", t1
+    # print "t2: ", t2
+
+    if (t1 + t2) >= 0:
+        return math.sqrt(t1+t2)
+
+    return - math.sqrt(abs(t1 + t2))
 
 ####################################################################################################
 
-def joinSpeed(move1, move2, jerk, min_speeds):
+# Time needed to do deltaV in given distance s
+def timePerDist(v1, v2, s):
+
+    assert(v2 >= v1)
+    return s / (v1 + ((v2 - v1)/2.0))
+
+####################################################################################################
+
+# Compute acceleration by distance and delta-v
+def accelPerDist(v1, v2, s):
+
+    # a = ( ve² - v0² ) / ( 2 * s )
+    assert(v2 >= v1)
+    return ( pow(v2, 2) - pow(v1, 2) ) / ( 2 * s )
+
+####################################################################################################
+
+def joinMoves(move1, move2, advInstance): # jerk, maxAccelV):
 
         if debugMoves:
-            print "***** Start joinSpeed() *****"
+            print "***** Start joinMoves() *****"
+            move1.pprint("JoinSpeed - Move1")
+            move2.pprint("JoinSpeed - Move2")
 
-        allowedAccel = move1.getAllowedAccel()
+        startSpeed1 = move1.startSpeed.speed()
+        startSpeedS1 = startSpeed1.feedrate3()
 
-        if move1.getFeedrateV().isDisjointV(move2.getFeedrateV()):
+        endSpeed1 = move1.endSpeed.speed()
+        endSpeedS1 = endSpeed1.feedrate3()
 
+        startSpeed2 = move2.startSpeed.speed()
+        startSpeedS2 = startSpeed2.feedrate3()
+
+        allowedAccel3 = move1.startAccel.xyAccel()
+
+        maxEndSpeed1 = vAccelPerDist(startSpeedS1, allowedAccel3, move1.distance3)
+
+        if maxEndSpeed1 < endSpeedS1:
+
+            # Endspeed of move 1 not reachable, lowering it to the max. reachable speed
             if debugMoves:
-                move1.pprint("JoinSpeed - disjoint Move1")
-                move2.pprint("JoinSpeed - disjoint Move2")
+                print "Max. reachable endspeed: %.3f < feedrate: %.3f" % (maxEndSpeed1, endSpeedS1)
 
-            # Set endspeed to minimum of reachable endspeed and jerkspeed
-            f = move1.getJerkSpeed(jerk)
-            maxEndSpeed = vAccelPerDist(move1.getStartFr(), allowedAccel, move1.distance) * RoundSafe
-            # print "maxEndSpeed of first disjoint move:", maxEndSpeed, f
-            move1.setNominalEndFr(min(f, maxEndSpeed))
+            endSpeed1.setSpeed(maxEndSpeed1)
 
-            # jerkSpeed = move2.vVector().constrain(jerk) or move2.feedrate
-            # move2.setNominalStartFr(jerkSpeed)
-            move2.setNominalJerkStartSpeed(jerk)
+            # print "Move1, endspeed lowered: ", endSpeed1
+            move1.endSpeed.setSpeed(endSpeed1, "joinMoves - max. reachable endspeed")
 
-            if debugMoves:
-                print "***** End joinSpeed() *****"
+        # Check max reachable e endspeed
+        maxAllowedEEndSpeed = vAccelPerDist(startSpeed1.eSpeed, move1.startAccel.eAccel(), move1.eDistance)
+        if maxAllowedEEndSpeed < endSpeed1.eSpeed:
+            circaf(maxAllowedEEndSpeed, endSpeed1.eSpeed, 0.000000001)
+
+        joinMoves2(move1, move2, advInstance)
+
+def joinMoves2(move1, move2, advInstance): # jerk):
+
+        endSpeed1 = move1.endSpeed.speed()
+        eEndSpeed1 = endSpeed1.eSpeed
+
+        startSpeed2 = move2.startSpeed.speed()
+        eStartSpeed2 = startSpeed2.eSpeed
+
+        # print "joinMoves2(): move 1   end e speed: ", eEndSpeed1
+        # print "joinMoves2(): move 2 start e speed: ", eStartSpeed2
+
+        #
+        # Compare E-speed of moves
+        #
+        # Note: normally we would compare eEndSpeed1 and eStartSpeed2 here.
+        # But this is a problem with feederCompensation and move.sanityCheck() with the
+        # increased E feedrate values (the difference of compensated endspeed/startspeed could be
+        # more than AdvanceEThreshold).
+        # Therefore we compare the compensated values here:
+        #
+        # if circaf(eEndSpeed1, eStartSpeed2, AdvanceEThreshold):
+        #
+        adjEEndSpeed1 = advInstance.eComp(eEndSpeed1)
+        adjEStartSpeed2 = advInstance.eComp(eStartSpeed2)
+        if circaf(adjEEndSpeed1, adjEStartSpeed2, AdvanceEThreshold):
+
+            # E-speed difference is small enough, check X/Y jerk
+            endSpeedV1 = endSpeed1.vv3()
+            startSpeedV2 = startSpeed2.vv3()
+            differenceVector = endSpeedV1.subVVector(startSpeedV2)
+            # print "Case1, differenceVector, jerk:", differenceVector, jerk
+
+##################
+            # old joinMoves
+
+            #
+            # Join in bezug auf den maximalen jerk aller achsen betrachten:
+            #
+            jerk = advInstance.planner.getJerk()
+            speedDiff = {}
+            toMuch = False
+            for dim in range(3):
+
+                vdim = startSpeedV2[dim]
+
+                # Speed difference from endspeed to theoretical max speed for axis
+                vdiff = vdim - endSpeedV1[dim]
+
+                vdiffAbs = abs(vdiff)
+
+                dimJerk = jerk[dim]
+
+                if vdiffAbs > dimJerk: 
+                    toMuch = True
+
+                if vdiffAbs > 1:
+                    speedDiff[dim] = (vdiff, vdiffAbs)
+
+            if toMuch:
+
+                if debugMoves:
+                    print "E-speed ok, XY-speedDiff:", speedDiff
+
+                # 
+                # Der geschwindigkeitsunterschied mindestens einer achse ist grösser als der 
+                # erlaubte jerk fuer diese achse.
+                # 
+                # Man könnte auch sagen: der "geschwindigkeits knick" ist zu gross. 
+                # 
+                # Letzter step muss also am ende gebremst werden und dieser step muss mit
+                # entsprechend kleiner geschwindigkeit gestartet werden.
+                #
+                # Abbremsen auf 0 geht auf jeden fall, aber ist auch eine höhere
+                # jerk geschwindigkeit möglich? Bzw. wie kann diese berechnet werden?
+                # 
+                # 
+
+                #
+                # Skalierungsfaktor berechnen um den die beiden geschwindigkeiten
+                # reduziert werden müssen, damit sie nur noch einen unterschied von
+                # 'jerk' haben.
+                #
+
+                speedScale = 1.0
+                for dim in speedDiff.keys():
+                    # print "diff: ", differenceVector[dim], jerk[dim]
+                    if abs(differenceVector[dim]) > jerk[dim]:
+                        # print "mindiff: ", dimNames[dim], differenceVector[dim], jerk[dim]
+                        speedScale = min(speedScale, jerk[dim] / abs(differenceVector[dim]))
+
+                if debugMoves:
+                    move1.pprint("JoinMoves - Move1")
+                    move2.pprint("JoinMoves - Move2")
+                    print "speedScale: ", speedScale
+
+                assert(speedScale <= 1.0)
+
+                endSpeed1 = endSpeed1.scale(speedScale)
+
+                if debugMoves:
+                    print "set nominal endspeed of move1:", endSpeed1
+
+                move1.endSpeed.setSpeed(endSpeed1, "joinMoves2 - adjust jerk")
+
+                startSpeed2 = startSpeed2.scale(speedScale)
+
+                if debugMoves:
+                    print "set nominal startspeed of move2:", speedScale
+
+                move2.startSpeed.setSpeed(startSpeed2, "joinMoves2 - adjust jerk")
+
+            else:
+
+                if debugMoves:
+                    print "Doing a full speed join between move %d and %d" % (move1.moveNumber, move2.moveNumber)
+
+                # move1.setNominalEndFr(endSpeedS)
+                # move2.setNominalStartFr(move2.feedrateS)
+
+            move1.sanityCheck(jerk)
             return
 
-        endSpeedS = move1.feedrateS
-        endSpeedV = move1.getFeedrateV()
+##################
 
-        # Compute max reachable endspeed of move1
-        # maxEndSpeed = vAccelPerDist(move1.getStartFr(), allowedAccel, move1.e_distance)
-        maxEndSpeed = vAccelPerDist(move1.getStartFr(), allowedAccel, move1.distance) * RoundSafe
+        joinMoves3(move1, move2, advInstance)
+     
+def joinMoves3(move1, move2, advInstance): # jerk):
 
-        if maxEndSpeed < endSpeedS:
+        endSpeed1 = move1.endSpeed.speed()
+        startSpeed2 = move2.startSpeed.speed()
+
+        eEndSpeed1 = endSpeed1.eSpeed
+        eStartSpeed2 = startSpeed2.eSpeed
+
+        # print "joinMoves3(): e-feedrate 1: ", eEndSpeed1
+        # print "joinMoves3(): e-feedrate 2: ", eStartSpeed2
+
+        if eEndSpeed1 > eStartSpeed2:
+            # Slow down move1
+            f = eStartSpeed2 / eEndSpeed1
+            # print "f1: ", f
+
+            # endSpeedS1 *= f
+            # endSpeed1.feedrate = endSpeedS1
+            endSpeed1 = endSpeed1.scale(f)
+            move1.endSpeed.setSpeed(endSpeed1, "joinMoves3 - adjust ejerk")
+
+            # print "slowed down move1 endspeed:", eEndSpeed1
+
+        else:
+            # Slow down move2
+            f = eEndSpeed1 / eStartSpeed2
+            # print "f2: ", f
+
+            # startSpeedS2 *= f
+            # startSpeed2.feedrate = startSpeedS2
+            startSpeed2 = startSpeed2.scale(f)
+            move2.startSpeed.setSpeed(startSpeed2, "joinMoves3 - adjust ejerk")
+
+            # print "slowed down move2 startspeed:", startSpeed2
+
+        #
+        # Join in bezug auf den maximalen jerk aller achsen betrachten:
+        #
+        endSpeedV1 = endSpeed1.vv3()
+        startSpeedV2 = startSpeed2.vv3()
+
+        jerk = advInstance.planner.getJerk()
+        speedDiff = {}
+        toMuch = False
+        for dim in range(3):
+
+            vdim = startSpeedV2[dim]
+
+            # Speed difference from endspeed to theoretical max speed for axis
+            vdiff = vdim - endSpeedV1[dim]
+
+            vdiffAbs = abs(vdiff)
+
+            dimJerk = jerk[dim]
+
+            if vdiffAbs > dimJerk: 
+                toMuch = True
+
+            if vdiffAbs > 1:
+                speedDiff[dim] = (vdiff, vdiffAbs)
+
+        if toMuch:
+
+            differenceVector = endSpeedV1.subVVector(startSpeedV2)
+            # print "differenceVector, jerk:", differenceVector, jerk
 
             if debugMoves:
-                print "math.sqrt( 2 * %f * %f + pow(%f, 2) ) * %f" % (move1.distance, allowedAccel, move1.getStartFr(), RoundSafe)
-                print "Max. reachable endspeed: %.3f < feedrate: %.3f" % (maxEndSpeed, endSpeedS)
+                print "E-speed angepasst, XY-speedDiff:", speedDiff
 
-            endSpeedS = maxEndSpeed
+            # 
+            # Der geschwindigkeitsunterschied mindestens einer achse ist grösser als der 
+            # erlaubte jerk fuer diese achse.
+            # 
+            # Man könnte auch sagen: der "geschwindigkeits knick" ist zu gross. 
+            # 
+            # Letzter step muss also am ende gebremst werden und dieser step muss mit
+            # entsprechend kleiner geschwindigkeit gestartet werden.
+            #
+            # Abbremsen auf 0 geht auf jeden fall, aber ist auch eine höhere
+            # jerk geschwindigkeit möglich? Bzw. wie kann diese berechnet werden?
+            # 
+            # 
 
-            endSpeedV = move1.getFeedrateV(maxEndSpeed)
+            #
+            # Skalierungsfaktor berechnen um den die beiden geschwindigkeiten
+            # reduziert werden müssen, damit sie nur noch einen unterschied von
+            # 'jerk' haben.
+            #
 
-        nomFeedrateVMove2 = move2.getFeedrateV()
-        differenceVector = nomFeedrateVMove2.subVVector(endSpeedV)
+            speedScale = 1.0
+            for dim in speedDiff.keys():
+                # print "diff: ", differenceVector[dim], jerk[dim]
+                if abs(differenceVector[dim]) > jerk[dim]:
+                    # print "mindiff: ", dimNames[dim], differenceVector[dim], jerk[dim]
+                    speedScale = min(speedScale, jerk[dim] / abs(differenceVector[dim]))
+
+            if debugMoves:
+                move1.pprint("JoinMoves - Move1")
+                move2.pprint("JoinMoves - Move2")
+                print "speedScale: ", speedScale
+
+            assert(speedScale <= 1.0)
+
+            endSpeed1 = endSpeed1.scale(speedScale)
+
+            if debugMoves:
+                print "set nominal endspeed of move1:", endSpeed1
+
+            move1.endSpeed.setSpeed(endSpeed1, "joinMoves3 - adjust jerk")
+
+            startSpeed2 = startSpeed2.scale(speedScale)
+
+            if debugMoves:
+                print "set nominal startspeed of move2:", speedScale
+
+            move2.startSpeed.setSpeed(startSpeed2, "joinMoves3 - adjust jerk")
+
+        else:
+
+            if debugMoves:
+                print "Doing a full speed join between move %d and %d" % (move1.moveNumber, move2.moveNumber)
+
+            # move1.setNominalEndFr(endSpeedS)
+            # move2.setNominalStartFr(move2.feedrateS)
+
+        move1.sanityCheck(jerk)
+##################
+        if debugMoves:
+            move1.pprint("Move1, e-adjusted")
+            move2.pprint("Move2, e-adjusted")
+            print "***** End joinMoves() *****"
+
+
+####################################################################################################
+
+#
+# Join travel moves, this is easier than joining printing moves since E-axis jerk has not to be
+# considered.
+#
+def joinTravelMoves(move1, move2, jerk):
+
+        if debugMoves:
+            print "***** Start joinTravelMoves() *****"
+
+        allowedAccel = move1.getMaxAllowedAccelNoAdv5()
+
+        startSpeedMove1 = move1.startSpeed.speed()
+        startSpeedMove1S = startSpeedMove1.feedrate5()
+
+        endSpeedMove1 = move1.endSpeed.speed()
+        endSpeedVMove1 = endSpeedMove1.vv()
+
+        startSpeedMove2 = move2.startSpeed.speed()
+
+        # Compute max reachable endspeed of move1
+        maxEndSpeed = vAccelPerDist(startSpeedMove1S, allowedAccel, move1.distance5)
+
+        """
+        if endSpeedVMove1.isDisjointV(startSpeedMove2.vv()):
+
+            # Set endspeed to minimum of reachable endspeed and jerkspeed
+            jerkSpeed = move1.getJerkSpeed(jerk) or endSpeedMove1
+
+            print "maxEndSpeed of first disjoint move:", maxEndSpeed, jerkSpeed.feedrate5()
+            endSpeedMove1.setSpeed(min(jerkSpeed.feedrate5(), maxEndSpeed))
+            move1.endSpeed.setSpeed(endSpeedMove1, "joinTravelMoves - disjoint, jerk ormaxendspeed")
+
+            move2.setPlannedJerkStartSpeed(jerk, "joinTravelMoves - disjoint, jerk")
+
+            if debugMoves:
+                print "***** End joinTravelMoves() *****"
+            return
+
+        """
+
+        endSpeedMove1S = endSpeedMove1.feedrate5()
+
+        if maxEndSpeed < endSpeedMove1S:
+
+            if debugMoves:
+                print "Max. reachable endspeed: %.3f < feedrate: %.3f" % (maxEndSpeed, endSpeedMove1S)
+
+            endSpeedMove1S = maxEndSpeed
+            endSpeedMove1.setSpeed(endSpeedMove1S)
+            move1.endSpeed.setSpeed(endSpeedMove1, "joinTravelMoves - max. reachable endspeed")
+            endSpeedVMove1 = endSpeedMove1.vv()
+
+        startSpeedVMove2 = startSpeedMove2.vv()
+        differenceVector = startSpeedVMove2.subVVector(endSpeedVMove1)
 
         #
         # Join in bezug auf den maximalen jerk aller achsen betrachten:
@@ -163,10 +464,10 @@ def joinSpeed(move1, move2, jerk, min_speeds):
         toMuch = False
         for dim in range(5):
 
-            vdim = nomFeedrateVMove2[dim]
+            vdim = startSpeedVMove2[dim]
 
             # Speed difference from start speed to theoretical max speed for axis
-            vdiff = vdim - endSpeedV[dim]
+            vdiff = vdim - endSpeedVMove1[dim]
 
             vdiffAbs = abs(vdiff)
 
@@ -211,32 +512,39 @@ def joinSpeed(move1, move2, jerk, min_speeds):
                     speedScale = min(speedScale, jerk[dim] / abs(differenceVector[dim]))
 
             if debugMoves:
-                move1.pprint("JoinSpeed - Move1")
-                move2.pprint("JoinSpeed - Move2")
-                print "speedScale: ", speedScale # , weight
+                move1.pprint("joinTravelMoves - Move1")
+                move2.pprint("joinTravelMoves - Move2")
+                print "speedScale: ", speedScale
 
             assert(speedScale <= 1.0)
 
             if debugMoves:
-                print "set nominal endspeed of move1:", endSpeedS * speedScale
-            move1.setNominalEndFr(endSpeedS * speedScale)
+                print "set nominal endspeed of move1:", endSpeedMove1S * speedScale
+            move1.endSpeed.setSpeed(endSpeedMove1.scale(speedScale), "joinTravelMoves - adjust jerk")
 
             if debugMoves:
-                print "set nominal startspeed of move2:", move2.feedrateS * speedScale
-            move2.setNominalStartFr(move2.feedrateS * speedScale)
+                print "set nominal startspeed of move2:", startSpeedMove2.feedrate5() * speedScale
+            move2.startSpeed.setSpeed(startSpeedMove2.scale(speedScale), "joinTravelMoves - adjust jerk")
 
         else:
 
             if debugMoves:
                 print "Doing a full speed join between move %d and %d" % (move1.moveNumber, move2.moveNumber)
 
-            move1.setNominalEndFr(endSpeedS)
-            move2.setNominalStartFr(move2.feedrateS)
+            # move1.setNominalEndFr(endSpeedMove1S)
+            # move2.setNominalStartFr(move2.feedrateS)
       
         if debugMoves:
-            print "***** End joinSpeed() *****"
+            print "***** End joinTravelMoves() *****"
 
 ####################################################################################################
+
+# Debug object
+class StreamedMove:
+        pass
+
+####################################################################################################
+
 
 class MyPoint:
 
@@ -340,6 +648,58 @@ class GetChar:
 
 ####################################################################################################
 
+class Average:
+
+    def __init__(self):
+        self._sum = 0.0
+        self._n = 0
+
+    def add(self, value):
+        self._sum += value
+        self._n += 1
+
+    def value(self):
+        return self._sum / self._n
+
+    # def setValue(self, v):
+        # self._value = v
+
+####################################################################################################
+
+class EWMA:
+
+    def __init__(self, weight):
+        self.weight = weight
+        self._value = 0.0
+
+    def add(self, value):
+        """Adds a value to the series and updates the moving average."""
+        self._value = (value*self.weight) + (self._value*(1 - self.weight))
+
+    def value(self):
+        return self._value
+
+    def setValue(self, v):
+        self._value = v
+
+####################################################################################################
+
+# Compute new stepper direction bits
+def directionBits(disp, curDirBits):
+
+    for i in range(5):
+
+        mask = 1 << i
+
+        if disp[i] > 0 and not (curDirBits & mask):
+            curDirBits += mask
+        elif disp[i] < 0 and (curDirBits & mask):
+            curDirBits -= mask
+
+    return curDirBits
+
+####################################################################################################
+
 def commonInit(args, parser):
 
     planner = parser.planner
@@ -348,15 +708,14 @@ def commonInit(args, parser):
     printer.commandInit(args)
 
     ddhome.home(parser, args.fakeendstop)
-    downloadTempTable(printer)
+    downloadTempTable(planner)
     printer.sendPrinterInit()
 
 ####################################################################################################
 
 def getVirtualPos(parser):
 
-    planner = parser.planner
-    printer = planner.printer
+    printer = parser.planner.printer
 
     # Get currend stepped pos
     res = printer.getPos()
@@ -371,7 +730,7 @@ def getVirtualPos(parser):
         )
 
     print "Printer is at [mm]: ", curPosMM
-    parser.set_position(curPosMM)
+    parser.setPos(curPosMM)
 
     return curPosMM
 
@@ -380,11 +739,10 @@ def getVirtualPos(parser):
 def prime(parser):
 
     planner = parser.planner
-    # printer = planner.printer
 
     parser.execute_line("G0 F%f Y0 Z%f" % (planner.HOMING_FEEDRATE[X_AXIS]*60, ddprintconstants.PRIMING_HEIGHT))
 
-    pos = parser.getRealPos()
+    pos = parser.getPos()
 
     aFilament = MatProfile.getMatArea()
 
@@ -393,9 +751,9 @@ def prime(parser):
         pos[A_AXIS] + (ddprintconstants.PRIMING_MM3 / aFilament)))
 
     # Set E to 0
-    current_position = parser.getRealPos()
+    current_position = parser.getPos()
     current_position[A_AXIS] = 0.0
-    parser.set_position(current_position)
+    parser.setPos(current_position)
 
     #
     # Retract
@@ -404,15 +762,7 @@ def prime(parser):
 
     # Wipe priming material if not ultigcode flavor 
     if not parser.ultiGcodeFlavor:
-        # parser.execute_line("G10")
-        # parser.execute_line("G0 F%f X50 Z0.5" % (planner.HOMING_FEEDRATE[X_AXIS]*60))
         parser.execute_line("G0 F9000 X20 Z0.1")
-        # parser.execute_line("G0 F1200 X%.2f" % (planner.X_MAX_POS * 0.8))
-        # parser.execute_line("G0 F%d Z10" % (planner.HOMING_FEEDRATE[Z_AXIS]*60))
-        # parser.execute_line("G1 X190 Z0.1 F9000") #  ; pull away filament
-        # parser.execute_line("G1 X210 F9000") #  ; wipe
-        # parser.execute_line("G1 Y20 F9000") #  ; wipe
-        # parser.execute_line("G11")
 
 ####################################################################################################
 
@@ -456,9 +806,9 @@ def manualMove(parser, axis, distance, feedrate=0, absolute=False):
     if not feedrate:
         feedrate = PrinterProfile.getMaxFeedrate(axis)
 
-    current_position = parser.getRealPos()
+    current_position = parser.getPos()
     if absolute:
-        d = distance - current_position[A_AXIS] 
+        d = distance - current_position[axis] 
         assert(abs(d) <= 1000)
         parser.execute_line("G0 F%d %s%f" % (feedrate*60, dimNames[axis], distance))
     else:
@@ -474,18 +824,18 @@ def manualMove(parser, axis, distance, feedrate=0, absolute=False):
 
     printer.waitForState(StateIdle)
 
-    printer.readMore(10)
+    printer.readMore(2)
 
 ####################################################################################################
 
-def insertFilament(args, parser):
+def insertFilament(args, parser, feedrate):
 
     planner = parser.planner
     printer = planner.printer
 
     def manualMoveE():
 
-        current_position = parser.getRealPos()
+        current_position = parser.getPos()
         aofs = current_position[A_AXIS]
         print "cura: ", aofs
 
@@ -518,8 +868,8 @@ def insertFilament(args, parser):
     commonInit(args, parser)
 
     # Move to mid-position
-    feedrate = PrinterProfile.getMaxFeedrate(X_AXIS)
-    parser.execute_line("G0 F%d X%f Y%f" % (feedrate*60, planner.MAX_POS[X_AXIS]/2, planner.MAX_POS[Y_AXIS]/2))
+    maxFeedrate = PrinterProfile.getMaxFeedrate(X_AXIS)
+    parser.execute_line("G0 F%d X%f Y%f" % (maxFeedrate*60, planner.MAX_POS[X_AXIS]/2, planner.MAX_POS[Y_AXIS]/2))
 
     planner.finishMoves()
 
@@ -528,14 +878,14 @@ def insertFilament(args, parser):
 
     printer.waitForState(StateIdle)
 
-    t1 = MatProfile.getHotendBaseTemp()
+    t1 = MatProfile.getHotendStartTemp()
     printer.heatUp(HeaterEx1, t1, wait=t1 - 5)
 
     print "\nInsert filament.\n"
     manualMoveE()
 
     print "\nForwarding filament.\n"
-    manualMove(parser, A_AXIS, FILAMENT_REVERSAL_LENGTH * 0.85)
+    manualMove(parser, A_AXIS, FILAMENT_REVERSAL_LENGTH * 0.85, feedrate)
 
     print "\nExtrude filament.\n"
     manualMoveE()
@@ -557,7 +907,7 @@ def insertFilament(args, parser):
 
 ####################################################################################################
 
-def removeFilament(args, parser):
+def removeFilament(args, parser, feedrate):
 
     planner = parser.planner
     printer = planner.printer
@@ -569,12 +919,8 @@ def removeFilament(args, parser):
     printer.sendPrinterInit()
 
     # Move to mid-position
-    # MAX_POS = (X_MAX_POS, Y_MAX_POS, Z_MAX_POS)
-    # feedrate = PrinterProfile.getMaxFeedrate(Z_AXIS)
-    # parser.execute_line("G0 F%d Z%f" % (feedrate*60, MAX_POS[Z_AXIS]))
-
-    feedrate = PrinterProfile.getMaxFeedrate(X_AXIS)
-    parser.execute_line("G0 F%d X%f Y%f" % (feedrate*60, planner.MAX_POS[X_AXIS]/2, planner.MAX_POS[Y_AXIS]/2))
+    maxFeedrate = PrinterProfile.getMaxFeedrate(X_AXIS)
+    parser.execute_line("G0 F%d X%f Y%f" % (maxFeedrate*60, planner.MAX_POS[X_AXIS]/2, planner.MAX_POS[Y_AXIS]/2))
 
     planner.finishMoves()
 
@@ -583,13 +929,13 @@ def removeFilament(args, parser):
 
     printer.waitForState(StateIdle)
 
-    t1 = MatProfile.getHotendBaseTemp()
+    t1 = MatProfile.getHotendStartTemp()
     printer.heatUp(HeaterEx1, t1, wait=t1)
 
-    # Etwas vorwärts um den retract-pfropfen einzuschmelzen
-    manualMove(parser, A_AXIS, PrinterProfile.getRetractLength() + 5, 5)
+    # Etwas warten und filament vorwärts feeden um den retract-pfropfen einzuschmelzen
+    manualMove(parser, A_AXIS, PrinterProfile.getRetractLength() + 50, 5)
 
-    manualMove(parser, A_AXIS, -1.3*FILAMENT_REVERSAL_LENGTH)
+    manualMove(parser, A_AXIS, -1.3*FILAMENT_REVERSAL_LENGTH, feedrate)
 
     if not args.noCoolDown:
         printer.coolDown(HeaterEx1,wait=150)
@@ -603,11 +949,9 @@ def retract(args, parser, doCooldown = True):
 
     commonInit(args, parser)
 
-    t1 = MatProfile.getHotendBaseTemp()
+    t1 = MatProfile.getHotendStartTemp()
     printer.heatUp(HeaterEx1, t1, wait=t1 - 5)
 
-    # hack
-    # parser.retracted = False
     parser.execute_line("G10")
 
     planner.finishMoves()
@@ -640,7 +984,7 @@ def bedLeveling(args, parser):
 
     def manualMoveZ():
 
-        current_position = parser.getRealPos()
+        current_position = parser.getPos()
         zofs = current_position[Z_AXIS]
         print "curz: ", zofs
 
@@ -693,7 +1037,7 @@ def bedLeveling(args, parser):
 
     manualMoveZ()
 
-    current_position = parser.getRealPos()
+    current_position = parser.getPos()
     print "curz: ", current_position[Z_AXIS]
 
     add_homeing_z = -1 * current_position[Z_AXIS];
@@ -708,7 +1052,7 @@ def bedLeveling(args, parser):
     current_position[Z_AXIS] = planner.LEVELING_OFFSET;
 
     # Adjust the virtual position
-    parser.set_position(current_position)
+    parser.setPos(current_position)
 
     # Adjust the printer position
     posStepped = vectorMul(current_position, parser.steps_per_mm)
@@ -806,7 +1150,7 @@ def endOfPrintLift(parser):
 
     planner = parser.planner
 
-    pos = parser.getRealPos()
+    pos = parser.getPos()
     zlift = min(pos.Z + 25, planner.Z_MAX_POS)
 
     if zlift > pos.Z:
@@ -837,7 +1181,7 @@ def heatHotend(args, parser):
 
     printer.commandInit(args)
 
-    t1 = MatProfile.getHotendBaseTemp()
+    t1 = MatProfile.getHotendStartTemp()
 
     printer.heatUp(HeaterEx1, t1, wait=t1-5)
 
@@ -892,7 +1236,10 @@ def changeNozzle(args, parser):
 
 ####################################################################################################
 #
-# Measure closed loop step-response of the hotend and plot it with gnuplot
+# Measure closed loop step-response of the hotend and plot it with gnuplot.
+# Do three setpoint changes: the first is from current temperature to args.t1 or 200 °C, then
+# after reaching this first set temperature a step upwards to 120%, then a downward step to 90% of
+# the first temperature is done.
 #
 def stepResponse(args, parser):
 
@@ -905,25 +1252,31 @@ def stepResponse(args, parser):
         printer.sendCommandParamV(CmdFanSpeed, [packedvalue.uint8_t(0)])
 
     # Destination temperature
-    tDest = 200
+    tDest1 = args.t1 or 200
+    tDest2 = tDest1 * 1.2
+    tDest3 = tDest1 * 0.9
+    assert(tDest1 <= 275)
+
     # Bail out if tmax reached
-    tmax = 240
+    tmax = tDest1 * 1.5
+
+    printer.commandInit(args)
+    es = printer.getEepromSettings()
 
     # Open output gnuplot file
     f = open("stepresponse_closed.gnuplot", "w")
 
-    f.write("set grid\n")
-    f.write("set xrange [0:140]\n")
-    f.write("set yrange [0:250]\n")
+    f.write("# Kp: %f\n" % es["Kp"])
+    f.write("# Ki: %f\n" % es["Ki"])
+    f.write("# Kd: %f\n" % es["Kd"])
+    f.write("set yrange [0:%d]\n" % tmax)
     f.write("set grid\n")
     f.write("plot \"-\" using 1:2 with linespoints title \"StepResponse\",")
-    f.write("%d title \"tDest\"\n" % tDest)
+    f.write("%d title \"tDest1\", %d title \"tDest2\", %d title \"tDest3\"\n" % (tDest1, tDest2, tDest3))
 
-    printer.commandInit(args)
-
-    # Do the step
-    print "Starting input step to %d °" % tDest
-    payload = struct.pack("<BH", HeaterEx1, tDest) # Parameters: heater, temp
+    # Do the first step
+    print "Starting input step to %d °" % tDest1
+    payload = struct.pack("<BH", HeaterEx1, tDest1) # Parameters: heater, temp
     printer.sendCommand(CmdSetTargetTemp, binPayload=payload)
     printer.sendCommandParamV(CmdFanSpeed, [packedvalue.uint8_t(100)])
 
@@ -937,13 +1290,15 @@ def stepResponse(args, parser):
     lastTime = timeStart 
     lastTemp = tempStart
 
-    # Build 10 second average of the temperature change derivation
-    nAvg = 10
+    # Build 60 second average of the temperature change derivation
+    nAvg = 60
     aAvg = nAvg * 1.0
 
     # Stop if temp curve gets flat enough
-    while abs((aAvg/nAvg)) > 0.02:
-
+    wait = 60
+    flatReached = False
+    while wait:
+        
         if lastTemp > tmax:
             print "Error, max temp (%d) reached: " % tmax, lastTemp
             stopHeater()
@@ -963,30 +1318,115 @@ def stepResponse(args, parser):
         dx = tim - lastTime
 
         a = dy / dx
-        print "Temp:", temp
+        print "Temp:", temp, "Wait:", wait
 
         aAvg = aAvg - (aAvg/nAvg) + a
         print "Steigung: %7.4f %7.4f" % (a, aAvg/nAvg)
 
+        if abs((aAvg/nAvg)) < 0.2 and not flatReached:
+            flatReached = True
+
+        if flatReached:
+            wait -= 1
+
         lastTime = tim
         lastTemp = temp
         
-    f.write("e\n")
+    # Do the second step
+    print "Starting input step to %d °" % tDest2
+    payload = struct.pack("<BH", HeaterEx1, tDest2) # Parameters: heater, temp
+    printer.sendCommand(CmdSetTargetTemp, binPayload=payload)
+
+    aAvg = nAvg * 1.0
+
+    # Stop if temp curve gets flat enough
+    wait = 60
+    flatReached = False
+    while wait:
+        
+        if lastTemp > tmax:
+            print "Error, max temp (%d) reached: " % tmax, lastTemp
+            stopHeater()
+            return
+
+        time.sleep(1)
+
+        tim = time.time()
+        status = printer.getStatus()
+        temp = status["t1"]
+
+        relTime = tim-timeStart
+
+        f.write("%f %f\n" % (relTime, temp))
+
+        dy = temp - lastTemp
+        dx = tim - lastTime
+
+        a = dy / dx
+        print "Temp:", temp, "Wait:", wait
+
+        aAvg = aAvg - (aAvg/nAvg) + a
+        print "Steigung: %7.4f %7.4f" % (a, aAvg/nAvg)
+
+        if abs((aAvg/nAvg)) < 0.2 and not flatReached:
+            flatReached = True
+
+        if flatReached:
+            wait -= 1
+
+        lastTime = tim
+        lastTemp = temp
+        
+    # Do the third step
+    print "Starting input step to %d °" % tDest3
+    payload = struct.pack("<BH", HeaterEx1, tDest3) # Parameters: heater, temp
+    printer.sendCommand(CmdSetTargetTemp, binPayload=payload)
+
+    aAvg = nAvg * 1.0
+
+    # Stop if temp curve gets flat enough
+    wait = 60
+    flatReached = False
+    while wait:
+        
+        if lastTemp > tmax:
+            print "Error, max temp (%d) reached: " % tmax, lastTemp
+            stopHeater()
+            return
+
+        time.sleep(1)
+
+        tim = time.time()
+        status = printer.getStatus()
+        temp = status["t1"]
+
+        relTime = tim-timeStart
+
+        f.write("%f %f\n" % (relTime, temp))
+
+        dy = temp - lastTemp
+        dx = tim - lastTime
+
+        a = dy / dx
+        print "Temp:", temp, "Wait:", wait
+
+        aAvg = aAvg - (aAvg/nAvg) + a
+        print "Steigung: %7.4f %7.4f" % (a, aAvg/nAvg)
+
+        if abs((aAvg/nAvg)) < 0.2 and not flatReached:
+            flatReached = True
+
+        if flatReached:
+            wait -= 1
+
+        lastTime = tim
+        lastTemp = temp
+        
+    f.write("e\npause mouse close\n")
     stopHeater()
 
-
-####################################################################################################
-#
-# amax: 2.32109877421 , Tinflection: 12.5696818829 , tinflection: 15.64
-# Tdead: 5.83149384288
-# Mu, T: 205.63 94.4231566728
-# Ko:  10.0791100704
-# Kc: 12.0949, Ki:  1.0370, Kd: 35.2658
-#
-# https://controls.engin.umich.edu/wiki/index.php/PIDTuningClassical
-# http://rn-wissen.de/wiki/index.php/Regelungstechnik
-#
-def zieglerNichols(args, parser):
+# Open loop step response to determine control parameters.
+def measureHotendStepResponse(args, parser):
 
     planner = parser.planner
     printer = planner.printer
@@ -994,147 +1434,81 @@ def zieglerNichols(args, parser):
     def stopHeater():
         payload = struct.pack("<BB", HeaterEx1, 0) # heater, pwmvalue
         printer.sendCommand(CmdSetHeaterY, binPayload=payload)
-        # Keep fans running for faster cooldown...
-        # printer.sendCommandParamV(CmdFanSpeed, [packedvalue.uint8_t(0)])
-
-    f = open("stepresponse.gnuplot", "w")
-    # f.write("set xyplane 0\n")
-    f.write("set grid\n")
-    f.write("plot \"-\" using 1:2 with linespoints title \"StepResponse\",")
-    f.write("\"-\" using 1:($2*10) with linespoints title \"a\",")
-    f.write("\"-\" using 1:($2*10) with linespoints title \"a-avg\",")
-    f.write("\"-\" using 1:2 with linespoints title \"tangente\"\n")
 
     printer.commandInit(args)
 
-    tmax = 250
+    tmax = 260
 
-    # Eingangssprung, nicht die volle leistung, da sonst die temperatur am ende
-    # der sprungantwort zu hoch wird.
+    ## # Eingangssprung, nicht die volle leistung, da sonst die temperatur am ende
+    ## # der sprungantwort zu hoch wird.
     Xo = 100.0
+    interval = 0.01
 
-    print "Starting input step"
-    printer.sendCommandParamV(CmdFanSpeed, [packedvalue.uint8_t(100)])
+    # Output file for raw data
+    fraw = open("autotune.raw.json", "w")
+    fraw.write("""{
+    "Xo": %d,
+    "dt": %f,
+    "columns":  "time temperature",
+    """ % (Xo, interval))
+
+    print "Starting input step, tmax is:", tmax
+
+    # Fan is running while printing (and filament has to be molten), so run fan 
+    # at max speed to simulate this energy-loss.
+    printer.sendCommandParamV(CmdFanSpeed, [packedvalue.uint8_t(255)])
     payload = struct.pack("<BB", HeaterEx1, Xo) # heater, pwmvalue
     printer.sendCommand(CmdSetHeaterY, binPayload=payload)
 
     timeStart = time.time()
-    status = printer.getStatus()
-    tempStart = status["t1"]
+    temp = tempStart = printer.getTemp(doLog = False)[1]
 
-    print "Temp:", tempStart
-    f.write("0 0\n")
+    print "Starting temp:", tempStart
+    data = []
 
-    lastTime = timeStart 
-    lastTemp = tempStart
+    # Abbruch, falls 10 sekunden lang keine steigerung der temperatur mehr auftritt
+    maxTemp = 0
+    tMaxTemp = timeStart
 
-    temps = {}
-    aPlot = []
+    while (time.time() - tMaxTemp) < 30:
 
-    nAvg = 26
-    aAvg = nAvg * 1.0
-
-    while abs((aAvg/nAvg)) > 0.02:
-
-        if lastTemp > tmax:
-            print "Error, max temp (%d) reached (you should decrease Xo): " % tmax, lastTemp
+        if temp > tmax:
+            print "Error, max temp (%d) reached (you should decrease Xo): " % tmax, temp
             stopHeater()
             return
 
-        time.sleep(0.1)
-
         tim = time.time()
-        status = printer.getStatus()
-        temp = status["t1"]
+        temp = printer.getTemp(doLog = False)[1]
 
         relTime = tim-timeStart
         Mu = temp-tempStart
 
-        temps[relTime] = Mu
+        data.append("       [%f, %f]" % (relTime, Mu))
 
-        f.write("%f %f\n" % (relTime, Mu))
+        if Mu > maxTemp:
+            maxTemp = Mu
+            tMaxTemp = tim
 
-        dy = temp - lastTemp
-        dx = tim - lastTime
-
-        a = dy / dx
-        print "Temp:", temp
-
-        aPlot.append((relTime, a))
-
-        aAvg = aAvg - (aAvg/nAvg) + a
-        print "Steigung: %7.4f %7.4f" % (a, aAvg/nAvg)
+        print "Time, Temp, tconst:", relTime, temp, tim-tMaxTemp
 
         lastTime = tim
         lastTemp = temp
-        
+        time.sleep(interval)
+
     stopHeater()
 
-    f.write("e\n")
+    fraw.write("""
+    "tEnd": %f,
+    "data": [
+    """ % maxTemp)
+    fraw.write("    " + ",\n".join(data))
+    fraw.write("    ]\n}\n")
+    fraw.close()
 
-    for (x, y) in aPlot:
-        f.write("%f %f\n" % (x, y))
-    f.write("e\n")
+    print "Step response done, result in autotune.raw."
 
-    nAvg = 20
-    aMax = 0
-    Tinflection = 0
-
-    aavg = []
-    for i in range(len(aPlot)-nAvg):
-
-        sum = 0.0
-        for j in range(nAvg):
-            sum += aPlot[i - (nAvg/2) + j][1]
-
-        avg = sum/nAvg
-        aavg.append((aPlot[i][0], avg))
-
-        f.write("%f %f\n" % (aPlot[i][0], avg))
-
-        if avg > aMax:
-            aMax = avg
-            Tinflection = aPlot[i][0]
-
-    f.write("e\n")
-
-    tinflection = temps[Tinflection]
-    print "amax:", aMax, ", Tinflection:", Tinflection, ", tinflection:", tinflection
-
-    # Tdead or Tu
-    Tdead = Tinflection - (tinflection / aMax)
-
-    print "Tdead:", Tdead
-
-    # T or Tg
-    T = Tinflection + ((Mu - tinflection) / aMax)
-
-    print "Mu, T:", Mu, T
-
-    f.write("%f 0\n" % Tdead)
-    f.write("%f %f\n" % (T, Mu))
-    f.write("e\n")
-
-    # Ko = (Xo * T) / (Mu * Tdead)
-    # print "Ko: ", Ko
-
-    Ks = Mu / Xo
-    # Ko = Ks * T / Tdead
-    # print "Ks, Ko: ", Ks, Ko
-    print "Ks: ", Ks
-
-    # Kc or Kp
-    Kc = (1.2 / Ks) * (T / Tdead)
-    # Ti or Tn (Nachstellzeit)
-    Ti = 2 * Tdead
-    # Td or Tv (Vorhaltezeit)
-    Td = 0.5 * Tdead
-
-    print "Kp %7.4f, Ki: %7.4f, Kd: %7.4f" % (Kc, Kc/Ti, Kc*Td)
-
-    # Ki = Kp/Tn
-    # Kd = Kp·Tv
-    # y = Kp * e + Ki * Ta * esum + Kd * (e – ealt)/Ta
+    printer.coolDown(HeaterEx1, wait=100)
+    printer.sendCommandParamV(CmdFanSpeed, [packedvalue.uint8_t(0)])
 
 ####################################################################################################
 #
@@ -1173,54 +1547,77 @@ def getResponseString(s, offset):
 
 ####################################################################################################
 
+def genTempTable(planner):
 
-def genTempTable(printer):
+    hwVersion = PrinterProfile.getHwVersion()
+    nozzleDiam = NozzleProfile.getSize()
+    baseTemp = MatProfile.getHotendBaseTemp(hwVersion, nozzleDiam)
+    baseFlowrate = MatProfile.getFlowrateForTemp(baseTemp, hwVersion, nozzleDiam) * (1.0-AutotempSafetyMargin)
 
-    baseTemp = MatProfile.getHotendBaseTemp()
+    # Temps lower than 170 not handled yet
+    assert(baseTemp >= 170)
 
-    area04 = pow(0.4, 2)*math.pi/4
-    extrusionLow = MatProfile.getBaseExtrusionRate() * (NozzleProfile.getArea() / area04)
-
-    f = MatProfile.getAutoTempFactor()
-
-    mmpermm3 = 1 / MatProfile.getMatArea()
+    aFilament = MatProfile.getMatArea()
     spm = PrinterProfile.getStepsPerMM(A_AXIS)
 
     of = open("/tmp/temptable0.txt", "w")
     of.write("# xxx mat, nozzle, settings...\n")
-    of.write("# basetemp: %d, autoTempFactor: %f\n" % (baseTemp, f))
-    of.write("# temp rate steprate timer\n")
+    of.write("# basetemp: %f\n" % baseTemp)
+    of.write("# temp flowrate steprate timer\n")
 
-    print "TempTable (basetemp: %d):" % baseTemp
+    print "TempTable (basetemp: %f):" % baseTemp
     table = []
     for i in range(NExtrusionLimit):
 
-        t = baseTemp + i*2
+        # t = baseTemp + i*2
+        # t = baseTemp + i
+        t = 170 + i
 
-        dspeed = i*2 / f
-        speed = extrusionLow + dspeed
+        if t < baseTemp:
+            # Note: simple interpolation for values between 170° and start of profile basetemp
+            f = (baseFlowrate-0.1) / (baseTemp-170)
+            flowrate = 0.1 + i*f
+        else:
+            # flowrate = MatProfile.getFlowrateForTemp(t, nozzleDiam) / (1.0+AutotempSafetyMargin)
+            flowrate = MatProfile.getFlowrateForTemp(t, hwVersion, nozzleDiam) * (1.0-AutotempSafetyMargin)
 
-        steprate = speed * mmpermm3 * spm
+        espeed = flowrate / aFilament
+        print "flowrate for temp %f: %f -> espeed %f" % (t, flowrate, espeed)
+
+        # espeed = planner.advance.eComp(espeed)
+        # print "corrected espeed:", espeed
+
+        steprate = espeed * spm
         tvs = 1.0/steprate
-        timerValue = int(fTimer / steprate)
+        timerValue = min(int(fTimer / steprate), 0xffff)
 
-        print "    Temp: %d, max extrusion: %.1f mm³/s, steps/s: %d, steprate: %d us, timervalue: %d" % (t, speed, int(steprate), int(tvs*1000000), timerValue)
+        print "    Temp: %f, max flowrate: %.1f mm³/s, max espeed: %.1f mm/s, steps/s: %d, steprate: %d us, timervalue: %d" % (t, flowrate, espeed, int(steprate), int(tvs*1000000), timerValue)
         table.append(timerValue)
 
-        of.write("%d %4.1f %d %d\n" % (t, speed, int(steprate), timerValue))
+        of.write("%f %4.1f %d %d\n" % (t, flowrate, int(steprate), timerValue))
 
     of.close()
 
-    return (baseTemp, table)
+    return (170, table)
 
 ####################################################################################################
 
-def printTempTable(printer, temp, tempTable):
+def eTimerValue(planner, eSpeed):
+
+    spm = PrinterProfile.getStepsPerMM(A_AXIS)
+    steprate = eSpeed * spm
+    timerValue = int(fTimer / steprate)
+    return timerValue
+
+
+####################################################################################################
+
+def printTempTable(temp, tempTable):
 
     of = open("/tmp/temptable_printer.txt", "w")
-    of.write("# xxx mat, nozzle, settings...\n")
-    of.write("# basetemp: %d, autoTempFactor: %f\n" % (temp, 0))
-    of.write("# temp rate steprate timer\n")
+    of.write("# XXX output mat, nozzle, settings...\n")
+    of.write("# Basetemp: %d\n" % temp)
+    of.write("# Columns: temp rate steprate timer\n")
 
     print "TempTable (basetemp: %d):" % temp
 
@@ -1237,16 +1634,16 @@ def printTempTable(printer, temp, tempTable):
 
         of.write("%d %4.1f %d %d\n" % (temp, speed, int(steprate), timerValue))
 
-        temp += 2
+        # temp += 2
+        temp += 1
 
     of.close()
 
 ####################################################################################################
 
-def downloadTempTable(printer):
+def downloadTempTable(planner):
 
-
-    (baseTemp, table) = genTempTable(printer)
+    (baseTemp, table) = genTempTable(planner)
 
     payload = struct.pack("<HB", baseTemp, NExtrusionLimit)
 
@@ -1254,32 +1651,127 @@ def downloadTempTable(printer):
 
     for timerValue in table:
         payload += struct.pack("<H", timerValue)
-    resp = printer.query(CmdSetTempTable, binPayload=payload)
+    resp = planner.printer.query(CmdSetTempTable, binPayload=payload)
     assert(handleGenericResponse(resp))
-
 
 ####################################################################################################
 
-#
-# * set temp t
-# * set flowrate 7 (bzw. feedrate dazu)
-# * schleife:
-#   + extrude xxx cm filament
-#   + get measured filament value
-#   + compute ratio
-#   + plot values
-#   + break if ratio < 0.8
-# * if temp < 250: set next temp and repeat
+def downloadDummyTempTable(printer):
+
+    print "Downloading Dummy TempTable..."
+    payload = struct.pack("<HB", 100, NExtrusionLimit)
+
+    for i in range(NExtrusionLimit):
+        print "temp %d, timerValue 50" % (100 + i*2)
+        payload += struct.pack("<H", 50)
+
+    resp = printer.query(CmdSetTempTable, binPayload=payload)
+    assert(handleGenericResponse(resp))
+
+####################################################################################################
+
+def getStartupTime(feedrate):
+
+    eAccel = PrinterProfile.getMaxAxisAcceleration()[A_AXIS]
+    e_steps_per_mm = PrinterProfile.getStepsPerMM(A_AXIS)
+
+    # Zeit bis sich der messwert der target geschwindigkeit
+    # stabilisiert hat.
+    # 1. timer accel ramp
+    tAccel = feedrate / eAccel
+    # 2. time for 50 steps (50 steps: siehe FilamentSensorADNS9800::run())
+    stepsPerSecond = feedrate * e_steps_per_mm
+    t50 = 50 / stepsPerSecond
+    tTargetStartup = tAccel + 2*t50
+
+    # Zeit bis sich der messwert der filsensor geschwindigkeit
+    # stabilisiert hat.
+    # 1. timer accel ramp
+    # 2. time for 50 steps (50 steps: siehe FilamentSensorADNS9800::run())
+    stepsPerSecond = feedrate * 250
+    t50 = 50 / stepsPerSecond
+    tActualStartup = tAccel + 2*t50
+    print "tTargetStartup:", tTargetStartup, ", tActualStartup", tActualStartup
+
+    return max(tTargetStartup, tActualStartup)
+
+####################################################################################################
 #
 def measureTempFlowrateCurve(args, parser):
 
     def writeDataSet(f, dataSet):
-        for dataStr in dataSet:
-            f.write(dataStr)
-            f.write("\n")
-        f.write("E\n")
 
-    fssteps_per_mm = 265.0 # xxx hardcoded, get from profile or printer...
+        temps = dataSet.keys()
+        temps.sort()
+
+        strings = []
+        for temp in temps:
+            tup = dataSet[temp]
+            strings.append("%f %f %f %f" % (temp, tup[0], tup[1], tup[2]))
+
+        f.write("\n".join(strings))
+        f.write("\nE\n")
+
+    def writeGnuplot(t1, dataSet):
+
+        gnuplotFile = open("temp-flowrate-curve.gnuplot", "w")
+        gnuplotFile.write("""
+
+set grid
+set yrange [0:35]
+
+# BaseTemp=%d
+
+# Startwert steigung
+a=0.5
+
+# Startwert y-achse
+b=5
+f(x)=b+a*(x-%d)
+
+fit f(x) "-" using 1:3 noerror via a,b\n""" % (t1, t1))
+
+        writeDataSet(gnuplotFile, dataSet)
+
+        gnuplotFile.write("""
+plot "-" using 1:2 with linespoints title "Target Flowrate", \\
+     "-" using 1:3 with linespoints title "Actual Flowrate", \\
+     "-" using 1:3 with linespoints smooth bezier title "Actual Flowrate smooth", \\
+     f(x) title sprintf("y=B+A*x, A=%.2f, B=%.1f, TempFactor 1/A: %.2f", a, b, 1/a)\n""")
+
+        writeDataSet(gnuplotFile, dataSet)
+        writeDataSet(gnuplotFile, dataSet)
+        writeDataSet(gnuplotFile, dataSet)
+
+        gnuplotFile.write("pause mouse close")
+        gnuplotFile.close()
+
+    nozzleSize = NozzleProfile.getSize()
+
+    def writeJson(dataSet, slippage):
+
+        jsonFile = open("temp-flowrate-curve.json", "w")
+        jsonFile.write("""
+    "tempFlowrateCurve_%d": {
+        "version": %d,
+        "slippage": %f,
+        "data": [\n""" % (nozzleSize*100, PrinterProfile.getHwVersion(), slippage))
+    
+        temps = dataSet.keys()
+        temps.sort()
+
+        strings = []
+        for temp in temps:
+            tup = dataSet[temp]
+            strings.append("            [%f, %f]" % (temp, tup[1]))
+
+        jsonFile.write(",\n".join(strings))
+        jsonFile.write("\n        ]\n    }\n")
+        jsonFile.close()
+
+    def tempGood(actT1, t1):
+
+        return actT1 >= (t1-2) and actT1 <= (t1+2)
 
     planner = parser.planner
     printer = planner.printer
@@ -1291,11 +1783,178 @@ def measureTempFlowrateCurve(args, parser):
     # Disable flowrate limit
     printer.sendCommandParamV(CmdEnableFRLimit, [packedvalue.uint8_t(0)])
 
+    # Disable temp-flowrate limit
+    downloadDummyTempTable(printer)
+
+    printerProfile = PrinterProfile.get()
+
     # Move to mid-position
     printer.sendPrinterInit()
     feedrate = PrinterProfile.getMaxFeedrate(X_AXIS)
     parser.execute_line("G0 F%d X%f Y%f" % (feedrate*60, planner.MAX_POS[X_AXIS]/2, planner.MAX_POS[Y_AXIS]/2))
 
+    planner.finishMoves()
+    printer.sendCommandParamV(CmdMove, [MoveTypeNormal])
+    printer.sendCommand(CmdEOT)
+    printer.waitForState(StateIdle)
+
+    t1 = args.tstart
+
+    aFilament = MatProfile.getMatArea()
+    dFilament = MatProfile.getMatDiameter()
+
+    maxFeedrate = 20 # Max. 48.1mm³/s for 1.75mm filament
+
+    print "t1: ", t1
+    print "aFilament: ", aFilament
+
+    dataSet = {}
+
+    printer.sendCommandParamV(CmdFanSpeed, [packedvalue.uint8_t(100)])
+
+    # start with 1mm³/s
+    # XXX too high for small nozzles!?
+    feedrate = 1.0 / aFilament
+
+    """
+    feedrateStep = 1.0
+    if nozzleSize <= 50:
+        # Start slower for smaller nozzles (0.4)
+        # Note: lowest feedrate about 0.51mm/s
+        # feedrate = 0.55 / aFilament
+        feedrateStep = 0.5
+    """
+    feedrateStep = 0.5
+
+    twait = 0.1
+
+    eMotorRunning = False
+
+    fractAvg = EWMA(0.01)
+    frtargetAvg = EWMA(0.01)
+    ratioAvg = EWMA(0.05)
+    tempAvg = EWMA(0.05)
+
+    # minGrip = 0.85
+    minGrip = 0.90
+    # minGrip = 0.95
+
+    while t1 <= min(args.tend, MatProfile.getHotendMaxTemp()):
+
+        print "#######################################################################"
+        print "### Running temp %d" % t1
+        print "#######################################################################"
+
+        # print "Heating:", t1
+        printer.heatUp(HeaterEx1, t1, wait=t1-1.5)
+
+        wait = 5
+        while wait:
+
+            time.sleep(1)
+            actT1 = printer.getTemp()[HeaterEx1]
+            print "Current temp: %f/%f" % (actT1, t1)
+
+            if tempGood(actT1, t1):
+                wait -= 1
+            else:
+                wait = 5
+            print "temp wait: ", wait
+
+        if not eMotorRunning:
+
+            # Start continuos e-move end prime some material
+            print "Priming material wit feedrate %.1f mm/s" % feedrate
+
+            printer.sendCommandParamV(CmdContinuousE, [packedvalue.uint16_t(eTimerValue(planner, feedrate))])
+
+            raw_input("\nPRESS RETURN if material is coming out of the nozzle...\n")
+
+            eMotorRunning = True
+
+        fractAvg.setValue(feedrate)
+        frtargetAvg.setValue(feedrate)
+        tempAvg.setValue(t1)
+        ratioAvg.setValue(1.0)
+
+        ratio = 1.0
+
+        while ratio >= minGrip:
+
+            status = printer.getStatus()
+            # st = status["targetExtrusionSpeed"]
+            # sa = status["actualExtrusionSpeed"]
+            actT1 = status["t1"]
+
+            # realsa = printerProfile.getFlowrateFromSensorRate(sa)
+
+            # print "st: %f, sa: %f, corrected sa: %f" % (st, sa, realsa)
+
+            flowRate = feedrate * aFilament
+
+            # frtargetAvg.add(st)
+            # fractAvg.add(realsa)
+            # sollGrip = PrinterProfile.get().getFilSensorCalibration(feedrate)
+            # istGrip = status["slippage"]
+
+            r = 1.0 / status["slippage"]
+            ratioAvg.add(r)
+
+            tempAvg.add(actT1)
+
+            # tAvg = frtargetAvg.value()
+            # aAvg = fractAvg.value()
+            t1Avg = tempAvg.value()
+            ratio = ratioAvg.value()
+
+            # ratio = aAvg / tAvg
+
+            print "tempAvg: %f, current ratio: %f, ratio avg: %f" % (t1Avg, r, ratio)
+
+            if tempGood(actT1, t1):
+                frincrease = max(0.1 * (ratio - minGrip), 0.001)
+                feedrate += frincrease
+                print "increased feedrate by %.2f to %.2f" % (frincrease, feedrate)
+
+            printer.sendCommandParamV(CmdSetContTimer, [packedvalue.uint16_t(eTimerValue(planner, feedrate))])
+
+            time.sleep(twait)
+
+        # Beziehe flowrate auf 90%
+        # aAvg90 = aAvg # xxx aAvg * (ratio / 0.9)
+
+        print "################################################################"
+        print "temp: %f, target flowrate: %f, actual flowrate: %f, feeder grip: %f\n" % ( t1Avg, flowRate, flowRate*ratio, ratio )
+        print "################################################################"
+
+        # dataSet[t1Avg] = (tAvg*aFilament, aAvg90*aFilament, ratio)
+        dataSet[t1Avg] = (flowRate, flowRate*ratio, ratio)
+
+        print "current dataset:"
+        pprint.pprint(dataSet)
+
+        t1 += args.tstep
+
+        writeGnuplot(args.tstart, dataSet)
+        writeJson(dataSet, 1.0-minGrip)
+
+    # Done
+    printer.coolDown(HeaterEx1)
+
+    # Slow down E move
+    while feedrate > 1:
+        feedrate -= 0.1
+        printer.sendCommandParamV(CmdSetContTimer, [packedvalue.uint16_t(eTimerValue(planner, feedrate))])
+        time.sleep(0.5)
+
+    # Stop continuos e-mode
+    printer.sendCommandParamV(CmdContinuousE, [packedvalue.uint16_t(0)])
+
+    #
+    # Retract
+    #
+    printer.sendPrinterInit()
+    parser.execute_line("G10")
     planner.finishMoves()
 
     printer.sendCommandParamV(CmdMove, [MoveTypeNormal])
@@ -1303,130 +1962,297 @@ def measureTempFlowrateCurve(args, parser):
 
     printer.waitForState(StateIdle)
 
-    current_position = parser.getRealPos()
-    apos = current_position[A_AXIS]
-
-    t1 = MatProfile.getHotendBaseTemp() # start temperature
-    area04 = pow(0.4, 2)*math.pi/4
-    flowrate = MatProfile.getBaseExtrusionRate() * (NozzleProfile.getArea() / area04)
-    aFilament = MatProfile.getMatArea()
-
-    print "t1: ", t1
-    print "flowrate: ", flowrate
-    print "aFilament: ", aFilament
-    print "feedrate: ", flowrate / aFilament
-
-    # xxx todo if using small nozzles
-    assert(flowrate > 2)
-
-    f = open("temp-flowrate-curve.gnuplot", "w")
-
-    f.write("""
-
-set grid
-set yrange [0:35]
-
-# Startwert steigung
-a=0.5
-
-# Startwert y-achse
-b=5
-f(x)=b+a*(x-%d)
-
-fit f(x) "-" using 1:3 noerror via a,b\n""" % t1)
-
-    
-    dataSet = []
-
-    printer.sendCommandParamV(CmdFanSpeed, [packedvalue.uint8_t(100)])
-
-    retracted = False
-
-    while t1 <= MatProfile.getHotendMaxTemp():
-
-        print "Heating:", t1
-        printer.heatUp(HeaterEx1, t1, wait=t1)
-
-        # time.sleep(10) # temp settle
-        wait = 5
-        while wait:
-            time.sleep(1)
-            temps = printer.getTemps()
-            if abs(t1 - int(temps[HeaterEx1])) <= 1:
-                wait -= 1
-            else:
-                wait = 5
-            print "temp wait: ", wait
-
-        flowrate -= 1
-
-        ratio = 1.0
-
-        while ratio >= 0.9:
-
-            feedrate = flowrate / aFilament
-            # distance = 5 * feedrate # xxx
-            distance = 50
-
-            apos += distance
-
-            print "Feedrate for flowrate:", feedrate, flowrate
-
-            printer.sendPrinterInit()
-
-            if retracted:
-                parser.execute_line("G11")
-            parser.execute_line("G0 F%d %s%f" % (feedrate*60, dimNames[A_AXIS], apos))
-            parser.execute_line("G10")
-            planner.finishMoves()
-            printer.sendCommand(CmdEOT)
-            printer.sendCommandParamV(CmdMove, [MoveTypeNormal])
-            printer.waitForState(StateIdle)
-
-            time.sleep(0.25)
-
-            fssteps = printer.getFilSensor()
-            fsdist = fssteps / fssteps_per_mm
-
-            ratio = fsdist / distance
-
-            actualFlowrate = flowrate * ratio
-
-            print "t1, flowrate, fsdist, distance, ratio:",  t1, flowrate, fsdist, distance, ratio
-
-            flowrate += 1
-            retracted = True
-
-        print "Feeder grip:",  t1, flowrate-1, ratio
-        dataStr = "%f %f %.2f %.3f" % (t1, flowrate - 1, actualFlowrate, ratio)
-        f.write(dataStr + "\n")
-        f.flush()
-
-        dataSet.append(dataStr)
-
-        t1 += 2 # next temp
-
-    f.write("E\n")
-
-    f.write("""
-plot "-" using 1:2 with linespoints title "Target Flowrate", \\
-     "-" using 1:3 with linespoints title "Actual Flowrate", \\
-     "-" using 1:3 with linespoints smooth bezier title "Actual Flowrate smooth", \\
-     f(x) title sprintf("y=B+A*x, A=%.2f, B=%.1f, TempFactor 1/A: %.2f", a, b, 1/a)\n""")
-
-    writeDataSet(f, dataSet)
-    writeDataSet(f, dataSet)
-    writeDataSet(f, dataSet)
-
-    f.close()
-
-    printer.coolDown(HeaterEx1)
     # Enable flowrate limit
     printer.sendCommandParamV(CmdEnableFRLimit, [packedvalue.uint8_t(1)])
 
     # print "Average fssteps/mm: %.4f" % (fsstepsum/distsum)
 
+####################################################################################################
+#
+# Create a list of stepper pulses for a acceleration ramp.
+#
+def accelRamp(axis, vstart, vend, a, nSteps, forceFill=False):
 
+    assert(vstart <= vend)
+
+    pulses = [] # (tstep, dt, timerValue)
+
+    steps_per_mm = PrinterProfile.getStepsPerMM(axis)
+    sPerStep = 1.0/steps_per_mm
+
+    v = vstart
+    tstep = 0
+    s = sPerStep
+
+    stepToDo = nSteps
+
+    while v < vend and stepToDo > 0:
+
+        # Speed after this step
+        vn1 = vAccelPerDist(vstart, a, s)
+
+        # Time we need for this speed change/this step:
+        dv = vn1 - v
+        dt = dv / a
+
+        # Timervalue for this time
+        timerValue = int(dt * fTimer)
+
+        if timerValue > ddprintconstants.maxTimerValue16:
+            # print "limit on timeroverflow, v after this step:", vn1, s, dt, timerValue
+            timerValue = ddprintconstants.maxTimerValue16
+
+        # print "v after this step:", vn1, s, dt, timerValue
+
+        assert(timerValue <= 0xffff)
+        pulses.append((tstep, dt, timerValue))
+
+        s += sPerStep
+        v = vn1
+        tstep += dt
+        stepToDo -= 1
+
+    # Add missing steps in timeroverflow case
+    if forceFill and stepToDo > 0:
+
+        print "fill steps %d/%d" % (stepToDo, nSteps)
+
+        assert((float(stepToDo) / nSteps) < 0.25)
+
+        p = pulses[-1]
+        for i in range(stepToDo):
+
+            assert(timerValue <= 0xffff)
+            pulses.append((tstep, dt, timerValue))
+            tstep += dt
+
+        pprint.pprint(pulses)
+        assert(0)
+        return pulses
+
+    if forceFill:
+        assert(stepToDo == 0)
+
+    return pulses
+
+####################################################################################################
+#
+# Create a list of stepper pulses for a deceleration ramp.
+#
+def decelRamp(axis, vstart, vend, a, nSteps, forceFill=False):
+
+    assert(vstart >= vend)
+    # assert(nSteps)
+
+    pulses = [] # (tstep, dt, timerValue)
+
+    steps_per_mm = PrinterProfile.getStepsPerMM(axis)
+    sPerStep = 1.0/steps_per_mm
+
+    v = vstart
+    tstep = 0
+    s = sPerStep
+
+    while v > vend and nSteps > 0:
+
+        # Speed after this step
+        vn1 = vAccelPerDist(vstart, -a, s)
+
+        # Time we need for this speed change/this step:
+        dv = v - vn1
+        dt = dv / a
+
+        # Timervalue for this time
+        timerValue = int(dt * fTimer)
+
+        if timerValue > ddprintconstants.maxTimerValue16:
+            # print "break on timeroverflow, v after this step:", vn1, s, dt, timerValue
+            break
+
+        # print "v after this step:", vn1, s, dt, timerValue
+
+        pulses.append((tstep, dt, timerValue))
+
+        s += sPerStep
+        v = vn1
+        tstep += dt
+        nSteps -= 1
+
+    # Add missing steps in timeroverflow case
+    if forceFill and nSteps > 0:
+
+        dt = min(sPerStep / vstart, ddprintconstants.maxTimerValue16/fTimer)
+        timerValue = min(int(dt * fTimer), ddprintconstants.maxTimerValue16)
+
+        tstep = 0
+        newPulses = []
+        for i in range(nSteps):
+
+            newPulses.append((tstep, dt, timerValue))
+
+            nSteps -= 1
+            tstep += dt
+
+        for p in pulses:
+            newPulses.append((p[0] + tstep, p[1], p[2]))
+
+        # pprint.pprint(newPulses)
+        return newPulses
+
+    if forceFill:
+        assert(nSteps == 0)
+
+    return pulses
+
+####################################################################################################
+#
+# Create a list of stepper pulses for a deceleration ramp.
+#
+def decelRampXY(leadAxis, vstart, vend, a, absSteps):
+
+    assert(vstart >= vend)
+
+    pulses = [] # (tstep, dt, timerValue)
+
+    leadSteps = absSteps[leadAxis]
+
+    otherAxis = Y_AXIS if leadAxis == X_AXIS else X_AXIS
+    otherSteps = absSteps[otherAxis]
+
+    bFactor = float(otherSteps) / leadSteps
+    # print "bfactor:", bFactor
+    otherCount = 0
+
+    steps_per_mm = PrinterProfile.getStepsPerMM(leadAxis)
+    sPerStep = 1.0/steps_per_mm
+
+    tstep = 0
+
+    # Lower speed
+    maxStepTime = ddprintconstants.maxTimerValue16 / fTimer
+    vmin = sPerStep / maxStepTime
+
+    stepsToDo = 0
+    if vstart > vmin:
+
+        vend = max(vend, vmin)
+
+        # Number of lead axis steps needed
+        dv = vstart - vend
+        dt = dv / a
+        s = accelDist(vstart, -a, dt)
+
+        # print "vstart, vend, a", vstart, vend, a
+        # print "dv, dt, s:", dv, dt, s
+
+        stepsToDo = int(s * steps_per_mm)
+
+    else:
+
+        vstart = vmin
+
+    # print "doing ", stepsToDo, "of", leadSteps
+
+    # # debug
+    # prepended = False
+
+    if leadSteps > stepsToDo:
+
+        # Prepend fast steps
+        for i in range(leadSteps - stepsToDo):
+
+            # Time we need for this speed change/this step:
+            dt = sPerStep / vstart
+
+            # Timervalue for this time
+            timerValue = int(dt * fTimer)
+
+            stepBits = [0, 0]
+            stepBits[leadAxis] = 1
+
+            otherCount += bFactor
+
+            if otherCount >= 0.5:
+                stepBits[otherAxis] = 1
+                otherSteps -= 1
+                otherCount -= 1.0
+
+            # print "steps, otherCount:", stepBits, otherCount
+            pulses.append((tstep, dt, timerValue, stepBits))
+
+            tstep += dt
+            leadSteps -= 1
+
+        # prepended = True
+
+    v = vstart
+    s = sPerStep
+
+    # while v > vend and leadSteps > 0:
+    while leadSteps > 0:
+
+        # Speed after this step
+        # print "vstar, -a, s:", vstart, -a, s
+        vn1 = vAccelPerDist(vstart, -a, s)
+
+        # Time we need for this speed change/this step:
+        dv = v - vn1
+        dt = dv / a
+
+        # Timervalue for this time
+        timerValue = int(dt * fTimer)
+
+        if timerValue > ddprintconstants.maxTimerValue16:
+            # print "break on timeroverflow, v after this step:", vn1, s, dt, timerValue
+            break
+
+        # print "v after this step:", vn1, s, dt, timerValue
+
+        stepBits = [0, 0]
+        stepBits[leadAxis] = 1
+
+        otherCount += bFactor
+
+        # if otherCount >= 1:
+        if otherCount >= 0.5:
+            stepBits[otherAxis] = 1
+            otherSteps -= 1
+            otherCount -= 1.0
+
+        # print "steps, otherCount:", stepBits, otherCount
+        pulses.append((tstep, dt, timerValue, stepBits))
+
+        s += sPerStep
+        v = vn1
+        tstep += dt
+        leadSteps -= 1
+
+    # print "Missing steps: ", leadSteps, otherSteps
+
+    # if prepended:
+        # print "prepended steps:"
+        # pprint.pprint(pulses)
+
+    assert(leadSteps == 0 and otherSteps == 0)
+    return pulses
+
+####################################################################################################
+def pdbAssert(expr):
+
+    if not expr:
+        import pdb
+        pdb.set_trace()
+####################################################################################################
+# Print size in human readable form
+
+def sizeof_fmt(num):
+    for unit in ['B','kB','mB','gB','tB','pB','eB','zB']:
+        if abs(num) < 1024.0:
+            if unit == "B":
+                return "%3d%s" % (num, unit)
+            return "%3.1f%s" % (num, unit)
+        num /= 1024.0
+    return "%.1f%s" % (num, 'yB')
 ####################################################################################################
 
 

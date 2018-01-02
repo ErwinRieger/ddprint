@@ -32,9 +32,10 @@
 #define SERIAL_PORT 0
 
 // This determines the communication speed of the printer
-#define BAUDRATE 115200
+// #define BAUDRATE 115200
 // #define BAUDRATE 230400
-// #define BAUDRATE 500000
+// #define BAUDRATE 250000
+#define BAUDRATE 500000
 // #define BAUDRATE 1000000
 
 // This defines the number of extruders
@@ -96,7 +97,7 @@
 #define HEATER_0_MAXTEMP 285
 #define HEATER_1_MAXTEMP 285
 #define HEATER_2_MAXTEMP 285
-#define BED_MAXTEMP 200
+#define BED_MAXTEMP 150
 
 //Check if the heater heats up MAX_HEATING_TEMPERATURE_INCREASE within MAX_HEATING_CHECK_MILLIS while the PID was at the maximum.
 // If not, raise an error because most likely the heater is not heating up the temperature sensor. Indicating an issue in the system.
@@ -111,72 +112,19 @@
 // PID settings:
 // Comment the following line to disable PID and enable bang-bang.
 #define PIDTEMP
-// #define BANG_MAX 255 // limits current to nozzle while in bang-bang mode; 255=full current
-#define PID_MAX 255 // limits current to nozzle while PID is active (see PID_FUNCTIONAL_RANGE below); 255=full current
+
 #ifdef PIDTEMP
-  //#define PID_DEBUG // Sends debug data to the serial port.
-  //#define PID_OPENLOOP 1 // Puts PID in open loop. M104/M140 sets the output power from 0 to PID_MAX
-  // #define PID_FUNCTIONAL_RANGE 1000 // If the temperature difference between the target temperature and the actual temperature
-  //                                // is more then PID_FUNCTIONAL_RANGE then the PID will be shut off and the heater will be set to min/max.
-  #define PID_INTEGRAL_DRIVE_MAX 255  //limit for the integral term
-  // #define K1 0.99 //smoothing factor within the PID
-  // #define PID_dT ((OVERSAMPLENR * 4.0)/(F_CPU / 64.0 / 256.0)) //sampling period of the temperature routine
 
-// If you are using a preconfigured hotend then you can use one of the value sets by uncommenting it
-// Ultimaker
-    //#define  DEFAULT_Kp 22.2
-    //#define  DEFAULT_Ki 1.08
-    //#define  DEFAULT_Kd 114
+    #define PID_MAX 255 // limits current to nozzle while PID is active (see PID_FUNCTIONAL_RANGE below); 255=full current
+    //#define PID_OPENLOOP 1 // Puts PID in open loop. M104/M140 sets the output power from 0 to PID_MAX
+    // #define PID_FUNCTIONAL_RANGE 1000 // If the temperature difference between the target temperature and the actual temperature
+    //                                // is more then PID_FUNCTIONAL_RANGE then the PID will be shut off and the heater will be set to min/max.
 
-// Ultimaker2
-    // #define  DEFAULT_Kp 10.0
-    // #define  DEFAULT_Ki 2.5
-    // #define  DEFAULT_Kd 100.0
-
-// UM2 with olson block and 35W heater
-    #define  DEFAULT_Kp 12
-    #define  DEFAULT_Ki 1
-    #define  DEFAULT_Kd 35
-
-// Makergear
-//    #define  DEFAULT_Kp 7.0
-//    #define  DEFAULT_Ki 0.1
-//    #define  DEFAULT_Kd 12
-
-// Mendel Parts V9 on 12V
-//    #define  DEFAULT_Kp 63.0
-//    #define  DEFAULT_Ki 2.25
-//    #define  DEFAULT_Kd 440
+    // UM2 with olson block and 35W heater
+    #define  DEFAULT_Kp 1
+    #define  DEFAULT_Ki 0.01
+    #define  DEFAULT_Kd 2.5
 #endif // PIDTEMP
-
-// This sets the max power delivered to the bed, and replaces the HEATER_BED_DUTY_CYCLE_DIVIDER option.
-// all forms of bed control obey this (PID, bang-bang, bang-bang with hysteresis)
-// setting this to anything other than 255 enables a form of PWM to the bed just like HEATER_BED_DUTY_CYCLE_DIVIDER did,
-// so you shouldn't use it unless you are OK with PWM on your bed.  (see the comment on enabling PIDTEMPBED)
-#define MAX_BED_POWER 255 // limits duty cycle to bed; 255=full current
-
-// #ifdef PIDTEMPBED
-//120v 250W silicone heater into 4mm borosilicate (MendelMax 1.5+)
-//from FOPDT model - kp=.39 Tp=405 Tdead=66, Tc set to 79.2, aggressive factor of .15 (vs .1, 1, 10)
-//    #define  DEFAULT_bedKp 50.00
-//    #define  DEFAULT_bedKi .023
-//    #define  DEFAULT_bedKd 305.4
-
-//120v 250W silicone heater into 4mm borosilicate (MendelMax 1.5+)
-//from pidautotune
-//    #define  DEFAULT_bedKp 97.1
-//    #define  DEFAULT_bedKi 1.41
-//    #define  DEFAULT_bedKd 1675.16
-
-//Ultimaker2
-// #define  DEFAULT_bedKp 124.55
-// #define  DEFAULT_bedKi 23.46
-// #define  DEFAULT_bedKd 165.29
-
-// FIND YOUR OWN: "M303 E-1 C8 S90" to run autotune on the bed at 90 degreesC for 8 cycles.
-// #endif // PIDTEMPBED
-
-
 
 //this prevents dangerous Extruder moves, i.e. if the temperature is under the limit
 //can be software-disabled for whatever purposes by
@@ -234,11 +182,15 @@ const bool Z_ENDSTOPS_INVERTING = true; // set to true to invert the logic of th
 #define DISABLE_Z false
 #define DISABLE_E false // For all extruders
 
-#define INVERT_X_DIR true     // for Mendel set to false, for Orca set to true
-#define INVERT_Y_DIR false    // for Mendel set to true, for Orca set to false
-#define INVERT_Z_DIR true     // for Mendel set to false, for Orca set to true
-#define INVERT_E1_DIR false    // for direct drive extruder v9 set to true, for geared extruder set to false
-#define INVERT_E2_DIR false   // for direct drive extruder v9 set to true, for geared extruder set to false
+//
+// Stepper direction pins. Set this to true, if the output pin has to be switched HIGH
+// for a movement into positive direction.
+//
+#define POSITIVE_X_DIR false
+#define POSITIVE_Y_DIR true
+#define POSITIVE_Z_DIR false
+#define POSITIVE_E1_DIR true
+#define POSITIVE_E2_DIR true
 
 // ENDSTOP SETTINGS:
 // Sets direction of endstops when homing; 1=MAX, -1=MIN

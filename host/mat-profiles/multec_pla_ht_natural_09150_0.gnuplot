@@ -1,6 +1,8 @@
 set grid
 set yrange [0:35]
 
+# BaseTemp=210
+
 a=0.4
 b=5
 f(x)=b+a*(x-210)

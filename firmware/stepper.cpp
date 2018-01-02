@@ -200,12 +200,14 @@ void st_init() {
 
 ISR(TIMER1_COMPA_vect) {
 
+    // xxx call it runPrintStep
     stepBuffer.runMoveSteps();
 }
 
 ISR(TIMER1_COMPB_vect) {
 
-    stepBuffer.runHomingSteps();
+    // stepBuffer.runHomingSteps();
+    stepBuffer.runMiscSteps();
 }
 
 

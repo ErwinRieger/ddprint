@@ -2,7 +2,9 @@
 #
 # Usage:
 #
-#   cura-engine-settings.sh <cura-dir> <machine-profile> <mat-profile> <input-stl> <output-gcode>
+#   cura-engine-settings.sh <cura-dir> <machine-profile> <mat-profile> <input-stl> <output-gcode> [<additionalSettings>]
+#
+# See also: http://ibrieger.de/cura-engine-wrapperpy-helper-to-call-curaengine-from-command-line.html
 #
 
 curaDir="$1"

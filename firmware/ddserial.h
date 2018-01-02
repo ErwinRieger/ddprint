@@ -132,7 +132,7 @@ class TxBuffer: public Protothread {
                 simassert(charToSend == 0);
 
                 // printf("payload: ");
-                checksum = 0;
+                checksum = 0xffff;
 
                 charToSend = peek();
                 while (charToSend) {
@@ -144,7 +144,7 @@ class TxBuffer: public Protothread {
 
                     tail++;
 
-                    checksum = _crc_xmodem_update(checksum, charToSend);
+                    checksum = _crc_ccitt_update(checksum, charToSend);
 
                     charToSend = peek();
                 }
@@ -230,6 +230,15 @@ class TxBuffer: public Protothread {
             sendResponseStart(respCode);
             sendResponseUint8(param1);
             sendResponseUint8(param2);
+            sendResponseEnd();
+        }
+
+        void sendSimpleResponse(uint8_t respCode, uint8_t param1, uint8_t param2, uint8_t param3) {
+
+            sendResponseStart(respCode);
+            sendResponseUint8(param1);
+            sendResponseUint8(param2);
+            sendResponseUint8(param3);
             sendResponseEnd();
         }
 

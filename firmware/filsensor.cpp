@@ -1,4 +1,30 @@
 
+/*
+* This file is part of ddprint - a direct drive 3D printer firmware.
+* 
+* Copyright 2015 erwin.rieger@ibrieger.de
+* 
+* ddprint is free software: you can redistribute it and/or modify
+* it under the terms of the GNU General Public License as published by
+* the Free Software Foundation, either version 3 of the License, or
+* (at your option) any later version.
+* 
+* ddprint is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU General Public License for more details.
+* 
+* You should have received a copy of the GNU General Public License
+* along with ddprint.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
+
+/*
+ * ADNS9800:
+ * This guy uses fixed frame rate for "robotics use": https://github.com/svofski/ADNS-9800-Energia/blob/master/ADNS-9800-Energia.ino.
+ * Don't know if this leads to better results here.
+ */
+
 #include <Arduino.h>
 
 #include "ddprint.h"
@@ -9,6 +35,7 @@
 #include "ddserial.h"
 #include "ddcommands.h"
 #include "ddlcd.h"
+#include "ddmacro.h"
 
 #if defined(ADNSFS)
     // #include "adns9800fwa4.h"
@@ -19,17 +46,10 @@
 /*
  * Estimate Polling rate:
  *
- * Range X/Y is -128...127
  * Max extrusion: 50mm³/s, with 1.75mm filament: 20.8 mm/s filament speed
- * Resolution: 25.4mm/1000 = 0.0254mm/count
- * count rate at max extrusion: 20.8 mm/s / 0.0254 mm = 819 counts/s
- * Time for 127 counts at max extrusion: 127 / (819 counts/s) = 155 ms
  *
- * Extruderspeed for 5mm³/s flowrate
- * v5 = 5 / (math.pi/4 * pow(1.75, 2))
- *
- * Frequenz e-stepper bei 4mm/s:
- *  4 * 141 =  564
+ *  -> estepper runs at ca. 3000 steps/s 
+ *  -> filsensor::run() is called every 100ms -> ca. 300 steps per call
  */
 
 // Factor to compute Extruder steps from filament sensor count
@@ -55,23 +75,34 @@ FilamentSensorADNS9800::FilamentSensorADNS9800() {
     WRITE(FILSENSNCS, HIGH);
     SET_OUTPUT(FILSENSNCS);
 
-    enabled = true;
+    feedrateLimiterEnabled = true;
 
     init();
 }
 
 void FilamentSensorADNS9800::init() {
 
-    yPos = 0;
-    lastASteps = current_pos_steps[E_AXIS];
-    lastTS = millis();
+    // yPos = 0;
+    // lastYPos = 0;
+    // getDY();
 
-    iRAvg = 0;
-    nRAvg = 0;
+    slippage.reset(1.0);
+    grip = 1.0;
+
+    lastASteps = current_pos_steps[E_AXIS];
+    lastTSs = micros();
+    // lastTSf = micros();
+
+    // targetSpeed = 0;
+    // targetSpeed.reset();
+
+    // actualSpeed = 0;
+    // actualSpeed.reset();
+
+    // iRAvg = 0;
+    // nRAvg = 0;
 
     // grip = 200;
-    targetSpeed = 0;
-    actualSpeed = 0;
 }
 
 uint8_t FilamentSensorADNS9800::readLoc(uint8_t addr){
@@ -99,9 +130,10 @@ void FilamentSensorADNS9800::writeLoc(uint8_t addr, uint8_t value) {
 #define FTIMER (F_CPU/8.0)
 #include <pins_arduino.h>
 
+// xxx retval not used
 int16_t FilamentSensorADNS9800::getDY() {
 
-    uint8_t mot = readLoc(REG_Motion);
+    uint8_t mot = readLoc(REG_Motion); // this freezes the X/Y registers until they are read
 
     if (mot & 0x80) { // Motion register
 
@@ -112,129 +144,197 @@ int16_t FilamentSensorADNS9800::getDY() {
 
         uint8_t y = readLoc(REG_Delta_Y_L); // Y_L
         int8_t yh = readLoc(REG_Delta_Y_H);
-
 #endif
 
         int16_t dy = ((int16_t)yh << 8) | y;
 
         if (! dy) return 0;
 
-        yPos += dy;
+        // yPos += dy;
 
 #if !defined(burst)
         // uint8_t squal = readLoc(REG_SQUAL);
         // uint16_t shutter = ((uint16_t)readLoc(REG_Shutter_Upper)<<8) | readLoc(REG_Shutter_Lower);
 #endif
 
-        return dy; 
+        return dy; // xxx result not used
     }
 
     return 0;
 }
 
-void FilamentSensorADNS9800::run() {
+// xxx hardcoded, download from printer profile...
+#define NFilSensorCalibration 60
+static float filSensorCalibration[60] = {
+ 1.352941,
+ 1.612813,
+ 1.679418,
+ 1.770331,
+ 1.701769,
+ 1.825974,
+ 1.747586,
+ 1.809160,
+ 1.849475,
+ 1.830849,
+ 1.921773,
+ 1.884950,
+ 1.903342,
+ 1.848799,
+ 1.875777,
+ 1.891645,
+ 1.899160,
+ 1.886221,
+ 1.887608,
+ 1.878118,
+ 1.893097,
+ 1.886515,
+ 1.896903,
+ 1.877345,
+ 1.881102,
+ 1.904951,
+ 1.882091,
+ 1.905633,
+ 1.891291,
+ 1.900309,
+ 1.893599,
+ 1.896616,
+ 1.893077,
+ 1.900136,
+ 1.889184,
+ 1.891020,
+ 1.893207,
+ 1.898567,
+ 1.899326,
+ 1.900814,
+ 1.902579,
+ 1.898798,
+ 1.901320,
+ 1.898721,
+ 1.896739,
+ 1.899092,
+ 1.905391,
+ 1.894495,
+ 1.900616,
+ 1.911575,
+ 1.896576,
+ 1.901797,
+ 1.908106,
+ 1.905327,
+ 1.901421,
+ 1.903541,
+ 1.904031,
+ 1.901099,
+ 1.910934,
+ 1.898067,
+};
 
-    SPI.beginTransaction(spiSettingsFS);
+#define kLimit 2.0
+
+void FilamentSensorADNS9800::run() {
 
     // Berechne soll flowrate, filamentsensor ist sehr ungenau bei kleiner geschwindigkeit.
 
+    CRITICAL_SECTION_START
     long astep = current_pos_steps[E_AXIS];
-    uint32_t ts = millis();
+    CRITICAL_SECTION_END
 
-    int16_t ds = astep - lastASteps; // Requested extruded length
-    int16_t dy = getDY(); // Real extruded length
+    // int32_t ds = astep - lastASteps; // Requested extruded length
 
-    SPI.endTransaction();
+    // Note: Konstante 50 steps wird auch in ddtest.py:calibrateFilSensor() verwendet.
+    // if (ds > 50) {
 
-#if 0
-    if (ds < 0) {
+        // uint32_t ts = micros();
+        // int32_t dt = ts - lastTSs;
 
-        iRAvg = 0;
-        nRAvg = 0;
+        // i16          = int         / int
+        // int16_t tgtSpeed = (ds * (100000000/AXIS_STEPS_PER_MM_E)) / dt;
+        // targetSpeed.addValue(tgtSpeed);
+        // targetSpeed = (ds * (100000000/AXIS_STEPS_PER_MM_E)) / dt;
 
+        // lastTSs = ts;
+        // lastASteps = astep;
+    // }
+
+    // if (dy > 50) {
+
+        // uint32_t ts = micros();
+        // int32_t dt = ts - lastTSf;
+
+        // i16          = int         / float
+        // int16_t actSpeed = (ds * (100000000/FS_STEPS_PER_MM)) / dt;
+        // actualSpeed.addValue(actSpeed);
+        // actualSpeed = (ds * (100000000/FS_STEPS_PER_MM)) / dt;
+
+        // lastTSf = ts;
+        // lastYPos = yPos;
+    // }
+
+    float ds = astep - lastASteps; // Requested extruded length
+
+    /*
+    if (ds <= 0) {
+
+        // reverse
+        lastTSs = micros();
         lastASteps = astep;
-        lastTS = ts;
-        return;
+        lastYPos = yPos;
+
+        // slippage.reset();
+        // grip = 1;
     }
-#endif
+    else */
+    if (ds > 50) {
 
-    uint16_t dt = ts - lastTS;
+        SPI.beginTransaction(spiSettingsFS);
+        int16_t dy = getDY();
+        SPI.endTransaction();
 
-    rAvgS[iRAvg] = ds;
-    rAvg[iRAvg++] = dy;
+        // int32_t dy = yPos - lastYPos; // Real extruded length
 
-    if (iRAvg == RAVGWINDOW)
-        iRAvg = 0;
+        uint32_t ts = micros();
+        int32_t dt = ts - lastTSs;
 
-    if (nRAvg < RAVGWINDOW)
-        nRAvg++;
+        float ratio = dy / ds;
 
-    int32_t ssum = 0;
-    int32_t rsum = 0;
-    for (int i=0; i<nRAvg; i++) {
-        ssum += rAvgS[i];
-        rsum += rAvg[i];
-    }
+        // slippage.addValue(ratio);
 
-    // i16          = int         / int
-    targetSpeed = (ssum*100000) / ((int32_t)nRAvg * AXIS_STEPS_PER_MM_E * dt);
+        // Compute current speed to get flowrate sensor calibration factor
+        float tgtSpeed = (ds * (1000000.0 / AXIS_STEPS_PER_MM_E)) / dt;
 
-    // i16          = int         / float
-    actualSpeed = (rsum*100000) / (nRAvg * FS_STEPS_PER_MM * dt);
+        uint8_t calIndex = STD min((uint8_t)(NFilSensorCalibration-1), (uint8_t)(tgtSpeed/0.25));
 
-    if (enabled && (actualSpeed > 300) && fillBufferTask.synced() && stepBuffer.synced()) { // 3mm/s bzw. 7.2mm³/s
+        // float cal = filSensorCalibration[calIndex] * 0.95; // allow 5% slip
 
-        int16_t grip = ((int32_t)actualSpeed*100) / targetSpeed;
+        // Slippage >= 0.0
+        if (ratio > 0)
+            slippage.addValue(filSensorCalibration[calIndex] / ratio);
+        else
+            slippage.addValue(10.0);
 
-        if ((grip > 0) && (grip < 50)) {
+        if (feedrateLimiterEnabled) {
 
-            // printf("grip < 75: %d, %4.1f %4.1f\n", grip, actualSpeed*100, targetSpeed*0.4);
-
-            int16_t curTempIndex = (int16_t)(current_temperature[0] - extrusionLimitBaseTemp) / 2;
-            if ((curTempIndex > 0) && (curTempIndex < NExtrusionLimit)) {
-
-                // printf("found temptable index: %d\n", curTempIndex);
-                txBuffer.sendResponseStart(RespUnsolicitedMsg);
-                txBuffer.sendResponseUint8(ExtrusionLimitDbg);
-                txBuffer.sendResponseInt16(curTempIndex);
-                txBuffer.sendResponseInt16(actualSpeed);
-                txBuffer.sendResponseInt16(targetSpeed);
-                txBuffer.sendResponseInt16(grip);
-                txBuffer.sendResponseEnd();
-
-                // Increase table values, decrease allowed speed for this and the following temperaturew
-                // //////////////////////////////////////////
-                uint16_t prev_old_timer = tempExtrusionRateTable[curTempIndex-1];
-                uint16_t prev_old_rate = FTIMER / prev_old_timer;
-                uint16_t prev_new_rate = prev_old_rate;
-
-                while (curTempIndex < NExtrusionLimit) {
-
-                    uint16_t this_old_timer = tempExtrusionRateTable[curTempIndex];
-                    uint16_t this_old_rate = FTIMER / this_old_timer;
-
-                    uint16_t new_dy = (this_old_rate - prev_old_rate) * 0.95; // xxx arbitrary
-
-                    uint16_t this_new_rate = prev_new_rate + new_dy;
-
-                    // printf("adjust rate: %d -> %d\n", this_old_rate, this_new_rate);
-
-                    tempExtrusionRateTable[curTempIndex] = FTIMER / this_new_rate;
-
-                    prev_old_rate = this_old_rate;
-                    prev_new_rate = this_new_rate;
-
-                    curTempIndex++;
-                }
-
-                fillBufferTask.sync();
-                stepBuffer.sync();
-            }
+            // float g = max(1.0, (cal / slippage.value() - 1) * kLimit + 1);
+            float allowedSlippage = slippage.value() * 0.90; // allow for 10% slip
+            float g = max(1.0, (allowedSlippage - 1.0) * kLimit + 1.0);
+            grip = STD min((float)3.0, g);
         }
-    }
 
-    lastASteps = astep;
-    lastTS = ts;
+        /*
+        lcd.setCursor(0, 0); lcd.print("Speed:"); lcd.print(tgtSpeed); lcd.print("I:"); lcd.print(calIndex); lcd.print("     ");
+        lcd.setCursor(0, 1); lcd.print("Cal  :"); lcd.print(cal); lcd.print("     ");
+        */
+
+        /*
+        lcd.setCursor(0, 0); lcd.print("DS:"); lcd.print(ds); lcd.print("     ");
+        lcd.setCursor(0, 1); lcd.print("DY:"); lcd.print(dy); lcd.print("     ");
+        lcd.setCursor(0, 2); lcd.print("RA:"); lcd.print(ratio); lcd.print("     ");
+        lcd.setCursor(0, 3); lcd.print("RA:"); lcd.print(slippage.value()); lcd.print(" "); lcd.print(grip); lcd.print("     ");
+        */
+
+        lastTSs = ts;
+        lastASteps = astep;
+        // lastYPos = yPos;
+    }
 }
 
 void FilamentSensorADNS9800::reset(){
@@ -404,8 +504,8 @@ FilamentSensor::FilamentSensor() {
     // grip = 200;
     // maxTempSpeed = 0;
 
-    // enabled = false;
-    enabled = true;
+    // feedrateLimiterEnabled = false;
+    feedrateLimiterEnabled = true;
 
     // Pull high chip select of filament sensor to free the
     // SPI bus (for sdcard).

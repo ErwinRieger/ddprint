@@ -56,9 +56,6 @@ inline void setTargetBed(const float &celsius) {
   target_temperature_bed = celsius;
 };
 
-float analog2temp(int raw, uint8_t e);
-float analog2tempBed(int raw);
-
 void min_temp_error(uint8_t e);
 void max_temp_error(uint8_t e);
 

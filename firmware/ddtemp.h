@@ -24,8 +24,11 @@
 
 class TempControl: public Protothread
 {
-    unsigned long raw_temp_0_value; // sum
-    unsigned long raw_temp_bed_value; // sum
+    //
+    // ADC has 10 bits
+    //
+    float raw_temp_0_value; // sum of OVERSAMPLENR ADC values
+    float raw_temp_bed_value; // sum of OVERSAMPLENR ADC values
 
     // PID values from eeprom
     float Kp;
@@ -38,10 +41,14 @@ class TempControl: public Protothread
     float eSum; // For I-Part
     float eAlt; // For D-Part
 
+    // Running sum of pwm output values to handle clipping
+    float pwmSum;
+
     public:
         TempControl(): raw_temp_0_value(0), raw_temp_bed_value(0) {};
         void init();
         virtual bool Run();
+        void setTemp(uint8_t heater, uint16_t newTarget);
         void heater();
 
 #if defined(PIDAutoTune)

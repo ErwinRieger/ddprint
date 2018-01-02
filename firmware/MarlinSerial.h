@@ -125,9 +125,11 @@ inline void MarlinSerial::store_char(unsigned char c) {
                 flush0();
                 buffer[head++] = 0x0;
             }
+#if defined(HEAVYDEBUG)
             else {
                 massert(head < 255);
             }
+#endif
         }
 
         buffer[head++] = c;

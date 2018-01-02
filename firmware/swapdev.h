@@ -35,8 +35,9 @@
     #define STD
 #endif
 
-#define MSG_SD_INIT_FAIL "SD init fail"
-// #define MSG_SD_INIT_NO_SDHC "SD init: No SDHC Card"
+// Redefined here from ddcommands.h
+#define RespSDReadError         9  
+#define RespSDWriteError       12 
 
 // The buffersizes for reading and writing to th SD card
 #define RCMD_BUFFER_SIZE 512
@@ -62,24 +63,21 @@ class SDSwap: public SdSpiCard, public Protothread {
     // Number of bytes to shift the block address for non-sdhc cards
     uint8_t blockShift;
 
-    SdSpiAltDriver m_spi;
+    // SdSpiAltDriver m_spi;
+    SdSpiDriver m_spi;
 
 public:
+
     SDSwap() {
-        // SERIAL_PROTOCOLLNPGM("sdstart");
+
         busyWriting = false;
         reset();
     }
 
     bool swapInit() {
 
-        SPISettings spiSettingsSD(8000000, MSBFIRST, SPI_MODE0);
-        m_spi.setSpiSettings(spiSettingsSD);
-
         if (! begin(&m_spi, SDSS, SPI_FULL_SPEED)) {
 
-            // SERIAL_ECHO_START;
-            // SERIAL_ECHOLNPGM(MSG_SD_INIT_FAIL);
             return false;
         }
 
@@ -179,9 +177,15 @@ public:
         massert((readPos % RCMD_BUFFER_SIZE) == 0); // read pos should be block-aligned
 
         if (! SdSpiCard::readBlock(readPos >> 9, dst)) {
-            // xxx errorhandling here
-            massert(0);
-            return -1;
+
+            // XXX how shold we handle this? Retry the read?
+            // Note: readBlockEC() retried three times already.
+
+            // Return Sd2Card error code and SPI status byte from sd card.
+            // In case of SD_CARD_ERROR_CMD17 this is the return status of
+            // CMD17 in Sd2Card::cardCommand().
+            killMessage(RespSDReadError, errorCode(), errorData());
+            // notreached
         }
 
         uint16_t readBytes = STD min((uint32_t)(size - readPos), (uint32_t)512);
@@ -267,14 +271,17 @@ public:
 
         // response is r2 so get and check two bytes for nonzero
         // xxx cardCommand() does some unneccessary stuff like waitNotBusy();
+
         // if (cardCommand(CMD13, 0) || spiRec()) {
         if (cardCommand(CMD13, 0) || m_spi.receive()) {
             // error(SD_CARD_ERROR_WRITE_PROGRAMMING);
-            error(SD_CARD_ERROR_CMD13);
+            // error(SD_CARD_ERROR_CMD13);
             // goto fail;
             // chipSelectHigh();
-            spiStop();
-            PT_EXIT(); // xxx or use pt_restart here?
+            // spiStop();
+            // PT_EXIT(); // xxx or use pt_restart here?
+            killMessage(RespSDWriteError, SD_CARD_ERROR_CMD13, errorData());
+            // notreached
         }
 
         // chipSelectHigh();

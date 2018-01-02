@@ -64,9 +64,10 @@ RespUnknownBCommand =   5
 RespAssertion       =   6
 RespADNS9800Init    =   7
 RespSDInit          =   8
-RespSDError         =   9
+RespSDReadError     =   9
 RespMinTemp         =  10
 RespMaxTemp         =  11
+RespSDWriteError    =  12
 
 RespCodeNames = {
         RespOK: "RespOK",
@@ -77,7 +78,8 @@ RespCodeNames = {
         RespAssertion: "RespAssertion",
         RespADNS9800Init: "RespADNS9800Init",
         RespSDInit: "RespSDInit",
-        RespSDError: "RespSDError",
+        RespSDReadError: "RespSDReadError",
+        RespSDWriteError: "RespSDWriteError",
         RespMinTemp: "RespMinTemp",
         RespMaxTemp: "RespMaxTemp",
 }
@@ -87,6 +89,9 @@ RespCodeNames = {
 # Unsolicited message types
 #
 ExtrusionLimitDbg = 0x0
+PidDebug          = 0x1
+
+
 
 
 

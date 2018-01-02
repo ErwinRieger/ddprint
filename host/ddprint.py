@@ -53,7 +53,7 @@ import argparse
 logging.basicConfig(level=logging.DEBUG)
 
 import ddprintutil as util, gcodeparser, packedvalue, ddhome
-import ddtest
+import ddtest, ddadvance
 
 from ddprofile import PrinterProfile, MatProfile, NozzleProfile
 from ddplanner import Planner
@@ -174,21 +174,12 @@ from ddprinter import Printer, RxTimeout
 #   - speichere das kommando
 #
 #
-# Move segment data, OLD:
-#   * Header data:
-#       + number of accel steps, naccel, 16 bits
-#       + number of linear steps, nlinear, 16 bits
-#       + constant linear timer value, 16 bits
-#       + number of deccel steps, ndeccel, 16 bits
-#
-#   * accel steps: naccel*(stepbits (8bit) + timer value(16bits))
-#
-#   * steps: nlinear * (stepbits (8bit))
-#
-#   * deccel steps: ndeccel*(stepbits (8bit) + timer value(16bits))
-#
 # Move segment data, new with bresenham in firmware:
 #   * Header data:
+#       + flags 
+#           Bit 7: flag bits 0-4 contain stepper direction bits for X, Y, Z, A, B
+#           Bit 6: Accel step or raw timer values are compressd (one word + differences as bytes)
+#           Bit 5: Decel step values are compressd (one word + differences as bytes)
 #       + index lead axis, 8 bits
 #       + array of absolute steps, 5 * 32 bits
 #       + number of accel steps, naccel, 16 bits
@@ -414,15 +405,19 @@ def initParser(args, mode=None, gui=None):
     # parser.setProfile(profile)
 
     # Create printer profile singleton instance
-    PrinterProfile(printerProfileName)
+    printerProfile = PrinterProfile(printerProfileName)
     # Create material profile singleton instance
     mat = MatProfile(args.mat, args.smat)
 
-    # Overwrite settings from profile with command line arguments:
+    # Overwrite settings from printer profile with command line arguments:
+    if args.retractLength:
+        printerProfile.override("RetractLength", args.retractLength)
+
+    # Overwrite settings from material profile with command line arguments:
     if args.t0:
         mat.override("bedTemp", args.t0)
     if args.t1:
-        mat.override("hotendBaseTemp", args.t1)
+        mat.override("hotendStartTemp", args.t1)
 
     nozzle = NozzleProfile(args.nozzle)
 
@@ -433,7 +428,6 @@ def initParser(args, mode=None, gui=None):
     planner = Planner(args, gui)
 
     # Create parser singleton instance
-    # parser = gcodeparser.UM2GcodeParser()
     parser = gcodeparser.UM2GcodeParser()
 
     return (parser, planner, printer)
@@ -442,13 +436,19 @@ def main():
 
     argParser = argparse.ArgumentParser(description='%s, Direct Drive USB Print.' % sys.argv[0])
     argParser.add_argument("-d", dest="device", action="store", type=str, help="Device to use, default: /dev/ttyACM0.", default="/dev/ttyACM0")
-    argParser.add_argument("-b", dest="baud", action="store", type=int, help="Baudrate, default 115200.", default=115200)
+    # argParser.add_argument("-b", dest="baud", action="store", type=int, help="Baudrate, default 115200.", default=115200)
     # argParser.add_argument("-b", dest="baud", action="store", type=int, help="Baudrate, default 230400.", default=230400)
-    # argParser.add_argument("-b", dest="baud", action="store", type=int, help="Baudrate, default 500000.", default=500000)
+    argParser.add_argument("-b", dest="baud", action="store", type=int, help="Baudrate, default 500000.", default=500000)
     # argParser.add_argument("-b", dest="baud", action="store", type=int, help="Baudrate, default 1000000.", default=1000000)
 
     argParser.add_argument("-t0", dest="t0", action="store", type=int, help="Temp 0 (heated bed), default comes from mat. profile.")
     argParser.add_argument("-t1", dest="t1", action="store", type=int, help="Temp 1 (hotend 1), default comes from mat. profile.")
+
+    argParser.add_argument("-kAdvance", dest="kAdvance", action="store", type=float, help="K-Advance factor, default comes from mat. profile.")
+
+    argParser.add_argument("-startAdvance", dest="startAdvance", action="store", type=float, help="Gradual advance: advance startvalue.")
+    argParser.add_argument("-advIncrease", dest="advIncrease", action="store", type=float, help="Gradual advance: increase kAdvance by advIncrease after each step.")
+    argParser.add_argument("-advStepHeight", dest="advStepHeight", action="store", type=int, help="Gradual advance: height of each step (number of layers).")
 
     argParser.add_argument("-mat", dest="mat", action="store", help="Name of generic material profile to use [pla, abs...], default is pla.", default="pla_1.75mm")
     argParser.add_argument("-smat", dest="smat", action="store", help="Name of specific material profile to use.")
@@ -461,6 +461,7 @@ def main():
     argParser.add_argument("-nc", dest="noCoolDown", action="store", type=bool, help="Debug: don't wait for heater cool down after print.", default=False)
 
     argParser.add_argument("-fr", dest="feedrate", action="store", type=float, help="Feedrate for move commands.", default=0)
+    argParser.add_argument("-rl", dest="retractLength", action="store", type=float, help="Retraction length, default comes from printer profile.", default=0)
 
     subparsers = argParser.add_subparsers(dest="mode", help='Mode: mon(itor)|print|store|reset|pre(process).')
 
@@ -498,6 +499,9 @@ def main():
     sp = subparsers.add_parser("home", help=u"Home the printer.")
 
     sp = subparsers.add_parser("measureTempFlowrateCurve", help=u"Determine temperature/flowrate characteristic.")
+    sp.add_argument("tstart", action="store", type=int, help="Start temperature.")
+    sp.add_argument("tend", action="store", type=int, help="End temperature.")
+    sp.add_argument("-tstep", action="store", type=int, help="Temperature step width.", default=2)
 
     sp = subparsers.add_parser("moverel", help=u"Debug: Move axis manually, relative coords.")
     sp.add_argument("axis", help="Axis (XYZAB).", type=str)
@@ -528,7 +532,7 @@ def main():
 
     sp = subparsers.add_parser("getTemps", help=u"Get current temperatures (Bed, Extruder1, [Extruder2]).")
 
-    sp = subparsers.add_parser("getTempTable", help=u"Output temperature-speed table.")
+    sp = subparsers.add_parser("getTempTable", help=u"Get temperature-speed table from printer, print it to stdout and to /tmp/temptable_printer.txt.")
 
     sp = subparsers.add_parser("getStatus", help=u"Get current printer status.")
 
@@ -558,7 +562,7 @@ def main():
 
     if args.mode == 'autoTune':
 
-        util.zieglerNichols(args, parser)
+        util.measureHotendStepResponse(args, parser)
 
     elif args.mode == 'changenozzle':
 
@@ -581,13 +585,13 @@ def main():
         util.commonInit(args, parser)
 
         t0 = MatProfile.getBedTemp()
-        t1 = MatProfile.getHotendBaseTemp()
+        t1 = MatProfile.getHotendStartTemp()
 
         # Send heat up  command
         print "\nPre-Heating bed...\n"
         printer.heatUp(HeaterBed, t0)
         print "\nPre-Heating extruder...\n"
-        printer.heatUp(HeaterEx1, 150)
+        printer.heatUp(HeaterEx1, t1/2)
 
         # Send printing moves
         # f = open(args.gfile)
@@ -614,7 +618,7 @@ def main():
                     print "\nHeating bed (t0: %d)...\n" % t0
                     printer.heatUp(HeaterBed, t0, t0)
                     print "\nHeating extruder (t1: %d)...\n" % t1
-                    printer.heatUp(HeaterEx1, t1, wait=0.95 * t1)
+                    printer.heatUp(HeaterEx1, t1, t1-1)
 
                     # Send print command
                     printer.sendCommandParamV(CmdMove, [MoveTypeNormal])
@@ -635,8 +639,8 @@ def main():
         # 
         # Add a move to lift the nozzle from the print if not ultigcode flavor
         # 
-        if not parser.ultiGcodeFlavor:
-            util.endOfPrintLift(parser)
+        # if not parser.ultiGcodeFlavor:
+        util.endOfPrintLift(parser)
 
         planner.finishMoves()
         printer.sendCommand(CmdEOT)
@@ -647,7 +651,7 @@ def main():
             print "\nHeating bed (t0: %d)...\n" % t0
             printer.heatUp(HeaterBed, t0, t0)
             print "\nHeating extruder (t1: %d)...\n" % t1
-            printer.heatUp(HeaterEx1, t1, wait=0.95 * t1)
+            printer.heatUp(HeaterEx1, t1, t1-1)
 
             # Send print command
             printer.sendCommandParamV(CmdMove, [MoveTypeNormal])
@@ -678,7 +682,7 @@ def main():
             Y = planner.Y_HOME_POS,
             Z = planner.Z_HOME_POS, #  - 20,
             )
-        parser.set_position(homePosMM)
+        parser.setPos(homePosMM)
 
         f = parser.preParse(args.gfile)
         lineNr = 0
@@ -738,11 +742,11 @@ def main():
 
     elif args.mode == 'insertFilament':
 
-        util.insertFilament(args, parser)
+        util.insertFilament(args, parser, args.feedrate)
 
     elif args.mode == 'removeFilament':
 
-        util.removeFilament(args, parser)
+        util.removeFilament(args, parser, args.feedrate)
 
     elif args.mode == 'bedLeveling':
 
@@ -758,7 +762,7 @@ def main():
 
     elif args.mode == 'genTempTable':
 
-        util.genTempTable(printer)
+        util.genTempTable(planner)
 
     elif args.mode == 'getEndstops':
 
@@ -801,7 +805,7 @@ def main():
         printer.commandInit(args)
         (baseTemp, tempTable) = printer.getTempTable()
         print "tempTable: ", pprint.pprint(tempTable)
-        util.printTempTable(printer, baseTemp, tempTable)
+        util.printTempTable(baseTemp, tempTable)
 
     elif args.mode == 'getStatus':
 
@@ -846,8 +850,28 @@ def main():
     elif args.mode == 'test':
 
         printer.commandInit(args)
-        util.downloadTempTable(printer)
-        printer.readMore()
+        """
+        dirbits = printer.getDirBits()
+        print "dirbits:", dirbits
+        # printer.readMore()
+
+        import time
+        while True:
+
+            temp = printer.getTemp(doLog=False)[1]
+            print "T1:", temp
+            time.sleep(0.1)
+        """
+        if args.feedrate == 0:
+            printer.sendCommandParamV(CmdContinuousE, [packedvalue.uint16_t(0)])
+        else:
+
+            import time
+            printer.sendCommandParamV(CmdContinuousE, [packedvalue.uint16_t(util.eTimerValue(planner, 0.5))])
+            for s in range(int(args.feedrate)):
+                time.sleep(1)
+                printer.sendCommandParamV(CmdSetContTimer, [packedvalue.uint16_t(util.eTimerValue(planner, 1+s))])
+
 
     elif args.mode == "writeEepromFloat":
 
@@ -862,7 +886,7 @@ if __name__ == "__main__":
     res = 0
 
     try:
-      main()
+        main()
     except:
         print "Exception: ", traceback.format_exc()
         res = 1

@@ -21,11 +21,13 @@
 #define __mdebug_h__
 
 void mAssert(uint16_t line, const char* file);
+void killMessage(uint8_t errorCode, uint8_t errorParam, const char *msg = "");
+void killMessage(uint8_t errorCode, uint8_t errorParam1, uint8_t errorParam2, const char *msg = "");
 
 //
 // Add heavy and time consuming debugging
 //
-#define HEAVYDEBUG 1
+// #define HEAVYDEBUG 1
 
 #if defined(AVR)
 

@@ -196,14 +196,14 @@ extern RegUDR0 UDR0;
     extern int TCCR1A;
     extern int TCCR3B;
     extern int TCCR3A;
-    extern int OCR1A;
-    extern int OCR1B;
+    extern unsigned short OCR1A;
+    extern unsigned short OCR1B;
     extern int TCNT1;
     extern int TCNT3;
     extern int TIMSK0;
     extern int TIMSK1;
     extern int TIMSK3;
-    extern int OCR3A;
+    extern unsigned short OCR3A;
     extern int SPCR;
     extern int SPSR;
 
@@ -253,6 +253,7 @@ extern RegUDR0 UDR0;
     extern int ADC;
 
     uint16_t pgm_read_word(const void* ptr);
+    float pgm_read_float(const void* ptr);
     typedef std::string String;
 
     void SET_OUTPUT(int pin);
@@ -268,6 +269,7 @@ extern RegUDR0 UDR0;
     void pinMode(int pin, uint8_t m);
 
     unsigned long millis();
+    unsigned long micros();
 
     // uint8_t eeprom_read_byte (const uint8_t *__p);
 
@@ -276,6 +278,8 @@ extern RegUDR0 UDR0;
     float constrain(float v, float l, float u);
     void delay(int);
     void delayMicroseconds(int);
+
+    int32_t max(int32_t a ,int32_t b);
 
 // #endif
 

@@ -19,16 +19,17 @@
 
 
 ############################################################################
-# X, Y, Z, (A/B/E) maximum acceleration.
-DEFAULT_MAX_ACCELERATION = [9000, 9000, 100, 10000, 10000] # [ mm/s^s ]
 
-#define DEFAULT_ACCELERATION          3000    // X, Y, Z and E max acceleration in mm/s^2 for printing moves
-#define DEFAULT_RETRACT_ACCELERATION  3000   // X, Y, Z and E max acceleration in mm/s^2 for retracts
-DEFAULT_ACCELERATION =         3000    # X, Y, Z and E max acceleration in mm/s^2 for printing moves
-DEFAULT_RETRACT_ACCELERATION = 3000    # E max acceleration in mm/s^2 for retracts
+# Maximum combined acceleration of the X, Y, Z and E axes 
+#define DEFAULT_ACCELERATION          3000
+_MAX_ACCELERATION =         3000    # [ mm/s^s ]
 
-# const unsigned int dropsegments=5; //everything with less than this number of steps will be ignored as move and joined with the next movement
-DropSegments = 5          # steps
+############################################################################
+#
+# Stepdata types
+#
+StepDataTypeBresenham = 0
+StepDataTypeRaw       = 1
 
 
 ############################################################################
@@ -37,7 +38,6 @@ DropSegments = 5          # steps
 #
 #// number of mm^3 of plastic to extrude when priming
 #// (Ultimaker 2 hot end capacity is approx 80 mm^3)
-# PRIMING_MM3	= 50
 PRIMING_MM3	= 60 # increased because of end-of-print retraction
 
 #// Rate at which to prime head (in mm^3/s)
@@ -53,8 +53,7 @@ PRIMING_HEIGHT = 20
 # Board config, move to printer-profile ?
 #
 fTimer = 2000000.0 # Hz
-maxTimerValue16 = pow(2, 16)
-maxTimerValue24 = pow(2, 24)
+maxTimerValue16 = pow(2, 16) - 1
 
 ############################################################################
 #
@@ -68,20 +67,59 @@ B_AXIS = 4
 
 dimNames = ["X", "Y", "Z", "A", "B"]
 
-dimIndex = { "X": 0, "Y": 1, "Z": 2, "A": 3, "B": 4 }
+dimIndex = { "X": X_AXIS, "Y": Y_AXIS, "Z": Z_AXIS, "A": A_AXIS, "B": B_AXIS }
 
 ############################################################################
 #
 # Cobs encoding
 #
-SOH = 0x0 # COBS encoding
+SOH = 0x0 # 'Start of header', startbit for COBS encoded data block.
 
 ############################################################################
 #
-# Extrusion limit, tempTable
+# Extrusion limit, tempTable. This must match the value in the
+# firmware (ddprint.h).
 #
-NExtrusionLimit = 40
+NExtrusionLimit = 100
 # ExtrusionLimitBaseTemp = 190
+
+
+############################################################################
+#
+# Acceleration planning
+#
+# Threshold value, if the difference of the velocity at the start or end
+# of a move is below this value, we do not generate a accel-/deceleration ramp .
+AccelThreshold=0.001 # [mm/s]
+AccelThreshold=0.000001 # [mm/s]
+
+############################################################################
+#
+# Extruder advance
+#
+# Threshold value, if the difference of the extrusion rate of two moves
+# is below this value, we assume they have the same extrusion rate.
+AdvanceEThreshold=0.001 # [mm/s]
+AdvanceEThreshold=0.000001 # [mm/s]
+
+#
+# Minimum len in mm of acceleration- or deceleration ramp to apply advance.
+AdvanceMinRamp = 0.05
+# AdvanceMinRamp = 0.1
+
+
+############################################################################
+#
+# Auto-temp algorithm
+#
+# Safety margin for temperature calculations and speed limiter. We assume
+# a bit more flowrate to get more temperature.
+# AutotempSafetyMargin = 0.1 # 10% margin
+AutotempSafetyMargin = 0.0
+
+
+
+
 
 
 

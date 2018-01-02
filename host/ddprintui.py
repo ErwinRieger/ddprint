@@ -7,8 +7,7 @@
 # Copyright 2015 erwin.rieger@ibrieger.de
 # 
 # ddprint is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
+# it under the terms of the GNU General Public License as published by # the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
 # 
 # ddprint is distributed in the hope that it will be useful,
@@ -105,9 +104,29 @@ class MainForm(npyscreen.Form):
         h = self.lines/2
 
         #
-        # Upper left side: the action area
+        # Upper left side: the input/configuration area
         #
         rely = 2
+        e = self.add(npyscreen.TitleFixedText, name = "PrinterProfile       :", relx=1, rely=rely, use_two_lines=False, begin_entry_at=23,
+                width=w-1)
+        e.editable = False
+
+        rely += 1
+        e = self.add(npyscreen.TitleFixedText, name = "Nozzle Profile       :", relx=1, rely=rely, use_two_lines=False, begin_entry_at=23,
+                width=w-1)
+        e.editable = False
+
+        rely += 1
+        e = self.add(npyscreen.TitleFixedText, name = "Materia Profile      :", relx=1, rely=rely, use_two_lines=False, begin_entry_at=23,
+                width=w-1)
+        e.editable = False
+
+        rely += 1
+        e = self.add(npyscreen.TitleFixedText, name = "Specific Mat Profile :", relx=1, rely=rely, use_two_lines=False, begin_entry_at=23,
+                width=w-1)
+        e.editable = False
+
+        rely += 2
         self.fn = self.add(npyscreen.TitleFilename, name = "GCode File:", relx=1, rely=rely, use_two_lines=False, begin_entry_at=23,
                 width=w-1)
 
@@ -152,10 +171,16 @@ class MainForm(npyscreen.Form):
         # self.errors.editable = False
 
         rely += 1
+        """
         self.extRate = self.add(npyscreen.TitleFixedText, name = "Extrusion Rate A/T   :", relx=w, rely=rely, use_two_lines=False,
             begin_entry_at=23, width = w/2) 
         self.extRate.editable = False
         self.extGrip = self.add(npyscreen.TitleFixedText, name = "E-Grip:", relx=int(w*1.5), rely=rely, use_two_lines=False, begin_entry_at=8) 
+        self.extGrip.editable = False
+        """
+
+        self.extGrip = self.add(npyscreen.TitleFixedText, name = "Feeder Grip          :", relx=w, rely=rely, use_two_lines=False,
+            begin_entry_at=23, width = w/2) 
         self.extGrip.editable = False
 
         #
@@ -207,13 +232,15 @@ class MainForm(npyscreen.Form):
 
         parser = argparse.ArgumentParser(description='%s, Direct Drive USB Print.' % sys.argv[0])
         parser.add_argument("-d", dest="device", action="store", type=str, help="Device to use, default: /dev/ttyACM0.", default="/dev/ttyACM0")
-        parser.add_argument("-b", dest="baud", action="store", type=int, help="Baudrate, default 115200.", default=115200)
+        parser.add_argument("-b", dest="baud", action="store", type=int, help="Baudrate, default 500000.", default=500000)
         parser.add_argument("-f", dest="file", action="store", type=str, help="Gcode to print")
         parser.add_argument("-F", dest="fakeendstop", action="store", type=bool, help="fake endstops", default=False)
         parser.add_argument("-nc", dest="noCoolDown", action="store", type=bool, help="Debug: don't wait for heater cool down after print.", default=False)
         parser.add_argument("-t0", dest="t0", action="store", type=int, help="Temp 0 (heated bed), default comes from mat. profile.")
         parser.add_argument("-t1", dest="t1", action="store", type=int, help="Temp 1 (hotend 1), default comes from mat. profile.")
+        parser.add_argument("-kAdvance", dest="kAdvance", action="store", type=float, help="K-Advance factor, default comes from mat. profile.")
         parser.add_argument("-mat", dest="mat", action="store", help="Name of material profile to use [pla, abs...], default is pla.", default="pla_1.75mm")
+        parser.add_argument("-rl", dest="retractLength", action="store", type=float, help="Retraction length, default comes from printer profile.", default=0)
         parser.add_argument("-smat", dest="smat", action="store", help="Name of specific material profile to use.")
         parser.add_argument("-noz", dest="nozzle", action="store", help="Name of nozzle profile to use [nozzle40, nozzle80...], default is nozzle40.", default="nozzle40")
 
@@ -233,7 +260,8 @@ class MainForm(npyscreen.Form):
             return
 
         self.mat_t0 = MatProfile.getBedTemp()
-        self.mat_t1 = MatProfile.getHotendBaseTemp()
+        self.mat_t0_reduced = MatProfile.getBedTempReduced()
+        self.mat_t1 = MatProfile.getHotendStartTemp()
 
         # self.fn.set_value(self.args.file)
         self.guiQueue.put(SyncCall(self.fn.set_value, self.args.file))
@@ -271,11 +299,11 @@ class MainForm(npyscreen.Form):
     def updateTemps(self, t0, t1, targetT1):
 
         if t0 != None:
-            self.curT0.set_value("%8.1f / %3.0f" % (t0, self.mat_t0))
+            self.curT0.set_value("%8.1f / %.0f (%.0f)" % (t0, self.mat_t0, self.mat_t0_reduced))
             self.curT0.update()
 
         if t1 != None:
-            self.curT1.set_value( "%8.1f / %3.0f" % (t1, targetT1))
+            self.curT1.set_value( "%8.1f / %.0f" % (t1, targetT1))
             self.curT1.update()
 
     def updateStatus(self, status):
@@ -284,29 +312,34 @@ class MainForm(npyscreen.Form):
         self.pState.set_value( "%8s" % self.stateNames[status["state"]])
         self.pState.update()
         self.updateTemps(status["t0"], status["t1"], status["targetT1"])
-        self.swapSize.set_value( "%8s" % str(status["Swap"]))
+        self.swapSize.set_value( "%8s" % util.sizeof_fmt(status["Swap"]))
         self.swapSize.update()
-        self.sdrSize.set_value( "%8s" % str(status["SDReader"]))
+        self.sdrSize.set_value( "%8s" % util.sizeof_fmt(status["SDReader"]))
         self.sdrSize.update()
-        self.sbSisze.set_value( "%8s" % str(status["StepBuffer"]))
+        self.sbSisze.set_value( "%8s" % util.sizeof_fmt(status["StepBuffer"]))
         self.sbSisze.update()
         self.underrun.set_value( "%8s" % str(status["StepBufUnderRuns"]))
         self.underrun.update()
 
-        st = status["targetExtrusionSpeed"]
-        sa = status["actualExtrusionSpeed"]
+        # st = status["targetExtrusionSpeed"]
+        # sa = status["actualExtrusionSpeed"]
 
-        grip = 100.0
-        if st:
-            grip = (sa*100.0) / st
+        # grip = 100.0
+        # if st:
+            # grip = (sa*100.0) / st
 
-        rt = st * MatProfile.getMatArea()
-        ra = sa * MatProfile.getMatArea()
+        # rt = st * MatProfile.getMatArea()
+        # ra = sa * MatProfile.getMatArea()
 
-        self.extRate.set_value( "%8.1f / %4.1f" % (ra, rt) )
-        self.extRate.update()
+        # self.extRate.set_value( "%8.1f / %.1f" % (ra, rt) )
+        # self.extRate.update()
 
-        self.extGrip.set_value( "%4.1f %%" % grip )
+        # self.extGrip.set_value( "%4.1f %%" % grip )
+        # self.extGrip.update()
+
+        slippage = status["slippage"]
+
+        self.extGrip.set_value( "%7.1f%%" % (100.0/slippage) )
         self.extGrip.update()
 
     def display(self, clear=False):
@@ -362,7 +395,7 @@ class MainForm(npyscreen.Form):
             self.planner.reset()
 
             ddhome.home(self.parser, self.args.fakeendstop)
-            util.downloadTempTable(self.printer)
+            util.downloadTempTable(self.planner)
             self.printer.sendPrinterInit()
 
             # Send heat up  command
@@ -399,7 +432,7 @@ class MainForm(npyscreen.Form):
                         self.log( "\nHeating bed (t0: %d)...\n" % self.mat_t0 )
                         self.printer.heatUp(HeaterBed, self.mat_t0, wait=self.mat_t0)
                         self.log( "\nHeating extruder (t1: %d)...\n" % self.mat_t1 )
-                        self.printer.heatUp(HeaterEx1, self.mat_t1, wait=self.mat_t1 - 10)
+                        self.printer.heatUp(HeaterEx1, self.mat_t1, self.mat_t1-1)
 
                         # Send print command
                         self.printer.sendCommandParamV(CmdMove, [MoveTypeNormal])
@@ -419,8 +452,8 @@ class MainForm(npyscreen.Form):
             # 
             # Add a move to lift the nozzle from the print if not ultigcode flavor
             # 
-            if not self.parser.ultiGcodeFlavor:
-                util.endOfPrintLift(self.parser)
+            # if not self.parser.ultiGcodeFlavor:
+            util.endOfPrintLift(self.parser)
 
             self.planner.finishMoves()
             self.printer.sendCommand(CmdEOT)
@@ -431,7 +464,7 @@ class MainForm(npyscreen.Form):
                 self.log( "\nHeating bed (t0: %d)...\n" % self.mat_t0 )
                 self.printer.heatUp(HeaterBed, self.mat_t0, self.mat_t0)
                 self.log( "\nHeating extruder (t1: %d)...\n" % self.mat_t1 )
-                self.printer.heatUp(HeaterEx1, self.mat_t1, wait=self.mat_t1 - 10)
+                self.printer.heatUp(HeaterEx1, self.mat_t1, self.mat_t1-1)
 
                 # Send print command
                 self.printer.sendCommandParamV(CmdMove, [MoveTypeNormal])
@@ -457,7 +490,7 @@ class MainForm(npyscreen.Form):
             return
 
         except FatalPrinterError, ex:
-            self.log("printFile(): Caught FatalPrinterError", ex.msg)
+            self.log("printFile(): Caught FatalPrinterError: ", ex.msg)
             # Reset line numbers in case of a printer restart.
             self.printer.resetLineNumber()
 

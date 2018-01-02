@@ -1,5 +1,8 @@
 {
-  "hotendBaseTemp"    : 205
+  "hotendBaseTemp"    : 205,
+  # Max extrusion rate at 200°C with a 0.80 mm nozzle [mm³/s]
+  "baseExtrusionRate_80" : 4.93616,
+  "extrusionAutoTempFactor" : 2.70137
 }
 
 

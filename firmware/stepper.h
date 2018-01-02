@@ -39,8 +39,7 @@
 
 #pragma once
 
-#include <Arduino.h>
-
+#include "ddmacro.h"
 #include "pins.h"
 #include "move.h"
 #include "mdebug.h"
@@ -51,6 +50,43 @@
 #define ENABLE_STEPPER1_DRIVER_INTERRUPT()  TIMSK1 |= (1<<OCIE1B)
 #define DISABLE_STEPPER1_DRIVER_INTERRUPT() TIMSK1 &= ~(1<<OCIE1B)
 #define STEPPER1_DRIVER_INTERRUPT_ENABLED() (TIMSK1 & (1<<OCIE1B))
+
+#if defined(X_ENABLE_PIN) && X_ENABLE_PIN > -1
+  #define  enable_x() WRITE(X_ENABLE_PIN, X_ENABLE_ON)
+  #define disable_x() WRITE(X_ENABLE_PIN,!X_ENABLE_ON)
+#else
+  #define enable_x() ;
+  #define disable_x() ;
+#endif
+
+#if defined(Y_ENABLE_PIN) && Y_ENABLE_PIN > -1
+  #define  enable_y() WRITE(Y_ENABLE_PIN, Y_ENABLE_ON)
+  #define disable_y() WRITE(Y_ENABLE_PIN,!Y_ENABLE_ON)
+#else
+  #define enable_y() ;
+  #define disable_y() ;
+#endif
+
+#if defined(Z_ENABLE_PIN) && Z_ENABLE_PIN > -1
+  #ifdef Z_DUAL_STEPPER_DRIVERS
+    #define  enable_z() { WRITE(Z_ENABLE_PIN, Z_ENABLE_ON); WRITE(Z2_ENABLE_PIN, Z_ENABLE_ON); }
+    #define disable_z() { WRITE(Z_ENABLE_PIN,!Z_ENABLE_ON); WRITE(Z2_ENABLE_PIN,!Z_ENABLE_ON); }
+  #else
+    #define  enable_z() WRITE(Z_ENABLE_PIN, Z_ENABLE_ON)
+    #define disable_z() WRITE(Z_ENABLE_PIN,!Z_ENABLE_ON)
+  #endif
+#else
+  #define enable_z() ;
+  #define disable_z() ;
+#endif
+
+#if defined(E0_ENABLE_PIN) && (E0_ENABLE_PIN > -1)
+  #define enable_e0() WRITE(E0_ENABLE_PIN, E_ENABLE_ON)
+  #define disable_e0() WRITE(E0_ENABLE_PIN,!E_ENABLE_ON)
+#else
+  #define enable_e0()  /* nothing */
+  #define disable_e0() /* nothing */
+#endif
 
 #if MOTOR_CURRENT_PWM_XY_PIN > -1
 extern const int motor_current_setting[3];
@@ -145,9 +181,26 @@ template<typename MOVE>
 inline void st_set_direction(uint8_t dirbits) {
 
     if (dirbits & st_get_move_bit_mask<MOVE>())
-        st_write_dir_pin<MOVE>(! st_get_invert_dir<MOVE>());
+        st_write_dir_pin<MOVE>(  st_get_positive_dir<MOVE>());
     else
-        st_write_dir_pin<MOVE>(  st_get_invert_dir<MOVE>());
+        st_write_dir_pin<MOVE>(! st_get_positive_dir<MOVE>());
+}
+
+template<typename MOVE>
+inline uint8_t st_get_direction() {
+
+    if (st_read_dir_pin<MOVE>()) {
+
+        if (st_get_positive_dir<MOVE>())
+            return st_get_move_bit_mask<MOVE>();
+    }
+    else {
+
+        if (! st_get_positive_dir<MOVE>())
+            return st_get_move_bit_mask<MOVE>();
+    }
+
+    return 0;
 }
 
 #define X_ENDSTOP_PRESSED (READ(X_STOP_PIN) != X_ENDSTOPS_INVERTING)
@@ -411,59 +464,52 @@ inline void st_step_motor_es(uint8_t stepBits, uint8_t dirbits) {
 #   * operiert auf tail pointer
 #   * liest head pointer (um buffer fill festzustellen)
 #
-# xxx use volatile BYTE variables for head and tail.
-#
-    */
+*/
 
-    /*
-    struct StepBlock {
+typedef struct {
+    // Bit 0-4: Direction bits, F
+    // Bit 7: set-direction-flag, DDDDD
+    uint8_t dirBits;
+    uint8_t stepBits;
+    uint16_t timer;
+} stepData;
 
-        // Bit 0-4: Direction bits, F
-        // Bits 5-6: size of entry, 0,1 or 3, LL
-        // Bit 7: set-direction-flag, DDDDD
-        // FLLDDDDD
-        uint8_t cmdDirBits;
+// Size of step buffer, entries are stepData structs.
+#define StepBufferLen  256
 
-        uint8_t stepBits;   // 5 bits used
+class StepBuffer {
 
-        [uint8_t|uint16_t] timer;
-
-        [uint8_t timerLoop;]
-    };
-    */
-
-    // Size of step buffer in bytes, must be a power of 2:
-#define StepBufferLen  2048
-#define StepBufferMask  (StepBufferLen - 1)
-
-#define CMDLEN3 (0 << 5)
-#define CMDLEN4 (1 << 5)
-#define CMDLEN5 (2 << 5)
-
-#define GETCMDLEN(v) (v & (3 << 5))
-
-    class StepBuffer {
         private:
-            uint8_t stepBuffer[StepBufferLen];
+            stepData stepBuffer[StepBufferLen];
 
-            uint16_t head, tail;
+            uint8_t head, tail;
+            uint8_t syncCount;
 
-            uint8_t timerLoop;
+            // Mode of misc stepper timer:
+            enum {
+                HOMINGMODE,   // Misc stepper timer is used for homing
+                CONTINUOSMODE // Misc stepper timer is used for continuous E move
+            } miscStepperMode;
 
-            int16_t syncCount;
+            uint16_t continuosTimer;
 
         public:
 
-            // int32_t timeSum;
-
             StepBuffer() {
                 head = tail = 0;
-                timerLoop = 0;
                 syncCount = 0;
+                miscStepperMode = HOMINGMODE;
             };
 
-            FWINLINE uint16_t byteSize() {
-                return (StepBufferLen + head - tail) & StepBufferMask;
+            void setContinuosTimer(uint16_t timerValue) {
+    
+                CRITICAL_SECTION_START;
+                continuosTimer = timerValue;
+                CRITICAL_SECTION_END;
+            }
+
+            FWINLINE uint8_t byteSize() {
+                return (uint16_t)(StepBufferLen + head) - tail;
             }
 
             FWINLINE bool empty() {
@@ -471,7 +517,7 @@ inline void st_step_motor_es(uint8_t stepBits, uint8_t dirbits) {
             }
 
             FWINLINE bool full() {
-                return byteSize() >= (StepBufferLen-10);
+                return byteSize() >= (StepBufferLen-1);
             }
 
             FWINLINE void sync() {
@@ -479,109 +525,20 @@ inline void st_step_motor_es(uint8_t stepBits, uint8_t dirbits) {
             }
 
             FWINLINE bool synced() {
-                return syncCount <= 0;
+                return syncCount == 0;
             }
 
-            FWINLINE void push3(uint8_t cmdDir, uint8_t steps, uint8_t timer) {
+            FWINLINE void push(stepData &sd) {
 
-                simassert(byteSize()+3 < StepBufferLen);
+                simassert(! full());
 
-                stepBuffer[head] = cmdDir | CMDLEN3;
-                head = (head+1) & StepBufferMask;
-
-                stepBuffer[head] = steps;
-                head = (head+1) & StepBufferMask;
-
-                stepBuffer[head] = timer;
-                head = (head+1) & StepBufferMask;
+                stepBuffer[head++] = sd;
             }
 
-            FWINLINE void push4(uint8_t cmdDir, uint8_t steps, uint16_t timer) {
-
-                simassert(byteSize()+4 < StepBufferLen);
-
-                stepBuffer[head] = cmdDir | CMDLEN4;
-                head = (head+1) & StepBufferMask;
-
-                stepBuffer[head] = steps;
-                head = (head+1) & StepBufferMask;
-
-                stepBuffer[head] = timer;
-                head = (head+1) & StepBufferMask;
-
-                stepBuffer[head] = timer >> 8;
-                head = (head+1) & StepBufferMask;
-            }
-
-            void push5(uint8_t cmdDir, uint8_t steps, uint16_t timer, uint8_t timerLoop) {
-
-                simassert(byteSize()+5 < StepBufferLen);
-
-                stepBuffer[head] = cmdDir | CMDLEN5;
-                head = (head+1) & StepBufferMask;
-
-                stepBuffer[head] = steps;
-                head = (head+1) & StepBufferMask;
-
-                stepBuffer[head] = timer;
-                head = (head+1) & StepBufferMask;
-
-                stepBuffer[head] = timer >> 8;
-                head = (head+1) & StepBufferMask;
-
-                stepBuffer[head] = timerLoop;
-                head = (head+1) & StepBufferMask;
-            }
-
-            // Get cmdDir
-            FWINLINE uint8_t * peek80() {
-                simassert(byteSize() >= 3);
-                return stepBuffer+tail;
-            }
-            // Get stepBits
-            FWINLINE uint8_t * peek81() {
-                simassert(byteSize() >= 3);
-                return stepBuffer+((tail+1) & StepBufferMask);
-            }
-            // Get timer, 8 bit
-            FWINLINE uint8_t *peek82() {
-                simassert(byteSize() >= 3);
-                return stepBuffer+((tail+2) & StepBufferMask);
-            }
-            // Get timer, high 8 bit
-            FWINLINE uint8_t *peek83() {
-                simassert(byteSize() >= 4);
-                return stepBuffer+((tail+3) & StepBufferMask);
-            }
-
-            // // Get timer, 16 bit
-            // FWINLINE uint16_t peek162() {
-                // simassert(byteSize() >= 4);
-                // uint16_t t  = stepBuffer[(tail+2) & StepBufferMask];
-                         // t |= stepBuffer[(tail+3) & StepBufferMask] << 8;
-                // return t;
-            // }
-
-            // Get timerLoop, 8 bit
-            uint8_t * peek84() {
-                simassert(byteSize() >= 5);
-                return stepBuffer+((tail+4) & StepBufferMask);
-            }
-
-            FWINLINE void pop3() {
-                tail = (tail+3) & StepBufferMask;
+            FWINLINE stepData & pop() {
                 if (syncCount > 0)
-                    syncCount -= 3;
-            }
-            FWINLINE void pop4() {
-                tail = (tail+4) & StepBufferMask;
-                if (syncCount > 0)
-                    syncCount -= 4;
-            }
-            void pop5() {
-                tail = (tail+5) & StepBufferMask;
-                if (syncCount > 0)
-                    syncCount -= 5;
+                    syncCount--;
+                return stepBuffer[tail++];
             }
 
             void flush() {
@@ -589,114 +546,120 @@ inline void st_step_motor_es(uint8_t stepBits, uint8_t dirbits) {
                 syncCount = 0;
             }
 
+            void homingMode() {
+
+                miscStepperMode = HOMINGMODE;
+
+                // Start interrupt
+                ENABLE_STEPPER1_DRIVER_INTERRUPT();
+            }
+
+            void continuosMode(uint16_t timerValue) {
+
+                if (timerValue > 0) {
+
+                    miscStepperMode = CONTINUOSMODE;
+                    continuosTimer = timerValue;
+
+                    enable_e0();
+
+                    // Direction forward
+                    st_write_dir_pin<EMove>( st_get_positive_dir<EMove>() );
+
+                    // Start interrupt
+                    ENABLE_STEPPER1_DRIVER_INTERRUPT();
+                }
+                else {
+
+                    disable_e0();
+                    DISABLE_STEPPER1_DRIVER_INTERRUPT();
+                }
+            }
+
+            // * Timer 1A is running in CTC mode.
+            // * ISR is called if timer 1A reaches OCR1A value
+            // * Timer 1A is reset to 0 and starts counting up while ISR is running
+            // * New timervalue is set at end of ISR
+            // --> if ISR is running to long (or if it's locked by another interrupt) it is fired again
+            //     immediately on return. The OCR1A value set is therefore ignored and the generated 
+            //     pulse is not related to it.
+            // --> To relax this situation we set the new OCR1A value as fast as possible.
             FWINLINE void runMoveSteps() {
 
-                if (timerLoop) {
-                    timerLoop --;
-                    OCR1A = 0xffff;
+                if (empty()) {
+
+                    // Empty buffer, nothing to step
+                    OCR1A = 2000; // 1kHz.
                 }
-                // XXX make stepbuffer.pop return pointer, return null if emtpy -> save one function call
-                else if (byteSize()) {
+                else {
 
-                    uint8_t cmdDir = *peek80();
+                    stepData &sd = pop();
 
-                    // * Set direction 
-                    // * Step the motors
-                    // * Update step-coordinates (current_pos_steps)
-                    // * Set new timer value
+                    OCR1A = sd.timer;
 
-                    if (cmdDir & 0x80) {
+                    if (sd.dirBits & 0x80) {
 
                         // Set direction bits
-                        st_set_direction<XMove>(cmdDir); 
-                        st_set_direction<YMove>(cmdDir); 
-                        st_set_direction<ZMove>(cmdDir); 
-                        st_set_direction<EMove>(cmdDir); 
+                        st_set_direction<XMove>(sd.dirBits);
+                        st_set_direction<YMove>(sd.dirBits);
+                        st_set_direction<ZMove>(sd.dirBits);
+                        st_set_direction<EMove>(sd.dirBits);
                     }
 
-                    uint8_t stepBits = *peek81();
-
-                    st_step_motor<XMove>(stepBits, cmdDir); 
-                    st_step_motor<YMove>(stepBits, cmdDir); 
-                    st_step_motor<ZMove>(stepBits, cmdDir); 
-                    st_step_motor<EMove>(stepBits, cmdDir); 
-
-                    switch (GETCMDLEN(cmdDir)) {
-                        case  CMDLEN3:
-                            OCR1A = *peek82();
-                            pop3();
-                            break;
-                        case CMDLEN4:
-                        OCR1A = *peek82() | (*peek83() << 8);
-                        pop4();
-                        break;
-                    case CMDLEN5:
-                        OCR1A = *peek82() | (*peek83() << 8);
-                        timerLoop = *peek84();
-                        pop5();
-                        break;
-                    default:
-                        massert(0);
+                    // Step the motors and update step-coordinates (current_pos_steps): st_step_motor<>()
+                    st_step_motor<XMove>(sd.stepBits, sd.dirBits);
+                    st_step_motor<YMove>(sd.stepBits, sd.dirBits);
+                    st_step_motor<ZMove>(sd.stepBits, sd.dirBits);
+                    st_step_motor<EMove>(sd.stepBits, sd.dirBits);
                 }
             }
-            else {
-                // Empty buffer, nothing to step
-                OCR1A=2000; // 1kHz.
-            }
+
+        // FWINLINE void runHomingSteps() {
+        FWINLINE void runMiscSteps() {
+
+            if (miscStepperMode == HOMINGMODE)
+                runHomingSteps();
+            else
+                runContinuosSteps();
         }
 
         FWINLINE void runHomingSteps() {
 
-            if (byteSize()) {
+            if (empty()) {
 
-                uint8_t cmdDir = *peek80();
-
-                // * Set direction 
-                // * Check endstops
-                // * Step the motors
-                // * Update step-coordinates (current_pos_steps)
-                // * Set new timer value
-
-                if (cmdDir & 0x80) {
-
-                    // Set direction bits
-                    st_set_direction<XMove>(cmdDir); 
-                    st_set_direction<YMove>(cmdDir); 
-                    st_set_direction<ZMove>(cmdDir); 
-                    // st_set_direction<EMove>(cmdDir); 
-                }
-
-                uint8_t stepBits = *peek81();
-
-                st_step_motor_es<XMove>(stepBits, cmdDir); 
-                st_step_motor_es<YMove>(stepBits, cmdDir); 
-                st_step_motor_es<ZMove>(stepBits, cmdDir); 
-
-                switch (GETCMDLEN(cmdDir)) {
-                    case  CMDLEN3:
-                        OCR1A = OCR1B = *peek82();
-                        timerLoop = 0;
-                        pop3();
-                        break;
-                    case CMDLEN4:
-                        OCR1A = OCR1B = *peek82() | (*peek83() << 8);
-                        timerLoop = 0;
-                        pop4();
-                        break;
-                    case CMDLEN5:
-                        massert(0);
-                        // OCR1A = OCR1B = 
-                        // timerLoop = 0;
-                        // pop5();
-                        break;
-                    default:
-                        massert(0);
-                }
+                // Empty buffer, nothing to step
+                OCR1A = OCR1B = 2000; // 1kHz.
             }
             else {
-                OCR1A = OCR1B=2000; // 1kHz.
+
+                stepData &sd = pop();
+
+                OCR1A = OCR1B = sd.timer;
+
+                // * Set direction 
+                if (sd.dirBits & 0x80) {
+
+                    // Set direction bits
+                    st_set_direction<XMove>(sd.dirBits);
+                    st_set_direction<YMove>(sd.dirBits);
+                    st_set_direction<ZMove>(sd.dirBits);
+                }
+
+                // * Step the motors
+                // * Check endstops
+                // * Update step-coordinates (current_pos_steps)
+                st_step_motor_es<XMove>(sd.stepBits, sd.dirBits);
+                st_step_motor_es<YMove>(sd.stepBits, sd.dirBits);
+                st_step_motor_es<ZMove>(sd.stepBits, sd.dirBits);
             }
         }
+
+        FWINLINE void runContinuosSteps() {
+
+            OCR1A = OCR1B = continuosTimer;
+            st_step_motor<EMove>(st_get_move_bit_mask<EMove>(), st_get_move_bit_mask<EMove>());
+        }
+
 };
 
 extern StepBuffer stepBuffer;

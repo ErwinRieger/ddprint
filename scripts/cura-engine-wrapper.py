@@ -28,20 +28,11 @@
 # Collect CuraEngine settings from Cura Machine- and Qualityprofiles and call
 # CuraEngine to produce a gcode file from a stl input.
 #
+# See also: http://ibrieger.de/cura-engine-wrapperpy-helper-to-call-curaengine-from-command-line.html
+#
 
 import os, copy, sys, subprocess
 import urllib.parse
-
-from UM.Application import Application
-from UM.Resources import Resources
-from UM.Settings.SettingDefinition import SettingDefinition, DefinitionPropertyType
-from UM.Settings.ContainerRegistry import ContainerRegistry
-from UM.Settings.Validator import Validator
-from UM.Settings.SettingFunction import SettingFunction
-from UM.PluginRegistry import PluginRegistry
-from UM.Logger import Logger
-
-import cura.Settings
 
 debug = False
 
@@ -49,11 +40,21 @@ debug = False
 if len(sys.argv) < 3 or sys.argv[1] == "-h":
     print("Usage:")
     print("  %s -h: print help" % os.path.basename(sys.argv[0]))
-    print("  %s -l: <curapath> list all container names" % os.path.basename(sys.argv[0]))
-    print("  %s -pm <curapath> <machine name>: print values of machine container" % os.path.basename(sys.argv[0]))
-    print("  %s -pp <curapath> <profile name>: print values of profile" % os.path.basename(sys.argv[0]))
+    print("  %s <curapath> -l: list all container names" % os.path.basename(sys.argv[0]))
+    print("  %s <curapath> -pm: <machine name>: print values of machine container" % os.path.basename(sys.argv[0]))
+    print("  %s <curapath> -pp: <profile name>: print values of profile" % os.path.basename(sys.argv[0]))
     print("  %s <curapath> <machine name> <profile name> <input-stl> <output-gcode>: Collect settings from profiles and call curaEngine to produce gcode ouput from stl." % os.path.basename(sys.argv[0]))
     sys.exit(0)
+
+from UM.Application import Application
+from UM.Resources import Resources
+from UM.Settings.SettingDefinition import SettingDefinition, DefinitionPropertyType
+from UM.Settings.Validator import Validator
+from UM.Settings.SettingFunction import SettingFunction
+from UM.PluginRegistry import PluginRegistry
+from UM.Logger import Logger
+
+import cura.Settings
 
 curaDir = sys.argv[1]
 
@@ -129,7 +130,7 @@ SettingFunction.registerOperator("extruderValues", cura.Settings.ExtruderManager
 SettingFunction.registerOperator("extruderValue", cura.Settings.ExtruderManager.getExtruderValue)
 SettingFunction.registerOperator("resolveOrValue", cura.Settings.ExtruderManager.getResolveOrValue)
 
-cr = ContainerRegistry.getInstance()
+cr = cura.Settings.CuraContainerRegistry.getInstance()
 cr.setApplication(dummyApp)
 
 cr.addResourceType(dummyApp.ResourceTypes.QualityInstanceContainer)
@@ -144,17 +145,17 @@ empty_container = cr.getInstance().getEmptyInstanceContainer()
 empty_variant_container = copy.deepcopy(empty_container)
 empty_variant_container._id = "empty_variant"
 empty_variant_container.addMetaDataEntry("type", "variant")
-ContainerRegistry.getInstance().addContainer(empty_variant_container)
+cr.addContainer(empty_variant_container)
 
 empty_material_container = copy.deepcopy(empty_container)
 empty_material_container._id = "empty_material"
 empty_material_container.addMetaDataEntry("type", "material")
-ContainerRegistry.getInstance().addContainer(empty_material_container)
+cr.addContainer(empty_material_container)
 
 empty_quality_changes_container = copy.deepcopy(empty_container)
 empty_quality_changes_container._id = "empty_quality_changes"
 empty_quality_changes_container.addMetaDataEntry("type", "quality_changes")
-ContainerRegistry.getInstance().addContainer(empty_quality_changes_container)
+cr.addContainer(empty_quality_changes_container)
 
 cr.load()
 
@@ -189,7 +190,10 @@ if sys.argv[2] == "-pp":
 
     qualityProfile = sys.argv[3]
 
-    profile = cr.findInstanceContainers(type = "quality_changes", name = qualityProfile)[0]
+    profiles = cr.findInstanceContainers(type = "quality_changes", name = qualityProfile)
+    if not profiles:
+        profiles = cr.findInstanceContainers(type = "quality", name = qualityProfile)
+    profile = profiles[0]
 
     print("\nProfile container:\n")
     for key in profile.getAllKeys():
@@ -216,9 +220,12 @@ dummyApp.setGlobalContainerStack(machine)
 for key in machine.getAllKeys():
 
     value = machine.getProperty(key, "value")
+
+    # XXX todo: use resolved values here
+    # The "resolved" value of a setting is the value that should be used when two extruders have a conflicting value.
     resolved = machine.getProperty(key, "resolve")
 
-    if resolved != None and resolved != value:
+    if debug and resolved != None and resolved != value:
         print(key, "resolved:", resolved, value)
         assert(0)
 
@@ -228,7 +235,11 @@ profile = cr.findInstanceContainers(type = "quality_changes", name = qualityProf
 
 for key in profile.getAllKeys():
 
-    assert(profile.getProperty(key, "resolve") == None)
+    # XXX todo: use resolved values here
+    # The "resolved" value of a setting is the value that should be used when two extruders have a conflicting value.
+    if debug:
+        assert(profile.getProperty(key, "resolve") == None)
+
     allValues[key] = profile.getProperty(key, "value")
 
 for key in additionalSettings:
@@ -275,9 +286,11 @@ engineArgs += [
         ]
 
 if debug:
+    for key in sorted(allValues.keys()):
+        print(key, allValues[key])
     print("engineArgs:", engineArgs)
 
-subprocess.call(engineArgs)
+# subprocess.call(engineArgs)
 
 
 

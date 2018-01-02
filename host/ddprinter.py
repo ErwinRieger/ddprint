@@ -19,22 +19,15 @@
 # along with ddprint.  If not, see <http://www.gnu.org/licenses/>.
 #*/
 
-# # This needs pyserial version >= 2.6:
-# try:
-    # from serial.tools import list_ports
-# except ImportError:
-    # print "\nWARNING your python-serial version seems to be to old!\n"
-
 #
 # Note: pyserial 2.6.1 seems to have a bug with reconnect (read only garbage 
 # at second connect).
-# So i've mixed pyserial 2.5.x with the list_ports functions from 2.6.x
 #
-import time, struct, crc16
-import list_ports
+import time, struct, crc_ccitt_kermit
 import dddumbui, cobs
 
 from serial import Serial, SerialException, SerialTimeoutException
+from ddconfig import debugComm
 from ddprintcommands import *
 from ddprintconstants import *
 from ddprintstates import *
@@ -95,8 +88,6 @@ class Printer(Serial):
 
         Serial.__init__(self)
 
-        self.usbId = None
-
         # Command sequence number [1..255]
         self.lineNr = 1
 
@@ -110,9 +101,6 @@ class Printer(Serial):
         self.startTime = None
 
         self.curDirBits = 0
-
-        # xxx
-        # self.gentimeout = True
 
     @classmethod
     def get(cls):
@@ -166,6 +154,11 @@ class Printer(Serial):
                 (line, slen) = struct.unpack("<HB", payload[1:4])
                 filename = payload[4:4+slen]
                 self.gui.logError("ERROR: PRINTER KILLED! Reason: %s, Line: %d, File: %s" % (RespCodeNames[reason], line, filename))
+
+            elif reason in [RespSDReadError, RespSDWriteError]:
+
+                (errorCode, spiStatus) = struct.unpack("<BB", payload[1:])
+                self.gui.logError("ERROR: PRINTER KILLED! Reason: %s, ErrorCode: %d, spiStatus: 0x%x" % (RespCodeNames[reason], errorCode, spiStatus))
 
             else:
 
@@ -229,6 +222,9 @@ class Printer(Serial):
             if msgType == ExtrusionLimitDbg:
                 (tempIndex, actSpeed, targetSpeed, grip) = struct.unpack("<hhhh", payload[1:])
                 self.gui.logRecv("Limit extrusion index: %d, act: %d, target: %d, grip: %d" % (tempIndex, actSpeed, targetSpeed, grip))
+            elif msgType == PidDebug:
+                (pid_dt, pTerm, iTerm, dTerm, pwmSum, pwmOutput) = struct.unpack("<fffffi", payload[1:])
+                self.gui.logRecv("PidDebug: pid_dt: %f, pTerm: %f, iTerm: %f, dTerm: %f, pwmSum: %f, pwmOutput: %d" % (pid_dt, pTerm, iTerm, dTerm, pwmSum, pwmOutput))
 
             return True # consume message
 
@@ -308,23 +304,25 @@ class Printer(Serial):
     def readResponse(self):
 
         s = self.readWithTimeout(1) # SOH
-# xxx loop til 0x0 found
+
+        # xxx loop til SOH found
         assert(s == cobs.nullByte)
 
         rc = self.readWithTimeout(1) # read response code
-        crc = crc16.crc16xmodem(rc)
+        crc = crc_ccitt_kermit.crc16_kermit(rc, 0xffff)
         cmd = ord(rc)
 
         l = self.readWithTimeout(1) # read length byte
-        crc = crc16.crc16xmodem(l, crc)
+        crc = crc_ccitt_kermit.crc16_kermit(l, crc)
 
         length = ord(l) - 1
-        self.gui.logRecv("Response 0x%x, reading %d b" % (cmd, length))
+        if debugComm:
+            self.gui.logRecv("Response 0x%x, reading %d b" % (cmd, length))
 
         payload = ""
         if length:
             payload = self.readWithTimeout(length) # read payload
-            crc = crc16.crc16xmodem(payload, crc)
+            crc = crc_ccitt_kermit.crc16_kermit(payload, crc)
 
         (cflags, checkSum) = struct.unpack("<BH", self.readWithTimeout(3))
 
@@ -373,43 +371,33 @@ class Printer(Serial):
                 time.sleep(0.1)
                 continue
 
-            if recvLine:
+            if recvLine and debugComm:
                 if ord(recvLine[0]) > 20:
                     self.gui.logRecv("Reply: ", recvLine,)
                 else:
                     self.gui.logRecv("Reply: 0x%s" % recvLine.encode("hex"))
 
-    def initSerial(self, device, br=250000):
+    def initSerial(self, device, br, bootloaderWait=False):
+
         self.port = device
         self.baudrate = br
         self.timeout = 0.05
         self.writeTimeout = 10
         self.open()
 
-        if not self.usbId:
+        if bootloaderWait:
             print "Initial bootloader wait..."
             time.sleep(1)
-
-        # Store usb information for later re-connection even if device
-        # name has changed:
-        comports = list_ports.comports()
-
-        # ('/dev/ttyACM0', 'ttyACM0', 'USB VID:PID=2341:0042 SNR=75237333536351815111')]
-        for (dev, name, usbid) in comports:
-            if dev == device or name == device:
-                self.gui.log("Found usbid %s for device %s" % (usbid, dev))
-                self.usbId = usbid
-                break
 
         # Read left over garbage
         recvLine = self.safeReadline()        
         while recvLine:
-            self.gui.logRecv("Initial read: '%s'" % recvLine)
-            self.gui.logRecv(recvLine.encode("hex"), "\n")
+            # self.gui.logRecv("Initial read: '%s'" % recvLine)
+            self.gui.logRecv("Initail read: " + recvLine.encode("hex"), "\n")
             recvLine = self.safeReadline()        
 
     def commandInit(self, args):
-        self.initSerial(args.device, args.baud)
+        self.initSerial(args.device, args.baud, True)
         self.resetLineNumber()
 
     def resetLineNumber(self):
@@ -427,8 +415,8 @@ class Printer(Serial):
         return self.lineNr-1
 
     def sendPrinterInit(self):
-        self.curdirbits = 0
         self.sendCommand(CmdPrinterInit)
+        self.curDirBits = self.getDirBits()
 
     # Send a command to the printer, add a newline if 
     # needed.
@@ -438,14 +426,6 @@ class Printer(Serial):
 
             try:
                 self.write(cmd)
-                """
-                self.write(cmd[:5])
-                if self.gentimeout:
-                    print "timeout"
-                    time.sleep(2.5)
-                    self.gentimeout = False
-                self.write(cmd[5:])
-                """
             except SerialTimeoutException:
                 self.gui.log("Tryed sending %d bytes: " % len(cmd), cmd[:10].encode("hex"))
                 self.gui.log("SerialTimeoutException on send!!!")
@@ -487,11 +467,11 @@ class Printer(Serial):
         header = struct.pack("<BBB", self.lineNr, binCmd, payloadSize+0x01)
 
         binary += header
-        checksum = crc16.crc16xmodem(header)
+        checksum = crc_ccitt_kermit.crc16_kermit(header, 0xffff)
 
         if binPayload:
             binary += binPayload
-            checksum = crc16.crc16xmodem(binPayload, checksum)
+            checksum = crc_ccitt_kermit.crc16_kermit(binPayload, checksum)
 
         # print "cflags, c1: 0x%x, 0x%x" % (cflags, checksum)
         cflags = 0x1
@@ -559,25 +539,14 @@ class Printer(Serial):
     def reconnect(self):
 
         # XXX add timeout, or otherwise prevent re-connection to power-cycled printer?!
+        self.close()
 
-        comports = list_ports.comports()
-
-        # ('/dev/ttyACM0', 'ttyACM0', 'USB VID:PID=2341:0042 SNR=75237333536351815111')]
-        for (dev, name, usbid) in comports:
-            if usbid == self.usbId:
-                self.gui.log("reconnect(): found device %s, previous device: %s" % (dev, self.port))
-                self.close()
-
-                try:
-                    self.initSerial(dev, br=self.baudrate)
-                except SerialException as ex:
-                    self.gui.log("reconnect() Exception raised:", ex)
-                    time.sleep(1)
-                    self.reconnect()
-
-                return
-
-        time.sleep(0.1)
+        try:
+            self.initSerial(self.port, br=self.baudrate)
+        except SerialException as ex:
+            self.gui.log("reconnect() Exception raised:", ex)
+            time.sleep(1)
+            self.reconnect()
 
     # Send command or Query info from printer
     def send2(self, sendCmd, binary):
@@ -595,7 +564,8 @@ class Printer(Serial):
             self.send(binary)
         """
 
-        self.gui.logSend("*** sendCommand %s (0x%x, len: %d, seq: %d) *** " % (CommandNames[sendCmd], sendCmd, len(binary), self.prevLineNumber()))
+        if debugComm:
+            self.gui.logSend("*** sendCommand %s (0x%x, len: %d, seq: %d) *** " % (CommandNames[sendCmd], sendCmd, len(binary), self.prevLineNumber()))
         # print "send: ", binary.encode("hex")
         self.send(binary)
 
@@ -630,7 +600,8 @@ class Printer(Serial):
             n = len(binary)
             dt = time.time() - startTime
             if cmd == 0x6:
-                self.gui.logRecv("ACK, Sent %d bytes in %.2f ms, %.2f Kb/s" % (n, dt*1000, n/(dt*1000)))
+                if debugComm:
+                    self.gui.logRecv("ACK, Sent %d bytes in %.2f ms, %.2f Kb/s" % (n, dt*1000, n/(dt*1000)))
                 return (cmd, payload)
 
             # if cmd == RespGenericString:
@@ -654,7 +625,8 @@ class Printer(Serial):
                 self.send(resendCommand)
                 continue
 
-            self.gui.logRecv("ACK (0x%x/0x%x), Sent %d bytes in %.2f ms, %.2f Kb/s" % (cmd, sendCmd, n, dt*1000, n/(dt*1000)))
+            if debugComm:
+                self.gui.logRecv("ACK (0x%x/0x%x), Sent %d bytes in %.2f ms, %.2f Kb/s" % (cmd, sendCmd, n, dt*1000, n/(dt*1000)))
 
             if cmd == sendCmd:
                 # print "got reply:", payload
@@ -667,24 +639,25 @@ class Printer(Serial):
 
     def getStatus(self):
 
-        valueNames = ["state", "t0", "t1", "Swap", "SDReader", "StepBuffer", "StepBufUnderRuns", "targetT1", "targetExtrusionSpeed", "actualExtrusionSpeed"]
+        # valueNames = ["state", "t0", "t1", "Swap", "SDReader", "StepBuffer", "StepBufUnderRuns", "targetT1", "targetExtrusionSpeed", "actualExtrusionSpeed", "actualGrip", "grip"]
+        valueNames = ["state", "t0", "t1", "Swap", "SDReader", "StepBuffer", "StepBufUnderRuns", "targetT1", "slippage"]
 
         (cmd, payload) = self.query(CmdGetStatus, doLog=False)
 
-        tup = struct.unpack("<BffIHHHHhh", payload)
+        tup = struct.unpack("<BffIHBhHh", payload)
 
         statusDict = {}
         for i in range(len(valueNames)):
 
             valueName = valueNames[i]
 
-            if valueName in ["targetExtrusionSpeed", "actualExtrusionSpeed"]:
+            # if valueName in ["targetExtrusionSpeed", "actualExtrusionSpeed"]:
+            if valueName in ["slippage"]:
                 statusDict[valueName] = tup[i] * 0.01
                 continue
 
             statusDict[valueName] = tup[i]
 
-        # xxx debug
         print "statusDict:", statusDict
 
         self.gui.statusCb(statusDict)
@@ -725,15 +698,23 @@ class Printer(Serial):
 
         return status['state'] == StateStart or status['state'] == StateDwell
 
-    def getTemps(self):
+    def getTemp(self, doLog = True):
 
-        (cmd, payload) = self.query(CmdGetCurrentTemps)
+        #
+        # CmdGetCurrentTemps returns (bedtemp, T1 [, T2])
+        #
+        (cmd, payload) = self.query(CmdGetCurrentTemps, doLog=doLog)
         if len(payload) == 8:
             temps = struct.unpack("<ff", payload)
         else:
             temps = struct.unpack("<fff", payload)
 
-        (cmd, payload) = self.query(CmdGetTargetTemps)
+        return temps
+
+    def getTemps(self, doLog = True):
+
+        temps = self.getTemp()
+        (cmd, payload) = self.query(CmdGetTargetTemps, doLog=doLog)
         if len(payload) == 3:
             targetTemps = struct.unpack("<BH", payload)
         else:
@@ -826,6 +807,14 @@ class Printer(Serial):
 
         (cmd, payload) = self.query(CmdGetFilSensor)
         return struct.unpack("<i", payload)[0]
+
+    ####################################################################################################
+
+    # Get current stepper direction bits
+    def getDirBits(self):
+
+        (cmd, payload) = self.query(CmdGetDirBits)
+        return struct.unpack("<B", payload)[0]
 
     ####################################################################################################
 

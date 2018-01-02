@@ -26,6 +26,13 @@
 // #define SOH  0x81
 #define SOH  0x0
 
+// 
+//
+//
+#define AccelByteFlag (1 << 6)
+#define RawByteFlag AccelByteFlag
+#define DecelByteFlag (1 << 5)
+
 //
 // USB commands
 //
@@ -40,11 +47,13 @@
 #define CmdBlock           0x6
 
 #define CmdG1              0x7
-#define CmdDirG1           0x8
-#define CmdG1_24           0x9
-#define CmdDirG1_24        0xa
+// #define CmdDirG1           0x8
+
+
 #define CmdSyncTargetTemp  0xb
 #define CmdDwellMS         0xc
+#define CmdG1Raw           0xd
+// #define CmdDirG1Raw        0xe
 
 //
 // Direct commands:
@@ -67,7 +76,7 @@
     #define CmdSetHeaterY       139
 #endif
 
-#define CmdGetState             150
+#define CmdGetDirBits           150
 #define CmdGetHomed             151
 #define CmdGetEndstops          152
 #define CmdGetEepromVersion     153
@@ -90,6 +99,9 @@
 #define CmdGetTempTable         163 // ExtrusionLimit: get tempTable
 #define CmdSetTempTable         164 // ExtrusionLimit: set tempTable
 #define CmdEnableFRLimit        165 // Enable/disable flowrate limit
+
+#define CmdSetContTimer         166 // Timer value for CmdContinuousE -> E-Speed
+#define CmdContinuousE          167 // Start/Stop continuous e-move for filament measurement
 
 //
 // Response types 
@@ -115,14 +127,16 @@
 #define RespAssertion           6 // payload: line, file
 #define RespADNS9800Init        7 // 
 #define RespSDInit              8 // 
-#define RespSDError             9 // 
+#define RespSDReadError         9 // 
 #define RespMinTemp            10 // 
 #define RespMaxTemp            11 // 
+#define RespSDWriteError       12 // 
 
 //
 // Unsolicited message types
 //
 #define ExtrusionLimitDbg       0x0
+#define PidDebug                0x1
 
 
 

@@ -23,18 +23,18 @@
 # ----------------------
 #
 CmdNull          = 0x0
-CmdDirBits       = 0x2
+# CmdDirBits       = 0x2
 CmdSyncFanSpeed  = 0x3 # Parameters: pwm value 0 - 255
 CmdRaw           = 0x4 # Parameters: blob data
 CmdBlock         = 0x6 # A 512byte block of a lager command
 
 CmdG1            = 0x7
-CmdDirG1         = 0x8 # CmdDirBits and CmdG1 combined
+# CmdDirG1         = 0x8 # CmdDirBits and CmdG1 combined
 
-CmdG1_24         = 0x9 # Same as CmdG1, but with 32 bit accel- and deccel-timervalues (vor very slow moves)
-CmdDirG1_24      = 0xa # CmdDirBits and CmdG1_24 combined
 CmdSyncTargetTemp= 0xb # Parameters: heater, temp 
 CmdDwellMS       = 0xc # Parameters: dwell time in mS
+CmdG1Raw         = 0xd # Raw print move steps, bresenham algo already done.
+# CmdDirG1Raw      = 0xe # CmdDirBits and CmdG1Raw combined
 
 CmdUnknown       = 0x7f # Unknown command for debugging
 
@@ -69,7 +69,7 @@ CmdStopMove = 138
 CmdSetHeaterY = 139
 
 # Getters, they return a string of the form "ret: <expr>"
-# currently not used: CmdGetState = 150
+CmdGetDirBits = 150
 CmdGetHomed = 151
 CmdGetEndstops = 152   # Get endstop state and pos
 CmdGetEepromVersion = 153
@@ -86,14 +86,17 @@ CmdGetTempTable = 163 # ExtrusionLimit: get tempTable
 CmdSetTempTable = 164 # ExtrusionLimit: set tempTable
 CmdEnableFRLimit = 165 # Enable/disable flowrate limit
 
+CmdSetContTimer = 166 # Timer value for CmdContinuousE -> E-Speed
+CmdContinuousE = 167 # Start/Stop continuous e-move for filament measurement
+
 CommandNames = {
     CmdNull: "CmdNull",
     CmdG1: "CmdG1",
-    CmdG1_24: "CmdG1_24",
-    CmdDirBits: "CmdDirBits",
+    # CmdDirBits: "CmdDirBits",
     CmdBlock: "CmdBlock",
-    CmdDirG1: "CmdDirG1",
-    CmdDirG1_24: "CmdDirG1_24",
+    # CmdDirG1: "CmdDirG1",
+    CmdG1Raw: "CmdG1Raw",
+    # CmdDirG1Raw: "CmdDirG1Raw",
     CmdSyncTargetTemp: "CmdSyncTargetTemp",
     CmdDwellMS: "CmdDwellMS",
     CmdUnknown: "CmdUnknown",
@@ -128,8 +131,8 @@ CommandNames = {
     CmdSetHeaterY: "CmdSetHeaterY",
     CmdRaw: "CmdRaw",
     
-    # Getters, they return a string of the form "ret: <expr>"
-    # currently not used: CmdGetState: "CmdGetState",
+    # Getters
+    CmdGetDirBits: "CmdGetDirBits",
     CmdGetHomed: "CmdGetHomed",
     CmdGetEndstops: "CmdGetEndstops",
     CmdGetEepromVersion: "CmdGetEepromVersion",
@@ -145,7 +148,22 @@ CommandNames = {
     CmdGetTempTable: "CmdGetTempTable",
     CmdSetTempTable: "CmdSetTempTable",
     CmdEnableFRLimit: "CmdEnableFRLimit",
+    CmdSetContTimer: "CmdSetContTimer",
+    CmdContinuousE: "CmdContinuousE",
+
 }
+
+#
+# Flag bits for CmdG1x commands
+#
+# Bits 0, 1, 2, 3, 4 reserved for direction bits
+DecelByteFlagBit = (1 << 5)
+AccelByteFlagBit = (1 << 6)
+DirBitsBit       = (1 << 7)
+MoveStartBit     = (1 << 8)
+# Raw moves
+TimerByteFlagBit = (1 << 6)
+MoveStartBitRaw  = (1 << 5)
 
 #
 # Response codes
