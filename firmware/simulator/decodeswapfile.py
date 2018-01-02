@@ -66,24 +66,39 @@ while True:
     # print "Packet Len read: ", l
 
     ll = 0
-    if cmd == CmdDirG1:
-        print "DirG1"
-        dirbits = decodeUInt8(inFile)
-        print "dirbits: 0x%x" % dirbits
-        ll += 1
-        cmd = CmdG1
-
+    # if cmd == CmdDirG1:
     if cmd == CmdG1:
+        # print "DirG1"
+        print "CmdG1 at pos, ", readPos
+
+        # dirbits = decodeUInt8(inFile)
+        # print "dirbits: 0x%x" % dirbits
+        # ll += 1
+        # cmd = CmdG1
+
+    # if cmd == CmdG1:
 
         print "G1"
 
+        #       + flags, 16 bits
         #       + index lead axis, 8 bits
         #       + array of absolute steps, 5 * 32 bits
         #       + number of accel steps, naccel, 16 bits
-        #       + [lead factor]
+        #       + E-Timer start move: 16 bits
+        # [ #       + [lead factor] ]
         #       + constant linear timer value, 16 bits
         #       + number of deccel steps, ndeccel, 16 bits
-        # BIIIIIHHH
+        # HBIIIIIHHH
+
+        flags = decodeUInt16(inFile)
+        print "Flags: 0x%x" % flags
+        ll += 2
+
+        print "DirBitsBit: 0x%x" % (flags & DirBitsBit)
+        print "dirbits: 0x%x" % (flags & 0x1f)
+        print "AccelByteFlagBit: 0x%x" % (flags & AccelByteFlagBit)
+        print "DecelByteFlagBit: 0x%x" % (flags & DecelByteFlagBit)
+        print "MoveStartBit: 0x%x" % (flags & MoveStartBit)
 
         lead = decodeUInt8(inFile)
         print "lead axis:", lead
@@ -97,16 +112,17 @@ while True:
             ll += 4
             abssteps.append(nsteps)
 
-        # nl = decodeUInt8(inFile)
-        # print "n-accelloop:", nl
-        # ll += 1
-
         na = decodeUInt16(inFile)
         print "n-accel:", na
-        ll += 2 + na*2
+        # ll += 2 + na*2
+        ll += 2
 
-        lf = decodeUInt16(inFile)
-        print "lead-factor:", lf
+        et = decodeUInt16(inFile)
+        print "start E-Timer:", et
+        ll += 2
+
+        # lf = decodeUInt16(inFile)
+        # print "lead-factor:", lf
 
         lt = decodeUInt16(inFile)
         print "timer lin: ", lt
@@ -127,42 +143,50 @@ while True:
             # print "Packet length doesn't match data length!", l, ll
 
         tn = None
-        for i in range(na):
-            tn1 = decodeUInt16(inFile)
-            
-            # print "accel timer:", tn1
-            if tn1 < 50:
-                print " t < 50: ", tn1, "readpos: 0x%x" % readPos
-                assert(0)
 
-            if tn != None and tn < tn1:
-                print " accel ramp error: t(%d) < t(n+1): 0x%x 0x%x" % (i, tn, tn1)
-                print " readpos: 0x%x" % readPos
-                assert(tn1 <= tn)
-            tn = tn1
+        if flags & AccelByteFlagBit:
+            assert(0)
+        else:
+            for i in range(na):
+                tn1 = decodeUInt16(inFile)
+            
+                # print "accel timer:", tn1
+                if tn1 < 50:
+                    print " t < 50: ", tn1, "readpos: 0x%x" % readPos
+                    assert(0)
+
+                if tn != None and tn < tn1:
+                    print " accel ramp error: t(%d) < t(n+1): 0x%x 0x%x" % (i, tn, tn1)
+                    print " readpos: 0x%x" % readPos
+                    assert(tn1 <= tn)
+                tn = tn1
 
         if na:
             assert(lt <= tn1)
 
         tn = None
-        for i in range(nd):
-            tn1 = decodeUInt16(inFile)
 
-            if tn1 < 50:
-                print " t < 50: ", tn1, "readpos: 0x%x" % readPos
-                assert(0)
+        if flags & DecelByteFlagBit:
+            assert(0)
+        else:
+            for i in range(nd):
+                tn1 = decodeUInt16(inFile)
 
-            if tn != None and tn > tn1:
-                print " deccel ramp error: t(%d) < t(n+1): 0x%x 0x%x" % (i, tn, tn1)
-                print " readpos: 0x%x" % readPos
-                assert(tn1 >= tn)
-            tn = tn1
+                if tn1 < 50:
+                    print " t < 50: ", tn1, "readpos: 0x%x" % readPos
+                    assert(0)
 
-    elif cmd == CmdDirBits:
-        bits = ord(inFile.read(1))
-        readPos += 1
-        print "Dir 0x%x" % bits
-        assert(l == 1)
+                if tn != None and tn > tn1:
+                    print " deccel ramp error: t(%d) < t(n+1): 0x%x 0x%x" % (i, tn, tn1)
+                    print " readpos: 0x%x" % readPos
+                    assert(tn1 >= tn)
+                tn = tn1
+
+    # elif cmd == CmdDirBits:
+        # bits = ord(inFile.read(1))
+        # readPos += 1
+        # print "Dir 0x%x" % bits
+        # assert(l == 1)
 
     elif cmd == CmdFanSpeed:
         speed = ord(inFile.read(1))
@@ -170,7 +194,7 @@ while True:
         print "Fan speed: 0x%x" % speed
         assert(l == 1)
     else:
-        print "\nUNKNOWN command or end of data: 0x%x\n" % cmd
+        print "\nUNKNOWN command or end of data: 0x%x at pos: \n" % cmd, readPos
         assert(0)
 
 sys.exit(0)
@@ -213,4 +237,5 @@ for line in lines:
         outFile.write(line + "\n")
 
     n += 1
+
 
