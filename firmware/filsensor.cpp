@@ -59,7 +59,7 @@
 
 #if defined(ADNSFS)
 
-SPISettings spiSettingsFS(8000000, MSBFIRST, SPI_MODE3);
+SPISettings spiSettingsFS(4000000, MSBFIRST, SPI_MODE3);
 
 FilamentSensorADNS9800 filamentSensor;
 
@@ -114,7 +114,7 @@ uint8_t FilamentSensorADNS9800::readLoc(uint8_t addr){
   uint8_t ret = SPI.transfer(0);
   WRITE(FILSENSNCS, HIGH);
   delayMicroseconds(20); // Tsrw/Tsrr
-  return(ret);
+  return ret;
 }
 
 void FilamentSensorADNS9800::writeLoc(uint8_t addr, uint8_t value) {
@@ -231,6 +231,8 @@ static float filSensorCalibration[60] = {
 #define kLimit 2.0
 
 void FilamentSensorADNS9800::run() {
+
+    return;
 
     // Berechne soll flowrate, filamentsensor ist sehr ungenau bei kleiner geschwindigkeit.
 

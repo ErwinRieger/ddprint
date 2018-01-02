@@ -44,8 +44,100 @@
 // #define WCMD_BUFFER_SIZE 1024
 #define WCMD_BUFFER_SIZE 512
 
-// uint8_t const SD_CARD_ERROR_SETBLOCKSIZE = 0X21;
-// uint8_t const CMD16 = 0X10;
+#define newsdfat
+
+#if defined(newsdfat)
+class MySpiLibDriver: public SdSpiBaseDriver
+{
+
+ public:
+  /** Activate SPI hardware. */
+  void activate() {
+  }
+
+  /** Deactivate SPI hardware. */
+  void deactivate() {
+  }
+  /** Initialize the SPI bus.
+   *
+   * \param[in] csPin SD card chip select pin.
+   */
+  void begin(uint8_t csPin) {
+
+    WRITE(SDSS, HIGH);
+    SET_OUTPUT(SDSS);
+
+    pinMode(SCK_PIN, OUTPUT); 
+    pinMode(MOSI_PIN, OUTPUT); 
+
+#if 0
+    SPCR = (1 << SPE) | (1 << MSTR) | (3 >> 1); // Mode 0
+    SPSR = 3 & 1 || 3 == 6 ? 0 : 1 << SPI2X;
+#endif
+  }
+  /** Receive a byte.
+   *
+   * \return The byte.
+   */
+  uint8_t receive() {
+    SPDR = 0XFF;
+    while (!(SPSR & (1 << SPIF))) { /* Intentionally left empty */ }
+    return SPDR;
+  }
+  /** Receive multiple bytes.
+  *
+  * \param[out] buf Buffer to receive the data.
+  * \param[in] n Number of bytes to receive.
+  *
+  * \return Zero for no error or nonzero error code.
+  */
+  uint8_t receive(uint8_t* buf, size_t n) {
+    for (size_t i = 0; i < n; i++) {
+      buf[i] = SDCARD_SPI.transfer(0XFF);
+    }
+    return 0;
+  }
+  /** Send a byte.
+   *
+   * \param[in] data Byte to send
+   */
+  void send(uint8_t data) {
+    SPDR = data;
+    while (!(SPSR & (1 << SPIF))) { /* Intentionally left empty */ }
+  }
+  /** Send multiple bytes.
+   *
+   * \param[in] buf Buffer for data to be sent.
+   * \param[in] n Number of bytes to send.
+   */
+  void send(const uint8_t* buf, size_t n) {
+    for (size_t i = 0; i < n; i++) {
+      SDCARD_SPI.transfer(buf[i]);
+    }
+  }
+  /** Set CS low. */
+  void select() {
+     WRITE(SDSS, LOW);
+  }
+  /** Save SPISettings.
+   *
+   * \param[in] spiSettings SPI speed, mode, and byte order.
+   */
+  void setSpiSettings(SPISettings spiSettings) {
+    // m_spiSettings = spiSettings;
+    SPCR = spiSettings.spcr;
+    SPSR = spiSettings.spsr;
+  }
+  /** Set CS high. */
+  void unselect() {
+    WRITE(SDSS, HIGH);
+  }
+
+ private:
+  // SPISettings m_spiSettings;
+  // uint8_t m_csPin;
+};
+#endif
 
 class SDSwap: public SdSpiCard, public Protothread {
 
@@ -63,8 +155,12 @@ class SDSwap: public SdSpiCard, public Protothread {
     // Number of bytes to shift the block address for non-sdhc cards
     uint8_t blockShift;
 
-    // SdSpiAltDriver m_spi;
-    SdSpiDriver m_spi;
+#if defined(newsdfat)
+    MySpiLibDriver m_spi;
+#else
+    SdSpiAltDriver m_spi;
+#endif
+    // SdSpiLibDriver m_spi;
 
 public:
 
@@ -86,12 +182,6 @@ public:
         } else {
             blockShift = 9;
         }
-
-        // // Set R/W block size.
-        // if ( cardCommand(CMD16, 512) ) {
-            // error(SD_CARD_ERROR_SETBLOCKSIZE);
-            // return false;
-        // }
 
         massert(eraseSingleBlockEnable());
 
@@ -207,87 +297,35 @@ public:
         simassert((size % WCMD_BUFFER_SIZE) == 0); // block write after final partial block is invalid
 
         //////////////////////////////////////////////////////////////////////////////////          
-        // if (cardCommand(CMD24, writeBlockNumber)) {
-            // error(SD_CARD_ERROR_CMD24);
-            // chipSelectHigh();
-            // PT_EXIT(); // xxx or use pt_restart here?
-        // }
 
-        // select card
-        // chipSelectLow();
-        spiStart();
+        // Wait while card is busy, no timeout check!
+        PT_WAIT_WHILE(isBusy());  // isBusy() is doing spiStart()/spiStop()
 
-        // wait up to 300 ms if busy
-        // xxx no timeout yet
-        // waitNotBusy(300);
-        // PT_WAIT_UNTIL(spiRec() == 0XFF);
-        // xxx changed 1
-        PT_WAIT_UNTIL(m_spi.receive() == 0XFF);
+        if (cardCommand(CMD24, writeBlockNumber << blockShift)) { // cardCommand() is doing spiStart()
 
-        // massert(spiRec() == 0XFF);
-        // massert(m_spi.receive() == 0XFF);
-
-        // send command
-        // spiSend(CMD24 | 0x40);
-        m_spi.send(CMD24 | 0x40);
-
-        // send argument, 4 byte sequence
-        // for (int8_t s = 24; s >= 0; s -= 8) spiSend((writeBlockNumber << blockShift) >> s);
-        for (int8_t s = 24; s >= 0; s -= 8) m_spi.send((writeBlockNumber << blockShift) >> s);
-
-        // send CRC
-        // spiSend(0XFF);
-        m_spi.send(0XFF);
-
-        // wait for response 
-        // for (uint8_t i = 0; ((status_ = spiRec()) & 0X80) && i != 0XFF; i++) { /* Intentionally left empty */ }
-        for (uint8_t i = 0; ((m_status = m_spi.receive()) & 0X80) && i != 0XFF; i++) { /* Intentionally left empty */ }
-
-        // return status_;
-        // massert(status_ == 0); // xxx set errorCode_
-
-        // xxx changed 2
-        // massert(m_status == 0); // xxx set errorCode_
-        if (m_status != 0) {
+            killMessage(RespSDWriteError, SD_CARD_ERROR_CMD24, errorData());
+            // notreached
         }
 
-        //////////////////////////////////////////////////////////////////////////////////          
+        if (!writeData(DATA_START_BLOCK, writeBuffer)) { // writeData() does not spiStart() but spiStop() in case of error
 
-        if (!writeData(DATA_START_BLOCK, writeBuffer)) {
-            // writeData raises chipselect on error
-            massert(0); // xxx set errorCode_
+            killMessage(RespSDWriteError, errorCode(), errorData());
+            // notreached
         }
 
-        //////////////////////////////////////////////////////////////////////////////////          
+        spiStop();
 
-        // wait for flash programming to complete
-        // if (!waitNotBusy(SD_WRITE_TIMEOUT)) {
-            // error(SD_CARD_ERROR_WRITE_TIMEOUT);
-            // goto fail;
-        // }
-        // xxx no timeout yet
-        // PT_WAIT_UNTIL(notBusy());
-        PT_WAIT_WHILE(isBusy());
+        // Wait for flash programming to complete, no timeout check!
+        PT_WAIT_WHILE(isBusy()); // isBusy() is doing spiStart()/spiStop()
 
-        // response is r2 so get and check two bytes for nonzero
-        // xxx cardCommand() does some unneccessary stuff like waitNotBusy();
+        if (cardCommand(CMD13, 0) || m_spi.receive()) { // cardCommand() is doing spiStart()
 
-        // if (cardCommand(CMD13, 0) || spiRec()) {
-        if (cardCommand(CMD13, 0) || m_spi.receive()) {
-            // error(SD_CARD_ERROR_WRITE_PROGRAMMING);
-            // error(SD_CARD_ERROR_CMD13);
-            // goto fail;
-            // chipSelectHigh();
-            // spiStop();
-            // PT_EXIT(); // xxx or use pt_restart here?
             killMessage(RespSDWriteError, SD_CARD_ERROR_CMD13, errorData());
             // notreached
         }
 
-        // chipSelectHigh();
         spiStop();
             
-        // return true;
         //////////////////////////////////////////////////////////////////////////////////          
 
         size += writePos;
