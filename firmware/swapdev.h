@@ -21,13 +21,15 @@
 
 #include <Arduino.h>
 
-#include "SdCard/SdSpiCard.h"
-
 #include "Protothread.h"
 #include "Configuration.h"
 #include "pins.h"
 #include "fastio.h"
 #include "mdebug.h"
+
+#include "ddprintspi.h"
+#define SDCARD_SPI dDPrintSpi
+#include "SdCard/SdSpiCard.h"
 
 #if defined(DDSim)
     #define STD std::
@@ -44,10 +46,11 @@
 // #define WCMD_BUFFER_SIZE 1024
 #define WCMD_BUFFER_SIZE 512
 
-#define newsdfat
+// #define newsdfat
 
 #if defined(newsdfat)
-class MySpiLibDriver: public SdSpiBaseDriver
+// class MySpiLibDriver: public SdSpiBaseDriver
+class SdSpiDriver
 {
 
  public:
@@ -156,11 +159,11 @@ class SDSwap: public SdSpiCard, public Protothread {
     uint8_t blockShift;
 
 #if defined(newsdfat)
-    MySpiLibDriver m_spi;
+    // SdSpiDriver m_spi;
 #else
-    SdSpiAltDriver m_spi;
+    // SdSpiAltDriver m_spi;
 #endif
-    // SdSpiLibDriver m_spi;
+    SdSpiLibDriver m_spi;
 
 public:
 
