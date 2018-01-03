@@ -29,7 +29,7 @@ NO_CORE_MAIN_CPP = 1
 include ../../Arduino-Makefile/Arduino.mk
 
 # Mega/Ramps board
-CPPFLAGS      +=  -DMOTHERBOARD=72 -I. -I./fw 
+CPPFLAGS      +=  -DMOTHERBOARD=72 -I.
 CPPFLAGS      +=  -I$(SDFAT)/src 
 
 # Temp. fix depreciated warning in arduino:Print.cpp
