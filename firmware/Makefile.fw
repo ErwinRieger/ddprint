@@ -16,7 +16,7 @@ AVRDUDE_ARD_PROGRAMMER = wiring
 
 SDFAT = ../../SdFat-1.0.5
 
-ARDUINO_LIBS = SPI fw SdCard
+ARDUINO_LIBS = fw SdCard
 
 USER_LIB_PATH = .
 
@@ -31,6 +31,7 @@ include ../../Arduino-Makefile/Arduino.mk
 # Mega/Ramps board
 CPPFLAGS      +=  -DMOTHERBOARD=72 -I.
 CPPFLAGS      +=  -I$(SDFAT)/src 
+CPPFLAGS      +=  -I$(ARDUINO_PLATFORM_LIB_PATH)
 
 # Temp. fix depreciated warning in arduino:Print.cpp
 CPPFLAGS      +=  -D"PGM_P=const char*"
