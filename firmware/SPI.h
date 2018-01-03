@@ -1,3 +1,30 @@
+/*
+* This file is part of ddprint - a direct drive 3D printer firmware.
+* 
+* Copyright 2018 erwin.rieger@ibrieger.de
+* 
+* ddprint is free software: you can redistribute it and/or modify
+* it under the terms of the GNU General Public License as published by
+* the Free Software Foundation, either version 3 of the License, or
+* (at your option) any later version.
+* 
+* ddprint is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU General Public License for more details.
+* 
+* You should have received a copy of the GNU General Public License
+* along with ddprint.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
+/*
+ * Problem with the original Arduino SPI library:
+ *
+ * The Arduino SPI library masks interrupts globally while doing a SPI transaction (at
+ * least with version 1.6.x and 1.8.x, see SPIClass::beginTransaction()).
+ * This leads to a stuttering movement of the stepper motors since the stepper
+ * interrupt is also blocked.
+ */
 
 #pragma once
 
