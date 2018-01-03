@@ -27,8 +27,7 @@
 #include "fastio.h"
 #include "mdebug.h"
 
-#include "ddprintspi.h"
-#define SDCARD_SPI dDPrintSpi
+// Note: this includes OUR version of SPI.h:
 #include "SdCard/SdSpiCard.h"
 
 #if defined(DDSim)
@@ -46,102 +45,6 @@
 // #define WCMD_BUFFER_SIZE 1024
 #define WCMD_BUFFER_SIZE 512
 
-// #define newsdfat
-
-#if defined(newsdfat)
-// class MySpiLibDriver: public SdSpiBaseDriver
-class SdSpiDriver
-{
-
- public:
-  /** Activate SPI hardware. */
-  void activate() {
-  }
-
-  /** Deactivate SPI hardware. */
-  void deactivate() {
-  }
-  /** Initialize the SPI bus.
-   *
-   * \param[in] csPin SD card chip select pin.
-   */
-  void begin(uint8_t csPin) {
-
-    WRITE(SDSS, HIGH);
-    SET_OUTPUT(SDSS);
-
-    pinMode(SCK_PIN, OUTPUT); 
-    pinMode(MOSI_PIN, OUTPUT); 
-
-#if 0
-    SPCR = (1 << SPE) | (1 << MSTR) | (3 >> 1); // Mode 0
-    SPSR = 3 & 1 || 3 == 6 ? 0 : 1 << SPI2X;
-#endif
-  }
-  /** Receive a byte.
-   *
-   * \return The byte.
-   */
-  uint8_t receive() {
-    SPDR = 0XFF;
-    while (!(SPSR & (1 << SPIF))) { /* Intentionally left empty */ }
-    return SPDR;
-  }
-  /** Receive multiple bytes.
-  *
-  * \param[out] buf Buffer to receive the data.
-  * \param[in] n Number of bytes to receive.
-  *
-  * \return Zero for no error or nonzero error code.
-  */
-  uint8_t receive(uint8_t* buf, size_t n) {
-    for (size_t i = 0; i < n; i++) {
-      buf[i] = SDCARD_SPI.transfer(0XFF);
-    }
-    return 0;
-  }
-  /** Send a byte.
-   *
-   * \param[in] data Byte to send
-   */
-  void send(uint8_t data) {
-    SPDR = data;
-    while (!(SPSR & (1 << SPIF))) { /* Intentionally left empty */ }
-  }
-  /** Send multiple bytes.
-   *
-   * \param[in] buf Buffer for data to be sent.
-   * \param[in] n Number of bytes to send.
-   */
-  void send(const uint8_t* buf, size_t n) {
-    for (size_t i = 0; i < n; i++) {
-      SDCARD_SPI.transfer(buf[i]);
-    }
-  }
-  /** Set CS low. */
-  void select() {
-     WRITE(SDSS, LOW);
-  }
-  /** Save SPISettings.
-   *
-   * \param[in] spiSettings SPI speed, mode, and byte order.
-   */
-  void setSpiSettings(SPISettings spiSettings) {
-    // m_spiSettings = spiSettings;
-    SPCR = spiSettings.spcr;
-    SPSR = spiSettings.spsr;
-  }
-  /** Set CS high. */
-  void unselect() {
-    WRITE(SDSS, HIGH);
-  }
-
- private:
-  // SPISettings m_spiSettings;
-  // uint8_t m_csPin;
-};
-#endif
-
 class SDSwap: public SdSpiCard, public Protothread {
 
     uint8_t writeBuffer[WCMD_BUFFER_SIZE];
@@ -158,12 +61,7 @@ class SDSwap: public SdSpiCard, public Protothread {
     // Number of bytes to shift the block address for non-sdhc cards
     uint8_t blockShift;
 
-#if defined(newsdfat)
-    // SdSpiDriver m_spi;
-#else
-    // SdSpiAltDriver m_spi;
-#endif
-    SdSpiLibDriver m_spi;
+    SdSpiAltDriver m_spi;
 
 public:
 
