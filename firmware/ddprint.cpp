@@ -278,6 +278,9 @@ void setup() {
     WRITE(FILSENSNCS, HIGH);
     SET_OUTPUT(FILSENSNCS);
 
+    SET_OUTPUT(SCK_PIN);
+    SET_OUTPUT(MOSI_PIN);
+
     MSerial.begin(BAUDRATE);
     // SERIAL_PROTOCOLLNPGM("start");
 
