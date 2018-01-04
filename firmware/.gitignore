@@ -7,3 +7,5 @@ tags
 swapfile
 sim.gcode
 build*
+SdFat-*
+
