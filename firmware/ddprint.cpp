@@ -410,7 +410,7 @@ class SDReader: public Protothread {
                     PT_WAIT_WHILE(swapDev.isBusyWriting());
                     PT_WAIT_UNTIL(swapDev.available());
 
-                    bufferLength = swapDev.readBlock(buffer);
+                    PT_WAIT_UNTIL((bufferLength = swapDev.readBlock(buffer)) > 0);
 
                     for (i=0; i<bytesToRead; i++) {
                         tempBuffer[haveBytes+i] = buffer[i]; 
@@ -427,7 +427,7 @@ class SDReader: public Protothread {
                     PT_WAIT_WHILE(swapDev.isBusyWriting());
                     PT_WAIT_UNTIL(swapDev.available());
 
-                    bufferLength = swapDev.readBlock(buffer);
+                    PT_WAIT_UNTIL((bufferLength = swapDev.readBlock(buffer)) > 0);
 
                     readData = buffer;
                     bufferPtr = bytesToRead;
@@ -462,7 +462,6 @@ class SDReader: public Protothread {
             //
             swapDev.reset();
         }
-
 };
 
 static SDReader sDReader;

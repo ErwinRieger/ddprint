@@ -25,7 +25,8 @@
 #include "Configuration.h"
 #include "pins.h"
 #include "fastio.h"
-#include "mdebug.h"
+#include "ddserial.h"
+#include "ddcommands.h"
 
 // Note: this includes OUR version of SPI.h:
 #include "SdCard/SdSpiCard.h"
@@ -53,7 +54,10 @@ class SDSwap: public SdSpiCard, public Protothread {
 
     bool busyWriting;
     uint32_t writeBlockNumber;
+
     uint32_t readPos;
+    // Number of consecutive read attempts
+    uint8_t  readRetry;
 
     // Written size in bytes, multiple of WCMD_BUFFER_SIZE
     uint32_t size;
@@ -107,6 +111,7 @@ public:
             Run();
 
         readPos = 0;
+        readRetry = 0;
         writeBlockNumber = 0;
         writePos = 0;
         size = 0;
@@ -169,12 +174,18 @@ public:
 
         if (! SdSpiCard::readBlock(readPos >> 9, dst)) {
 
-            // XXX how shold we handle this? Retry the read?
-            // Note: readBlockEC() retried three times already.
-
             // Return Sd2Card error code and SPI status byte from sd card.
             // In case of SD_CARD_ERROR_CMD17 this is the return status of
             // CMD17 in Sd2Card::cardCommand().
+
+            if (readRetry++ < 5) {
+                // Log error and retry
+                txBuffer.sendSimpleResponse(RespUnsolicitedMsg, RespSDReadError, errorCode(), errorData());
+                return 0;
+            }
+
+            readRetry = 0;
+
             killMessage(RespSDReadError, errorCode(), errorData());
             // notreached
         }
