@@ -225,6 +225,10 @@ class Printer(Serial):
             elif msgType == PidDebug:
                 (pid_dt, pTerm, iTerm, dTerm, pwmSum, pwmOutput) = struct.unpack("<fffffi", payload[1:])
                 self.gui.logRecv("PidDebug: pid_dt: %f, pTerm: %f, iTerm: %f, dTerm: %f, pwmSum: %f, pwmOutput: %d" % (pid_dt, pTerm, iTerm, dTerm, pwmSum, pwmOutput))
+            elif msgType == RespSDReadError:
+                # payload: SD errorcode, SPI status byte
+                (errorCode, spiStatus) = struct.unpack("<BB", payload[1:])
+                self.gui.logError("SDReadErr: errCode: 0x%x, spiStat: 0x%x" % (errorCode, spiStatus))
 
             return True # consume message
 
