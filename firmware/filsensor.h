@@ -25,74 +25,9 @@
 
 #pragma once
 
-#if defined(ADNSFS) || defined(BournsEMS22AFS)
+#if defined(ADNSFS) || defined(BournsEMS22AFS) || defined(PMWFS)
     #define HASFILAMENTSENSOR
 #endif
-
-#if defined(ADNSFS)
-
-    // See also: calibrateFilSensor function of host part.
-    // #define FS_STEPS_PER_MM 265
-    // 8200.0/25.4 = 322.8
-    #define FS_STEPS_PER_MM 323
-#endif
-
-#if defined(BournsEMS22AFS)
-    #define FS_STEPS_PER_MM (1024 / (5.5 * M_PI))
-#endif
-
-#if defined(ADNSFS)
-//
-// ADNS9800 stuff
-//
-// ADNS9800 Registers
-#define REG_Product_ID                           0x00
-#define REG_Revision_ID                          0x01
-#define REG_Motion                               0x02
-#define REG_Delta_X_L                            0x03
-#define REG_Delta_X_H                            0x04
-#define REG_Delta_Y_L                            0x05
-#define REG_Delta_Y_H                            0x06
-#define REG_SQUAL                                0x07
-#define REG_Pixel_Sum                            0x08
-#define REG_Maximum_Pixel                        0x09
-#define REG_Minimum_Pixel                        0x0a
-#define REG_Shutter_Lower                        0x0b
-#define REG_Shutter_Upper                        0x0c
-#define REG_Frame_Period_Lower                   0x0d
-#define REG_Frame_Period_Upper                   0x0e
-#define REG_Configuration_I                      0x0f
-#define REG_Configuration_II                     0x10
-#define REG_Frame_Capture                        0x12
-#define REG_SROM_Enable                          0x13
-#define REG_Run_Downshift                        0x14
-#define REG_Rest1_Rate                           0x15
-#define REG_Rest1_Downshift                      0x16
-#define REG_Rest2_Rate                           0x17
-#define REG_Rest2_Downshift                      0x18
-#define REG_Rest3_Rate                           0x19
-#define REG_Frame_Period_Max_Bound_Lower         0x1a
-#define REG_Frame_Period_Max_Bound_Upper         0x1b
-#define REG_Frame_Period_Min_Bound_Lower         0x1c
-#define REG_Frame_Period_Min_Bound_Upper         0x1d
-#define REG_Shutter_Max_Bound_Lower              0x1e
-#define REG_Shutter_Max_Bound_Upper              0x1f
-#define REG_LASER_CTRL0                          0x20
-#define REG_Observation                          0x24
-#define REG_Data_Out_Lower                       0x25
-#define REG_Data_Out_Upper                       0x26
-#define REG_SROM_ID                              0x2a
-#define REG_Lift_Detection_Thr                   0x2e
-#define REG_Configuration_V                      0x2f
-#define REG_Configuration_IV                     0x39
-#define REG_Power_Up_Reset                       0x3a
-#define REG_Shutdown                             0x3b
-#define REG_Inverse_Product_ID                   0x3f
-#define REG_Snap_Angle                           0x42
-#define REG_Motion_Burst                         0x50
-#define REG_SROM_Load_Burst                      0x62
-#define REG_Pixel_Burst                          0x64
-
 
 // #if 0
 // Weight for exponential filter of e-speed [percent]
@@ -194,6 +129,171 @@ class RunningAvgF {
     void reset(float av = 0) { n = 0; avg = av;}
 };
 
+#if defined(PMWFS)
+
+//
+// PMW3360 stuff
+//
+// PMW3360 Registers
+// Registers
+#define Product_ID  0x00
+#define Revision_ID 0x01
+#define Motion  0x02
+#define Delta_X_L 0x03
+#define Delta_X_H 0x04
+#define Delta_Y_L 0x05
+#define Delta_Y_H 0x06
+#define SQUAL 0x07
+#define Raw_Data_Sum  0x08
+#define Maximum_Raw_data  0x09
+#define Minimum_Raw_data  0x0A
+#define Shutter_Lower 0x0B
+#define Shutter_Upper 0x0C
+#define Control 0x0D
+#define Config1 0x0F
+#define Config2 0x10
+#define Angle_Tune  0x11
+#define Frame_Capture 0x12
+#define SROM_Enable 0x13
+#define Run_Downshift 0x14
+#define Rest1_Rate_Lower  0x15
+#define Rest1_Rate_Upper  0x16
+#define Rest1_Downshift 0x17
+#define Rest2_Rate_Lower  0x18
+#define Rest2_Rate_Upper  0x19
+#define Rest2_Downshift 0x1A
+#define Rest3_Rate_Lower  0x1B
+#define Rest3_Rate_Upper  0x1C
+#define Observation 0x24
+#define Data_Out_Lower  0x25
+#define Data_Out_Upper  0x26
+#define Raw_Data_Dump 0x29
+#define SROM_ID 0x2A
+#define Min_SQ_Run  0x2B
+#define Raw_Data_Threshold  0x2C
+#define Config5 0x2F
+#define Power_Up_Reset  0x3A
+#define Shutdown  0x3B
+#define Inverse_Product_ID  0x3F
+#define LiftCutoff_Tune3  0x41
+#define Angle_Snap  0x42
+#define LiftCutoff_Tune1  0x4A
+#define Motion_Burst  0x50
+#define LiftCutoff_Tune_Timeout 0x58
+#define LiftCutoff_Tune_Min_Length  0x5A
+#define SROM_Load_Burst 0x62
+#define Lift_Config 0x63
+#define Raw_Data_Burst  0x64
+#define LiftCutoff_Tune2  0x65
+
+/*
+ * Inteface to a PMW3360 'Mousesensor'
+ */
+class FilamentSensorPMW3360 {
+
+        uint32_t lastTSs;
+        int32_t lastASteps;
+
+        uint8_t readLoc(uint8_t addr);
+        void writeLoc(uint8_t addr, uint8_t value);
+        uint8_t pullbyte();
+        int16_t getDY();
+
+        // Ratio of Measured filament speed to stepper speed [0.5%]
+        // uint8_t grip;
+        bool feedrateLimiterEnabled;
+
+    public:
+
+        // Ratio of target e-steps and filament sensor steps, this is a 
+        // measure of the *feeder slippage*.
+        RunningAvgF slippage;
+
+        // Factor to slow down movement because feeder slippage is greater than 10%.
+        float grip;
+
+        FilamentSensorPMW3360();
+        void init();
+        void reset();
+
+        // The polling method
+        void run();
+        void selfTest();
+
+        void enableFeedrateLimiter(bool flag) { feedrateLimiterEnabled = flag; }
+};
+
+extern FilamentSensorPMW3360 filamentSensor;
+
+#endif // #if defined(PMWFS)
+
+#if 0
+#if defined(ADNSFS)
+
+    // See also: calibrateFilSensor function of host part.
+    // #define FS_STEPS_PER_MM 265
+    // 8200.0/25.4 = 322.8
+    #define FS_STEPS_PER_MM 323
+#endif
+#endif
+
+#if defined(BournsEMS22AFS)
+    #define FS_STEPS_PER_MM (1024 / (5.5 * M_PI))
+#endif
+
+#if defined(ADNSFS)
+//
+// ADNS9800 stuff
+//
+// ADNS9800 Registers
+#define REG_Product_ID                           0x00
+#define REG_Revision_ID                          0x01
+#define REG_Motion                               0x02
+#define REG_Delta_X_L                            0x03
+#define REG_Delta_X_H                            0x04
+#define REG_Delta_Y_L                            0x05
+#define REG_Delta_Y_H                            0x06
+#define REG_SQUAL                                0x07
+#define REG_Pixel_Sum                            0x08
+#define REG_Maximum_Pixel                        0x09
+#define REG_Minimum_Pixel                        0x0a
+#define REG_Shutter_Lower                        0x0b
+#define REG_Shutter_Upper                        0x0c
+#define REG_Frame_Period_Lower                   0x0d
+#define REG_Frame_Period_Upper                   0x0e
+#define REG_Configuration_I                      0x0f
+#define REG_Configuration_II                     0x10
+#define REG_Frame_Capture                        0x12
+#define REG_SROM_Enable                          0x13
+#define REG_Run_Downshift                        0x14
+#define REG_Rest1_Rate                           0x15
+#define REG_Rest1_Downshift                      0x16
+#define REG_Rest2_Rate                           0x17
+#define REG_Rest2_Downshift                      0x18
+#define REG_Rest3_Rate                           0x19
+#define REG_Frame_Period_Max_Bound_Lower         0x1a
+#define REG_Frame_Period_Max_Bound_Upper         0x1b
+#define REG_Frame_Period_Min_Bound_Lower         0x1c
+#define REG_Frame_Period_Min_Bound_Upper         0x1d
+#define REG_Shutter_Max_Bound_Lower              0x1e
+#define REG_Shutter_Max_Bound_Upper              0x1f
+#define REG_LASER_CTRL0                          0x20
+#define REG_Observation                          0x24
+#define REG_Data_Out_Lower                       0x25
+#define REG_Data_Out_Upper                       0x26
+#define REG_SROM_ID                              0x2a
+#define REG_Lift_Detection_Thr                   0x2e
+#define REG_Configuration_V                      0x2f
+#define REG_Configuration_IV                     0x39
+#define REG_Power_Up_Reset                       0x3a
+#define REG_Shutdown                             0x3b
+#define REG_Inverse_Product_ID                   0x3f
+#define REG_Snap_Angle                           0x42
+#define REG_Motion_Burst                         0x50
+#define REG_SROM_Load_Burst                      0x62
+#define REG_Pixel_Burst                          0x64
+
+
 /*
  * Inteface to a ADNS9800 'Mousesensor'
  */
@@ -248,7 +348,7 @@ class FilamentSensorADNS9800 {
 
 extern FilamentSensorADNS9800 filamentSensor;
 
-#endif // #if defgrip(ADNSFS)
+#endif // #if defined(ADNSFS)
 
 #if defined(BournsEMS22AFS)
 

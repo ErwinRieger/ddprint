@@ -57,9 +57,311 @@
 
 #define FilSensorDebug 1
 
-#if defined(ADNSFS)
+#if defined(ADNSFS) || defined(PMWFS)
+    SPISettings spiSettingsFS(4000000, MSBFIRST, SPI_MODE3);
+#endif
 
-SPISettings spiSettingsFS(4000000, MSBFIRST, SPI_MODE3);
+#if defined(PMWFS)
+
+#include "pmw3360fw.h"
+
+FilamentSensorPMW3360 filamentSensor;
+
+FilamentSensorPMW3360::FilamentSensorPMW3360() {
+
+    // maxTempSpeed = 0;
+
+    feedrateLimiterEnabled = true;
+
+    init();
+}
+
+void FilamentSensorPMW3360::init() {
+
+    slippage.reset(1.0);
+    grip = 1.0;
+
+    lastASteps = current_pos_steps[E_AXIS];
+    lastTSs = micros();
+}
+
+uint8_t FilamentSensorPMW3360::readLoc(uint8_t addr){
+
+  WRITE(FILSENSNCS, LOW);
+  dDPrintSpi.transfer(addr);
+  delayMicroseconds(100); // Tsrad
+
+  uint8_t ret = dDPrintSpi.transfer(0);
+  delayMicroseconds(1); // tSCLK-NCS for read operation is 120ns
+
+  WRITE(FILSENSNCS, HIGH);
+  delayMicroseconds(19); // tSRW/tSRR (=20us) minus tSCLK-NCS 
+  return ret;
+}
+
+void FilamentSensorPMW3360::writeLoc(uint8_t addr, uint8_t value) {
+
+  WRITE(FILSENSNCS, LOW);
+  dDPrintSpi.transfer(addr | 0x80);
+
+  dDPrintSpi.transfer(value);
+
+  delayMicroseconds(20); // tSCLK-NCS for write operation
+  WRITE(FILSENSNCS, HIGH);
+  delayMicroseconds(100); // tSWW/tSWR (=120us) minus tSCLK-NCS. Could be shortened, but is looks like a safe lower bound 
+}
+
+int16_t FilamentSensorPMW3360::getDY() {
+
+    //write 0x01 to Motion register and read from it to freeze the motion values and make them available
+    writeLoc(Motion, 0x01);
+    uint8_t mot = readLoc(Motion);
+
+    if (mot & 0x80) { // Motion register
+
+#if !defined(burst)
+        // XXX x_delta must be read also?!
+        readLoc(Delta_X_L); // X_L
+        readLoc(Delta_X_H); // X_H
+
+        uint8_t y = readLoc(Delta_Y_L); // Y_L
+        int8_t yh = readLoc(Delta_Y_H);
+#endif
+
+        int16_t dy = ((int16_t)yh << 8) | y;
+
+        lcd.setCursor(0, 1); lcd.print("          ");
+        lcd.setCursor(0, 1); lcd.print(y);
+
+        if (! dy) return 0;
+
+        // yPos += dy;
+
+#if !defined(burst)
+        // uint8_t squal = readLoc(REG_SQUAL);
+        // uint16_t shutter = ((uint16_t)readLoc(REG_Shutter_Upper)<<8) | readLoc(REG_Shutter_Lower);
+#endif
+
+        return dy;
+    }
+
+    return 0;
+}
+
+//
+// xxx hardcoded, download from printer profile...
+// Ratio of filamentSensorCounts to stepperSteps at different
+// speeds:
+//
+//      filSensorCalibration[speed*4] = filSensorCounts / stepperSteps
+//
+#define NFilSensorCalibration 60
+static float filSensorCalibration[60] = {
+ 1.352941,
+ 1.612813,
+ 1.679418,
+ 1.770331,
+ 1.701769,
+ 1.825974,
+ 1.747586,
+ 1.809160,
+ 1.849475,
+ 1.830849,
+ 1.921773,
+ 1.884950,
+ 1.903342,
+ 1.848799,
+ 1.875777,
+ 1.891645,
+ 1.899160,
+ 1.886221,
+ 1.887608,
+ 1.878118,
+ 1.893097,
+ 1.886515,
+ 1.896903,
+ 1.877345,
+ 1.881102,
+ 1.904951,
+ 1.882091,
+ 1.905633,
+ 1.891291,
+ 1.900309,
+ 1.893599,
+ 1.896616,
+ 1.893077,
+ 1.900136,
+ 1.889184,
+ 1.891020,
+ 1.893207,
+ 1.898567,
+ 1.899326,
+ 1.900814,
+ 1.902579,
+ 1.898798,
+ 1.901320,
+ 1.898721,
+ 1.896739,
+ 1.899092,
+ 1.905391,
+ 1.894495,
+ 1.900616,
+ 1.911575,
+ 1.896576,
+ 1.901797,
+ 1.908106,
+ 1.905327,
+ 1.901421,
+ 1.903541,
+ 1.904031,
+ 1.901099,
+ 1.910934,
+ 1.898067,
+};
+
+#define kLimit 2.0
+
+void FilamentSensorPMW3360::run() {
+
+    // Berechne soll flowrate, filamentsensor ist sehr ungenau bei kleiner geschwindigkeit.
+
+    CRITICAL_SECTION_START
+    long astep = current_pos_steps[E_AXIS];
+    CRITICAL_SECTION_END
+
+    float ds = astep - lastASteps; // Requested extruded length
+
+    uint32_t ts = micros();
+
+    if (ds < 0) {
+
+        // reverse
+        lastTSs = ts;
+        lastASteps = astep;
+    }
+    if (ds > 50) {
+
+        dDPrintSpi.beginTransaction(spiSettingsFS);
+        int16_t dy = getDY(); // read distance delta from filament sensor
+
+        int32_t dt = ts - lastTSs;  // time delta
+
+        float ratio = dy / ds;
+
+        // slippage.addValue(ratio);
+
+        // Compute stepper (= target) speed to get flowrate sensor calibration factor
+        float stepperSpeed = (ds * (1000000.0 / AXIS_STEPS_PER_MM_E)) / dt;
+
+        uint8_t calIndex = STD min((uint8_t)(NFilSensorCalibration-1), (uint8_t)(stepperSpeed/0.25));
+
+        // float cal = filSensorCalibration[calIndex] * 0.95; // allow 5% slip
+
+        // Slippage >= 0.0
+        if (ratio > 0)
+            slippage.addValue(filSensorCalibration[calIndex] / ratio);
+        else
+            slippage.addValue(10.0);
+
+        if (feedrateLimiterEnabled) {
+
+            // float g = max(1.0, (cal / slippage.value() - 1) * kLimit + 1);
+            float allowedSlippage = slippage.value() * 0.90; // allow for 10% slip
+            float g = max(1.0, (allowedSlippage - 1.0) * kLimit + 1.0);
+            grip = STD min((float)3.0, g);
+        }
+
+        /*
+        lcd.setCursor(0, 0); lcd.print("Speed:"); lcd.print(stepperSpeed); lcd.print("I:"); lcd.print(calIndex); lcd.print("     ");
+        lcd.setCursor(0, 1); lcd.print("Cal  :"); lcd.print(cal); lcd.print("     ");
+        */
+
+        /*
+        lcd.setCursor(0, 0); lcd.print("DS:"); lcd.print(ds); lcd.print("     ");
+        lcd.setCursor(0, 1); lcd.print("DY:"); lcd.print(dy); lcd.print("     ");
+        lcd.setCursor(0, 2); lcd.print("RA:"); lcd.print(ratio); lcd.print("     ");
+        lcd.setCursor(0, 3); lcd.print("RA:"); lcd.print(slippage.value()); lcd.print(" "); lcd.print(grip); lcd.print("     ");
+        */
+
+        lastTSs = ts;
+        lastASteps = astep;
+    }
+}
+
+void FilamentSensorPMW3360::reset(){
+
+    // return;
+
+    dDPrintSpi.beginTransaction(spiSettingsFS);
+
+    WRITE(FILSENSNCS, HIGH); // adns_com_end(); // ensure that the serial port is reset
+    WRITE(FILSENSNCS, LOW); // adns_com_begin(); // ensure that the serial port is reset
+    WRITE(FILSENSNCS, HIGH); // adns_com_end(); // ensure that the serial port is reset
+
+    writeLoc(Power_Up_Reset, 0x5a); // force reset
+    delay(50); // wait for it to reboot
+
+    // read registers 0x02 to 0x06 (and discard the data)
+    readLoc(Motion);
+    readLoc(Delta_X_L);
+    readLoc(Delta_X_H);
+    readLoc(Delta_Y_L);
+    readLoc(Delta_Y_H);
+
+    /////////////////////////////////////////////////////////////
+    // send the firmware to the chip, cf p.18 of the datasheet
+
+    //Write 0 to Rest_En bit of Config2 register to disable Rest mode.
+    writeLoc(Config2, 0x20);
+  
+    // write 0x1d in SROM_enable reg for initializing
+    writeLoc(SROM_Enable, 0x1d); 
+  
+    // wait for more than one frame period
+    delay(10); // assume that the frame rate is as low as 100fps... even if it should never be that low
+  
+    // write 0x18 to SROM_enable to start SROM download
+    writeLoc(SROM_Enable, 0x18); 
+  
+    // write the SROM file (=firmware data) 
+    WRITE(FILSENSNCS, LOW); // adns_com_begin();
+    dDPrintSpi.transfer(SROM_Load_Burst | 0x80); // write burst destination adress
+    delayMicroseconds(15);
+  
+    // send all bytes of the firmware
+    unsigned char c;
+    for(uint16_t i = 0; i < sizeof(firmware_data); i++){ 
+        c = (unsigned char)pgm_read_byte(firmware_data + i);
+        dDPrintSpi.transfer(c);
+        delayMicroseconds(15);
+    }
+
+    WRITE(FILSENSNCS, HIGH); // adns_com_end();
+
+    //Read the SROM_ID register to verify the ID before any other register reads or writes.
+    uint8_t srom_id = readLoc(SROM_ID);
+
+    //Write 0x00 to Config2 register for wired mouse or 0x20 for wireless mouse design.
+    writeLoc(Config2, 0x00);
+
+    // set initial CPI resolution
+    writeLoc(Config1, 0x15);
+  
+    // WRITE(FILSENSNCS, HIGH); // adns_com_end();
+
+    /////////////////////////////////////////////////////////////
+    delay(10);
+
+    if (srom_id != SROMVER) {
+        LCDMSGKILL(RespKilled, "srom_id != SROMVER", srom_id);
+        txBuffer.sendSimpleResponse(RespKilled, RespFilsensorInit);
+        kill();
+    }
+}
+
+#endif // #if defined(PMWFS)
+
+#if defined(ADNSFS)
 
 FilamentSensorADNS9800 filamentSensor;
 
@@ -119,10 +421,6 @@ void FilamentSensorADNS9800::writeLoc(uint8_t addr, uint8_t value) {
   WRITE(FILSENSNCS, HIGH);
 }
 
-#define FTIMER (F_CPU/8.0)
-#include <pins_arduino.h>
-
-// xxx retval not used
 int16_t FilamentSensorADNS9800::getDY() {
 
     uint8_t mot = readLoc(REG_Motion); // this freezes the X/Y registers until they are read
@@ -149,13 +447,19 @@ int16_t FilamentSensorADNS9800::getDY() {
         // uint16_t shutter = ((uint16_t)readLoc(REG_Shutter_Upper)<<8) | readLoc(REG_Shutter_Lower);
 #endif
 
-        return dy; // xxx result not used
+        return dy;
     }
 
     return 0;
 }
 
+//
 // xxx hardcoded, download from printer profile...
+// Ratio of filamentSensorCounts to stepperSteps at different
+// speeds:
+//
+//      filSensorCalibration[speed*4] = filSensorCounts / stepperSteps
+//
 #define NFilSensorCalibration 60
 static float filSensorCalibration[60] = {
  1.352941,
@@ -239,8 +543,8 @@ void FilamentSensorADNS9800::run() {
         // int32_t dt = ts - lastTSs;
 
         // i16          = int         / int
-        // int16_t tgtSpeed = (ds * (100000000/AXIS_STEPS_PER_MM_E)) / dt;
-        // targetSpeed.addValue(tgtSpeed);
+        // int16_t stepperSpeed = (ds * (100000000/AXIS_STEPS_PER_MM_E)) / dt;
+        // targetSpeed.addValue(stepperSpeed);
         // targetSpeed = (ds * (100000000/AXIS_STEPS_PER_MM_E)) / dt;
 
         // lastTSs = ts;
@@ -278,21 +582,21 @@ void FilamentSensorADNS9800::run() {
     if (ds > 50) {
 
         dDPrintSpi.beginTransaction(spiSettingsFS);
-        int16_t dy = getDY();
+        int16_t dy = getDY(); // read distance delta from filament sensor
 
         // int32_t dy = yPos - lastYPos; // Real extruded length
 
         uint32_t ts = micros();
-        int32_t dt = ts - lastTSs;
+        int32_t dt = ts - lastTSs;  // time delta
 
         float ratio = dy / ds;
 
         // slippage.addValue(ratio);
 
-        // Compute current speed to get flowrate sensor calibration factor
-        float tgtSpeed = (ds * (1000000.0 / AXIS_STEPS_PER_MM_E)) / dt;
+        // Compute stepper (= target) speed to get flowrate sensor calibration factor
+        float stepperSpeed = (ds * (1000000.0 / AXIS_STEPS_PER_MM_E)) / dt;
 
-        uint8_t calIndex = STD min((uint8_t)(NFilSensorCalibration-1), (uint8_t)(tgtSpeed/0.25));
+        uint8_t calIndex = STD min((uint8_t)(NFilSensorCalibration-1), (uint8_t)(stepperSpeed/0.25));
 
         // float cal = filSensorCalibration[calIndex] * 0.95; // allow 5% slip
 
@@ -311,7 +615,7 @@ void FilamentSensorADNS9800::run() {
         }
 
         /*
-        lcd.setCursor(0, 0); lcd.print("Speed:"); lcd.print(tgtSpeed); lcd.print("I:"); lcd.print(calIndex); lcd.print("     ");
+        lcd.setCursor(0, 0); lcd.print("Speed:"); lcd.print(stepperSpeed); lcd.print("I:"); lcd.print(calIndex); lcd.print("     ");
         lcd.setCursor(0, 1); lcd.print("Cal  :"); lcd.print(cal); lcd.print("     ");
         */
 
@@ -404,7 +708,7 @@ void FilamentSensorADNS9800::reset(){
     
     if (srom_id != SROMVER) {
         LCDMSGKILL(RespKilled, "srom_id != SROMVER", "");
-        txBuffer.sendSimpleResponse(RespKilled, RespADNS9800Init);
+        txBuffer.sendSimpleResponse(RespKilled, RespFilsensorInit);
         kill();
     }
 
@@ -518,9 +822,6 @@ void FilamentSensor::spiInit(uint8_t spiRate) {
   SPCR = (1 << SPE) | (1 << MSTR) | (spiRate >> 1) | (1<<CPHA); // Mode 1
   SPSR = spiRate & 1 || spiRate == 6 ? 0 : 1 << SPI2X;
 }
-
-#define FTIMER (F_CPU/8.0)
-#include <pins_arduino.h>
 
 uint16_t FilamentSensor::readEncoderPos() {
 
