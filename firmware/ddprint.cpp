@@ -317,14 +317,13 @@ void setup() {
     lcd.print("OK");
     #endif
     
-
     if (! swapDev.swapInit()) {
-        LCDMSGKILL(RespSDInit, "swapDev.swapInit()", "");
+        LCDMSGKILL(RespSDInit, "swapInit()", "");
         txBuffer.sendSimpleResponse(RespKilled, RespSDInit);
         kill();
     }
 
-#if defined(ADNSFS)
+#if defined(ADNSFS) || defined(PMWFS)
     filamentSensor.reset();
 #endif
 
