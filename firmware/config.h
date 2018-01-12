@@ -25,7 +25,9 @@
 
 // #if MOTHERBOARD != 33
 // Use ADNS9800 as a flowrate sensor
-#define ADNSFS 1
+// #define ADNSFS 1
+// Use PMW3360 as a flowrate sensor
+#define PMWFS 1
 // #endif
 
 // Use Bourns ems22a Rotary Encoder as a flowrate sensor
