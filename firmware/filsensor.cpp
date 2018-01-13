@@ -338,19 +338,27 @@ void FilamentSensorPMW3360::reset(){
 
     WRITE(FILSENSNCS, HIGH); // adns_com_end();
 
+    delay(1);
+
     //Read the SROM_ID register to verify the ID before any other register reads or writes.
     uint8_t srom_id = readLoc(SROM_ID);
 
-    //Write 0x00 to Config2 register for wired mouse or 0x20 for wireless mouse design.
+    //
+    // Write 0x00 to Config2 register for wired mouse or 0x20 for wireless mouse design.
+    // Wireless mode is powersaving mode (REST MODE).
+    //
     writeLoc(Config2, 0x00);
 
-    // set initial CPI resolution
-    writeLoc(Config1, 0x15);
+    // set initial CPI resolution, 5000 cpi is default cpi
+    // writeLoc(Config1, 0x15);
   
     // WRITE(FILSENSNCS, HIGH); // adns_com_end();
 
+    uint8_t snap = readLoc(Angle_Snap);
+        writeLoc(Angle_Snap, snap | 0x80);
+
     /////////////////////////////////////////////////////////////
-    delay(10);
+    // delay(10);
 
     if (srom_id != SROMVER) {
         LCDMSGKILL(RespKilled, "srom_id != SROMVER", srom_id);
