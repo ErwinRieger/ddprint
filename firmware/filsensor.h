@@ -191,7 +191,6 @@ class RunningAvgF {
  */
 class FilamentSensorPMW3360 {
 
-        uint32_t lastTSs;
         int32_t lastASteps;
 
         uint8_t readLoc(uint8_t addr);
@@ -199,9 +198,14 @@ class FilamentSensorPMW3360 {
         uint8_t pullbyte();
         int16_t getDY();
 
-        // Ratio of Measured filament speed to stepper speed [0.5%]
-        // uint8_t grip;
         bool feedrateLimiterEnabled;
+
+        // Ratio between measured filament sensor couns and the 
+        // extruder stepper motor steps.
+        // For example if steps per mm of the extruder stepper is 141 and
+        // the resolution of the filament sensor is 5000 cpi, then:
+        // filSensorCalibration = 197 Counts / 141 Steps = 1.4
+        float filSensorCalibration;
 
     public:
 
@@ -221,6 +225,7 @@ class FilamentSensorPMW3360 {
         void selfTest();
 
         void enableFeedrateLimiter(bool flag) { feedrateLimiterEnabled = flag; }
+        void setFilSensorCalibration(float fc) { filSensorCalibration = fc; }
 };
 
 extern FilamentSensorPMW3360 filamentSensor;
@@ -302,7 +307,6 @@ class FilamentSensorADNS9800 {
         uint32_t lastTSs;
         int32_t lastASteps;
         // uint32_t lastTSf;
-        // int32_t lastYPos;
 
         uint8_t readLoc(uint8_t addr);
         void writeLoc(uint8_t addr, uint8_t value);
@@ -362,7 +366,6 @@ class FilamentSensor {
         int16_t lastEncoderPos;
 
         int32_t lastASteps;
-        // int32_t lastYPos;
         uint32_t lastTS;
 
         void spiInit(uint8_t spiRate);
@@ -374,8 +377,6 @@ class FilamentSensor {
         // bool feedrateLimiterEnabled;
 
         float slip; // xxx rename to grip
-        // xxx use a better name
-        // uint16_t maxTempSpeed;
 
         FilamentSensor();
         void init();

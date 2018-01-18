@@ -69,9 +69,8 @@ FilamentSensorPMW3360 filamentSensor;
 
 FilamentSensorPMW3360::FilamentSensorPMW3360() {
 
-    // maxTempSpeed = 0;
-
     feedrateLimiterEnabled = true;
+    filSensorCalibration= 1.397;
 
     init();
 }
@@ -82,7 +81,6 @@ void FilamentSensorPMW3360::init() {
     grip = 1.0;
 
     lastASteps = current_pos_steps[E_AXIS];
-    lastTSs = micros();
 }
 
 uint8_t FilamentSensorPMW3360::readLoc(uint8_t addr){
@@ -133,91 +131,11 @@ int16_t FilamentSensorPMW3360::getDY() {
         // lcd.setCursor(0, 1); lcd.print("          ");
         // lcd.setCursor(0, 1); lcd.print(y);
 
-        if (! dy) return 0;
-
-        // yPos += dy;
-
-#if !defined(burst)
-        // uint8_t squal = readLoc(REG_SQUAL);
-        // uint16_t shutter = ((uint16_t)readLoc(REG_Shutter_Upper)<<8) | readLoc(REG_Shutter_Lower);
-#endif
-
         return dy;
     }
 
     return 0;
 }
-
-//
-// xxx hardcoded, download from printer profile...
-// Ratio of filamentSensorCounts to stepperSteps at different
-// speeds:
-//
-//      filSensorCalibration[speed*4] = filSensorCounts / stepperSteps
-//
-#define NFilSensorCalibration 60
-static float filSensorCalibration[60] = {
- 1.352941,
- 1.612813,
- 1.679418,
- 1.770331,
- 1.701769,
- 1.825974,
- 1.747586,
- 1.809160,
- 1.849475,
- 1.830849,
- 1.921773,
- 1.884950,
- 1.903342,
- 1.848799,
- 1.875777,
- 1.891645,
- 1.899160,
- 1.886221,
- 1.887608,
- 1.878118,
- 1.893097,
- 1.886515,
- 1.896903,
- 1.877345,
- 1.881102,
- 1.904951,
- 1.882091,
- 1.905633,
- 1.891291,
- 1.900309,
- 1.893599,
- 1.896616,
- 1.893077,
- 1.900136,
- 1.889184,
- 1.891020,
- 1.893207,
- 1.898567,
- 1.899326,
- 1.900814,
- 1.902579,
- 1.898798,
- 1.901320,
- 1.898721,
- 1.896739,
- 1.899092,
- 1.905391,
- 1.894495,
- 1.900616,
- 1.911575,
- 1.896576,
- 1.901797,
- 1.908106,
- 1.905327,
- 1.901421,
- 1.903541,
- 1.904031,
- 1.901099,
- 1.910934,
- 1.898067,
-};
 
 #define kLimit 2.0
 
@@ -229,56 +147,54 @@ void FilamentSensorPMW3360::run() {
     long astep = current_pos_steps[E_AXIS];
     CRITICAL_SECTION_END
 
-    float ds = astep - lastASteps; // Requested extruded length
+    float deltaStepperSteps = astep - lastASteps; // Requested extruded length
 
-    if (ds > 50) {
+    if (deltaStepperSteps > 40.0) {
 
         dDPrintSpi.beginTransaction(spiSettingsFS);
-        int16_t dy = getDY(); // read distance delta from filament sensor
+        int16_t deltaSensorSteps = getDY(); // read distance delta from filament sensor
 
-        uint32_t ts = micros();
-        int32_t dt = ts - lastTSs;  // time delta
+        //
+        // Compute the amount of "feeder slippage"
+        //
+        // Slippage is 1.0 if the feeder does not slip, then the amount of feed filament is
+        // exactly the amount that should be extruded.
+        //
+        // Normally slippage is greater 1.0 since there is always some back-pressure in the
+        // filament and therefore the amount of filamnet fed is lower than it should be.
+        //
+        if (deltaSensorSteps > 0) {
 
-        float ratio = dy / ds;
-
-        // slippage.addValue(ratio);
-
-        // Compute stepper (= target) speed to get flowrate sensor calibration factor
-        float stepperSpeed = (ds * (1000000.0 / AXIS_STEPS_PER_MM_E)) / dt;
-
-        uint8_t calIndex = STD min((uint8_t)(NFilSensorCalibration-1), (uint8_t)(stepperSpeed/0.25));
-
-        // float cal = filSensorCalibration[calIndex] * 0.95; // allow 5% slip
-
-        // Slippage >= 0.0
-        if (ratio > 0)
-            slippage.addValue(filSensorCalibration[calIndex] / ratio);
+            float slip = (deltaStepperSteps * filSensorCalibration) / deltaSensorSteps;
+            slippage.addValue(slip);
+        }
         else {
-            // dy is 0
-            slippage.addValue(10.0);
+
+            // No measurement from filament sensor:
+            //   * no filament
+            //   * filament grinding
+            //   * some hardware failure
+            if (deltaStepperSteps > 1000.0) {
+
+                slippage.addValue(10);
+            }
+            return;
         }
 
         if (feedrateLimiterEnabled) {
 
-            // float g = max(1.0, (cal / slippage.value() - 1) * kLimit + 1);
-            float allowedSlippage = slippage.value() * 0.90; // allow for 10% slip
+            float allowedSlippage = slippage.value() * 0.90; // allow for 10% slip before we slow down
             float g = max(1.0, (allowedSlippage - 1.0) * kLimit + 1.0);
             grip = STD min((float)3.0, g);
         }
 
         /*
-        lcd.setCursor(0, 0); lcd.print("Speed:"); lcd.print(stepperSpeed); lcd.print("I:"); lcd.print(calIndex); lcd.print("     ");
-        lcd.setCursor(0, 1); lcd.print("Cal  :"); lcd.print(cal); lcd.print("     ");
-        */
-
-        /*
-        lcd.setCursor(0, 0); lcd.print("DS:"); lcd.print(ds); lcd.print("     ");
-        lcd.setCursor(0, 1); lcd.print("DY:"); lcd.print(dy); lcd.print("     ");
+        lcd.setCursor(0, 0); lcd.print("DS:"); lcd.print(deltaStepperSteps); lcd.print("     ");
+        lcd.setCursor(0, 1); lcd.print("DY:"); lcd.print(deltaSensorSteps); lcd.print("     ");
         lcd.setCursor(0, 2); lcd.print("RA:"); lcd.print(ratio); lcd.print("     ");
         lcd.setCursor(0, 3); lcd.print("RA:"); lcd.print(slippage.value()); lcd.print(" "); lcd.print(grip); lcd.print("     ");
         */
 
-        lastTSs = ts;
         lastASteps = astep;
     }
 }
@@ -370,8 +286,6 @@ FilamentSensorADNS9800 filamentSensor;
 
 FilamentSensorADNS9800::FilamentSensorADNS9800() {
 
-    // maxTempSpeed = 0;
-
     feedrateLimiterEnabled = true;
 
     init();
@@ -380,8 +294,6 @@ FilamentSensorADNS9800::FilamentSensorADNS9800() {
 void FilamentSensorADNS9800::init() {
 
     // yPos = 0;
-    // lastYPos = 0;
-    // getDY();
 
     slippage.reset(1.0);
     grip = 1.0;
@@ -441,91 +353,11 @@ int16_t FilamentSensorADNS9800::getDY() {
 
         int16_t dy = ((int16_t)yh << 8) | y;
 
-        if (! dy) return 0;
-
-        // yPos += dy;
-
-#if !defined(burst)
-        // uint8_t squal = readLoc(REG_SQUAL);
-        // uint16_t shutter = ((uint16_t)readLoc(REG_Shutter_Upper)<<8) | readLoc(REG_Shutter_Lower);
-#endif
-
         return dy;
     }
 
     return 0;
 }
-
-//
-// xxx hardcoded, download from printer profile...
-// Ratio of filamentSensorCounts to stepperSteps at different
-// speeds:
-//
-//      filSensorCalibration[speed*4] = filSensorCounts / stepperSteps
-//
-#define NFilSensorCalibration 60
-static float filSensorCalibration[60] = {
- 1.352941,
- 1.612813,
- 1.679418,
- 1.770331,
- 1.701769,
- 1.825974,
- 1.747586,
- 1.809160,
- 1.849475,
- 1.830849,
- 1.921773,
- 1.884950,
- 1.903342,
- 1.848799,
- 1.875777,
- 1.891645,
- 1.899160,
- 1.886221,
- 1.887608,
- 1.878118,
- 1.893097,
- 1.886515,
- 1.896903,
- 1.877345,
- 1.881102,
- 1.904951,
- 1.882091,
- 1.905633,
- 1.891291,
- 1.900309,
- 1.893599,
- 1.896616,
- 1.893077,
- 1.900136,
- 1.889184,
- 1.891020,
- 1.893207,
- 1.898567,
- 1.899326,
- 1.900814,
- 1.902579,
- 1.898798,
- 1.901320,
- 1.898721,
- 1.896739,
- 1.899092,
- 1.905391,
- 1.894495,
- 1.900616,
- 1.911575,
- 1.896576,
- 1.901797,
- 1.908106,
- 1.905327,
- 1.901421,
- 1.903541,
- 1.904031,
- 1.901099,
- 1.910934,
- 1.898067,
-};
 
 #define kLimit 2.0
 
@@ -537,37 +369,6 @@ void FilamentSensorADNS9800::run() {
     long astep = current_pos_steps[E_AXIS];
     CRITICAL_SECTION_END
 
-    // int32_t ds = astep - lastASteps; // Requested extruded length
-
-    // Note: Konstante 50 steps wird auch in ddtest.py:calibrateFilSensor() verwendet.
-    // if (ds > 50) {
-
-        // uint32_t ts = micros();
-        // int32_t dt = ts - lastTSs;
-
-        // i16          = int         / int
-        // int16_t stepperSpeed = (ds * (100000000/AXIS_STEPS_PER_MM_E)) / dt;
-        // targetSpeed.addValue(stepperSpeed);
-        // targetSpeed = (ds * (100000000/AXIS_STEPS_PER_MM_E)) / dt;
-
-        // lastTSs = ts;
-        // lastASteps = astep;
-    // }
-
-    // if (dy > 50) {
-
-        // uint32_t ts = micros();
-        // int32_t dt = ts - lastTSf;
-
-        // i16          = int         / float
-        // int16_t actSpeed = (ds * (100000000/FS_STEPS_PER_MM)) / dt;
-        // actualSpeed.addValue(actSpeed);
-        // actualSpeed = (ds * (100000000/FS_STEPS_PER_MM)) / dt;
-
-        // lastTSf = ts;
-        // lastYPos = yPos;
-    // }
-
     float ds = astep - lastASteps; // Requested extruded length
 
     if (ds > 50) {
@@ -575,25 +376,13 @@ void FilamentSensorADNS9800::run() {
         dDPrintSpi.beginTransaction(spiSettingsFS);
         int16_t dy = getDY(); // read distance delta from filament sensor
 
-        // int32_t dy = yPos - lastYPos; // Real extruded length
-
         uint32_t ts = micros();
         int32_t dt = ts - lastTSs;  // time delta
 
         float ratio = dy / ds;
 
-        // slippage.addValue(ratio);
-
-        // Compute stepper (= target) speed to get flowrate sensor calibration factor
-        float stepperSpeed = (ds * (1000000.0 / AXIS_STEPS_PER_MM_E)) / dt;
-
-        uint8_t calIndex = STD min((uint8_t)(NFilSensorCalibration-1), (uint8_t)(stepperSpeed/0.25));
-
-        // float cal = filSensorCalibration[calIndex] * 0.95; // allow 5% slip
-
-        // Slippage >= 0.0
         if (ratio > 0)
-            slippage.addValue(filSensorCalibration[calIndex] / ratio);
+            slippage.addValue(ratio);
         else {
             // dy is 0
             slippage.addValue(10.0);
@@ -608,11 +397,6 @@ void FilamentSensorADNS9800::run() {
         }
 
         /*
-        lcd.setCursor(0, 0); lcd.print("Speed:"); lcd.print(stepperSpeed); lcd.print("I:"); lcd.print(calIndex); lcd.print("     ");
-        lcd.setCursor(0, 1); lcd.print("Cal  :"); lcd.print(cal); lcd.print("     ");
-        */
-
-        /*
         lcd.setCursor(0, 0); lcd.print("DS:"); lcd.print(ds); lcd.print("     ");
         lcd.setCursor(0, 1); lcd.print("DY:"); lcd.print(dy); lcd.print("     ");
         lcd.setCursor(0, 2); lcd.print("RA:"); lcd.print(ratio); lcd.print("     ");
@@ -621,7 +405,6 @@ void FilamentSensorADNS9800::run() {
 
         lastTSs = ts;
         lastASteps = astep;
-        // lastYPos = yPos;
     }
 }
 
@@ -787,9 +570,6 @@ void FilamentSensorADNS9800::reset(){
 FilamentSensor filamentSensor;
 
 FilamentSensor::FilamentSensor() {
-
-    // grip = 200;
-    // maxTempSpeed = 0;
 
     // feedrateLimiterEnabled = false;
     feedrateLimiterEnabled = true;
