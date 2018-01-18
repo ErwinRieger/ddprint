@@ -1578,7 +1578,6 @@ def genTempTable(planner):
             f = (baseFlowrate-0.1) / (baseTemp-170)
             flowrate = 0.1 + i*f
         else:
-            # flowrate = MatProfile.getFlowrateForTemp(t, nozzleDiam) / (1.0+AutotempSafetyMargin)
             flowrate = MatProfile.getFlowrateForTemp(t, hwVersion, nozzleDiam) * (1.0-AutotempSafetyMargin)
 
         espeed = flowrate / aFilament
@@ -1886,15 +1885,12 @@ plot "-" using 1:2 with linespoints title "Target Flowrate", \\
             # sa = status["actualExtrusionSpeed"]
             actT1 = status["t1"]
 
-            # realsa = printerProfile.getFlowrateFromSensorRate(sa)
-
             # print "st: %f, sa: %f, corrected sa: %f" % (st, sa, realsa)
 
             flowRate = feedrate * aFilament
 
             # frtargetAvg.add(st)
             # fractAvg.add(realsa)
-            # sollGrip = PrinterProfile.get().getFilSensorCalibration(feedrate)
             # istGrip = status["slippage"]
 
             r = 1.0 / status["slippage"]
