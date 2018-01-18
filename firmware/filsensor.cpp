@@ -130,8 +130,8 @@ int16_t FilamentSensorPMW3360::getDY() {
 
         int16_t dy = ((int16_t)yh << 8) | y;
 
-        lcd.setCursor(0, 1); lcd.print("          ");
-        lcd.setCursor(0, 1); lcd.print(y);
+        // lcd.setCursor(0, 1); lcd.print("          ");
+        // lcd.setCursor(0, 1); lcd.print(y);
 
         if (! dy) return 0;
 
@@ -231,19 +231,12 @@ void FilamentSensorPMW3360::run() {
 
     float ds = astep - lastASteps; // Requested extruded length
 
-    uint32_t ts = micros();
-
-    if (ds < 0) {
-
-        // reverse
-        lastTSs = ts;
-        lastASteps = astep;
-    }
     if (ds > 50) {
 
         dDPrintSpi.beginTransaction(spiSettingsFS);
         int16_t dy = getDY(); // read distance delta from filament sensor
 
+        uint32_t ts = micros();
         int32_t dt = ts - lastTSs;  // time delta
 
         float ratio = dy / ds;
@@ -260,8 +253,10 @@ void FilamentSensorPMW3360::run() {
         // Slippage >= 0.0
         if (ratio > 0)
             slippage.addValue(filSensorCalibration[calIndex] / ratio);
-        else
+        else {
+            // dy is 0
             slippage.addValue(10.0);
+        }
 
         if (feedrateLimiterEnabled) {
 
@@ -575,18 +570,6 @@ void FilamentSensorADNS9800::run() {
 
     float ds = astep - lastASteps; // Requested extruded length
 
-    /*
-    if (ds <= 0) {
-
-        // reverse
-        lastTSs = micros();
-        lastASteps = astep;
-        lastYPos = yPos;
-
-        // slippage.reset();
-        // grip = 1;
-    }
-    else */
     if (ds > 50) {
 
         dDPrintSpi.beginTransaction(spiSettingsFS);
@@ -611,8 +594,10 @@ void FilamentSensorADNS9800::run() {
         // Slippage >= 0.0
         if (ratio > 0)
             slippage.addValue(filSensorCalibration[calIndex] / ratio);
-        else
+        else {
+            // dy is 0
             slippage.addValue(10.0);
+        }
 
         if (feedrateLimiterEnabled) {
 
