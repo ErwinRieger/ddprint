@@ -184,8 +184,6 @@ public:
                 return 0;
             }
 
-            readRetry = 0;
-
             killMessage(RespSDReadError, errorCode(), errorData());
             // notreached
         }
@@ -195,6 +193,9 @@ public:
         // printf("size: %d, readpos: %d, read bytes: %d\n", size, readPos, readBytes);
 
         readPos += readBytes;
+
+        // Read was successful, reset retry count
+        readRetry = 0;
 
         return readBytes;
     }
