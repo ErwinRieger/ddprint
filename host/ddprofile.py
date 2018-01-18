@@ -104,10 +104,6 @@ class PrinterProfile(ProfileBase):
 
         super(PrinterProfile, self).__init__(PrinterProfile, name)
 
-        self.calTable = self.getValues()["filSensorCalibration"]
-        self.minFlowRate = self.calTable[0][0]
-        self.maxFlowRate = self.calTable[-1][0]
-
     @classmethod
     def get(cls):
         return cls._single
@@ -154,46 +150,6 @@ class PrinterProfile(ProfileBase):
     def getMaxAxisAcceleration(cls):
         accel = cls.getValues()["MaxAxisAcceleration"]
         return accel
-
-    def getFlowrateFromSensorRate(self, fr):
-
-        if fr < self.minFlowRate:
-            # print "minflowrate:", fr, self.calTable[0][1], fr * self.calTable[0][1]
-            return fr * self.calTable[0][1]
-
-        if fr >= self.maxFlowRate:
-            # print "maxflowrate:", fr, self.calTable[-1][1], fr * self.calTable[-1][1]
-            return fr * self.calTable[-1][1]
-
-        index = int(fr/0.5) - 1
-
-        (fr1, f1) = self.calTable[index]
-        (fr2, f2) = self.calTable[index+1]
-
-        print "fr1, fr, fr2", fr1, fr, fr2
-
-        assert(fr >= fr1 and fr < fr2)
-
-        dx = fr2 - fr1
-        assert(dx == 0.5)
-
-        dy = f2 - f1
-        a = dy / dx
-
-        f = f1 + a * (fr-fr1)
-
-        print "a, f1, f, f2", a, f1, f, f2
-        print "interpol:", fr, f, fr*f
-        return fr*f
-
-    def getFilSensorCalibration(self, fr):
-
-        index = int(fr / 0.25)
-
-        if index >= len(self.calTable):
-            return self.calTable[-1][1]
-
-        return self.calTable[index][1]
 
     @classmethod
     def getHwVersion(cls):
@@ -467,14 +423,6 @@ class NozzleProfile(ProfileBase):
 if __name__ == "__main__":
 
     printerProfile = PrinterProfile("UM2.json")
-
-    import pprint
-    print "table:", pprint.pprint(printerProfile.calTable)
-
-    for sa in [0.25, 1.25, 10.25, 20.25]:
-
-        print "flowrate for %f: %f" % (sa, printerProfile.getFlowrateFromSensorRate(sa))
-        print
 
 
 
