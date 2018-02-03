@@ -106,6 +106,14 @@ def isPrintMove(displacement_vector):
 
     printMove = _isHeadMove(displacement_vector) and (_isExtrudingMove(displacement_vector, A_AXIS) or _isExtrudingMove(displacement_vector, B_AXIS))
 
+    # Printmoves with reverting E are invalid
+    # Note: some Cura versions generate gcode with a initial G11 and without the matching G10 for it,
+    # this triggers this test.
+    if printMove and ((displacement_vector[A_AXIS] < 0) or (displacement_vector[B_AXIS] < 0)):
+        print "ERROR: printmove with reversing E:", displacement_vector.vv
+        assert(0)
+
+    # Printmoves in X, Y AND Z are not tested
     if printMove and _isZMove(displacement_vector):
         print "ERROR: printmove with z-part:", displacement_vector.vv
         assert(0)
