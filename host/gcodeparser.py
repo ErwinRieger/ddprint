@@ -20,7 +20,7 @@
 
 import math
 import packedvalue
-import shutil, os
+import shutil, os, re
 
 from ddprofile import MatProfile, PrinterProfile
 from ddplanner import Planner
@@ -35,18 +35,41 @@ import ddprintutil as util
 
 ############################################################################
 
+CuraLayerRE = re.compile("; \s* LAYER \s* : \s* (\d+) $", re.VERBOSE)
+
+#
 # Get layer number from cura gcode comment
+# Example:
+# ;LAYER:0
+#
 def getCuraLayer(line):
 
-    return int(line.split(":")[1])
+    m = re.match(CuraLayerRE, line)
 
+    if m:
+        # Note: Cura layer numbering starts with 0
+        layer = int(m.groups()[0])
+        return layer
+
+    return None
+
+
+S3DLayerRE = re.compile("; \s layer \s (\d+), \s Z \s = \s (\d+ [\.,] \d+) $", re.VERBOSE)
+
+#
 # Get layer number from simplify3d gcode comment
+# Example: 
+# ; layer 1, Z = 0.225
+#
 def getSimplifyLayer(line):
 
-    lstr = line.split(" ")[2].split(",")[0]
-    if lstr != "end":
+    m = re.match(S3DLayerRE, line)
+
+    if m:
         # Note: S3D layer numbering starts with 1
-        return int(lstr) - 1
+        layer = int(m.groups()[0])
+        assert(layer > 0)
+        return layer - 1
 
     return None
 
@@ -118,6 +141,7 @@ class UM2GcodeParser:
                 "G92": self.g92_set_pos,
                 "M25": self.m25_stop_reading,
                 "M82": self.m82_extruder_abs_values,
+                "M83": self.m83_extruder_relative_values,
                 "M84": self.m84_disable_motors,
                 "M104": self.m104_extruder_temp,
                 "M106": self.m106_fan_on,
@@ -126,6 +150,7 @@ class UM2GcodeParser:
                 "M117": self.m117_message,
                 "M140": self.m140_bed_temp,
                 "M190": self.m190_bed_temp_wait,
+                "M204": self.m204_set_accel,
                 "M907": self.m907_motor_current,
                 "T0": self.t0,
                 "U": self.unknown, # unknown command for testing purposes
@@ -179,23 +204,22 @@ class UM2GcodeParser:
         for line in f:
             line = line.strip()
             if line.startswith(";"):
-                upperLine = line.upper()
-                # Cura: "LAYER:"
-                if "LAYER:" in upperLine:
-                    layerNum = getCuraLayer(line)
-                    if layerNum == 1:
-                        self.numParts += 1
-                        self.planner.newPart(self.numParts)
 
-                # # Simplify3D: "; LAYER "
-                # elif "; LAYER " in upperLine:
-                    # layerNum = getSimplifyLayer(line)
-                    # if layerNum == 1:
-                        # self.numParts += 1
-                        # self.planner.newPart(self.numParts)
+                upperLine = line.upper()
+
+                # Cura: "LAYER:"
+                layerNum = getCuraLayer(line)
+                if layerNum == 1:
+                    self.numParts += 1
+                    self.planner.newPart(self.numParts)
+
+                # layerNum = getSimplifyLayer(line)
+                # if layerNum == 1:
+                    # self.numParts += 1
+                    # self.planner.newPart(self.numParts)
 
                 # Simplify3D: "; skirt "
-                elif upperLine.startswith("; SKIRT"):
+                if upperLine.startswith("; SKIRT"):
                     self.numParts += 1
                     self.planner.newPart(self.numParts)
 
@@ -224,16 +248,15 @@ class UM2GcodeParser:
 
                 upperLine = line.upper()
 
-                if "LAYER:" in upperLine:
-                    layerNum = getCuraLayer(line)
+                layerNum = getCuraLayer(line)
+                if layerNum != None:
                     self.planner.layerChange(layerNum)
                     return
 
-                elif "; LAYER " in upperLine:
-                    layerNum = getSimplifyLayer(line)
+                layerNum = getSimplifyLayer(line)
+                if layerNum != None:
                     self.planner.layerChange(layerNum)
                     return
-
 
                 # print "skipping comment: ", line
                 return
@@ -285,6 +308,10 @@ class UM2GcodeParser:
         # We're always using absolute coords...
         pass
 
+    def m83_extruder_relative_values(self, line, values):
+        print "Gcode m83 not supported"
+        assert(0)
+
     def m84_disable_motors(self, line, values):
         print "ignoring m84..."
 
@@ -309,7 +336,7 @@ class UM2GcodeParser:
         self.planner.addSynchronizedCommand(CmdSyncFanSpeed, p1=packedvalue.uint8_t(0))
 
     def m109_extruder_temp_wait(self, line, values):
-        print "ignoring m109..."
+        print "ignoring m109 (wait for extruder temp)..."
 
     def m117_message(self, line):
         print "m117_message: ", line
@@ -318,7 +345,10 @@ class UM2GcodeParser:
         print "ignoring m140..."
 
     def m190_bed_temp_wait(self, line, values):
-        print "ignoring m190..."
+        print "ignoring m190 (wait for bed temp)..."
+
+    def m204_set_accel(self, line, values):
+        print "ignoring m204 (set acceleration)..."
 
     def m907_motor_current(self, line, values):
         print "ignoring m907..."
