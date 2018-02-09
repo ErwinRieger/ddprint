@@ -585,7 +585,7 @@ def main():
         util.commonInit(args, parser)
 
         t0 = MatProfile.getBedTemp()
-        t1 = MatProfile.getHotendStartTemp()
+        t1 = MatProfile.getHotendStartTemp() + planner.l0TempIncrease
 
         # Send heat up  command
         print "\nPre-Heating bed...\n"

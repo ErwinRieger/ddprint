@@ -117,6 +117,11 @@ AdvanceMinRamp = 0.05
 # AutotempSafetyMargin = 0.1 # 10% margin
 AutotempSafetyMargin = 0.0
 
+############################################################################
+#
+# Layer 0 temperature increase
+#
+Layer0TempIncrease = 15.0
 
 
 

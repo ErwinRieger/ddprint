@@ -228,13 +228,17 @@ class PathData (object):
 
         avgERate = vsum / tsum
 
-        print "Average extrusion rate: ", avgERate, "mm³/s"
+        print "Average extrusion rate: ", avgERate, "mm³/s", "layer 0 increase: ", self.planner.l0TempIncrease
 
         # Compute temperature for this segment and add tempcommand into the stream. 
-        newTemp = MatProfile.getTempForFlowrate(avgERate * (1.0+AutotempSafetyMargin), PrinterProfile.getHwVersion(), NozzleProfile.getSize())
+        newTemp = \
+            MatProfile.getTempForFlowrate(avgERate * (1.0+AutotempSafetyMargin), PrinterProfile.getHwVersion(), NozzleProfile.getSize()) + \
+            self.planner.l0TempIncrease
 
         # Don't go below startTemp from material profile
         newTemp = max(newTemp, MatProfile.getHotendStartTemp())
+        # Don't go above max temp from material profile
+        newTemp = min(newTemp, MatProfile.getHotendMaxTemp())
 
         if newTemp != self.lastTemp: #  and self.mode != "pre":
 
@@ -339,6 +343,9 @@ class Planner (object):
         # End Constants
         #
 
+        # Temp. increase for layer 0
+        self.l0TempIncrease = Layer0TempIncrease
+
         self.plotfile = None
 
         self.advance = Advance(self, args)
@@ -406,6 +413,15 @@ class Planner (object):
     def layerChange(self, layer):
 
         self.advance.layerChange(layer)
+
+        if layer == 0:
+
+            print "layer 0, increasing temp by", Layer0TempIncrease
+            self.l0TempIncrease = Layer0TempIncrease
+
+        else:
+
+            self.l0TempIncrease = 0
 
         if layer == 2:
 
