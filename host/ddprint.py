@@ -19,141 +19,28 @@
 # along with ddprint.  If not, see <http://www.gnu.org/licenses/>.
 #*/
 
-# python vim debugging:
-# :compiler python
-# :set makeprg=./stepstream.py\ pre\ test_files/z_leveltest_5cm.gcode
-# :setlocal makeprg=./stepstream.py\ pre\ test_files/z_leveltest_5cm.gcode
-
-#
-#
-#
-# Problem bei der pfadplanung/movejoin:
-#
-# Wir wissen die geschwindigkeiten der umliegenden moves nicht, die nominalgeschwindigkeiten
-# sind in diesem zusammenhang wertlos - sie dienen nur als begrenzung nach oben...
-#
-# Ausserdem beeinflussen sich die moves ja gegenseitig.
-#
-# Ausserdem können wir beim forward-join keine definitiven endgeschwindigkeiten bestimmen, da diese ja
-# beim backward-join wieder geändert werden können.
-#
-# Dadurch können wir keine definierte startgeschwindigkeit des folge-moves festlegen und somit haut auch
-# das stückeln in 'pathBlocks' nicht hin.
-#
-#
-# Was wir machen können:
-#
-# * berechne intervall Vemin - Vemax
-# * davon ausgehend Vsmin und Vsmax des folgemoves usw.
-#
-
-import traceback, logging, pprint, sys
+import logging, pprint, sys
 import argparse
 
 logging.basicConfig(level=logging.DEBUG)
 
 import ddprintutil as util, gcodeparser, packedvalue, ddhome
-import ddtest, ddadvance
+import ddtest
 
 from ddprofile import PrinterProfile, MatProfile, NozzleProfile
 from ddplanner import Planner
 from ddprinter import Printer, RxTimeout
 
 #
-# todo check max move length (max_length_steps)
-# todo Optimierung joinMovesFwd(): z.b. beschleunigung über mehrere gleich gerichtete steps (kommt das oft vor?)?
-#
-#
-# Nicht so dringend:
-#
-# todo check for cura flavor gcode (extrude-length computing)
-# todo resend funktioniert nur mit dem aktuellen kommando, es dürfen nicht mehrere kommandos verloren gehen.
-#
-# Move-Join, gestückelte verarbeitung, streaming:
-# -----------------------------------------------
-#
-# Pfad, path: Eine aus mehreren moves bestehende bewegung, gekennzeichnet dadurch, dass anfangs- und
-# end-geschwindigkeit 0 (genauer: jerk) sind. Z.b. eine Z-ebene.
-#
-# Start eines path: 
-#       * gekennzeichnet durch: path == [], v0 = 0 (bzw. jerk)
-#
-# Ende eines path: 
-#       * gekennzeichnet durch: E-only move (G10) oder aufruf von finishMoves(), v1 = 0 (bzw. jerk)
-#
-# PathBlock: Teil eines path. Kriterium zum abtrennen eines PathBlocks:
-#
-#   * Endgeschwindigkeit ist 0 (bzw. <= jerk)
-#
-# xxxxxxxxxxx denk xxxxxxxxxxxxxxx
-#
-# * sammle moves
-# * mache die betrachtung für jeden neuen move, optimiert wäre alle N neue moves
-# * Gehe vorwärts durch 
-#    - wenn man einen move findet, der langsam oder lange genug ist, um innerhalb dieses moves eine
-#      volle beschleunigung von 0 auf vnominal und zurück auf 0 zu machen, so kann an diesem
-#      move M getrennt werden.
-#      Begründung: Move M wirkt als puffer oder "entkoppler" zwischen den teilpfaden. Es ist egal,
-#      was in zukunft mit der anfangsgeschwindigkeit V0 oder mit der endgeschwindigkeit V1 passiert, es wird
-#      jeweils keine auswirkung auf die jeweils "andere seite" haben.
-#
-# * Dieses kriterium kann noch entschärft werden:
-#   - Falls man den planForward schritt so ausführt, das die anfangsgeschwindigkeit V0 von M bekannt und
-#     unveränderlich (durch weitere planugsschritte) ist, so reicht als bedingung für den entkoppler move:
-#
-#      Wenn man einen move findet, der langsam oder lange genug ist, um innerhalb dieses moves eine
-#      volle beschleunigung von V0 auf vnominal und zurück auf 0 zu machen, so kann an diesem
-#      move M getrennt werden.
-#      Begründung: Move M wirkt als puffer oder "entkoppler" zwischen den teilpfaden. Es ist egal,
-#
-#
-#
-#
-#
-#
-# Retraction:
-# -----------
+# Firmware Retraction:
+# --------------------
 #
 # G10, G11, end-of-print-retraction
 #
-# Compute extrude length from extrude volume:
-# -------------------------------------------
+# UM2 Microstepping:
+# ------------------
 #
-# From UM-Marlin:
-#   volume_to_filament_length[e] = 1.0 / (M_PI * (material[e].diameter / 2.0) * (material[e].diameter / 2.0));
-#
-#
-#
-# Microstepping:
-# --------------
-# Der UM2 macht microstepping, siehe folgende liste, das ist aber bereits in den steps_per_unit berücksichtigt.
 # micorsteps = [16, 16, 8, 16]
-#
-# Homing:
-# -------
-#
-# Für jede dimension:
-#   * erzeuge ein move kommando, dass ausreichend lang in die richtige richtung fährt. Geschiwndigkeit: HOMING_FEEDRATE
-#   * druckkopf gegen endstop fahren lassen
-#   * etwas zurück (HOME_RETRACT_MM) und langsam nochmals gegen den endstop
-#   * aktuelle position vom drucker abfragen current_pos_steps
-#
-#
-# xxx Moves für jede dimension:
-#   * set dir
-#   * big move 1.5, HOMING_FEEDRATE
-#   * set reverse dir
-#   * HOME_RETRACT_MM, HOMING_FEEDRATE
-#   * set dir
-#   * 1.5*HOME_RETRACT_MM, HOMING_FEEDRATE/3
-#   * set reverse dir
-#   * xxx solange bis endstop öffnet, HOMING_FEEDRATE/3
-#
-# --> spezialisierte homing funktion in firmware mit eigener beschleunigungsberechnung und
-#     ablauf im mainthread -> stepper interrupt kann sauber gehalten werden.
-# --> stepper irq prüft keine endstops mehr, das wird durch reine software enstops und einen
-#     10ms zeitschleife erledigt.
-#
 #
 # USB packet format:
 # --------------------
@@ -173,7 +60,6 @@ from ddprinter import Printer, RxTimeout
 #   - entferne checksum am ende
 #   - speichere das kommando
 #
-#
 # Move segment data, new with bresenham in firmware:
 #   * Header data:
 #       + flags 
@@ -192,10 +78,10 @@ from ddprinter import Printer, RxTimeout
 #
 # Note: 16 bit is enough for 819mm/327mm/232mm (XY,Z,E) acceleration/linear/decceleration distances. 
 #
+
+
 #
-#
-#
-# Commands: 
+# Firmware commands: 
 #
 from ddprintcommands import *
 
@@ -204,18 +90,6 @@ from ddprintcommands import *
 #
 from ddprintstates import *
 
-#
-# Drucker koordinatensystem (UM):
-# ----------------------------
-#
-# X: positive richtung nach rechts, endstop in MIN richtung
-# Y: positive richtung nach hinten, endstop in MAX richtung
-# Z: positive richtung nach unten, endstop in MAX richtung
-#
-
-############################################################################
-# Constants
-############################################################################
 
 def plotArrow(f, v, startv, color="blue"):
 
@@ -230,8 +104,6 @@ def getMaxKoord(v, maxkoord):
 
 def plotSpeedChange(v1, v2, jerk, diff, title="Velocity X/Y/Z", fn="/tmp/2v.gnuplot"):
 
-    # maxx = (max(v1[0], v2[0]) + diff[0]) * 2
-    # maxy = (max(v1[1], v2[1]) + diff[1]) * 2
     maxkoord = [0, 0]
 
     f = open(fn, "w")
@@ -283,8 +155,6 @@ def plotSpeedChange(v1, v2, jerk, diff, title="Velocity X/Y/Z", fn="/tmp/2v.gnup
 
 def plot2v(v1, v2, jerk, diff, title="Velocity X/Y/Z", fn="/tmp/2v.gnuplot"):
 
-    # maxx = (max(v1[0], v2[0]) + diff[0]) * 2
-    # maxy = (max(v1[1], v2[1]) + diff[1]) * 2
     maxkoord = [0, 0]
 
     f = open(fn, "w")
@@ -399,10 +269,7 @@ def plot4v(nom1, nom2, v1, v2, jerk, diff, fn = "/tmp/4v.gnuplot"):
 
 def initParser(args, mode=None, gui=None):
 
-    printerProfileName = "UM2" # xxx get from commandline args
-
-    # profile = profile.Profile(printerProfileName)
-    # parser.setProfile(profile)
+    printerProfileName = "UM2" # xxx todo: get from commandline args
 
     # Create printer profile singleton instance
     printerProfile = PrinterProfile(printerProfileName)
@@ -436,10 +303,7 @@ def main():
 
     argParser = argparse.ArgumentParser(description='%s, Direct Drive USB Print.' % sys.argv[0])
     argParser.add_argument("-d", dest="device", action="store", type=str, help="Device to use, default: /dev/ttyACM0.", default="/dev/ttyACM0")
-    # argParser.add_argument("-b", dest="baud", action="store", type=int, help="Baudrate, default 115200.", default=115200)
-    # argParser.add_argument("-b", dest="baud", action="store", type=int, help="Baudrate, default 230400.", default=230400)
     argParser.add_argument("-b", dest="baud", action="store", type=int, help="Baudrate, default 500000.", default=500000)
-    # argParser.add_argument("-b", dest="baud", action="store", type=int, help="Baudrate, default 1000000.", default=1000000)
 
     argParser.add_argument("-t0", dest="t0", action="store", type=int, help="Temp 0 (heated bed), default comes from mat. profile.")
     argParser.add_argument("-t1", dest="t1", action="store", type=int, help="Temp 1 (hotend 1), default comes from mat. profile.")
@@ -475,9 +339,6 @@ def main():
 
     sp = subparsers.add_parser("print", help=u"Download and print file at once.")
     sp.add_argument("gfile", help="Input GCode file.")
-
-    # sp = subparsers.add_parser("store", help=u"Store file as USB.G on sd-card.")
-    # sp.add_argument("gfile", help="Input GCode file.")
 
     sp = subparsers.add_parser("writeEepromFloat", help=u"Store float value into eeprom.")
     sp.add_argument("name", help="Valuename.")
@@ -551,10 +412,8 @@ def main():
     sp.add_argument("distance", action="store", help="Move-distance (+/-) in mm.", type=float)
 
     sp = subparsers.add_parser("calibrateFilSensor", help=u"Debug: helper to determine the ratio of stepper to flowrate sensor.")
-    # sp.add_argument("distance", action="store", help="Move-distance (+/-) in mm.", type=float)
 
     args = argParser.parse_args()
-    # print "args: ", args
 
     (parser, planner, printer) = initParser(args, mode=args.mode)
 
@@ -593,11 +452,8 @@ def main():
         print "\nPre-Heating extruder...\n"
         printer.heatUp(HeaterEx1, t1/2)
 
-        # Send printing moves
-        # f = open(args.gfile)
         f = parser.preParse(args.gfile)
 
-        # Send priming moves
         if not args.noPrime:
             util.prime(parser)
 
@@ -637,15 +493,14 @@ def main():
         print "Parsed %d gcode lines." % lineNr
 
         # 
-        # Add a move to lift the nozzle from the print if not ultigcode flavor
+        # Add a move to lift the nozzle end of print
         # 
-        # if not parser.ultiGcodeFlavor:
         util.endOfPrintLift(parser)
 
         planner.finishMoves()
         printer.sendCommand(CmdEOT)
 
-        # XXX start print if less than 1000 lines or temp not yet reached:
+        # Start print if less than 1000 lines or temp not yet reached:
         if not printStarted:
 
             print "\nHeating bed (t0: %d)...\n" % t0
@@ -671,8 +526,8 @@ def main():
 
         printer.readMore()
 
-        ### Simulator/profiling
-        ### printer.sendCommand(CmdExit)
+        # Exit simulator for profiling
+        # printer.sendCommand(CmdExit)
 
     elif args.mode == "pre":
 
@@ -888,6 +743,7 @@ if __name__ == "__main__":
     try:
         main()
     except:
+        import traceback
         print "Exception: ", traceback.format_exc()
         res = 1
 
