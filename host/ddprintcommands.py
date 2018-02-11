@@ -58,7 +58,7 @@ CmdMove = 129               # Parameters: MoveType
 # * End of text, all moves have been sent
 CmdEOT = 130
 CmdResetLineNr = 131
-# CmdHome = 132
+# free: 132
 CmdSetHomePos = 133
 CmdSetTargetTemp = 134 # Parameters: heater, temp
 CmdWriteEepromFloat = 135 # Parameters: valuename (len max 63 chars!), value
@@ -120,7 +120,6 @@ CommandNames = {
     # * End of text, all moves have been sent
     CmdEOT: "CmdEOT",
     CmdResetLineNr: "CmdResetLineNr",
-    # CmdHome: "CmdHome",
     CmdSetHomePos: "CmdSetHomePos",
     CmdSetTargetTemp: "CmdSetTargetTemp",
     CmdWriteEepromFloat: "CmdWriteEepromFloat",
