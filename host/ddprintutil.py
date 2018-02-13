@@ -27,13 +27,10 @@ from ddprintstates import *
 from ddprintconstants import *
 from ddconfig import *
 from ddprofile import PrinterProfile, MatProfile, NozzleProfile
-from ddvector import vectorLength, vectorMul
+from ddvector import vectorMul
 
 ####################################################################################################
-#
-# Constants, some are printer specific.
-#
-
+# XXX todo: read from printer profile
 # UM2:
 FILAMENT_REVERSAL_LENGTH = 750
 
@@ -539,7 +536,7 @@ def joinTravelMoves(move1, move2, jerk):
 
 ####################################################################################################
 
-# Debug object
+# Move object without references to help garbage collection.
 class StreamedMove:
         pass
 
@@ -818,7 +815,6 @@ def manualMove(parser, axis, distance, feedrate=0, absolute=False):
     planner.finishMoves()
 
     printer.sendCommand(CmdEOT)
-    # time.sleep(1)
 
     printer.sendCommandParamV(CmdMove, [MoveTypeNormal])
 
