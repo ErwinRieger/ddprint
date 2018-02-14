@@ -10,8 +10,6 @@
 
 // const unsigned short firmware_length = 4094;
 
-// #define SROMVER 0x68
-// #define SROMVER 0x20
 #define SROMVER 0x4
 
 const unsigned char firmware_data[] PROGMEM = {
