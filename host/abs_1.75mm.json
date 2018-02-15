@@ -18,7 +18,7 @@
   "tempFlowrateCurve_80" : [
   ],
 
-  # This is the temp-flowrate curve for a 0.8mm nozzle.
+  # This is the temp-flowrate curve for a 0.4mm nozzle.
   # XXX dummy values, replace with measured ones
   "tempFlowrateCurve_40" : [
   ]
