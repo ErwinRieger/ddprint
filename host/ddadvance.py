@@ -549,8 +549,8 @@ class Advance (object):
 
                 self.plotfile.close()
 
-        print "rounding remainders:"
-        self.planner.stepRounders.pprint()
+        # print "rounding remainders:"
+        # self.planner.stepRounders.pprint()
 
         if self.kAdv:
             print "Path moveEsteps:", self.moveEsteps, len(newPath)
