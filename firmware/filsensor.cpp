@@ -137,8 +137,6 @@ int16_t FilamentSensorPMW3360::getDY() {
     return 0;
 }
 
-#define kLimit 2.0
-
 void FilamentSensorPMW3360::run() {
 
     // Berechne soll flowrate, filamentsensor ist sehr ungenau bei kleiner geschwindigkeit.
@@ -149,7 +147,7 @@ void FilamentSensorPMW3360::run() {
 
     float deltaStepperSteps = astep - lastASteps; // Requested extruded length
 
-    if (deltaStepperSteps > 40.0) {
+    if (fabs(deltaStepperSteps) > 40.0) {
 
         dDPrintSpi.beginTransaction(spiSettingsFS);
         int16_t deltaSensorSteps = getDY(); // read distance delta from filament sensor
@@ -163,10 +161,10 @@ void FilamentSensorPMW3360::run() {
         // Normally slippage is greater 1.0 since there is always some back-pressure in the
         // filament and therefore the amount of filamnet fed is lower than it should be.
         //
-        if (deltaSensorSteps > 0) {
+        if (deltaSensorSteps != 0) {
 
             float slip = (deltaStepperSteps * filSensorCalibration) / deltaSensorSteps;
-            slippage.addValue(slip);
+            slippage.addValue(fabs(slip));
         }
         else {
 
@@ -181,10 +179,12 @@ void FilamentSensorPMW3360::run() {
             return;
         }
 
-        if (feedrateLimiterEnabled) {
+        float s = slippage.value();
 
-            float allowedSlippage = slippage.value() * 0.90; // allow for 10% slip before we slow down
-            float g = max(1.0, (allowedSlippage - 1.0) * kLimit + 1.0);
+        if (feedrateLimiterEnabled && (s > 0.0)) {
+
+            float allowedSlippage = s * 0.90; // allow for 10% slip before we slow down
+            float g = max(1.0, pow(allowedSlippage - 1.0, 2)*25);
             grip = STD min((float)3.0, g);
         }
 
@@ -192,7 +192,7 @@ void FilamentSensorPMW3360::run() {
         lcd.setCursor(0, 0); lcd.print("DS:"); lcd.print(deltaStepperSteps); lcd.print("     ");
         lcd.setCursor(0, 1); lcd.print("DY:"); lcd.print(deltaSensorSteps); lcd.print("     ");
         lcd.setCursor(0, 2); lcd.print("RA:"); lcd.print(ratio); lcd.print("     ");
-        lcd.setCursor(0, 3); lcd.print("RA:"); lcd.print(slippage.value()); lcd.print(" "); lcd.print(grip); lcd.print("     ");
+        lcd.setCursor(0, 3); lcd.print("RA:"); lcd.print(s); lcd.print(" "); lcd.print(grip); lcd.print("     ");
         */
 
         lastASteps = astep;
