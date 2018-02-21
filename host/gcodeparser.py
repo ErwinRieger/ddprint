@@ -145,7 +145,9 @@ class UM2GcodeParser:
                 "G21": self.g21_metric_values,
                 "G28": self.g28_home,
                 "G29": self.g29_autolevel,
+                "G80": self.g80_bed_leveling,
                 "G90": self.g90_abs_values,
+                "G91": self.g91_rel_values,
                 "G92": self.g92_set_pos,
                 "M25": self.m25_stop_reading,
                 "M82": self.m82_extruder_abs_values,
@@ -159,6 +161,9 @@ class UM2GcodeParser:
                 "M140": self.m140_bed_temp,
                 "M190": self.m190_bed_temp_wait,
                 "M204": self.m204_set_accel,
+                "M501": self.m501_reset_params,
+                "M502": self.m502_reset_params,
+                "M900": self.m900_set_kAdvance,
                 "M907": self.m907_motor_current,
                 "T0": self.t0,
                 "U": self.unknown, # unknown command for testing purposes
@@ -178,12 +183,18 @@ class UM2GcodeParser:
         return cls.__single
 
     def reset(self):
+
         self.position = util.MyPoint()
         self.feedrate = None
         self.numParts = 1
 
-        # For G10/G11 handling: xxx session handling
-        # self.retracted = False
+        self.absolute = {
+                X_AXIS: True,
+                Y_AXIS: True,
+                Z_AXIS: True,
+                A_AXIS: True,
+                B_AXIS: True,
+                }
 
         self.ultiGcodeFlavor = False
 
@@ -270,7 +281,11 @@ class UM2GcodeParser:
                 return
 
             # print "line:", tokens
-            meth = self.commands[cmd]
+            try:
+                meth = self.commands[cmd]
+            except KeyError:
+                print "GCode '%s' ('%s') unknown!" % (cmd, line)
+                raise
 
             if cmd not in ["M117"]:
                 values = self.getValues(tokens[1:])
@@ -286,6 +301,7 @@ class UM2GcodeParser:
             valueChar = param[0].upper()
 
             if valueChar == ";":
+                # Skip rest of line/comment
                 break
 
             rest = param[1:]
@@ -302,6 +318,10 @@ class UM2GcodeParser:
                 # print "replace feedrate in mm/min with mm/sec..."
                 factor = 1.0 / 60
 
+            if not rest:
+                # Param without value
+                continue
+
             # try:
                 # values[valueChar] = int(rest) * factor
             # except ValueError:
@@ -313,12 +333,14 @@ class UM2GcodeParser:
         print "XXX todo implement M25", values
 
     def m82_extruder_abs_values(self, line, values):
-        # We're always using absolute coords...
-        pass
+
+        self.absolute[A_AXIS] = True
+        self.absolute[B_AXIS] = True
 
     def m83_extruder_relative_values(self, line, values):
-        print "Gcode m83 not supported"
-        assert(0)
+        
+        self.absolute[A_AXIS] = False
+        self.absolute[B_AXIS] = False
 
     def m84_disable_motors(self, line, values):
         print "ignoring m84..."
@@ -358,6 +380,16 @@ class UM2GcodeParser:
     def m204_set_accel(self, line, values):
         print "ignoring m204 (set acceleration)..."
 
+    def m501_reset_params(self, line, values):
+        print "ignoring m501 (reset params)..."
+
+    def m502_reset_params(self, line, values):
+        print "ignoring m502 (reset params)..."
+
+    def m900_set_kAdvance(self, line, values):
+
+        self.planner.g900(values)
+
     def m907_motor_current(self, line, values):
         print "ignoring m907..."
 
@@ -377,18 +409,7 @@ class UM2GcodeParser:
     def g10_retract(self, line, values):
         # print "g10_retract", values
 
-        # if self.retracted:
-            # return
-
         current_position = self.getPos()
-
-        """
-        values = {
-                "F": PrinterProfile.getRetractFeedrate(),
-                "A": current_position[A_AXIS] - PrinterProfile.getRetractLength(),
-                }
-        self.g0("G10", values)
-        """
 
         rl = - PrinterProfile.getRetractLength()
 
@@ -401,25 +422,12 @@ class UM2GcodeParser:
             feedrate=min(PrinterProfile.getRetractFeedrate(), PrinterProfile.getMaxFeedrate(3))
             ))
 
-        # self.retracted = True
         self.setPos(current_position)
             
     def g11_retract_recover(self, line, values):
         # print "g11_retract_recover", values
 
-        # if not self.retracted:
-            # return
-
         current_position = self.getPos()
-
-        """
-        values = {
-                "F": PrinterProfile.getRetractFeedrate(),
-                "A": current_position[A_AXIS] + PrinterProfile.getRetractLength(),
-                }
-        self.g0("G11", values)
-        self.retracted = False
-        """
 
         rl = PrinterProfile.getRetractLength()
 
@@ -432,7 +440,6 @@ class UM2GcodeParser:
             feedrate=min(PrinterProfile.getRetractFeedrate(), PrinterProfile.getMaxFeedrate(3))
             ))
 
-        # self.retracted = False
         self.setPos(current_position)
 
     def g21_metric_values(self, line, values):
@@ -447,9 +454,18 @@ class UM2GcodeParser:
         # Autoleveling not implemented
         pass
 
+    def g80_bed_leveling(self, line, values):
+        print "ignoring g80..."
+
     def g90_abs_values(self, line, values):
-        # We're always using absolute coords...
-        pass
+
+        for d in range(5):
+            self.absolute[d] = True
+
+    def g91_rel_values(self, line, values):
+
+        for d in range(5):
+            self.absolute[d] = False
 
     def g92_set_pos(self, line, values):
 
@@ -490,13 +506,18 @@ class UM2GcodeParser:
             if dimC not in values:
                 continue
 
-            rDiff = values[dimC] - curRealPos[dim]
+            if self.absolute[dim]:
+                rDiff = values[dimC] - curRealPos[dim]
+                newRealPos[dim] = values[dimC]
+            else:
+                rDiff = values[dimC]
+                newRealPos[dim] += values[dimC]
+
             displacement_vector[dim] = rDiff
 
             nSteps = rDiff * self.steps_per_mm[dim]
             displacement_vector_steps[dim] = nSteps
 
-            newRealPos[dim] = values[dimC]
 
         # Check if zero length:
         if displacement_vector_steps == [0.0, 0.0, 0.0, 0.0, 0.0]:
