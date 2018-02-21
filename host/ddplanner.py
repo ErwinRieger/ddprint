@@ -442,6 +442,11 @@ class Planner (object):
         self.stepRounders.g92(values)
 
     # Called from gcode parser
+    def g900(self, values):
+
+        self.advance.g900(values)
+
+    # Called from gcode parser
     def addMove(self, move):
 
         move.moveNumber = self.pathData.incCount()
