@@ -192,7 +192,7 @@ class Advance (object):
 
             maxAccel = max_axis_acceleration_noadv[:3] + [maxEAccel, maxEAccel]
 
-            # print "ADV: max E-acceleration, limited acceleration vector:", maxAccel, " [mm/s²]"
+            # print "ADV: max E-acceleration, limited acceleration to:", maxEAccel, " [mm/s²]"
             return maxAccel
 
         else:
@@ -205,9 +205,18 @@ class Advance (object):
         print "adv: layer changed:", layer
 
         if layer != None and self.startAdvance != None:
-            self.kAdv = self.startAdvance + (layer / self.advStepHeight) * self.advIncrease
+            self.setkAdvance(self.startAdvance + (layer / self.advStepHeight) * self.advIncrease)
             print "adv: layer changed:", self.kAdv
 
+    def setkAdvance(self, kAdv):
+
+        print "Advance: setting K-Advance to %.3f" % kAdv
+        self.kAdv = kAdv
+
+    # Called from gcode parser
+    def g900(self, values):
+
+        self.setkAdvance(values["K"])
 
     # Compensation of feeder slip
     def eComp(self, vExtruder):
