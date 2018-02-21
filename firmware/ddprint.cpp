@@ -1942,10 +1942,10 @@ FWINLINE void loop() {
         //
         tempControl.Run();
 
-#if defined(HASFILAMENTSENSOR)
-        // Read filament sensor
-        filamentSensor.run();
-#endif
+// #if defined(HASFILAMENTSENSOR)
+        // // Read filament sensor
+        // filamentSensor.run();
+// #endif
 
         if ((loopTS - timer100mS) >= 100) { // Every 100 mS
 
@@ -1956,10 +1956,10 @@ FWINLINE void loop() {
 
             printer.checkMoveFinished();
 
-// #if defined(HASFILAMENTSENSOR)
-            // // Read filament sensor
-            // filamentSensor.run();
-// #endif
+#if defined(HASFILAMENTSENSOR)
+            // Read filament sensor
+            filamentSensor.run();
+#endif
 
             timer100mS = loopTS;
         }
