@@ -1,9 +1,11 @@
 {
   "machinenames" : ["UM2"],
-  # Single feeder motor
+  # Single feeder motor, adns9800 flowrate sensor
   # "hwVersion": 1,
-  # Dual feeder motor
-  "hwVersion": 2,
+  # Dual feeder motor, adns9800 flowrate sensor
+  # "hwVersion": 2,
+  # Dual feeder motor, pmw3360 flowrate sensor
+  "hwVersion": 3,
   "axes"  : {
     "X" : {
       "platform_length" : 230,
