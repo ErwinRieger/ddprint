@@ -359,7 +359,7 @@ def main():
 
     sp = subparsers.add_parser("home", help=u"Home the printer.")
 
-    sp = subparsers.add_parser("measureTempFlowrateCurve", help=u"Determine temperature/flowrate characteristic.")
+    sp = subparsers.add_parser("measureTempFlowrateCurve", help=u"Determine temperature/flowrate properties of filament.")
     sp.add_argument("tstart", action="store", type=int, help="Start temperature.")
     sp.add_argument("tend", action="store", type=int, help="End temperature.")
     sp.add_argument("-tstep", action="store", type=int, help="Temperature step width.", default=2)
