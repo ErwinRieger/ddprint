@@ -79,27 +79,7 @@ print "\nmoderate PID values:     Tc is the larger of    1·Tp  or     8·Өp"
 Tc = max(avgTp, 8*avgTd)
 pidParameters(Ks, Tc, avgTp, avgTd)
 
-agressive = 0.5
-print "\n%f aggressive PID values:     Tc is the larger of    0.55·Tp  or     4.4·Өp" % agressive
-Tc = max(agressive*avgTp, agressive*8*avgTd)
-pidParameters(Ks, Tc, avgTp, avgTd)
-
-agressive = 0.25
-print "\n%f aggressive PID values:     Tc is the larger of    0.55·Tp  or     4.4·Өp" % agressive
-Tc = max(agressive*avgTp, agressive*8*avgTd)
-pidParameters(Ks, Tc, avgTp, avgTd)
-
-agressive = 0.2
-print "\n%f aggressive PID values:     Tc is the larger of    0.55·Tp  or     4.4·Өp" % agressive
-Tc = max(agressive*avgTp, agressive*8*avgTd)
-pidParameters(Ks, Tc, avgTp, avgTd)
-
-agressive = 0.15
-print "\n0.15 aggressive PID values:     Tc is the larger of    0.1·Tp  or     0.8·Өp"
-Tc = max(agressive*avgTp, agressive*8*avgTd)
-pidParameters(Ks, Tc, avgTp, avgTd)
-
-print "\n0.1 aggressive PID values:     Tc is the larger of    0.1·Tp  or     0.8·Өp"
+print "\naggressive PID values:     Tc is the larger of    0.1·Tp  or     0.8·Өp"
 Tc = max(0.1*avgTp, 0.8*avgTd)
 pidParameters(Ks, Tc, avgTp, avgTd)
 
