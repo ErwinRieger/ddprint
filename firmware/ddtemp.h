@@ -43,6 +43,8 @@ class TempControl: public Protothread
 
     // Running sum of pwm output values to handle clipping
     float pwmSum;
+    int32_t cobias;
+    int32_t pid_output;
 
     public:
         TempControl(): raw_temp_0_value(0), raw_temp_bed_value(0) {};

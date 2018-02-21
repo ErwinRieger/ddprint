@@ -125,7 +125,8 @@ void TempControl::init() {
     eSum = 0;
     eAlt = 0;
 
-    pwmSum = 0;
+    cobias = 0;
+    pid_output = 0;
 
     //
     // Timestamp of last pid computation
@@ -203,13 +204,34 @@ void TempControl::setTemp(uint8_t heater, uint16_t temp) {
         // Keep integral eSum if changing setpont from a
         // already stable setpoint. Reset integral sum if
         // we switch "from manual mode to automatic".
-        if (target_temperature[heater-1] == 0)
+        if (target_temperature[heater-1] == 0) {
+
+            // Switch to "automatic mode", bumpless
+
+            // Bumpless mode
+
+            // We achieve this desired outcome at switchover by initializing the controller integral sum of error to zero.
             eSum = 0;
+            // Also, the set point and controller bias value are initialized by setting:
+            //    ▪ SP equal to the current PV
+            //    ▪ CObias equal to the current CO
+            // sp = pv;
+            cobias = pid_output;
+
+            // CO = controller output signal (the wire out)
+            // CObias = controller bias; set by bumpless transfer
+            //
+            // e(t) = current controller error, defined as SP – PV
+            // SP = set point
+            // PV = measured process variable (the wire in)
+            //
+            // Thus, when switching to automatic, SP is set equal to the current PV and CObias is set equal to the current CO.
+            //
+        }
 
         target_temperature[heater-1] = temp;
 
-        pwmSum = 0;
-        eAlt = 0;
+        // eAlt = 0;
     }
 }
 
@@ -247,23 +269,12 @@ void TempControl::heater() {
 
             float pTerm = Kp * e;
 
-            float iTerm = Ki * pid_dt *eSum;
+            float iTerm = Ki * pid_dt * eSum;
 
-            // float dTerm = Kd * (e - eAlt) / pid_dt;
-            float dTerm = 0;
-            if (target_temperature[0] > 0)
-                // dTerm = Kd * (e - eAlt) / pid_dt;
-                dTerm = Kd * (e - eAlt);
+            float dTerm = Kd * (e - eAlt) / pid_dt;
 
-            // float pid_output = pTerm + iTerm + dTerm + 0.5;
-            // pwmSum += (pTerm + iTerm + dTerm) * pid_dt;
-            // pwmSum += (pTerm + iTerm) * pid_dt + dTerm;
-            pwmSum = constrain(
-                    pwmSum + (pTerm + iTerm) * pid_dt + dTerm,
-                    -PID_DRIVE_MAX,
-                    PID_DRIVE_MAX);
-
-            int32_t pid_output = pwmSum / pid_dt + 0.5;
+            // int32_t pid_output = cobias + pTerm + iTerm + dTerm + 0.5;
+            pid_output = cobias + pTerm + iTerm + dTerm + 0.5;
 
             if (pid_output > PID_MAX) {
                 pid_output = PID_MAX;
@@ -271,8 +282,6 @@ void TempControl::heater() {
             else if (pid_output < -PID_MAX) {
                 pid_output = -PID_MAX;
             }
-
-            pwmSum -= pid_output * pid_dt;
 
             analogWrite(HEATER_0_PIN, max(pid_output, 0));
 
@@ -290,7 +299,7 @@ void TempControl::heater() {
                 txBuffer.sendResponseValue(pTerm);
                 txBuffer.sendResponseValue(iTerm);
                 txBuffer.sendResponseValue(dTerm);
-                txBuffer.sendResponseValue(pwmSum);
+                /* txBuffer.sendResponseValue(pwmSum); */
                 txBuffer.sendResponseInt32(pid_output);
                 txBuffer.sendResponseEnd();
             }
