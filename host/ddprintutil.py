@@ -1336,7 +1336,7 @@ def stepResponse(args, parser):
     aAvg = nAvg * 1.0
 
     # Stop if temp curve gets flat enough
-    wait = 60
+    wait = 20
     flatReached = False
     while wait:
         
@@ -1364,7 +1364,7 @@ def stepResponse(args, parser):
         aAvg = aAvg - (aAvg/nAvg) + a
         print "Steigung: %7.4f %7.4f" % (a, aAvg/nAvg)
 
-        if abs((aAvg/nAvg)) < 0.2 and not flatReached:
+        if abs((aAvg/nAvg)) < 0.25 and not flatReached:
             flatReached = True
 
         if flatReached:
@@ -1381,7 +1381,7 @@ def stepResponse(args, parser):
     aAvg = nAvg * 1.0
 
     # Stop if temp curve gets flat enough
-    wait = 60
+    wait = 20
     flatReached = False
     while wait:
         
@@ -1409,7 +1409,7 @@ def stepResponse(args, parser):
         aAvg = aAvg - (aAvg/nAvg) + a
         print "Steigung: %7.4f %7.4f" % (a, aAvg/nAvg)
 
-        if abs((aAvg/nAvg)) < 0.2 and not flatReached:
+        if abs((aAvg/nAvg)) < 0.25 and not flatReached:
             flatReached = True
 
         if flatReached:
@@ -1435,18 +1435,21 @@ def measureHotendStepResponse(args, parser):
 
     tmax = 260
 
-    ## # Eingangssprung, nicht die volle leistung, da sonst die temperatur am ende
-    ## # der sprungantwort zu hoch wird.
+    ## Eingangssprung, nicht die volle leistung, da sonst die temperatur am ende
+    ## der sprungantwort zu stark überschwingt und zu hoch wird.
     Xo = 100.0
     interval = 0.01
+
+    temp = tempStart = printer.getTemp(doLog = False)[1]
 
     # Output file for raw data
     fraw = open("autotune.raw.json", "w")
     fraw.write("""{
     "Xo": %d,
     "dt": %f,
+    "startTemp": %f,
     "columns":  "time temperature",
-    """ % (Xo, interval))
+    """ % (Xo, interval, tempStart))
 
     print "Starting input step, tmax is:", tmax
 
@@ -1457,7 +1460,6 @@ def measureHotendStepResponse(args, parser):
     printer.sendCommand(CmdSetHeaterY, binPayload=payload)
 
     timeStart = time.time()
-    temp = tempStart = printer.getTemp(doLog = False)[1]
 
     print "Starting temp:", tempStart
     data = []
