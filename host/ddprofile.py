@@ -321,10 +321,6 @@ class MatProfile(ProfileBase):
     def getKAdv(cls):
         return float(cls.getValues()["kAdvance"])
 
-    # @classmethod
-    # def getKFeederCompensation(cls):
-        # return float(cls.getValues()["kFeederCompensation"])
-
     @classmethod
     def getTempForFlowrate(cls, flowrate, hwVersion, nozzleDiam):
         return cls.get()._getTempForFlowrate(flowrate, hwVersion, nozzleDiam)
@@ -381,15 +377,6 @@ class NozzleProfile(ProfileBase):
 
         super(NozzleProfile, self).__init__(NozzleProfile, name)
 
-        # Compute max extrusion rate without extrusion adjust
-        extrusionRateAdjust = float(self.getValue("extrusionRateAdjust"))
-        self.netMaxExtrusionRate = NozzleProfile.getMaxExtrusionRate() / (1 + extrusionRateAdjust/100)
-        print "Max net extrusion rate:", self.netMaxExtrusionRate
-        # Extrusion adjust factor
-        self.kExtrusionAdjust = (extrusionRateAdjust/100) / self.netMaxExtrusionRate
-        print "kExtrusionAdjust: ", self.kExtrusionAdjust
-
-    
     @classmethod
     def get(cls):
         return cls._single
@@ -405,14 +392,6 @@ class NozzleProfile(ProfileBase):
     @classmethod
     def getMaxExtrusionRate(cls):
         return float(cls.getValues()["maxExtrusionRate"])
-
-    @classmethod
-    def getExtrusionAdjustFactor(cls):
-        return cls.get().kExtrusionAdjust
-
-    @classmethod
-    def getNetMaxExtrusionRate(cls):
-        return cls.get().netMaxExtrusionRate
 
     @classmethod
     def getArea(cls):

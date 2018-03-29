@@ -84,15 +84,9 @@ class MaxExtrusionRate:
 
     def printStat(self):
 
-
         if self.maxRate:
 
-            if UseExtrusionAdjust:
-                # Extrusion adjust
-                adjustedExtrusion = self.maxRate + pow(self.maxRate, 2) * NozzleProfile.getExtrusionAdjustFactor()
-                print "Maximal net Extrusion Rate (Extruder A): %.1f mm³/s, adjusted/gross: %.1f mm³/s, move:" % (self.maxRate, adjustedExtrusion)
-            else:
-                print "Maximal net Extrusion Rate (Extruder A): %.1f mm³/s, move:" % self.maxRate
+            print "Maximal Extrusion Rate (Extruder A): %.1f mm³/s, move:" % self.maxRate
 
             self.move.pprint("Max. extrusion Move")
             print "Net Max10: ", self.max10

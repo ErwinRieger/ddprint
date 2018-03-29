@@ -923,8 +923,8 @@ class PrintMove(RealMove):
 
         self.direction3 = self.displacement_vector_raw3.normalized()
 
-        # Apply extrusion adjust
-        # if UseExtrusionAdjust:
+        ### Apply extrusion adjust
+        ### if UseExtrusionAdjust:
 
         direction5 = displacement_vector.normalized()
 

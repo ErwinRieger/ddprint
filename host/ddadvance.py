@@ -141,22 +141,21 @@ class Advance (object):
 
         print "Advance: usinge K-Advance %.3f" % self.kAdv
 
-        # self.kFeederComp = MatProfile.getKFeederCompensation()
+        self.kFeederComp = 0.0
+        if UseFeederCompensation:
 
-        hwVersion = PrinterProfile.getHwVersion()
-        nozzleDiam = NozzleProfile.getSize()
-        slippage = MatProfile.getSlippage(hwVersion, nozzleDiam)
+            hwVersion = PrinterProfile.getHwVersion()
+            nozzleDiam = NozzleProfile.getSize()
+            slippage = MatProfile.getSlippage(hwVersion, nozzleDiam)
 
-        tempCurve = MatProfile.get().getTempCurve(hwVersion, nozzleDiam)
+            tempCurve = MatProfile.get().getTempCurve(hwVersion, nozzleDiam)
 
-        area = MatProfile.getMatArea()
-        flowRate = tempCurve.maxFlowrate                           # [mm³/s]
-        feedRate = flowRate / area                                 # [mm/s]
+            area = MatProfile.getMatArea()
+            flowRate = tempCurve.maxFlowrate                           # [mm³/s]
+            feedRate = flowRate / area                                 # [mm/s]
 
-        self.kFeederComp = 1.0/feedRate - 1.0/((1.0+slippage) * feedRate)
-
-        # if self.kFeederComp:
-        print "Feeder Compensation: usinge K-FeederCompensation %.3f" % self.kFeederComp
+            self.kFeederComp = 1.0/feedRate - 1.0/((1.0+slippage) * feedRate)
+            print "Feeder Compensation: usinge K-FeederCompensation %.3f" % self.kFeederComp
 
         self.e_steps_per_mm = PrinterProfile.getStepsPerMM(A_AXIS)
 
@@ -257,8 +256,9 @@ class Advance (object):
             # vMax/vExtruder = 1 + vMax * self.kFeederComp
             # vMax = (1 + vMax * self.kFeederComp) * vExtruder
             # vExtruder = vMax / (1 + vMax * self.kFeederComp)
-            vExtruderMax = self.maxEFeedrate / (1.001 + self.maxEFeedrate * self.kFeederComp)
 
+            vExtruderMax = self.maxEFeedrate / (1.001 + self.maxEFeedrate * self.kFeederComp)
+            
             # print "vmax:", self.maxEFeedrate, vExtruderMax
 
             # Smooth extrusion rate, compute average extrusion rate of this path and
@@ -353,7 +353,7 @@ class Advance (object):
             #
             # Correct eSpeed for feeder slip
             #
-            if self.kFeederComp:
+            if UseFeederCompensation:
                 self.planFeederCorrection(move)
 
         #

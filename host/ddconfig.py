@@ -48,9 +48,9 @@ UseExtrusionAutoTemp = True
 
 #####################################################################
 #
-# Auto extrusion adjust, always enabled
+# Extrusion slip compensation
 #
-UseExtrusionAdjust = False
+UseFeederCompensation = False
 
 #####################################################################
 #
