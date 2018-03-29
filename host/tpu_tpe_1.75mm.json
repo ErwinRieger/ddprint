@@ -12,7 +12,6 @@
   # xxx abhängig von düsen durchmesser?
   "extrusionAutoTempFactor" : 3.5,
   "kAdvance" : 2.0
-  # "kFeederCompensation": 0.04
 }
 
 
