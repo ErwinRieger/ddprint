@@ -200,7 +200,7 @@ class FilamentSensorPMW3360 {
 
         bool feedrateLimiterEnabled;
 
-        // Ratio between measured filament sensor couns and the 
+        // Ratio between measured filament sensor counts and the 
         // extruder stepper motor steps.
         // For example if steps per mm of the extruder stepper is 141 and
         // the resolution of the filament sensor is 5000 cpi, then:
