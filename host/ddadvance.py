@@ -1210,9 +1210,10 @@ class Advance (object):
 
                         adv = min(skippedMove.advanceData.sAccel, toAdvance)
 
-                        print "Move %d, corr. adv:" % skippedMove.moveNumber, adv
-
                         if adv:
+
+                            if debugAdvance:
+                                print "Move %d, corr. adv:" % skippedMove.moveNumber, adv
 
                             self.computeAccelAdvance(skippedMove, adv)
                             advSum += adv
@@ -1246,9 +1247,10 @@ class Advance (object):
 
                         adv = max(skippedMove.advanceData.sDecel, toAdvance)
 
-                        print "Move %d, corr. adv:" % skippedMove.moveNumber, adv
-
                         if adv:
+
+                            if debugAdvance:
+                                print "Move %d, corr. adv:" % skippedMove.moveNumber, adv
 
                             self.computeDecelAdvance(skippedMove, adv)
                             advSum += adv
@@ -2285,7 +2287,7 @@ class Advance (object):
 
             for dim in [X_AXIS, Y_AXIS]:
                 maxSteps[dim] += stepsMissing[dim]
-            print "adjusted steps: ", maxSteps
+            # print "adjusted steps: ", maxSteps
 
         ####################################################################################
 
