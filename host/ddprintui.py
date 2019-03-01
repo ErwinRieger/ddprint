@@ -144,8 +144,7 @@ class MainForm(npyscreen.Form):
         self.pState.editable = False
 
         rely += 1
-        self.curT0 = self.add(npyscreen.TitleFixedText, name = "T0 - Bed Temp        :", relx=w, rely=rely, use_two_lines=False,
-            begin_entry_at=23, width = w/2) 
+        self.curT0 = self.add(npyscreen.TitleFixedText, name = "T0 - Bed Temp        :", relx=w, rely=rely, use_two_lines=False, begin_entry_at=23, width = w/2) 
         self.curT0.editable = False
 
         self.curT1 = self.add(npyscreen.TitleFixedText, name = "T1 - Hotend 1 Temp   :", relx=int(w*1.5), rely=rely, use_two_lines=False, begin_entry_at=23) 
@@ -299,7 +298,12 @@ class MainForm(npyscreen.Form):
     def updateTemps(self, t0, t1, targetT1):
 
         if t0 != None:
-            self.curT0.set_value("%8.1f / %.0f (%.0f)" % (t0, self.mat_t0, self.mat_t0_reduced))
+
+            if self.printerState >= StateInit:
+                self.curT0.set_value("%8.1f / %.0f (%.0f)" % (t0, self.mat_t0, self.mat_t0_reduced))
+            else:
+                self.curT0.set_value("%8.1f / 0 (0)" % t0)
+
             self.curT0.update()
 
         if t1 != None:
