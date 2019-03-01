@@ -390,8 +390,8 @@ class Printer(Serial):
         self.open()
 
         if bootloaderWait:
-            print "Initial bootloader wait..."
-            time.sleep(1)
+            # print "Initial bootloader wait..."
+            time.sleep(0.1)
 
         # Read left over garbage
         recvLine = self.safeReadline()        
@@ -662,7 +662,7 @@ class Printer(Serial):
 
             statusDict[valueName] = tup[i]
 
-        print "statusDict:", statusDict
+        # print "statusDict:", statusDict
 
         self.gui.statusCb(statusDict)
         return statusDict
@@ -702,7 +702,7 @@ class Printer(Serial):
 
         return status['state'] == StateStart or status['state'] == StateDwell
 
-    def getTemp(self, doLog = True):
+    def getTemp(self, doLog = False):
 
         #
         # CmdGetCurrentTemps returns (bedtemp, T1 [, T2])
@@ -715,7 +715,7 @@ class Printer(Serial):
 
         return temps
 
-    def getTemps(self, doLog = True):
+    def getTemps(self, doLog = False):
 
         temps = self.getTemp()
         (cmd, payload) = self.query(CmdGetTargetTemps, doLog=doLog)
@@ -759,7 +759,7 @@ class Printer(Serial):
 
     def isHomed(self):
 
-        (cmd, payload) = self.query(CmdGetHomed)
+        (cmd, payload) = self.query(CmdGetHomed, doLog=False)
         tup = struct.unpack("<BBB", payload)
         return tup == (1, 1, 1)
 
@@ -767,7 +767,7 @@ class Printer(Serial):
 
     def getPos(self):
 
-        (cmd, payload) = self.query(CmdGetPos)
+        (cmd, payload) = self.query(CmdGetPos, doLog=False)
         tup = struct.unpack("<iiii", payload)
         return tup
 
@@ -776,7 +776,7 @@ class Printer(Serial):
     def getEndstops(self):
 
         # Check, if enstop was pressed
-        (cmd, payload) = self.query(CmdGetEndstops)
+        (cmd, payload) = self.query(CmdGetEndstops, doLog=False)
         tup = struct.unpack("<BiBiBi", payload)
         return tup
 
@@ -817,7 +817,7 @@ class Printer(Serial):
     # Get current stepper direction bits
     def getDirBits(self):
 
-        (cmd, payload) = self.query(CmdGetDirBits)
+        (cmd, payload) = self.query(CmdGetDirBits, doLog=False)
         return struct.unpack("<B", payload)[0]
 
     ####################################################################################################

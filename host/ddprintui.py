@@ -493,7 +493,7 @@ class MainForm(npyscreen.Form):
         except stoppableThread.StopThread:
             # Stop of current action requested
             self.printThread.incStopCount()
-            self.log("printFile(): Caught StopThread, bailing out.")
+            # self.log("printFile(): Caught StopThread, bailing out.")
             return
 
         except FatalPrinterError, ex:
