@@ -163,8 +163,7 @@ class MainForm(npyscreen.Form):
         self.sbSisze.editable = False
 
         rely += 1
-        self.underrun = self.add(npyscreen.TitleFixedText, name = "Step Buffer underruns:", relx=w, rely=rely, use_two_lines=False,
-            begin_entry_at=23, width = w/2) 
+        self.underrun = self.add(npyscreen.TitleFixedText, name = "Step Buffer underruns:", relx=w, rely=rely, use_two_lines=False, begin_entry_at=23, width = w/2) 
         self.underrun.editable = False
         self.errors = self.add(npyscreen.TitleFixedText, name = "Errors:", relx=int(w*1.5), rely=rely, use_two_lines=False, begin_entry_at=8) 
         # self.errors.editable = False
@@ -322,7 +321,11 @@ class MainForm(npyscreen.Form):
         self.sdrSize.update()
         self.sbSisze.set_value( "%8s" % util.sizeof_fmt(status["StepBuffer"]))
         self.sbSisze.update()
-        self.underrun.set_value( "%8s" % str(status["StepBufUnderRuns"]))
+        if status["StepBufUnderRuns"] > 0:
+            self.underrun.set_value( "%8s" % str(status["StepBufUnderRuns"]))
+        else:
+            self.underrun.set_value( "       0" )
+
         self.underrun.update()
 
         # st = status["targetExtrusionSpeed"]
