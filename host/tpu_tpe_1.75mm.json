@@ -7,6 +7,10 @@
   "bedTempReduced"    : 60,
   "fanPercent"        : 100,
   "kAdvance"          : 2.0,
+  # Default parameters for measureTempFlowrateCurve
+  "mtfStartTemp": 210,
+  "mtfEndTemp": 260,
+  "mtfTempStep": 5,
   # Generic temp-flowrate table, this could/should be overridden
   # by a specific material profile with a measured temp-flowrate curve.
   # This table is used by the "auto-temp" algorithm to detemine the
