@@ -201,7 +201,7 @@ class Printer(Serial):
         elif respCode == RespRXTimeoutError:
 
             lastLine = ord(payload)
-            self.gui.logRecv("RespRXTimeoutError:", lastLine)
+            # self.gui.logRecv("RespRXTimeoutError:", lastLine)
             if handleError:
                 return self.commandResend(lastLine)
 
@@ -298,11 +298,9 @@ class Printer(Serial):
             timeout += self.timeout
 
             if timeout > 3:
-                print "timeout reading, data read: %d bytes, '%s'" % (len(res), res)
+                # print "timeout reading, data read: %d bytes, '%s'" % (len(res), res)
                 raise RxTimeout()
 
-        # for c in res:
-            # self.gui.log("c: 0x%x" % ord(c))
         return res
 
     def readResponse(self):
@@ -499,19 +497,19 @@ class Printer(Serial):
 
         return binary
 
-    # Use qury() if you need the result of the command
+    # Use query() if you need the result of the command
     def sendCommand(self, cmd, binPayload=None):
 
         cobsBlock = binPayload and cobs.encodeCobsString(binPayload)
         self.sendCommandC(cmd, cobsBlock)
 
-    # Use qury() if you need the result of the command
+    # Use query() if you need the result of the command
     def sendCommandC(self, cmd, cobsBlock):
 
         binary = self.buildBinaryCommand(cmd, cobsBlock)
         self.send2(cmd, binary)
 
-    # Use qury() if you need the result of the command
+    # Use query() if you need the result of the command
     def sendCommandParamV(self, cmd, params):
 
         assert(params[0] != None)
