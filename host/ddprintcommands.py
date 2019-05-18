@@ -86,25 +86,35 @@ CmdGetTempTable = 163 # ExtrusionLimit: get tempTable
 CmdSetTempTable = 164 # ExtrusionLimit: set tempTable
 CmdEnableFRLimit = 165 # Enable/disable flowrate limit
 
-CmdSetContTimer = 166 # Timer value for CmdContinuousE -> E-Speed
-CmdContinuousE = 167 # Start/Stop continuous e-move for filament measurement
+CmdSetContTimer =    166 # Timer value for CmdContinuousE -> E-Speed
+CmdContinuousE =     167 # Start/Stop continuous e-move for filament measurement
+CmdSetFilSensorCal = 168 # Start/Stop continuous e-move for filament measurement
 
 CommandNames = {
-    CmdNull: "CmdNull",
-    CmdG1: "CmdG1",
-    # CmdDirBits: "CmdDirBits",
-    CmdBlock: "CmdBlock",
-    # CmdDirG1: "CmdDirG1",
-    CmdG1Raw: "CmdG1Raw",
-    # CmdDirG1Raw: "CmdDirG1Raw",
-    CmdSyncTargetTemp: "CmdSyncTargetTemp",
-    CmdDwellMS: "CmdDwellMS",
-    CmdUnknown: "CmdUnknown",
+}
+
+def insertCommandName(cmd, cmdName):
+
+    assert(cmdName not in CommandNames)
+
+    CommandNames[cmd] = cmdName
+
+for (cmd, cmdName) in [
+    (CmdNull, "CmdNull",),
+    (CmdG1, "CmdG1",),
+    # CmdDirBits, "CmdDirBits",
+    (CmdBlock, "CmdBlock",),
+    # CmdDirG1, "CmdDirG1",
+    (CmdG1Raw, "CmdG1Raw",),
+    # CmdDirG1Raw, "CmdDirG1Raw",
+    (CmdSyncTargetTemp, "CmdSyncTargetTemp",),
+    (CmdDwellMS, "CmdDwellMS",),
+    (CmdUnknown, "CmdUnknown",),
     #
     # Direct commands:
     # ----------------------
     #
-    CmdPrinterInit: "CmdPrinterInit",
+    (CmdPrinterInit, "CmdPrinterInit",),
     # * get homed flag
     # * get endstop state
     # * get temp
@@ -116,41 +126,44 @@ CommandNames = {
     # 
     # * dump file buffer
     # * start move, print
-    CmdMove: "CmdMove",
+    (CmdMove, "CmdMove",),
     # * End of text, all moves have been sent
-    CmdEOT: "CmdEOT",
-    CmdResetLineNr: "CmdResetLineNr",
-    CmdSetHomePos: "CmdSetHomePos",
-    CmdSetTargetTemp: "CmdSetTargetTemp",
-    CmdWriteEepromFloat: "CmdWriteEepromFloat",
-    CmdEepromFactory: "CmdEepromFactory",
-    CmdSyncFanSpeed: "CmdSyncFanSpeed",
-    CmdFanSpeed: "CmdFanSpeed",
-    CmdStopMove: "CmdStopMove",
-    CmdSetHeaterY: "CmdSetHeaterY",
-    CmdRaw: "CmdRaw",
+    (CmdEOT, "CmdEOT",),
+    (CmdResetLineNr, "CmdResetLineNr",),
+    (CmdSetHomePos, "CmdSetHomePos",),
+    (CmdSetTargetTemp, "CmdSetTargetTemp",),
+    (CmdWriteEepromFloat, "CmdWriteEepromFloat",),
+    (CmdEepromFactory, "CmdEepromFactory",),
+    (CmdSyncFanSpeed, "CmdSyncFanSpeed",),
+    (CmdFanSpeed, "CmdFanSpeed",),
+    (CmdStopMove, "CmdStopMove",),
+    (CmdSetHeaterY, "CmdSetHeaterY",),
+    (CmdRaw, "CmdRaw",),
     
     # Getters
-    CmdGetDirBits: "CmdGetDirBits",
-    CmdGetHomed: "CmdGetHomed",
-    CmdGetEndstops: "CmdGetEndstops",
-    CmdGetEepromVersion: "CmdGetEepromVersion",
-    CmdGetEepromSettings: "CmdGetEepromSettings",
+    (CmdGetDirBits, "CmdGetDirBits",),
+    (CmdGetHomed, "CmdGetHomed",),
+    (CmdGetEndstops, "CmdGetEndstops",),
+    (CmdGetEepromVersion, "CmdGetEepromVersion",),
+    (CmdGetEepromSettings, "CmdGetEepromSettings",),
     # currently not used: CmdDisableStepperIsr: "CmdDisableStepperIsr",
-    CmdDisableSteppers: "CmdDisableSteppers",
-    CmdGetCurrentTemps: "CmdGetCurrentTemps",
-    CmdGetTargetTemps: "CmdGetTargetTemps",
-    CmdGetPos: "CmdGetPos",
-    CmdExit: "CmdExit",
-    CmdGetStatus: "CmdGetStatus",
-    CmdGetFilSensor: "CmdGetFilSensor",
-    CmdGetTempTable: "CmdGetTempTable",
-    CmdSetTempTable: "CmdSetTempTable",
-    CmdEnableFRLimit: "CmdEnableFRLimit",
-    CmdSetContTimer: "CmdSetContTimer",
-    CmdContinuousE: "CmdContinuousE",
+    (CmdDisableSteppers, "CmdDisableSteppers",),
+    (CmdGetCurrentTemps, "CmdGetCurrentTemps",),
+    (CmdGetTargetTemps, "CmdGetTargetTemps",),
+    (CmdGetPos, "CmdGetPos",),
+    (CmdExit, "CmdExit",),
+    (CmdGetStatus, "CmdGetStatus",),
+    (CmdGetFilSensor, "CmdGetFilSensor",),
+    (CmdGetTempTable, "CmdGetTempTable",),
+    (CmdSetTempTable, "CmdSetTempTable",),
+    (CmdEnableFRLimit, "CmdEnableFRLimit",),
+    (CmdSetContTimer, "CmdSetContTimer",),
+    (CmdContinuousE, "CmdContinuousE",),
+    (CmdSetFilSensorCal, "CmdSetFilSensorCal",),
+    (CmdSetFilSensorCal+0, "xxxCmdSetFilSensorCal",),
+    ]:
 
-}
+        insertCommandName(cmd, cmdName)
 
 #
 # Flag bits for CmdG1x commands
