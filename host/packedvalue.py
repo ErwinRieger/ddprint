@@ -37,5 +37,9 @@ class uint16_t(PackedValue):
     def __init__(self, value):
         PackedValue.__init__(self, value, "H")
 
+class float_t(PackedValue):
+    def __init__(self, value):
+        PackedValue.__init__(self, value, "f")
+
 ####################################################################################################
 
