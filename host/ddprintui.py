@@ -346,7 +346,11 @@ class MainForm(npyscreen.Form):
 
         slippage = status["slippage"]
 
-        self.extGrip.set_value( "%7.1f%%" % (100.0/slippage) )
+        if slippage:
+            self.extGrip.set_value( "%7.1f%%" % (100.0/slippage) )
+        else:
+            self.extGrip.set_value( "   ?   ")
+
         self.extGrip.update()
 
     def display(self, clear=False):
