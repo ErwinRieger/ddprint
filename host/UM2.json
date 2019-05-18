@@ -61,7 +61,7 @@
   "MaxAxisAcceleration": [9000, 9000, 100, 10000, 10000],
   # Filamentsensor calibration data. This is the ratio of
   # filamentsensor steps to e-stepper steps.
-  "filSensorCalibration": 1.397
+  "filSensorCalibration": 1.439
 }
 
 
