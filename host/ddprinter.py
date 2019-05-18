@@ -74,7 +74,7 @@ class Printer(Serial):
     # maxTXErrors = 10
     maxTXErrors = 3
 
-    def __init__(self, gui=None):
+    def __init__(self, settings, gui=None):
 
         if Printer.__single:
             raise RuntimeError('A Printer already exists')
@@ -85,6 +85,8 @@ class Printer(Serial):
             self.gui = gui
         else:
             self.gui = dddumbui.DumbGui()
+
+        self.settings = settings
 
         Serial.__init__(self)
 
@@ -308,7 +310,9 @@ class Printer(Serial):
         s = self.readWithTimeout(1) # SOH
 
         # xxx loop til SOH found
-        assert(s == cobs.nullByte)
+        while s != cobs.nullByte:
+            self.gui.logRecv("Waiting for SOH...")
+            s = self.readWithTimeout(1) # SOH
 
         rc = self.readWithTimeout(1) # read response code
         crc = crc_ccitt_kermit.crc16_kermit(rc, 0xffff)
@@ -401,6 +405,8 @@ class Printer(Serial):
     def commandInit(self, args):
         self.initSerial(args.device, args.baud, True)
         self.resetLineNumber()
+        self.sendCommandParamV(CmdSetFilSensorCal,
+            [packedvalue.float_t(self.settings["filSensorCalibration"])])
 
     def resetLineNumber(self):
         self.lineNr = 1
@@ -646,7 +652,7 @@ class Printer(Serial):
 
         (cmd, payload) = self.query(CmdGetStatus, doLog=False)
 
-        tup = struct.unpack("<BffIHBhHh", payload)
+        tup = struct.unpack("<BffIHBhHf", payload)
 
         statusDict = {}
         for i in range(len(valueNames)):
@@ -654,9 +660,9 @@ class Printer(Serial):
             valueName = valueNames[i]
 
             # if valueName in ["targetExtrusionSpeed", "actualExtrusionSpeed"]:
-            if valueName in ["slippage"]:
-                statusDict[valueName] = tup[i] * 0.01
-                continue
+            # if valueName in ["slippage"]:
+                # statusDict[valueName] = tup[i] * 0.01
+                # continue
 
             statusDict[valueName] = tup[i]
 
@@ -808,7 +814,8 @@ class Printer(Serial):
     def getFilSensor(self):
 
         (cmd, payload) = self.query(CmdGetFilSensor)
-        return struct.unpack("<i", payload)[0]
+        t = struct.unpack("<i", payload)
+        return t[0]
 
     ####################################################################################################
 
