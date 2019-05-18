@@ -36,12 +36,21 @@ def testFilSensor(args, parser):
     planner = parser.planner
     printer = planner.printer
 
+    feedrate = args.feedrate or 1
+
     printer.commandInit(args)
     startPos = printer.getFilSensor()
-    util.manualMove(parser, util.dimIndex['A'], args.distance)
+    util.manualMove(parser, util.dimIndex['A'], args.distance, feedrate=feedrate)
     endPos = printer.getFilSensor()
     diff = endPos - startPos
-    print "Filament pos:", startPos, endPos, "counts, difference: %d,  %.3f mm" % (diff, diff*25.4/1000)
+
+    # diff ist in sensor-counts
+    cal = PrinterProfile.get().getFilSensorCalibration()
+    steps_per_mm = PrinterProfile.getStepsPerMM(A_AXIS)
+
+    mm = diff / (cal * steps_per_mm)
+
+    print "Filament pos:", startPos, endPos, "counts, difference: %d,  %.3f mm" % (diff, mm)
 
 #
 # Calibrate filament sensor, determine ratio between extruder steps and the value 
@@ -72,8 +81,8 @@ def calibrateFilSensor(args, parser):
     # Disable temp-flowrate limit
     util.downloadDummyTempTable(printer)
 
-    # XXX todo set filament sensor calibration factor to 1.0:
-    assert(0) # printer.sendCommandParamV(CmdSetFRCalFactor, [packedvalue.float_t(1.0)])
+    # Set filament sensor calibration to 1
+    printer.sendCommandParamV(CmdSetFilSensorCal, [packedvalue.float_t(1.0)])
 
     feedrate = 0.25
     startPos = parser.getPos()[A_AXIS]
@@ -82,6 +91,7 @@ def calibrateFilSensor(args, parser):
     calFile.write('{\n    "filSensorCalibration": [\n')
 
     calValues = []
+    valueSum = 0
 
     while feedrate <= maxFeedrate:
 
@@ -134,6 +144,7 @@ def calibrateFilSensor(args, parser):
         print "speed:", feedrate, "ratio:", grip
 
         calValues.append((feedrate, grip))
+        valueSum += grip
 
         feedrate += 0.25
 
@@ -151,6 +162,9 @@ plot '-' using 1:2 with linespoints title 'ratio'
     calFile.write("\n    ]\n")
     calFile.write("}\n")
     calFile.close()
+
+    avg = valueSum / len(calValues)
+    print "Done, average gip: ", avg, ", calibration value:", 1/avg
 
     printer.sendPrinterInit()
 
