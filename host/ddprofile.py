@@ -155,6 +155,10 @@ class PrinterProfile(ProfileBase):
     def getHwVersion(cls):
         return cls.getValues()["hwVersion"]
 
+    def getFilSensorCalibration(self):
+        cal = self.getValues()["filSensorCalibration"]
+        return cal
+
 ####################################################################################################
 #
 # To access tempearture curve data
