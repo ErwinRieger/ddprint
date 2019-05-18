@@ -289,7 +289,9 @@ def initParser(args, mode=None, gui=None):
     nozzle = NozzleProfile(args.nozzle)
 
     # Create the Printer singleton instance
-    printer = Printer(gui)
+    printer = Printer(
+        settings={"filSensorCalibration": printerProfile.getFilSensorCalibration()},
+        gui=gui)
 
     # Create the planner singleton instance
     planner = Planner(args, gui)
