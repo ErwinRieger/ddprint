@@ -129,7 +129,7 @@ void defaultEepromSettings(EepromSettings &es) {
 
     EepromSettings defaultSettings = {
         /* stored_ver */ EEPROM_VERSION,
-        /* axis_steps_per_unit */ { AXIS_STEPS_PER_MM_X, AXIS_STEPS_PER_MM_Y, AXIS_STEPS_PER_MM_Z, AXIS_STEPS_PER_MM_E },
+        /* axis_steps_per_unit */ { AXIS_STEPS_PER_MM_X, AXIS_STEPS_PER_MM_Y, AXIS_STEPS_PER_MM_Z, 0 },
         /* max_feedrate */ DEFAULT_MAX_FEEDRATE,
         /* max_acceleration_units_per_sq_second */ {0, 0, 0, 0}, // XXX unused
         /* acceleration */ DEFAULT_ACCELERATION,
