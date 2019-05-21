@@ -102,6 +102,8 @@
 
 #define CmdSetContTimer         166 // Timer value for CmdContinuousE -> E-Speed
 #define CmdContinuousE          167 // Start/Stop continuous e-move for filament measurement
+#define CmdSetFilSensorCal      168 // Set filament sensor calibration vaue
+#define CmdSetStepsPerMME       169 // 
 
 //
 // Response types 
