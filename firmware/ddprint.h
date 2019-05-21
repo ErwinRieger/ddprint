@@ -122,6 +122,8 @@ class Printer {
         void cmdGetPos();
         void cmdFanSpeed(uint8_t speed);
         void cmdContinuousE(uint16_t timerValue);
+        void cmdSetFilSensorCal(float cal);
+        void cmdSetStepsPerMME(uint16_t steps);
         void cmdStopMove();
         void cmdGetTargetTemps();
         void cmdGetCurrentTemps();
