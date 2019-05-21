@@ -47,8 +47,6 @@ template<>
 inline uint16_t axis_steps_per_mm<YMove>() { return AXIS_STEPS_PER_MM_Y; }
 template<>
 inline uint16_t axis_steps_per_mm<ZMove>() { return AXIS_STEPS_PER_MM_Z; }
-template<>
-inline uint16_t axis_steps_per_mm<EMove>() { return AXIS_STEPS_PER_MM_E; }
 
 #if 0
 template<typename MOVE>
