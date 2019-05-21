@@ -217,12 +217,12 @@ const bool Z_ENDSTOPS_INVERTING = true; // set to true to invert the logic of th
 #define AXIS_STEPS_PER_MM_Y 80
 #define AXIS_STEPS_PER_MM_Z 200
 
-#define X_MIN_POS_STEPS (long)(X_MIN_POS * AXIS_STEPS_PER_MM_X)
-#define X_MAX_POS_STEPS (long)(X_MAX_POS * AXIS_STEPS_PER_MM_X)
-#define Y_MIN_POS_STEPS (long)(Y_MIN_POS * AXIS_STEPS_PER_MM_Y)
-#define Y_MAX_POS_STEPS (long)(Y_MAX_POS * AXIS_STEPS_PER_MM_Y)
-#define Z_MIN_POS_STEPS (long)(Z_MIN_POS * AXIS_STEPS_PER_MM_Z)
-#define Z_MAX_POS_STEPS (long)(Z_MAX_POS * AXIS_STEPS_PER_MM_Z)
+#define X_MIN_POS_STEPS ((long)X_MIN_POS * AXIS_STEPS_PER_MM_X)
+#define X_MAX_POS_STEPS ((long)X_MAX_POS * AXIS_STEPS_PER_MM_X)
+#define Y_MIN_POS_STEPS ((long)Y_MIN_POS * AXIS_STEPS_PER_MM_Y)
+#define Y_MAX_POS_STEPS ((long)Y_MAX_POS * AXIS_STEPS_PER_MM_Y)
+#define Z_MIN_POS_STEPS ((long)Z_MIN_POS * AXIS_STEPS_PER_MM_Z)
+#define Z_MAX_POS_STEPS ((long)Z_MAX_POS * AXIS_STEPS_PER_MM_Z)
 
 //// MOVEMENT SETTINGS
 #define NUM_AXIS 4 // The axis order in all axis related arrays is X, Y, Z, E
