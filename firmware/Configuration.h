@@ -126,16 +126,6 @@
     #define  DEFAULT_Kd 2.5
 #endif // PIDTEMP
 
-//this prevents dangerous Extruder moves, i.e. if the temperature is under the limit
-//can be software-disabled for whatever purposes by
-#define PREVENT_DANGEROUS_EXTRUDE
-//if PREVENT_DANGEROUS_EXTRUDE is on, you can still disable (uncomment) very long bits of extrusion separately.
-#define PREVENT_LENGTHY_EXTRUDE
-
-#define EXTRUDE_MINTEMP 170
-// #define EXTRUDE_MAXLENGTH 1000.0 //prevent extrusion of very large distances.
-#define EXTRUDE_MAXSTEPS (100*AXIS_STEPS_PER_MM_E)  //prevent extrusion of very large distances.
-
 //===========================================================================
 //=============================Mechanical Settings===========================
 //===========================================================================
@@ -202,13 +192,11 @@ const bool Z_ENDSTOPS_INVERTING = true; // set to true to invert the logic of th
 #define MAX_SOFTWARE_ENDSTOPS 1  // If true, axis won't move to coordinates greater than the defined lengths below.
 
 // Travel limits after homing
-#define X_MAX_POS 225 // 230
+#define X_MAX_POS 230
 #define X_MIN_POS 0
-#define Y_MAX_POS 225 // 230
+#define Y_MAX_POS 230
 #define Y_MIN_POS 0
-// #define Z_MAX_POS 230
-// #define Z_MAX_POS 229 // Dauerdruckplatte hat 5mm im vergleich zur glassplatte 4mm
-#define Z_MAX_POS 212.25 // solex nozzle
+#define Z_MAX_POS 230
 #define Z_MIN_POS 0
 
 #define X_MAX_LENGTH (X_MAX_POS - X_MIN_POS)
@@ -223,16 +211,11 @@ const bool Z_ENDSTOPS_INVERTING = true; // set to true to invert the logic of th
 // For deltabots this means top and center of the cartesian print volume.
 #define MANUAL_X_HOME_POS 0
 #define MANUAL_Y_HOME_POS 0
-#define MANUAL_Z_HOME_POS 0
-//#define MANUAL_Z_HOME_POS 402 // For delta: Distance between nozzle and print surface after homing.
 
 // #define DEFAULT_AXIS_STEPS_PER_UNIT   {80.0,80.0,200,282}  // default steps per unit for ultimaker2
 #define AXIS_STEPS_PER_MM_X 80
 #define AXIS_STEPS_PER_MM_Y 80
 #define AXIS_STEPS_PER_MM_Z 200
-// #define AXIS_STEPS_PER_MM_E 282  // Original UM2 feeder motor
-#define AXIS_STEPS_PER_MM_E 141     // 60mm 0.65Nm feeder motor
-// #define AXIS_STEPS_PER_MM_E 495     // Bulldog XL feeder
 
 #define X_MIN_POS_STEPS (long)(X_MIN_POS * AXIS_STEPS_PER_MM_X)
 #define X_MAX_POS_STEPS (long)(X_MAX_POS * AXIS_STEPS_PER_MM_X)

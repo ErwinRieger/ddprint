@@ -88,14 +88,6 @@
     #endif //BED_CENTER_AT_0_0
   #endif //Y_HOME_DIR == -1
 
-  // Z axis
-  #if Z_HOME_DIR == -1 //BED_CENTER_AT_0_0 not used
-    #define Z_HOME_POS Z_MIN_POS
-  #else
-    #define Z_HOME_POS Z_MAX_POS
-  #endif //Z_HOME_DIR == -1
-
-
 //homing hits the endstop, then retracts by this distance, before it tries to slowly bump again:
 #define X_HOME_RETRACT_MM 7
 #define Y_HOME_RETRACT_MM 7
