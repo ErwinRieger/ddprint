@@ -30,29 +30,29 @@
 #include <avr/interrupt.h>
 
 #include "ddprint.h"
-#include "MarlinSerial.h"
+#include "serialport.h"
 
 #if defined(M_USARTx_RX_vect)
   SIGNAL(M_USARTx_RX_vect)
   {
 
     // // Check error status bits for frame-/overrun- and parity error
-    // MSerial.rxerror |= M_UCSRxA & 0x1C;
+    // serialPort.rxerror |= M_UCSRxA & 0x1C;
     unsigned char c  =  M_UDRx;
-    MSerial.store_char(c);
+    serialPort.store_char(c);
   }
 #endif
 
 // Constructors ////////////////////////////////////////////////////////////////
 
-MarlinSerial::MarlinSerial()
+SerialPort::SerialPort()
 {
     head = tail; //  = rxerror = 0;
 }
 
 // Public Methods //////////////////////////////////////////////////////////////
 
-void MarlinSerial::begin(long baud)
+void SerialPort::begin(long baud)
 {
   uint16_t baud_setting;
   bool useU2X = true;

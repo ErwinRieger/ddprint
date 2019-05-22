@@ -116,11 +116,11 @@ void TempControl::init() {
     //
     // Get PID values from eeprom
     //
-    EepromSettings es;
-    getEepromSettings(es);
-    Kp = es.Kp;
-    Ki = es.Ki;
-    Kd = es.Kd;
+    // EepromSettings es;
+    // getEepromSettings(es);
+    // Kp = es.Kp;
+    // Ki = es.Ki;
+    // Kd = es.Kd;
 
     eSum = 0;
     eAlt = 0;

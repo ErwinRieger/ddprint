@@ -47,7 +47,12 @@ class TempControl: public Protothread
     int32_t pid_output;
 
     public:
-        TempControl(): raw_temp_0_value(0), raw_temp_bed_value(0) {};
+        TempControl():
+            raw_temp_0_value(0),
+            raw_temp_bed_value(0),
+            Kp(1.0),
+            Ki(0.1),
+            Kd(1.0) {};
         void init();
         virtual bool Run();
         void setTemp(uint8_t heater, uint16_t newTarget);
@@ -57,6 +62,11 @@ class TempControl: public Protothread
         // Set heater PWM value directly for PID AutoTune
         void setHeaterY(uint8_t heater, uint8_t pwmValue);
 #endif
+        void setPIDValues(float kp, float ki, float kd) {
+            Kp = kp;
+            Ki = ki;
+            Kd = kd;
+        }
 };
 
 extern TempControl tempControl;

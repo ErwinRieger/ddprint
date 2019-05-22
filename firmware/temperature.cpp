@@ -34,7 +34,7 @@
 #include "ddtemp.h"
 #include "pins.h"
 #include "fastio.h"
-#include "MarlinSerial.h"
+#include "serialport.h"
 
 // Redundant definitions to avoid include of ddprint.h
 extern bool IsStopped();

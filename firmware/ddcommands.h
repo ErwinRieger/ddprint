@@ -67,8 +67,8 @@
 
 #define CmdSetHomePos           133
 #define CmdSetTargetTemp        134
-#define CmdWriteEepromFloat     135 // Name max. 63 chars!
-#define CmdEepromFactory        136
+// #define CmdWriteEepromFloat     135 // Name max. 63 chars!
+// #define CmdEepromFactory        136
 #define CmdFanSpeed             137
 #define CmdStopMove             138
 
@@ -79,8 +79,8 @@
 #define CmdGetDirBits           150
 #define CmdGetHomed             151
 #define CmdGetEndstops          152
-#define CmdGetEepromVersion     153
-#define CmdGetEepromSettings    154
+// #define CmdGetEepromVersion     153
+// #define CmdGetEepromSettings    154
 
 #define CmdDisableStepperIsr    155
 #define CmdDisableSteppers      156
@@ -104,6 +104,12 @@
 #define CmdContinuousE          167 // Start/Stop continuous e-move for filament measurement
 #define CmdSetFilSensorCal      168 // Set filament sensor calibration vaue
 #define CmdSetStepsPerMME       169 // 
+
+#define CmdSetPrinterName       170 // Write printer (-profile) name to printer eeprom
+#define CmdGetPrinterName       171 // Read printer (-profile) name from printer eeprom
+
+#define CmdSetPIDValues         172
+// #define CmdSetBedlevelOffset    173
 
 //
 // Response types 

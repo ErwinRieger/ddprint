@@ -45,7 +45,7 @@
 #define SERIAL_REGNAME_INTERNAL(registerbase,number,suffix) registerbase##number##suffix
 #endif
 
-// Registers used by MarlinSerial class (these are expanded
+// Registers used by SerialPort class (these are expanded
 // depending on selected serial port
 #define M_UCSRxA SERIAL_REGNAME(UCSR,SERIAL_PORT,A) // defines M_UCSRxA to be UCSRnA where n is the serial port number
 #define M_UCSRxB SERIAL_REGNAME(UCSR,SERIAL_PORT,B)
@@ -63,7 +63,7 @@
 // Size of tx buffer in bytes
 #define RX_BUFFER_SIZE 256
 
-class MarlinSerial //: public Stream
+class SerialPort //: public Stream
 {
 
   private:
@@ -81,7 +81,7 @@ class MarlinSerial //: public Stream
     void atCobsBlock();
 
   public:
-    MarlinSerial();
+    SerialPort();
 
     void begin(long);
     uint8_t peekN(uint8_t index);
@@ -112,9 +112,9 @@ class MarlinSerial //: public Stream
     inline void store_char(unsigned char c);
 };
 
-extern MarlinSerial MSerial;
+extern SerialPort serialPort;
 
-inline void MarlinSerial::store_char(unsigned char c) {
+inline void SerialPort::store_char(unsigned char c) {
 
         if (c == 0x0) { // SOH
             flush0();

@@ -21,6 +21,9 @@
 
 struct __attribute__((packed)) EepromSettings {
 
+    char printerName[64];
+
+    /*
     char stored_ver[4];
     float axis_steps_per_unit[4];
     float max_feedrate[4];
@@ -50,17 +53,20 @@ struct __attribute__((packed)) EepromSettings {
     float Kd;
 
     // ...
+    */
 };
 
 void initEeprom();
 
-void getEepromVersion();
+// void getEepromVersion();
+void setPrinterName(char *name, uint8_t len);
+void getPrinterName();
 
 void getEepromSettings(EepromSettings &es);
 
-void defaultEepromSettings(EepromSettings &es);
+// void defaultEepromSettings(EepromSettings &es);
 
-void dumpEepromSettings(const char* prefix="Res:");
+// void dumpEepromSettings(const char* prefix="Res:");
 
-uint8_t writeEepromFloat(char *valueName, uint8_t len, float v);
+// uint8_t writeEepromFloat(char *valueName, uint8_t len, float v);
 

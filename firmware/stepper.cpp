@@ -21,7 +21,7 @@
 #include <Arduino.h>
 
 #include "ddprint.h"
-#include "MarlinSerial.h"
+#include "serialport.h"
 #include "stepper.h"
 #include "mdebug.h"
 

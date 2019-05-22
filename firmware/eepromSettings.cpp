@@ -22,14 +22,15 @@
 #include <avr/eeprom.h>
 
 #include "eepromSettings.h"
-#include "MarlinSerial.h"
+#include "serialport.h"
 #include "Configuration.h"
 #include "ddcommands.h"
 #include "ddserial.h"
 #include "ddcommands.h"
 
 #define EEPROM_OFFSET ((uint8_t*)100)
-#define EEPROM_VERSION "V11"
+// #define EEPROM_VERSION "V11"
+#define DEFAULT_PRINTER_NAME "UM2-generic"
 
 void _EEPROM_readData(uint8_t * &pos, uint8_t* value, uint8_t size)
 {
@@ -60,16 +61,32 @@ void inline eeprom_write_float(float* addr, float f)
 #endif
 
 
-void getEepromVersion() {
+void setPrinterName(char *name, uint8_t len) {
 
-    uint8_t * i = EEPROM_OFFSET;
-    char stored_ver[4];
+    EepromSettings es;
 
-    EEPROM_READ_VAR(i, stored_ver); //read stored version
+    getEepromSettings(es);
 
-    txBuffer.sendResponseStart(CmdGetEepromVersion);
+    memset(es.printerName, 0, sizeof(es.printerName));
+
+    strncpy(es.printerName, name, min(len, sizeof(es.printerName)));
+
+    eeprom_write_block(&es, (void*)EEPROM_OFFSET, sizeof(EepromSettings));
+
+    txBuffer.sendResponseStart(CmdSetPrinterName);
     txBuffer.sendResponseUint8(RespOK);
-    txBuffer.sendResponseString(stored_ver, 3);
+    txBuffer.sendResponseEnd();
+}
+
+void getPrinterName() {
+
+    EepromSettings es;
+
+    getEepromSettings(es);
+
+    txBuffer.sendResponseStart(CmdGetPrinterName);
+    txBuffer.sendResponseUint8(RespOK);
+    txBuffer.sendResponseString(es.printerName, strnlen(es.printerName, sizeof(es.printerName)-1));
     txBuffer.sendResponseEnd();
 }
 
@@ -123,11 +140,16 @@ void eeDumpValue(int32_t *array, uint8_t len) {
   eeDumpValue(s . member, sizeof(s . member)); }
 #endif
 
+#if 0
 void defaultEepromSettings(EepromSettings &es) {
 
     // SERIAL_ECHOLN("defaultEepromSettings(): initializing eeprom.");
 
     EepromSettings defaultSettings = {
+
+        /* printer name */ DEFAULT_PRINTER_NAME,
+
+
         /* stored_ver */ EEPROM_VERSION,
         /* axis_steps_per_unit */ { AXIS_STEPS_PER_MM_X, AXIS_STEPS_PER_MM_Y, AXIS_STEPS_PER_MM_Z, 0 },
         /* max_feedrate */ DEFAULT_MAX_FEEDRATE,
@@ -158,12 +180,13 @@ void defaultEepromSettings(EepromSettings &es) {
     eeprom_write_block(&defaultSettings, (void*)EEPROM_OFFSET, sizeof(EepromSettings));
     es = defaultSettings;
 }
-
+#endif
 
 void getEepromSettings(EepromSettings &es) {
 
     eeprom_read_block(&es, (void*)EEPROM_OFFSET, sizeof(EepromSettings));
 
+    /*
     if (strncmp(EEPROM_VERSION, es.stored_ver, 3) == 0) {
 
         // Eeprom version number matches
@@ -173,8 +196,11 @@ void getEepromSettings(EepromSettings &es) {
     {
         defaultEepromSettings(es);
     }
+    */
 }
 
+
+#if 0
 void dumpEepromSettings(const char* prefix) {
 
     EepromSettings es;
@@ -334,6 +360,6 @@ uint8_t writeEepromFloat(char *valueName, uint8_t len, float value) {
     }
 }
 
-
+#endif
 
 

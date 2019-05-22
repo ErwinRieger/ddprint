@@ -26,7 +26,7 @@
 #include "Protothread.h"
 
 #include "ddprint.h"
-#include "MarlinSerial.h"
+#include "serialport.h"
 #include "temperature.h"
 #include "ddtemp.h"
 #include "swapdev.h"
@@ -281,7 +281,7 @@ void setup() {
     SET_OUTPUT(SCK_PIN);
     SET_OUTPUT(MOSI_PIN);
 
-    MSerial.begin(BAUDRATE);
+    serialPort.begin(BAUDRATE);
     // SERIAL_PROTOCOLLNPGM("start");
 
     // SERIAL_ECHO_START;
@@ -464,12 +464,6 @@ class SDReader: public Protothread {
 };
 
 static SDReader sDReader;
-
-#if defined(USEExtrusionRateTable)
-    // #define MAXTEMPSPEED maxTempSpeed
-#else
-    // #define MAXTEMPSPEED filamentSensor.maxTempSpeed
-#endif
 
 bool FillBufferTask::Run() {
 
@@ -1091,13 +1085,6 @@ void Printer::cmdMove(MoveType mt) {
         massert(homed[0]);
         massert(homed[1]);
         massert(homed[2]);
-
-        // xxx check if data is available (swapDev.getSize() > 0)?
-        
-        // EepromSettings es;
-        // getEepromSettings(es);
-        // Compute max z step pos for software endstops, xxx um2 specific.
-        // z_max_pos_steps = (long)((Z_MAX_POS + es.add_homeing[Z_AXIS]) * AXIS_STEPS_PER_MM_Z);
     }
 
     if (mt == MoveTypeHoming) {
@@ -1384,9 +1371,9 @@ void Printer::cmdGetTempTable() {
 
 void Printer::cmdSetTempTable() {
 
-    extrusionLimitBaseTemp = MSerial.readUInt16NoCheckCobs();
+    extrusionLimitBaseTemp = serialPort.readUInt16NoCheckCobs();
 
-    uint8_t len = MSerial.readNoCheckCobs();
+    uint8_t len = serialPort.readNoCheckCobs();
     if (len != NExtrusionLimit) {
 
         txBuffer.sendSimpleResponse(CmdSetTempTable, RespInvalidArgument);
@@ -1394,7 +1381,7 @@ void Printer::cmdSetTempTable() {
     }
 
     for (uint8_t i=0; i<NExtrusionLimit; i++) {
-        tempExtrusionRateTable[i] = MSerial.readUInt16NoCheckCobs();
+        tempExtrusionRateTable[i] = serialPort.readUInt16NoCheckCobs();
     }
 
     txBuffer.sendSimpleResponse(CmdSetTempTable, RespOK);
@@ -1453,7 +1440,7 @@ class UsbCommand : public Protothread {
             // Drain usbserial buffers for 50 ms
             unsigned long drainEnd = millis() + 50;
             while (millis() < drainEnd) {
-                MSerial.flush0();
+                serialPort.flush0();
             }
         }
 
@@ -1490,7 +1477,7 @@ class UsbCommand : public Protothread {
 
             unsigned long ts = millis();
 
-            if (MSerial._available() >= nChars) {
+            if (serialPort._available() >= nChars) {
 
                 startTS = ts; // reset timeout 
                 return CharsAvailable;
@@ -1516,7 +1503,7 @@ class UsbCommand : public Protothread {
             SerAvailableState av;
 
             // Read startbyte
-            PT_WAIT_UNTIL( MSerial._available() && ( MSerial.readNoCheckNoCobs() == SOH ) );
+            PT_WAIT_UNTIL( serialPort._available() && ( serialPort.readNoCheckNoCobs() == SOH ) );
             
             startTS = millis();
 
@@ -1528,11 +1515,11 @@ class UsbCommand : public Protothread {
                 PT_RESTART();
 
             // Packet serial number
-            c = MSerial.readNoCheckNoCobs();
+            c = serialPort.readNoCheckNoCobs();
             checksum = _crc_ccitt_update(checksum, c);
 
             // Read command byte
-            commandByte = MSerial.readNoCheckNoCobs();
+            commandByte = serialPort.readNoCheckNoCobs();
             checksum = _crc_ccitt_update(checksum, commandByte);
 
             if (commandByte < 128) {
@@ -1547,7 +1534,7 @@ class UsbCommand : public Protothread {
                 }
 
                 // Read payload length 1 byte
-                payloadLength = MSerial.readNoCheckNoCobs();
+                payloadLength = serialPort.readNoCheckNoCobs();
                 checksum = _crc_ccitt_update(checksum, payloadLength);
                 payloadLength--;
 
@@ -1556,11 +1543,11 @@ class UsbCommand : public Protothread {
                 if (av == SerTimeout)
                     PT_RESTART();
 
-                MSerial.peekChecksum(&checksum, payloadLength);
+                serialPort.peekChecksum(&checksum, payloadLength);
 
-                flags = MSerial.peekN(payloadLength);
-                cs1 = MSerial.peekN(payloadLength+1);
-                cs2 = MSerial.peekN(payloadLength+2);
+                flags = serialPort.peekN(payloadLength);
+                cs1 = serialPort.peekN(payloadLength+1);
+                cs2 = serialPort.peekN(payloadLength+2);
 
                 if (! checkCrc(flags, cs1, cs2, checksum)) {
                     PT_RESTART();   // does a return
@@ -1573,11 +1560,11 @@ class UsbCommand : public Protothread {
                 }
 
                 // Tell RxBuffer that it's pointing to the beginning of a COBS block
-                MSerial.cobsInit(payloadLength);
+                serialPort.cobsInit(payloadLength);
 
-                while (MSerial.cobsAvailable()) {
+                while (serialPort.cobsAvailable()) {
 
-                    c = MSerial.readNoCheckCobs();
+                    c = serialPort.readNoCheckCobs();
 
                     swapDev.addByte(c);
                     PT_WAIT_WHILE( swapDev.isBusyWriting() );
@@ -1589,10 +1576,10 @@ class UsbCommand : public Protothread {
                     serialNumber = 1;
 
 #if defined(HEAVYDEBUG)
-                massert(MSerial._available() == 3);
+                massert(serialPort._available() == 3);
 #endif
 
-                MSerial.flush0(); // clear rx buffer
+                serialPort.flush0(); // clear rx buffer
 
                 // USBACK;
                 txBuffer.sendACK();
@@ -1622,7 +1609,7 @@ class UsbCommand : public Protothread {
                 }
 
                 // Read payload length 1 byte
-                payloadLength = MSerial.readNoCheckNoCobs();
+                payloadLength = serialPort.readNoCheckNoCobs();
                 checksum = _crc_ccitt_update(checksum, payloadLength);
                 payloadLength--;
 
@@ -1631,11 +1618,11 @@ class UsbCommand : public Protothread {
                 if (av == SerTimeout)
                     PT_RESTART();
 
-                MSerial.peekChecksum(&checksum, payloadLength);
+                serialPort.peekChecksum(&checksum, payloadLength);
 
-                flags = MSerial.peekN(payloadLength);
-                cs1 = MSerial.peekN(payloadLength+1);
-                cs2 = MSerial.peekN(payloadLength+2);
+                flags = serialPort.peekN(payloadLength);
+                cs1 = serialPort.peekN(payloadLength+1);
+                cs2 = serialPort.peekN(payloadLength+2);
 
                 if (! checkCrc(flags, cs1, cs2, checksum))
                     PT_RESTART();   // does a return
@@ -1651,7 +1638,7 @@ class UsbCommand : public Protothread {
                     serialNumber = 1;
 
                 // Tell RxBuffer that it's pointing to the beginning of a COBS block
-                MSerial.cobsInit(payloadLength);
+                serialPort.cobsInit(payloadLength);
 
 #if defined(HEAVYDEBUG)
                 uint8_t bytesLeft = 3;
@@ -1665,12 +1652,12 @@ class UsbCommand : public Protothread {
                     case CmdResetLineNr:
                         txBuffer.sendACK();
                         break;
-                    case CmdEepromFactory: {
-                        EepromSettings es;
-                        defaultEepromSettings(es);
-                        txBuffer.sendACK();
-                        }
-                        break;
+                    // case CmdEepromFactory: {
+                        // EepromSettings es;
+                        // defaultEepromSettings(es);
+                        // txBuffer.sendACK();
+                        // }
+                        // break;
                     case CmdDisableSteppers:
                         printer.cmdDisableSteppers();
                         txBuffer.sendACK();
@@ -1680,7 +1667,7 @@ class UsbCommand : public Protothread {
                         txBuffer.sendACK();
                         break;
                     case CmdMove: // move
-                        printer.cmdMove((Printer::MoveType)MSerial.readNoCheckCobs());
+                        printer.cmdMove((Printer::MoveType)serialPort.readNoCheckCobs());
                         txBuffer.sendACK();
                         break;
                     case CmdEOT: // EOT
@@ -1699,20 +1686,20 @@ class UsbCommand : public Protothread {
                         //
                         /*
                         printer.setHomePos(
-                                MSerial.serReadInt32(),
-                                MSerial.serReadInt32(),
-                                MSerial.serReadInt32(),
-                                MSerial.serReadInt32(),
-                                MSerial.serReadInt32());
+                                serialPort.serReadInt32(),
+                                serialPort.serReadInt32(),
+                                serialPort.serReadInt32(),
+                                serialPort.serReadInt32(),
+                                serialPort.serReadInt32());
                         */
                         {
-                            int32_t x = MSerial.readInt32NoCheckCobs();
-                            int32_t y = MSerial.readInt32NoCheckCobs();
-                            int32_t z = MSerial.readInt32NoCheckCobs();
+                            int32_t x = serialPort.readInt32NoCheckCobs();
+                            int32_t y = serialPort.readInt32NoCheckCobs();
+                            int32_t z = serialPort.readInt32NoCheckCobs();
 
                             // consume two additional ints
-                            MSerial.readInt32NoCheckCobs();
-                            MSerial.readInt32NoCheckCobs();
+                            serialPort.readInt32NoCheckCobs();
+                            serialPort.readInt32NoCheckCobs();
 
                             printer.setHomePos(x, y, z);
                             txBuffer.sendACK();
@@ -1720,8 +1707,8 @@ class UsbCommand : public Protothread {
                         break;
                     case CmdSetTargetTemp:
                         {
-                            uint8_t heater = MSerial.readNoCheckCobs();
-                            uint16_t temp = MSerial.readUInt16NoCheckCobs();
+                            uint8_t heater = serialPort.readNoCheckCobs();
+                            uint16_t temp = serialPort.readUInt16NoCheckCobs();
                             printer.cmdSetTargetTemp(heater, temp);
                             txBuffer.sendACK();
                         }
@@ -1731,14 +1718,14 @@ class UsbCommand : public Protothread {
                         txBuffer.sendACK();
                         break;
                     case CmdFanSpeed:
-                        printer.cmdFanSpeed(MSerial.readNoCheckCobs());
+                        printer.cmdFanSpeed(serialPort.readNoCheckCobs());
                         txBuffer.sendACK();
                         break;
 #if defined(PIDAutoTune)
                     case CmdSetHeaterY:
                         {
-                            uint8_t heater = MSerial.readNoCheckCobs();
-                            uint8_t pwmValue = MSerial.readNoCheckCobs();
+                            uint8_t heater = serialPort.readNoCheckCobs();
+                            uint8_t pwmValue = serialPort.readNoCheckCobs();
                             tempControl.setHeaterY(heater, pwmValue);
                             txBuffer.sendACK();
                         }
@@ -1746,27 +1733,27 @@ class UsbCommand : public Protothread {
 #endif
 #if defined(HASFILAMENTSENSOR)
                     case CmdEnableFRLimit:
-                        filamentSensor.enableFeedrateLimiter(MSerial.readNoCheckCobs());
+                        filamentSensor.enableFeedrateLimiter(serialPort.readNoCheckCobs());
                         txBuffer.sendACK();
                         break;
 #endif
 
                     case CmdSetContTimer:
-                        stepBuffer.setContinuosTimer(MSerial.readUInt16NoCheckCobs());
+                        stepBuffer.setContinuosTimer(serialPort.readUInt16NoCheckCobs());
                         txBuffer.sendACK();
                         break;
                     case CmdContinuousE:
-                        printer.cmdContinuousE(MSerial.readUInt16NoCheckCobs());
+                        printer.cmdContinuousE(serialPort.readUInt16NoCheckCobs());
                         txBuffer.sendACK();
                         break;
                     case CmdSetFilSensorCal: {
-                        float value = MSerial.readFloatNoCheckCobs();
+                        float value = serialPort.readFloatNoCheckCobs();
                         printer.cmdSetFilSensorCal(value);
                         txBuffer.sendACK();
                         }
                         break;
                     case CmdSetStepsPerMME: {
-                        uint16_t steps = MSerial.readUInt16NoCheckCobs();
+                        uint16_t steps = serialPort.readUInt16NoCheckCobs();
                         printer.cmdSetStepsPerMME(steps);
                         txBuffer.sendACK();
                         }
@@ -1782,21 +1769,30 @@ class UsbCommand : public Protothread {
                     case CmdGetStatus:
                         printer.cmdGetStatus();
                         break;
-                    case CmdWriteEepromFloat: {
-                        uint8_t len = MSerial.readNoCheckCobs();
+                    // case CmdWriteEepromFloat: {
+                        // uint8_t len = serialPort.readNoCheckCobs();
+                        // char name[64];
+                        // for (c=0; c<64 && c<len; c++) {
+                            // name[c] = serialPort.readNoCheckCobs();
+                        // }
+                        // float value = serialPort.readFloatNoCheckCobs();
+                        // txBuffer.sendSimpleResponse(commandByte, writeEepromFloat(name, len, value));
+                        // }
+                        // break;
+                    // case CmdGetEepromVersion:
+                        // getEepromVersion();
+                        // break;
+                    case CmdSetPrinterName: {
+                        uint8_t len = serialPort.readNoCheckCobs();
                         char name[64];
                         for (c=0; c<64 && c<len; c++) {
-                            name[c] = MSerial.readNoCheckCobs();
+                            name[c] = serialPort.readNoCheckCobs();
                         }
-                        float value = MSerial.readFloatNoCheckCobs();
-                        txBuffer.sendSimpleResponse(commandByte, writeEepromFloat(name, len, value));
+                        setPrinterName(name, len);
                         }
                         break;
-                    case CmdGetEepromVersion:
-                        getEepromVersion();
-                        break;
-                    case CmdGetEepromSettings:
-                        dumpEepromSettings();
+                    case CmdGetPrinterName:
+                        getPrinterName();
                         break;
                     case CmdGetHomed:
                         printer.cmdGetHomed();
@@ -1838,18 +1834,28 @@ class UsbCommand : public Protothread {
                         exit(0);
                         break;
 #endif
+
+                    case CmdSetPIDValues: {
+                            float Kp = serialPort.readFloatNoCheckCobs();
+                            float Ki = serialPort.readFloatNoCheckCobs();
+                            float Kd = serialPort.readFloatNoCheckCobs();
+                            tempControl.setPIDValues(Kp, Ki, Kd);
+                            txBuffer.sendACK();
+                        }
+                        break;
+
                     default:
                         txBuffer.sendSimpleResponse(RespUnknownCommand, commandByte);
                         #if defined(HEAVYDEBUG)
-                        bytesLeft = MSerial._available();
+                        bytesLeft = serialPort._available();
                         #endif
                 }
 
                 #if defined(HEAVYDEBUG)
-                massert(MSerial._available() == bytesLeft);
+                massert(serialPort._available() == bytesLeft);
                 #endif
 
-                MSerial.flush0(); // clear rx buffer
+                serialPort.flush0(); // clear rx buffer
             }
 
             PT_RESTART();
@@ -2005,7 +2011,7 @@ FWINLINE void loop() {
 
 void printDebugInfo() {
 #if defined(REPRAP_DISCOUNT_SMART_CONTROLLER)
-    lcd.setCursor(0, 0); lcd.print("ser:"); lcd.print(MSerial._available());
+    lcd.setCursor(0, 0); lcd.print("ser:"); lcd.print(serialPort._available());
     lcd.print("B:"); lcd.print(swapDev.isBusyWriting());
     lcd.print("WP:"); lcd.print(swapDev.getWritePos());
 
