@@ -639,12 +639,12 @@ bool FillBufferTask::Run() {
 
                             // Speed is limited by temperature
                             // XXX cleanup temptable store temptable as floats or use integer (*1000) numeric here...
-                            timerScale = (maxTempSpeed / eSpeedTimer) * filamentSensor.grip;
+                            timerScale = (maxTempSpeed / eSpeedTimer) * VAR_FILSENSOR_GRIP;
                             // printf("speed is limited by factor: %f\n", timerScale);
                         }
                         else {
                             // Speed is not limited by temperature
-                            timerScale = /* 1.0 * */  filamentSensor.grip;
+                            timerScale = VAR_FILSENSOR_GRIP;
                         }
                     }
                     else {
@@ -890,12 +890,12 @@ bool FillBufferTask::Run() {
                     if (eSpeedTimer < maxTempSpeed) {
                         // Speed is limited by temperature
                         // XXX cleanup temptable store temptable as floats or use integer (*1000) numeric here...
-                        timerScale = (maxTempSpeed / eSpeedTimer) * filamentSensor.grip;
+                        timerScale = (maxTempSpeed / eSpeedTimer) * VAR_FILSENSOR_GRIP;
                         // printf("speed is limited by factor: %f\n", timerScale);
                     }
                     else {
                         // Speed is not limited by temperature
-                        timerScale = /* 1.0 * */ filamentSensor.grip;
+                        timerScale = VAR_FILSENSOR_GRIP;
                     }
                 }
     
@@ -1333,10 +1333,10 @@ void Printer::cmdGetStatus() {
     // txBuffer.sendResponseInt16(filamentSensor.targetSpeed.value());
     // txBuffer.sendResponseInt16(filamentSensor.targetSpeed);
     // txBuffer.sendResponseInt16(filamentSensor.actualSpeed.value());
-    txBuffer.sendResponseInt16(filamentSensor.slippage.value() * 100);
+    txBuffer.sendResponseValue(filamentSensor.slippage.value());
     // txBuffer.sendResponseValue(filamentSensor.grip);
 #else
-    txBuffer.sendResponseInt16(0);
+    txBuffer.sendResponseValue((float)0.0);
     // txBuffer.sendResponseInt16(0);
 #endif
 
@@ -1347,11 +1347,24 @@ void Printer::cmdGetStatus() {
 void Printer::cmdGetFilSensor() {
 
     txBuffer.sendResponseStart(CmdGetFilSensor);
-    // txBuffer.sendResponseValue(filamentSensor.yPos);
-    txBuffer.sendResponseValue((int32_t)0);
+    txBuffer.sendResponseValue(filamentSensor.sensorCount);
     txBuffer.sendResponseEnd();
 }
 #endif
+
+void Printer::cmdSetFilSensorCal(float cal) {
+
+#if defined(HASFILAMENTSENSOR)
+    filamentSensor.setFilSensorCalibration(cal);
+#endif
+}
+
+void Printer::cmdSetStepsPerMME(uint16_t steps) {
+
+#if defined(HASFILAMENTSENSOR)
+    filamentSensor.setStepsPerMME(steps);
+#endif
+}
 
 #if defined(USEExtrusionRateTable)
 void Printer::cmdGetTempTable() {
@@ -1746,6 +1759,18 @@ class UsbCommand : public Protothread {
                         printer.cmdContinuousE(MSerial.readUInt16NoCheckCobs());
                         txBuffer.sendACK();
                         break;
+                    case CmdSetFilSensorCal: {
+                        float value = MSerial.readFloatNoCheckCobs();
+                        printer.cmdSetFilSensorCal(value);
+                        txBuffer.sendACK();
+                        }
+                        break;
+                    case CmdSetStepsPerMME: {
+                        uint16_t steps = MSerial.readUInt16NoCheckCobs();
+                        printer.cmdSetStepsPerMME(steps);
+                        txBuffer.sendACK();
+                        }
+                        break;
 
 
                     //
@@ -1799,7 +1824,6 @@ class UsbCommand : public Protothread {
                         printer.cmdGetFilSensor();
                         break;
 #endif
-
 
 #if 0
 // Currently not used:

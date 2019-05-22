@@ -59,7 +59,8 @@ class SpeedExpoFilter {
 // #endif
 
 // Window size running average filament speed
-#define RAVGWINDOW 3
+// rate is 100ms (see ddprint.cpp)
+#define RAVGWINDOW 100
 
 /*
 class RunninAvg {
@@ -131,6 +132,8 @@ class RunningAvgF {
 
 #if defined(PMWFS)
 
+#define VAR_FILSENSOR_GRIP (filamentSensor.grip)
+
 //
 // PMW3360 stuff
 //
@@ -192,12 +195,11 @@ class RunningAvgF {
 class FilamentSensorPMW3360 {
 
         int32_t lastASteps;
+        int32_t lastSensorCount;
 
         uint8_t readLoc(uint8_t addr);
         void writeLoc(uint8_t addr, uint8_t value);
         uint8_t pullbyte();
-        int16_t getDY();
-
         bool feedrateLimiterEnabled;
 
         // Ratio between measured filament sensor counts and the 
@@ -207,7 +209,12 @@ class FilamentSensorPMW3360 {
         // filSensorCalibration = 197 Counts / 141 Steps = 1.4
         float filSensorCalibration;
 
+        uint16_t axis_steps_per_mm_e;
+
     public:
+
+        void getDY();
+        int32_t sensorCount;
 
         // Ratio of target e-steps and filament sensor steps, this is a 
         // measure of the *feeder slippage*.
@@ -226,10 +233,13 @@ class FilamentSensorPMW3360 {
 
         void enableFeedrateLimiter(bool flag) { feedrateLimiterEnabled = flag; }
         void setFilSensorCalibration(float fc) { filSensorCalibration = fc; }
+        void setStepsPerMME(uint16_t steps) { axis_steps_per_mm_e = steps; }
 };
 
 extern FilamentSensorPMW3360 filamentSensor;
 
+#else // #if defined(PMWFS)
+    #define VAR_FILSENSOR_GRIP (1.0)
 #endif // #if defined(PMWFS)
 
 #if 0
