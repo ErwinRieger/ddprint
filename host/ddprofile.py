@@ -159,6 +159,21 @@ class PrinterProfile(ProfileBase):
         cal = self.getValues()["filSensorCalibration"]
         return cal
 
+    @classmethod
+    def getBedlevelOffset(cls):
+        return cls.getValues()["add_homeing_z"]
+
+    @classmethod
+    def getSettings(cls):
+        return {
+            "filSensorCalibration": cls.getValues()["filSensorCalibration"],
+            "stepsPerMME": cls.getStepsPerMM(A_AXIS),
+            "Kp": cls.getValues()["Kp"],
+            "Ki": cls.getValues()["Ki"],
+            "Kd": cls.getValues()["Kd"],
+            "add_homeing_z": cls.getValues()["add_homeing_z"],
+            }
+
 ####################################################################################################
 #
 # To access tempearture curve data

@@ -1147,7 +1147,9 @@ def endOfPrintLift(parser):
     planner = parser.planner
 
     pos = parser.getPos()
-    zlift = min(pos.Z + 25, planner.Z_MAX_POS)
+    (homePosMM, homePosStepped) = planner.getHomePos()
+
+    zlift = min(pos.Z + 25, homePosMM.Z)
 
     if zlift > pos.Z:
         parser.execute_line("G0 F%f Z%f" % (planner.HOMING_FEEDRATE[Z_AXIS]*60, zlift))

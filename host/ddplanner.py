@@ -86,6 +86,8 @@ class MaxExtrusionRate:
 
         if self.maxRate:
 
+            print "\nStatistics:"
+            print "-----------"
             print "Maximal Extrusion Rate (Extruder A): %.1f mm³/s, move:" % self.maxRate
 
             self.move.pprint("Max. extrusion Move")
@@ -319,20 +321,19 @@ class Planner (object):
         # X_MIN_POS = 0
         self.Y_MAX_POS = 225.0 # 230.0
         # Y_MIN_POS = 0
-        # self.Z_MAX_POS = 229.0 # 230.0 // Dauerdruckplatte hat 5mm im vergleich zur glassplatte 4mm
-        self.Z_MAX_POS = 212.25 # solex nozzle
+        self._Z_MAX_POS = 225.0
         # Z_MIN_POS = 0
-        self.MAX_POS = (self.X_MAX_POS, self.Y_MAX_POS, self.Z_MAX_POS)
+        self.MAX_POS = (self.X_MAX_POS, self.Y_MAX_POS, self._Z_MAX_POS)
 
         # Bed leveling constants
         self.LEVELING_OFFSET = 0.1                   # Assumed thickness of feeler gauge/paper used in leveling (mm)
-        # self.HEAD_HEIGHT = 35.0                      # Let enough room for the head, XXX UM2 specific !!!
-        self.HEAD_HEIGHT = 15.0                      # Let enough room for the head, XXX UM2 specific !!!
+        self.HEAD_HEIGHT = 35.0                      # Let enough room for the head, XXX UM2 specific !!!
+        # self.HEAD_HEIGHT = 15.0                      # Let enough room for the head, XXX UM2 specific !!!
 
         # Homing
         self.X_HOME_POS = self.X_MIN_POS
         self.Y_HOME_POS = self.Y_MAX_POS
-        self.Z_HOME_POS = self.Z_MAX_POS                  # XXX + add_homeing_z
+        # self.Z_HOME_POS = self.Z_MAX_POS
         #
         # End Constants
         #
@@ -374,7 +375,7 @@ class Planner (object):
     def getHomePos(self):
 
         # Get additional z-offset from eeprom
-        add_homeing_z = self.printer.getAddHomeing_z()
+        add_homeing_z = PrinterProfile.getBedlevelOffset()
 
         assert((add_homeing_z <= 0) and (add_homeing_z >= -35))
 
@@ -384,7 +385,12 @@ class Planner (object):
         homePosMM = util.MyPoint(
             X = self.X_HOME_POS,
             Y = self.Y_HOME_POS,
-            Z = self.Z_HOME_POS + add_homeing_z,
+            #    
+            # add_homeing_z is the not-usable space oft the z dimension of the
+            # build volume.
+            # -0.5 is a savety measure to prevent fals positives from the z endswitch
+            #    
+            Z = 225.0 + add_homeing_z - 0.5, # self.Z_HOME_POS,
             )
 
         # Diese stepper position wird gesetzt falls der drucker 'gehomed' ist
@@ -594,8 +600,6 @@ class Planner (object):
                 # print "finishMoves(): ending travel path with %d moves" % len(self.pathData.path)
                 self.planTravelPath(self.pathData.path)
 
-            print "\nStatistics:"
-            print "-----------"
             self.pathData.maxExtrusionRate.printStat()
 
         assert(not self.syncCommands)

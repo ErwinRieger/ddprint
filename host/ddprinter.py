@@ -24,7 +24,7 @@
 # at second connect).
 #
 import time, struct, crc_ccitt_kermit
-import dddumbui, cobs
+import dddumbui, cobs, ddprintutil
 
 from serial import Serial, SerialException, SerialTimeoutException
 from ddconfig import debugComm
@@ -74,7 +74,7 @@ class Printer(Serial):
     # maxTXErrors = 10
     maxTXErrors = 3
 
-    def __init__(self, settings, gui=None):
+    def __init__(self, gui=None):
 
         if Printer.__single:
             raise RuntimeError('A Printer already exists')
@@ -85,8 +85,6 @@ class Printer(Serial):
             self.gui = gui
         else:
             self.gui = dddumbui.DumbGui()
-
-        self.settings = settings
 
         Serial.__init__(self)
 
@@ -310,9 +308,7 @@ class Printer(Serial):
         s = self.readWithTimeout(1) # SOH
 
         # xxx loop til SOH found
-        while s != cobs.nullByte:
-            self.gui.logRecv("Waiting for SOH...")
-            s = self.readWithTimeout(1) # SOH
+        assert(s == cobs.nullByte)
 
         rc = self.readWithTimeout(1) # read response code
         crc = crc_ccitt_kermit.crc16_kermit(rc, 0xffff)
@@ -385,6 +381,10 @@ class Printer(Serial):
 
     def initSerial(self, device, br, bootloaderWait=False):
 
+        if self.isOpen():
+            self.resetLineNumber()
+            return
+
         self.port = device
         self.baudrate = br
         self.timeout = 0.05
@@ -402,11 +402,22 @@ class Printer(Serial):
             self.gui.logRecv("Initail read: " + recvLine.encode("hex"), "\n")
             recvLine = self.safeReadline()        
 
-    def commandInit(self, args):
-        self.initSerial(args.device, args.baud, True)
         self.resetLineNumber()
+
+    def commandInit(self, args, settings):
+
+        self.initSerial(args.device, args.baud, True)
+
+        cal = settings["filSensorCalibration"]
         self.sendCommandParamV(CmdSetFilSensorCal,
-            [packedvalue.float_t(self.settings["filSensorCalibration"])])
+            [packedvalue.float_t(settings["filSensorCalibration"])])
+
+        steps = settings["stepsPerMME"]
+        self.sendCommandParamV(CmdSetStepsPerMME, [packedvalue.uint16_t(steps)])
+        
+        self.sendCommandParamV(CmdSetPIDValues, [packedvalue.float_t(settings["Kp"]), packedvalue.float_t(settings["Ki"]), packedvalue.float_t(settings["Kd"])])
+
+        # self.sendCommandParamV(CmdSetBedlevelOffset, [packedvalue.float_t(settings["add_homeing_z"])])
 
     def resetLineNumber(self):
         self.lineNr = 1
@@ -641,6 +652,7 @@ class Printer(Serial):
                 return (cmd, payload)
 
             print "unknown reply: 0x%x" % cmd, payload
+            self.readMore(10);
             assert(0)
 
         # Notreached
@@ -671,6 +683,7 @@ class Printer(Serial):
         self.gui.statusCb(statusDict)
         return statusDict
 
+    # xxx remove 
     def getEepromSettings(self):
 
         (cmd, payload) = self.query(CmdGetEepromSettings, doLog=False)
@@ -683,6 +696,22 @@ class Printer(Serial):
             settingsDict[valueName] = tup[i]
 
         return settingsDict
+
+    # Get printer (-profile) name from printer eeprom
+    def getPrinterName(self):
+
+        resp = self.query(CmdGetPrinterName)
+
+        pn = ddprintutil.getResponseString(resp[1], 1)
+        print "PrinterName: ", pn
+        return pn
+
+    def setPrinterName(self, args):
+
+        self.initSerial(args.device, args.baud, True)
+
+        self.sendCommandParamV(CmdSetPrinterName,
+            [packedvalue.pString_t(args.name)])
 
     def getAddHomeing_z(self):
 

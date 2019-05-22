@@ -61,19 +61,18 @@ CmdResetLineNr = 131
 # free: 132
 CmdSetHomePos = 133
 CmdSetTargetTemp = 134 # Parameters: heater, temp
-CmdWriteEepromFloat = 135 # Parameters: valuename (len max 63 chars!), value
-CmdEepromFactory = 136 # Factory reset of eeprom values, bed leveling needed
+# CmdWriteEepromFloat = 135 # Parameters: valuename (len max 63 chars!), value
+# CmdEepromFactory = 136 # Factory reset of eeprom values, bed leveling needed
 CmdFanSpeed = 137
 CmdStopMove = 138
 # Set heater PWM value (stellgrösse) directly, used by PID autoTune. Parameters: heater, pwmvalue
 CmdSetHeaterY = 139
 
-# Getters, they return a string of the form "ret: <expr>"
 CmdGetDirBits = 150
 CmdGetHomed = 151
 CmdGetEndstops = 152   # Get endstop state and pos
-CmdGetEepromVersion = 153
-CmdGetEepromSettings = 154
+# CmdGetEepromVersion = 153
+# CmdGetEepromSettings = 154
 # currently not used: CmdDisableStepperIsr = 155
 CmdDisableSteppers = 156
 CmdGetCurrentTemps = 157
@@ -89,6 +88,12 @@ CmdEnableFRLimit = 165 # Enable/disable flowrate limit
 CmdSetContTimer =    166 # Timer value for CmdContinuousE -> E-Speed
 CmdContinuousE =     167 # Start/Stop continuous e-move for filament measurement
 CmdSetFilSensorCal = 168 # Start/Stop continuous e-move for filament measurement
+CmdSetStepsPerMME =  169 # Start/Stop continuous e-move for filament measurement
+CmdSetPrinterName =  170 # Set printer (-profile) name from printer eeprom, payload is a 'pascal string'
+CmdGetPrinterName =  171 # Read printer (-profile) name from printer eeprom, payload is a 'pascal string'
+
+CmdSetPIDValues =    172
+# CmdSetBedlevelOffset = 173
 
 CommandNames = {
 }
@@ -132,8 +137,8 @@ for (cmd, cmdName) in [
     (CmdResetLineNr, "CmdResetLineNr",),
     (CmdSetHomePos, "CmdSetHomePos",),
     (CmdSetTargetTemp, "CmdSetTargetTemp",),
-    (CmdWriteEepromFloat, "CmdWriteEepromFloat",),
-    (CmdEepromFactory, "CmdEepromFactory",),
+    # (CmdWriteEepromFloat, "CmdWriteEepromFloat",),
+    # (CmdEepromFactory, "CmdEepromFactory",),
     (CmdSyncFanSpeed, "CmdSyncFanSpeed",),
     (CmdFanSpeed, "CmdFanSpeed",),
     (CmdStopMove, "CmdStopMove",),
@@ -144,8 +149,8 @@ for (cmd, cmdName) in [
     (CmdGetDirBits, "CmdGetDirBits",),
     (CmdGetHomed, "CmdGetHomed",),
     (CmdGetEndstops, "CmdGetEndstops",),
-    (CmdGetEepromVersion, "CmdGetEepromVersion",),
-    (CmdGetEepromSettings, "CmdGetEepromSettings",),
+    # (CmdGetEepromVersion, "CmdGetEepromVersion",),
+    # (CmdGetEepromSettings, "CmdGetEepromSettings",),
     # currently not used: CmdDisableStepperIsr: "CmdDisableStepperIsr",
     (CmdDisableSteppers, "CmdDisableSteppers",),
     (CmdGetCurrentTemps, "CmdGetCurrentTemps",),
@@ -160,7 +165,11 @@ for (cmd, cmdName) in [
     (CmdSetContTimer, "CmdSetContTimer",),
     (CmdContinuousE, "CmdContinuousE",),
     (CmdSetFilSensorCal, "CmdSetFilSensorCal",),
-    (CmdSetFilSensorCal+0, "xxxCmdSetFilSensorCal",),
+    (CmdSetStepsPerMME, "CmdSetStepsPerMME",),
+    (CmdSetPrinterName, "CmdSetPrinterName",),
+    (CmdGetPrinterName, "CmdGetPrinterName",),
+    (CmdSetPIDValues, "CmdSetPIDValues",),
+    # (CmdSetBedlevelOffset, "CmdSetBedlevelOffset",),
     ]:
 
         insertCommandName(cmd, cmdName)
@@ -181,7 +190,6 @@ MoveStartBitRaw  = (1 << 5)
 # Response codes
 #
 RespUnknownCommand =            1
-# RespGenericString =             2
 RespKilled =                    3
 RespRXError =                   4 # Payload: serialNumber (last line), errorflags
 RespRXCRCError =                5 # Payload: serialNumber (last line)
@@ -192,7 +200,6 @@ RespUnsolicitedMsg =            9 # Payload: message type, params
 
 ResponseNames = {
         RespUnknownCommand: "RespUnknownCommand",
-        # RespGenericString: "RespGenericString",
         RespKilled: "RespKilled",
         RespRXError: "RespRXError",
         RespRXCRCError: "RespRXCRCError",

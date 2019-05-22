@@ -41,5 +41,13 @@ class float_t(PackedValue):
     def __init__(self, value):
         PackedValue.__init__(self, value, "f")
 
+class pString_t(PackedValue):
+
+    def __init__(self, value):
+        self.value = value
+
+    def pack(self):
+        return struct.pack("<%dp" % (len(self.value)+1), self.value)
+
 ####################################################################################################
 

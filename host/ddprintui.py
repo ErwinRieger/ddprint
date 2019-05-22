@@ -374,9 +374,12 @@ class MainForm(npyscreen.Form):
         self.cmdQueue.put(SyncCall(self.preheat))
 
     def preheat(self):
+
         t = int(self.mat_t0 * 0.9)
         self.log( "\nPre-Heating bed (t0: %d)...\n" % t)
         self.printer.heatUp(HeaterBed, t)
+
+        time.sleep(10)
 
         t = int(self.mat_t1 * 0.5)
         self.log( "\nPre-Heating extruder (t1: %d)...\n" % t)
@@ -412,6 +415,8 @@ class MainForm(npyscreen.Form):
             # Send heat up  command
             self.log( "\nPre-Heating bed (t0: %d)...\n" % self.mat_t0)
             self.printer.heatUp(HeaterBed, self.mat_t0)
+
+            time.sleep(10)
 
             t = int(self.mat_t1 * 0.5)
             self.log( "\nPre-Heating extruder (t1: %d)...\n" % t)

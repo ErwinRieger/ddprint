@@ -48,9 +48,13 @@ def testFilSensor(args, parser):
     cal = PrinterProfile.get().getFilSensorCalibration()
     steps_per_mm = PrinterProfile.getStepsPerMM(A_AXIS)
 
-    mm = diff / (cal * steps_per_mm)
+    print "cal:", cal
+    print "steps_per_mm  E:", steps_per_mm
 
-    print "Filament pos:", startPos, endPos, "counts, difference: %d,  %.3f mm" % (diff, mm)
+    mm = (diff / cal)  / steps_per_mm
+
+    print "Filament pos in counts old:", startPos, ", new:", endPos, "difference: %d counts", diff
+    print diff, "counts is ", diff/cal, "E stepper steps", mm
 
 #
 # Calibrate filament sensor, determine ratio between extruder steps and the value 

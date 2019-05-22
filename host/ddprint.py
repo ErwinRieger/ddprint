@@ -20,7 +20,7 @@
 #*/
 
 import logging, pprint, sys
-import argparse
+import argparse, time
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -30,6 +30,7 @@ import ddtest
 from ddprofile import PrinterProfile, MatProfile, NozzleProfile
 from ddplanner import Planner
 from ddprinter import Printer, RxTimeout
+from ddprintconstants import A_AXIS
 
 #
 # Firmware Retraction:
@@ -269,16 +270,10 @@ def plot4v(nom1, nom2, v1, v2, jerk, diff, fn = "/tmp/4v.gnuplot"):
 
 def initParser(args, mode=None, gui=None):
 
-    printerProfileName = "UM2" # xxx todo: get from commandline args
-
     # Create printer profile singleton instance
-    printerProfile = PrinterProfile(printerProfileName)
+    # printerProfile = PrinterProfile(args.pp)
     # Create material profile singleton instance
     mat = MatProfile(args.mat, args.smat)
-
-    # Overwrite settings from printer profile with command line arguments:
-    if args.retractLength:
-        printerProfile.override("RetractLength", args.retractLength)
 
     # Overwrite settings from material profile with command line arguments:
     if args.t0:
@@ -289,9 +284,14 @@ def initParser(args, mode=None, gui=None):
     nozzle = NozzleProfile(args.nozzle)
 
     # Create the Printer singleton instance
-    printer = Printer(
-        settings={"filSensorCalibration": printerProfile.getFilSensorCalibration()},
-        gui=gui)
+    printer = Printer(gui=gui)
+
+    printer.initSerial(args.device, args.baud)
+    printerProfile = PrinterProfile(printer.getPrinterName())
+
+    # Overwrite settings from printer profile with command line arguments:
+    if args.retractLength:
+        printerProfile.override("RetractLength", args.retractLength)
 
     # Create the planner singleton instance
     planner = Planner(args, gui)
@@ -345,6 +345,9 @@ def main():
     sp = subparsers.add_parser("writeEepromFloat", help=u"Store float value into eeprom.")
     sp.add_argument("name", help="Valuename.")
     sp.add_argument("value", action="store", type=float, help="value (float).")
+
+    sp = subparsers.add_parser("setPrinterName", help=u"Store printer name into eeprom.")
+    sp.add_argument("name", help="Printer name.")
 
     # sp = subparsers.add_parser("reset", help=u"Try to stop/reset printer.")
 
@@ -417,6 +420,11 @@ def main():
 
     args = argParser.parse_args()
 
+    if args.mode == "setPrinterName":
+        printer = Printer()
+        printer.setPrinterName(args)
+        return
+
     (parser, planner, printer) = initParser(args, mode=args.mode)
 
     steps_per_mm = PrinterProfile.getStepsPerMMVector()
@@ -430,7 +438,6 @@ def main():
         util.changeNozzle(args, parser)
 
     elif args.mode == "binmon":
-        printer.initSerial(args.device, args.baud)
         while True:
             try:
                 (cmd, payload) = printer.readResponse()        
@@ -449,10 +456,10 @@ def main():
         t1 = MatProfile.getHotendStartTemp() + planner.l0TempIncrease
 
         # Send heat up  command
-        print "\nPre-Heating bed...\n"
+        print "\nHeating bed (t0: %d)...\n" % t0
         printer.heatUp(HeaterBed, t0)
-        print "\nPre-Heating extruder...\n"
-        printer.heatUp(HeaterEx1, t1/2)
+        # print "\nPre-Heating extruder...\n"
+        # printer.heatUp(HeaterEx1, t1/2)
 
         f = parser.preParse(args.gfile)
 
@@ -461,6 +468,8 @@ def main():
 
         lineNr = 0
         printStarted = False
+
+        startTime = time.time()
 
         for line in f:
             parser.execute_line(line)
@@ -472,6 +481,13 @@ def main():
                 # check temp and start print
 
                 if  not printStarted:
+
+                    sleepTime = max(0, time.time() - (startTime+10) )
+                    print "waiting to fire hotend...", sleepTime
+                    time.sleep( sleepTime )
+
+                    print "\nPre-Heating extruder (t1: %d)...\n" % t1
+                    printer.heatUp(HeaterEx1, t1/2)
 
                     print "\nHeating bed (t0: %d)...\n" % t0
                     printer.heatUp(HeaterBed, t0, t0)
@@ -552,13 +568,13 @@ def main():
         planner.finishMoves()
 
     elif args.mode == "mon":
-        printer.initSerial(args.device, args.baud)
         while True:
             printer.readMore()
 
+    # xxx remove 
     elif args.mode == 'dumpeeprom':
 
-        printer.commandInit(args)
+        printer.commandInit(args, PrinterProfile.getSettings())
         resp = printer.query(CmdGetEepromVersion)
         if util.handleGenericResponse(resp):
             print "Eepromversion: ", util.getResponseString(resp[1], 1)
@@ -569,12 +585,12 @@ def main():
 
     elif args.mode == 'factoryReset':
 
-        printer.commandInit(args)
+        printer.commandInit(args, PrinterProfile.getSettings())
         printer.sendCommand(CmdEepromFactory)
 
     elif args.mode == 'disableSteppers':
 
-        printer.commandInit(args)
+        printer.commandInit(args, PrinterProfile.getSettings())
         printer.sendCommand(CmdDisableSteppers)
 
     elif args.mode == 'measureTempFlowrateCurve':
@@ -585,7 +601,7 @@ def main():
 
         assert(args.axis.upper() in "XYZAB")
 
-        printer.commandInit(args)
+        printer.commandInit(args, PrinterProfile.getSettings())
         axis = util.dimIndex[args.axis.upper()]
         util.manualMove(parser, axis, args.distance, args.feedrate)
 
@@ -593,7 +609,7 @@ def main():
 
         assert(args.axis.upper() in "XYZAB")
 
-        printer.commandInit(args)
+        printer.commandInit(args, PrinterProfile.getSettings())
         axis = util.dimIndex[args.axis.upper()]
         util.manualMove(parser, axis, args.distance, args.feedrate, True)
 
@@ -623,18 +639,18 @@ def main():
 
     elif args.mode == 'getEndstops':
 
-        printer.commandInit(args)
+        printer.commandInit(args, PrinterProfile.getSettings())
         res = printer.getEndstops()
         print "Endstop state: ", res
     
     elif args.mode == 'getFilSensor':
 
-        printer.commandInit(args)
+        printer.commandInit(args, PrinterProfile.getSettings())
         print "Filament pos:", printer.getFilSensor()
 
     elif args.mode == 'getpos':
 
-        printer.commandInit(args)
+        printer.commandInit(args, PrinterProfile.getSettings())
 
         res = printer.getPos()
 
@@ -654,26 +670,26 @@ def main():
 
     elif args.mode == 'getTemps':
 
-        printer.commandInit(args)
+        printer.commandInit(args, PrinterProfile.getSettings())
         printer.getTemps()
 
     elif args.mode == 'getTempTable':
 
-        printer.commandInit(args)
+        printer.commandInit(args, PrinterProfile.getSettings())
         (baseTemp, tempTable) = printer.getTempTable()
         print "tempTable: ", pprint.pprint(tempTable)
         util.printTempTable(baseTemp, tempTable)
 
     elif args.mode == 'getStatus':
 
-        printer.commandInit(args)
+        printer.commandInit(args, PrinterProfile.getSettings())
         status = printer.getStatus()
         print "Status: "
         pprint.pprint(status)
 
     elif args.mode == 'home':
 
-        printer.commandInit(args)
+        printer.commandInit(args, PrinterProfile.getSettings())
         ddhome.home(parser, args.fakeendstop)
 
     elif args.mode == 'zRepeatability':
@@ -690,12 +706,12 @@ def main():
 
     elif args.mode == 'stop':
 
-        printer.commandInit(args)
+        printer.commandInit(args, PrinterProfile.getSettings())
         util.stopMove(args, parser)
 
     elif args.mode == 'fanspeed':
 
-        printer.commandInit(args)
+        printer.commandInit(args, PrinterProfile.getSettings())
         printer.sendCommandParamV(CmdFanSpeed, [packedvalue.uint8_t(args.speed)])
 
     elif args.mode == 'testFilSensor':
@@ -706,13 +722,12 @@ def main():
 
     elif args.mode == 'test':
 
-        printer.commandInit(args)
+        printer.commandInit(args, PrinterProfile.getSettings())
         """
         dirbits = printer.getDirBits()
         print "dirbits:", dirbits
         # printer.readMore()
 
-        import time
         while True:
 
             temp = printer.getTemp(doLog=False)[1]
@@ -723,12 +738,10 @@ def main():
             printer.sendCommandParamV(CmdContinuousE, [packedvalue.uint16_t(0)])
         else:
 
-            import time
             printer.sendCommandParamV(CmdContinuousE, [packedvalue.uint16_t(util.eTimerValue(planner, 0.5))])
             for s in range(int(args.feedrate)):
                 time.sleep(1)
                 printer.sendCommandParamV(CmdSetContTimer, [packedvalue.uint16_t(util.eTimerValue(planner, 1+s))])
-
 
     elif args.mode == "writeEepromFloat":
 
