@@ -408,12 +408,9 @@ class Printer(Serial):
 
         self.initSerial(args.device, args.baud, True)
 
-        cal = settings["filSensorCalibration"]
-        self.sendCommandParamV(CmdSetFilSensorCal,
-            [packedvalue.float_t(settings["filSensorCalibration"])])
+        self.sendCommandParamV(CmdSetFilSensorCal, [packedvalue.float_t(settings["filSensorCalibration"])])
 
-        steps = settings["stepsPerMME"]
-        self.sendCommandParamV(CmdSetStepsPerMME, [packedvalue.uint16_t(steps)])
+        self.sendCommandParamV(CmdSetStepsPerMME, [packedvalue.uint16_t(settings["stepsPerMME"])])
         
         self.sendCommandParamV(CmdSetPIDValues, [packedvalue.float_t(settings["Kp"]), packedvalue.float_t(settings["Ki"]), packedvalue.float_t(settings["Kd"])])
 

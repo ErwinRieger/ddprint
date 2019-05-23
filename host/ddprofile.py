@@ -85,6 +85,18 @@ class ProfileBase(object):
         except IOError:
             pass
 
+        try:
+            f = open(os.path.join(os.environ["HOME"], ".ddprint", name) + ".json")
+            return f
+        except IOError:
+            pass
+
+        try:
+            f = open(os.path.join(os.environ["HOME"], ".ddprint", name))
+            return f
+        except IOError:
+            pass
+
         print "\nERROR: Profile ", name, " not found"
         assert(0)
 
@@ -171,7 +183,7 @@ class PrinterProfile(ProfileBase):
             "Kp": cls.getValues()["Kp"],
             "Ki": cls.getValues()["Ki"],
             "Kd": cls.getValues()["Kd"],
-            "add_homeing_z": cls.getValues()["add_homeing_z"],
+            # "add_homeing_z": cls.getValues()["add_homeing_z"],
             }
 
 ####################################################################################################
