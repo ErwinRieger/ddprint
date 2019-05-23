@@ -333,7 +333,7 @@ class Planner (object):
         # Homing
         self.X_HOME_POS = self.X_MIN_POS
         self.Y_HOME_POS = self.Y_MAX_POS
-        # self.Z_HOME_POS = self.Z_MAX_POS
+        self._Z_HOME_POS = self._Z_MAX_POS
         #
         # End Constants
         #
@@ -390,7 +390,7 @@ class Planner (object):
             # build volume.
             # -0.5 is a savety measure to prevent fals positives from the z endswitch
             #    
-            Z = 225.0 + add_homeing_z - 0.5, # self.Z_HOME_POS,
+            Z = self._Z_HOME_POS + add_homeing_z - 0.5, # self.Z_HOME_POS,
             )
 
         # Diese stepper position wird gesetzt falls der drucker 'gehomed' ist
@@ -460,9 +460,12 @@ class Planner (object):
         if self.pathData.path:
             prevMove = self.pathData.path[-1]
             if prevMove.isPrintMove() == move.isPrintMove():
+                # Append segment to current path
                 prevMove.nextMove = move
                 move.prevMove = prevMove
             else:
+                # Trigger processing of current path and start a new path
+                # with the new segment.
                 pathEnding = True
 
         if pathEnding:

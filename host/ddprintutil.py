@@ -702,7 +702,7 @@ def commonInit(args, parser):
     planner = parser.planner
     printer = planner.printer
 
-    printer.commandInit(args)
+    printer.commandInit(args, PrinterProfile.getSettings())
 
     ddhome.home(parser, args.fakeendstop)
     downloadTempTable(planner)
@@ -767,7 +767,7 @@ def zRepeatability(parser):
 
     import random
 
-    printer.commandInit(args)
+    printer.commandInit(args, PrinterProfile.getSettings())
 
     feedrate = PrinterProfile.getMaxFeedrate(Z_AXIS)
 
@@ -908,7 +908,7 @@ def removeFilament(args, parser, feedrate):
     planner = parser.planner
     printer = planner.printer
 
-    printer.commandInit(args)
+    printer.commandInit(args, PrinterProfile.getSettings())
 
     ddhome.home(parser, args.fakeendstop)
 
@@ -967,7 +967,7 @@ def bedLeveling(args, parser):
     planner = parser.planner
     printer = planner.printer
 
-    printer.commandInit(args)
+    printer.commandInit(args, PrinterProfile.getSettings())
 
     # Reset bedlevel offset in printer eeprom
     payload = struct.pack("<%dpf" % (len("add_homeing_z")+1), "add_homeing_z", 0)
@@ -1096,7 +1096,7 @@ def bedLevelAdjust(args, parser):
     planner = parser.planner
     printer = planner.printer
 
-    printer.commandInit(args)
+    printer.commandInit(args, PrinterProfile.getSettings())
 
     add_homeing_z = printer.getAddHomeing_z() + args.distance
 
@@ -1111,7 +1111,7 @@ def writeEEpromFloat(args, parser):
     planner = parser.planner
     printer = planner.printer
 
-    printer.commandInit(args)
+    printer.commandInit(args, PrinterProfile.getSettings())
 
     payload = struct.pack("<%dpf" % (len(args.name)+1), args.name, args.value)
     resp = printer.query(CmdWriteEepromFloat, binPayload=payload)
@@ -1177,7 +1177,7 @@ def heatHotend(args, parser):
     planner = parser.planner
     printer = planner.printer
 
-    printer.commandInit(args)
+    printer.commandInit(args, PrinterProfile.getSettings())
 
     t1 = MatProfile.getHotendStartTemp()
 
@@ -1258,7 +1258,7 @@ def stepResponse(args, parser):
     # Bail out if tmax reached
     tmax = tDest1 * 1.5
 
-    printer.commandInit(args)
+    printer.commandInit(args, PrinterProfile.getSettings())
     es = printer.getEepromSettings()
 
     # Open output gnuplot file
@@ -1433,7 +1433,7 @@ def measureHotendStepResponse(args, parser):
         payload = struct.pack("<BB", HeaterEx1, 0) # heater, pwmvalue
         printer.sendCommand(CmdSetHeaterY, binPayload=payload)
 
-    printer.commandInit(args)
+    printer.commandInit(args, PrinterProfile.getSettings())
 
     tmax = 260
 
@@ -1775,7 +1775,7 @@ plot "-" using 1:2 with linespoints title "Target Flowrate", \\
     planner = parser.planner
     printer = planner.printer
 
-    printer.commandInit(args)
+    printer.commandInit(args, PrinterProfile.getSettings())
 
     ddhome.home(parser, args.fakeendstop)
 

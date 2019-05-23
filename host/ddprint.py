@@ -482,7 +482,7 @@ def main():
 
                 if  not printStarted:
 
-                    sleepTime = max(0, time.time() - (startTime+10) )
+                    sleepTime = max(0, (startTime+30) - time.time())
                     print "waiting to fire hotend...", sleepTime
                     time.sleep( sleepTime )
 
@@ -550,11 +550,7 @@ def main():
     elif args.mode == "pre":
 
         # Virtuelle position des druckkopfes falls 'gehomed'
-        homePosMM = util.MyPoint(
-            X = planner.X_HOME_POS,
-            Y = planner.Y_HOME_POS,
-            Z = planner.Z_HOME_POS, #  - 20,
-            )
+        homePosMM = planner.getHomePos()[0]
         parser.setPos(homePosMM)
 
         f = parser.preParse(args.gfile)

@@ -38,7 +38,7 @@ def testFilSensor(args, parser):
 
     feedrate = args.feedrate or 1
 
-    printer.commandInit(args)
+    printer.commandInit(args, PrinterProfile.getSettings())
     startPos = printer.getFilSensor()
     util.manualMove(parser, util.dimIndex['A'], args.distance, feedrate=feedrate)
     endPos = printer.getFilSensor()
@@ -75,7 +75,7 @@ def calibrateFilSensor(args, parser):
 
     eAccel = PrinterProfile.getMaxAxisAcceleration()[A_AXIS]
 
-    printer.commandInit(args)
+    printer.commandInit(args, PrinterProfile.getSettings())
 
     ddhome.home(parser, args.fakeendstop)
 
