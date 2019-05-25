@@ -323,7 +323,11 @@ void setup() {
         kill();
     }
 
-#if defined(ADNSFS) || defined(PMWFS)
+    // Hotend fan
+    DDRJ |= _BV(6);
+    PORTJ |= _BV(6);
+
+#if defined(PMWFS)
     filamentSensor.reset();
 #endif
 

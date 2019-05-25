@@ -60,7 +60,7 @@ class SpeedExpoFilter {
 
 // Window size running average filament speed
 // rate is 100ms (see ddprint.cpp)
-#define RAVGWINDOW 100
+#define RAVGWINDOW 10
 
 /*
 class RunninAvg {

@@ -33,7 +33,7 @@
 #include <avr/wdt.h>
 
 #include "ddprint.h"
-#include "MarlinSerial.h"
+#include "serialport.h"
 #include "swapdev.h"
 #include "stepper.h"
 #include "filsensorSim.h"
