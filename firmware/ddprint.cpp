@@ -59,8 +59,6 @@ uint8_t errorFlags = 0;
 // Macros to read scalar types from a buffer
 #define FromBuf(typ, adr) ( * ((typ *)(adr)))
 
-// uint8_t Stopped = 0;
-
 // Timestamp last call of loop()
 unsigned long loopTS;
 
@@ -247,27 +245,6 @@ void killMessage(uint8_t errorCode, uint8_t errorParam1, uint8_t errorParam2, co
     txBuffer.sendSimpleResponse(RespKilled, errorCode, errorParam1, errorParam2);
     kill();
 }
-
-// bool IsStopped() { return Stopped; };
-// uint8_t StoppedReason() { return Stopped; };
-
-// xxx move to printer class?
-#if 0
-void Stop(uint8_t reasonNr)
-{
-
-  disable_heater();
-  // disable steppers here ? printer.disableSteppers();
-
-  if(Stopped == false) {
-    Stopped = reasonNr;
-    // Stopped_gcode_LastN = usbCommand->serialNumber; // Save last g_code for restart
-    SERIAL_ERROR_START;
-    SERIAL_ERRORLNPGM(MSG_ERR_STOPPED);
-    LCD_MESSAGEPGM(MSG_STOPPED);
-  }
-}
-#endif
 
 void setup() {
 

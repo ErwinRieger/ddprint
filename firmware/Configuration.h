@@ -26,11 +26,6 @@
 #define STRING_CONFIG_H_AUTHOR "Version DEV" // Who made the changes.
 #endif
 
-// SERIAL_PORT selects which serial port should be used for communication with the host.
-// This allows the connection of wireless adapters (for instance) to non-default port pins.
-// Serial port 0 is still used by the Arduino bootloader regardless of this setting.
-#define SERIAL_PORT 0
-
 // This determines the communication speed of the printer
 // #define BAUDRATE 115200
 // #define BAUDRATE 230400
