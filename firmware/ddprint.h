@@ -39,25 +39,6 @@
     #include <assert.h>
 #endif
 
-#if 0
-#define MSG_FREE_MEMORY " Free Memory: "
-#define MSG_ERR_STOPPED "Printer stopped due to errors. Fix the error and use M999 to restart. (Temperature is reset. Set it after restarting)"
-#define MSG_STOPPED "STOPPED. "
-#define MSG_SD_FILE_OPENED "File opened: "
-#define MSG_SD_SIZE " Size: "
-#define MSG_SD_FILE_SELECTED "File selected"
-#define MSG_SD_OPEN_FILE_FAIL "open failed, File: "
-#define MSG_SD_WRITE_TO_FILE "Writing to file: "
-#define MSG_ERR_KILLED "Printer halted. kill() called, msg: "
-#define MSG_KILLED "KILLED. "
-#endif
-
-// #define LCD_MESSAGEPGM(x) SERIAL_PROTOCOLLNPGM(x)
-// #define lcd_setstatus(message) SERIAL_PROTOCOLLN(message)
-// #if defined(MarlinFw)
-    // #define LCD_ALERTMESSAGEPGM(s) SERIAL_PROTOCOLLNPGM(s)
-// #endif
-
 // Number of entries in ExtrusionRateLimit table, this must match the value
 // in the host (ddprintconstants.py).
 #define NExtrusionLimit 100

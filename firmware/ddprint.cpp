@@ -282,23 +282,6 @@ void setup() {
     SET_OUTPUT(MOSI_PIN);
 
     serialPort.begin(BAUDRATE);
-    // SERIAL_PROTOCOLLNPGM("start");
-
-    // SERIAL_ECHO_START;
-    // SERIAL_ECHOPGM(MSG_FREE_MEMORY);
-    // SERIAL_ECHOLN(freeMemory());
-    // SERIAL_ECHOPGM("Min/Max steps: X: ");
-    // SERIAL_ECHO(X_MIN_POS_STEPS);
-    // SERIAL_ECHO(", ");
-    // SERIAL_ECHO(X_MAX_POS_STEPS);
-    // SERIAL_ECHO("; Y: ");
-    // SERIAL_ECHO(Y_MIN_POS_STEPS);
-    // SERIAL_ECHO(", ");
-    // SERIAL_ECHO(Y_MAX_POS_STEPS);
-    // SERIAL_ECHO("; Z: ");
-    // SERIAL_ECHO(Z_MIN_POS_STEPS);
-    // SERIAL_ECHO(", ");
-    // SERIAL_ECHOLN(Z_MAX_POS_STEPS);
 
     // loads data from EEPROM if available else uses defaults (and resets step acceleration rate)
     // Config_RetrieveSettings();
@@ -485,11 +468,6 @@ bool FillBufferTask::Run() {
 
             PT_BEGIN();
 
-            // SERIAL_ECHOPGM(" readSwap, sdr avail: ");
-            // SERIAL_ECHO(sDReader.available());
-            // SERIAL_ECHOPGM(", swapavail: ");
-            // SERIAL_ECHOLN(swapDev.available());
-
             #if 0
             # Move segment data, new with bresenham in firmware:
             #   * Header data:
@@ -531,17 +509,6 @@ bool FillBufferTask::Run() {
                     goto HandleCmdDwellMS;
 
                 default:
-#if 0
-                    SERIAL_ECHOPGM("Error: UNKNOWN command byte: ");
-                    SERIAL_ECHO((int)cmd);
-                    SERIAL_ECHOPGM(", Swapsize: ");
-                    SERIAL_ECHO(swapDev.getSize());
-                    SERIAL_ECHOPGM(", SwapReadPos is: ");
-                    SERIAL_ECHO(swapDev.getReadPos());
-                    SERIAL_ECHOPGM(", SDRReadPos+5 is: ");
-                    SERIAL_ECHOLN(sDReader.getBufferPtr());
-#endif
-
                     killMessage(RespUnknownBCommand, cmd);
             }
 
@@ -556,8 +523,6 @@ bool FillBufferTask::Run() {
                     // Change stepper direction(s)
                     sd.dirBits = flags & 0x9F;
 // xxx printf("flags: 0x%x, dirbits: 0x%x\n", flags, dirBits);
-
-                // SERIAL_ECHOLNPGM("C1");
 
                 cmdSync = true;
 
@@ -595,7 +560,6 @@ bool FillBufferTask::Run() {
                 sDReader.setBytesToRead2();
                 PT_WAIT_THREAD(sDReader);
                 nAccel = FromBuf(uint16_t, sDReader.readData);
-                // SERIAL_ECHOLN(nAccel);
 
 #if defined(USEExtrusionRateTable)
                 //////////////////////////////////////////////////////
@@ -668,7 +632,6 @@ bool FillBufferTask::Run() {
                 sDReader.setBytesToRead2();
                 PT_WAIT_THREAD(sDReader);
                 nDecel = FromBuf(uint16_t, sDReader.readData);
-                // SERIAL_ECHOLN(nDecel);
 
                 //
                 // Compute bresenham factors
@@ -694,13 +657,6 @@ bool FillBufferTask::Run() {
                     d_axis[i] = d;
                     d1_axis[i] = d1;
                     d2_axis[i] = d2;
-
-                    // SERIAL_ECHOPGM("d/d1/d2: ");
-                    // SERIAL_ECHO(d);
-                    // SERIAL_ECHOPGM(",");
-                    // SERIAL_ECHO(d1);
-                    // SERIAL_ECHOPGM(",");
-                    // SERIAL_ECHOLN(d2);
                 }
 
                 if (nAccel) {
@@ -838,8 +794,6 @@ bool FillBufferTask::Run() {
                     // Change stepper direction(s)
                     sd.dirBits = flags & 0x9F;
 
-                // SERIAL_ECHOLNPGM("C1");
-
                 // ???
                 // cmdSync = true;
 
@@ -849,7 +803,6 @@ bool FillBufferTask::Run() {
                 sDReader.setBytesToRead2();
                 PT_WAIT_THREAD(sDReader);
                 nAccel = FromBuf(uint16_t, sDReader.readData);
-                // SERIAL_ECHOLN(nAccel);
 
 #if defined(USEExtrusionRateTable)
                 //////////////////////////////////////////////////////
@@ -964,8 +917,6 @@ bool FillBufferTask::Run() {
 
             HandleCmdSyncFanSpeed:
 
-                // SERIAL_ECHOLNPGM("C3");
-
                 sDReader.setBytesToRead1();
                 PT_WAIT_THREAD(sDReader);
 
@@ -1043,11 +994,6 @@ void Printer::printerInit() {
         massert(sdsize > 0);
         massert(swapDev.erase(0, sdsize - 1));
 
-        // SERIAL_ECHO("erase time ");
-        // SERIAL_ECHO(swapDev.cardSize());
-        // SERIAL_ECHO(" blocks (mS):");
-        // SERIAL_PROTOCOLLN(millis() - eStart);
-
         swapErased = true;
     }
 
@@ -1113,15 +1059,6 @@ void Printer::cmdMove(MoveType mt) {
     enable_y();
     enable_z();
     enable_e0();
-
-    // xxxxxxxxxxxxxx
-    // SERIAL_ECHOPGM("start: readSwap, size: ");
-    // SERIAL_ECHO(swapDev.getSize());
-    // SERIAL_ECHOPGM(", SwapReadPos: ");
-    // SERIAL_ECHO(swapDev.getReadPos());
-    // SERIAL_ECHOPGM(", SDRReadPos is: ");
-    // SERIAL_ECHOLN(sDReader.getBufferPtr());
-    // xxxxxxxxxxxxxx
 
 #if defined(HASFILAMENTSENSOR)
     filamentSensor.init();
@@ -1226,8 +1163,6 @@ void Printer::checkMoveFinished() {
             DISABLE_STEPPER_DRIVER_INTERRUPT();
             DISABLE_STEPPER1_DRIVER_INTERRUPT();
 
-            // SERIAL_PROTOCOLLNPGM("Move finished.");
-
             // printerState = StateInit;
             printerState = StateIdle;
             moveType = MoveTypeNone;
@@ -1260,10 +1195,7 @@ void Printer::cmdDisableStepperIsr() {
 
     DISABLE_STEPPER_DRIVER_INTERRUPT();
     DISABLE_STEPPER1_DRIVER_INTERRUPT();
-
-    SERIAL_PROTOCOLLNPGM(MSG_OK);
 }
-
 #endif
 
 void Printer::cmdGetHomed() {
@@ -1935,12 +1867,6 @@ FWINLINE void loop() {
 
             if (X_ENDSTOP_PRESSED || Y_ENDSTOP_PRESSED || Z_ENDSTOP_PRESSED) {
 
-                // SERIAL_ECHOPGM("POS: ");
-                // SERIAL_ECHO(current_pos_steps[X_AXIS]);
-                // SERIAL_ECHO(", ");
-                // SERIAL_ECHO(current_pos_steps[Y_AXIS]);
-                // SERIAL_ECHO(", ");
-                // SERIAL_ECHOLN(current_pos_steps[Z_AXIS]);
                 LCDMSGKILL(RespHardwareEndstop, "", "");
                 txBuffer.sendResponseStart(RespKilled);
                 txBuffer.sendResponseUint8(RespHardwareEndstop);
@@ -1953,12 +1879,6 @@ FWINLINE void loop() {
             }
             else if (X_SW_ENDSTOP_PRESSED || Y_SW_ENDSTOP_PRESSED || Z_SW_ENDSTOP_PRESSED) {
 
-                // SERIAL_ECHOPGM("POS: ");
-                // SERIAL_ECHO(current_pos_steps[X_AXIS]);
-                // SERIAL_ECHO(", ");
-                // SERIAL_ECHO(current_pos_steps[Y_AXIS]);
-                // SERIAL_ECHO(", ");
-                // SERIAL_ECHOLN(current_pos_steps[Z_AXIS]);
                 LCDMSGKILL(RespSoftwareEndstop, "", "");
                 txBuffer.sendResponseStart(RespKilled);
                 txBuffer.sendResponseUint8(RespSoftwareEndstop);

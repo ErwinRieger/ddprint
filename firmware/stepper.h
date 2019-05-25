@@ -415,10 +415,6 @@ inline void st_step_motor_es(uint8_t stepBits, uint8_t dirbits) {
         bool endStop = st_endstop_pressed<MOVE>(forward);
 
         if (endStop) {
-            // if (forward)
-                // SERIAL_ECHOLN("Endstop hit forward");
-            // else
-                // SERIAL_ECHOLN("Endstop hit backward");
             DISABLE_STEPPER1_DRIVER_INTERRUPT();
             return;
         }
@@ -426,10 +422,6 @@ inline void st_step_motor_es(uint8_t stepBits, uint8_t dirbits) {
         endStop = st_endstop_released<MOVE>(forward);
 
         if (endStop) {
-            // if (forward)
-                // SERIAL_ECHOLN("Endstop released forward");
-            // else
-                // SERIAL_ECHOLN("Endstop released backward");
             DISABLE_STEPPER1_DRIVER_INTERRUPT();
             return;
         }
