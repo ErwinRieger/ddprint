@@ -283,10 +283,6 @@ void setup() {
         kill();
     }
 
-    // Hotend fan
-    DDRJ |= _BV(6);
-    PORTJ |= _BV(6);
-
 #if defined(PMWFS)
     filamentSensor.reset();
 #endif
@@ -1872,6 +1868,17 @@ FWINLINE void loop() {
         // Measure temperatures every 10ms (build mean value by OVERSAMPLENR)
         //
         tempControl.Run();
+        // Check new temperature and turn on hotend fan
+        if (current_temperature[0] >= 40.0) {
+            // Hotend fan on
+            DDRJ |= _BV(6);
+            PORTJ |= _BV(6);
+        }
+        if (current_temperature[0] <= 35.0) {
+            // Hotend fan off
+            DDRJ &= ~(_BV(6));
+            PORTJ &= ~(_BV(6));
+        }
 
 // #if defined(HASFILAMENTSENSOR)
         // // Read filament sensor
