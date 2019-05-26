@@ -30,7 +30,7 @@ import ddprintutil as util
 from serial import SerialException
 from ddprintcommands import *
 from ddprintstates import *
-from ddprofile import MatProfile
+from ddprofile import MatProfile, PrinterProfile
 from ddprinter import FatalPrinterError
 
 class SyncCall:
@@ -251,7 +251,7 @@ class MainForm(npyscreen.Form):
         # util.commonInit(self.args, self.parser)
 
         try:
-            self.printer.commandInit(self.args)
+            self.printer.commandInit(self.args, PrinterProfile.getSettings())
         except SerialException:
             msg = "Can't open serial device '%s' (baudrate: %d)!\n\nPress OK to exit." % (self.args.device, self.args.baud)
             self.guiQueue.put(SyncCall(self.quit, msg))
