@@ -338,11 +338,6 @@ class Advance (object):
             self.planAcceleration(move)
 
             #
-            # Collect some statistics
-            #
-            self.planner.pathData.maxExtrusionRate.stat(move)
-
-            #
             # Correct eSpeed for feeder slip
             #
             if UseFeederCompensation:

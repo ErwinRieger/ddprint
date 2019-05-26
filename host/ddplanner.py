@@ -41,60 +41,6 @@ if debugPlot:
 emptyVector5 = [0] * 5
 
 #####################################################################
-#
-# Computes some statistics about the used maximal extrusion rates.
-#
-class MaxExtrusionRate:
-    def __init__(self):
-        self.maxRate = 0
-        self.move = None
-        self.max10 = []
-
-        self.maxAvgRate = 0
-
-    def stat(self, move):
-
-        # Do not count very small moves, the computation of the extrusion rate is inaccurate because of the
-        # discretization in the gcodeparser (map float values to discrete stepper values).
-        if move.distance3 < 0.1:
-            return 
-
-        # Get maximum extrusion rate, take plateau speed into account only
-        # length of max constant speed:
-        reachedEExtrusion = move.topSpeed.speed().eSpeed * MatProfile.getMatArea()
-
-        if reachedEExtrusion > self.maxRate:
-
-            # print "New max reachedEExtrusion: ", reachedEExtrusion, "mm³/s"
-
-            self.maxRate = reachedEExtrusion
-            self.move = move
-
-            self.max10.append(reachedEExtrusion)
-            if len(self.max10) > 10:
-                self.max10 = self.max10[1:]
-
-    def avgStat(self, maxAvgRate):
-
-        if maxAvgRate > self.maxAvgRate:
-
-            # print "New max avg reachedEExtrusion: ", maxAvgRate, "mm³/s"
-
-            self.maxAvgRate = maxAvgRate
-
-    def printStat(self):
-
-        if self.maxRate:
-
-            print "\nStatistics:"
-            print "-----------"
-            print "Maximal Extrusion Rate (Extruder A): %.1f mm³/s, move:" % self.maxRate
-
-            self.move.pprint("Max. extrusion Move")
-            print "Net Max10: ", self.max10
-            print "Maximal Extrusion Rate (Extruder A) 5 second average: %.1f" % self.maxAvgRate, "mm³/s\n"
-
-#####################################################################
 
 class StepRounder(object):
 
@@ -205,9 +151,6 @@ class PathData (object):
 
             self.lastTemp = MatProfile.getHotendStartTemp()
 
-        # Some statistics
-        self.maxExtrusionRate = MaxExtrusionRate()
-
     # Number of moves
     def incCount(self):
         self.count += 10 # leave space for advance-submoves
@@ -253,7 +196,6 @@ class PathData (object):
             print "AutoTemp: collected moves with %.2f s duration." % tsum
             print "AutoTemp: max. extrusion rate: %.2f mm³/s." % avgERate
             print "AutoTemp: new temp: %d." % newTemp
-            # self.avgERate.avgStat(maxExtrusionRate)
 
 #####################################################################
 
@@ -297,7 +239,6 @@ class Planner (object):
         self.args = args
 
         self.printer = Printer.get()
-        # self.parser = UM2GcodeParser.get()
 
         self.zeroPos = util.MyPoint()
 
@@ -388,7 +329,7 @@ class Planner (object):
             #    
             # add_homeing_z is the not-usable space oft the z dimension of the
             # build volume.
-            # -0.5 is a savety measure to prevent fals positives from the z endswitch
+            # -0.5 is a safety measure to prevent fals positives from the z endswitch
             #    
             Z = self._Z_HOME_POS + add_homeing_z - 0.5, # self.Z_HOME_POS,
             )
@@ -602,8 +543,6 @@ class Planner (object):
 
                 # print "finishMoves(): ending travel path with %d moves" % len(self.pathData.path)
                 self.planTravelPath(self.pathData.path)
-
-            self.pathData.maxExtrusionRate.printStat()
 
         assert(not self.syncCommands)
         self.reset()
