@@ -248,6 +248,8 @@ void killMessage(uint8_t errorCode, uint8_t errorParam1, uint8_t errorParam2, co
 
 void setup() {
 
+    SET_OUTPUT(HOTEND_FAN_PIN);
+
     // Do some minimal SPI init, prevent SPI to go to spi slave mode
     WRITE(SDSS, HIGH);
     SET_OUTPUT(SDSS);
@@ -1868,16 +1870,17 @@ FWINLINE void loop() {
         // Measure temperatures every 10ms (build mean value by OVERSAMPLENR)
         //
         tempControl.Run();
+
+        //
         // Check new temperature and turn on hotend fan
+        //
         if (current_temperature[0] >= 40.0) {
             // Hotend fan on
-            DDRJ |= _BV(6);
-            PORTJ |= _BV(6);
+            WRITE(HOTEND_FAN_PIN, HIGH);
         }
         if (current_temperature[0] <= 35.0) {
             // Hotend fan off
-            DDRJ &= ~(_BV(6));
-            PORTJ &= ~(_BV(6));
+            WRITE(HOTEND_FAN_PIN, LOW);
         }
 
 // #if defined(HASFILAMENTSENSOR)

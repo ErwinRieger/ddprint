@@ -63,6 +63,7 @@
 #define MAX6675_SS         13
 #define LED_PIN            8
 #define FAN_PIN            7
+#define HOTEND_FAN_PIN     69
 #define PS_ON_PIN          24
 #define SAFETY_TRIGGERED_PIN     28 //PIN to detect the safety circuit has triggered
 #define MAIN_VOLTAGE_MEASURE_PIN 14 //Analogue PIN to measure the main voltage, with a 100k - 4k7 resitor divider.

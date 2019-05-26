@@ -1395,13 +1395,11 @@ pins
 #define DIO68_DDR		DDRK
 #define DIO68_PWM		NULL
 
-#define DIO69_PIN		PINK7
-#define DIO69_RPORT	PINK
-#define DIO69_WPORT	PORTK
-#define DIO69_DDR		DDRK
+#define DIO69_PIN		PINJ6
+#define DIO69_RPORT	PINJ
+#define DIO69_WPORT	PORTJ
+#define DIO69_DDR		DDRJ
 #define DIO69_PWM		NULL
-
-
 
 #undef PA0
 #define PA0_PIN			PINA0
