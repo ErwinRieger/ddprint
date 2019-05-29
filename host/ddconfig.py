@@ -58,18 +58,3 @@ UseFeederCompensation = False
 #
 SmoothExtrusionRate = True
 
-#####################################################################
-#
-# Limit extrusion by hotend temperature in the firmware
-#
-# xxx not used??? UseExtrusionLimit = True
-
-
-
-
-
-
-
-
-
-
