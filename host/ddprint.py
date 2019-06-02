@@ -375,8 +375,6 @@ def main():
 
     sp = subparsers.add_parser("bedLeveling", help=u"Do bed leveling sequence.")
 
-    sp.add_argument("distance", action="store", help="Adjust-distance (+/-) in mm.", type=float)
-
     sp = subparsers.add_parser("heatHotend", help=u"Heat up hotend (to clean it, etc).")
 
     sp = subparsers.add_parser("genTempTable", help=u"Generate extrusion rate limit table.")
