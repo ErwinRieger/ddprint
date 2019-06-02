@@ -39,24 +39,7 @@
 //The ASCII buffer for recieving from SD:
 #define SD_BUFFER_SIZE 512
 
-#if 0
-#if defined(ExtendedStats)
-//
-// Bit 0: Line Error
-// Bit 1: Checksum Error
-// Bit 2: Santax Error
-// Bit 3: RX Error
-// Bit 4: Timeout Error
-#define EFLineError 0x1
-#define EFCheckError 0x2
-#define EFSyntaxError 0x4
-#define EFRXError 0x8
-#define EFTimeoutError 0x10
-uint8_t errorFlags = 0;
-#endif
-#endif
-
-// Macros to read scalar types from a buffer
+// Macro to read scalar types from a buffer
 #define FromBuf(typ, adr) ( * ((typ *)(adr)))
 
 // Timestamp last call of loop()
@@ -1341,18 +1324,12 @@ class UsbCommand : public Protothread {
 
             txBuffer.sendSimpleResponse(RespRXCRCError, serialNumber);
             reset();
-            // #if defined(ExtendedStats)
-                // errorFlags |= EFRXError;
-            // #endif
         }
 
         void serialNumberError() {
 
             txBuffer.sendSimpleResponse(RespSerNumberError, serialNumber);
             reset();
-            // #if defined(ExtendedStats)
-                // errorFlags |= EFRXError;
-            // #endif
         }
 
         //
