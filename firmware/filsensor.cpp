@@ -50,6 +50,8 @@ FilamentSensorPMW3360::FilamentSensorPMW3360() {
 
     sensorCount = 0;
 
+    minStepperSteps = 0.25 * axis_steps_per_mm_e;
+
     init();
 }
 
@@ -123,7 +125,7 @@ void FilamentSensorPMW3360::run() {
 
         float deltaStepperSteps = astep - lastASteps; // Requested extruded length
 
-        if (deltaStepperSteps >= 50) {
+        if (deltaStepperSteps >= minStepperSteps) {
 
             dDPrintSpi.beginTransaction(spiSettingsFS);
             // int16_t deltaSensorSteps = getDY(); // read distance delta from filament sensor
@@ -160,7 +162,7 @@ void FilamentSensorPMW3360::run() {
                 //      entweder fehlmessung oder sehr großes slipping, wir beschränken den wert dann auf 10%
                 //      das sollten ausreisser sein und daher den durchschnitt nicht so stark beinflussen
                 //
-                slippage.addValue( min( max(slip, 0.5), 10.0) );
+                slippage.addValue( min( max(slip, 0.1), 10.0) );
             }
             else {
 

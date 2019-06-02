@@ -210,6 +210,8 @@ class FilamentSensorPMW3360 {
         float filSensorCalibration;
 
         uint16_t axis_steps_per_mm_e;
+        // Ignore filament moves smaller than 0.25mm
+        float minStepperSteps;
 
     public:
 
@@ -233,7 +235,10 @@ class FilamentSensorPMW3360 {
 
         void enableFeedrateLimiter(bool flag) { feedrateLimiterEnabled = flag; }
         void setFilSensorCalibration(float fc) { filSensorCalibration = fc; }
-        void setStepsPerMME(uint16_t steps) { axis_steps_per_mm_e = steps; }
+        void setStepsPerMME(uint16_t steps) {
+            axis_steps_per_mm_e = steps;
+            minStepperSteps = (0.25 * axis_steps_per_mm_e);
+        }
 };
 
 extern FilamentSensorPMW3360 filamentSensor;
