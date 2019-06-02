@@ -213,7 +213,9 @@ void killMessage(uint8_t errorCode, uint8_t errorParam1, uint8_t errorParam2, co
 
 void setup() {
 
+#if defined(HOTEND_FAN_PIN)
     SET_OUTPUT(HOTEND_FAN_PIN);
+#endif
 
     // Do some minimal SPI init, prevent SPI to go to spi slave mode
     WRITE(SDSS, HIGH);
@@ -1830,6 +1832,7 @@ FWINLINE void loop() {
         //
         tempControl.Run();
 
+#if defined(HOTEND_FAN_PIN)
         //
         // Check new temperature and turn on hotend fan
         //
@@ -1841,6 +1844,7 @@ FWINLINE void loop() {
             // Hotend fan off
             WRITE(HOTEND_FAN_PIN, LOW);
         }
+#endif
 
 // #if defined(HASFILAMENTSENSOR)
         // // Read filament sensor
