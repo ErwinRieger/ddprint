@@ -62,24 +62,6 @@ uint8_t errorFlags = 0;
 // Timestamp last call of loop()
 unsigned long loopTS;
 
-extern "C"{
-  extern unsigned int __bss_end;
-  extern unsigned int __heap_start;
-  extern unsigned int *__brkval;
-
-  int freeMemory() {
-    unsigned int free_memory;
-
-    if(__brkval == 0)
-      free_memory = (&free_memory) - (&__bss_end);
-    else
-      free_memory = (&free_memory) - (__brkval);
-
-    return free_memory;
-  }
-}
-
-
 /////////////////////////////////////////////////////////////////////////////////////
 #if defined(USEExtrusionRateTable)
 
