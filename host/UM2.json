@@ -61,7 +61,13 @@
   "MaxAxisAcceleration": [9000, 9000, 100, 10000, 10000],
   # Filamentsensor calibration data. This is the ratio of
   # filamentsensor steps to e-stepper steps.
-  "filSensorCalibration": 1.439
+  "filSensorCalibration": 1.439,
+  # Hotend PID values
+  "Kp": 2.5,
+  "Ki": 0.1,
+  "Kd": 12.0,
+  # Bedleveling Z value
+  "add_homeing_z": -15
 }
 
 
