@@ -268,8 +268,7 @@ class Planner (object):
 
         # Bed leveling constants
         self.LEVELING_OFFSET = 0.1                   # Assumed thickness of feeler gauge/paper used in leveling (mm)
-        self.HEAD_HEIGHT = 35.0                      # Let enough room for the head, XXX UM2 specific !!!
-        # self.HEAD_HEIGHT = 15.0                      # Let enough room for the head, XXX UM2 specific !!!
+        self.HEAD_HEIGHT = 35.0                      # Let enough room for the head.
 
         # Homing
         self.X_HOME_POS = self.X_MIN_POS

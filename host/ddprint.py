@@ -342,21 +342,13 @@ def main():
     sp = subparsers.add_parser("print", help=u"Download and print file at once.")
     sp.add_argument("gfile", help="Input GCode file.")
 
-    sp = subparsers.add_parser("writeEepromFloat", help=u"Store float value into eeprom.")
-    sp.add_argument("name", help="Valuename.")
-    sp.add_argument("value", action="store", type=float, help="value (float).")
-
-    sp = subparsers.add_parser("setPrinterName", help=u"Store printer name into eeprom.")
+    sp = subparsers.add_parser("setPrinterName", help=u"Store printer name into printer eeprom.")
     sp.add_argument("name", help="Printer name.")
 
     # sp = subparsers.add_parser("reset", help=u"Try to stop/reset printer.")
 
     sp = subparsers.add_parser("pre", help=u"Preprocess gcode, for debugging purpose.")
     sp.add_argument("gfile", help="Input GCode file.")
-
-    sp = subparsers.add_parser("dumpeeprom", help=u"dump eeprom settings.")
-
-    sp = subparsers.add_parser("factoryReset", help=u"FactoryReset of eeprom settings, new bed leveling needed.")
 
     sp = subparsers.add_parser("test", help=u"Debug: tests for debugging purpose.")
 
@@ -383,7 +375,6 @@ def main():
 
     sp = subparsers.add_parser("bedLeveling", help=u"Do bed leveling sequence.")
 
-    sp = subparsers.add_parser("bedLevelAdjust", help=u"Adjust bedleveling offset - dangerous.")
     sp.add_argument("distance", action="store", help="Adjust-distance (+/-) in mm.", type=float)
 
     sp = subparsers.add_parser("heatHotend", help=u"Heat up hotend (to clean it, etc).")
@@ -567,23 +558,6 @@ def main():
         while True:
             printer.readMore()
 
-    # xxx remove 
-    elif args.mode == 'dumpeeprom':
-
-        printer.commandInit(args, PrinterProfile.getSettings())
-        resp = printer.query(CmdGetEepromVersion)
-        if util.handleGenericResponse(resp):
-            print "Eepromversion: ", util.getResponseString(resp[1], 1)
-
-        settingsDict = printer.getEepromSettings()
-        print "eepromSettings: ",
-        pprint.pprint(settingsDict)
-
-    elif args.mode == 'factoryReset':
-
-        printer.commandInit(args, PrinterProfile.getSettings())
-        printer.sendCommand(CmdEepromFactory)
-
     elif args.mode == 'disableSteppers':
 
         printer.commandInit(args, PrinterProfile.getSettings())
@@ -620,10 +594,6 @@ def main():
     elif args.mode == 'bedLeveling':
 
         util.bedLeveling(args, parser)
-
-    elif args.mode == 'bedLevelAdjust':
-
-        util.bedLevelAdjust(args, parser)
 
     elif args.mode == 'heatHotend':
 
@@ -738,10 +708,6 @@ def main():
             for s in range(int(args.feedrate)):
                 time.sleep(1)
                 printer.sendCommandParamV(CmdSetContTimer, [packedvalue.uint16_t(util.eTimerValue(planner, 1+s))])
-
-    elif args.mode == "writeEepromFloat":
-
-        util.writeEEpromFloat(args, parser)
 
     else:
         print "Unknown command: ", args.mode

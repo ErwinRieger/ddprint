@@ -969,9 +969,8 @@ def bedLeveling(args, parser):
 
     printer.commandInit(args, PrinterProfile.getSettings())
 
-    # Reset bedlevel offset in printer eeprom
-    payload = struct.pack("<%dpf" % (len("add_homeing_z")+1), "add_homeing_z", 0)
-    printer.sendCommand(CmdWriteEepromFloat, binPayload=payload)
+    # Reset bedlevel offset in printer profile
+    PrinterProfile.get().override("add_homeing_z", 0)
 
     ddhome.home(parser, args.fakeendstop, True)
 
@@ -1036,12 +1035,11 @@ def bedLeveling(args, parser):
     current_position = parser.getPos()
     print "curz: ", current_position[Z_AXIS]
 
-    add_homeing_z = -1 * current_position[Z_AXIS];
-    print "\nZ-Offset: ", add_homeing_z, "\n"
+    add_homeing_z = (current_position[Z_AXIS] * -1) + planner.LEVELING_OFFSET;
+    print "\n! Please update your Z-Offset (add_homeing_z) in printer profile: ", add_homeing_z, "\n"
 
-    # Store into printer eeprom:
-    payload = struct.pack("<%dpf" % (len("add_homeing_z")+1), "add_homeing_z", add_homeing_z)
-    printer.sendCommand(CmdWriteEepromFloat, binPayload=payload)
+    # Store into printer profile:
+    PrinterProfile.get().override("add_homeing_z", add_homeing_z)
 
     # Finally we know the zero z position
     # current_position[Z_AXIS] = 0
@@ -1061,7 +1059,7 @@ def bedLeveling(args, parser):
     printer.sendPrinterInit()
     parser.execute_line("G0 F%d Z5" % (zFeedrate*60))
     parser.execute_line("G0 F%d X35 Y20" % (feedrate*60))
-    parser.execute_line("G0 F%d Z0.1" % (zFeedrate*60))
+    parser.execute_line("G0 F%d Z%f" % (zFeedrate*60, planner.LEVELING_OFFSET))
 
     planner.finishMoves()
     printer.sendCommandParamV(CmdMove, [MoveTypeNormal])
@@ -1077,7 +1075,7 @@ def bedLeveling(args, parser):
     printer.sendPrinterInit()
     parser.execute_line("G0 F%d Z5" % (zFeedrate*60))
     parser.execute_line("G0 F%d X%f" % (feedrate*60, planner.X_MAX_POS-10))
-    parser.execute_line("G0 F%d Z0.1" % (zFeedrate*60))
+    parser.execute_line("G0 F%d Z%f" % (zFeedrate*60, planner.LEVELING_OFFSET))
 
     planner.finishMoves()
     printer.sendCommandParamV(CmdMove, [MoveTypeNormal])
@@ -1088,46 +1086,6 @@ def bedLeveling(args, parser):
     raw_input("\nAdjust right fron buildplate screw and press <Return>\n")
 
     ddhome.home(parser, args.fakeendstop)
-
-####################################################################################################
-
-def bedLevelAdjust(args, parser):
-
-    planner = parser.planner
-    printer = planner.printer
-
-    printer.commandInit(args, PrinterProfile.getSettings())
-
-    add_homeing_z = printer.getAddHomeing_z() + args.distance
-
-    # Store new bedlevel offset in printer eeprom
-    payload = struct.pack("<%dpf" % (len("add_homeing_z")+1), "add_homeing_z", add_homeing_z)
-    printer.sendCommand(CmdWriteEepromFloat, binPayload=payload)
-
-####################################################################################################
-
-def writeEEpromFloat(args, parser):
-
-    planner = parser.planner
-    printer = planner.printer
-
-    printer.commandInit(args, PrinterProfile.getSettings())
-
-    payload = struct.pack("<%dpf" % (len(args.name)+1), args.name, args.value)
-    resp = printer.query(CmdWriteEepromFloat, binPayload=payload)
-    handleGenericResponse(resp)
-
-####################################################################################################
-
-"""
-def storeSD(parser):
-
-    planner = parser.planner
-    printer = planner.printer
-
-    buf = (512 - 5) * chr(0x55)
-    printer.sendBinaryCommand(chr(CmdRaw), binPayload=buf)
-"""
 
 ####################################################################################################
 
