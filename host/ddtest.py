@@ -45,16 +45,16 @@ def testFilSensor(args, parser):
     diff = endPos - startPos
 
     # diff ist in sensor-counts
-    cal = PrinterProfile.get().getFilSensorCalibration()
+    pcal = PrinterProfile.get().getFilSensorCalibration()
     steps_per_mm = PrinterProfile.getStepsPerMM(A_AXIS)
 
-    print "cal:", cal
     print "steps_per_mm  E:", steps_per_mm
 
-    mm = (diff / cal)  / steps_per_mm
+    cal = diff / (steps_per_mm * args.distance) 
 
-    print "Filament pos in counts old:", startPos, ", new:", endPos, "difference: %d counts", diff
-    print diff, "counts is ", diff/cal, "E stepper steps", mm
+    print "Commanded steps: ", (steps_per_mm * args.distance)
+    print "Filament pos in counts old:", startPos, ", new:", endPos, "difference: %d counts" % diff
+    print "Calibration value from profile: %f, measured ratio: %f" % (pcal, cal)
 
 #
 # Calibrate filament sensor, determine ratio between extruder steps and the value 
@@ -97,20 +97,23 @@ def calibrateFilSensor(args, parser):
     calValues = []
     valueSum = 0
 
+    RAVGWINDOW = 5 # xxx defined in filsensor.h
+
     while feedrate <= maxFeedrate:
 
-        tStartup = util.getStartupTime(feedrate)
-        tAccel = feedrate / eAccel
+        # tStartup = util.getStartupTime(feedrate)
 
-        accelDistance = 5*feedrate
-        print "accelDistance: ", accelDistance
+        # xxx 0.25 hardcoded in fw!
+        sstartup = 5 * (RAVGWINDOW * 0.25) 
+        tStartup = (((sstartup*2.0)/3.0) / feedrate)
 
-        current_position = parser.getPos()
-        apos = current_position[A_AXIS]
+        print "sstartup: ", sstartup
+
+        apos = parser.getPos()[A_AXIS]
 
         printer.sendPrinterInit()
 
-        parser.execute_line("G0 F%d %s%f" % (feedrate*60, util.dimNames[A_AXIS], apos+accelDistance))
+        parser.execute_line("G0 F%d %s%f" % (feedrate*60, util.dimNames[A_AXIS], apos+sstartup))
 
         planner.finishMoves()
         printer.sendCommand(CmdEOT)
@@ -118,7 +121,7 @@ def calibrateFilSensor(args, parser):
 
         status = printer.getStatus()
 
-        while status["slippage"] > 1.5:
+        while status["slippage"] == 1.0:
             print "wait for startup..."
             status = printer.getStatus()
             time.sleep(0.1)
@@ -130,14 +133,15 @@ def calibrateFilSensor(args, parser):
             tMeasure = time.time()-t
 
             if tMeasure >= tStartup:
-
+                print "measure..."
                 data.append(status["slippage"])
 
             status = printer.getStatus()
             time.sleep(0.01)
 
         # Cut the last tAccel:
-        cut = int(tAccel/0.01+1)
+        # cut = int(tAccel/0.01+1)
+        cut = int(len(data)*0.9)
         del data[-cut:]
 
         # Average of ratio for this speed
