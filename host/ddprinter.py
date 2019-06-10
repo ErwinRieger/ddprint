@@ -229,6 +229,10 @@ class Printer(Serial):
                 # payload: SD errorcode, SPI status byte
                 (errorCode, spiStatus) = struct.unpack("<BB", payload[1:])
                 self.gui.logError("SDReadErr: errCode: 0x%x, spiStat: 0x%x" % (errorCode, spiStatus))
+            elif msgType == FilSensorDebug:
+                # payload: deltaStepperSteps(float) deltaSensorSteps(i32) filSensorCalibration(float) slip(float) s(float)
+                (deltaStepperSteps, deltaSensorSteps, filSensorCalibration, slip, s) = struct.unpack("<fifff", payload[1:])
+                self.gui.logError("FilSensorDebug: deltaStepperSteps: %f deltaSensorSteps: %d filSensorCalibration: %f slip: %f s: %f" % (deltaStepperSteps, deltaSensorSteps, filSensorCalibration, slip, s))
 
             return True # consume message
 

@@ -90,6 +90,7 @@ RespCodeNames = {
 #
 ExtrusionLimitDbg = 0x0
 PidDebug          = 0x1
+FilSensorDebug    = 0x2
 
 
 
