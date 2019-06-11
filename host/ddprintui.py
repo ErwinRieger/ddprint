@@ -331,27 +331,18 @@ class MainForm(npyscreen.Form):
 
         self.underrun.update()
 
-        # st = status["targetExtrusionSpeed"]
-        # sa = status["actualExtrusionSpeed"]
-
-        # grip = 100.0
-        # if st:
-            # grip = (sa*100.0) / st
-
-        # rt = st * MatProfile.getMatArea()
-        # ra = sa * MatProfile.getMatArea()
-
-        # self.extRate.set_value( "%8.1f / %.1f" % (ra, rt) )
-        # self.extRate.update()
-
-        # self.extGrip.set_value( "%4.1f %%" % grip )
-        # self.extGrip.update()
-
         slippage = status["slippage"]
 
         if slippage:
+            if slippage >= 0.85:
+                self.extGrip.entry_widget.color = "GOOD"
+            elif slippage >= 0.75:
+                self.extGrip.entry_widget.labelColor = "WARNING"
+            else:
+                self.extGrip.entry_widget.labelColor = "DANGER"
             self.extGrip.set_value( "%7.1f%%" % (100.0/slippage) )
         else:
+            self.extGrip.entry_widget.labelColor = "WARNING"
             self.extGrip.set_value( "   ?   ")
 
         self.extGrip.update()
