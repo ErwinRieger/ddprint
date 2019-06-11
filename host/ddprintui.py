@@ -117,7 +117,7 @@ class MainForm(npyscreen.Form):
         self.nozzleProfile.editable = False
 
         rely += 1
-        self.matProfile = self.add(npyscreen.TitleFixedText, name = "Material Profile      :", relx=1, rely=rely, use_two_lines=False, begin_entry_at=23,
+        self.matProfile = self.add(npyscreen.TitleFixedText, name = "Material Profile     :", relx=1, rely=rely, use_two_lines=False, begin_entry_at=23,
                 width=w-1)
         self.matProfile.editable = False
 
@@ -337,12 +337,12 @@ class MainForm(npyscreen.Form):
             if slippage >= 0.85:
                 self.extGrip.entry_widget.color = "GOOD"
             elif slippage >= 0.75:
-                self.extGrip.entry_widget.labelColor = "WARNING"
+                self.extGrip.entry_widget.color = "WARNING"
             else:
-                self.extGrip.entry_widget.labelColor = "DANGER"
+                self.extGrip.entry_widget.color = "DANGER"
             self.extGrip.set_value( "%7.1f%%" % (100.0/slippage) )
         else:
-            self.extGrip.entry_widget.labelColor = "WARNING"
+            self.extGrip.entry_widget.color = "WARNING"
             self.extGrip.set_value( "   ?   ")
 
         self.extGrip.update()
