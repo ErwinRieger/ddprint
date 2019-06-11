@@ -107,24 +107,24 @@ class MainForm(npyscreen.Form):
         # Upper left side: the input/configuration area
         #
         rely = 2
-        e = self.add(npyscreen.TitleFixedText, name = "PrinterProfile       :", relx=1, rely=rely, use_two_lines=False, begin_entry_at=23,
+        self.printerProfile = self.add(npyscreen.TitleFixedText, name = "PrinterProfile       :", relx=1, rely=rely, use_two_lines=False, begin_entry_at=23,
                 width=w-1)
-        e.editable = False
+        self.printerProfile.editable = False
 
         rely += 1
-        e = self.add(npyscreen.TitleFixedText, name = "Nozzle Profile       :", relx=1, rely=rely, use_two_lines=False, begin_entry_at=23,
+        self.nozzleProfile = self.add(npyscreen.TitleFixedText, name = "Nozzle Profile       :", relx=1, rely=rely, use_two_lines=False, begin_entry_at=23,
                 width=w-1)
-        e.editable = False
+        self.nozzleProfile.editable = False
 
         rely += 1
-        e = self.add(npyscreen.TitleFixedText, name = "Materia Profile      :", relx=1, rely=rely, use_two_lines=False, begin_entry_at=23,
+        self.matProfile = self.add(npyscreen.TitleFixedText, name = "Material Profile      :", relx=1, rely=rely, use_two_lines=False, begin_entry_at=23,
                 width=w-1)
-        e.editable = False
+        self.matProfile.editable = False
 
         rely += 1
-        e = self.add(npyscreen.TitleFixedText, name = "Specific Mat Profile :", relx=1, rely=rely, use_two_lines=False, begin_entry_at=23,
+        self.smatProfile = self.add(npyscreen.TitleFixedText, name = "Specific Mat Profile :", relx=1, rely=rely, use_two_lines=False, begin_entry_at=23,
                 width=w-1)
-        e.editable = False
+        self.smatProfile.editable = False
 
         rely += 2
         self.fn = self.add(npyscreen.TitleFilename, name = "GCode File:", relx=1, rely=rely, use_two_lines=False, begin_entry_at=23,
@@ -218,8 +218,8 @@ class MainForm(npyscreen.Form):
         # usb-serial link. Ignore this exceptions here.
         #
         try:
-            for w in [self.commLog, self.appLog]:
-                if w._need_update:
+            for w in self._widgets__: # [self.commLog, self.appLog]:
+                if hasattr(w, '_need_update') and w._need_update:
                     w._need_update = False
                     w.update()
         except TypeError:
@@ -250,6 +250,12 @@ class MainForm(npyscreen.Form):
         (self.parser, self.planner, self.printer) = ddprint.initParser(self.args, gui=self)
         # util.commonInit(self.args, self.parser)
 
+        self.guiQueue.put(SyncCallUpdate(self.printerProfile.set_value, PrinterProfile.get().name))
+        self.guiQueue.put(SyncCallUpdate(self.nozzleProfile.set_value, self.args.nozzle))
+        self.guiQueue.put(SyncCallUpdate(self.matProfile.set_value, self.args.mat))
+        self.guiQueue.put(SyncCallUpdate(self.smatProfile.set_value, self.args.smat))
+        self.guiQueue.put(SyncCallUpdate(self.fn.set_value, self.args.file))
+        
         try:
             self.printer.commandInit(self.args, PrinterProfile.getSettings())
         except SerialException:
@@ -260,9 +266,6 @@ class MainForm(npyscreen.Form):
         self.mat_t0 = MatProfile.getBedTemp()
         self.mat_t0_reduced = MatProfile.getBedTempReduced()
         self.mat_t1 = MatProfile.getHotendStartTemp() + self.planner.l0TempIncrease
-
-        # self.fn.set_value(self.args.file)
-        self.guiQueue.put(SyncCall(self.fn.set_value, self.args.file))
 
         while True:
 
@@ -328,27 +331,18 @@ class MainForm(npyscreen.Form):
 
         self.underrun.update()
 
-        # st = status["targetExtrusionSpeed"]
-        # sa = status["actualExtrusionSpeed"]
-
-        # grip = 100.0
-        # if st:
-            # grip = (sa*100.0) / st
-
-        # rt = st * MatProfile.getMatArea()
-        # ra = sa * MatProfile.getMatArea()
-
-        # self.extRate.set_value( "%8.1f / %.1f" % (ra, rt) )
-        # self.extRate.update()
-
-        # self.extGrip.set_value( "%4.1f %%" % grip )
-        # self.extGrip.update()
-
         slippage = status["slippage"]
 
         if slippage:
+            if slippage >= 0.85:
+                self.extGrip.entry_widget.color = "GOOD"
+            elif slippage >= 0.75:
+                self.extGrip.entry_widget.labelColor = "WARNING"
+            else:
+                self.extGrip.entry_widget.labelColor = "DANGER"
             self.extGrip.set_value( "%7.1f%%" % (100.0/slippage) )
         else:
+            self.extGrip.entry_widget.labelColor = "WARNING"
             self.extGrip.set_value( "   ?   ")
 
         self.extGrip.update()

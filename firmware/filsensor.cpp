@@ -33,12 +33,10 @@
 #define FilSensorDebug 1
 
 #if defined(PMWFS)
-    SPISettings spiSettingsFS(4000000, MSBFIRST, SPI_MODE3);
-#endif
-
-#if defined(PMWFS)
 
 #include "pmw3360fw.h"
+
+SPISettings spiSettingsFS(4000000, MSBFIRST, SPI_MODE3);
 
 FilamentSensorPMW3360 filamentSensor;
 
@@ -50,7 +48,7 @@ FilamentSensorPMW3360::FilamentSensorPMW3360() {
 
     sensorCount = 0;
 
-    minStepperSteps = 0.25 * axis_steps_per_mm_e;
+    minStepperSteps = MINSTEPPERSTEPS * axis_steps_per_mm_e;
 
     init();
 }
@@ -59,6 +57,9 @@ void FilamentSensorPMW3360::init() {
 
     slippage.reset(1.0);
     grip = 1.0;
+
+    lastASteps = current_pos_steps[E_AXIS];
+    lastSensorCount = sensorCount;
 }
 
 uint8_t FilamentSensorPMW3360::readLoc(uint8_t addr){
@@ -87,49 +88,51 @@ void FilamentSensorPMW3360::writeLoc(uint8_t addr, uint8_t value) {
   delayMicroseconds(100); // tSWW/tSWR (=120us) minus tSCLK-NCS. Could be shortened, but is looks like a safe lower bound 
 }
 
+
+/*
+ * 1. Write any value to the Motion register.  --> is done in reset()
+ * 2. Read the Motion register. This will freeze the Delta_X_L, Delta_X_H, Delta_Y_L and Delta_Y_H register values. 
+ * 3. If the MOT bit is set, Delta_X_L, Delta_X_H, Delta_Y_L and Delta_Y_H registers should be read in the given 
+ *    sequence to get the accumulated motion. Note: if Delta_X_L, Delta_X_H, Delta_Y_L and Delta_Y_H registers are 
+ *    not read before the motion register is read for the second time, the data in Delta_X_L, Delta_X_H, Delta_Y_L and 
+ *    Delta_Y_H will be lost. 
+ * 4. To read a new set of motion data (Delta_X_L, Delta_X_H, Delta_Y_L and Delta_Y_H), repeat from Step 2. 
+ * 5. If any other register was read i.e. any other register besides Motion, Delta_X_L, Delta_X_H, Delta_Y_L and 
+ *    Delta_Y_H, then, to read a new set of motion data, repeat from Step 1 instead.  
+ */
 void FilamentSensorPMW3360::getDY() {
 
-    //write 0x01 to Motion register and read from it to freeze the motion values and make them available
-    writeLoc(Motion, 0x01);
+    union {
+        uint8_t buf[2];
+        int16_t int16;
+    } int16Buf;
+
     uint8_t mot = readLoc(Motion);
 
     if (mot & 0x80) { // Motion register
 
-#if !defined(burst)
-        // XXX x_delta must be read also?!
-        readLoc(Delta_X_L); // X_L
-        readLoc(Delta_X_H); // X_H
+        int16Buf.buf[0] = readLoc(Delta_Y_L);
+        int16Buf.buf[1] = readLoc(Delta_Y_H);
 
-        uint8_t y = readLoc(Delta_Y_L); // Y_L
-        int8_t yh = readLoc(Delta_Y_H);
-#endif
-
-        int32_t dy = ((int16_t)yh << 8) | y;
-
-        // lcd.setCursor(0, 1); lcd.print("          ");
-        // lcd.setCursor(0, 1); lcd.print(y);
-
-        // sensorCount += dy;
-        // negate for v4 feeder
-        sensorCount -= dy;
+        sensorCount += int16Buf.int16;
     }
 }
 
 void FilamentSensorPMW3360::run() {
 
     CRITICAL_SECTION_START
-    long astep = current_pos_steps[E_AXIS];
+    int32_t astep = current_pos_steps[E_AXIS];
     CRITICAL_SECTION_END
 
-    if (astep != lastASteps) {
+    dDPrintSpi.beginTransaction(spiSettingsFS);
+    getDY(); // read distance delta from filament sensor
 
-        float deltaStepperSteps = astep - lastASteps; // Requested extruded length
+    if (astep > lastASteps) {
+
+        float deltaStepperSteps = astep - lastASteps; // Requested extruded length, always positive, since astep > lastASteps
 
         if (deltaStepperSteps >= minStepperSteps) {
 
-            dDPrintSpi.beginTransaction(spiSettingsFS);
-            // int16_t deltaSensorSteps = getDY(); // read distance delta from filament sensor
-            getDY(); // read distance delta from filament sensor
             int32_t deltaSensorSteps = sensorCount - lastSensorCount;
 
             //
@@ -162,7 +165,20 @@ void FilamentSensorPMW3360::run() {
                 //      entweder fehlmessung oder sehr großes slipping, wir beschränken den wert dann auf 10%
                 //      das sollten ausreisser sein und daher den durchschnitt nicht so stark beinflussen
                 //
-                slippage.addValue( min( max(slip, 0.1), 10.0) );
+                // float s = min( max(slip, 0.1), 10.0 );
+                // slippage.addValue( s );
+                slippage.addValue( slip );
+
+                // if (slip > 3.0) {
+                        // txBuffer.sendResponseStart(RespUnsolicitedMsg);
+                        // txBuffer.sendResponseUint8(FilSensorDebugMsg);
+                        // txBuffer.sendResponseValue(deltaStepperSteps);
+                        // txBuffer.sendResponseValue(deltaSensorSteps);
+                        // txBuffer.sendResponseValue(filSensorCalibration);
+                        // txBuffer.sendResponseValue(slip);
+                        // txBuffer.sendResponseValue(s);
+                        // txBuffer.sendResponseEnd();
+                // }
             }
             else {
 
@@ -173,7 +189,7 @@ void FilamentSensorPMW3360::run() {
                 if (deltaStepperSteps > (axis_steps_per_mm_e * 5)) {
                     slippage.addValue(10);
                 }
-                // break, still counting steps, counts
+                // Break, still counting steps, counts
                 return;
             }
 
@@ -196,7 +212,6 @@ void FilamentSensorPMW3360::run() {
             lcd.setCursor(0, 3); lcd.print("RA:"); lcd.print(s); lcd.print(" "); lcd.print(grip); lcd.print("     ");
             */
         }
-
     }
 }
 
@@ -262,8 +277,7 @@ void FilamentSensorPMW3360::reset() {
     writeLoc(Config2, 0x00);
 
     // set initial CPI resolution, 5000 cpi is default cpi
-    // 0x77: 12000 cpi
-    writeLoc(Config1, 0x78);
+    writeLoc(Config1, 0x77); // 12000
   
     // WRITE(FILSENSNCS, HIGH); // adns_com_end();
 
@@ -279,11 +293,8 @@ void FilamentSensorPMW3360::reset() {
         kill();
     }
 
-
-// xxxx was init():
-//
-    lastASteps = current_pos_steps[E_AXIS];
-    lastSensorCount = sensorCount;
+    // write 0x01 to Motion register and read from it to freeze the motion values and make them available
+    writeLoc(Motion, 0x01);
 }
 
 #endif // #if defined(PMWFS)

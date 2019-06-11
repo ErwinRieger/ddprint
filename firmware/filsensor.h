@@ -20,14 +20,16 @@
 
 
 /*
- * Parts of this code come from https://github.com/mrjohnk/ADNS-9800
+ * Parts of this code come from https://github.com/mrjohnk
  */
 
 #pragma once
 
-#if defined(ADNSFS) || defined(BournsEMS22AFS) || defined(PMWFS)
+#if defined(PMWFS)
     #define HASFILAMENTSENSOR
 #endif
+
+#define MINSTEPPERSTEPS 0.25
 
 // #if 0
 // Weight for exponential filter of e-speed [percent]
@@ -58,9 +60,9 @@ class SpeedExpoFilter {
 };
 // #endif
 
-// Window size running average filament speed
-// rate is 100ms (see ddprint.cpp)
-#define RAVGWINDOW 10
+// Window size running average filament speed.
+// Poll rate is 100ms (see ddprint.cpp).
+#define RAVGWINDOW 5
 
 /*
 class RunninAvg {
@@ -127,7 +129,15 @@ class RunningAvgF {
 
     inline float value() { return avg; }
 
-    void reset(float av = 0) { n = 0; avg = av;}
+    void reset(float av = 0) { 
+
+        for (uint8_t j=0; j<RAVGWINDOW; j++) {
+            values[j] = av;
+        }
+        i = 0;
+        n = RAVGWINDOW;
+        avg = av;
+    }
 };
 
 #if defined(PMWFS)
@@ -210,7 +220,7 @@ class FilamentSensorPMW3360 {
         float filSensorCalibration;
 
         uint16_t axis_steps_per_mm_e;
-        // Ignore filament moves smaller than 0.25mm
+        // Ignore filament moves smaller than MINSTEPPERSTEPS mm (35.25 for 141, 70.50 for 282 steps stepper).
         float minStepperSteps;
 
     public:
@@ -237,7 +247,7 @@ class FilamentSensorPMW3360 {
         void setFilSensorCalibration(float fc) { filSensorCalibration = fc; }
         void setStepsPerMME(uint16_t steps) {
             axis_steps_per_mm_e = steps;
-            minStepperSteps = (0.25 * axis_steps_per_mm_e);
+            minStepperSteps = (MINSTEPPERSTEPS * axis_steps_per_mm_e);
         }
 };
 
@@ -246,161 +256,4 @@ extern FilamentSensorPMW3360 filamentSensor;
 #else // #if defined(PMWFS)
     #define VAR_FILSENSOR_GRIP (1.0)
 #endif // #if defined(PMWFS)
-
-#if 0
-#if defined(ADNSFS)
-
-    // See also: calibrateFilSensor function of host part.
-    // #define FS_STEPS_PER_MM 265
-    // 8200.0/25.4 = 322.8
-    #define FS_STEPS_PER_MM 323
-#endif
-#endif
-
-#if defined(BournsEMS22AFS)
-    #define FS_STEPS_PER_MM (1024 / (5.5 * M_PI))
-#endif
-
-#if defined(ADNSFS)
-//
-// ADNS9800 stuff
-//
-// ADNS9800 Registers
-#define REG_Product_ID                           0x00
-#define REG_Revision_ID                          0x01
-#define REG_Motion                               0x02
-#define REG_Delta_X_L                            0x03
-#define REG_Delta_X_H                            0x04
-#define REG_Delta_Y_L                            0x05
-#define REG_Delta_Y_H                            0x06
-#define REG_SQUAL                                0x07
-#define REG_Pixel_Sum                            0x08
-#define REG_Maximum_Pixel                        0x09
-#define REG_Minimum_Pixel                        0x0a
-#define REG_Shutter_Lower                        0x0b
-#define REG_Shutter_Upper                        0x0c
-#define REG_Frame_Period_Lower                   0x0d
-#define REG_Frame_Period_Upper                   0x0e
-#define REG_Configuration_I                      0x0f
-#define REG_Configuration_II                     0x10
-#define REG_Frame_Capture                        0x12
-#define REG_SROM_Enable                          0x13
-#define REG_Run_Downshift                        0x14
-#define REG_Rest1_Rate                           0x15
-#define REG_Rest1_Downshift                      0x16
-#define REG_Rest2_Rate                           0x17
-#define REG_Rest2_Downshift                      0x18
-#define REG_Rest3_Rate                           0x19
-#define REG_Frame_Period_Max_Bound_Lower         0x1a
-#define REG_Frame_Period_Max_Bound_Upper         0x1b
-#define REG_Frame_Period_Min_Bound_Lower         0x1c
-#define REG_Frame_Period_Min_Bound_Upper         0x1d
-#define REG_Shutter_Max_Bound_Lower              0x1e
-#define REG_Shutter_Max_Bound_Upper              0x1f
-#define REG_LASER_CTRL0                          0x20
-#define REG_Observation                          0x24
-#define REG_Data_Out_Lower                       0x25
-#define REG_Data_Out_Upper                       0x26
-#define REG_SROM_ID                              0x2a
-#define REG_Lift_Detection_Thr                   0x2e
-#define REG_Configuration_V                      0x2f
-#define REG_Configuration_IV                     0x39
-#define REG_Power_Up_Reset                       0x3a
-#define REG_Shutdown                             0x3b
-#define REG_Inverse_Product_ID                   0x3f
-#define REG_Snap_Angle                           0x42
-#define REG_Motion_Burst                         0x50
-#define REG_SROM_Load_Burst                      0x62
-#define REG_Pixel_Burst                          0x64
-
-
-/*
- * Inteface to a ADNS9800 'Mousesensor'
- */
-class FilamentSensorADNS9800 {
-
-        uint32_t lastTSs;
-        int32_t lastASteps;
-        // uint32_t lastTSf;
-
-        uint8_t readLoc(uint8_t addr);
-        void writeLoc(uint8_t addr, uint8_t value);
-        uint8_t pullbyte();
-        int16_t getDY();
-
-        // Ratio of Measured filament speed to stepper speed [0.5%]
-        // uint8_t grip;
-        bool feedrateLimiterEnabled;
-
-    public:
-
-        // int32_t yPos;
-
-        // Measured stepper speed [0.01 mm/s]
-        // int16_t targetSpeed;
-        // SpeedExpoFilter targetSpeed;
-
-        // Measured filament speed [0.01 mm/s]
-        // SpeedExpoFilter actualSpeed;
-
-        // Running average measured filament speed
-        // RunninAvg actualSpeed;
-
-        // Ratio of target e-steps and filament sensor steps, this is a 
-        // measure of the *feeder slippage*.
-        RunningAvgF slippage;
-
-        // Factor to slow down movement because feeder slippage is greater than 10%.
-        float grip;
-
-        // int16_t actualSpeed;
-
-        FilamentSensorADNS9800();
-        void init();
-        void reset();
-        // The polling method
-        void run();
-        void selfTest();
-
-        void enableFeedrateLimiter(bool flag) { feedrateLimiterEnabled = flag; }
-};
-
-extern FilamentSensorADNS9800 filamentSensor;
-
-#endif // #if defined(ADNSFS)
-
-#if defined(BournsEMS22AFS)
-
-/*
- * Inteface to a Bourns ems22a Rotary Encoder
- */
-class FilamentSensor {
-
-        int16_t getDY();
-
-        int16_t lastEncoderPos;
-
-        int32_t lastASteps;
-        uint32_t lastTS;
-
-        void spiInit(uint8_t spiRate);
-        uint16_t readEncoderPos();
-
-    public:
-
-        int32_t yPos;
-        // bool feedrateLimiterEnabled;
-
-        float slip; // xxx rename to grip
-
-        FilamentSensor();
-        void init();
-        // The polling method
-        void run();
-        // void selfTest();
-};
-
-extern FilamentSensor filamentSensor;
-
-#endif // #if defined(BournsEMS22AFS)
 
