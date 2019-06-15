@@ -172,7 +172,8 @@ class PathData (object):
         # Compute temperature for this segment and add tempcommand into the stream. 
         newTemp = \
             MatProfile.getTempForFlowrate(avgERate * (1.0+AutotempSafetyMargin), PrinterProfile.getHwVersion(), NozzleProfile.getSize()) + \
-            self.planner.l0TempIncrease
+            self.planner.l0TempIncrease + \
+            self.planner.args.inctemp
 
         # Don't go below startTemp from material profile
         newTemp = max(newTemp, MatProfile.getHotendStartTemp())
@@ -193,7 +194,7 @@ class PathData (object):
             self.lastTemp = int(newTemp)
 
         if debugAutoTemp:
-            print "AutoTemp: collected moves with %.2f s duration." % tsum
+            print "AutoTemp: collected %d moves with %.2f s duration." % (len(moves), tsum)
             print "AutoTemp: max. extrusion rate: %.2f mm³/s." % avgERate
             print "AutoTemp: new temp: %d." % newTemp
 

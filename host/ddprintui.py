@@ -239,6 +239,7 @@ class MainForm(npyscreen.Form):
         parser.add_argument("-kAdvance", dest="kAdvance", action="store", type=float, help="K-Advance factor, default comes from mat. profile.")
         parser.add_argument("-mat", dest="mat", action="store", help="Name of material profile to use [pla, abs...], default is pla.", default="pla_1.75mm")
         parser.add_argument("-rl", dest="retractLength", action="store", type=float, help="Retraction length, default comes from printer profile.", default=0)
+        parser.add_argument("-inctemp", dest="inctemp", action="store", type=float, help="Increase extruder temperature niveau (layer bonding).", default=0)
         parser.add_argument("-smat", dest="smat", action="store", help="Name of specific material profile to use.")
         parser.add_argument("-noz", dest="nozzle", action="store", help="Name of nozzle profile to use [nozzle40, nozzle80...], default is nozzle40.", default="nozzle40")
 
@@ -334,15 +335,15 @@ class MainForm(npyscreen.Form):
         slippage = status["slippage"]
 
         if slippage:
-            if slippage >= 0.85:
+            if slippage <= (1/.85):
                 self.extGrip.entry_widget.color = "GOOD"
-            elif slippage >= 0.75:
+            elif slippage <= (1/0.75):
                 self.extGrip.entry_widget.color = "WARNING"
             else:
                 self.extGrip.entry_widget.color = "DANGER"
             self.extGrip.set_value( "%7.1f%%" % (100.0/slippage) )
         else:
-            self.extGrip.entry_widget.color = "WARNING"
+            self.extGrip.entry_widget.color = "GOOD"
             self.extGrip.set_value( "   ?   ")
 
         self.extGrip.update()

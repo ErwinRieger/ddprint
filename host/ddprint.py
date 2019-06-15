@@ -329,6 +329,8 @@ def main():
     argParser.add_argument("-fr", dest="feedrate", action="store", type=float, help="Feedrate for move commands.", default=0)
     argParser.add_argument("-rl", dest="retractLength", action="store", type=float, help="Retraction length, default comes from printer profile.", default=0)
 
+    argParser.add_argument("-inctemp", dest="inctemp", action="store", type=float, help="Increase extruder temperature niveau (layer bonding).", default=0)
+
     subparsers = argParser.add_subparsers(dest="mode", help='Mode: mon(itor)|print|store|reset|pre(process).')
 
     sp = subparsers.add_parser("autoTune", help=u"Autotune hotend PID values.")
@@ -408,6 +410,8 @@ def main():
     sp = subparsers.add_parser("calibrateFilSensor", help=u"Debug: helper to determine the ratio of stepper to flowrate sensor.")
 
     args = argParser.parse_args()
+
+    print "args: ", args
 
     if args.mode == "setPrinterName":
         printer = Printer()

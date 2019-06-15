@@ -62,7 +62,7 @@ class SpeedExpoFilter {
 
 // Window size running average filament speed.
 // Poll rate is 100ms (see ddprint.cpp).
-#define RAVGWINDOW 5
+#define RAVGWINDOW 10
 
 /*
 class RunninAvg {
@@ -99,18 +99,19 @@ class RunninAvg {
 };
 */
 
+// xxx runningsum
 class RunningAvgF {
 
     float values[RAVGWINDOW];
     uint8_t i;
     uint8_t n;
-    float avg;
+    float sum;
 
   public:
 
     RunningAvgF() {
         i = n = 0;
-        avg = 0;
+        sum = 0;
     }
 
     inline void addValue(float v) {
@@ -121,22 +122,23 @@ class RunningAvgF {
         if (n < RAVGWINDOW)
             n++;
 
-        avg = 0;
+        sum = 0;
         for (uint8_t j=0; j<n; j++)
-            avg += values[j];
-        avg /= n;
+            sum += values[j];
+        // avg /= n;
     }
 
-    inline float value() { return avg; }
+    inline float value() { return sum; }
 
     void reset(float av = 0) { 
 
+        sum = 0;
         for (uint8_t j=0; j<RAVGWINDOW; j++) {
             values[j] = av;
+            sum += av;
         }
         i = 0;
         n = RAVGWINDOW;
-        avg = av;
     }
 };
 
@@ -210,7 +212,7 @@ class FilamentSensorPMW3360 {
         uint8_t readLoc(uint8_t addr);
         void writeLoc(uint8_t addr, uint8_t value);
         uint8_t pullbyte();
-        bool feedrateLimiterEnabled;
+        bool feedrateLimiterEnabled, started;
 
         // Ratio between measured filament sensor counts and the 
         // extruder stepper motor steps.
@@ -230,7 +232,8 @@ class FilamentSensorPMW3360 {
 
         // Ratio of target e-steps and filament sensor steps, this is a 
         // measure of the *feeder slippage*.
-        RunningAvgF slippage;
+        RunningAvgF slippageStep;
+        RunningAvgF slippageSens;
 
         // Factor to slow down movement because feeder slippage is greater than 10%.
         float grip;
@@ -249,6 +252,8 @@ class FilamentSensorPMW3360 {
             axis_steps_per_mm_e = steps;
             minStepperSteps = (MINSTEPPERSTEPS * axis_steps_per_mm_e);
         }
+
+        inline float slippage() { return (slippageStep.value() * filSensorCalibration) / slippageSens.value(); }
 };
 
 extern FilamentSensorPMW3360 filamentSensor;

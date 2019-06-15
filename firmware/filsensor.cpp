@@ -55,11 +55,16 @@ FilamentSensorPMW3360::FilamentSensorPMW3360() {
 
 void FilamentSensorPMW3360::init() {
 
-    slippage.reset(1.0);
+    slippageStep.reset(1.0);
+    slippageSens.reset(filSensorCalibration);
     grip = 1.0;
 
     lastASteps = current_pos_steps[E_AXIS];
     lastSensorCount = sensorCount;
+
+    started = false;
+    slippageStep.reset(1.0);
+    slippageSens.reset(filSensorCalibration);
 }
 
 uint8_t FilamentSensorPMW3360::readLoc(uint8_t addr){
@@ -127,13 +132,17 @@ void FilamentSensorPMW3360::run() {
     dDPrintSpi.beginTransaction(spiSettingsFS);
     getDY(); // read distance delta from filament sensor
 
-    if (astep > lastASteps) {
+    if (astep != lastASteps) {
 
-        float deltaStepperSteps = astep - lastASteps; // Requested extruded length, always positive, since astep > lastASteps
+        float deltaStepperSteps = fabs(astep - lastASteps); // Requested extruded length, always positive, since astep > lastASteps
 
         if (deltaStepperSteps >= minStepperSteps) {
+            started = true;
+        }
 
-            int32_t deltaSensorSteps = sensorCount - lastSensorCount;
+        if (started) {
+
+            int32_t deltaSensorSteps = abs(sensorCount - lastSensorCount);
 
             //
             // Compute the amount of "feeder slippage"
@@ -144,9 +153,9 @@ void FilamentSensorPMW3360::run() {
             // Normally slippage is greater 1.0 since there is always some back-pressure in the
             // filament and therefore the amount of filamnet fed is lower than it should be.
             //
-            if (deltaSensorSteps > 0) {
+            if (deltaSensorSteps) {
 
-                float slip = (deltaStepperSteps * filSensorCalibration) / deltaSensorSteps;
+                // float slip = (deltaStepperSteps * filSensorCalibration) / deltaSensorSteps;
 
                 // ungenaue sache: 
                 //
@@ -167,7 +176,8 @@ void FilamentSensorPMW3360::run() {
                 //
                 // float s = min( max(slip, 0.1), 10.0 );
                 // slippage.addValue( s );
-                slippage.addValue( slip );
+                slippageStep.addValue( deltaStepperSteps );
+                slippageSens.addValue( deltaSensorSteps );
 
                 // if (slip > 3.0) {
                         // txBuffer.sendResponseStart(RespUnsolicitedMsg);
@@ -183,11 +193,13 @@ void FilamentSensorPMW3360::run() {
             else {
 
                 // No measurement from filament sensor:
-                //   * no filament
+                //   * hardware failure
                 //   * filament grinding
-                //   * some hardware failure
+                //   * no filament
                 if (deltaStepperSteps > (axis_steps_per_mm_e * 5)) {
-                    slippage.addValue(10);
+                    // slippage.addValue(10);
+                    slippageStep.addValue( 10 );
+                    slippageSens.addValue( 10 * filSensorCalibration );
                 }
                 // Break, still counting steps, counts
                 return;
@@ -196,7 +208,8 @@ void FilamentSensorPMW3360::run() {
             lastASteps = astep;
             lastSensorCount = sensorCount;
 
-            float s = slippage.value();
+            // float s = slippage.value();
+            float s = slippage();
 
             if (feedrateLimiterEnabled && (s > 0.0)) {
 

@@ -43,16 +43,6 @@ CmdUnknown       = 0x7f # Unknown command for debugging
 # ----------------------
 #
 CmdPrinterInit = 128
-# * get homed flag
-# * get endstop state
-# * get temp
-# 
-# * set temp
-# 
-# 
-# 
-# 
-# * dump file buffer
 # * start move, print
 CmdMove = 129               # Parameters: MoveType
 # * End of text, all moves have been sent
@@ -60,6 +50,7 @@ CmdEOT = 130
 CmdResetLineNr = 131
 # free: 132
 CmdSetHomePos = 133
+# Set heater target temp
 CmdSetTargetTemp = 134 # Parameters: heater, temp
 # CmdWriteEepromFloat = 135 # Parameters: valuename (len max 63 chars!), value
 # CmdEepromFactory = 136 # Factory reset of eeprom values, bed leveling needed
@@ -69,12 +60,15 @@ CmdStopMove = 138
 CmdSetHeaterY = 139
 
 CmdGetDirBits = 150
+# Get homed flag
 CmdGetHomed = 151
+# Get endstop switch state
 CmdGetEndstops = 152   # Get endstop state and pos
 # CmdGetEepromVersion = 153
 # CmdGetEepromSettings = 154
 # currently not used: CmdDisableStepperIsr = 155
 CmdDisableSteppers = 156
+# Get temperatures
 CmdGetCurrentTemps = 157
 CmdGetTargetTemps = 158
 CmdGetPos = 159
@@ -120,16 +114,6 @@ for (cmd, cmdName) in [
     # ----------------------
     #
     (CmdPrinterInit, "CmdPrinterInit",),
-    # * get homed flag
-    # * get endstop state
-    # * get temp
-    # 
-    # * set temp
-    # 
-    # 
-    # 
-    # 
-    # * dump file buffer
     # * start move, print
     (CmdMove, "CmdMove",),
     # * End of text, all moves have been sent
