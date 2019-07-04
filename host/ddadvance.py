@@ -499,6 +499,39 @@ class Advance (object):
         #debug if debugPlot and debugPlotLevel == "plotLevelPlanned":
             #debug self.plotPlannedPath(path)
 
+        esum = 0
+        measureMove = None
+        # Mark filament sensor measure moves
+        for move in path:
+
+            # move.pprint("mark")
+            if not measureMove:
+                measureMove = move
+
+            # print "dir?", move.eDirection
+            assert(move.eDirection > 0)
+
+            assert(move.eDistance > 0)
+            esum += move.eDistance
+
+            if move.advanceData.startSignChange(): assert(0)
+
+            if move.advanceData.endSignChange():
+
+                if esum > 0.25: # xxx hardcoded...
+                    print "Segment", measureMove, "endSignChange: started measurement move, distance:", esum
+
+                    assert(not measureMove.isSubMove())
+                    measureMove.isMeasureMove = True
+
+                measureMove = None
+
+        if measureMove and esum > 0.25: # xxx hardcoded...
+            print "Segment", measureMove, "started measurement move, distance:", esum
+
+            assert(not measureMove.isSubMove())
+            measureMove.isMeasureMove = True
+
         newPath = []
         for move in path:
 
@@ -1301,11 +1334,11 @@ class Advance (object):
         # Aparallel = g * h; g = fri; h = ta
         # Sadv = fri * ta -> fri = Sadv / ta 
         ta = advMove.accelTime()
-        startFeedrateIncreaseBalance = accelAdvance / ta
+        startFeedrateIncrease = accelAdvance / ta
 
-        # print "startFeedrateIncrease: ", startFeedrateIncreaseBalance
+        # print "startFeedrateIncrease: ", startFeedrateIncrease
 
-        advMove.advanceData.startFeedrateIncrease = startFeedrateIncreaseBalance
+        advMove.advanceData.startFeedrateIncrease = startFeedrateIncrease
 
         # advMove.pprint("computeAccelAdvance accel adv:")
 
@@ -1323,11 +1356,11 @@ class Advance (object):
         # Aparallel = g * h; g = fri; h = td
         # Sadv = fri * td -> fri = Sadv / td 
         td = advMove.decelTime()
-        endFeedrateIncreaseBalance = decelAdvance / td
+        endFeedrateIncrease = decelAdvance / td
 
-        # print "endFeedrateIncrease: ", endFeedrateIncreaseBalance
+        # print "endFeedrateIncrease: ", endFeedrateIncrease
 
-        advMove.advanceData.endFeedrateIncrease = endFeedrateIncreaseBalance
+        advMove.advanceData.endFeedrateIncrease = endFeedrateIncrease
 
         # advMove.pprint("computeDecelAdvance decel adv:")
 
@@ -1506,16 +1539,18 @@ class Advance (object):
             newMoves[-1].nextMove = move.nextMove
 
         startMove = True
-        for move in newMoves:
-            move.sanityCheck()
+        for newMove in newMoves:
+            newMove.sanityCheck()
 
-            if move.crossedDecelStep():
-                if self.planCrossedDecelSteps(move):
-                    move.isStartMove = startMove
+            if newMove.crossedDecelStep():
+                if self.planCrossedDecelSteps(newMove):
+                    newMove.isStartMove = startMove
+                    newMove.isMeasureMove = move.isMeasureMove
                     startMove = False
             else:
-                if self.planStepsSimple(move):
-                    move.isStartMove = startMove
+                if self.planStepsSimple(newMove):
+                    newMove.isStartMove = startMove
+                    newMove.isMeasureMove = move.isMeasureMove
                     startMove = False
 
         if debugAdvance:
