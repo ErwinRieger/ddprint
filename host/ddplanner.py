@@ -172,8 +172,7 @@ class PathData (object):
         # Compute temperature for this segment and add tempcommand into the stream. 
         newTemp = \
             MatProfile.getTempForFlowrate(avgERate * (1.0+AutotempSafetyMargin), PrinterProfile.getHwVersion(), NozzleProfile.getSize()) + \
-            self.planner.l0TempIncrease + \
-            self.planner.args.inctemp
+            self.planner.l0TempIncrease
 
         # Don't go below startTemp from material profile
         newTemp = max(newTemp, MatProfile.getHotendStartTemp())

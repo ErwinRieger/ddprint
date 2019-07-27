@@ -97,7 +97,7 @@ def calibrateFilSensor(args, parser):
     calValues = []
     valueSum = 0
 
-    assert(0) #RAVGWINDOW = 5 # xxx defined in filsensor.h
+    RAVGWINDOW = 10 # xxx defined in filsensor.h
 
     while feedrate <= maxFeedrate:
 

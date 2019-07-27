@@ -33,6 +33,11 @@ class uint8_t(PackedValue):
     def __init__(self, value):
         PackedValue.__init__(self, value, "B")
 
+class int16_t(PackedValue):
+    def __init__(self, value):
+        print "int16: ", value
+        PackedValue.__init__(self, value, "h")
+
 class uint16_t(PackedValue):
     def __init__(self, value):
         PackedValue.__init__(self, value, "H")

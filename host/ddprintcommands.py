@@ -81,13 +81,14 @@ CmdEnableFRLimit = 165 # Enable/disable flowrate limit
 
 CmdSetContTimer =    166 # Timer value for CmdContinuousE -> E-Speed
 CmdContinuousE =     167 # Start/Stop continuous e-move for filament measurement
-CmdSetFilSensorCal = 168 # Start/Stop continuous e-move for filament measurement
-CmdSetStepsPerMME =  169 # Start/Stop continuous e-move for filament measurement
+CmdSetFilSensorCal = 168 # Flowrate sensor: set calibration value.
+CmdSetStepsPerMME =  169 # Set steps per mm value
 CmdSetPrinterName =  170 # Set printer (-profile) name from printer eeprom, payload is a 'pascal string'
 CmdGetPrinterName =  171 # Read printer (-profile) name from printer eeprom, payload is a 'pascal string'
 
 CmdSetPIDValues =    172
 # CmdSetBedlevelOffset = 173
+CmdSetIncTemp   =    174 # Adjust temperature niveau 
 
 CommandNames = {
 }
@@ -154,6 +155,7 @@ for (cmd, cmdName) in [
     (CmdGetPrinterName, "CmdGetPrinterName",),
     (CmdSetPIDValues, "CmdSetPIDValues",),
     # (CmdSetBedlevelOffset, "CmdSetBedlevelOffset",),
+    (CmdSetIncTemp, "CmdSetIncTemp",),
     ]:
 
         insertCommandName(cmd, cmdName)
@@ -162,13 +164,16 @@ for (cmd, cmdName) in [
 # Flag bits for CmdG1x commands
 #
 # Bits 0, 1, 2, 3, 4 reserved for direction bits
-DecelByteFlagBit = (1 << 5)
-AccelByteFlagBit = (1 << 6)
-DirBitsBit       = (1 << 7)
-MoveStartBit     = (1 << 8)
+DecelByteFlagBit     = (1 << 5) # 0x20
+AccelByteFlagBit     = (1 << 6) # 0x40
+DirBitsBit           = (1 << 7) # 0x80
+MoveStartBit         = (1 << 8) # 0x100
+MeasureStartBit      = (1 << 9) # 0x200
 # Raw moves
-TimerByteFlagBit = (1 << 6)
-MoveStartBitRaw  = (1 << 5)
+MoveStartBitRaw      = (1 << 5) # 0x20
+TimerByteFlagBit     = (1 << 6) # 0x40
+DirBitsBitRaw        = (1 << 7) # 0x80
+MeasureStartBitRaw   = (1 << 8) # 0100
 
 #
 # Response codes

@@ -27,7 +27,7 @@ from ddprintconstants import AdvanceEThreshold, StepDataTypeBresenham, StepDataT
 from ddprintutil import X_AXIS, Y_AXIS, Z_AXIS, A_AXIS, B_AXIS, circaf, sign
 from ddvector import Vector, VelocityVector32, VelocityVector5, vectorLength, vectorSub, vectorAbs
 from ddprintutil import pdbAssert
-from ddprintcommands import CommandNames, DecelByteFlagBit, AccelByteFlagBit, DirBitsBit, MoveStartBit
+from ddprintcommands import CommandNames, DecelByteFlagBit, AccelByteFlagBit, DirBitsBit, DirBitsBitRaw, MoveStartBit, MeasureStartBit, MeasureStartBitRaw
 from ddprintcommands import TimerByteFlagBit, MoveStartBitRaw
 from ddprofile import PrinterProfile
 from types import ListType
@@ -190,11 +190,15 @@ class StepData:
         if move.isStartMove:
             startMoveFlag = MoveStartBit
 
+        measureStartBit = 0
+        if move.isMeasureMove:
+            measureStartBit = MeasureStartBit
+
         # print "flags: 0x%x, dirbits: 0x%x" % (flags | accelByteFlag | decelByteFlag, flags)
         # print "ald:", len(self.accelPulses), self.abs_vector_steps[self.leadAxis]-(len(self.accelPulses)+len(self.decelPulses)), len(self.decelPulses)
 
         payLoad = struct.pack("<HBiiiiiH",
-                flags | accelByteFlag | decelByteFlag | startMoveFlag,
+                flags | accelByteFlag | decelByteFlag | startMoveFlag | measureStartBit,
                 self.leadAxis,
                 self.abs_vector_steps[0],
                 self.abs_vector_steps[1],
@@ -325,7 +329,7 @@ class RawStepData:
 
         flags = 0
         if self.setDirBits:
-            flags = self.dirBits | DirBitsBit
+            flags = self.dirBits | DirBitsBitRaw
 
         # Check if timer values can be sent as difference bytes
         timerByteFlag = TimerByteFlagBit
@@ -344,8 +348,12 @@ class RawStepData:
         if move.isStartMove:
             startMoveFlag = MoveStartBitRaw
 
-        payLoad = struct.pack("<BH",
-                flags | timerByteFlag | startMoveFlag,
+        measureStartBit = 0
+        if move.isMeasureMove:
+            measureStartBit = MeasureStartBitRaw
+
+        payLoad = struct.pack("<HH",
+                flags | timerByteFlag | startMoveFlag | measureStartBit,
                 len(self.pulses))
 
         if move.isStartMove:
@@ -480,6 +488,7 @@ class AdvanceData:
 
         if v0 >= 0 and v1 >= 0:
             return False
+
         if v0 < 0 and v1 < 0:
             return False
 
@@ -648,6 +657,8 @@ class MoveBase(object):
         self.stepData = None
 
         self.isStartMove = False
+
+        self.isMeasureMove = False
 
     def isSubMove(self):
         return False
@@ -1278,7 +1289,17 @@ class SubMove(MoveBase):
         self.endSpeed.setSpeed(ev, "SubMove.setSpeeds")
 
     def crossedDecelStep(self):
-        return (self.topSpeed.speed().eSpeed < 0) or (self.endSpeed.speed().eSpeed < 0)
+
+        if self.endSpeed.speed().eSpeed < 0:
+            return True
+
+        # xxx  wofür test auf topspeed < 0 ?
+        if self.topSpeed.speed().eSpeed < 0:
+            print "crossedDecelStep", self.topSpeed.speed().eSpeed
+            assert(0)
+            return True
+
+        return False
 
     def pprint(self, title):
 

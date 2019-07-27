@@ -518,7 +518,7 @@ class Advance (object):
 
             if move.advanceData.endSignChange():
 
-                if esum > 0.25: # xxx hardcoded...
+                if esum > 0.5: # xxx hardcoded...
                     print "Segment", measureMove, "endSignChange: started measurement move, distance:", esum
 
                     assert(not measureMove.isSubMove())
@@ -526,7 +526,7 @@ class Advance (object):
 
                 measureMove = None
 
-        if measureMove and esum > 0.25: # xxx hardcoded...
+        if measureMove and esum > 0.5: # xxx hardcoded...
             print "Segment", measureMove, "started measurement move, distance:", esum
 
             assert(not measureMove.isSubMove())

@@ -160,6 +160,16 @@ class Printer(Serial):
                 (errorCode, spiStatus) = struct.unpack("<BB", payload[1:])
                 self.gui.logError("ERROR: PRINTER KILLED! Reason: %s, ErrorCode: %d, spiStatus: 0x%x" % (RespCodeNames[reason], errorCode, spiStatus))
 
+            elif reason == RespMinTemp:
+
+                (heater,) = struct.unpack("<B", payload[1])
+                self.gui.logError("ERROR: PRINTER KILLED! Reason: %s, Heater: %d" % (RespCodeNames[reason], heater))
+
+            elif reason == RespMaxTemp:
+
+                (heater,) = struct.unpack("<B", payload[1])
+                self.gui.logError("ERROR: PRINTER KILLED! Reason: %s, Heater: %d" % (RespCodeNames[reason], heater))
+
             else:
 
                 self.gui.logError("ERROR: PRINTER KILLED! Reason: %s" % RespCodeNames[reason])
@@ -419,6 +429,8 @@ class Printer(Serial):
         self.sendCommandParamV(CmdSetPIDValues, [packedvalue.float_t(settings["Kp"]), packedvalue.float_t(settings["Ki"]), packedvalue.float_t(settings["Kd"])])
 
         # self.sendCommandParamV(CmdSetBedlevelOffset, [packedvalue.float_t(settings["add_homeing_z"])])
+
+        self.sendCommandParamV(CmdSetIncTemp, [packedvalue.uint8_t(HeaterEx1), packedvalue.int16_t(args.inctemp)]);
 
     def resetLineNumber(self):
         self.lineNr = 1
@@ -774,6 +786,13 @@ class Printer(Serial):
 
             if temps[heater] >= wait:
                 break
+
+    ####################################################################################################
+
+    def adjTemp(self, heater, adj):
+
+        payload = struct.pack("<Bh", heater, adj) # Parameters: heater, adjtemp
+        self.sendCommand(CmdSetIncTemp, binPayload=payload)
 
     ####################################################################################################
 
