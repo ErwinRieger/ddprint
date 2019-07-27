@@ -26,7 +26,6 @@
 #define OVERSAMPLENR 8
 
 // PT100 with INA826 amp on Ultimaker v2.0 electronics
-#if (THERMISTORHEATER_0 == 20) || (THERMISTORHEATER_1 == 20) || (THERMISTORBED == 20)
 
 //
 // Table to convert ADC values into temperatures.
@@ -449,6 +448,4 @@ inline float tempFromRawADC(float rawADC) {
 
     return pgm_read_float(thermistorTable + index);
 }
-
-#endif
 

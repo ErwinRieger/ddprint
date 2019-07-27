@@ -459,6 +459,7 @@ inline void st_step_motor_es(uint8_t stepBits, uint8_t dirbits) {
 */
 
 typedef struct {
+    // uint8_t cmd;
     // Bit 0-4: Direction bits, F
     // Bit 7: set-direction-flag, DDDDD
     uint8_t dirBits;
@@ -584,6 +585,14 @@ class StepBuffer {
                     OCR1A = 2000; // 1kHz.
                 }
                 else {
+
+/*
+                    switch (sd.cmd) {
+                        case CmdSyncTargetTemp:
+                            printer.cmdSetTargetTemp(targetHeater, targetTemp);
+                            break
+                    }
+*/
 
                     stepData &sd = pop();
 

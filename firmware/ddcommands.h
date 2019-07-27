@@ -110,6 +110,7 @@
 
 #define CmdSetPIDValues         172
 // #define CmdSetBedlevelOffset    173
+#define CmdSetIncTemp           174 // Adjust temperature niveau 
 
 //
 // Response types 

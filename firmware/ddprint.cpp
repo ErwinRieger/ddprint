@@ -429,6 +429,8 @@ bool FillBufferTask::Run() {
             sDReader.setBytesToRead1();
             PT_WAIT_THREAD(sDReader);
             cmd = *sDReader.readData;
+            // sd.cmd = cmd;
+            // sd.cmd = *sDReader.readData;
 
             switch (cmd) {
 
@@ -437,9 +439,6 @@ bool FillBufferTask::Run() {
 
                 case CmdG1Raw:
                     goto HandleCmdG1Raw;
-
-                // case CmdDirBits:
-                    // goto HandleCmdDirBits;
 
                 case CmdSyncFanSpeed:
                     goto HandleCmdSyncFanSpeed;
@@ -456,15 +455,19 @@ bool FillBufferTask::Run() {
 
             HandleCmdG1:
 
-                // Read flag byte and stepper direction bits
+                // Read flag word and stepper direction bits
                 sDReader.setBytesToRead2();
                 PT_WAIT_THREAD(sDReader);
 
                 flags = FromBuf(uint16_t, sDReader.readData);
+
                 if (flags & 0x80)
                     // Change stepper direction(s)
                     sd.dirBits = flags & 0x9F;
-// xxx printf("flags: 0x%x, dirbits: 0x%x\n", flags, dirBits);
+
+                if (flags & 0x200)
+                    // Start filament sensor measurement
+                    printer.restartFilsensor = true;
 
                 cmdSync = true;
 
@@ -542,7 +545,7 @@ bool FillBufferTask::Run() {
                         if (eSpeedTimer < maxTempSpeed) {
 
                             // Speed is limited by temperature
-                            // XXX cleanup temptable store temptable as floats or use integer (*1000) numeric here...
+                            // XXX cleanup temptable: store temptable as floats or use integer (*1000) numeric here...
                             timerScale = (maxTempSpeed / eSpeedTimer) * VAR_FILSENSOR_GRIP;
                             // printf("speed is limited by factor: %f\n", timerScale);
                         }
@@ -727,14 +730,19 @@ bool FillBufferTask::Run() {
 
             HandleCmdG1Raw:
 
-                // Read flag byte and stepper direction bits
-                sDReader.setBytesToRead1();
+                // Read flag word and stepper direction bits
+                sDReader.setBytesToRead2();
                 PT_WAIT_THREAD(sDReader);
 
-                flags = *sDReader.readData;
+                flags = FromBuf(uint16_t, sDReader.readData);
+
                 if (flags & 0x80)
                     // Change stepper direction(s)
                     sd.dirBits = flags & 0x9F;
+
+                if (flags & 0x100)
+                    // Start filament sensor measurement
+                    printer.restartFilsensor = true;
 
                 // ???
                 // cmdSync = true;
@@ -872,12 +880,14 @@ bool FillBufferTask::Run() {
                 PT_WAIT_THREAD(sDReader);
 
                 targetHeater = *sDReader.readData;
+                // sd.dirBits = *sDReader.readData;
                 targetTemp = FromBuf(uint16_t, sDReader.readData+1);
+                // sd.timer = FromBuf(uint16_t, sDReader.readData+1);
+
+                // PT_WAIT_WHILE(stepBuffer.full());
+                // stepBuffer.push(sd);
 
                 PT_WAIT_UNTIL( printer.printerState == Printer::StateStart );
-
-                // printf("autotemp: heater %d, temp: %d\n", *sDReader.readData, *(sDReader.readData+1));
-                // printer.cmdSetTargetTemp(*sDReader.readData, FromBuf(uint16_t, sDReader.readData+1));
                 printer.cmdSetTargetTemp(targetHeater, targetTemp);
 
                 PT_RESTART();
@@ -918,6 +928,11 @@ Printer::Printer() {
     homed[1] = false;
     homed[2] = false;
     swapErased = false;
+
+    for (int heater=0; heater<N_HEATERS; heater++)
+        increaseTemp[heater] = 0;
+
+    restartFilsensor = true;
 };
 
 void Printer::printerInit() {
@@ -1020,7 +1035,18 @@ void Printer::setHomePos(int32_t x, int32_t y, int32_t z) {
 
 void Printer::cmdSetTargetTemp(uint8_t heater, uint16_t temp) {
 
-    tempControl.setTemp(heater, temp);
+    if (temp > 25)
+        tempControl.setTemp(heater, temp + increaseTemp[heater]);
+    else
+        tempControl.setTemp(heater, temp);
+}
+
+void Printer::cmdSetIncTemp(uint8_t heater, int16_t incTemp) {
+
+    massert((heater >= 0) && (heater < N_HEATERS));
+    massert(abs(incTemp) <= 15);
+
+    increaseTemp[heater] = incTemp;
 }
 
 void Printer::cmdFanSpeed(uint8_t speed) {
@@ -1066,11 +1092,7 @@ void Printer::cmdGetTargetTemps() {
 
 void Printer::cmdGetCurrentTemps() {
 
-#if EXTRUDERS == 1
     txBuffer.sendResponseStart(CmdGetCurrentTemps);
-#else
-    txBuffer.sendResponseStart(CmdGetCurrentTemps);
-#endif
 
     txBuffer.sendResponseValue(current_temperature_bed);
     txBuffer.sendResponseValue(current_temperature[0]);
@@ -1562,8 +1584,6 @@ class UsbCommand : public Protothread {
                         printer.setHomePos(
                                 serialPort.serReadInt32(),
                                 serialPort.serReadInt32(),
-                                serialPort.serReadInt32(),
-                                serialPort.serReadInt32(),
                                 serialPort.serReadInt32());
                         */
                         {
@@ -1718,6 +1738,14 @@ class UsbCommand : public Protothread {
                         }
                         break;
 
+                    case CmdSetIncTemp: {
+                            uint8_t heater = serialPort.readNoCheckCobs();
+                            int16_t incTemp = serialPort.readInt16NoCheckCobs();
+                            printer.cmdSetIncTemp(heater, incTemp);
+                            txBuffer.sendACK();
+                        }
+                        break;
+
                     default:
                         txBuffer.sendSimpleResponse(RespUnknownCommand, commandByte);
                         #if defined(HEAVYDEBUG)
@@ -1796,6 +1824,18 @@ FWINLINE void loop() {
                 // printDebugInfo();
             }
         }
+    }
+
+    if (printer.restartFilsensor) {
+
+        // SPISettings spiSettingsFS(4000000, MSBFIRST, SPI_MODE3);
+
+        // dDPrintSpi.beginTransaction(spiSettingsFS);
+        // filamentSensor.readLoc(Motion); // freeze, but do not read
+
+        filamentSensor.init();
+
+        printer.restartFilsensor = false;
     }
 
     if ((loopTS - timer10mS) >= 10) { // Every 10 mS

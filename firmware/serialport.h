@@ -97,6 +97,7 @@ class SerialPort //: public Stream
     /* uint16_t readUInt16NoCheckNoCobs(); */
 
     uint8_t readNoCheckCobs(void);
+    int16_t readInt16NoCheckCobs();
     uint16_t readUInt16NoCheckCobs();
     float readFloatNoCheckCobs();
 

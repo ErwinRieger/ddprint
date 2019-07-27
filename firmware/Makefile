@@ -33,3 +33,5 @@ clean:
 	make -f Makefile.fw clean
 	make -f Makefile.sim clean
 
+reset: 
+	echo "yeah reset"

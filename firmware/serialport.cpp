@@ -90,6 +90,14 @@ uint16_t SerialPort::readUInt16NoCheckNoCobs()
 }
 #endif
 
+int16_t SerialPort::readInt16NoCheckCobs()
+{
+
+    uint8_t  b1 = readNoCheckCobs();
+    int16_t  b2 = readNoCheckCobs();
+    return (b2<<8) + b1;
+}
+
 uint16_t SerialPort::readUInt16NoCheckCobs()
 {
 
@@ -101,10 +109,10 @@ uint16_t SerialPort::readUInt16NoCheckCobs()
 int32_t SerialPort::readInt32NoCheckCobs()
 {
 
-    int8_t  b1 = readNoCheckCobs();
-    int32_t b2 = readNoCheckCobs();
-    int32_t b3 = readNoCheckCobs();
-    int32_t b4 = readNoCheckCobs();
+    uint8_t  b1 = readNoCheckCobs();
+    uint32_t b2 = readNoCheckCobs();
+    uint32_t b3 = readNoCheckCobs();
+    int32_t  b4 = readNoCheckCobs();
     return (b4<<24) + (b3<<16) + (b2<<8) + b1;
 }
 

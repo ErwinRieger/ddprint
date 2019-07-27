@@ -210,6 +210,7 @@ class FilamentSensorPMW3360 {
         int32_t lastSensorCount;
 
         uint8_t readLoc(uint8_t addr);
+
         void writeLoc(uint8_t addr, uint8_t value);
         uint8_t pullbyte();
         bool feedrateLimiterEnabled, started;
@@ -227,7 +228,7 @@ class FilamentSensorPMW3360 {
 
     public:
 
-        void getDY();
+        int16_t getDY();
         int32_t sensorCount;
 
         // Ratio of target e-steps and filament sensor steps, this is a 

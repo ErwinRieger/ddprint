@@ -37,9 +37,9 @@
 #include "serialport.h"
 
 // Redundant definitions to avoid include of ddprint.h
-extern bool IsStopped();
-extern void Stop(uint8_t reasonNr);
-extern void kill(const char* msg);
+// extern bool IsStopped();
+// extern void Stop(uint8_t reasonNr);
+// extern void kill(const char* msg);
 
 //===========================================================================
 //=============================public variables============================
@@ -49,7 +49,7 @@ uint16_t target_temperature[EXTRUDERS] = { 0 };
 // XXX todo: make member of TempControl
 uint8_t target_temperature_bed = 0;
 
-float current_temperature_bed = BED_MINTEMP;
+float current_temperature_bed = HEATER_0_MINTEMP;
 float current_temperature[EXTRUDERS] = ARRAY_BY_EXTRUDERS(HEATER_1_MINTEMP, HEATER_2_MINTEMP, HEATER_3_MINTEMP);
 
 void tp_init()

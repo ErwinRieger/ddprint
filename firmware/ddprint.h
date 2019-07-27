@@ -56,6 +56,8 @@ void kill();
 extern void watchdog_reset();
 void setup();
 
+#define N_HEATERS (EXTRUDERS + 1)
+
 class Printer {
 
         bool eotReceived;
@@ -63,10 +65,16 @@ class Printer {
         // We erase entire swapdev (sdcard) to speed up writes.
         bool swapErased;
 
+        // To adjust temperature-niveau at runtime
+        uint16_t increaseTemp[N_HEATERS];
+
     public:
 
+        // xxx make private
+        bool restartFilsensor;
+
         // State enum
-        // XXX can we combind the StateIdle and StateInit states?
+        // XXX can we combine the StateIdle and StateInit states?
         enum {
             StateIdle,       // 
             StateInit,       // 
@@ -90,9 +98,9 @@ class Printer {
         void printerInit();
         void cmdMove(MoveType);
         void cmdEot();
-        void cmdHome();
-        void setHomePos( int32_t x, int32_t y, int32_t z /*, int32_t a, int32_t b*/);
+        void setHomePos( int32_t x, int32_t y, int32_t z);
         void cmdSetTargetTemp(uint8_t heater, uint16_t temp);
+        void cmdSetIncTemp(uint8_t heater, int16_t incTemp);
         void checkMoveFinished();
         void disableSteppers();
         void cmdDisableSteppers();

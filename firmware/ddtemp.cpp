@@ -134,7 +134,7 @@ void TempControl::init() {
     lastPidCompute = millis();
 
     for (uint8_t e=0; e<EXTRUDERS; e++)
-        current_temperature[e] = HEATER_0_MINTEMP;
+        current_temperature[e] = HEATER_1_MINTEMP;
 }
 
 bool TempControl::Run() {
@@ -197,9 +197,15 @@ bool TempControl::Run() {
 
 void TempControl::setTemp(uint8_t heater, uint16_t temp) {
 
-    if (heater == 0)
+    if (heater == 0) {
+
+        massert(temp <= HEATER_0_MAXTEMP);
         target_temperature_bed = temp;
+    }
     else {
+
+        // Hack, use hotend1 maxtemp for all hotends here.
+        massert(temp <= HEATER_1_MAXTEMP);
 
         // Keep integral eSum if changing setpont from a
         // already stable setpoint. Reset integral sum if
@@ -238,13 +244,13 @@ void TempControl::setTemp(uint8_t heater, uint16_t temp) {
 void TempControl::heater() {
 
     // Check if temperature is within the correct range
-    if(current_temperature[0] < HEATER_0_MINTEMP) {
+    if(current_temperature[0] < HEATER_1_MINTEMP) {
         LCDMSGKILL(RespMinTemp, 1, current_temperature[0]);
         txBuffer.sendSimpleResponse(RespKilled, RespMinTemp, 1);
         kill();
     }
     else {
-        if(current_temperature[0] > HEATER_0_MAXTEMP) {
+        if(current_temperature[0] > HEATER_1_MAXTEMP) {
             LCDMSGKILL(RespMaxTemp, 1, current_temperature[0]);
             txBuffer.sendSimpleResponse(RespKilled, RespMaxTemp, 1);
             kill();
@@ -329,13 +335,13 @@ void TempControl::heater() {
     ////////////////////////////////
 
     // Check if temperature is within the correct range
-    if(current_temperature_bed < BED_MINTEMP) {
+    if(current_temperature_bed < HEATER_0_MINTEMP) {
         LCDMSGKILL(RespMinTemp, 0, current_temperature_bed);
         txBuffer.sendSimpleResponse(RespKilled, RespMinTemp, 0);
         kill();
     }
     else {
-        if(current_temperature_bed > BED_MAXTEMP) {
+        if(current_temperature_bed > HEATER_0_MAXTEMP) {
             LCDMSGKILL(RespMaxTemp, 0, current_temperature_bed);
             txBuffer.sendSimpleResponse(RespKilled, RespMaxTemp, 0);
             kill();
