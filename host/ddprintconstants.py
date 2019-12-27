@@ -123,6 +123,14 @@ AutotempSafetyMargin = 0.0
 #
 Layer0TempIncrease = 15.0
 
+############################################################################
+#
+# Gcode Parser
+#
+# gcode types : s3d, ulti, unknown
+GCODEUNKNOWN="unknown"
+GCODEULTI="ulti"
+GCODES3D="s3d"
 
 
 
