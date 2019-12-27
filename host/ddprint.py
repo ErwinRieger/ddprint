@@ -286,8 +286,11 @@ def initParser(args, mode=None, gui=None):
     # Create the Printer singleton instance
     printer = Printer(gui=gui)
 
-    printer.initSerial(args.device, args.baud)
-    printerProfile = PrinterProfile(printer.getPrinterName())
+    if args.mode == "pre":
+        printerProfile = PrinterProfile("UM2")
+    else:
+        printer.initSerial(args.device, args.baud)
+        printerProfile = PrinterProfile(printer.getPrinterName())
 
     # Overwrite settings from printer profile with command line arguments:
     if args.retractLength:
