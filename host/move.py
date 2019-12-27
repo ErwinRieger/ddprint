@@ -781,7 +781,7 @@ class MoveBase(object):
 # Base class for TravelMove and PrintMove
 class RealMove(MoveBase):
 
-    def __init__(self, comment):
+    def __init__(self, comment, layerPart):
 
         MoveBase.__init__(self)
 
@@ -791,6 +791,10 @@ class RealMove(MoveBase):
         self.comment = comment
 
         self.accelData = AccelData()
+
+        self.layerPart = layerPart
+
+        # assert(self.layerPart != "infill")
 
         # debug
         self.state = 0 # 1: joined, 2: accel planned, 3: steps planned
@@ -815,6 +819,12 @@ class RealMove(MoveBase):
 
         MoveBase.sanityCheck(self)
 
+    def isInfill(self):
+        return self.layerPart == "infill"
+
+    def hasAdvance(self):
+        return not self.isInfill()
+
 class TravelMove(RealMove):
 
     def __init__(self,
@@ -822,9 +832,11 @@ class TravelMove(RealMove):
                  displacement_vector,
                  displacement_vector_steps,
                  feedrate, # mm/s
+                 layerPart,
                  ):
 
-        RealMove.__init__(self, comment)
+        # assert(layerPart != "infill")
+        RealMove.__init__(self, comment, layerPart)
 
         # self.displacement_vector_raw = displacement_vector
 
@@ -915,10 +927,12 @@ class PrintMove(RealMove):
                  displacement_vector,
                  displacement_vector_steps,
                  feedrate, # mm/s
+                 layerPart,
                  maxAccelV,
                  ):
 
-        RealMove.__init__(self, comment)
+        # assert(layerPart != "infill")
+        RealMove.__init__(self, comment, layerPart)
 
         #
         # Move distance in XYZ plane
