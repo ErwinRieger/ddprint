@@ -58,3 +58,9 @@ UseFeederCompensation = False
 #
 SmoothExtrusionRate = True
 
+
+# Hardcoded: 
+# InfillNoAdvance = True
+
+
+
