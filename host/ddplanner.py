@@ -417,7 +417,7 @@ class Planner (object):
             if move.isPrintMove():
 
                 #
-                # Finisch preceding travelmoves.
+                # Finish preceding travelmoves.
                 #
                 #
                 # Do a simple path planning for traveling moves:
@@ -430,7 +430,7 @@ class Planner (object):
             else:
 
                 #
-                # Finisch preceding printmoves.
+                # Finish preceding printmoves.
                 #
                 # print "addMove(): ending path print with %d moves" % len(self.pathData.path)
                 self.advance.planPath(self.pathData.path)
