@@ -758,7 +758,7 @@ def prime(parser):
     # parser.execute_line("G10")
 
     # Wipe priming material if not ultigcode flavor 
-    if not parser.ultiGcodeFlavor:
+    if not parser.gcodeType == GCODEULTI:
         parser.execute_line("G0 F9000 X20 Z0.1")
 
 ####################################################################################################
