@@ -25,7 +25,7 @@ import shutil, os, re
 from ddprofile import MatProfile, PrinterProfile
 from ddplanner import Planner
 from ddprintcommands import CmdSyncFanSpeed, CmdUnknown, CmdDwellMS
-from ddprintconstants import dimNames
+from ddprintconstants import dimNames, GCODEUNKNOWN, GCODEULTI, GCODES3D
 from ddconfig import *
 from move import TravelMove, PrintMove
 from ddvector import Vector, vectorDistance
@@ -33,6 +33,7 @@ from ddprintutil import X_AXIS, Y_AXIS, Z_AXIS, A_AXIS, B_AXIS, circaf
 
 import ddprintutil as util
 
+############################################################################
 ############################################################################
 
 CuraLayerRE = re.compile("; \s* LAYER \s* : \s* (\d+) $", re.VERBOSE)
@@ -196,7 +197,10 @@ class UM2GcodeParser:
                 B_AXIS: True,
                 }
 
-        self.ultiGcodeFlavor = False
+        # self.ultiGcodeFlavor = False
+        # types : s3d, ulti, unknown
+        self.gcodeType = GCODEUNKNOWN
+        self.layerPart = "unknown"
 
     # Set current virtual printer position
     def setPos(self, point):
@@ -244,11 +248,14 @@ class UM2GcodeParser:
 
                 # ;FLAVOR:UltiGCode
                 elif "FLAVOR:ULTIGCODE" in upperLine:
-                    self.ultiGcodeFlavor = True
+                    self.gcodeType = GCODEULTI
                     # To compute extrude length from volume (see getValues()):
                     # V = A * h, h = V / A, A = pi/4 * diameter²
                     aFilament = MatProfile.getMatArea()
                     self.e_to_filament_length = self.e_to_filament_length / aFilament
+                elif "SIMPLIFY3D" in upperLine:
+                    self.gcodeType = GCODES3D
+
 
         print "pre-parsing # parts:", self.numParts
         f.seek(0) # rewind
@@ -276,6 +283,30 @@ class UM2GcodeParser:
                 if layerNum != None:
                     self.planner.layerChange(layerNum)
                     return
+
+                if upperLine.endswith("INFILL"):
+                    # print "gcodeparser: Starting infill..."
+                    self.layerPart = "infill"
+                elif upperLine.endswith("PERIMETER"):
+                    # print "gcodeparser: Starting perimeter..."
+                    self.layerPart = "perimeter"
+                elif upperLine.endswith("SUPPORT"):
+                    # print "gcodeparser: Starting support..."
+                    self.layerPart = "support"
+                elif upperLine.endswith("BRIDGE"):
+                    # print "gcodeparser: Starting bridge..."
+                    self.layerPart = "bridge"
+                elif upperLine.endswith("GAP FILL"):
+                    # print "gcodeparser: Starting gapfill..."
+                    self.layerPart = "gapfill"
+                elif upperLine.endswith("tool"):
+                    # print "gcodeparser: Starting tool..."
+                    self.layerPart = "tool"
+                else:
+                    if not (("LAYER" in upperLine) or ("TOOL" in upperLine)):
+                        print "gcodeparser: Unhandled comment:", line, upperLine
+                        if self.layerPart == "infill":
+                            assert(0)
 
                 # print "skipping comment: ", line
                 return
@@ -353,7 +384,7 @@ class UM2GcodeParser:
         fanSpeed = (values["S"] * MatProfile.getFanPercent()) / 100
 
         # "Blip fan" for Cura (S3D supports blip fan)
-        if fanSpeed < 50 and self.ultiGcodeFlavor:
+        if fanSpeed < 50 and self.gcodeType==GCODEULTI:
             # Start fan with full power
             self.planner.addSynchronizedCommand(CmdSyncFanSpeed, p1=packedvalue.uint8_t(255))
             # Dwell 0.25s
@@ -419,7 +450,8 @@ class UM2GcodeParser:
             line,
             displacement_vector=Vector([0.0, 0.0, 0.0, rl, 0.0]),
             displacement_vector_steps=[0.0, 0.0, 0.0, rl * self.steps_per_mm[A_AXIS], 0.0],
-            feedrate=min(PrinterProfile.getRetractFeedrate(), PrinterProfile.getMaxFeedrate(3))
+            feedrate=min(PrinterProfile.getRetractFeedrate(), PrinterProfile.getMaxFeedrate(3)),
+            layerPart=self.layerPart,
             ))
 
         self.setPos(current_position)
@@ -437,7 +469,8 @@ class UM2GcodeParser:
             line,
             displacement_vector=Vector([0.0, 0.0, 0.0, rl, 0.0]),
             displacement_vector_steps=[0.0, 0.0, 0.0, rl * self.steps_per_mm[A_AXIS], 0.0],
-            feedrate=min(PrinterProfile.getRetractFeedrate(), PrinterProfile.getMaxFeedrate(3))
+            feedrate=min(PrinterProfile.getRetractFeedrate(), PrinterProfile.getMaxFeedrate(3)),
+            layerPart=self.layerPart,
             ))
 
         self.setPos(current_position)
@@ -529,13 +562,14 @@ class UM2GcodeParser:
         if feedrateVector:
             feedrate = feedrateVector.length()
 
-        if isPrintMove(displacement_vector):
+        if isPrintMove(displacement_vector):  #  and self.layerPart != "infill":
             self.planner.addMove(PrintMove(
                 line,
                 displacement_vector=displacement_vector,
                 displacement_vector_steps=displacement_vector_steps,
                 feedrate=feedrate, # mm/s
-                maxAccelV = self.planner.advance.maxAxisAcceleration(),
+                layerPart=self.layerPart,
+                maxAccelV = self.planner.advance.maxAxisAcceleration(self.layerPart != "infill"),
                 ))
         else:
             self.planner.addMove(TravelMove(
@@ -543,6 +577,7 @@ class UM2GcodeParser:
                 displacement_vector=displacement_vector,
                 displacement_vector_steps=displacement_vector_steps,
                 feedrate=feedrate, # mm/s
+                layerPart=self.layerPart,
                 ))
             
         # print "newRealPos: ", newRealPos
