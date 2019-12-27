@@ -106,6 +106,11 @@ class DebugPlot (object):
 
 #####################################################################
 
+def eJerk(kAdv, accel):
+    return abs(accel) * kAdv
+
+#####################################################################
+
 class Advance (object):
 
     __single = None 
@@ -121,7 +126,6 @@ class Advance (object):
         # dvin = dvout + ka * acceleration [ m/s + s * m/s² = m/s ]
         #
 
-        self.kAdv = None
         self.startAdvance = None
 
         # K-Advance is defined in material profile and overridable by the
@@ -134,12 +138,12 @@ class Advance (object):
             self.startAdvance = args.startAdvance
             self.advIncrease = args.advIncrease
             self.advStepHeight = args.advStepHeight
-        if args.kAdvance != None:
-            self.kAdv = args.kAdvance
-        else:
-            self.kAdv = MatProfile.getKAdv()
 
-        print "Advance: usinge K-Advance %.3f" % self.kAdv
+        self.__kAdv = args.kAdvance
+        if self.__kAdv == None:
+            self.__kAdv = MatProfile.getKAdv()
+
+        print "Advance: usinge default K-Advance %.3f" % self.__kAdv
 
         self.kFeederComp = 0.0
         if UseFeederCompensation:
@@ -172,15 +176,12 @@ class Advance (object):
         self.maxEFeedrate = PrinterProfile.getMaxFeedrate(A_AXIS)
         self.maxFeedrateVector = PrinterProfile.getMaxFeedrateVector()
 
-    def eJerk(self, accel):
-        return abs(accel) * self.kAdv
+    def maxAxisAcceleration(self, useAdvance):
 
-    def maxAxisAcceleration(self):
-
-        if self.kAdv:
+        if self.__kAdv and useAdvance:
 
             advJerk = self.planner.getJerk()[A_AXIS]
-            maxEAccel = advJerk / self.kAdv
+            maxEAccel = advJerk / self.__kAdv
 
             #
             # Limit E-acceleration by DEFAULT_ACCELERATION/DEFAULT_MAX_ACCELERATION
@@ -248,6 +249,7 @@ class Advance (object):
 
         if SmoothExtrusionRate:
 
+
             # Limit e flowrates for feeder slip compensation
             # vMax = vExtruder / (1 - self.kFeederComp * vExtruder)
             # vMax * (1 - self.kFeederComp * vExtruder) = vExtruder 
@@ -266,6 +268,7 @@ class Advance (object):
             # This decreases the amount of advance ramps.
             rateList = []
             for move in path:
+
                 rateList.append(move.topSpeed.speed().eSpeed)
 
             avgRate = sum(rateList) / len(rateList)
@@ -357,25 +360,51 @@ class Advance (object):
         # assert(0)
 
         # Step 4: handle extruder advance
-        if self.kAdv:
+        if self.__kAdv:
 
-            # Sum up esteps for debugging
+
+            def processAdvancedMoves(path):
+
+                #debug:
+                if debugPlot and debugPlotLevel == "plotLevelPlanned":
+                    self.plotPlannedPath(path, self.pre_plotfile)
+
+                self.planAdvance(path)
+
+                # #debug:
+                if debugPlot and debugPlotLevel == "plotLevelPlanned":
+                    self.plotPlannedPath(path)
+
+                # print "hi"
+
+            # aufteilung in segmente, die advance benutzen und die 
+            currentHasAdvance = path[0].hasAdvance()
+            currentPath = []
+
             for move in path:
+                # print "move type: ", move.layerPart
+
+                # Sum up esteps for debugging
                 self.moveEsteps += move.eSteps
                 # print "moveEsteps+: %7.3f %7.3f" % ( move.eSteps, self.moveEsteps)
 
-            #debug:
-            if debugPlot and debugPlotLevel == "plotLevelPlanned":
-                self.plotPlannedPath(path, self.pre_plotfile)
+                if move.hasAdvance() != currentHasAdvance:
+                    assert(0)
 
-            self.planAdvance(path)
+                currentPath.append(move)
 
-            # #debug:
-            if debugPlot and debugPlotLevel == "plotLevelPlanned":
-                 self.plotPlannedPath(path)
+
+            if currentPath:
+                
+                if currentHasAdvance:
+                    processAdvancedMoves(currentPath)
+                else:
+                    print "skipping %d non-advance moves..." % (len(currentPath))
+                    # assert(0)
 
 
             """
+            xxx path
             # heavy debug
 
             plannedEsteps = 0
@@ -581,12 +610,12 @@ class Advance (object):
         # print "rounding remainders:"
         # self.planner.stepRounders.pprint()
 
-        if self.kAdv:
+        if self.__kAdv:
             print "Path moveEsteps:", self.moveEsteps, len(newPath)
 
         self.planner.stepRounders.check()
 
-        if self.kAdv:
+        if self.__kAdv:
             assert(abs(self.moveEsteps) < 1.0)
 
         # Debug, check chain
@@ -881,7 +910,7 @@ class Advance (object):
 
         deltaStartSpeedS = topSpeed.feedrate3() - startSpeedS
 
-        maxAccel = self.maxAxisAcceleration()
+        maxAccel = self.maxAxisAcceleration(move.hasAdvance())
 
         if deltaStartSpeedS > AccelThreshold:
 
@@ -1112,11 +1141,11 @@ class Advance (object):
         for move in path:
 
             # Compute area (= amount of e-advance) of the accel- and decel-ramps:
-            startFeedrateIncrease = self.eJerk(move.startAccel.eAccel())
+            startFeedrateIncrease = eJerk(self.__kAdv, move.startAccel.eAccel())
             sadv = move.startAdvSteps(startFeedrateIncrease=startFeedrateIncrease)
             move.advanceData.sAccel = sadv
 
-            endFeedrateIncrease = - self.eJerk(move.endAccel.eAccel())
+            endFeedrateIncrease = - eJerk(self.__kAdv, move.endAccel.eAccel())
             sdec = move.endAdvSteps(endFeedrateIncrease=endFeedrateIncrease)
             move.advanceData.sDecel = sdec
 
