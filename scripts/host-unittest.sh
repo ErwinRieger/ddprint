@@ -8,7 +8,7 @@ if echo $*|grep ttyUSB10; then
     t1="-t1 130"
 fi
 
-echo "Don't run this on your good printer! - press RETURN to continue."
+echo "Don't run this on your real printer! - press RETURN to continue."
 read in
 
 set -x
