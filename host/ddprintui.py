@@ -152,22 +152,22 @@ class MainForm(npyscreen.FormBaseNew):
         # Upper left side: the input/configuration area
         #
         rely = 2
-        self.printerProfile = self.add(npyscreen.TitleFixedText, name = "PrinterProfile       :", relx=1, rely=rely, use_two_lines=False, begin_entry_at=23,
+        self.printerProfile = self.add(npyscreen.TitleFixedText, name = "PrinterProfile      :", relx=1, rely=rely, use_two_lines=False, begin_entry_at=23,
                 width=w-1)
         self.printerProfile.editable = False
 
         rely += 1
-        self.nozzleProfile = self.add(npyscreen.TitleFixedText, name = "Nozzle Profile       :", relx=1, rely=rely, use_two_lines=False, begin_entry_at=23,
+        self.nozzleProfile = self.add(npyscreen.TitleFixedText, name = "Nozzle Profile      :", relx=1, rely=rely, use_two_lines=False, begin_entry_at=23,
                 width=w-1)
         self.nozzleProfile.editable = False
 
         rely += 1
-        self.matProfile = self.add(npyscreen.TitleFixedText, name = "Material Profile     :", relx=1, rely=rely, use_two_lines=False, begin_entry_at=23,
+        self.matProfile = self.add(npyscreen.TitleFixedText, name = "Material Profile    :", relx=1, rely=rely, use_two_lines=False, begin_entry_at=23,
                 width=w-1)
         self.matProfile.editable = False
 
         rely += 1
-        self.smatProfile = self.add(npyscreen.TitleFixedText, name = "Specific Mat Profile :", relx=1, rely=rely, use_two_lines=False, begin_entry_at=23,
+        self.smatProfile = self.add(npyscreen.TitleFixedText, name = "Specific Mat Profile:", relx=1, rely=rely, use_two_lines=False, begin_entry_at=23,
                 width=w-1)
         self.smatProfile.editable = False
 
@@ -192,7 +192,7 @@ class MainForm(npyscreen.FormBaseNew):
         self.tempAdjust.value = 15
 
         rely += 2
-        self.fn = self.add(npyscreen.TitleFilename, name = "GCode File:", relx=1, rely=rely, use_two_lines=False, begin_entry_at=23,
+        self.fn = self.add(npyscreen.TitleFilename, name = "GCode File        :", relx=1, rely=rely, use_two_lines=False, begin_entry_at=23,
                 width=w-1)
 
         rely += 2
@@ -233,11 +233,11 @@ class MainForm(npyscreen.FormBaseNew):
         self.underrun.editable = False
 
         rely += 1
-        self.extRate = self.add(npyscreen.TitleFixedText, name = "Extrusion Rate       :", relx=w, rely=rely, use_two_lines=False, begin_entry_at=23);
+        self.extRate = self.add(npyscreen.TitleFixedText, name = "Extrusion Rate       :", relx=w, rely=rely, use_two_lines=False, begin_entry_at=27)
         self.extRate.editable = False
 
         rely += 1
-        self.extGrip = self.add(npyscreen.TitleFixedText, name = "Feeder Grip          :", relx=w, rely=rely, use_two_lines=False, begin_entry_at=23, width = w/2) 
+        self.extGrip = self.add(npyscreen.TitleFixedText, name = "Feeder Grip          :", relx=w, rely=rely, use_two_lines=False, begin_entry_at=23)
         self.extGrip.editable = False
 
         rely += 1
@@ -250,7 +250,7 @@ class MainForm(npyscreen.FormBaseNew):
         t = self.add(npyscreen.FixedText, value = "Communication Log:", relx=1, rely=h, color='LABEL') 
         t.editable = False
 
-        self.commLog = self.add(npyscreen.BufferPager, maxlen=h, relx=1, rely=h+1, width=w-2) # , height=h-2, width=w-2)
+        self.commLog = self.add(npyscreen.BufferPager, maxlen=h, relx=1, rely=h+2, width=w-2) # , height=h-2, width=w-2)
         self.commLog.editable = False
         self.commLog._need_update = False
         # self.commLog.buffer(["Scrolling buffer:"])
@@ -261,7 +261,7 @@ class MainForm(npyscreen.FormBaseNew):
         t = self.add(npyscreen.FixedText, value = "Application Log:", relx=w, rely=h, color='LABEL') 
         t.editable = False
 
-        self.appLog = self.add(npyscreen.BufferPager, maxlen=h, relx=w, rely=h+1, width=w-3) # , height=h-2, width=w-2)
+        self.appLog = self.add(npyscreen.BufferPager, maxlen=h, relx=w, rely=h+2, width=w-3) # , height=h-2, width=w-2)
         self.appLog.editable = False
         self.appLog._need_update = False
 
@@ -317,7 +317,10 @@ class MainForm(npyscreen.FormBaseNew):
         self.guiQueue.put(SyncCallUpdate(self.printerProfile.set_value, PrinterProfile.get().name))
         self.guiQueue.put(SyncCallUpdate(self.nozzleProfile.set_value, self.args.nozzle))
         self.guiQueue.put(SyncCallUpdate(self.matProfile.set_value, self.args.mat))
-        self.guiQueue.put(SyncCallUpdate(self.smatProfile.set_value, self.args.smat))
+        if self.args.smat:
+            self.guiQueue.put(SyncCallUpdate(self.smatProfile.set_value, self.args.smat))
+        else:
+            self.guiQueue.put(SyncCallUpdate(self.smatProfile.set_value, "---"))
         self.guiQueue.put(SyncCallUpdate(self.fn.set_value, self.args.file))
         
         try:
@@ -393,7 +396,7 @@ class MainForm(npyscreen.FormBaseNew):
 
         self.underrun.update()
 
-        self.extRate.set_value("%8s" % "todo")
+        self.extRate.set_value("%8s" % "todo mm³/s")
         self.extRate.update()
 
         slippage = status["slippage"]

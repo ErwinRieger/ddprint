@@ -618,13 +618,13 @@ class Printer(Serial):
                 continue
 
             except RxTimeout:
-                self.gui.logError("RxTimeout, resending command!")
+                self.gui.logError("RxTimeout, resending command...")
                 startTime = time.time()
                 self.send(binary)
                 continue
 
             except RxChecksumError:
-                self.gui.logError("RxChecksumError, resending command!")
+                self.gui.logError("RxChecksumError, resending command...")
                 startTime = time.time()
                 self.send(binary)
                 continue
