@@ -91,7 +91,7 @@ class TempAdjSlider(AdjSlider):
 class TitleTempAdjSlider(npyscreen.TitleSlider):
     _entry_type = TempAdjSlider
 
-class MainForm(npyscreen.Form): 
+class MainForm(npyscreen.FormBaseNew): 
 
     # Preheat bed (90%) and heater (50%)
     class Preheat_Button(npyscreen.MiniButtonPress):
@@ -110,7 +110,7 @@ class MainForm(npyscreen.Form):
    
     class Stop_Button(npyscreen.MiniButtonPress):
         def whenPressed(self):
-            if npyscreen.notify_yes_no("doit?", title="doit?"):
+            if npyscreen.notify_yes_no("Stop Print?", title="Stop Print?"):
                 self.parent.printThread.stop()
                 return self.parent.prepareStopMove()
     
@@ -204,47 +204,45 @@ class MainForm(npyscreen.Form):
         #
         # Upper right side: the status area
         #
-        rely = 1
+        rely = 2
         self.pState = self.add(npyscreen.TitleFixedText, name = "Printer State        :", relx=w, rely=rely, use_two_lines=False, begin_entry_at=23)
         self.pState.editable = False
 
         rely += 1
-        self.curT0 = self.add(npyscreen.TitleFixedText, name = "T0 - Bed Temp        :", relx=w, rely=rely, use_two_lines=False, begin_entry_at=23, width = w/2) 
+        self.curT0 = self.add(npyscreen.TitleFixedText, name = "T0 - Bed Temp        :", relx=w, rely=rely, use_two_lines=False, begin_entry_at=23)
         self.curT0.editable = False
 
-        self.curT1 = self.add(npyscreen.TitleFixedText, name = "T1 - Hotend 1 Temp   :", relx=int(w*1.5), rely=rely, use_two_lines=False, begin_entry_at=23) 
+        rely += 1
+        self.curT1 = self.add(npyscreen.TitleFixedText, name = "T1 - Hotend 1 Temp   :", relx=w, rely=rely, use_two_lines=False, begin_entry_at=23) 
         self.curT1.editable = False
 
         rely += 1
-        self.swapSize = self.add(npyscreen.TitleFixedText, name = "Size Swap File       :", relx=w, rely=rely, use_two_lines=False, begin_entry_at=23)
+        self.swapSize = self.add(npyscreen.TitleFixedText, name = "Size Swap File       :", relx=w, rely=rely, use_two_lines=False, begin_entry_at=25)
         self.swapSize.editable = False
 
         rely += 1
-        self.sdrSize = self.add(npyscreen.TitleFixedText, name = "Size SDReader        :", relx=w, rely=rely, use_two_lines=False, begin_entry_at=23)
+        self.sdrSize = self.add(npyscreen.TitleFixedText, name = "Size SDReader        :", relx=w, rely=rely, use_two_lines=False, begin_entry_at=25)
         self.sdrSize.editable = False
 
         rely += 1
-        self.sbSisze = self.add(npyscreen.TitleFixedText, name = "Size StepBuffer      :", relx=w, rely=rely, use_two_lines=False, begin_entry_at=23)
+        self.sbSisze = self.add(npyscreen.TitleFixedText, name = "Size StepBuffer      :", relx=w, rely=rely, use_two_lines=False, begin_entry_at=25)
         self.sbSisze.editable = False
 
         rely += 1
-        self.underrun = self.add(npyscreen.TitleFixedText, name = "Step Buffer underruns:", relx=w, rely=rely, use_two_lines=False, begin_entry_at=23, width = w/2) 
+        self.underrun = self.add(npyscreen.TitleFixedText, name = "Step Buffer underruns:", relx=w, rely=rely, use_two_lines=False, begin_entry_at=23)
         self.underrun.editable = False
-        self.errors = self.add(npyscreen.TitleFixedText, name = "Errors:", relx=int(w*1.5), rely=rely, use_two_lines=False, begin_entry_at=8) 
-        # self.errors.editable = False
 
         rely += 1
-        """
-        self.extRate = self.add(npyscreen.TitleFixedText, name = "Extrusion Rate A/T   :", relx=w, rely=rely, use_two_lines=False,
-            begin_entry_at=23, width = w/2) 
+        self.extRate = self.add(npyscreen.TitleFixedText, name = "Extrusion Rate       :", relx=w, rely=rely, use_two_lines=False, begin_entry_at=23);
         self.extRate.editable = False
-        self.extGrip = self.add(npyscreen.TitleFixedText, name = "E-Grip:", relx=int(w*1.5), rely=rely, use_two_lines=False, begin_entry_at=8) 
-        self.extGrip.editable = False
-        """
 
-        self.extGrip = self.add(npyscreen.TitleFixedText, name = "Feeder Grip          :", relx=w, rely=rely, use_two_lines=False,
-            begin_entry_at=23, width = w/2) 
+        rely += 1
+        self.extGrip = self.add(npyscreen.TitleFixedText, name = "Feeder Grip          :", relx=w, rely=rely, use_two_lines=False, begin_entry_at=23, width = w/2) 
         self.extGrip.editable = False
+
+        rely += 1
+        self.errors = self.add(npyscreen.TitleFixedText, name = "Errors:", relx=w, rely=rely, use_two_lines=False, begin_entry_at=23, color="WARNING") 
+        # self.errors.editable = False
 
         #
         # Left side log window - the communication log
@@ -366,14 +364,14 @@ class MainForm(npyscreen.Form):
         if t0 != None:
 
             if self.printerState >= StateInit:
-                self.curT0.set_value("%8.1f / %.0f (%.0f)" % (t0, self.mat_t0, self.mat_t0_reduced))
+                self.curT0.set_value("%8.1f / %.0f (%.0f) °C" % (t0, self.mat_t0, self.mat_t0_reduced))
             else:
-                self.curT0.set_value("%8.1f / 0 (0)" % t0)
+                self.curT0.set_value("%8.1f / 0 (0) °C" % t0)
 
             self.curT0.update()
 
         if t1 != None:
-            self.curT1.set_value( "%8.1f / %.0f" % (t1, targetT1))
+            self.curT1.set_value( "%8.1f / %.0f °C" % (t1, targetT1))
             self.curT1.update()
 
     def updateStatus(self, status):
@@ -395,6 +393,9 @@ class MainForm(npyscreen.Form):
 
         self.underrun.update()
 
+        self.extRate.set_value("%8s" % "todo")
+        self.extRate.update()
+
         slippage = status["slippage"]
 
         if slippage:
@@ -404,7 +405,7 @@ class MainForm(npyscreen.Form):
                 self.extGrip.entry_widget.color = "WARNING"
             else:
                 self.extGrip.entry_widget.color = "DANGER"
-            self.extGrip.set_value( "%7.1f%%" % (100.0/slippage) )
+            self.extGrip.set_value( "%8.1f %%" % (100.0/slippage) )
         else:
             self.extGrip.entry_widget.color = "GOOD"
             self.extGrip.set_value( "   ?   ")
@@ -413,11 +414,13 @@ class MainForm(npyscreen.Form):
 
     def display(self, clear=False):
 
-        try:
-            npyscreen.Form.display(self, clear)
-        except TypeError:
-            self._log("display(): Ignoring exception: ", traceback.format_exc())
-            return
+        super(MainForm, self).display(clear)
+
+        # try:
+            # npyscreen.Form.display(self, clear)
+        # except TypeError:
+            # self._log("display(): Ignoring exception: ", traceback.format_exc())
+            # return
 
         self.curses_pad.vline( 1, self.columns/2-1, curses.ACS_VLINE, self.lines-2)
         self.curses_pad.hline( self.lines/2-1, 1, curses.ACS_HLINE, self.columns/2-2)
