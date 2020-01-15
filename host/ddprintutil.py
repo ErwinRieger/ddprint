@@ -1035,14 +1035,12 @@ def bedLeveling(args, parser):
     current_position = parser.getPos()
     print "curz: ", current_position[Z_AXIS]
 
-    add_homeing_z = (current_position[Z_AXIS] * -1) + planner.LEVELING_OFFSET;
-    print "\n! Please update your Z-Offset (add_homeing_z) in printer profile: ", add_homeing_z, "\n"
+    add_homeing_z = (current_position[Z_AXIS] * -1) + planner.LEVELING_OFFSET
 
     # Store into printer profile:
     PrinterProfile.get().override("add_homeing_z", add_homeing_z)
 
     # Finally we know the zero z position
-    # current_position[Z_AXIS] = 0
     current_position[Z_AXIS] = planner.LEVELING_OFFSET;
 
     # Adjust the virtual position
@@ -1086,6 +1084,8 @@ def bedLeveling(args, parser):
     raw_input("\nAdjust right fron buildplate screw and press <Return>\n")
 
     ddhome.home(parser, args.fakeendstop)
+
+    raw_input("\n! Please update your Z-Offset (add_homeing_z) in printer profile: %.3f\n" % add_homeing_z)
 
 ####################################################################################################
 
