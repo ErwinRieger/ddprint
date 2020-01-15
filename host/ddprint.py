@@ -300,7 +300,7 @@ def initParser(args, mode=None, gui=None):
     planner = Planner(args, gui)
 
     # Create parser singleton instance
-    parser = gcodeparser.UM2GcodeParser()
+    parser = gcodeparser.UM2GcodeParser(gui)
 
     return (parser, planner, printer)
 

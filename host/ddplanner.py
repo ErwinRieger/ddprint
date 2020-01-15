@@ -167,8 +167,6 @@ class PathData (object):
 
         avgERate = vsum / tsum
 
-        print "Average extrusion rate: ", avgERate, "mm³/s", "layer 0 increase: ", self.planner.l0TempIncrease
-
         # Compute temperature for this segment and add tempcommand into the stream. 
         newTemp = \
             MatProfile.getTempForFlowrate(avgERate * (1.0+AutotempSafetyMargin), PrinterProfile.getHwVersion(), NozzleProfile.getSize()) + \
@@ -181,8 +179,6 @@ class PathData (object):
 
         if newTemp != self.lastTemp: #  and self.mode != "pre":
 
-            print "Newtemp:", avgERate, newTemp
-
             # Schedule target temp command
             self.planner.addSynchronizedCommand(
                 CmdSyncTargetTemp, 
@@ -192,10 +188,10 @@ class PathData (object):
 
             self.lastTemp = int(newTemp)
 
-        if debugAutoTemp:
-            print "AutoTemp: collected %d moves with %.2f s duration." % (len(moves), tsum)
-            print "AutoTemp: max. extrusion rate: %.2f mm³/s." % avgERate
-            print "AutoTemp: new temp: %d." % newTemp
+            if debugAutoTemp:
+                self.planner.gui.log( "AutoTemp: collected %d moves with %.2f s duration." % (len(moves), tsum))
+                self.planner.gui.log( "AutoTemp: avg extrusion rate: %.2f mm³/s." % avgERate)
+                self.planner.gui.log( "AutoTemp: new temp: %d." % newTemp)
 
 #####################################################################
 
@@ -355,7 +351,7 @@ class Planner (object):
 
         if layer == 0:
 
-            print "layer 0, increasing temp by", Layer0TempIncrease
+            self.gui.log("Layer 0, increasing temp by", Layer0TempIncrease)
             self.l0TempIncrease = Layer0TempIncrease
 
         else:

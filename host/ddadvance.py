@@ -143,7 +143,7 @@ class Advance (object):
         if self.__kAdv == None:
             self.__kAdv = MatProfile.getKAdv()
 
-        print "Advance: usinge default K-Advance %.3f" % self.__kAdv
+        self.planner.gui.log("Advance: usinge K-Advance value of %.3f" % self.__kAdv)
 
         self.kFeederComp = 0.0
         if UseFeederCompensation:
@@ -202,11 +202,11 @@ class Advance (object):
     # Implement gradual advance on layer change
     def layerChange(self, layer):
 
-        print "adv: layer changed:", layer
+        self.planner.gui.log("Advance: layer changed: ", layer)
 
         if layer != None and self.startAdvance != None:
             self.setkAdvance(self.startAdvance + (layer / self.advStepHeight) * self.advIncrease)
-            print "adv: layer changed:", self.kAdv
+            self.planner.gui.log("Advance: layer changed: ", self.kAdv)
 
     def setkAdvance(self, kAdv):
 
@@ -548,7 +548,7 @@ class Advance (object):
             if move.advanceData.endSignChange():
 
                 if esum > 0.5: # xxx hardcoded...
-                    print "Segment", measureMove, "endSignChange: started measurement move, distance:", esum
+                    self.planner.gui.log("Segment ", measureMove, " endSignChange: started measurement move, distance: ", esum)
 
                     assert(not measureMove.isSubMove())
                     measureMove.isMeasureMove = True
@@ -556,7 +556,7 @@ class Advance (object):
                 measureMove = None
 
         if measureMove and esum > 0.5: # xxx hardcoded...
-            print "Segment", measureMove, "started measurement move, distance:", esum
+            self.planner.gui.log("Segment ", measureMove, " started measurement move, distance: ", esum)
 
             assert(not measureMove.isSubMove())
             measureMove.isMeasureMove = True
@@ -610,13 +610,13 @@ class Advance (object):
         # print "rounding remainders:"
         # self.planner.stepRounders.pprint()
 
-        if self.__kAdv:
-            print "Path moveEsteps:", self.moveEsteps, len(newPath)
+        # if self.__kAdv:
+            # print "Path moveEsteps:", self.moveEsteps, len(newPath)
 
         self.planner.stepRounders.check()
 
         if self.__kAdv:
-            assert(abs(self.moveEsteps) < 1.0)
+            assert(abs(self.moveEsteps) < 0.1)
 
         # Debug, check chain
         if debugAdvance:

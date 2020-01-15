@@ -33,6 +33,8 @@ from ddprintutil import X_AXIS, Y_AXIS, Z_AXIS, A_AXIS, B_AXIS, circaf
 
 import ddprintutil as util
 
+import dddumbui
+
 ############################################################################
 ############################################################################
 
@@ -127,12 +129,17 @@ class UM2GcodeParser:
 
     __single = None 
 
-    def __init__(self):
+    def __init__(self, logger=None):
 
         if UM2GcodeParser.__single:
             raise RuntimeError('A UM2GcodeParser already exists')
 
         UM2GcodeParser.__single = self
+
+        if logger:
+            self.logger = logger
+        else:
+            self.logger = dddumbui.DumbGui()
 
         self.reset()
 
@@ -218,12 +225,12 @@ class UM2GcodeParser:
 
         f = open(tmpfname)
 
-        print "Unlinking temp. copy of gcode input: ", tmpfname
+        self.logger.log("Unlinking temp. copy of gcode input: ", tmpfname)
         os.unlink(tmpfname)
 
         self.numParts = 0
 
-        print "pre-parsing ", fn, tmpfname
+        self.logger.log("Pre-parsing ", fn, tmpfname)
         for line in f:
             line = line.strip()
             if line.startswith(";"):
@@ -257,7 +264,7 @@ class UM2GcodeParser:
                     self.gcodeType = GCODES3D
 
 
-        print "pre-parsing # parts:", self.numParts
+        self.logger.log("pre-parsing # parts:", self.numParts)
         f.seek(0) # rewind
         return f
 
@@ -304,7 +311,7 @@ class UM2GcodeParser:
                     self.layerPart = "tool"
                 else:
                     if not (("LAYER" in upperLine) or ("TOOL" in upperLine)):
-                        print "gcodeparser: Unhandled comment:", line, upperLine
+                        self.logger.log("gcodeparser: Unhandled comment:", line)
                         if self.layerPart == "infill":
                             assert(0)
 
@@ -315,7 +322,7 @@ class UM2GcodeParser:
             try:
                 meth = self.commands[cmd]
             except KeyError:
-                print "GCode '%s' ('%s') unknown!" % (cmd, line)
+                self.logger.log("GCode '%s' ('%s') unknown!" % (cmd, line))
                 raise
 
             if cmd not in ["M117"]:
@@ -374,10 +381,10 @@ class UM2GcodeParser:
         self.absolute[B_AXIS] = False
 
     def m84_disable_motors(self, line, values):
-        print "ignoring m84..."
+        self.logger.log("ignoring m84...")
 
     def m104_extruder_temp(self, line, values):
-        print "ignoring m104 (set extruder temp)..."
+        self.logger.log("ignoring m104 (set extruder temp)...")
 
     def m106_fan_on(self, line, values):
         # print "m106_fan_on", values
@@ -397,39 +404,39 @@ class UM2GcodeParser:
         self.planner.addSynchronizedCommand(CmdSyncFanSpeed, p1=packedvalue.uint8_t(0))
 
     def m109_extruder_temp_wait(self, line, values):
-        print "ignoring m109 (wait for extruder temp)..."
+        self.logger.log("ignoring m109 (wait for extruder temp)...")
 
     def m117_message(self, line):
-        print "m117_message: ", line
+        self.logger.log("m117_message: ", line)
 
     def m140_bed_temp(self, line, values):
-        print "ignoring m140..."
+        self.logger.log("ignoring m140...")
 
     def m190_bed_temp_wait(self, line, values):
-        print "ignoring m190 (wait for bed temp)..."
+        self.logger.log("ignoring m190 (wait for bed temp)...")
 
     def m204_set_accel(self, line, values):
-        print "ignoring m204 (set acceleration)..."
+        self.logger.log("ignoring m204 (set acceleration)...")
 
     def m501_reset_params(self, line, values):
-        print "ignoring m501 (reset params)..."
+        self.logger.log("ignoring m501 (reset params)...")
 
     def m502_reset_params(self, line, values):
-        print "ignoring m502 (reset params)..."
+        self.logger.log("ignoring m502 (reset params)...")
 
     def m900_set_kAdvance(self, line, values):
 
         self.planner.g900(values)
 
     def m907_motor_current(self, line, values):
-        print "ignoring m907..."
+        self.logger.log("ignoring m907...")
 
     def t0(self, line, values):
-        print "ignoring t0..."
+        self.logger.log("ignoring t0...")
 
     def g4_dwell(self, line, values):
         if "P" in values:
-            print "dwell, ", values["P"], "ms"
+            self.logger.log("dwell, ", values["P"], "ms")
             self.planner.addSynchronizedCommand(CmdDwellMS, p1=packedvalue.uint16_t(values["P"]))
         elif "S" in values:
             self.planner.addSynchronizedCommand(CmdDwellMS, p1=packedvalue.uint16_t(values["S"] * 1000))
