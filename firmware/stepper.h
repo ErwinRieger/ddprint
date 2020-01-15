@@ -223,7 +223,7 @@ inline bool st_endstop_pressed<XMove>(bool forward) {
     if (forward) {
         #if X_HOME_DIR > 0
             if (X_ENDSTOP_PRESSED) {
-                if (nPresses++ > (AXIS_STEPS_PER_MM_X / 10))
+                if (nPresses++ > (AXIS_STEPS_PER_MM_X / 4))
                     return true;
                 return false;
             }
@@ -232,7 +232,7 @@ inline bool st_endstop_pressed<XMove>(bool forward) {
     else {
         #if X_HOME_DIR < 0
             if (X_ENDSTOP_PRESSED) {
-                if (nPresses++ > (AXIS_STEPS_PER_MM_X / 10))
+                if (nPresses++ > (AXIS_STEPS_PER_MM_X / 4))
                     return true;
                 return false;
             }
@@ -251,7 +251,7 @@ inline bool st_endstop_pressed<YMove>(bool forward) {
     if (forward) {
         #if Y_HOME_DIR > 0
             if (Y_ENDSTOP_PRESSED) {
-                if (nPresses++ > (AXIS_STEPS_PER_MM_Y / 10))
+                if (nPresses++ > (AXIS_STEPS_PER_MM_Y / 4))
                     return true;
                 return false;
             }
@@ -260,7 +260,7 @@ inline bool st_endstop_pressed<YMove>(bool forward) {
     else {
         #if Y_HOME_DIR < 0
             if (Y_ENDSTOP_PRESSED) {
-                if (nPresses++ > (AXIS_STEPS_PER_MM_Y / 10))
+                if (nPresses++ > (AXIS_STEPS_PER_MM_Y / 4))
                     return true;
                 return false;
             }
@@ -279,7 +279,7 @@ inline bool st_endstop_pressed<ZMove>(bool forward) {
     if (forward) {
         #if Z_HOME_DIR > 0
             if (Z_ENDSTOP_PRESSED) {
-                if (nPresses++ > (AXIS_STEPS_PER_MM_Z / 10))
+                if (nPresses++ > (AXIS_STEPS_PER_MM_Z / 4))
                     return true;
                 return false;
             }
@@ -288,7 +288,7 @@ inline bool st_endstop_pressed<ZMove>(bool forward) {
     else {
         #if Z_HOME_DIR < 0
             if (Z_ENDSTOP_PRESSED) {
-                if (nPresses++ > (AXIS_STEPS_PER_MM_Z / 10))
+                if (nPresses++ > (AXIS_STEPS_PER_MM_Z / 4))
                     return true;
                 return false;
             }
