@@ -310,7 +310,7 @@ inline bool st_endstop_released<XMove>(bool forward) {
     if (forward) {
         #if X_HOME_DIR < 0
             if (! X_ENDSTOP_PRESSED) {
-                if (nRelease++ > (AXIS_STEPS_PER_MM_X / 10))
+                if (nRelease++ > (AXIS_STEPS_PER_MM_X / 4))
                     return true;
                 return false;
             }
@@ -319,7 +319,7 @@ inline bool st_endstop_released<XMove>(bool forward) {
     else {
         #if X_HOME_DIR > 0
             if (! X_ENDSTOP_PRESSED) {
-                if (nRelease++ > (AXIS_STEPS_PER_MM_X / 10))
+                if (nRelease++ > (AXIS_STEPS_PER_MM_X / 4))
                     return true;
                 return false;
             }
@@ -338,7 +338,7 @@ inline bool st_endstop_released<YMove>(bool forward) {
     if (forward) {
         #if Y_HOME_DIR < 0
             if (! Y_ENDSTOP_PRESSED) {
-                if (nRelease++ > (AXIS_STEPS_PER_MM_Y / 10))
+                if (nRelease++ > (AXIS_STEPS_PER_MM_Y / 4))
                     return true;
                 return false;
             }
@@ -347,7 +347,7 @@ inline bool st_endstop_released<YMove>(bool forward) {
     else {
         #if Y_HOME_DIR > 0
             if (! Y_ENDSTOP_PRESSED) {
-                if (nRelease++ > (AXIS_STEPS_PER_MM_Y / 10))
+                if (nRelease++ > (AXIS_STEPS_PER_MM_Y / 4))
                     return true;
                 return false;
             }
@@ -366,7 +366,7 @@ inline bool st_endstop_released<ZMove>(bool forward) {
     if (forward) {
         #if Z_HOME_DIR < 0
             if (! Z_ENDSTOP_PRESSED) {
-                if (nRelease++ > (AXIS_STEPS_PER_MM_Z / 10))
+                if (nRelease++ > (AXIS_STEPS_PER_MM_Z / 4))
                     return true;
                 return false;
             }
@@ -375,7 +375,7 @@ inline bool st_endstop_released<ZMove>(bool forward) {
     else {
         #if Z_HOME_DIR > 0
             if (! Z_ENDSTOP_PRESSED) {
-                if (nRelease++ > (AXIS_STEPS_PER_MM_Z / 10))
+                if (nRelease++ > (AXIS_STEPS_PER_MM_Z / 4))
                     return true;
                 return false;
             }
