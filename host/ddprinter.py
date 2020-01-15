@@ -841,10 +841,10 @@ class Printer(Serial):
         tup = self.getEndstops()
 
         if tup[dim*2] or fakeHomingEndstops:
-            print "Endstop %d hit at position: %d" % (dim, tup[dim*2+1])
+            print "Endstop %s hit at position: %d" % (dimNames[dim], tup[dim*2+1])
             return True
 
-        print "Endstop %d open at position: %d" % (dim, tup[dim*2+1])
+        print "Endstop %s open at position: %d" % (dimNames[dim], tup[dim*2+1])
         return False
 
     ####################################################################################################

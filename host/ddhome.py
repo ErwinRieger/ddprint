@@ -39,7 +39,7 @@ def homeMove(parser, dim, direction, dist, fakeHomingEndstops, feedRateFactor=1.
 
     parser.setPos(planner.zeroPos)
 
-    print "---------------- send homing move, dim: %d, dist: %.2f" % (dim, dist*direction)
+    print "--- homeMove(): send homing move, dim: %d, dist: %.2f" % (dim, dist*direction * planner.HOME_DIR[dim])
 
     cmd = "G0 F%f %s%f" % (
         planner.HOMING_FEEDRATE[dim]*60*feedRateFactor,
@@ -151,7 +151,7 @@ def home(parser, fakeHomingEndstops=False, force=False):
         # Try fast home if endstop is pressed
         if printer.endStopTriggered(dim, fakeHomingEndstops):
 
-            print "Homing: endstop %d is triggered, trying fast home." % dim
+            print "Homing: %s - endstop is triggered, trying fast home." % dimNames[dim]
             if homeBounce(parser, dim, fakeHomingEndstops):
                 continue
 
@@ -159,18 +159,18 @@ def home(parser, fakeHomingEndstops=False, force=False):
         print "Homing: doing short/fast home."
         if homeMove(parser, dim, 1, planner.MAX_POS[dim] / 10.0, fakeHomingEndstops): # Move towards endstop fast
 
-            print "Homing: endstop %d is triggered, trying fast home." % dim
+            print "Homing: %s - endstop is triggered, trying fast home." % dimNames[dim]
             if homeBounce(parser, dim, fakeHomingEndstops):
                 continue
 
         # Do the full slow homing move
         print "Homing: doing full/slow home."
         if not homeMove(parser, dim, 1, planner.MAX_POS[dim] * 1.25, fakeHomingEndstops): # Move towards endstop fast
-            print "Error, Endstop %d NOT hit!" % dim
+            print "Error, %s - endstop NOT hit!" % dimNames[dim]
             assert(0)
 
         if not homeBounce(parser, dim, fakeHomingEndstops):
-            print "Error, Bounce %d!" % dim
+            print "Error, Bounce %s - endstop!" % dimNames[dim]
             assert(0)
 
 
