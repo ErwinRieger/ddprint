@@ -393,6 +393,8 @@ def main():
 
     sp = subparsers.add_parser("getpos", help=u"Get current printer and virtual position.")
 
+    sp = subparsers.add_parser("getPrinterName", help=u"Get printer name from eeprom.")
+
     sp = subparsers.add_parser("getTemps", help=u"Get current temperatures (Bed, Extruder1, [Extruder2]).")
 
     sp = subparsers.add_parser("getTempTable", help=u"Get temperature-speed table from printer, print it to stdout and to /tmp/temptable_printer.txt.")
@@ -647,6 +649,10 @@ def main():
         print "Printer pos [steps]:", res
         print "Printer pos [mm]:", curPosMM
         print "Virtual home pos [mm]: ", homePosMM
+
+    elif args.mode == 'getPrinterName':
+
+        print "Printer name: '%s'" % printer.getPrinterName()
 
     elif args.mode == 'getTemps':
 
