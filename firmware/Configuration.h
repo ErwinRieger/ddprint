@@ -206,6 +206,7 @@ const bool Z_ENDSTOPS_INVERTING = true; // set to true to invert the logic of th
 #define MANUAL_Y_HOME_POS 0
 
 // #define DEFAULT_AXIS_STEPS_PER_UNIT   {80.0,80.0,200,282}  // default steps per unit for ultimaker2
+// XXX todo: steps_per_mm defined here and in printer profile
 #define AXIS_STEPS_PER_MM_X 80
 #define AXIS_STEPS_PER_MM_Y 80
 #define AXIS_STEPS_PER_MM_Z 200
