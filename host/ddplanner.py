@@ -321,10 +321,6 @@ class Planner (object):
 
         print "add_homeing_z from eeprom: ", add_homeing_z
 
-        # -0.5 is a safety measure to prevent fals positives from the z endswitch
-        # offset = -0.5
-        offset = 0
-
         # Virtuelle position des druckkopfes falls 'gehomed'
         homePosMM = util.MyPoint(
             X = self.X_HOME_POS,
@@ -332,9 +328,8 @@ class Planner (object):
             #    
             # add_homeing_z is the not-usable space oft the z dimension of the
             # build volume.
-            # -0.5 is a safety measure to prevent fals positives from the z endswitch
             #    
-            Z = self._Z_HOME_POS + add_homeing_z + offset
+            Z = self._Z_HOME_POS + add_homeing_z
             )
 
         # Diese stepper position wird gesetzt falls der drucker 'gehomed' ist
