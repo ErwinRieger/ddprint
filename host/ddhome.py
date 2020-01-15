@@ -39,7 +39,7 @@ def homeMove(parser, dim, direction, dist, fakeHomingEndstops, feedRateFactor=1.
 
     parser.setPos(planner.zeroPos)
 
-    print "--- homeMove(): send homing move, dim: %d, dist: %.2f" % (dim, dist*direction * planner.HOME_DIR[dim])
+    print "--- homeMove(): send %s - homing move, dist: %.2f" % (dimNames[dim], dist*direction * planner.HOME_DIR[dim])
 
     cmd = "G0 F%f %s%f" % (
         planner.HOMING_FEEDRATE[dim]*60*feedRateFactor,
@@ -147,6 +147,8 @@ def home(parser, fakeHomingEndstops=False, force=False):
     # der buildplatte oder mit einem modell zu vermeiden.
     #
     for dim in [util.Z_AXIS, util.X_AXIS, util.Y_AXIS]:
+
+        print "\nHoming axis %s" % dimNames[dim]
 
         # Try fast home if endstop is pressed
         if printer.endStopTriggered(dim, fakeHomingEndstops):
