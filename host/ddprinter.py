@@ -813,8 +813,7 @@ class Printer(Serial):
     def isHomed(self):
 
         (cmd, payload) = self.query(CmdGetHomed, doLog=False)
-        tup = struct.unpack("<BBB", payload)
-        return tup == (1, 1, 1)
+        return struct.unpack("<B", payload)[0] == 1
 
     ####################################################################################################
 
