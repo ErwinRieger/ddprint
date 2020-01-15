@@ -38,6 +38,7 @@ struct EMove {
 
 
 
+#if 0
 template<typename MOVE>
 uint16_t axis_steps_per_mm();
 
@@ -47,6 +48,7 @@ template<>
 inline uint16_t axis_steps_per_mm<YMove>() { return AXIS_STEPS_PER_MM_Y; }
 template<>
 inline uint16_t axis_steps_per_mm<ZMove>() { return AXIS_STEPS_PER_MM_Z; }
+#endif
 
 #if 0
 template<typename MOVE>
