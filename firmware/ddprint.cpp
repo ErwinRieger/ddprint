@@ -924,9 +924,7 @@ Printer::Printer() {
 
     printerState = StateIdle;
     moveType = MoveTypeNone;
-    homed[0] = false;
-    homed[1] = false;
-    homed[2] = false;
+    homed = false;
     swapErased = false;
 
     for (int heater=0; heater<N_HEATERS; heater++)
@@ -989,9 +987,7 @@ void Printer::cmdMove(MoveType mt) {
 
     if (mt == MoveTypeNormal) {
 
-        massert(homed[0]);
-        massert(homed[1]);
-        massert(homed[2]);
+        massert(homed);
     }
 
     if (mt == MoveTypeHoming) {
@@ -1024,9 +1020,7 @@ void Printer::cmdMove(MoveType mt) {
 
 void Printer::setHomePos(int32_t x, int32_t y, int32_t z) {
          
-    homed[0] = true;
-    homed[1] = true;
-    homed[2] = true;
+    homed = true;
 
     current_pos_steps[X_AXIS] = x;
     current_pos_steps[Y_AXIS] = y;
@@ -1141,9 +1135,7 @@ void Printer::disableSteppers() {
     disable_z();
     disable_e0();
 
-    homed[0] = false;
-    homed[1] = false;
-    homed[2] = false;
+    homed = false;
 
     analogWrite(LED_PIN, 255 * 0.5);
 }
@@ -1165,7 +1157,7 @@ void Printer::cmdDisableStepperIsr() {
 void Printer::cmdGetHomed() {
 
     txBuffer.sendResponseStart(CmdGetHomed);
-    txBuffer.sendResponseValue((uint8_t*)homed, sizeof(homed));
+    txBuffer.sendResponseUint8((uint8_t)homed);
     txBuffer.sendResponseEnd();
 }
 

@@ -61,7 +61,7 @@ void setup();
 class Printer {
 
         bool eotReceived;
-        uint8_t homed[3];
+        bool homed;
         // We erase entire swapdev (sdcard) to speed up writes.
         bool swapErased;
 
