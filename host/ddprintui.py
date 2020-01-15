@@ -192,7 +192,7 @@ class MainForm(npyscreen.FormBaseNew):
         self.tempAdjust.value = 15
 
         rely += 2
-        self.fn = self.add(npyscreen.TitleFilename, name = "GCode File        :", relx=1, rely=rely, use_two_lines=False, begin_entry_at=23,
+        self.fn = self.add(npyscreen.TitleFilename, name = "GCode File          :", relx=1, rely=rely, use_two_lines=False, begin_entry_at=23,
                 width=w-1)
 
         rely += 2
@@ -209,39 +209,39 @@ class MainForm(npyscreen.FormBaseNew):
         self.pState.editable = False
 
         rely += 1
-        self.curT0 = self.add(npyscreen.TitleFixedText, name = "T0 - Bed Temp        :", relx=w, rely=rely, use_two_lines=False, begin_entry_at=23)
+        self.curT0 = self.add(npyscreen.TitleFixedText, name =    "T0 - Bed Temp       :", relx=w, rely=rely, use_two_lines=False, begin_entry_at=23)
         self.curT0.editable = False
 
         rely += 1
-        self.curT1 = self.add(npyscreen.TitleFixedText, name = "T1 - Hotend 1 Temp   :", relx=w, rely=rely, use_two_lines=False, begin_entry_at=23) 
+        self.curT1 = self.add(npyscreen.TitleFixedText, name =    "T1 - Hotend 1 Temp  :", relx=w, rely=rely, use_two_lines=False, begin_entry_at=23) 
         self.curT1.editable = False
 
         rely += 1
-        self.swapSize = self.add(npyscreen.TitleFixedText, name = "Size Swap File       :", relx=w, rely=rely, use_two_lines=False, begin_entry_at=25)
+        self.swapSize = self.add(npyscreen.TitleFixedText, name = "Size Swap File      :", relx=w, rely=rely, use_two_lines=False, begin_entry_at=25)
         self.swapSize.editable = False
 
         rely += 1
-        self.sdrSize = self.add(npyscreen.TitleFixedText, name = "Size SDReader        :", relx=w, rely=rely, use_two_lines=False, begin_entry_at=25)
+        self.sdrSize = self.add(npyscreen.TitleFixedText, name =  "Size SDReader       :", relx=w, rely=rely, use_two_lines=False, begin_entry_at=25)
         self.sdrSize.editable = False
 
         rely += 1
-        self.sbSisze = self.add(npyscreen.TitleFixedText, name = "Size StepBuffer      :", relx=w, rely=rely, use_two_lines=False, begin_entry_at=25)
+        self.sbSisze = self.add(npyscreen.TitleFixedText, name =  "Size StepBuffer     :", relx=w, rely=rely, use_two_lines=False, begin_entry_at=25)
         self.sbSisze.editable = False
 
         rely += 1
-        self.underrun = self.add(npyscreen.TitleFixedText, name = "Step Buffer underruns:", relx=w, rely=rely, use_two_lines=False, begin_entry_at=23)
+        self.underrun = self.add(npyscreen.TitleFixedText, name = "Stepbuffer underruns:", relx=w, rely=rely, use_two_lines=False, begin_entry_at=23)
         self.underrun.editable = False
 
         rely += 1
-        self.extRate = self.add(npyscreen.TitleFixedText, name = "Extrusion Rate       :", relx=w, rely=rely, use_two_lines=False, begin_entry_at=27)
+        self.extRate = self.add(npyscreen.TitleFixedText, name =  "Extrusion Rate      :", relx=w, rely=rely, use_two_lines=False, begin_entry_at=27)
         self.extRate.editable = False
 
         rely += 1
-        self.extGrip = self.add(npyscreen.TitleFixedText, name = "Feeder Grip          :", relx=w, rely=rely, use_two_lines=False, begin_entry_at=23)
+        self.extGrip = self.add(npyscreen.TitleFixedText, name =  "Feeder Grip         :", relx=w, rely=rely, use_two_lines=False, begin_entry_at=23)
         self.extGrip.editable = False
 
         rely += 1
-        self.errors = self.add(npyscreen.TitleFixedText, name = "Errors:", relx=w, rely=rely, use_two_lines=False, begin_entry_at=23, color="WARNING") 
+        self.errors = self.add(npyscreen.TitleFixedText, name =   "Errors              :", relx=w, rely=rely, use_two_lines=False, begin_entry_at=23, color="WARNING") 
         # self.errors.editable = False
 
         #
