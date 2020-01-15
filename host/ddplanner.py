@@ -314,12 +314,12 @@ class Planner (object):
 
     def getHomePos(self):
 
-        # Get additional z-offset from eeprom
+        # Get additional z-offset from printer profile
         add_homeing_z = PrinterProfile.getBedlevelOffset()
 
         assert((add_homeing_z <= 0) and (add_homeing_z >= -35))
 
-        print "add_homeing_z from eeprom: ", add_homeing_z
+        # print "add_homeing_z from printer profile: ", add_homeing_z
 
         # Virtuelle position des druckkopfes falls 'gehomed'
         homePosMM = util.MyPoint(
