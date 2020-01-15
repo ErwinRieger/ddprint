@@ -548,7 +548,7 @@ class Advance (object):
             if move.advanceData.endSignChange():
 
                 if esum > 0.5: # xxx hardcoded...
-                    self.planner.gui.log("Segment ", measureMove, " endSignChange: started measurement move, distance: ", esum)
+                    self.planner.gui.log("Segment %d: endSignChange: started measurement move, distance: " % move.moveNumber, esum)
 
                     assert(not measureMove.isSubMove())
                     measureMove.isMeasureMove = True
@@ -556,7 +556,7 @@ class Advance (object):
                 measureMove = None
 
         if measureMove and esum > 0.5: # xxx hardcoded...
-            self.planner.gui.log("Segment ", measureMove, " started measurement move, distance: ", esum)
+            self.planner.gui.log("Segment %d: started measurement move, distance: " % move.moveNumber, esum)
 
             assert(not measureMove.isSubMove())
             measureMove.isMeasureMove = True
