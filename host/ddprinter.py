@@ -23,7 +23,7 @@
 # Note: pyserial 2.6.1 seems to have a bug with reconnect (read only garbage 
 # at second connect).
 #
-import time, struct, crc_ccitt_kermit
+import time, struct, crc_ccitt_kermit, termios
 import dddumbui, cobs, ddprintutil
 
 from serial import Serial, SerialException, SerialTimeoutException
@@ -399,10 +399,18 @@ class Printer(Serial):
             self.resetLineNumber()
             return
 
+        # Avoid reset of (arduino like) printer boards
+        f = open(device)
+        attrs = termios.tcgetattr(f)
+        attrs[2] = attrs[2] & ~termios.HUPCL
+        termios.tcsetattr(f, termios.TCSAFLUSH, attrs)
+        f.close()
+
         self.port = device
         self.baudrate = br
         self.timeout = 0.05
         self.writeTimeout = 10
+        # self.setDTR(False) # does not work?
         self.open()
 
         if bootloaderWait:
