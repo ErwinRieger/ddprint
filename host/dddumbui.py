@@ -27,27 +27,22 @@ import ddprintutil as util, logging
 class DumbGui:
 
     def log(self, *args):
-        # print(*args)
         logging.info(util.stringFromArgs(*args))
 
     def logRecv(self, *args):
-        # print(*args)
         logging.info("REPLY: %s", util.stringFromArgs(*args))
 
     def logSend(self, *args):
-        # print(*args)
         logging.info("SEND: %s", util.stringFromArgs(*args))
 
     def logError(self, *args):
-        # print(*args)
         logging.error(util.stringFromArgs(*args))
 
     def tempCb(self, t0=None, t1=None, targetT1=None):
-        # print("tempCb: ", t0, t1)
-        logging.info("tempCb: %s %s/%s", str(t0), str(t1), str(targetT1))
+        pass
 
     def statusCb(self, status):
-        print "statusCb: ", status
+        pass
 
 
 
