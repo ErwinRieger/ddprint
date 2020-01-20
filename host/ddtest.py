@@ -24,7 +24,9 @@
 # Some seldom used functions, needed only if the hardware of the printer is modified.
 #
 
-import ddhome, ddprintutil as util, time
+import time, math
+
+import ddhome, ddprintutil as util
 from ddprofile import PrinterProfile
 from ddprinter import Printer
 from ddprintcommands import *
@@ -186,6 +188,141 @@ plot '-' using 1:2 with linespoints title 'ratio'
 
     # Enable flowrate limit
     printer.sendCommandParamV(CmdEnableFRLimit, [packedvalue.uint8_t(1)])
+
+
+
+
+
+
+
+#
+# Check smoothness/roundness of feeder measurements. Move filament for
+# 10 flowratesensor turns and plot the sensor values.
+#
+# XXX Assumes 100ms filament sensor measurement interval
+#
+def testFeederUniformity(args, parser):
+
+    def writeData(f, measurements):
+
+        for (t, s) in measurements:
+            f.write("%f %f\n" % (t, s))
+        f.write("E\n")
+
+
+    planner = parser.planner
+    printer = planner.printer
+
+    # durchmesser rolle feeder: ca. 11mm
+    droll = 11
+
+    # umfang
+    circ = droll * math.pi
+
+    nRound = 10
+
+    d = circ * nRound
+
+    # speed: 1U/10sec
+    tRound = 10
+    feedrate = circ / tRound
+
+    print "circum:", circ, "feedrate:", feedrate
+
+    printer.commandInit(args, PrinterProfile.getSettings())
+
+    ddhome.home(parser, args.fakeendstop)
+
+    # Disable flowrate limit
+    printer.sendCommandParamV(CmdEnableFRLimit, [packedvalue.uint8_t(0)])
+
+    # Disable temp-flowrate limit
+    util.downloadDummyTempTable(printer)
+
+    startPos = parser.getPos()[A_AXIS]
+
+    readings = {}
+    measurements = []
+
+    # Start feeder motor
+    printer.sendPrinterInit()
+    parser.execute_line("G0 F%d %s%f" % (feedrate*60, util.dimNames[A_AXIS], startPos + d))
+    planner.finishMoves()
+    printer.sendCommand(CmdEOT)
+    printer.sendCommandParamV(CmdMove, [MoveTypeNormal])
+
+    tWait = 0.75
+    tMove = (tRound * nRound) * 1.1
+
+    t = time.time()
+    tEnd = t + tMove
+    while t < tEnd:
+
+        time.sleep(tWait)
+
+        fsreadings = printer.getFSReadings()
+        for (ts, dy) in fsreadings:
+            readings[ts] = dy
+
+        t = time.time()
+
+    timeStamps = readings.keys()
+    timeStamps.sort()
+    lastTs = timeStamps[0] - 100
+    for ts in timeStamps:
+
+        assert(abs(ts - lastTs) < 150)
+
+        measurements.append((ts, readings[ts]))
+
+        lastTs = ts
+
+    while measurements[0][1] == 0:
+        del measurements[0]
+
+    while measurements[-1][1] == 0:
+        del measurements[-1]
+
+    f = open("testFeederUniformity.gnuplot", "w")
+    f.write("""
+set grid
+stats "-" using 2 name "stats"
+""")
+
+    writeData(f, measurements)
+
+    f.write("""
+plot '-' using 1:2 with linespoints title 'sensor counts', \\
+     "-" using 1:2 with linespoints smooth bezier lt rgb "red" lw 3 title "sensor counts smooth", \\
+     stats_median, stats_lo_quartile lt rgb "brown", stats_up_quartile lt rgb "brown", \\
+     (stats_up_quartile - stats_lo_quartile)*100/stats_median title "error %"
+""")
+
+    writeData(f, measurements)
+    writeData(f, measurements)
+
+    f.write("pause mouse close\n")
+    f.close()
+
+    printer.waitForState(StateIdle)
+
+    # Rewind
+    print "Rewinding..."
+    printer.sendPrinterInit()
+    parser.execute_line("G0 F%d %s%f" % (PrinterProfile.getMaxFeedrate(A_AXIS)*60, util.dimNames[A_AXIS], startPos))
+    planner.finishMoves()
+    printer.sendCommand(CmdEOT)
+    printer.sendCommandParamV(CmdMove, [MoveTypeNormal])
+
+    printer.waitForState(StateIdle)
+
+    # Re-enable flowrate limit
+    printer.sendCommandParamV(CmdEnableFRLimit, [packedvalue.uint8_t(1)])
+
+
+
+
+
 
 
 
