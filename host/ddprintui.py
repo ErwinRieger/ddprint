@@ -205,7 +205,7 @@ class MainForm(npyscreen.FormBaseNew):
         # Upper right side: the status area
         #
         rely = 2
-        self.pState = self.add(npyscreen.TitleFixedText, name = "Printer State        :", relx=w, rely=rely, use_two_lines=False, begin_entry_at=23)
+        self.pState = self.add(npyscreen.TitleFixedText, name =   "Printer State       :", relx=w, rely=rely, use_two_lines=False, begin_entry_at=23)
         self.pState.editable = False
 
         rely += 1
@@ -498,12 +498,9 @@ class MainForm(npyscreen.FormBaseNew):
                 self.parser.execute_line(line)
 
                 #
-                # Send more than one 512 byte block for dlprint
+                # Check temp and start print
                 #
-                # if lineNr > 1000 and (lineNr % 250) == 0:
                 if time.time() > (lastUpdate + 0.5):
-
-                    # check temp and start print
 
                     if lineNr > 1000 and not printStarted:
 
@@ -528,6 +525,8 @@ class MainForm(npyscreen.FormBaseNew):
                         obj.call()
                         # self.log("hack ...done")
 
+                    time.sleep(0.5) # give some cpu time to main/ui thread
+
                     lastUpdate = time.time()
 
                 lineNr += 1
@@ -535,15 +534,14 @@ class MainForm(npyscreen.FormBaseNew):
             print "Parsed %d gcode lines." % lineNr
 
             # 
-            # Add a move to lift the nozzle from the print if not ultigcode flavor
+            # Add a move to lift the nozzle from the print
             # 
-            # if not self.parser.ultiGcodeFlavor:
             util.endOfPrintLift(self.parser)
 
             self.planner.finishMoves()
             self.printer.sendCommand(CmdEOT)
 
-            # XXX start print if less than 1000 lines or temp not yet reached:
+            # Start print if less than 1000 lines or temp not yet reached:
             if not printStarted:
 
                 self.log( "\nHeating bed (t0: %d)...\n" % self.mat_t0 )

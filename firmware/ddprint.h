@@ -101,6 +101,8 @@ class Printer {
         void setHomePos( int32_t x, int32_t y, int32_t z);
         void cmdSetTargetTemp(uint8_t heater, uint16_t temp);
         void cmdSetIncTemp(uint8_t heater, int16_t incTemp);
+        void cmdGetFreeMem();
+        void cmdGetFSReadings(uint8_t nReadings);
         void checkMoveFinished();
         void disableSteppers();
         void cmdDisableSteppers();

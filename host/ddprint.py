@@ -391,6 +391,8 @@ def main():
 
     sp = subparsers.add_parser("getFilSensor", help=u"Get current filament position.")
 
+    sp = subparsers.add_parser("getFreeMem", help=u"Get printer free memory.")
+
     sp = subparsers.add_parser("getpos", help=u"Get current printer and virtual position.")
 
     sp = subparsers.add_parser("getPrinterName", help=u"Get printer name from eeprom.")
@@ -411,6 +413,8 @@ def main():
 
     sp = subparsers.add_parser("fanspeed", help=u"Set fan speed manually.")
     sp.add_argument("speed", help="Fanspeed 0 - 255.", type=int)
+
+    sp = subparsers.add_parser("testFeederUniformity", help=u"Debug: check smoothness/roundness of feeder measurements.")
 
     sp = subparsers.add_parser("testFilSensor", help=u"Debug: move filament manually, output filament sensor measurement.")
     sp.add_argument("distance", action="store", help="Move-distance (+/-) in mm.", type=float)
@@ -630,6 +634,12 @@ def main():
         mm = counts / res
         print "Filament pos:", printer.getFilSensor(), " in mm: %.2f" % mm
 
+    elif args.mode == 'getFreeMem':
+
+        printer.commandInit(args, PrinterProfile.getSettings())
+        freeMem = printer.getFreeMem()
+        print "Free memory: %d bytes" % freeMem
+
     elif args.mode == 'getpos':
 
         printer.commandInit(args, PrinterProfile.getSettings())
@@ -700,6 +710,9 @@ def main():
         printer.commandInit(args, PrinterProfile.getSettings())
         printer.sendCommandParamV(CmdFanSpeed, [packedvalue.uint8_t(args.speed)])
 
+    elif args.mode == 'testFeederUniformity':
+        ddtest.testFeederUniformity(args, parser)
+
     elif args.mode == 'testFilSensor':
         ddtest.testFilSensor(args, parser)
 
@@ -709,25 +722,9 @@ def main():
     elif args.mode == 'test':
 
         printer.commandInit(args, PrinterProfile.getSettings())
-        """
-        dirbits = printer.getDirBits()
-        print "dirbits:", dirbits
-        # printer.readMore()
-
-        while True:
-
-            temp = printer.getTemp(doLog=False)[1]
-            print "T1:", temp
-            time.sleep(0.1)
-        """
-        if args.feedrate == 0:
-            printer.sendCommandParamV(CmdContinuousE, [packedvalue.uint16_t(0)])
-        else:
-
-            printer.sendCommandParamV(CmdContinuousE, [packedvalue.uint16_t(util.eTimerValue(planner, 0.5))])
-            for s in range(int(args.feedrate)):
-                time.sleep(1)
-                printer.sendCommandParamV(CmdSetContTimer, [packedvalue.uint16_t(util.eTimerValue(planner, 1+s))])
+        readings = printer.getFSReadings(10)
+        print "Readings: "
+        pprint.pprint(readings)
 
     else:
         print "Unknown command: ", args.mode

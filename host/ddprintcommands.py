@@ -89,6 +89,8 @@ CmdGetPrinterName =  171 # Read printer (-profile) name from printer eeprom, pay
 CmdSetPIDValues =    172
 # CmdSetBedlevelOffset = 173
 CmdSetIncTemp   =    174 # Adjust temperature niveau 
+CmdGetFreeMem   =    175 # Get number of free memory bytes
+CmdGetFSReadings =   176 # Get last n filsensor readings
 
 CommandNames = {
 }
@@ -156,6 +158,8 @@ for (cmd, cmdName) in [
     (CmdSetPIDValues, "CmdSetPIDValues",),
     # (CmdSetBedlevelOffset, "CmdSetBedlevelOffset",),
     (CmdSetIncTemp, "CmdSetIncTemp",),
+    (CmdGetFreeMem, "CmdGetFreeMem",),
+    (CmdGetFSReadings, "CmdGetFSReadings",),
     ]:
 
         insertCommandName(cmd, cmdName)

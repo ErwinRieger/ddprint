@@ -1806,8 +1806,7 @@ class Advance (object):
                 abs( topSpeed.eSpeed ),
                 abs( endSpeed.eSpeed ),
                 abs(move.endAccel.eAccel()),
-                eStepsToMove,
-                forceFill=False)
+                eStepsToMove)
 
         if debugAdvance:
             print "Generated %d/%d E steps" % (len(eClocks), eStepsToMove)

@@ -111,6 +111,8 @@
 #define CmdSetPIDValues         172
 // #define CmdSetBedlevelOffset    173
 #define CmdSetIncTemp           174 // Adjust temperature niveau 
+#define CmdGetFreeMem           175 // Get number of free memory bytes [uint16]
+#define CmdGetFSReadings        176 // Get last n filsensor readings 
 
 //
 // Response types 

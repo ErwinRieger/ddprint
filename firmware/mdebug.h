@@ -17,8 +17,7 @@
 * along with ddprint.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef __mdebug_h__
-#define __mdebug_h__
+#pragma once
 
 void mAssert(uint16_t line, const char* file);
 void killMessage(uint8_t errorCode, uint8_t errorParam, const char *msg = "");
@@ -53,5 +52,22 @@ void killMessage(uint8_t errorCode, uint8_t errorParam1, uint8_t errorParam2, co
 
 #endif
 
-#endif
+//
+// Get free memory, from https://playground.arduino.cc/Code/AvailableMemory/
+//
+inline uint16_t freeRam () {
+    extern int __heap_start, *__brkval; 
+    int v; 
+    return (uint16_t) &v - (__brkval == 0 ? (int) &__heap_start : (int) __brkval); 
+}
+
+
+
+
+
+
+
+
+
+
 

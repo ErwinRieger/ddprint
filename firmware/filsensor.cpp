@@ -41,6 +41,11 @@ SPISettings spiSettingsFS(4000000, MSBFIRST, SPI_MODE3);
 
 FilamentSensorPMW3360 filamentSensor;
 
+
+// Circular buffer of last 256 filsensor measurements
+FilsensorReading filsensorReadings[256];
+uint8_t filsensorReadingIndex;
+
 FilamentSensorPMW3360::FilamentSensorPMW3360() {
 
     feedrateLimiterEnabled = true;
@@ -61,6 +66,9 @@ void FilamentSensorPMW3360::init() {
     // CRITICAL_SECTION_END
 
     lastASteps = LONG_MAX; // marker for not set
+
+    lastecount = 0;
+    rest = 0;
 
     // lastSensorCount = sensorCount;
 
@@ -133,12 +141,34 @@ int16_t FilamentSensorPMW3360::getDY() {
 
 void FilamentSensorPMW3360::run() {
 
-
-
-
-
     dDPrintSpi.beginTransaction(spiSettingsFS);
     int16_t dy = getDY(); // read distance delta from filament sensor
+
+#if 0 
+    // int16_t ddy = dy + rest - lastecount;
+    int16_t ddy = dy - lastecount;
+
+    int16_t _lastecount = lastecount;
+
+    if (ddy > 10) {
+        // rest = ddy - 10;
+        dy = _lastecount + 10;
+    }
+    else if (ddy < -10) {
+        // rest = ddy + 10;
+        dy = _lastecount - 10;
+    }
+    else {
+        // rest = 0;
+        dy = _lastecount + ddy;
+    }
+
+    lastecount = dy;
+#endif
+
+    filsensorReadings[filsensorReadingIndex].timeStamp = millis();
+    filsensorReadings[filsensorReadingIndex].dy = dy;
+    filsensorReadingIndex++;
 
     if (dy) {
 
@@ -167,6 +197,21 @@ void FilamentSensorPMW3360::run() {
                 if (started) {
 
                     int32_t deltaSensorSteps = sensorCount - lastSensorCount;
+
+#if 0
+                    if (dy > 20) {
+                        rest = dy - 20;
+                        dy = 20;
+                    }
+                    else if (dy < -20) {
+                        rest = dy + 20;
+                        dy = 20;
+                    }
+
+                    filsensorReadings[filsensorReadingIndex].timeStamp = millis();
+                    filsensorReadings[filsensorReadingIndex].dy = dy;
+                    filsensorReadingIndex++;
+#endif
 
                     //
                     // Compute the amount of "feeder slippage"

@@ -209,6 +209,9 @@ class FilamentSensorPMW3360 {
         int32_t lastASteps;
         int32_t lastSensorCount;
 
+        int16_t rest = 0;
+        int16_t lastecount = 0;
+
         uint8_t readLoc(uint8_t addr);
 
         void writeLoc(uint8_t addr, uint8_t value);
@@ -258,6 +261,13 @@ class FilamentSensorPMW3360 {
 };
 
 extern FilamentSensorPMW3360 filamentSensor;
+
+typedef struct {
+    unsigned long timeStamp;
+    int16_t       dy;
+} FilsensorReading;
+extern FilsensorReading filsensorReadings[];
+extern uint8_t filsensorReadingIndex;
 
 #else // #if defined(PMWFS)
     #define VAR_FILSENSOR_GRIP (1.0)

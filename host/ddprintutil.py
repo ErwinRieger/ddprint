@@ -1548,7 +1548,7 @@ def genTempTable(planner):
         tvs = 1.0/steprate
         timerValue = min(int(fTimer / steprate), 0xffff)
 
-        print "    Temp: %f, max flowrate: %.1f mm³/s, max espeed: %.1f mm/s, steps/s: %d, steprate: %d us, timervalue: %d" % (t, flowrate, espeed, int(steprate), int(tvs*1000000), timerValue)
+        print "    Temp: %f, max flowrate: %.2f mm³/s, max espeed: %.2f mm/s, steps/s: %d, steprate: %d us, timervalue: %d" % (t, flowrate, espeed, int(steprate), int(tvs*1000000), timerValue)
         table.append(timerValue)
 
         of.write("%f %4.1f %d %d\n" % (t, flowrate, int(steprate), timerValue))
@@ -1730,7 +1730,14 @@ plot "-" using 1:2 with linespoints title "Target Flowrate", \\
     planner = parser.planner
     printer = planner.printer
 
+    printerSettings = PrinterProfile.getSettings()
+
+    # Override integral value for temperature PID to avoid temperature-overshot
+    PrinterProfile.get().override("Ki", printerSettings["Ki"] * 0.75)
+
     printer.commandInit(args, PrinterProfile.getSettings())
+
+    print "overwritten Ki: ", printerSettings["Ki"], PrinterProfile.getSettings()["Ki"]
 
     ddhome.home(parser, args.fakeendstop)
 
@@ -1764,28 +1771,17 @@ plot "-" using 1:2 with linespoints title "Target Flowrate", \\
     # XXX speed too high for small nozzles!?
     feedrate = 1.0 / aFilament
 
-    """
-    feedrateStep = 1.0
-    if nozzleSize <= 50:
-        # Start slower for smaller nozzles (0.4)
-        # Note: lowest feedrate about 0.51mm/s
-        # feedrate = 0.55 / aFilament
-        feedrateStep = 0.5
-    """
-    feedrateStep = 0.5
-
     tWait = 0.1
 
     eMotorRunning = False
+    primed = False
 
     # Running average of hotend temperature
     tempAvg = EWMA(0.05)
     # Running average of *grip*
     ratioAvg = EWMA(0.05)
 
-    # minGrip = 0.85
     minGrip = 0.90
-    # minGrip = 0.95
 
     t1 = args.tstart
 
@@ -1795,38 +1791,38 @@ plot "-" using 1:2 with linespoints title "Target Flowrate", \\
         print "### Measure filament flowrate at temp %d" % t1
         print "#######################################################################"
 
-        printer.heatUp(HeaterEx1, 0.9*t1, wait=0.9*t1)
+        printer.heatUp(HeaterEx1, t1)
 
         # Wait for hotend to reach current temperature and that this temp is 
-        # held for 5 seconds, at least.
+        # held for 10 seconds, at least.
         wait = 5
         while wait:
 
-            time.sleep(1)
+            time.sleep(2)
             actT1 = printer.getTemp()[HeaterEx1]
-            print "Current temp: %f/%f" % (actT1, t1)
+            print "Current temp: %.2f/%.2f" % (actT1, t1)
 
             if tempGood(actT1, t1):
                 wait -= 1
             else:
                 wait = 5
 
-        if not eMotorRunning:
+            if not eMotorRunning and actT1 >= t1:
 
-            # Start continuos e-move end prime some material
-            print "Priming nozzle wit feedrate %.1f mm/s" % feedrate
+                # Start continuos e-move end prime some material
+                print "Priming nozzle wit flowrate %.2f mm³/s" % (feedrate * aFilament)
+                printer.sendCommandParamV(CmdContinuousE, [packedvalue.uint16_t(eTimerValue(planner, feedrate))])
+                eMotorRunning = True
 
-            printer.sendCommandParamV(CmdContinuousE, [packedvalue.uint16_t(eTimerValue(planner, feedrate))])
-
+        if not primed:
             raw_input("\nPRESS RETURN if material is coming out of the nozzle...\n")
-
-            eMotorRunning = True
+            primed = True
 
         #
-        # Temperatuer reached, start measurement of max. flowrate for this temp
+        # Temperature reached, start measurement of max. flowrate for this temp
         #
         # Init averages
-        tempAvg.setValue(t1)
+        tempAvg.setValue(actT1)
         ratioAvg.setValue(1.0)
 
         ratio = 1.0
@@ -1851,8 +1847,8 @@ plot "-" using 1:2 with linespoints title "Target Flowrate", \\
             ratio = ratioAvg.value()
 
             # Increase extruder speed if in temp-window
-            if tempGood(actT1, t1):
-                frincrease = max(0.1 * (ratio - minGrip), 0.001)
+            if tempGood(actT1, t1) and r >= minGrip:
+                frincrease = feedrate * 0.0025                     # 2.5% per second
                 feedrate += frincrease
                 # print "increased feedrate by %.2f to %.2f" % (frincrease, feedrate)
             
@@ -1861,13 +1857,13 @@ plot "-" using 1:2 with linespoints title "Target Flowrate", \\
 
             nUpdate -= 1
             if nUpdate == 0:
-                print "TempAvg: %.1f, target feedrate: %.1f mm/s, current ratio: %.2f, ratio avg: %.2f" % (t1Avg, feedrate, r, ratio)
+                print "TempAvg: %.1f, target flowrate: %.2f mm³/s, actual flowrate: %.2f mm³/s, current ratio: %.2f, ratio avg: %.2f" % (t1Avg, targetFlowRate, targetFlowRate*ratio, r, ratio)
                 nUpdate = 1.0/tWait
 
             time.sleep(tWait)
 
         print "##################################################################################################"
-        print "Temp: %.1f done, target flowrate: %.1f mm/s, actual flowrate: %.1f mm/s, feeder grip: %.2f\n" % ( t1Avg, targetFlowRate, targetFlowRate*ratio, ratio )
+        print "Temp: %.1f done, target flowrate: %.2f mm³/s, actual flowrate: %.2f mm³/s, feeder grip: %.2f\n" % ( t1Avg, targetFlowRate, targetFlowRate*ratio, ratio )
         print "##################################################################################################"
 
         dataSet[t1Avg] = (targetFlowRate, targetFlowRate*ratio, ratio)
@@ -1897,14 +1893,12 @@ plot "-" using 1:2 with linespoints title "Target Flowrate", \\
     #
     # Retract
     #
-    printer.sendPrinterInit()
-    parser.execute_line("G10")
-    planner.finishMoves()
-
-    printer.sendCommandParamV(CmdMove, [MoveTypeNormal])
-    printer.sendCommand(CmdEOT)
-
-    printer.waitForState(StateIdle)
+    # printer.sendPrinterInit()
+    # parser.execute_line("G10")
+    # planner.finishMoves()
+    # printer.sendCommandParamV(CmdMove, [MoveTypeNormal])
+    # printer.sendCommand(CmdEOT)
+    # printer.waitForState(StateIdle)
 
     # Re-enable flowrate limit
     printer.sendCommandParamV(CmdEnableFRLimit, [packedvalue.uint8_t(1)])
@@ -1913,7 +1907,7 @@ plot "-" using 1:2 with linespoints title "Target Flowrate", \\
 #
 # Create a list of stepper pulses for a acceleration ramp.
 #
-def accelRamp(axis, vstart, vend, a, nSteps, forceFill=False):
+def accelRamp(axis, vstart, vend, a, nSteps):
 
     assert(vstart <= vend)
 
@@ -1940,13 +1934,10 @@ def accelRamp(axis, vstart, vend, a, nSteps, forceFill=False):
         # Timervalue for this time
         timerValue = int(dt * fTimer)
 
-        if timerValue > ddprintconstants.maxTimerValue16:
-            # print "limit on timeroverflow, v after this step:", vn1, s, dt, timerValue
-            timerValue = ddprintconstants.maxTimerValue16
+        timerValue = min(timerValue, ddprintconstants.maxTimerValue16)
 
         # print "v after this step:", vn1, s, dt, timerValue
 
-        assert(timerValue <= 0xffff)
         pulses.append((tstep, dt, timerValue))
 
         s += sPerStep
@@ -1954,34 +1945,13 @@ def accelRamp(axis, vstart, vend, a, nSteps, forceFill=False):
         tstep += dt
         stepToDo -= 1
 
-    # Add missing steps in timeroverflow case
-    if forceFill and stepToDo > 0:
-
-        print "fill steps %d/%d" % (stepToDo, nSteps)
-
-        assert((float(stepToDo) / nSteps) < 0.25)
-
-        p = pulses[-1]
-        for i in range(stepToDo):
-
-            assert(timerValue <= 0xffff)
-            pulses.append((tstep, dt, timerValue))
-            tstep += dt
-
-        pprint.pprint(pulses)
-        assert(0)
-        return pulses
-
-    if forceFill:
-        assert(stepToDo == 0)
-
     return pulses
 
 ####################################################################################################
 #
 # Create a list of stepper pulses for a deceleration ramp.
 #
-def decelRamp(axis, vstart, vend, a, nSteps, forceFill=False):
+def decelRamp(axis, vstart, vend, a, nSteps):
 
     assert(vstart >= vend)
     # assert(nSteps)
@@ -2019,30 +1989,6 @@ def decelRamp(axis, vstart, vend, a, nSteps, forceFill=False):
         v = vn1
         tstep += dt
         nSteps -= 1
-
-    # Add missing steps in timeroverflow case
-    if forceFill and nSteps > 0:
-
-        dt = min(sPerStep / vstart, ddprintconstants.maxTimerValue16/fTimer)
-        timerValue = min(int(dt * fTimer), ddprintconstants.maxTimerValue16)
-
-        tstep = 0
-        newPulses = []
-        for i in range(nSteps):
-
-            newPulses.append((tstep, dt, timerValue))
-
-            nSteps -= 1
-            tstep += dt
-
-        for p in pulses:
-            newPulses.append((p[0] + tstep, p[1], p[2]))
-
-        # pprint.pprint(newPulses)
-        return newPulses
-
-    if forceFill:
-        assert(nSteps == 0)
 
     return pulses
 

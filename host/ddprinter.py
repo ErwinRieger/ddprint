@@ -375,6 +375,9 @@ class Printer(Serial):
     # Monitor printer responses for a while (wait waitcount * 0.1 seconds)
     def readMore(self, waitcount=100):
 
+        print "xxx note: skipping readMore()..."
+        return
+
         self.gui.log("waiting %.2f seconds for more messages..." % (waitcount/20.0))
 
         for i in range(waitcount):
@@ -458,8 +461,7 @@ class Printer(Serial):
         self.sendCommand(CmdPrinterInit)
         self.curDirBits = self.getDirBits()
 
-    # Send a command to the printer, add a newline if 
-    # needed.
+    # Send a command to the printer
     def send(self, cmd):
 
         while True:
@@ -872,6 +874,24 @@ class Printer(Serial):
         (cmd, payload) = self.query(CmdGetFilSensor)
         t = struct.unpack("<i", payload)
         return t[0]
+
+    ####################################################################################################
+
+    def getFreeMem(self):
+
+        (cmd, payload) = self.query(CmdGetFreeMem)
+        t = struct.unpack("<H", payload)
+        return t[0]
+
+    def getFSReadings(self, notused_nNeadings=None):
+
+        (cmd, payload) = self.query(CmdGetFSReadings)
+
+        readings = []
+        for i in range(10):
+            (ts, dy) = struct.unpack("<Ih", payload[i*6:(i+1)*6])
+            readings.append((ts, dy))
+        return readings
 
     ####################################################################################################
 

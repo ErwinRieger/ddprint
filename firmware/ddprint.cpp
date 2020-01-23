@@ -1043,6 +1043,29 @@ void Printer::cmdSetIncTemp(uint8_t heater, int16_t incTemp) {
     increaseTemp[heater] = incTemp;
 }
 
+void Printer::cmdGetFreeMem() {
+
+    txBuffer.sendResponseStart(CmdGetFreeMem);
+    txBuffer.sendResponseValue(freeRam());
+    txBuffer.sendResponseEnd();
+}
+
+void Printer::cmdGetFSReadings(uint8_t nReadings) {
+
+    txBuffer.sendResponseStart(CmdGetFSReadings);
+
+    uint8_t start = filsensorReadingIndex - (nReadings + 1);
+
+    while (nReadings--) {
+
+        txBuffer.sendResponseValue(filsensorReadings[start].timeStamp);
+        txBuffer.sendResponseInt16(filsensorReadings[start].dy);
+        start++;
+    }
+
+    txBuffer.sendResponseEnd();
+}
+
 void Printer::cmdFanSpeed(uint8_t speed) {
 
     analogWrite(FAN_PIN, speed);
@@ -1738,6 +1761,17 @@ class UsbCommand : public Protothread {
                         }
                         break;
 
+                    case CmdGetFreeMem:
+                        printer.cmdGetFreeMem();
+                        break;
+
+                    case CmdGetFSReadings: {
+                        // uint8_t nReadings = serialPort.readNoCheckCobs();
+                        // printer.cmdGetFSReadings(nReadings);
+                        printer.cmdGetFSReadings(10);
+                        }
+                        break;
+
                     default:
                         txBuffer.sendSimpleResponse(RespUnknownCommand, commandByte);
                         #if defined(HEAVYDEBUG)
@@ -1793,8 +1827,6 @@ static UsbCommand usbCommand;
 
 FWINLINE void loop() {
 
-    loopTS = millis();
-
     // Timer for slow running tasks (temp, encoder)
     static unsigned long timer10mS = millis();
     static unsigned long timer100mS = millis();
@@ -1829,6 +1861,8 @@ FWINLINE void loop() {
 
         printer.restartFilsensor = false;
     }
+
+    loopTS = millis();
 
     if ((loopTS - timer10mS) >= 10) { // Every 10 mS
 
@@ -1880,11 +1914,7 @@ FWINLINE void loop() {
         }
 #endif
 
-// #if defined(HASFILAMENTSENSOR)
-        // // Read filament sensor
-        // filamentSensor.run();
-// #endif
-
+        // test: if ((loopTS - timer100mS) >= 500) { // Every 100 mS
         if ((loopTS - timer100mS) >= 100) { // Every 100 mS
 
             //
@@ -1899,9 +1929,9 @@ FWINLINE void loop() {
             filamentSensor.run();
 #endif
 
-            timer100mS = loopTS;
+            timer100mS = millis();
         }
-        timer10mS = loopTS;
+        timer10mS = millis();
     }
 
     // Read usb commands
