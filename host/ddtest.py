@@ -79,133 +79,6 @@ def testFilSensor(args, parser):
     print "Filament pos in counts old:", startPos, ", new:", endPos, "difference: %d counts" % diff
     print "Calibration value from profile: %f, measured ratio: %f" % (pcal, cal)
 
-#
-# Calibrate filament sensor, determine ratio between extruder steps and the value 
-# measured by the flowrate sensor.
-#
-def old_calibrateFilSensor(args, parser):
-
-    def writeDataSet(f, data):
-
-        for tup in data:
-            f.write("%f %f\n" % tup)
-        f.write("E\n")
-
-    planner = parser.planner
-    printer = planner.printer
-
-    maxFeedrate = args.feedrate or 15
-
-    eAccel = PrinterProfile.getMaxAxisAcceleration()[A_AXIS]
-
-    printer.commandInit(args, PrinterProfile.getSettings())
-
-    ddhome.home(parser, args.fakeendstop)
-
-    # Disable flowrate limit
-    printer.sendCommandParamV(CmdEnableFRLimit, [packedvalue.uint8_t(0)])
-
-    # Disable temp-flowrate limit
-    util.downloadDummyTempTable(printer)
-
-    # Set filament sensor calibration to 1
-    printer.sendCommandParamV(CmdSetFilSensorCal, [packedvalue.float_t(1.0)])
-
-    feedrate = 0.25
-    startPos = parser.getPos()[A_AXIS]
-
-    calFile = open("calibrateFilSensor.json", "w")
-    calFile.write('{\n    "filSensorCalibration": [\n')
-
-    calValues = []
-    valueSum = 0
-
-    # RAVGWINDOW = 10 # xxx defined in filsensor.h
-
-    twoRevs = math.pi * 15 # [mm]
-
-    while feedrate <= maxFeedrate:
-
-        # tStartup = util.getStartupTime(feedrate)
-
-        # xxx 0.25 hardcoded in fw!
-        # sstartup = 5 * (RAVGWINDOW * 0.25) 
-        # tStartup = (((sstartup*2.0)/3.0) / feedrate)
-
-        # print "sstartup: ", sstartup
-
-        apos = parser.getPos()[A_AXIS]
-
-        printer.sendPrinterInit()
-
-        parser.execute_line("G0 F%d %s%f" % (feedrate*60, util.dimNames[A_AXIS], apos+twoRevs))
-
-        planner.finishMoves()
-        printer.sendCommand(CmdEOT)
-        printer.sendCommandParamV(CmdMove, [MoveTypeNormal])
-
-        status = printer.getStatus()
-
-        # while status["slippage"] == 1.0:
-            # print "wait for startup..."
-            # status = printer.getStatus()
-            # time.sleep(0.1)
-
-        data = []
-        while status["state"] != StateIdle:
-
-            data.append(status["slippage"])
-
-            status = printer.getStatus()
-            time.sleep(0.1)
-
-        # Average of ratio for this speed
-        grip = sum(data) / len(data)
-
-        # Calibration value, targetSpeed/measuredSensorSpeed, this ist the value
-        # to multiply the measured sensor speed to get the real speed:
-        print "Feedrate %.2f mm/s done, ratio: %.3f" % (feedrate, grip)
-
-        calValues.append((feedrate, grip))
-        valueSum += grip
-
-        feedrate += 0.25
-
-    f = open("calibrateFilSensor.gnuplot", "w")
-    f.write("""
-set grid
-set yrange [0:%f]
-plot '-' using 1:2 with linespoints title 'ratio'
-""" % max(1.5, feedrate*2))
-
-    writeDataSet(f, calValues)
-    f.write("pause mouse close\n")
-
-    calFile.write(",\n".join(map(lambda tup: "        [%f, %f]" % tup, calValues)))
-    calFile.write("\n    ]\n")
-    calFile.write("}\n")
-    calFile.close()
-
-    avg = valueSum / len(calValues)
-    print "Done, average ratio: ", avg, ", calibration value:", 1/avg
-
-    printer.sendPrinterInit()
-
-    # Rewind
-    print "Rewinding..."
-    parser.execute_line("G0 F%d %s%f" % (maxFeedrate*60, util.dimNames[A_AXIS], startPos))
-
-    planner.finishMoves()
-    printer.sendCommand(CmdEOT)
-    printer.sendCommandParamV(CmdMove, [MoveTypeNormal])
-
-    printer.waitForState(StateIdle)
-
-    # Enable flowrate limit
-    printer.sendCommandParamV(CmdEnableFRLimit, [packedvalue.uint8_t(1)])
-
-
-
 
 #
 # Calibrate filament sensor, determine ratio between extruder steps and the value 
@@ -230,9 +103,6 @@ def calibrateFilSensor(args, parser):
         for ts in timeStamps:
 
             interval = ts - lastTs
-
-            if interval != 0:
-                print "XXX normalize ", interval
 
             assert(abs(ts - lastTs) < 110)
 
@@ -270,13 +140,12 @@ def calibrateFilSensor(args, parser):
 
     # Feedrate step
     eJerk = PrinterProfile.getValues()['axes']["A"]['jerk']
-    feedrateStep = 0.25
-    feedrateStep = 0.5 # debug
-    assert(feedrateStep <= eJerk)
+    # feedrateStep = 0.25
+    # feedrateStep = 0.5 # debug
+    # assert(feedrateStep <= eJerk)
 
     # Start feedrate
-    feedrate = feedrateStep
-    feedrate = 2 # debug
+    # feedrate = 2 # debug
     # feedrate = 3 # debug
 
     calFile = open("calibrateFilSensor.json", "w")
@@ -296,6 +165,12 @@ def calibrateFilSensor(args, parser):
     printer.sendCommandParamV(CmdContinuousE, [packedvalue.uint16_t(maxTimerValue16)])
 
     stepperValues = []
+
+    steps = [0.25, 0.5, 0.75, 1.0]
+    stepindex = 0
+    stepfactor = 1.0
+    feedrate = steps[0] 
+
     while feedrate <= maxFeedrate:
 
         # set new feedrate:
@@ -314,7 +189,7 @@ def calibrateFilSensor(args, parser):
 
         stepsPerSecond = feedrate * steps_per_mm 
 
-        print "measure feedrate %.2f for %.2f seconds" % (feedrate, tRun)
+        print "measure feedrate %.2f for %.2f seconds" % (feedrate, 5*tRun)
 
         readings = {}
         # measurements = []
@@ -364,8 +239,8 @@ def calibrateFilSensor(args, parser):
             mask[i] = False
             i -= 1
 
-        x = np.extract( mask, x)
-        y = np.extract( mask, y)
+        x = np.extract(mask, x)
+        y = np.extract(mask, y)
 
         startTime = x[0] + (tRun*0.25*1000)
         nRev = (x[-1] - startTime) / (tRun*1000)
@@ -376,23 +251,6 @@ def calibrateFilSensor(args, parser):
 
         ts2 = np.extract( ts1 <= (startTime+nRev*(tRun*1000)), ts1)
         y2 = np.extract( ts1 <= (startTime+nRev*(tRun*1000)), y1)
-
-        # methode1 über durchschnitt
-        meanSensor = np.mean(y2)
-
-        # print "sampling data, mean sensor counts:", y2, meanSensor
-        print "mean sensor counts:", meanSensor
-
-        times = np.diff(ts2)
-        tMean = np.mean(times)
-        print "mean time between samples: %.2f ms" % tMean
-
-        # xxx ggf besser über die step-zeit gehen?
-        # meanSteps = stepsOneRev
-        meanSteps = (stepsPerSecond * tMean) / 1000.0
-
-        ratio1 = meanSensor / meanSteps
-        print "Methode1: mean steps, ratio:", meanSteps, ratio1
 
         # methode2 über summe:
         sumSensorCounts = np.sum(y2)
@@ -409,12 +267,17 @@ def calibrateFilSensor(args, parser):
 
         # Calibration value, targetSpeed/measuredSensorSpeed, this ist the value
         # to multiply the measured sensor speed to get the real speed:
-        print "Feedrate %.2f mm/s done, ratio1: %.4f, ratio2: %.4f" % (feedrate, ratio1, ratio2)
+        print "Feedrate %.2f mm/s done, ratio: %.4f" % (feedrate, ratio2)
 
         calValues.append((feedrate, ratio2))
         valueSum += ratio2
 
-        feedrate += feedrateStep
+        stepindex += 1
+        if stepindex == 4:
+            stepindex = 0
+            stepfactor *= 10.0
+
+        feedrate = steps[stepindex] * stepfactor
 
     # Decelerate feeder
     stepperValues.reverse()
