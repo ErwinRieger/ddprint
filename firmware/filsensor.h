@@ -25,7 +25,7 @@
 
 #pragma once
 
-#if defined(PMWFS)
+#if defined(PMWFS) || defined(BournsEMS22AFS)
     #define HASFILAMENTSENSOR
 #endif
 
@@ -142,6 +142,13 @@ class RunningAvgF {
     }
 };
 
+typedef struct {
+    unsigned long timeStamp;
+    int16_t       dy;
+} FilsensorReading;
+extern FilsensorReading filsensorReadings[];
+extern uint8_t filsensorReadingIndex;
+
 #if defined(PMWFS)
 
 #define VAR_FILSENSOR_GRIP (filamentSensor.grip)
@@ -210,7 +217,8 @@ class FilamentSensorPMW3360 {
         int32_t lastSensorCount;
 
         int16_t rest = 0;
-        int16_t lastecount = 0;
+        // int16_t lastecount = 0;
+        int16_t lastEncoderPos;
 
         uint8_t readLoc(uint8_t addr);
 
@@ -262,14 +270,75 @@ class FilamentSensorPMW3360 {
 
 extern FilamentSensorPMW3360 filamentSensor;
 
-typedef struct {
-    unsigned long timeStamp;
-    int16_t       dy;
-} FilsensorReading;
-extern FilsensorReading filsensorReadings[];
-extern uint8_t filsensorReadingIndex;
+#elif defined(BournsEMS22AFS)
 
-#else // #if defined(PMWFS)
+#define VAR_FILSENSOR_GRIP (filamentSensor.grip)
+
+/*
+ * Inteface to a PMW3360 'Mousesensor'
+ */
+class FilamentSensorEMS22 {
+
+        int32_t lastASteps;
+        int32_t lastSensorCount;
+
+        int16_t rest = 0;
+        // int16_t lastecount = 0;
+        int16_t lastEncoderPos = 0;
+
+        uint8_t readLoc(uint8_t addr);
+
+        void writeLoc(uint8_t addr, uint8_t value);
+        uint8_t pullbyte();
+        bool feedrateLimiterEnabled, started;
+
+        // Ratio between measured filament sensor counts and the 
+        // extruder stepper motor steps.
+        // For example if steps per mm of the extruder stepper is 141 and
+        // the resolution of the filament sensor is 5000 cpi, then:
+        // filSensorCalibration = 197 Counts / 141 Steps = 1.4
+        float filSensorCalibration;
+
+        uint16_t axis_steps_per_mm_e;
+        // Ignore filament moves smaller than MINSTEPPERSTEPS mm (35.25 for 141, 70.50 for 282 steps stepper).
+        float minStepperSteps;
+
+        uint16_t readEncoderPos();
+
+    public:
+
+        int16_t getDY();
+        int32_t sensorCount;
+
+        // Ratio of target e-steps and filament sensor steps, this is a 
+        // measure of the *feeder slippage*.
+        RunningAvgF slippageStep;
+        RunningAvgF slippageSens;
+
+        // Factor to slow down movement because feeder slippage is greater than 10%.
+        float grip;
+
+        FilamentSensorEMS22();
+        void init();
+        void reset();
+
+        // The polling method
+        void run();
+        void selfTest();
+
+        void enableFeedrateLimiter(bool flag) { feedrateLimiterEnabled = flag; }
+        void setFilSensorCalibration(float fc) { filSensorCalibration = fc; }
+        void setStepsPerMME(uint16_t steps) {
+            axis_steps_per_mm_e = steps;
+            minStepperSteps = (MINSTEPPERSTEPS * axis_steps_per_mm_e);
+        }
+
+        inline float slippage() { return (slippageStep.value() * filSensorCalibration) / slippageSens.value(); }
+};
+
+extern FilamentSensorEMS22 filamentSensor;
+
+#else // #if defined(BournsEMS22AFS)
     #define VAR_FILSENSOR_GRIP (1.0)
-#endif // #if defined(PMWFS)
+#endif
 
