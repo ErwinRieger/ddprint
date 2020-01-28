@@ -180,6 +180,14 @@ class PrinterProfile(ProfileBase):
         return cls.getValues()["feederWheelDiam"]
 
     @classmethod
+    def getFeederWheelCircum(cls):
+        return cls.getFeederWheelDiam() * math.pi
+
+    @classmethod
+    def getFilSensorCountsPerMM(cls):
+        return cls.getValues()["filSensorCountsPerMM"]
+
+    @classmethod
     def getSettings(cls):
         return {
             "filSensorCalibration": cls.getValues()["filSensorCalibration"],

@@ -1629,6 +1629,18 @@ def downloadDummyTempTable(printer):
 def getStartupTime(feedrate):
 
     eAccel = PrinterProfile.getMaxAxisAcceleration()[A_AXIS]
+
+    print feedrate, eAccel
+    # Zeit bis sich der messwert der target geschwindigkeit
+    # stabilisiert hat.
+    # 1. timer accel ramp
+    tAccel = feedrate / eAccel
+
+    return tAccel
+
+def old_getStartupTime(feedrate):
+
+    eAccel = PrinterProfile.getMaxAxisAcceleration()[A_AXIS]
     e_steps_per_mm = PrinterProfile.getStepsPerMM(A_AXIS)
 
     # Zeit bis sich der messwert der target geschwindigkeit

@@ -419,6 +419,8 @@ def main():
     sp = subparsers.add_parser("testFilSensor", help=u"Debug: move filament manually, output filament sensor measurement.")
     sp.add_argument("distance", action="store", help="Move-distance (+/-) in mm.", type=float)
 
+    sp = subparsers.add_parser("calibrateESteps", help=u"Debug: helper to determine the e-steps value.")
+
     sp = subparsers.add_parser("calibrateFilSensor", help=u"Debug: helper to determine the ratio of stepper to flowrate sensor.")
 
     args = argParser.parse_args()
@@ -710,6 +712,9 @@ def main():
 
     elif args.mode == 'testFilSensor':
         ddtest.testFilSensor(args, parser)
+
+    elif args.mode == 'calibrateESteps':
+        ddtest.calibrateESteps(args, parser)
 
     elif args.mode == 'calibrateFilSensor':
         ddtest.calibrateFilSensor(args, parser)

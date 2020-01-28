@@ -98,10 +98,11 @@ class CrossingAverage:
 
     def __init__(self, nLongPeriod):
 
+        self.started = False
         self.locked = None
 
         self.nLongPeriod = nLongPeriod
-        nShortPeriod = max(int(nLongPeriod / 8.0), 2)
+        nShortPeriod = max(int(round(nLongPeriod / 8.0)), 2)
 
         print "# of samples per round (long period):", nLongPeriod
         print "# of samples short period:", nShortPeriod
@@ -115,6 +116,10 @@ class CrossingAverage:
         self.lastMeanShort = 0
         self.lastTime = 0
 
+        # dict of all used timestamps to filter duplicates
+        # from printer.getFSReadings()
+        self.data = {}
+
     def longAvg(self):
         return self.avgLong.mean()
 
@@ -123,11 +128,23 @@ class CrossingAverage:
 
     def addValue(self, t, v):
 
+        if t in self.data:
+            return
+
+        self.data[t] = v
+
         self.avgLong.add(v)
         self.avgShort.add(v)
 
         meanShort = self.avgShort.mean()
         meanLong = self.avgLong.mean()
+
+        if not self.started and abs(meanShort) < 1.0:
+            # don't count zero startup values
+            # print "skip startup value:", t, v
+            return
+
+        self.started = True
 
         if (self.nValues+1) >= self.nLongPeriod and not self.locked:
 
@@ -140,7 +157,7 @@ class CrossingAverage:
             p2 = Namespace(x=self.lastTime, y=self.lastMeanLong)
             q2 = Namespace(x=t, y=meanLong)
             if doIntersect(p1, q1, p2, q2):
-                self.locked = (self.nValues+1, t, meanShort)
+                self.locked = (self.nValues+1, t, meanShort, meanLong)
 
         self.nValues += 1
         self.lastMeanLong = meanLong
@@ -165,7 +182,12 @@ if __name__ == "__main__":
         dtMean = np.mean(np.diff(np.array(map(lambda x: x[0], dataset)))) / 1000.0
         print "dt mean:", dtMean
 
-        nLongPeriod = int(tround / dtMean)
+        nLongPeriod = int(round(tround / dtMean))
+
+        # x = np.array(map(lambda x: x[1], dataset), dtype=int) # [:,0]
+        # median = np.median(x)
+        # while dataset[0][1] < median:
+            # del dataset[0]
 
         dataset = dataset[:2*nLongPeriod]
 
@@ -182,7 +204,12 @@ if __name__ == "__main__":
         dtMean = np.mean(np.diff(np.array(ts))) / 1000.0
         print "dt mean:", dtMean
 
-        nLongPeriod = int(tround / dtMean)
+        nLongPeriod = int(round(tround / dtMean))
+
+        # median = np.median(y)
+        # while y[0] < median:
+            # del ts[0]
+            # del y[0]
 
         ts = ts[:2*nLongPeriod]
         y = y[:2*nLongPeriod]
@@ -191,8 +218,6 @@ if __name__ == "__main__":
         x = np.array(y, dtype=int) 
 
     crossingAvg = CrossingAverage(nLongPeriod)
-
-    avg = np.mean(x)
 
     ba = np.empty(np.size(x), dtype=float)
     la = np.empty(np.size(x), dtype=float)
@@ -205,8 +230,12 @@ if __name__ == "__main__":
         la[i] = crossingAvg.longAvg()
 
     assert(crossingAvg.locked)
+
+    avg = crossingAvg.longAvg() 
     meanShort = crossingAvg.locked[2]
-    print "avg lock at t:", crossingAvg.locked[1], meanShort, avg, "%.1f%%" % (((meanShort/avg)-1.0)*100)
+    meanLong = crossingAvg.locked[3]
+    print "avg lock short at t:", crossingAvg.locked[1], meanShort, avg, "%.1f%%" % (((meanShort/avg)-1.0)*100)
+    print "avg lock long  at t:", crossingAvg.locked[1], meanLong, avg, "%.1f%%" % (((meanLong/avg)-1.0)*100)
 
     import matplotlib.pyplot as plt
 

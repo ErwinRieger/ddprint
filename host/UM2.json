@@ -25,14 +25,9 @@
       "steps_per_mm"  : 200,
       "jerk"          : 0.5
     },
-    "Aorig" : {
-      "max_feedrate"  : 45,
-      "steps_per_mm"  : 282,
-      "jerk"          : 5
-    },
     "A" : {
       "max_feedrate"  : 45,
-      "steps_per_mm"  : 141,
+      "steps_per_mm"  : 136,
       # "jerk"          : 5
       "jerk"          : 7.5
     },
@@ -43,7 +38,7 @@
     },
     "B" : {
       "max_feedrate"  : 45,
-      "steps_per_mm"  : 141,
+      "steps_per_mm"  : 136,
       "jerk"          : 7.5
     }
   },
@@ -59,6 +54,9 @@
   "RetractLength"  : 2.0,
   # Maximum acceleration of each axis X, Y, Z, A, B [mm/s²]
   "MaxAxisAcceleration": [9000, 9000, 100, 10000, 10000],
+  # Sensor counts per mm
+  # 1024/(3.17*math.pi)
+  "filSensorCountsPerMM": 102.823,
   # Filamentsensor calibration data. This is the ratio of
   # filamentsensor steps to e-stepper steps.
   "filSensorCalibration": 0.7432,
@@ -71,7 +69,7 @@
   # Diameter of feeder (knurled) wheel, take some 
   # filament compression into account.
   # UM2 knurled wheel diameter is about 8 mm.
-  feederWheelDiam = 7.8
+  "feederWheelDiam": 7.8
 }
 
 

@@ -28,7 +28,7 @@ import time, math, pprint
 
 import numpy as np
 
-import ddhome, ddprintutil as util
+import ddhome, movingavg, ddprintutil as util
 from ddprofile import PrinterProfile, MatProfile
 from ddprinter import Printer
 from ddprintcommands import *
@@ -57,12 +57,38 @@ def writePython(dFeederWheel, feedrate, x, y, fn):
         f.write("]\n")
     f.close()
 
+def compactReadings(readings):
+
+        x = []
+        y = []
+
+        timeStamps = readings.keys()
+        timeStamps.sort()
+        lastTs = timeStamps[0] - 100
+        for ts in timeStamps:
+
+            interval = ts - lastTs
+
+            assert(abs(ts - lastTs) < 110)
+
+            x.append(ts)
+            y.append(readings[ts])
+
+            lastTs = ts
+
+        return (x, y)
+
+def writeDataSet(dFeederWheel, feedrate, data, fn):
+
+    (x, y) = compactReadings(data)
+    writePython(dFeederWheel, feedrate, x, y, fn)
+
 def testFilSensor(args, parser):
 
     planner = parser.planner
     printer = planner.printer
 
-    feedrate = args.feedrate or 1
+    feedrate = args.feedrate or 1.0
 
     printer.commandInit(args, PrinterProfile.getSettings())
     startPos = printer.getFilSensor()
@@ -82,6 +108,104 @@ def testFilSensor(args, parser):
     print "Filament pos in counts old:", startPos, ", new:", endPos, "difference: %d counts" % diff
     print "Calibration value from profile: %f, measured ratio: %f" % (pcal, cal)
 
+#
+# Measure/calibrate feeder e-steps value
+# * run with disconnected bowden from head
+# * dial in constant speed (feedrate)
+# * wait for average-lock
+# * print out ratio of dialed in speed and measured speed
+#
+def calibrateESteps(args, parser):
+
+    planner = parser.planner
+    printer = planner.printer
+
+    feedrate = args.feedrate or 5.0
+
+    printer.commandInit(args, PrinterProfile.getSettings())
+
+    # Disable flowrate limit
+    printer.sendCommandParamV(CmdEnableFRLimit, [packedvalue.uint8_t(0)])
+
+    # Disable temp-flowrate limit
+    util.downloadDummyTempTable(printer)
+
+    # Set filament sensor calibration to 1
+    printer.sendCommandParamV(CmdSetFilSensorCal, [packedvalue.float_t(1.0)])
+
+    dt = 0.1
+    print "warning, hardcoded sampling interval of:", dt
+
+    # Time for on revolution
+    tRound = PrinterProfile.getFeederWheelCircum() / feedrate
+    tStartup = util.getStartupTime(feedrate)
+    print "tRound:", tRound, "tStartup:", tStartup
+
+    nAvgLong = int(round(tRound / dt))
+
+    print "running %.2f seconds with %.2f mm/s, # of samples for long average: %d" % (tRound, feedrate, nAvgLong)
+
+    # xxx jerk
+    printer.sendCommandParamV(CmdContinuousE, [packedvalue.uint16_t(maxTimerValue16)])
+
+    stepperVal = util.eTimerValue(planner, feedrate)
+    printer.sendCommandParamV(CmdSetContTimer, [packedvalue.uint16_t(stepperVal)])
+
+    time.sleep(tStartup)
+
+    t = time.time()
+    tEnd = t + 5 * tRound # bail out when average is locked
+    tWait = 0.75          # 2 readings overlap
+
+    crossAvg = movingavg.CrossingAverage(nAvgLong)
+
+    while t < tEnd:
+
+        fsreadings = printer.getFSReadings()
+
+        print "fsreadings:"
+        # pprint.pprint(fsreadings)
+
+        for (ts, dy) in fsreadings:
+
+            crossAvg.addValue(ts, dy)
+
+        if crossAvg.locked:
+            break
+
+        time.sleep(tWait)
+        t = time.time()
+
+
+    dFeederWheel = PrinterProfile.getFeederWheelDiam()
+    writeDataSet(dFeederWheel, feedrate, crossAvg.data, "calibrateESteps_dataset")
+
+    if crossAvg.locked:
+
+        meanShort = crossAvg.locked[2]
+        meanLong = crossAvg.locked[3]
+        avg = crossAvg.longAvg()
+        print "avg lock at t:", crossAvg.locked[1], meanLong, avg, "%.1f%%" % (((meanLong/avg)-1.0)*100)
+   
+        # should be speed:
+        s = (feedrate * PrinterProfile.getFilSensorCountsPerMM()) * dt
+
+        print "speed should be:", s
+
+        ratio = s/meanLong
+        esteps = PrinterProfile.getStepsPerMM(A_AXIS)
+        print "ratio commanded speed / measured speed: ", ratio
+        print "adjusted e-steps: %d (%d)" % (esteps * ratio, esteps)
+
+    else:
+        print "XXX avg did not lock..."
+
+    # xxx jerk
+    printer.sendCommandParamV(CmdContinuousE, [packedvalue.uint16_t(0)])
+
+    # Re-enable flowrate limit
+    printer.sendCommandParamV(CmdEnableFRLimit, [packedvalue.uint8_t(1)])
+
 
 #
 # Calibrate filament sensor, determine ratio between extruder steps and the value 
@@ -94,27 +218,6 @@ def calibrateFilSensor(args, parser):
         for tup in data:
             f.write("%f %f\n" % tup)
         f.write("E\n")
-
-    def compactReadings(readings):
-
-        x = []
-        y = []
-
-        timeStamps = readings.keys()
-        timeStamps.sort()
-        lastTs = timeStamps[0] - 100
-        for ts in timeStamps:
-
-            interval = ts - lastTs
-
-            assert(abs(ts - lastTs) < 110)
-
-            x.append(ts)
-            y.append(readings[ts])
-
-            lastTs = ts
-
-        return (np.array(x), np.array(y))
 
     planner = parser.planner
     printer = planner.printer
