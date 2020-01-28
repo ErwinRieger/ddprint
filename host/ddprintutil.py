@@ -134,7 +134,7 @@ def joinMoves(move1, move2, advInstance): # jerk, maxAccelV):
         # Check max reachable e endspeed
         maxAllowedEEndSpeed = vAccelPerDist(startSpeed1.eSpeed, move1.startAccel.eAccel(), move1.eDistance)
         if maxAllowedEEndSpeed < endSpeed1.eSpeed:
-            circaf(maxAllowedEEndSpeed, endSpeed1.eSpeed, 0.000000001)
+            assert(circaf(maxAllowedEEndSpeed, endSpeed1.eSpeed, 0.000000001))
 
         joinMoves2(move1, move2, advInstance)
 

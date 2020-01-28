@@ -40,10 +40,13 @@ from ddprintconstants import A_AXIS, maxTimerValue16
 
 # write measured sensor data to python file. xxx use json here...
 #
-def writePython(x, y, filename):
+def writePython(dFeederWheel, feedrate, x, y, fn):
 
+    filename = fn + ".%.2f.py" % feedrate
     print "writing", filename
     with open(filename, "w") as f:
+        f.write("dFeederWheel = %f\n" % dFeederWheel)
+        f.write("feedrate = %f\n" % feedrate)
         f.write("ts=[\n")
         for ts in x:
             f.write("  %d,\n" % ts)
@@ -154,8 +157,8 @@ def calibrateFilSensor(args, parser):
     calValues = []
     valueSum = 0
 
-    # xxx feeder wheel diameter hardcoded, add printer profile entry
-    oneRev = math.pi * 10.2 # [mm]
+    dFeederWheel = PrinterProfile.getFeederWheelDiam()
+    oneRev = math.pi * dFeederWheel # [mm]
 
     steps_per_mm = PrinterProfile.getStepsPerMM(A_AXIS)
     # stepsOneRev = oneRev * steps_per_mm
@@ -218,7 +221,7 @@ def calibrateFilSensor(args, parser):
 
         (x, y) = compactReadings(readings)
 
-        writePython(x, y, "calibrationData.%.2f.py" % feedrate)
+        writePython(dFeederWheel, feedrate, x, y, "calibrationData")
 
 
         #######################################################################
@@ -346,11 +349,9 @@ def testFeederUniformity(args, parser):
     planner = parser.planner
     printer = planner.printer
 
-    # durchmesser rolle feeder: ca. 11mm
-    droll = 11
-
     # umfang
-    circ = droll * math.pi
+    dFeederWheel = PrinterProfile.getFeederWheelDiam()
+    circ = dFeederWheel * math.pi
 
     nRound = 2
     nRound = 12
@@ -436,6 +437,8 @@ def testFeederUniformity(args, parser):
 
     print "writing testFeederUniformity_dataset.py:"
     with open("testFeederUniformity_dataset.py", "w") as f:
+        f.write("dFeederWheel = %f\n" % dFeederWheel)
+        f.write("feedrate = %f\n" % feedrate)
         f.write("dataset=[\n")
         for tup in measurements:
             f.write("  (%d, %d),\n" % tup)
@@ -454,7 +457,7 @@ stats "-" using 2 name "stats"
 plot '-' using 1:2 with linespoints title 'sensor counts', \\
      "-" using 1:2 with linespoints smooth bezier lt rgb "red" lw 3 title "sensor counts smooth", \\
      stats_median, stats_lo_quartile lt rgb "brown", stats_up_quartile lt rgb "brown", \\
-     (stats_up_quartile - stats_lo_quartile)*100/stats_median title "error %"
+     (stats_up_quartile - stats_lo_quartile)*50/stats_median title "error %"
 """)
 
     writeData(f, measurements)

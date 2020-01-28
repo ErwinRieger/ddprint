@@ -1,0 +1,235 @@
+
+import sys, math
+import numpy as np
+from argparse import Namespace
+
+
+EPSILON = 0.000001
+
+#########################################################################################
+
+class MovingAvg:
+
+    def __init__(self, navg, startavg=0.0):
+        self.index = 0
+        self.navg = navg
+        self.array = np.array([startavg] * navg)
+
+    def add(self, v):
+        self.array[self.index] = v
+        self.index += 1
+        if self.index == self.navg:
+            self.index = 0
+
+    def mean(self):
+        return np.mean(self.array)
+
+    def preload(self, steps):
+        self.array = [float(steps)] * self.navg
+
+
+#########################################################################################
+
+# https://stackoverflow.com/questions/563198/how-do-you-detect-where-two-line-segments-intersect
+
+# Given three colinear points p, q, r, the function checks if
+# point q lies on line segment 'pr'
+def onSegment(p, q, r):
+
+    if q.x <= max(p.x, r.x) and q.x >= min(p.x, r.x) and q.y <= max(p.y, r.y) and q.y >= min(p.y, r.y):
+       return True
+
+    return False
+
+# To find orientation of ordered triplet (p, q, r).
+# The function returns following values
+# 0 --> p, q and r are colinear
+# 1 --> Clockwise
+# 2 --> Counterclockwise
+def orientation(p, q, r):
+
+    # See 10th slides from following link for derivation of the formula
+    # http://www.dcs.gla.ac.uk/~pat/52233/slides/Geometry1x1.pdf
+    val = (q.y - p.y) * (r.x - q.x) - (q.x - p.x) * (r.y - q.y)
+
+    # if (val == 0) return 0  // colinear
+    if abs(val) < EPSILON:
+        return 0  # colinear
+
+    # return (val > 0)? 1: 2 // clock or counterclock wise
+    if val > 0:
+        return 1
+    return 2
+
+# The main function that returns true if line segment 'p1q1'
+# and 'p2q2' intersect.
+def doIntersect(p1, q1, p2, q2):
+
+    # Find the four orientations needed for general and
+    # special cases
+    o1 = orientation(p1, q1, p2)
+    o2 = orientation(p1, q1, q2)
+    o3 = orientation(p2, q2, p1)
+    o4 = orientation(p2, q2, q1)
+
+    # General case
+    if o1 != o2 and o3 != o4:
+        return True
+
+    # Special Cases
+    # p1, q1 and p2 are colinear and p2 lies on segment p1q1
+    if o1 == 0 and onSegment(p1, p2, q1): return True
+
+    # p1, q1 and p2 are colinear and q2 lies on segment p1q1
+    if o2 == 0 and onSegment(p1, q2, q1): return True
+
+    # p2, q2 and p1 are colinear and p1 lies on segment p2q2
+    if o3 == 0 and onSegment(p2, p1, q2): return True
+
+    # p2, q2 and q1 are colinear and q1 lies on segment p2q2
+    if o4 == 0 and onSegment(p2, q1, q2): return True
+
+    return False # Doesn't fall in any of the above cases
+
+#########################################################################################
+# https://dsp.stackexchange.com/questions/4886/zero-crossing-of-a-noisy-sine-wave
+
+class CrossingAverage:
+
+    def __init__(self, nLongPeriod):
+
+        self.locked = None
+
+        self.nLongPeriod = nLongPeriod
+        nShortPeriod = max(int(nLongPeriod / 8.0), 2)
+
+        print "# of samples per round (long period):", nLongPeriod
+        print "# of samples short period:", nShortPeriod
+
+        self.avgLong = MovingAvg(nLongPeriod)
+        self.avgShort = MovingAvg(nShortPeriod)
+
+        self.nValues = 0
+
+        self.lastMeanLong = 0
+        self.lastMeanShort = 0
+        self.lastTime = 0
+
+    def longAvg(self):
+        return self.avgLong.mean()
+
+    def shortAvg(self):
+        return self.avgShort.mean()
+
+    def addValue(self, t, v):
+
+        self.avgLong.add(v)
+        self.avgShort.add(v)
+
+        meanShort = self.avgShort.mean()
+        meanLong = self.avgLong.mean()
+
+        if (self.nValues+1) >= self.nLongPeriod and not self.locked:
+
+            # if abs(meanLong - meanShort) < EPSILON:
+                # self.locked = (self.nValues, t, meanShort)
+                # return
+
+            p1 = Namespace(x=self.lastTime, y=self.lastMeanShort)
+            q1 = Namespace(x=t, y=meanShort)
+            p2 = Namespace(x=self.lastTime, y=self.lastMeanLong)
+            q2 = Namespace(x=t, y=meanLong)
+            if doIntersect(p1, q1, p2, q2):
+                self.locked = (self.nValues+1, t, meanShort)
+
+        self.nValues += 1
+        self.lastMeanLong = meanLong
+        self.lastMeanShort = meanShort
+        self.lastTime = t
+
+
+#########################################################################################
+
+
+if __name__ == "__main__":
+
+    f = open(sys.argv[1])
+    exec(f.read())
+
+    if "dataset" in locals():
+
+        tround = (dFeederWheel*math.pi) / feedrate
+        print "time for one rev:", tround
+
+        # Average sample interval
+        dtMean = np.mean(np.diff(np.array(map(lambda x: x[0], dataset)))) / 1000.0
+        print "dt mean:", dtMean
+
+        nLongPeriod = int(tround / dtMean)
+
+        dataset = dataset[:2*nLongPeriod]
+
+        t = np.array(map(lambda x: x[0], dataset), dtype=int) # [:,0]
+        x = np.array(map(lambda x: x[1], dataset), dtype=int) # [:,0]
+
+    else:
+        # use *ts* and *y* data
+
+        tround = (dFeederWheel*math.pi) / feedrate
+        print "time for one rev:", tround
+
+        # Average sample interval
+        dtMean = np.mean(np.diff(np.array(ts))) / 1000.0
+        print "dt mean:", dtMean
+
+        nLongPeriod = int(tround / dtMean)
+
+        ts = ts[:2*nLongPeriod]
+        y = y[:2*nLongPeriod]
+
+        t = np.array(ts, dtype=int)
+        x = np.array(y, dtype=int) 
+
+    crossingAvg = CrossingAverage(nLongPeriod)
+
+    avg = np.mean(x)
+
+    ba = np.empty(np.size(x), dtype=float)
+    la = np.empty(np.size(x), dtype=float)
+
+    for i in range(np.size(x)):
+
+        crossingAvg.addValue(t[i], x[i])
+
+        ba[i] = crossingAvg.shortAvg()
+        la[i] = crossingAvg.longAvg()
+
+    assert(crossingAvg.locked)
+    meanShort = crossingAvg.locked[2]
+    print "avg lock at t:", crossingAvg.locked[1], meanShort, avg, "%.1f%%" % (((meanShort/avg)-1.0)*100)
+
+    import matplotlib.pyplot as plt
+
+    plot1 = plt.subplot(3,1,1)
+    plt.title(sys.argv[1])
+    plt.xlabel('t [ms]')
+    plt.ylabel('raw data vs long avg [counts]')
+    plt.grid()
+    plt.axvline(x=crossingAvg.locked[1], color='r', linestyle='-')
+    plt.plot(t, la)
+    plt.plot(t, ba)
+    plt.plot(t, x)
+    plt.ylim(0)
+
+
+    plt.subplot(2,1,2, sharex=plot1)
+    plt.xlabel('t [ms]')
+    plt.ylabel('short avg vs long avg [counts]')
+    plt.grid()
+    plt.axhline(y=avg, color='r', linestyle='-')
+    plt.axvline(x=crossingAvg.locked[1], color='r', linestyle='-')
+    plt.plot(t, la)
+    plt.plot(t, ba)
+
+    plt.show()
+

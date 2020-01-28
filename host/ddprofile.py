@@ -176,6 +176,10 @@ class PrinterProfile(ProfileBase):
         return cls.getValues()["add_homeing_z"]
 
     @classmethod
+    def getFeederWheelDiam(cls):
+        return cls.getValues()["feederWheelDiam"]
+
+    @classmethod
     def getSettings(cls):
         return {
             "filSensorCalibration": cls.getValues()["filSensorCalibration"],
@@ -227,7 +231,7 @@ class TempCurve:
         if flowrate >= self.maxFlowrate:
             return self.maxTemp
 
-        print "flowrate not found:", flowrate, key
+        # print "flowrate not found:", flowrate, key
 
         # Linear interpolation
         for i in range(len(self.curveList)-1):
@@ -236,18 +240,16 @@ class TempCurve:
             temp2, fr2 = self.curveList[i+1]
 
             if flowrate >= fr1 and flowrate < fr2 :
-                # print "found range:", k1, key, k2
-                print "found range:", fr1, flowrate, fr2
+                # print "found range:", fr1, flowrate, fr2
 
                 dx = fr2 - fr1
                 dy = temp2 - temp1
 
                 t = temp1 + (dy / dx) * (flowrate - fr1)
 
-                print "interpolated temp: ", t
+                # print "interpolated temp: ", t
                 self.tempCurveDict[key] = t
                 return t
-
 
         assert(0)
 

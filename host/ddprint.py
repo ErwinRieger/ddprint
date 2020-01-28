@@ -626,13 +626,8 @@ def main():
     elif args.mode == 'getFilSensor':
 
         printer.commandInit(args, PrinterProfile.getSettings())
-        # TODO: hardcoded CPI
-        print "hack: Using fixed CPI value of 12000"
         counts = printer.getFilSensor()
-        res = 12000.0 / 25.4
-        print "filament sensor resolution is %.2f / mm" % res
-        mm = counts / res
-        print "Filament pos:", printer.getFilSensor(), " in mm: %.2f" % mm
+        print "Filament pos:", counts
 
     elif args.mode == 'getFreeMem':
 

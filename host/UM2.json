@@ -61,13 +61,17 @@
   "MaxAxisAcceleration": [9000, 9000, 100, 10000, 10000],
   # Filamentsensor calibration data. This is the ratio of
   # filamentsensor steps to e-stepper steps.
-  "filSensorCalibration": 3.124,
+  "filSensorCalibration": 0.7432,
   # Hotend PID values
   "Kp": 3,
   "Ki": 0.1,
   "Kd": 12.5,
   # Bedleveling Z value
-  "add_homeing_z": -16.35
+  "add_homeing_z": -16.35,
+  # Diameter of feeder (knurled) wheel, take some 
+  # filament compression into account.
+  # UM2 knurled wheel diameter is about 8 mm.
+  feederWheelDiam = 7.8
 }
 
 

@@ -375,9 +375,7 @@ class Advance (object):
                 if debugPlot and debugPlotLevel == "plotLevelPlanned":
                     self.plotPlannedPath(path)
 
-                # print "hi"
-
-            # aufteilung in segmente, die advance benutzen und die 
+            # Aufteilung in segmente, die advance benutzen und die ohne
             currentHasAdvance = path[0].hasAdvance()
             currentPath = []
 
@@ -393,15 +391,8 @@ class Advance (object):
 
                 currentPath.append(move)
 
-
-            if currentPath:
-                
-                if currentHasAdvance:
-                    processAdvancedMoves(currentPath)
-                else:
-                    print "skipping %d non-advance moves..." % (len(currentPath))
-                    # assert(0)
-
+            if currentPath and currentHasAdvance:
+                processAdvancedMoves(currentPath)
 
             """
             xxx path
