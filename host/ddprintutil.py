@@ -1630,7 +1630,6 @@ def getStartupTime(feedrate):
 
     eAccel = PrinterProfile.getMaxAxisAcceleration()[A_AXIS]
 
-    print feedrate, eAccel
     # Zeit bis sich der messwert der target geschwindigkeit
     # stabilisiert hat.
     # 1. timer accel ramp

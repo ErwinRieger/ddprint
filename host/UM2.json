@@ -57,6 +57,8 @@
   # Sensor counts per mm
   # 1024/(3.17*math.pi)
   "filSensorCountsPerMM": 102.823,
+  # Sensor reading interval [s]
+  "filSensorInterval": 0.1,
   # Filamentsensor calibration data. This is the ratio of
   # filamentsensor steps to e-stepper steps.
   "filSensorCalibration": 0.7432,

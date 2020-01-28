@@ -562,10 +562,10 @@ class Printer(Serial):
     # Query info from printer, use this to receive returned data, use [sendCommand, sendCommandParamV] for 
     # 'write only' commands.
     # Note: Commands must be 'restartable' without sideeffects (see commandResend(), ResendWasOK)
-    def query(self, cmd, binPayload=None, doLog=True):
+    def query(self, cmd, binPayload=None, notused_doLog=True):
 
-        if doLog:
-            self.gui.logSend("query: ", CommandNames[cmd])
+        # if doLog:
+            # self.gui.logSend("query: ", CommandNames[cmd])
 
         cobsBlock = binPayload and cobs.encodeCobsString(binPayload)
         binary = self.buildBinaryCommand(cmd, cobsBlock)

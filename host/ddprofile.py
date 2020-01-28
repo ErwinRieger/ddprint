@@ -188,6 +188,10 @@ class PrinterProfile(ProfileBase):
         return cls.getValues()["filSensorCountsPerMM"]
 
     @classmethod
+    def getFilSensorInterval(cls):
+        return cls.getValues()["filSensorInterval"]
+
+    @classmethod
     def getSettings(cls):
         return {
             "filSensorCalibration": cls.getValues()["filSensorCalibration"],

@@ -24,7 +24,7 @@
 # Some seldom used functions, needed only if the hardware of the printer is modified.
 #
 
-import time, math, pprint
+import time, math, pprint, sys
 
 import numpy as np
 
@@ -133,8 +133,7 @@ def calibrateESteps(args, parser):
     # Set filament sensor calibration to 1
     printer.sendCommandParamV(CmdSetFilSensorCal, [packedvalue.float_t(1.0)])
 
-    dt = 0.1
-    print "warning, hardcoded sampling interval of:", dt
+    dt = PrinterProfile.getFilSensorInterval()
 
     # Time for on revolution
     tRound = PrinterProfile.getFeederWheelCircum() / feedrate
@@ -163,12 +162,15 @@ def calibrateESteps(args, parser):
 
         fsreadings = printer.getFSReadings()
 
-        print "fsreadings:"
+        # print "fsreadings:"
         # pprint.pprint(fsreadings)
 
         for (ts, dy) in fsreadings:
 
             crossAvg.addValue(ts, dy)
+
+        print "\ravg short term: %.2f, long term: %.2f" % (crossAvg.shortAvg(), crossAvg.longAvg()),
+        sys.stdout.flush()
 
         if crossAvg.locked:
             break
@@ -176,6 +178,7 @@ def calibrateESteps(args, parser):
         time.sleep(tWait)
         t = time.time()
 
+    print ""
 
     dFeederWheel = PrinterProfile.getFeederWheelDiam()
     writeDataSet(dFeederWheel, feedrate, crossAvg.data, "calibrateESteps_dataset")
