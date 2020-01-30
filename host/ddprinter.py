@@ -372,30 +372,6 @@ class Printer(Serial):
         payload = cobs.decodeCobs(payload)
         return (cmd, payload)
 
-    # Monitor printer responses for a while (wait waitcount * 0.1 seconds)
-    def readMore(self, waitcount=100):
-
-        print "xxx note: skipping readMore()..."
-        return
-
-        self.gui.log("waiting %.2f seconds for more messages..." % (waitcount/20.0))
-
-        for i in range(waitcount):
-
-            try:
-                recvLine = self.safeReadline()        
-            except SERIALDISCON:
-                self.gui.logError("Line disconnected in readMore(), reconnecting!")
-                self.reconnect()
-                time.sleep(0.1)
-                continue
-
-            if recvLine and debugComm:
-                if ord(recvLine[0]) > 20:
-                    self.gui.logRecv("Reply: ", recvLine,)
-                else:
-                    self.gui.logRecv("Reply: 0x%s" % recvLine.encode("hex"))
-
     def initSerial(self, device, br, bootloaderWait=False):
 
         if self.isOpen():
@@ -562,7 +538,7 @@ class Printer(Serial):
     # Query info from printer, use this to receive returned data, use [sendCommand, sendCommandParamV] for 
     # 'write only' commands.
     # Note: Commands must be 'restartable' without sideeffects (see commandResend(), ResendWasOK)
-    def query(self, cmd, binPayload=None, notused_doLog=True):
+    def query(self, cmd, binPayload=None, doLog="notused-variable"):
 
         # if doLog:
             # self.gui.logSend("query: ", CommandNames[cmd])
@@ -675,7 +651,6 @@ class Printer(Serial):
                 return (cmd, payload)
 
             print "unknown reply: 0x%x" % cmd, payload
-            self.readMore(10);
             assert(0)
 
         # Notreached

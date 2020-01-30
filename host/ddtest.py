@@ -1,4 +1,3 @@
-#!/usr/bin/python
 # -*- coding: utf-8 -*-
 #
 #/*
@@ -21,7 +20,7 @@
 #*/
 
 #
-# Some seldom used functions, needed only if the hardware of the printer is modified.
+# Some functions to test and calibrate the printer.
 #
 
 import time, math, pprint, sys
@@ -37,8 +36,8 @@ from ddprintconstants import A_AXIS, maxTimerValue16
 
 
 
-
-# write measured sensor data to python file. xxx use json here...
+#
+# Write measured sensor data to python file. xxx use json here...
 #
 def writePython(dFeederWheel, feedrate, x, y, fn):
 
@@ -83,6 +82,14 @@ def writeDataSet(dFeederWheel, feedrate, data, fn):
     (x, y) = compactReadings(data)
     writePython(dFeederWheel, feedrate, x, y, fn)
 
+# Write data for gnuplot
+def writeData(f, measurements):
+
+    for (t, s) in measurements:
+        f.write("%f %f\n" % (t, s))
+    f.write("E\n")
+
+
 def testFilSensor(args, parser):
 
     planner = parser.planner
@@ -121,6 +128,7 @@ def calibrateESteps(args, parser):
     printer = planner.printer
 
     feedrate = args.feedrate or 5.0
+    feedrate = min(feedrate, PrinterProfile.getValues()['axes']["A"]['jerk'])
 
     printer.commandInit(args, PrinterProfile.getSettings())
 
@@ -135,7 +143,7 @@ def calibrateESteps(args, parser):
 
     dt = PrinterProfile.getFilSensorInterval()
 
-    # Time for on revolution
+    # Time for one revolution
     tRound = PrinterProfile.getFeederWheelCircum() / feedrate
     tStartup = util.getStartupTime(feedrate)
     print "tRound:", tRound, "tStartup:", tStartup
@@ -144,7 +152,6 @@ def calibrateESteps(args, parser):
 
     print "running %.2f seconds with %.2f mm/s, # of samples for long average: %d" % (tRound, feedrate, nAvgLong)
 
-    # xxx jerk
     printer.sendCommandParamV(CmdContinuousE, [packedvalue.uint16_t(maxTimerValue16)])
 
     stepperVal = util.eTimerValue(planner, feedrate)
@@ -153,7 +160,7 @@ def calibrateESteps(args, parser):
     time.sleep(tStartup)
 
     t = time.time()
-    tEnd = t + 5 * tRound # bail out when average is locked
+    tEnd = t + 5 * tRound # max running time, bail out when average is locked
     tWait = 0.75          # 2 readings overlap
 
     crossAvg = movingavg.CrossingAverage(nAvgLong)
@@ -161,12 +168,7 @@ def calibrateESteps(args, parser):
     while t < tEnd:
 
         fsreadings = printer.getFSReadings()
-
-        # print "fsreadings:"
-        # pprint.pprint(fsreadings)
-
         for (ts, dy) in fsreadings:
-
             crossAvg.addValue(ts, dy)
 
         print "\ravg short term: %.2f, long term: %.2f" % (crossAvg.shortAvg(), crossAvg.longAvg()),
@@ -201,9 +203,9 @@ def calibrateESteps(args, parser):
         print "adjusted e-steps: %d (%d)" % (esteps * ratio, esteps)
 
     else:
-        print "XXX avg did not lock..."
+        print "Error avg did not lock..."
 
-    # xxx jerk
+    printer.sendCommandParamV(CmdContinuousE, [packedvalue.uint16_t(maxTimerValue16)])
     printer.sendCommandParamV(CmdContinuousE, [packedvalue.uint16_t(0)])
 
     # Re-enable flowrate limit
@@ -214,13 +216,10 @@ def calibrateESteps(args, parser):
 # Calibrate filament sensor, determine ratio between extruder steps and the value 
 # measured by the flowrate sensor.
 #
+# * run the feeder with different feedrates
+# * build average stepper-to-flowsensor ratio
+#
 def calibrateFilSensor(args, parser):
-
-    def writeDataSet(f, data):
-
-        for tup in data:
-            f.write("%f %f\n" % tup)
-        f.write("E\n")
 
     planner = parser.planner
     printer = planner.printer
@@ -236,8 +235,6 @@ def calibrateFilSensor(args, parser):
 
     printer.commandInit(args, PrinterProfile.getSettings())
 
-    # ddhome.home(parser, args.fakeendstop)
-
     # Disable flowrate limit
     printer.sendCommandParamV(CmdEnableFRLimit, [packedvalue.uint8_t(0)])
 
@@ -247,18 +244,9 @@ def calibrateFilSensor(args, parser):
     # Set filament sensor calibration to 1
     printer.sendCommandParamV(CmdSetFilSensorCal, [packedvalue.float_t(1.0)])
 
-    # Feedrate step
+    # xxx check jerk
+    print "todo: jerk"
     eJerk = PrinterProfile.getValues()['axes']["A"]['jerk']
-    # feedrateStep = 0.25
-    # feedrateStep = 0.5 # debug
-    # assert(feedrateStep <= eJerk)
-
-    # Start feedrate
-    # feedrate = 2 # debug
-    # feedrate = 3 # debug
-
-    calFile = open("calibrateFilSensor.json", "w")
-    calFile.write('{\n    "filSensorCalibration": [\n')
 
     calValues = []
     valueSum = 0
@@ -278,108 +266,83 @@ def calibrateFilSensor(args, parser):
     steps = [0.25, 0.5, 0.75, 1.0]
     stepindex = 0
     stepfactor = 1.0
-    feedrate = steps[0] 
+
+    # xxx debug feedrate = 2.5
+    # stepfactor = 10.0
+
+    # Start feedrate
+    feedrate = steps[0] * stepfactor
+
+    dt = PrinterProfile.getFilSensorInterval()
+    dFeederWheel = PrinterProfile.getFeederWheelDiam()
 
     while feedrate <= maxFeedrate:
+
+        # Time for one revolution
+        tRound = PrinterProfile.getFeederWheelCircum() / feedrate
+        tStartup = util.getStartupTime(feedrate)
+        print "tRound:", tRound, "tStartup:", tStartup
+
+        nAvgLong = int(round(tRound / dt))
+
+        print "running %.2f seconds with %.2f mm/s, # of samples for long average: %d" % (tRound, feedrate, nAvgLong)
 
         # set new feedrate:
         stepperVal = util.eTimerValue(planner, feedrate)
         printer.sendCommandParamV(CmdSetContTimer, [packedvalue.uint16_t(stepperVal)])
         stepperValues.append(stepperVal)
 
-        time.sleep(1)
+        time.sleep(tStartup)
 
-        # Time for one rev
-        tRun = oneRev / feedrate
-        endTime = time.time() + 10 * tRun
-        endTime = time.time() + 5 * tRun # debug
-        # endTime = time.time() + 2 * tRun # debug
-        data = []
+        t = time.time()
+        tEnd = t + 5 * tRound # max running time, bail out when average is locked
+        tWait = 0.75          # 2 readings overlap
 
-        stepsPerSecond = feedrate * steps_per_mm 
+        crossAvg = movingavg.CrossingAverage(nAvgLong)
 
-        print "measure feedrate %.2f for %.2f seconds" % (feedrate, 5*tRun)
+        # print "measure feedrate %.2f for %.2f seconds" % (feedrate, 5*tRun)
 
-        readings = {}
+        # readings = {}
         # measurements = []
 
-        while time.time() < endTime:
+        while t < tEnd:
 
-            # status = printer.getStatus()
-            # data.append(status["slippage"])
             fsreadings = printer.getFSReadings()
 
-            # print "fsreadings:"
-            # pprint.pprint(fsreadings)
-
-            allZero = True
             for (ts, dy) in fsreadings:
 
-                readings[ts] = dy
+                crossAvg.addValue(ts, dy)
 
-                if dy:
-                    allZero = False
+            print "\ravg short term: %.2f, long term: %.2f" % (crossAvg.shortAvg(), crossAvg.longAvg()),
+            sys.stdout.flush()
 
-            if allZero:
+            if crossAvg.locked:
                 break
 
-            time.sleep(0.75)
+            time.sleep(tWait)
+            t = time.time()
 
-        (x, y) = compactReadings(readings)
+        print ""
 
-        writePython(dFeederWheel, feedrate, x, y, "calibrationData")
+        writeDataSet(dFeederWheel, feedrate, crossAvg.data, "calibrationData")
 
+        if not crossAvg.locked:
+            print "Error avg did not lock..."
+            break
 
-        #######################################################################
+        meanShort = crossAvg.locked[2]
+        meanLong = crossAvg.locked[3]
+        avg = crossAvg.longAvg()
+        print "avg lock at t:", crossAvg.locked[1], meanLong, avg, "%.1f%%" % (((meanLong/avg)-1.0)*100)
+   
+        # should be speed:
+        stepsPerInterval = feedrate * steps_per_mm * dt
 
-        median = np.median(y)
+        ratio = stepsPerInterval/meanLong
+        print "speed should be:", stepsPerInterval, "ratio:", ratio
 
-        mask = [True] * np.size(y)
-
-        # Trim data, front 
-        i = 0
-        while y[i] < median:
-            mask[i] = False
-            i += 1
-
-        # Trim data, back 
-        i = -1
-        while y[i] < median:
-            mask[i] = False
-            i -= 1
-
-        x = np.extract(mask, x)
-        y = np.extract(mask, y)
-
-        startTime = x[0] + (tRun*0.25*1000)
-        nRev = (x[-1] - startTime) / (tRun*1000)
-
-        print "sampling %d revolutions" % nRev
-        ts1 = np.extract( x >= startTime, x)
-        y1 = np.extract( x >= startTime, y)
-
-        ts2 = np.extract( ts1 <= (startTime+nRev*(tRun*1000)), ts1)
-        y2 = np.extract( ts1 <= (startTime+nRev*(tRun*1000)), y1)
-
-        # methode2 über summe:
-        sumSensorCounts = np.sum(y2)
-        sumSteps = (stepsPerSecond * (ts2[-1] - ts2[0])) / 1000.0
-
-        ratio2 = sumSensorCounts/sumSteps
-
-        print "Methode2, counts:", sumSensorCounts, "steps:", sumSteps, "ratio: ", ratio2
-
-        #######################################################################
-
-        # Average of ratio for this speed
-        # grip = sum(data) / len(data)
-
-        # Calibration value, targetSpeed/measuredSensorSpeed, this ist the value
-        # to multiply the measured sensor speed to get the real speed:
-        print "Feedrate %.2f mm/s done, ratio: %.4f" % (feedrate, ratio2)
-
-        calValues.append((feedrate, ratio2))
-        valueSum += ratio2
+        calValues.append((feedrate, ratio))
+        valueSum += ratio
 
         stepindex += 1
         if stepindex == 4:
@@ -408,9 +371,12 @@ plot '-' using 1:2 with linespoints title 'ratio', \\
      %.4f title 'avg'
 """ % (yrange, yrange+0.1, avg))
 
-    writeDataSet(f, calValues)
+    writeData(f, calValues)
+
     f.write("pause mouse close\n")
 
+    calFile = open("calibrateFilSensor.json", "w")
+    calFile.write('{\n    "filSensorCalibration": [\n')
     calFile.write(",\n".join(map(lambda tup: "        [%f, %f]" % tup, calValues)))
     calFile.write("\n    ]\n")
     calFile.write("}\n")
@@ -418,21 +384,8 @@ plot '-' using 1:2 with linespoints title 'ratio', \\
 
     print "Done, average ratio/calibration value: ", avg
 
-    # XXX does not work, continuous mode does not update planner pos...
-    # # Rewind
-    # print "Rewinding..."
-    # printer.sendPrinterInit()
-    # parser.execute_line("G0 F%d %s%f" % (maxFeedrate*60, util.dimNames[A_AXIS], startPos))
-    # planner.finishMoves()
-    # printer.sendCommand(CmdEOT)
-    # printer.sendCommandParamV(CmdMove, [MoveTypeNormal])
-    # printer.waitForState(StateIdle)
-
-    # Enable flowrate limit
+    # Re-enable flowrate limit
     printer.sendCommandParamV(CmdEnableFRLimit, [packedvalue.uint8_t(1)])
-
-
-
 
 
 
@@ -444,13 +397,6 @@ plot '-' using 1:2 with linespoints title 'ratio', \\
 # XXX Assumes 100ms filament sensor measurement interval
 #
 def testFeederUniformity(args, parser):
-
-    def writeData(f, measurements):
-
-        for (t, s) in measurements:
-            f.write("%f %f\n" % (t, s))
-        f.write("E\n")
-
 
     planner = parser.planner
     printer = planner.printer

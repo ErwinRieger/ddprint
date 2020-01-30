@@ -345,8 +345,6 @@ def main():
 
     sp = subparsers.add_parser("changenozzle", help=u"Heat hotend and change nozzle.")
 
-    sp = subparsers.add_parser("mon", help=u"Monitor serial printer interface (asci).")
-
     sp = subparsers.add_parser("print", help=u"Download and print file at once.")
     sp.add_argument("gfile", help="Input GCode file.")
 
@@ -549,8 +547,6 @@ def main():
             printer.coolDown(HeaterEx1, wait=150)
             printer.coolDown(HeaterBed, wait=55)
 
-        printer.readMore()
-
         # Exit simulator for profiling
         # printer.sendCommand(CmdExit)
 
@@ -569,10 +565,6 @@ def main():
         print "Parsed %d gcode lines." % lineNr
 
         planner.finishMoves()
-
-    elif args.mode == "mon":
-        while True:
-            printer.readMore()
 
     elif args.mode == 'disableSteppers':
 
