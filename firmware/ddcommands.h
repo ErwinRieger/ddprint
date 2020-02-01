@@ -113,6 +113,7 @@
 #define CmdSetIncTemp           174 // Adjust temperature niveau 
 #define CmdGetFreeMem           175 // Get number of free memory bytes [uint16]
 #define CmdGetFSReadings        176 // Get last n filsensor readings 
+#define CmdSetTempPWM           177 // Set PWM value of hotend heater (for filament profile measurement)
 
 //
 // Response types 

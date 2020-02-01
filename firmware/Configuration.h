@@ -103,21 +103,15 @@
 //#define HEATER_BED_DUTY_CYCLE_DIVIDER 4
 
 // PID settings:
-// Comment the following line to disable PID and enable bang-bang.
-#define PIDTEMP
+#define PID_MAX 255 // limits current to nozzle while PID is active (see PID_FUNCTIONAL_RANGE below); 255=full current
+//#define PID_OPENLOOP 1 // Puts PID in open loop. M104/M140 sets the output power from 0 to PID_MAX
+// #define PID_FUNCTIONAL_RANGE 1000 // If the temperature difference between the target temperature and the actual temperature
+//                                // is more then PID_FUNCTIONAL_RANGE then the PID will be shut off and the heater will be set to min/max.
 
-#ifdef PIDTEMP
-
-    #define PID_MAX 255 // limits current to nozzle while PID is active (see PID_FUNCTIONAL_RANGE below); 255=full current
-    //#define PID_OPENLOOP 1 // Puts PID in open loop. M104/M140 sets the output power from 0 to PID_MAX
-    // #define PID_FUNCTIONAL_RANGE 1000 // If the temperature difference between the target temperature and the actual temperature
-    //                                // is more then PID_FUNCTIONAL_RANGE then the PID will be shut off and the heater will be set to min/max.
-
-    // UM2 with olson block and 35W heater
-    #define  DEFAULT_Kp 1
-    #define  DEFAULT_Ki 0.01
-    #define  DEFAULT_Kd 2.5
-#endif // PIDTEMP
+// UM2 with olson block and 35W heater
+#define  DEFAULT_Kp 1
+#define  DEFAULT_Ki 0.01
+#define  DEFAULT_Kd 2.5
 
 //===========================================================================
 //=============================Mechanical Settings===========================

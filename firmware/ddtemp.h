@@ -46,17 +46,28 @@ class TempControl: public Protothread
     int32_t cobias;
     int32_t pid_output;
 
+    // PWM value dictated by host firmware part. Normal PID
+    // temperature control is bypassed if this value is set.
+    // Set to 0 to re-enable PID temperature control.
+    // Maxtemp is still checked even if PID is disabled.
+    uint8_t pwmValueOverride;
+    uint8_t lastPWM;
+
     public:
         TempControl():
             raw_temp_0_value(0),
             raw_temp_bed_value(0),
             Kp(1.0),
             Ki(0.1),
-            Kd(1.0) {};
+            Kd(1.0),
+            pwmValueOverride(0) {};
         void init();
         virtual bool Run();
         void setTemp(uint8_t heater, uint16_t newTarget);
         void heater();
+        // Set heater PWM value directly for PID AutoTune
+        // and filament measurements
+        void setTempPWM(uint8_t heater, uint8_t pwmValue);
 
 #if defined(PIDAutoTune)
         // Set heater PWM value directly for PID AutoTune
@@ -67,6 +78,7 @@ class TempControl: public Protothread
             Ki = ki;
             Kd = kd;
         }
+        uint8_t getPwmOutput() { return (uint8_t)lastPWM; }
 };
 
 extern TempControl tempControl;

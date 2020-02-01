@@ -23,10 +23,8 @@
 // Compile firmware in the PID autoTune version:
 // #define PIDAutoTune 1
 
-// #if MOTHERBOARD != 33
 // Use PMW3360 as a flowrate sensor
 // #define PMWFS 1
-// #endif
 
 // Use Bourns ems22a Rotary Encoder as a flowrate sensor
 #define BournsEMS22AFS 1

@@ -1229,6 +1229,7 @@ void Printer::cmdGetStatus() {
     txBuffer.sendResponseUint8(stepBuffer.byteSize());
     txBuffer.sendResponseInt16(bufferLow);
     txBuffer.sendResponseValue(target_temperature[0]);
+    txBuffer.sendResponseUint8(tempControl.getPwmOutput());
 
     // Flowrate sensor
 #if defined(HASFILAMENTSENSOR)
@@ -1622,6 +1623,14 @@ class UsbCommand : public Protothread {
                             txBuffer.sendACK();
                         }
                         break;
+                    case CmdSetTempPWM:
+                        {
+                            uint8_t heater = serialPort.readNoCheckCobs();
+                            uint8_t pwm = serialPort.readNoCheckCobs();
+                            tempControl.setTempPWM(heater, pwm);
+                            txBuffer.sendACK();
+                        }
+                        break;
                     case CmdStopMove:
                         printer.cmdStopMove();
                         txBuffer.sendACK();
@@ -1631,6 +1640,7 @@ class UsbCommand : public Protothread {
                         txBuffer.sendACK();
                         break;
 #if defined(PIDAutoTune)
+                    // todo: use CmdSetTempPWM
                     case CmdSetHeaterY:
                         {
                             uint8_t heater = serialPort.readNoCheckCobs();

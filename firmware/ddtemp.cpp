@@ -40,6 +40,7 @@ extern void watchdog_reset();
 extern void kill();
 
 void TempControl::init() {
+
     //
     // Set analog inputs
     //
@@ -257,77 +258,66 @@ void TempControl::heater() {
         }
         else {
 #if ! defined(PIDAutoTune)
-#ifdef PIDTEMP
 
-            // y = Kp*e + Ki*Ta*esum + Kd/Ta*(e – ealt);   //Reglergleichung
+            if (pwmValueOverride == 0) {
 
-            // PID interval [s]
-            unsigned long ts = millis();
-            float pid_dt = (ts - lastPidCompute) / 1000.0;
+                // y = Kp*e + Ki*Ta*esum + Kd/Ta*(e – ealt);   //Reglergleichung
 
-            // Regeldifferenz, grösser 0 falls temperatur zu klein
-            float e = target_temperature[0] - current_temperature[0];
+                // PID interval [s]
+                unsigned long ts = millis();
+                float pid_dt = (ts - lastPidCompute) / 1000.0;
 
-            eSum = constrain(
+                // Regeldifferenz, grösser 0 falls temperatur zu klein
+                float e = target_temperature[0] - current_temperature[0];
+
+                eSum = constrain(
                     eSum + e,
                     -PID_DRIVE_MAX,
                     PID_DRIVE_MAX);
 
-            float pTerm = Kp * e;
+                float pTerm = Kp * e;
 
-            float iTerm = Ki * pid_dt * eSum;
+                float iTerm = Ki * pid_dt * eSum;
 
-            float dTerm = Kd * (e - eAlt) / pid_dt;
+                float dTerm = Kd * (e - eAlt) / pid_dt;
 
-            // int32_t pid_output = cobias + pTerm + iTerm + dTerm + 0.5;
-            pid_output = cobias + pTerm + iTerm + dTerm + 0.5;
+                // int32_t pid_output = cobias + pTerm + iTerm + dTerm + 0.5;
+                pid_output = cobias + pTerm + iTerm + dTerm + 0.5;
 
-            if (pid_output > PID_MAX) {
-                pid_output = PID_MAX;
-            }
-            else if (pid_output < -PID_MAX) {
-                pid_output = -PID_MAX;
-            }
+                if (pid_output > PID_MAX) {
+                    pid_output = PID_MAX;
+                }
+                else if (pid_output < -PID_MAX) {
+                    pid_output = -PID_MAX;
+                }
 
-            analogWrite(HEATER_0_PIN, max(pid_output, 0));
-
-            eAlt = e;
+                analogWrite(HEATER_0_PIN, max(pid_output, 0));
+                lastPWM = max(pid_output, 0);
+                eAlt = e;
 
 #ifdef PID_DEBUG
 
-            static int dbgcount=0;
+                static int dbgcount=0;
             
-            if ((dbgcount++ % 10) == 0) {
+                if ((dbgcount++ % 10) == 0) {
 
-                txBuffer.sendResponseStart(RespUnsolicitedMsg);
-                txBuffer.sendResponseUint8(PidDebug);
-                txBuffer.sendResponseValue(pid_dt);
-                txBuffer.sendResponseValue(pTerm);
-                txBuffer.sendResponseValue(iTerm);
-                txBuffer.sendResponseValue(dTerm);
-                /* txBuffer.sendResponseValue(pwmSum); */
-                txBuffer.sendResponseInt32(pid_output);
-                txBuffer.sendResponseEnd();
-            }
+                    txBuffer.sendResponseStart(RespUnsolicitedMsg);
+                    txBuffer.sendResponseUint8(PidDebug);
+                    txBuffer.sendResponseValue(pid_dt);
+                    txBuffer.sendResponseValue(pTerm);
+                    txBuffer.sendResponseValue(iTerm);
+                    txBuffer.sendResponseValue(dTerm);
+                    /* txBuffer.sendResponseValue(pwmSum); */
+                    txBuffer.sendResponseInt32(pid_output);
+                    txBuffer.sendResponseEnd();
+                }
 
 #endif //PID_DEBUG
 
-            lastPidCompute = ts;
-
-            // ---------------------------------------------------
-
-#else
-            if(current_temperature[0] >= target_temperature[0])
-            {
-                WRITE(HEATER_0_PIN, LOW);
+                lastPidCompute = ts;
             }
-            else
-            {
-                WRITE(HEATER_0_PIN, HIGH);
-            }
-#endif  // PIDTEMP
-#endif  // PIDAutoTune
         }
+#endif  // PIDAutoTune
     }
 
     ////////////////////////////////
@@ -362,6 +352,16 @@ void TempControl::heater() {
     // Reset the watchdog after we know we have a temperature measurement.
     //
     watchdog_reset();
+}
+
+void TempControl::setTempPWM(uint8_t heater, uint8_t pwmValue) {
+
+    if (heater == 1) 
+        analogWrite(HEATER_0_PIN, pwmValue);
+    else
+        analogWrite(HEATER_1_PIN, pwmValue);
+
+    pwmValueOverride = pwmValue;
 }
 
 #if defined(PIDAutoTune)
