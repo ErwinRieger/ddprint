@@ -363,9 +363,7 @@ def main():
     sp = subparsers.add_parser("home", help=u"Home the printer.")
 
     sp = subparsers.add_parser("measureTempFlowrateCurve", help=u"Determine temperature/flowrate properties of filament.")
-    sp.add_argument("tstart", action="store", type=int, help="Start temperature.")
-    sp.add_argument("tend", action="store", type=int, help="End temperature.")
-    sp.add_argument("-tstep", action="store", type=int, help="Temperature step width.", default=2)
+    sp.add_argument("flowrate", action="store", help="Start-flowrate in mm³/s.", type=float)
 
     sp = subparsers.add_parser("moverel", help=u"Debug: Move axis manually, relative coords.")
     sp.add_argument("axis", help="Axis (XYZAB).", type=str)
@@ -714,9 +712,10 @@ def main():
     elif args.mode == 'test':
 
         printer.commandInit(args, PrinterProfile.getSettings())
-        readings = printer.getFSReadings(10)
-        print "Readings: "
-        pprint.pprint(readings)
+        # readings = printer.getFSReadings(10)
+        # print "Readings: "
+        # pprint.pprint(readings)
+        printer.setTempPWM(HeaterEx1, 0)
 
     else:
         print "Unknown command: ", args.mode

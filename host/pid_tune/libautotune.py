@@ -160,8 +160,6 @@ def pidParameters(Ks, Tc, Tp, Td):
     print "Td,ideal:", Td
     print "Kd,independent:", Kc*Td
 
-    print "\n./ddprint.py writeEepromFloat Kp %f; ./ddprint.py writeEepromFloat Ki %f; ./ddprint.py writeEepromFloat Kd %f; ./reset.sh" % (Kc, Kc/Ti, Kc*Td)
-
 
 
 

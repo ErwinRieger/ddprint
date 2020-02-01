@@ -61,7 +61,7 @@
   "filSensorInterval": 0.1,
   # Filamentsensor calibration data. This is the ratio of
   # filamentsensor steps to e-stepper steps.
-  "filSensorCalibration": 0.7432,
+  "filSensorCalibration": 1.3399,
   # Hotend PID values
   "Kp": 3,
   "Ki": 0.1,

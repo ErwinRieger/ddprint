@@ -657,12 +657,11 @@ class Printer(Serial):
 
     def getStatus(self):
 
-        # valueNames = ["state", "t0", "t1", "Swap", "SDReader", "StepBuffer", "StepBufUnderRuns", "targetT1", "targetExtrusionSpeed", "actualExtrusionSpeed", "actualGrip", "grip"]
-        valueNames = ["state", "t0", "t1", "Swap", "SDReader", "StepBuffer", "StepBufUnderRuns", "targetT1", "slippage"]
+        valueNames = ["state", "t0", "t1", "Swap", "SDReader", "StepBuffer", "StepBufUnderRuns", "targetT1", "pwmOutput", "slippage"]
 
         (cmd, payload) = self.query(CmdGetStatus, doLog=False)
 
-        tup = struct.unpack("<BffIHBhHf", payload)
+        tup = struct.unpack("<BffIHBhHBf", payload)
 
         statusDict = {}
         for i in range(len(valueNames)):
@@ -778,6 +777,13 @@ class Printer(Serial):
 
         payload = struct.pack("<Bh", heater, adj) # Parameters: heater, adjtemp
         self.sendCommand(CmdSetIncTemp, binPayload=payload)
+
+    ####################################################################################################
+
+    def setTempPWM(self, heater, pwmvalue):
+
+        payload = struct.pack("<Bh", heater, pwmvalue) # Parameters: heater, adjtemp
+        self.sendCommand(CmdSetTempPWM, binPayload=payload)
 
     ####################################################################################################
 

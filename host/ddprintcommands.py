@@ -91,6 +91,7 @@ CmdSetPIDValues =    172
 CmdSetIncTemp   =    174 # Adjust temperature niveau 
 CmdGetFreeMem   =    175 # Get number of free memory bytes
 CmdGetFSReadings =   176 # Get last n filsensor readings
+CmdSetTempPWM =      177 # Set PWM value of hotend heater (for filament profile measurement)
 
 CommandNames = {
 }
@@ -160,6 +161,7 @@ for (cmd, cmdName) in [
     (CmdSetIncTemp, "CmdSetIncTemp",),
     (CmdGetFreeMem, "CmdGetFreeMem",),
     (CmdGetFSReadings, "CmdGetFSReadings",),
+    (CmdSetTempPWM, "CmdSetTempPWM",),
     ]:
 
         insertCommandName(cmd, cmdName)
