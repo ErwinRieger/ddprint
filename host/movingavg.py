@@ -54,6 +54,25 @@ class MovingAvg:
         self.index = 0
         self.navg = navg
 
+class MovingAvgReadings(MovingAvg):
+
+    def __init__(self, navg, startavg=0.0):
+        MovingAvg.__init__(self, navg)
+
+        # dict of all used timestamps to filter duplicates
+        # from printer.getFSReadings()
+        self.data = {}
+
+    def addReadings(self, readings):
+
+        for (ts, dy) in readings:
+
+            if ts in self.data:
+                continue
+
+            self.data[ts] = dy
+            self.add(dy)
+
 
 #########################################################################################
 
