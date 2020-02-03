@@ -461,8 +461,6 @@ def main():
         # Send heat up  command
         print "\nHeating bed (t0: %d)...\n" % t0
         printer.heatUp(HeaterBed, t0)
-        # print "\nPre-Heating extruder...\n"
-        # printer.heatUp(HeaterEx1, t1/2)
 
         f = parser.preParse(args.gfile)
 
@@ -489,7 +487,7 @@ def main():
                     print "waiting to fire hotend...", sleepTime
                     time.sleep( sleepTime )
 
-                    print "\nPre-Heating extruder (t1: %d)...\n" % t1
+                    print "\nPre-Heating extruder %.2f (t1: %d)...\n" % (t1/2.0, t1)
                     printer.heatUp(HeaterEx1, t1/2)
 
                     print "\nHeating bed (t0: %d)...\n" % t0

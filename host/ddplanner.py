@@ -29,7 +29,7 @@ from ddprintconstants import *
 from ddconfig import *
 from ddprintutil import Z_AXIS, circaf
 from ddprinter import Printer
-from ddprintcommands import CmdSyncTargetTemp
+from ddprintcommands import CmdSyncTargetTemp, CmdSyncHotendPWM
 from ddprintstates import HeaterEx1, HeaterBed
 from ddadvance import Advance
 
@@ -149,14 +149,15 @@ class PathData (object):
         # AutoTemp
         if UseExtrusionAutoTemp:
 
-            self.lastTemp = MatProfile.getHotendStartTemp()
+            # self.lastTemp = MatProfile.getHotendStartTemp()
+            self.lastTemp = 0 # pwm
 
     # Number of moves
     def incCount(self):
         self.count += 10 # leave space for advance-submoves
         return self.count
 
-    def doAutoTemp(self, moves):
+    def _doAutoTemp(self, moves):
 
         # Sum up path time and extrusion volume of moves
         tsum = 0
@@ -192,6 +193,50 @@ class PathData (object):
                 self.planner.gui.log( "AutoTemp: collected %d moves with %.2f s duration." % (len(moves), tsum))
                 self.planner.gui.log( "AutoTemp: avg extrusion rate: %.2f mm³/s." % avgERate)
                 self.planner.gui.log( "AutoTemp: new temp: %d." % newTemp)
+
+    def doAutoTemp(self, moves):
+
+        # Sum up path time and extrusion volume of moves
+        tsum = 0
+        vsum = 0
+        for move in moves:
+            tsum += move.accelData.getTime()
+            vsum += move.getExtrusionVolume(MatProfile.get())
+
+        avgERate = vsum / tsum
+
+        # Compute temperature for this segment and add tempcommand into the stream. 
+        # newTemp = \
+            # MatProfile.getTempForFlowrate(avgERate * (1.0+AutotempSafetyMargin), PrinterProfile.getHwVersion(), NozzleProfile.getSize()) + \
+            # self.planner.l0TempIncrease
+
+        # Don't go below startTemp from material profile
+        # newTemp = max(newTemp, MatProfile.getHotendStartTemp())
+        # Don't go above max temp from material profile
+        # newTemp = min(newTemp, MatProfile.getHotendMaxTemp())
+
+        fr0 = 6.0 # flowrate bei p0
+        p0 = 90
+        ks = 0.15
+        newTemp = min(
+                max(p0 + (avgERate - fr0) / ks, p0),
+                255)
+
+        if newTemp != self.lastTemp: #  and self.mode != "pre":
+
+            # Schedule target temp command
+            self.planner.addSynchronizedCommand(
+                CmdSyncHotendPWM, 
+                p1 = packedvalue.uint8_t(HeaterEx1),
+                p2 = packedvalue.uint8_t(newTemp), 
+                moveNumber = move.moveNumber)
+
+            self.lastTemp = int(newTemp)
+
+            if debugAutoTemp:
+                self.planner.gui.log( "AutoTemp: collected %d moves with %.2f s duration." % (len(moves), tsum))
+                self.planner.gui.log( "AutoTemp: avg extrusion rate: %.2f mm³/s." % avgERate)
+                self.planner.gui.log( "AutoTemp: new PWM: %.1f" % newTemp)
 
 #####################################################################
 

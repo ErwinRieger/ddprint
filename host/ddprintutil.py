@@ -705,7 +705,9 @@ def commonInit(args, parser):
     printer.commandInit(args, PrinterProfile.getSettings())
 
     ddhome.home(parser, args.fakeendstop)
-    downloadTempTable(planner)
+    # downloadTempTable(planner)
+    print "xxx pmwumbau, temptable"
+    downloadDummyTempTable(printer)
     printer.sendPrinterInit()
 
 ####################################################################################################

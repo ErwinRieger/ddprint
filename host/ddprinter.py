@@ -23,7 +23,7 @@
 # Note: pyserial 2.6.1 seems to have a bug with reconnect (read only garbage 
 # at second connect).
 #
-import time, struct, crc_ccitt_kermit, termios
+import time, struct, crc_ccitt_kermit, termios, pprint
 import dddumbui, cobs, ddprintutil
 
 from serial import Serial, SerialException, SerialTimeoutException
@@ -717,11 +717,13 @@ class Printer(Serial):
     def waitForState(self, destState, wait=1):
 
         status = self.getStatus()
+        pprint.pprint(status)
 
         while status['state'] != destState:
             time.sleep(wait)
             # try:
             status = self.getStatus()
+            pprint.pprint(status)
             # except RxTimeout:
                 # print "GetStatus raised RxTimeout error!"
 
@@ -788,6 +790,11 @@ class Printer(Serial):
     ####################################################################################################
 
     def coolDown(self, heater, temp=0, wait=None):
+
+        if heater > HeaterBed:
+            # Switch on PID mode
+            payload = struct.pack("<BB", heater, 0)
+            self.sendCommand(CmdSetTempPWM, binPayload=payload)
 
         payload = struct.pack("<BH", heater, temp)
         self.sendCommand(CmdSetTargetTemp, binPayload=payload)

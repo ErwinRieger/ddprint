@@ -338,7 +338,7 @@ def calibrateFilSensor(args, parser):
         # should be speed:
         stepsPerInterval = feedrate * steps_per_mm * dt
 
-        ratio = stepsPerInterval/meanLong
+        ratio = meanLong / stepsPerInterval
         print "speed should be:", stepsPerInterval, "ratio:", ratio
 
         calValues.append((feedrate, ratio))
