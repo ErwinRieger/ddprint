@@ -292,7 +292,6 @@ void TempControl::heater() {
                 }
 
                 analogWrite(HEATER_0_PIN, max(pid_output, 0));
-                lastPWM = max(pid_output, 0);
                 eAlt = e;
 
 #ifdef PID_DEBUG

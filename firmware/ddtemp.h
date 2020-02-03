@@ -51,7 +51,6 @@ class TempControl: public Protothread
     // Set to 0 to re-enable PID temperature control.
     // Maxtemp is still checked even if PID is disabled.
     uint8_t pwmValueOverride;
-    uint8_t lastPWM;
 
     public:
         TempControl():
@@ -78,7 +77,7 @@ class TempControl: public Protothread
             Ki = ki;
             Kd = kd;
         }
-        uint8_t getPwmOutput() { return (uint8_t)lastPWM; }
+        uint8_t getPwmOutput() { return (pwmValueOverride) ? pwmValueOverride : (uint8_t)max(pid_output, 0); }
 };
 
 extern TempControl tempControl;

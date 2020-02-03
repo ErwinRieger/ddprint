@@ -89,7 +89,7 @@
 // This feature exists to protect your hotend from overheating accidentally, but *NOT* from thermistor short/failure!
 // You should use MINTEMP for thermistor short/failure protection.
 #define HEATER_0_MAXTEMP 125
-#define HEATER_1_MAXTEMP 350
+#define HEATER_1_MAXTEMP 285
 #define HEATER_2_MAXTEMP 285
 
 //Check if the heater heats up MAX_HEATING_TEMPERATURE_INCREASE within MAX_HEATING_CHECK_MILLIS while the PID was at the maximum.

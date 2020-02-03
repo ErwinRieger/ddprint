@@ -52,6 +52,7 @@
 
 #define CmdSyncTargetTemp  0xb
 #define CmdDwellMS         0xc
+#define CmdSyncHotendPWM   0xf
 #define CmdG1Raw           0xd
 // #define CmdDirG1Raw        0xe
 

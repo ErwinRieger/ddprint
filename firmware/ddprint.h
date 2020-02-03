@@ -152,6 +152,9 @@ class FillBufferTask : public Protothread {
         uint8_t targetHeater;
         uint16_t targetTemp;
 
+        // Hotend target pwm for CmdSyncHotendPWM
+        uint8_t heaterPWM;
+
         unsigned long dwellEnd;
 
         bool cmdSync;

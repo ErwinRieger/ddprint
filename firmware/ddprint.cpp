@@ -449,6 +449,9 @@ bool FillBufferTask::Run() {
                 case CmdDwellMS:
                     goto HandleCmdDwellMS;
 
+                case CmdSyncHotendPWM:
+                    goto HandleCmdSyncHotendPWM;
+
                 default:
                     killMessage(RespUnknownBCommand, cmd);
             }
@@ -880,12 +883,7 @@ bool FillBufferTask::Run() {
                 PT_WAIT_THREAD(sDReader);
 
                 targetHeater = *sDReader.readData;
-                // sd.dirBits = *sDReader.readData;
                 targetTemp = FromBuf(uint16_t, sDReader.readData+1);
-                // sd.timer = FromBuf(uint16_t, sDReader.readData+1);
-
-                // PT_WAIT_WHILE(stepBuffer.full());
-                // stepBuffer.push(sd);
 
                 PT_WAIT_UNTIL( printer.printerState == Printer::StateStart );
                 printer.cmdSetTargetTemp(targetHeater, targetTemp);
@@ -902,6 +900,19 @@ bool FillBufferTask::Run() {
 
                 PT_WAIT_WHILE(millis() < dwellEnd);
                 printer.dwellEnd();
+
+                PT_RESTART();
+
+            HandleCmdSyncHotendPWM:
+
+                sDReader.setBytesToRead2();
+                PT_WAIT_THREAD(sDReader);
+
+                targetHeater = *sDReader.readData;
+                heaterPWM = *(sDReader.readData+1);
+
+                PT_WAIT_UNTIL( printer.printerState == Printer::StateStart );
+                tempControl.setTempPWM(targetHeater, heaterPWM);
 
                 PT_RESTART();
 
