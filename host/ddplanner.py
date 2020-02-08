@@ -29,7 +29,7 @@ from ddprintconstants import *
 from ddconfig import *
 from ddprintutil import Z_AXIS, circaf
 from ddprinter import Printer
-from ddprintcommands import CmdSyncTargetTemp, CmdSyncHotendPWM
+from ddprintcommands import CmdSyncTargetTemp, CmdSyncHotendPWM, CmdSyncHotendPulse
 from ddprintstates import HeaterEx1, HeaterBed
 from ddadvance import Advance
 
@@ -146,53 +146,23 @@ class PathData (object):
         self.path = []
         self.count = -10
 
+        self.ks = PrinterProfile.getKpwm()
+        self.p0 = PrinterProfile.getP0pwm() # xxx hardcoded in firmware!
+        self.fr0 = PrinterProfile.getFR0pwm()
+
+        self.energy = 0
+
         # AutoTemp
         if UseExtrusionAutoTemp:
 
             # self.lastTemp = MatProfile.getHotendStartTemp()
-            self.lastTemp = 0 # pwm
+            self.lastTemp = self.p0 # pwm
+
 
     # Number of moves
     def incCount(self):
         self.count += 10 # leave space for advance-submoves
         return self.count
-
-    def _doAutoTemp(self, moves):
-
-        # Sum up path time and extrusion volume of moves
-        tsum = 0
-        vsum = 0
-        for move in moves:
-            tsum += move.accelData.getTime()
-            vsum += move.getExtrusionVolume(MatProfile.get())
-
-        avgERate = vsum / tsum
-
-        # Compute temperature for this segment and add tempcommand into the stream. 
-        newTemp = \
-            MatProfile.getTempForFlowrate(avgERate * (1.0+AutotempSafetyMargin), PrinterProfile.getHwVersion(), NozzleProfile.getSize()) + \
-            self.planner.l0TempIncrease
-
-        # Don't go below startTemp from material profile
-        newTemp = max(newTemp, MatProfile.getHotendStartTemp())
-        # Don't go above max temp from material profile
-        newTemp = min(newTemp, MatProfile.getHotendMaxTemp())
-
-        if newTemp != self.lastTemp: #  and self.mode != "pre":
-
-            # Schedule target temp command
-            self.planner.addSynchronizedCommand(
-                CmdSyncTargetTemp, 
-                p1 = packedvalue.uint8_t(HeaterEx1),
-                p2 = packedvalue.uint16_t(newTemp), 
-                moveNumber = move.moveNumber)
-
-            self.lastTemp = int(newTemp)
-
-            if debugAutoTemp:
-                self.planner.gui.log( "AutoTemp: collected %d moves with %.2f s duration." % (len(moves), tsum))
-                self.planner.gui.log( "AutoTemp: avg extrusion rate: %.2f mm³/s." % avgERate)
-                self.planner.gui.log( "AutoTemp: new temp: %d." % newTemp)
 
     def doAutoTemp(self, moves):
 
@@ -205,38 +175,67 @@ class PathData (object):
 
         avgERate = vsum / tsum
 
-        # Compute temperature for this segment and add tempcommand into the stream. 
-        # newTemp = \
-            # MatProfile.getTempForFlowrate(avgERate * (1.0+AutotempSafetyMargin), PrinterProfile.getHwVersion(), NozzleProfile.getSize()) + \
-            # self.planner.l0TempIncrease
+        # Compute heater-PWM for this segment and add pwm-pulse command into the stream. 
+        rateDiff = avgERate - self.fr0
 
-        # Don't go below startTemp from material profile
-        # newTemp = max(newTemp, MatProfile.getHotendStartTemp())
-        # Don't go above max temp from material profile
-        # newTemp = min(newTemp, MatProfile.getHotendMaxTemp())
+        if rateDiff > 0.0:
+            #
+            # add energy
+            #
+            # adjustment for:
+            # * 10% for minratio (90%)
+            # * 10% measurement errors
+            # * 0% some heat to keep things flowing
+            adj = 1.2 # 1.3
+            de = (rateDiff / self.ks) * adj * tsum
+            print "need additional energy:", de
+            self.energy += de
 
-        fr0 = 6.0 # flowrate bei p0
-        p0 = 90
-        ks = 0.15
-        newTemp = min(
-                max(p0 + (avgERate - fr0) / ks, p0),
-                255)
+        if self.energy:
 
-        if newTemp != self.lastTemp: #  and self.mode != "pre":
+            print "need energy:", self.energy, "[pwm*sec]"
+
+            pwmMaxStep = 255 - self.p0
+            tOn = self.energy / pwmMaxStep
+
+            print "this is %.2f seconds with %.2f pwm, move time: %.2f" % (tOn, pwmMaxStep, tsum)
+
+            if tOn <= tsum:
+
+                print "this move is long enough", tOn, pwmMaxStep*tOn
+                self.energy = 0
+                
+            else:
+
+                tOn = tsum
+                print "this move is not long enough", tOn, pwmMaxStep*tOn
+                self.energy -= pwmMaxStep * tOn
+
+            assert((tOn*1000) < pow(2, 16))
 
             # Schedule target temp command
             self.planner.addSynchronizedCommand(
-                CmdSyncHotendPWM, 
+                CmdSyncHotendPulse, 
                 p1 = packedvalue.uint8_t(HeaterEx1),
-                p2 = packedvalue.uint8_t(newTemp), 
+                p2 = packedvalue.uint16_t(tOn * 1000),  # xxx check 16 bit overflow
                 moveNumber = move.moveNumber)
 
-            self.lastTemp = int(newTemp)
+            # temp
+            ktemp = 0.2020
+            newTemp = 200 + (rateDiff / ktemp)
+
+            # Schedule target temp command
+            self.planner.addSynchronizedCommand(
+                CmdSyncTargetTemp, 
+                p1 = packedvalue.uint8_t(HeaterEx1),
+                p2 = packedvalue.uint16_t(newTemp), 
+                moveNumber = move.moveNumber)
 
             if debugAutoTemp:
                 self.planner.gui.log( "AutoTemp: collected %d moves with %.2f s duration." % (len(moves), tsum))
                 self.planner.gui.log( "AutoTemp: avg extrusion rate: %.2f mm³/s." % avgERate)
-                self.planner.gui.log( "AutoTemp: new PWM: %.1f" % newTemp)
+                self.planner.gui.log( "AutoTemp: pwm pulse: %.2f sec, temp: %.2f" % (tOn, newTemp))
+
 
 #####################################################################
 
@@ -543,6 +542,17 @@ class Planner (object):
         # Step 4: plan steps and stream moves to printer
         if debugMoves:
             print "Streaming %d travel moves..." % len(path)
+
+        rateList = []
+        for move in path:
+            # rateList.append(move.topSpeed.speed().eSpeed)
+            rateList.append(move.topSpeed.speed()[3])
+
+        avgRate = sum(rateList) / len(rateList)
+
+        if avgRate > 0:
+            path[0].isMeasureMove = True
+            path[0].measureSpeed = avgRate
 
         for move in path:
 

@@ -68,7 +68,9 @@ def compactReadings(readings):
 
             interval = ts - lastTs
 
-            assert(abs(ts - lastTs) < 110)
+            if ts - lastTs >= 110:
+                print "sequence error:", ts, lastTs, ts - lastTs
+                assert(0)
 
             x.append(ts)
             y.append(readings[ts])
@@ -148,7 +150,7 @@ def calibrateESteps(args, parser):
     tStartup = util.getStartupTime(feedrate)
     print "tRound:", tRound, "tStartup:", tStartup
 
-    nAvgLong = int(round(tRound / dt))
+    nAvgLong = PrinterProfile.getNLongInterval(feedrate)
 
     print "running %.2f seconds with %.2f mm/s, # of samples for long average: %d" % (tRound, feedrate, nAvgLong)
 
@@ -171,7 +173,7 @@ def calibrateESteps(args, parser):
         for (ts, dy) in fsreadings:
             crossAvg.addValue(ts, dy)
 
-        print "\ravg short term: %.2f, long term: %.2f" % (crossAvg.shortAvg(), crossAvg.longAvg()),
+        print "\r# %d, avg short term: %.2f, long term: %.2f" % (crossAvg.nValues, crossAvg.shortAvg(), crossAvg.longAvg()),
         sys.stdout.flush()
 
         if crossAvg.locked:
@@ -283,7 +285,7 @@ def calibrateFilSensor(args, parser):
         tStartup = util.getStartupTime(feedrate)
         print "tRound:", tRound, "tStartup:", tStartup
 
-        nAvgLong = int(round(tRound / dt))
+        nAvgLong = PrinterProfile.getNLongInterval(feedrate)
 
         print "running %.2f seconds with %.2f mm/s, # of samples for long average: %d" % (tRound, feedrate, nAvgLong)
 
@@ -313,7 +315,7 @@ def calibrateFilSensor(args, parser):
 
                 crossAvg.addValue(ts, dy)
 
-            print "\ravg short term: %.2f, long term: %.2f" % (crossAvg.shortAvg(), crossAvg.longAvg()),
+            print "\r# %d, avg short term: %.2f, long term: %.2f" % (crossAvg.nValues, crossAvg.shortAvg(), crossAvg.longAvg()),
             sys.stdout.flush()
 
             if crossAvg.locked:

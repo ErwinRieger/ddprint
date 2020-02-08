@@ -36,12 +36,16 @@ class MovingAvg:
         self.index = 0
         self.navg = navg
         self.array = np.array([startavg] * navg)
+        self.nValues = 0
 
     def add(self, v):
+
         self.array[self.index] = v
         self.index += 1
         if self.index == self.navg:
             self.index = 0
+
+        self.nValues += 1
 
     def mean(self):
         return np.mean(self.array)
@@ -53,6 +57,19 @@ class MovingAvg:
         self.array = self.array[self.navg - navg:]
         self.index = 0
         self.navg = navg
+
+    def valid(self):
+        return self.nValues >= self.navg
+
+    def near(self, rel):
+
+        avg = self.mean()
+
+        for v in self.array:
+            if abs(avg - v) > (avg * rel * 0.5):
+                return False
+
+        return True
 
 class MovingAvgReadings(MovingAvg):
 

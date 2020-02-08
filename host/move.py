@@ -220,8 +220,16 @@ class StepData:
 
                 # print "StartMove, E-Timer:", nominalSpeed, timerValue
                 payLoad += struct.pack("<H", min(timerValue, 0xffff))
+
             else:
                 payLoad += struct.pack("<H", 0)
+
+        if move.isMeasureMove:
+
+            # Store window size of running average
+            nAvg = min (256, PrinterProfile.getNShortInterval(move.getBaseMove().measureSpeed))
+            print "start segment/measurement moves, nAvg:", nAvg
+            payLoad += struct.pack("<B", nAvg)
 
         payLoad += struct.pack("<HH",
                 self.linearTimer,
@@ -368,6 +376,13 @@ class RawStepData:
 
             # print "StartMove, E-Timer:", nominalSpeed, timerValue
             payLoad += struct.pack("<H", min(timerValue, 0xffff))
+
+        if move.isMeasureMove:
+
+            # Store window size of running average
+            nAvg = min (256, PrinterProfile.getNShortInterval(move.getBaseMove().measureSpeed))
+            print "start segment/measurement moves, nAvg:", nAvg
+            payLoad += struct.pack("<B", nAvg)
 
         if timerByteFlag:
 

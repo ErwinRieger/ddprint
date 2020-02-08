@@ -217,6 +217,10 @@ class MainForm(npyscreen.FormBaseNew):
         self.curT1.editable = False
 
         rely += 1
+        self.curPWM = self.add(npyscreen.TitleFixedText, name =   "PWM - Hotend 1      :", relx=w, rely=rely, use_two_lines=False, begin_entry_at=23) 
+        self.curPWM.editable = False
+
+        rely += 1
         self.swapSize = self.add(npyscreen.TitleFixedText, name = "Size Swap File      :", relx=w, rely=rely, use_two_lines=False, begin_entry_at=25)
         self.swapSize.editable = False
 
@@ -383,6 +387,8 @@ class MainForm(npyscreen.FormBaseNew):
         self.pState.set_value( "%8s" % self.stateNames[status["state"]])
         self.pState.update()
         self.updateTemps(status["t0"], status["t1"], status["targetT1"])
+        self.curPWM.set_value( "%8d" % status["pwmOutput"])
+        self.curPWM.update()
         self.swapSize.set_value( "%8s" % util.sizeof_fmt(status["Swap"]))
         self.swapSize.update()
         self.sdrSize.set_value( "%8s" % util.sizeof_fmt(status["SDReader"]))
@@ -473,7 +479,13 @@ class MainForm(npyscreen.FormBaseNew):
             self.planner.reset()
 
             ddhome.home(self.parser, self.args.fakeendstop)
-            util.downloadTempTable(self.planner)
+
+            # util.downloadTempTable(self.planner)
+            # print "xxx pmwumbau, temptable"
+            # util.downloadDummyTempTable(self.printer)
+            print "xxx newdownloadTempTable"
+            util.newdownloadTempTable(self.printer)
+
             self.printer.sendPrinterInit()
 
             # Send heat up  command

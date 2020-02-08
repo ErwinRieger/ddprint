@@ -460,7 +460,7 @@ def main():
 
         # Send heat up  command
         print "\nHeating bed (t0: %d)...\n" % t0
-        printer.heatUp(HeaterBed, t0)
+        printer.heatUp(HeaterBed, t0, log=True)
 
         f = parser.preParse(args.gfile)
 
@@ -488,12 +488,12 @@ def main():
                     time.sleep( sleepTime )
 
                     print "\nPre-Heating extruder %.2f (t1: %d)...\n" % (t1/2.0, t1)
-                    printer.heatUp(HeaterEx1, t1/2)
+                    printer.heatUp(HeaterEx1, t1/2, log=True)
 
                     print "\nHeating bed (t0: %d)...\n" % t0
-                    printer.heatUp(HeaterBed, t0, t0)
+                    printer.heatUp(HeaterBed, t0, t0, log=True)
                     print "\nHeating extruder (t1: %d)...\n" % t1
-                    printer.heatUp(HeaterEx1, t1, t1-1)
+                    printer.heatUp(HeaterEx1, t1, t1-1, log=True)
 
                     # Send print command
                     printer.sendCommandParamV(CmdMove, [MoveTypeNormal])
@@ -523,9 +523,9 @@ def main():
         if not printStarted:
 
             print "\nHeating bed (t0: %d)...\n" % t0
-            printer.heatUp(HeaterBed, t0, t0)
+            printer.heatUp(HeaterBed, t0, t0, log=True)
             print "\nHeating extruder (t1: %d)...\n" % t1
-            printer.heatUp(HeaterEx1, t1, t1-1)
+            printer.heatUp(HeaterEx1, t1, t1-1, log=True)
 
             # Send print command
             printer.sendCommandParamV(CmdMove, [MoveTypeNormal])
@@ -710,10 +710,10 @@ def main():
     elif args.mode == 'test':
 
         printer.commandInit(args, PrinterProfile.getSettings())
-        # readings = printer.getFSReadings(10)
-        # print "Readings: "
-        # pprint.pprint(readings)
-        printer.setTempPWM(HeaterEx1, 0)
+        readings = printer.getFSReadings(10)
+        print "Readings: "
+        pprint.pprint(readings)
+        # printer.setTempPWM(HeaterEx1, 0)
 
     else:
         print "Unknown command: ", args.mode

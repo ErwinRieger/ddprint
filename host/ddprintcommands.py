@@ -36,6 +36,7 @@ CmdDwellMS       = 0xc # Parameters: dwell time in mS
 CmdG1Raw         = 0xd # Raw print move steps, bresenham algo already done.
 # CmdDirG1Raw      = 0xe # CmdDirBits and CmdG1Raw combined
 CmdSyncHotendPWM = 0xf # Set hotend pmw value, Parameters: heater, pmw value
+CmdSyncHotendPulse = 0x10 # Hotend pmw pulss, Parameters: heater, pulsewidth [ms]
 
 CmdUnknown       = 0x7f # Unknown command for debugging
 
@@ -114,6 +115,7 @@ for (cmd, cmdName) in [
     (CmdSyncTargetTemp, "CmdSyncTargetTemp",),
     (CmdDwellMS, "CmdDwellMS",),
     (CmdSyncHotendPWM, "CmdSyncHotendPWM",),
+    (CmdSyncHotendPulse, "CmdSyncHotendPulse",),
     (CmdUnknown, "CmdUnknown",),
     #
     # Direct commands:

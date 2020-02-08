@@ -519,6 +519,7 @@ class Advance (object):
         #debug if debugPlot and debugPlotLevel == "plotLevelPlanned":
             #debug self.plotPlannedPath(path)
 
+        """
         esum = 0
         measureMove = None
         # Mark filament sensor measure moves
@@ -551,6 +552,16 @@ class Advance (object):
 
             assert(not measureMove.isSubMove())
             measureMove.isMeasureMove = True
+        """
+
+        rateList = []
+        for move in path:
+            rateList.append(move.topSpeed.speed().eSpeed)
+
+        avgRate = sum(rateList) / len(rateList)
+        assert(avgRate > 0)
+        path[0].isMeasureMove = True
+        path[0].measureSpeed = avgRate
 
         newPath = []
         for move in path:

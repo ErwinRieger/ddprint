@@ -199,8 +199,41 @@ class PrinterProfile(ProfileBase):
             "Kp": cls.getValues()["Kp"],
             "Ki": cls.getValues()["Ki"],
             "Kd": cls.getValues()["Kd"],
-            # "add_homeing_z": cls.getValues()["add_homeing_z"],
             }
+
+    @classmethod
+    def getNLongInterval(cls, feedrate):
+
+        dt = cls.getFilSensorInterval()
+        # Time for one revolution
+        tRound = cls.getFeederWheelCircum() / feedrate
+        nAvg = int(round(tRound / dt))
+
+        nAvg = max(nAvg, 2)
+        return nAvg
+
+    @classmethod
+    def getNShortInterval(cls, feedrate):
+
+        dt = cls.getFilSensorInterval()
+        # Time for one revolution
+        tRound = cls.getFeederWheelCircum() / feedrate
+        nAvg = int(round(tRound / (dt*8)))
+
+        nAvg = max(nAvg, 2)
+        return nAvg
+
+    @classmethod
+    def getKpwm(cls):
+        return cls.getValues()["Kpwm"]
+
+    @classmethod
+    def getP0pwm(cls):
+        return cls.getValues()["P0pwm"]
+
+    @classmethod
+    def getFR0pwm(cls):
+        return cls.getValues()["FR0pwm"]
 
 ####################################################################################################
 #
@@ -329,8 +362,11 @@ class MatProfile(ProfileBase):
         return float(cls.getValues()["material_diameter"])
 
     @classmethod
-    def getHotendBaseTemp(cls, hwVersion, nozzleDiam):
+    def oldgetHotendBaseTemp(cls, hwVersion, nozzleDiam):
         return  cls.get().getTempCurve(hwVersion, nozzleDiam).minTemp
+    @classmethod
+    def getHotendBaseTemp(cls, hwVersion, nozzleDiam):
+        return  cls.get().getHotendStartTemp()
 
     @classmethod
     def getHotendStartTemp(cls):
@@ -379,10 +415,26 @@ class MatProfile(ProfileBase):
     def getFlowrateForTemp(cls, temp, hwVersion, nozzleDiam):
         return cls.get()._getFlowrateForTemp(temp, hwVersion, nozzleDiam)
 
-    def _getFlowrateForTemp(self, temp, hwVersion, nozzleDiam):
+    def old_getFlowrateForTemp(self, temp, hwVersion, nozzleDiam):
 
         tempCurve = self.getTempCurve(hwVersion, nozzleDiam)
         return tempCurve.lookupTemp(temp)
+
+    def _getFlowrateForTemp(self, temp, hwVersion, nozzleDiam):
+
+        print "_getFlowrateForTemp hardcoded"
+        Kpwm= 0.1804
+        # # xxx hardcoded in firmware!
+        P0pwm= 87
+        # xxx 6*0*.7
+        FR0pwm= 4.2
+
+        basetemp = 200
+        ktemp = 0.2020
+        fr = FR0pwm + (temp - basetemp) * ktemp
+
+        print "flowrate for temp:", temp, fr
+        return fr
 
     def getTempCurve(self, hwVersion, nozzleDiam):
 

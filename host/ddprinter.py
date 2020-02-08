@@ -23,7 +23,7 @@
 # Note: pyserial 2.6.1 seems to have a bug with reconnect (read only garbage 
 # at second connect).
 #
-import time, struct, crc_ccitt_kermit, termios, pprint
+import time, struct, crc_ccitt_kermit, termios, pprint, sys
 import dddumbui, cobs, ddprintutil
 
 from serial import Serial, SerialException, SerialTimeoutException
@@ -233,8 +233,8 @@ class Printer(Serial):
                 (tempIndex, actSpeed, targetSpeed, grip) = struct.unpack("<hhhh", payload[1:])
                 self.gui.logRecv("Limit extrusion index: %d, act: %d, target: %d, grip: %d" % (tempIndex, actSpeed, targetSpeed, grip))
             elif msgType == PidDebug:
-                (pid_dt, pTerm, iTerm, dTerm, pwmSum, pwmOutput) = struct.unpack("<fffffi", payload[1:])
-                self.gui.logRecv("PidDebug: pid_dt: %f, pTerm: %f, iTerm: %f, dTerm: %f, pwmSum: %f, pwmOutput: %d" % (pid_dt, pTerm, iTerm, dTerm, pwmSum, pwmOutput))
+                (pid_dt, pTerm, iTerm, dTerm, pwmOutput) = struct.unpack("<ffffi", payload[1:])
+                self.gui.logRecv("PidDebug: pid_dt: %f, pTerm: %f, iTerm: %f, dTerm: %f, pwmOutput: %d" % (pid_dt, pTerm, iTerm, dTerm, pwmOutput))
             elif msgType == RespSDReadError:
                 # payload: SD errorcode, SPI status byte
                 (errorCode, spiStatus) = struct.unpack("<BB", payload[1:])
@@ -761,7 +761,7 @@ class Printer(Serial):
 
     ####################################################################################################
 
-    def heatUp(self, heater, temp, wait=None):
+    def heatUp(self, heater, temp, wait=None, log=False):
 
         payload = struct.pack("<BH", heater, temp) # Parameters: heater, temp
         self.sendCommand(CmdSetTargetTemp, binPayload=payload)
@@ -770,8 +770,14 @@ class Printer(Serial):
             time.sleep(2)
             temps = self.getTemps()
 
+            if log:
+                print "\rTemp: %.2f (%.2f)" % (temps[heater], wait),
+                sys.stdout.flush()
+
             if temps[heater] >= wait:
                 break
+
+        print "\n"
 
     ####################################################################################################
 
