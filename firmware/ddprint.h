@@ -149,11 +149,12 @@ class FillBufferTask : public Protothread {
         int32_t deltaLead, step;
 
         // Hotend target temp for CmdSyncTargetTemp
-        uint8_t targetHeater;
+        // uint8_t targetHeater;
         uint16_t targetTemp;
 
         // Hotend target pwm for CmdSyncHotendPWM
         uint8_t heaterPWM;
+        // unsigned long pulseEnd;
 
         unsigned long dwellEnd;
 
@@ -170,7 +171,12 @@ class FillBufferTask : public Protothread {
         FillBufferTask() {
             sd.dirBits = 0;
             cmdSync = false;
+            pulseEnd = 0;
         }
+
+        // xxxx getter/setter
+        uint8_t targetHeater;
+        unsigned long pulseEnd;
 
         bool Run();
 

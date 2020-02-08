@@ -212,18 +212,22 @@ void TempControl::setTemp(uint8_t heater, uint16_t temp) {
         // already stable setpoint. Reset integral sum if
         // we switch "from manual mode to automatic".
         if (target_temperature[heater-1] == 0) {
+            eSum = 0;
+            cobias = 0;
+        }
+        else {
 
             // Switch to "automatic mode", bumpless
 
             // Bumpless mode
 
             // We achieve this desired outcome at switchover by initializing the controller integral sum of error to zero.
-            eSum = 0;
+            // eSum = 0;
             // Also, the set point and controller bias value are initialized by setting:
             //    ▪ SP equal to the current PV
             //    ▪ CObias equal to the current CO
             // sp = pv;
-            cobias = pid_output;
+            // cobias = pid_output;
 
             // CO = controller output signal (the wire out)
             // CObias = controller bias; set by bumpless transfer
@@ -257,64 +261,68 @@ void TempControl::heater() {
             kill();
         }
         else {
+
 #if ! defined(PIDAutoTune)
 
-            if (pwmValueOverride == 0) {
+            // y = Kp*e + Ki*Ta*esum + Kd/Ta*(e – ealt);   //Reglergleichung
 
-                // y = Kp*e + Ki*Ta*esum + Kd/Ta*(e – ealt);   //Reglergleichung
+            // PID interval [s]
+            unsigned long ts = millis();
+            float pid_dt = (ts - lastPidCompute) / 1000.0;
 
-                // PID interval [s]
-                unsigned long ts = millis();
-                float pid_dt = (ts - lastPidCompute) / 1000.0;
+            // Regeldifferenz, grösser 0 falls temperatur zu klein
+            float e = target_temperature[0] - current_temperature[0];
 
-                // Regeldifferenz, grösser 0 falls temperatur zu klein
-                float e = target_temperature[0] - current_temperature[0];
-
+            if (e >= 0)
                 eSum = constrain(
                     eSum + e,
                     -PID_DRIVE_MAX,
                     PID_DRIVE_MAX);
+            else 
+                if (e < -5)
+                    eSum = constrain(
+                        eSum + e,
+                        -PID_DRIVE_MAX,
+                        PID_DRIVE_MAX);
 
-                float pTerm = Kp * e;
+            float pTerm = Kp * e;
 
-                float iTerm = Ki * pid_dt * eSum;
+            float iTerm = Ki * pid_dt * eSum;
 
-                float dTerm = Kd * (e - eAlt) / pid_dt;
+            float dTerm = Kd * (e - eAlt) / pid_dt;
 
-                // int32_t pid_output = cobias + pTerm + iTerm + dTerm + 0.5;
-                pid_output = cobias + pTerm + iTerm + dTerm + 0.5;
+            // int32_t pid_output = cobias + pTerm + iTerm + dTerm + 0.5;
+            pid_output = cobias + pTerm + iTerm + dTerm + 0.5;
 
-                if (pid_output > PID_MAX) {
-                    pid_output = PID_MAX;
-                }
-                else if (pid_output < -PID_MAX) {
-                    pid_output = -PID_MAX;
-                }
+            if (pid_output > PID_MAX) {
+                pid_output = PID_MAX;
+            }
+            else if (pid_output < -PID_MAX) {
+                pid_output = -PID_MAX;
+            }
 
-                analogWrite(HEATER_0_PIN, max(pid_output, 0));
-                eAlt = e;
+            analogWrite(HEATER_0_PIN, min( max(pid_output, 0) + pwmValueOverride, 255) );
+            eAlt = e;
 
 #ifdef PID_DEBUG
 
-                static int dbgcount=0;
-            
-                if ((dbgcount++ % 10) == 0) {
-
-                    txBuffer.sendResponseStart(RespUnsolicitedMsg);
-                    txBuffer.sendResponseUint8(PidDebug);
-                    txBuffer.sendResponseValue(pid_dt);
-                    txBuffer.sendResponseValue(pTerm);
-                    txBuffer.sendResponseValue(iTerm);
-                    txBuffer.sendResponseValue(dTerm);
-                    /* txBuffer.sendResponseValue(pwmSum); */
-                    txBuffer.sendResponseInt32(pid_output);
-                    txBuffer.sendResponseEnd();
-                }
+            static int dbgcount=0;
+        
+            if ((dbgcount++ % 10) == 0) {
+                txBuffer.sendResponseStart(RespUnsolicitedMsg);
+                txBuffer.sendResponseUint8(PidDebug);
+                txBuffer.sendResponseValue(pid_dt);
+                txBuffer.sendResponseValue(pTerm);
+                txBuffer.sendResponseValue(iTerm);
+                txBuffer.sendResponseValue(dTerm);
+                /* txBuffer.sendResponseValue(pwmSum); */
+                txBuffer.sendResponseValue(pid_output);
+                txBuffer.sendResponseEnd();
+            }
 
 #endif //PID_DEBUG
 
-                lastPidCompute = ts;
-            }
+            lastPidCompute = ts;
         }
 #endif  // PIDAutoTune
     }
@@ -355,10 +363,12 @@ void TempControl::heater() {
 
 void TempControl::setTempPWM(uint8_t heater, uint8_t pwmValue) {
 
+#if 0
     if (heater == 1) 
         analogWrite(HEATER_0_PIN, pwmValue);
     else
         analogWrite(HEATER_1_PIN, pwmValue);
+#endif
 
     pwmValueOverride = pwmValue;
 }

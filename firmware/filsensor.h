@@ -29,7 +29,7 @@
     #define HASFILAMENTSENSOR
 #endif
 
-#define MINSTEPPERSTEPS 0.25
+// #define MINSTEPPERSTEPS 0.25
 
 // #if 0
 // Weight for exponential filter of e-speed [percent]
@@ -145,9 +145,14 @@ class RunningAvgF {
 typedef struct {
     unsigned long timeStamp;
     int16_t       dy;
+    int16_t       ds;
 } FilsensorReading;
 extern FilsensorReading filsensorReadings[];
 extern uint8_t filsensorReadingIndex;
+extern uint8_t nReadings;
+extern uint8_t nAvg;
+
+extern void setNAvg(uint8_t nAvg);
 
 #if defined(PMWFS)
 
@@ -224,7 +229,7 @@ class FilamentSensorPMW3360 {
 
         void writeLoc(uint8_t addr, uint8_t value);
         uint8_t pullbyte();
-        bool feedrateLimiterEnabled, started;
+        bool feedrateLimiterEnabled; // , started;
 
         // Ratio between measured filament sensor counts and the 
         // extruder stepper motor steps.
@@ -235,7 +240,7 @@ class FilamentSensorPMW3360 {
 
         uint16_t axis_steps_per_mm_e;
         // Ignore filament moves smaller than MINSTEPPERSTEPS mm (35.25 for 141, 70.50 for 282 steps stepper).
-        float minStepperSteps;
+        // float minStepperSteps;
 
     public:
 
@@ -244,8 +249,8 @@ class FilamentSensorPMW3360 {
 
         // Ratio of target e-steps and filament sensor steps, this is a 
         // measure of the *feeder slippage*.
-        RunningAvgF slippageStep;
-        RunningAvgF slippageSens;
+        // RunningAvgF slippageStep;
+        // RunningAvgF slippageSens;
 
         // Factor to slow down movement because feeder slippage is greater than 10%.
         float grip;
@@ -262,10 +267,11 @@ class FilamentSensorPMW3360 {
         void setFilSensorCalibration(float fc) { filSensorCalibration = fc; }
         void setStepsPerMME(uint16_t steps) {
             axis_steps_per_mm_e = steps;
-            minStepperSteps = (MINSTEPPERSTEPS * axis_steps_per_mm_e);
+            // minStepperSteps = (MINSTEPPERSTEPS * axis_steps_per_mm_e);
         }
 
-        inline float slippage() { return (slippageStep.value() * filSensorCalibration) / slippageSens.value(); }
+        // inline float slippage() { return (slippageStep.value() * filSensorCalibration) / slippageSens.value(); }
+        float slippage();
 };
 
 extern FilamentSensorPMW3360 filamentSensor;
@@ -300,8 +306,8 @@ class FilamentSensorEMS22 {
         float filSensorCalibration;
 
         uint16_t axis_steps_per_mm_e;
-        // Ignore filament moves smaller than MINSTEPPERSTEPS mm (35.25 for 141, 70.50 for 282 steps stepper).
-        float minStepperSteps;
+        // // Ignore filament moves smaller than MINSTEPPERSTEPS mm (35.25 for 141, 70.50 for 282 steps stepper).
+        // float minStepperSteps;
 
         uint16_t readEncoderPos();
 
@@ -312,8 +318,8 @@ class FilamentSensorEMS22 {
 
         // Ratio of target e-steps and filament sensor steps, this is a 
         // measure of the *feeder slippage*.
-        RunningAvgF slippageStep;
-        RunningAvgF slippageSens;
+        // RunningAvgF slippageStep;
+        // RunningAvgF slippageSens;
 
         // Factor to slow down movement because feeder slippage is greater than 10%.
         float grip;
@@ -330,10 +336,10 @@ class FilamentSensorEMS22 {
         void setFilSensorCalibration(float fc) { filSensorCalibration = fc; }
         void setStepsPerMME(uint16_t steps) {
             axis_steps_per_mm_e = steps;
-            minStepperSteps = (MINSTEPPERSTEPS * axis_steps_per_mm_e);
+            // minStepperSteps = (MINSTEPPERSTEPS * axis_steps_per_mm_e);
         }
 
-        inline float slippage() { return (slippageStep.value() * filSensorCalibration) / slippageSens.value(); }
+        float slippage(); //  { return (slippageStep.value() * filSensorCalibration) / slippageSens.value(); }
 };
 
 extern FilamentSensorEMS22 filamentSensor;

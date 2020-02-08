@@ -30,7 +30,7 @@ class TempControl: public Protothread
     float raw_temp_0_value; // sum of OVERSAMPLENR ADC values
     float raw_temp_bed_value; // sum of OVERSAMPLENR ADC values
 
-    // PID values from eeprom
+    // PID values from host printerprofile
     float Kp;
     float Ki;
     float Kd;
@@ -46,8 +46,8 @@ class TempControl: public Protothread
     int32_t cobias;
     int32_t pid_output;
 
-    // PWM value dictated by host firmware part. Normal PID
-    // temperature control is bypassed if this value is set.
+    // PWM value controlled by host firmware part. Normal PID
+    // temperature control is added to this value.
     // Set to 0 to re-enable PID temperature control.
     // Maxtemp is still checked even if PID is disabled.
     uint8_t pwmValueOverride;
@@ -77,7 +77,8 @@ class TempControl: public Protothread
             Ki = ki;
             Kd = kd;
         }
-        uint8_t getPwmOutput() { return (pwmValueOverride) ? pwmValueOverride : (uint8_t)max(pid_output, 0); }
+        uint8_t getPwmOutput() { return (uint8_t)
+                    min( max(pid_output, 0) + pwmValueOverride, 255 ); }
 };
 
 extern TempControl tempControl;

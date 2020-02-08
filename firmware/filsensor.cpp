@@ -36,6 +36,13 @@
 // Circular buffer of last 256 filsensor measurements
 FilsensorReading filsensorReadings[256];
 uint8_t filsensorReadingIndex;
+uint8_t nReadings;
+uint8_t nAvg;
+
+void setNAvg(uint8_t n) {
+    nAvg = n;
+    nReadings = 0;
+}
 
 #if defined(PMWFS)
 
@@ -54,7 +61,7 @@ FilamentSensorPMW3360::FilamentSensorPMW3360() {
 
     sensorCount = 0;
 
-    minStepperSteps = MINSTEPPERSTEPS * axis_steps_per_mm_e;
+    // minStepperSteps = MINSTEPPERSTEPS * axis_steps_per_mm_e;
 
     init();
 }
@@ -63,9 +70,9 @@ void FilamentSensorPMW3360::init() {
 
     lastASteps = LONG_MAX; // marker for not set
 
-    slippageStep.reset(1.0);
-    slippageSens.reset(filSensorCalibration);
-    started = false;
+    // slippageStep.reset(1.0);
+    // slippageSens.reset(filSensorCalibration);
+    // started = false;
     grip = 1.0;
 }
 
@@ -130,85 +137,67 @@ int16_t FilamentSensorPMW3360::getDY() {
     return 0;
 }
 
+float FilamentSensorPMW3360::slippage() {
+
+    if (nReadings == nAvg) {
+
+        // sum up e-stepper and e-sensor steps/counts
+        int16_t dssum = 0;
+        int16_t dysum = 0;
+
+        for (uint8_t i=filsensorReadingIndex - 1 - nAvg; i<filsensorReadingIndex - 1; i++) {
+            dssum += filsensorReadings[i].ds;
+            dysum += filsensorReadings[i].dy;
+        }
+
+        if (dysum != 0)
+            return abs((dssum * filSensorCalibration) / dysum);
+    }
+
+    return 1.0;
+}
+
 void FilamentSensorPMW3360::run() {
+
+    CRITICAL_SECTION_START
+    int32_t astep = current_pos_steps[E_AXIS];
+    CRITICAL_SECTION_END
 
     dDPrintSpi.beginTransaction(spiSettingsFS);
     int16_t dy = getDY(); // read distance delta from filament sensor
 
+    if (lastASteps == LONG_MAX) {
+
+        // not initialized yet
+
+        lastASteps = astep;
+        lastSensorCount = sensorCount;
+
+        return;
+    }
+
+    int16_t deltaStepperSteps = astep - lastASteps; // Requested extruded length
+
     filsensorReadings[filsensorReadingIndex].timeStamp = millis();
+    filsensorReadings[filsensorReadingIndex].ds = deltaStepperSteps;
     filsensorReadings[filsensorReadingIndex].dy = dy;
+    
     filsensorReadingIndex++;
 
-    if (dy) {
+    if (nReadings < nAvg)
+        nReadings ++;
 
-        CRITICAL_SECTION_START
-        int32_t astep = current_pos_steps[E_AXIS];
-        CRITICAL_SECTION_END
+    float s = slippage();
 
-        if (lastASteps == LONG_MAX) {
+    if (feedrateLimiterEnabled && (s > 0.0)) {
 
-            // not initialized yet
-
-            lastASteps = astep;
-            lastSensorCount = sensorCount;
-        }
-        else {
-            // initialized 
-    
-            if (astep != lastASteps) {
-
-                float deltaStepperSteps = astep - lastASteps; // Requested extruded length, always positive, since astep > lastASteps
-
-                if (deltaStepperSteps >= minStepperSteps) {
-                    started = true;
-                }
-
-                if (started) {
-
-                    int32_t deltaSensorSteps = sensorCount - lastSensorCount;
-
-                    slippageStep.addValue( deltaStepperSteps );
-                    slippageSens.addValue( deltaSensorSteps );
-
-                    lastASteps = astep;
-                    lastSensorCount = sensorCount;
-
-                    // float s = slippage.value();
-                    float s = slippage();
-
-                    if (feedrateLimiterEnabled && (s > 0.0)) {
-
-                        float allowedSlippage = s * 0.90; // allow for 10% slip before we slow down
-                        float g = max(1.0, pow(allowedSlippage - 1.0, 2)*25);
-                        grip = STD min((float)3.0, g);
-                    }
-
-                    /*
-                    lcd.setCursor(0, 0); lcd.print("DS:"); lcd.print(deltaStepperSteps); lcd.print("     ");
-                    lcd.setCursor(0, 1); lcd.print("DY:"); lcd.print(deltaSensorSteps); lcd.print("     ");
-                    lcd.setCursor(0, 2); lcd.print("RA:"); lcd.print(ratio); lcd.print("     ");
-                    lcd.setCursor(0, 3); lcd.print("RA:"); lcd.print(s); lcd.print(" "); lcd.print(grip); lcd.print("     ");
-                    */
-                }
-            }
-        }
+        float allowedSlippage = s * 0.90; // allow for 10% slip before we slow down
+        float g = max(1.0, pow(allowedSlippage - 1.0, 2)*25);
+        grip = STD min((float)3.0, g);
     }
-    else {
-        // check for error
-#if 0    
-                        // No measurement from filament sensor:
-                        //   * hardware failure
-                        //   * filament grinding
-                        //   * no filament
-                        if (deltaStepperSteps > (axis_steps_per_mm_e * 5)) {
-                            // slippage.addValue(10);
-                            slippageStep.addValue( 10 );
-                            slippageSens.addValue( 10 * filSensorCalibration );
-                        }
-                        // Break, still counting steps, counts
-                        return;
-#endif
-    }
+
+    lastASteps = astep;
+    lastSensorCount = sensorCount;
 }
 
 #if 0
@@ -421,9 +410,6 @@ FilamentSensorEMS22::FilamentSensorEMS22() {
 
     sensorCount = 0;
 
-    minStepperSteps = MINSTEPPERSTEPS * axis_steps_per_mm_e;
-
-
     init();
 }
 
@@ -431,9 +417,6 @@ void FilamentSensorEMS22::init() {
 
     lastASteps = LONG_MAX; // marker for not set
 
-    slippageStep.reset(1.0);
-    slippageSens.reset(filSensorCalibration);
-    started = false;
     grip = 1.0;
 }
 
@@ -496,79 +479,68 @@ int16_t FilamentSensorEMS22::getDY() {
     return dy;
 }
 
+float FilamentSensorEMS22::slippage() {
+
+    if (nReadings == nAvg) {
+
+        // sum up e-stepper and e-sensor steps/counts
+        int16_t dssum = 0;
+        int16_t dysum = 0;
+
+        for (uint8_t i=filsensorReadingIndex - 1 - nAvg; i<filsensorReadingIndex - 1; i++) {
+            dssum += filsensorReadings[i].ds;
+            dysum += filsensorReadings[i].dy;
+        }
+
+        if (dysum != 0)
+            return abs((dssum * filSensorCalibration) / dysum);
+    }
+
+    return 1.0;
+}
+
 void FilamentSensorEMS22::run() {
+
+    CRITICAL_SECTION_START
+    int32_t astep = current_pos_steps[E_AXIS];
+    CRITICAL_SECTION_END
 
     // dDPrintSpi.beginTransaction(spiSettingsFS);
     
     int16_t dy = getDY(); // read distance delta from filament sensor
 
+    if (lastASteps == LONG_MAX) {
+
+        // not initialized yet
+
+        lastASteps = astep;
+        lastSensorCount = sensorCount;
+
+        return;
+    }
+
+    int16_t deltaStepperSteps = astep - lastASteps; // Requested extruded length
+
     filsensorReadings[filsensorReadingIndex].timeStamp = millis();
+    filsensorReadings[filsensorReadingIndex].ds = deltaStepperSteps;
     filsensorReadings[filsensorReadingIndex].dy = dy;
+    
     filsensorReadingIndex++;
 
-    if (dy) {
+    if (nReadings < nAvg)
+        nReadings ++;
 
-        CRITICAL_SECTION_START
-        int32_t astep = current_pos_steps[E_AXIS];
-        CRITICAL_SECTION_END
+    float s = slippage();
 
-        if (lastASteps == LONG_MAX) {
+    if (feedrateLimiterEnabled && (s > 0.0)) {
 
-            // not initialized yet
-
-            lastASteps = astep;
-            lastSensorCount = sensorCount;
-        }
-        else {
-            // initialized 
-    
-            if (astep != lastASteps) {
-
-                float deltaStepperSteps = astep - lastASteps; // Requested extruded length, always positive, since astep > lastASteps
-
-                if (deltaStepperSteps >= minStepperSteps) {
-                    started = true;
-                }
-
-                if (started) {
-
-                    int32_t deltaSensorSteps = sensorCount - lastSensorCount;
-
-                    slippageStep.addValue( deltaStepperSteps );
-                    slippageSens.addValue( deltaSensorSteps );
-
-                    lastASteps = astep;
-                    lastSensorCount = sensorCount;
-
-                    // float s = slippage.value();
-                    float s = slippage();
-
-                    if (feedrateLimiterEnabled && (s > 0.0)) {
-
-                        float allowedSlippage = s * 0.90; // allow for 10% slip before we slow down
-                        float g = max(1.0, pow(allowedSlippage - 1.0, 2)*25);
-                        grip = STD min((float)3.0, g);
-                    }
-                }
-            }
-        }
+        float allowedSlippage = s * 0.90; // allow for 10% slip before we slow down
+        float g = max(1.0, pow(allowedSlippage - 1.0, 2)*25);
+        grip = STD min((float)3.0, g);
     }
-    else {
-        // check for error
-#if 0    
-                        // No measurement from filament sensor:
-                        //   * hardware failure
-                        //   * filament grinding
-                        //   * no filament
-                        if (deltaStepperSteps > (axis_steps_per_mm_e * 5)) {
-                            // slippage.addValue(10);
-                            slippageStep.addValue( 10 );
-                            slippageSens.addValue( 10 * filSensorCalibration );
-                        }
-                        // Break, still counting steps, counts
-                        return;
-#endif
-    }
+
+    lastASteps = astep;
+    lastSensorCount = sensorCount;
 }
 
 #endif // #if defined(BournsEMS22AFS)
