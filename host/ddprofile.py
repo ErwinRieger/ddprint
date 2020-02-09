@@ -223,18 +223,6 @@ class PrinterProfile(ProfileBase):
         nAvg = max(nAvg, 2)
         return nAvg
 
-    @classmethod
-    def getKpwm(cls):
-        return cls.getValues()["Kpwm"]
-
-    @classmethod
-    def getP0pwm(cls):
-        return cls.getValues()["P0pwm"]
-
-    @classmethod
-    def getFR0pwm(cls):
-        return cls.getValues()["FR0pwm"]
-
 ####################################################################################################
 #
 # To access tempearture curve data
@@ -396,7 +384,10 @@ class MatProfile(ProfileBase):
 
     @classmethod
     def getMatArea(cls):
-        return cls.get().matArea
+        return cls.get()._getMatArea()
+
+    def _getMatArea(self):
+        return self.matArea
 
     @classmethod
     def getKAdv(cls):
@@ -415,6 +406,34 @@ class MatProfile(ProfileBase):
     def getFlowrateForTemp(cls, temp, hwVersion, nozzleDiam):
         return cls.get()._getFlowrateForTemp(temp, hwVersion, nozzleDiam)
 
+    def getKpwm(self, hwVersion, nozzleDiam):
+
+        flowrateData = self.getValues()["tempFlowrateCurve_%d" % (nozzleDiam*100)]
+        # Check hardware version
+        assert(flowrateData["version"] == hwVersion)
+        return flowrateData["Kpwm"]
+
+    def getKtemp(self, hwVersion, nozzleDiam):
+
+        flowrateData = self.getValues()["tempFlowrateCurve_%d" % (nozzleDiam*100)]
+        # Check hardware version
+        assert(flowrateData["version"] == hwVersion)
+        return flowrateData["Ktemp"]
+
+    def getP0pwm(self, hwVersion, nozzleDiam):
+
+        flowrateData = self.getValues()["tempFlowrateCurve_%d" % (nozzleDiam*100)]
+        # Check hardware version
+        assert(flowrateData["version"] == hwVersion)
+        return flowrateData["P0pwm"]
+
+    def getFR0pwm(self, hwVersion, nozzleDiam):
+
+        flowrateData = self.getValues()["tempFlowrateCurve_%d" % (nozzleDiam*100)]
+        # Check hardware version
+        assert(flowrateData["version"] == hwVersion)
+        return flowrateData["FR0pwm"]
+
     def old_getFlowrateForTemp(self, temp, hwVersion, nozzleDiam):
 
         tempCurve = self.getTempCurve(hwVersion, nozzleDiam)
@@ -422,16 +441,12 @@ class MatProfile(ProfileBase):
 
     def _getFlowrateForTemp(self, temp, hwVersion, nozzleDiam):
 
-        print "_getFlowrateForTemp hardcoded"
-        Kpwm= 0.1804
-        # # xxx hardcoded in firmware!
-        P0pwm= 87
-        # xxx 6*0*.7
-        FR0pwm= 4.2
+        FR0pwm= self.getFR0pwm(hwVersion, nozzleDiam)
+        Ktemp = self.getKtemp (hwVersion, nozzleDiam)
 
-        basetemp = 200
-        ktemp = 0.2020
-        fr = FR0pwm + (temp - basetemp) * ktemp
+        basetemp = self.getHotendBaseTemp(hwVersion, nozzleDiam)
+
+        fr = FR0pwm + (temp - basetemp) * Ktemp
 
         print "flowrate for temp:", temp, fr
         return fr
@@ -456,7 +471,9 @@ class MatProfile(ProfileBase):
 
     @classmethod
     def getSlippage(cls, hwVersion, nozzleDiam):
+        return cls.get()._getSlippage(temp, hwVersion, nozzleDiam)
 
+    def _getSlippage(cls, hwVersion, nozzleDiam):
         flowrateData = cls.get().getValues()["tempFlowrateCurve_%d" % (nozzleDiam*100)]
         assert(flowrateData["version"] == hwVersion)
         return flowrateData["slippage"]

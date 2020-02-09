@@ -146,9 +146,16 @@ class PathData (object):
         self.path = []
         self.count = -10
 
-        self.ks = PrinterProfile.getKpwm()
-        self.p0 = PrinterProfile.getP0pwm() # xxx hardcoded in firmware!
-        self.fr0 = PrinterProfile.getFR0pwm()
+        matProfile = MatProfile.get()
+
+        hwVersion = PrinterProfile.getHwVersion()
+        nozzleDiam = NozzleProfile.getSize()
+
+        self.ks = matProfile.getKpwm(hwVersion, nozzleDiam)
+        self.ktemp = matProfile.getKtemp(hwVersion, nozzleDiam)
+        self.p0 = matProfile.getP0pwm(hwVersion, nozzleDiam) # xxx hardcoded in firmware!
+        self.fr0 = matProfile.getFR0pwm(hwVersion, nozzleDiam)
+        self.slippage = matProfile._getSlippage(hwVersion, nozzleDiam)
 
         self.energy = 0
 
@@ -185,8 +192,7 @@ class PathData (object):
             # adjustment for:
             # * 10% for minratio (90%)
             # * 10% measurement errors
-            # * 0% some heat to keep things flowing
-            adj = 1.2 # 1.3
+            adj = 1.0 + self.slippage + 0.1
             de = (rateDiff / self.ks) * adj * tsum
             print "need additional energy:", de
             self.energy += de
@@ -221,8 +227,7 @@ class PathData (object):
                 moveNumber = move.moveNumber)
 
             # temp
-            ktemp = 0.2020
-            newTemp = 200 + (rateDiff / ktemp)
+            newTemp = MatProfile.getHotendStartTemp() + (rateDiff / self.ktemp) * adj
 
             # Schedule target temp command
             self.planner.addSynchronizedCommand(

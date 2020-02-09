@@ -17,8 +17,13 @@
   # This is the temp-flowrate curve for a 0.8mm nozzle.
   "tempFlowrateCurve_80" : {
       "version": 3,
-      "slippage": 0.05,
-      "data": [
+      "slippage": 0.10,
+      "Kpwm": 0.1804,
+      "Ktemp": 0.2020,
+      # # xxx hardcoded in firmware!  
+      "P0pwm": 87,
+      "FR0pwm": 5.7,
+      "notused_data": [
           [210.000000, 5.000000],
           [215.000000, 5.714286],
           [220.000000, 6.428571],
@@ -36,8 +41,8 @@
   # This is the generic temp-flowrate curve for a 0.4mm nozzle.
   "tempFlowrateCurve_40" : {
       "version": 3,
-      "slippage": 0.05,
-      "data": [
+      "slippage": 0.10,
+      "notused_data": [
           [210.000000, 4.000000],
           [215.000000, 4.250000],
           [220.000000, 4.500000],

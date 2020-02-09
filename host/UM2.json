@@ -65,13 +65,6 @@
   "Kp": 3,
   "Ki": 0.1,
   "Kd": 12.5,
-  # "Ki": 0.05,
-  # "Kd": 0,
-  "Kpwm": 0.1804,
-  # # xxx hardcoded in firmware!  
-  "P0pwm": 87,
-  # xxx 6*0*.7
-  "FR0pwm": 4.2,
   # Bedleveling Z value
   "add_homeing_z": -16.35,
   # Diameter of feeder (knurled) wheel, take some 

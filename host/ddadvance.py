@@ -150,11 +150,14 @@ class Advance (object):
 
             hwVersion = PrinterProfile.getHwVersion()
             nozzleDiam = NozzleProfile.getSize()
-            slippage = MatProfile.getSlippage(hwVersion, nozzleDiam)
 
-            tempCurve = MatProfile.get().getTempCurve(hwVersion, nozzleDiam)
+            matProfile = MatProfile.get()
+            slippage = matProfile._getSlippage(hwVersion, nozzleDiam)
 
-            area = MatProfile.getMatArea()
+            tempCurve = matProfile.getTempCurve(hwVersion, nozzleDiam)
+
+            area = matProfile._getMatArea()
+
             flowRate = tempCurve.maxFlowrate                           # [mm³/s]
             feedRate = flowRate / area                                 # [mm/s]
 

@@ -484,7 +484,7 @@ class MainForm(npyscreen.FormBaseNew):
             # print "xxx pmwumbau, temptable"
             # util.downloadDummyTempTable(self.printer)
             print "xxx newdownloadTempTable"
-            util.newdownloadTempTable(self.printer)
+            util.newdownloadTempTable(self.planner)
 
             self.printer.sendPrinterInit()
 
