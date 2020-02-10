@@ -417,6 +417,8 @@ class Printer(Serial):
 
         # self.sendCommandParamV(CmdSetBedlevelOffset, [packedvalue.float_t(settings["add_homeing_z"])])
 
+        self.sendCommandParamV(CmdSetP0pwm, [packedvalue.uint8_t(settings["P0pwm"])])
+
         self.sendCommandParamV(CmdSetIncTemp, [packedvalue.uint8_t(HeaterEx1), packedvalue.int16_t(args.inctemp)]);
 
     def resetLineNumber(self):

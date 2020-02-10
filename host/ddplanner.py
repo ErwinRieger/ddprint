@@ -160,11 +160,7 @@ class PathData (object):
         self.energy = 0
 
         # AutoTemp
-        if UseExtrusionAutoTemp:
-
-            # self.lastTemp = MatProfile.getHotendStartTemp()
-            self.lastTemp = self.p0 # pwm
-
+        self.lastTemp = 0
 
     # Number of moves
     def incCount(self):
@@ -207,14 +203,12 @@ class PathData (object):
             print "this is %.2f seconds with %.2f pwm, move time: %.2f" % (tOn, pwmMaxStep, tsum)
 
             if tOn <= tsum:
-
-                print "this move is long enough", tOn, pwmMaxStep*tOn
+                # Long enough for pulse
                 self.energy = 0
                 
             else:
-
+                # Not long enough for pulse, add left over energy to next segment
                 tOn = tsum
-                print "this move is not long enough", tOn, pwmMaxStep*tOn
                 self.energy -= pwmMaxStep * tOn
 
             assert((tOn*1000) < pow(2, 16))
@@ -227,14 +221,18 @@ class PathData (object):
                 moveNumber = move.moveNumber)
 
             # temp
-            newTemp = MatProfile.getHotendStartTemp() + (rateDiff / self.ktemp) * adj
+            newTemp = int(round(MatProfile.getHotendStartTemp() + (rateDiff / self.ktemp) * adj))
 
-            # Schedule target temp command
-            self.planner.addSynchronizedCommand(
-                CmdSyncTargetTemp, 
-                p1 = packedvalue.uint8_t(HeaterEx1),
-                p2 = packedvalue.uint16_t(newTemp), 
-                moveNumber = move.moveNumber)
+            if newTemp != self.lastTemp:
+
+                # Schedule target temp command
+                self.planner.addSynchronizedCommand(
+                    CmdSyncTargetTemp, 
+                    p1 = packedvalue.uint8_t(HeaterEx1),
+                    p2 = packedvalue.uint16_t(newTemp), 
+                    moveNumber = move.moveNumber)
+            
+                self.lastTemp = newTemp
 
             if debugAutoTemp:
                 self.planner.gui.log( "AutoTemp: collected %d moves with %.2f s duration." % (len(moves), tsum))

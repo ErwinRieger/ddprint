@@ -199,6 +199,7 @@ class PrinterProfile(ProfileBase):
             "Kp": cls.getValues()["Kp"],
             "Ki": cls.getValues()["Ki"],
             "Kd": cls.getValues()["Kd"],
+            "P0pwm": MatProfile.getP0pwm(hwVersion=cls.getHwVersion(), nozzleDiam=NozzleProfile.getSize())
             }
 
     @classmethod
@@ -420,7 +421,11 @@ class MatProfile(ProfileBase):
         assert(flowrateData["version"] == hwVersion)
         return flowrateData["Ktemp"]
 
-    def getP0pwm(self, hwVersion, nozzleDiam):
+    @classmethod
+    def getP0pwm(cls, hwVersion, nozzleDiam):
+        return cls.get()._getP0pwm(hwVersion, nozzleDiam);
+
+    def _getP0pwm(self, hwVersion, nozzleDiam):
 
         flowrateData = self.getValues()["tempFlowrateCurve_%d" % (nozzleDiam*100)]
         # Check hardware version

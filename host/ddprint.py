@@ -492,8 +492,13 @@ def main():
 
                     print "\nHeating bed (t0: %d)...\n" % t0
                     printer.heatUp(HeaterBed, t0, t0, log=True)
+
+                    # avoid big overswing
+                    print "\nHeating extruder (t1: %d)...\n" % (t1*0.9)
+                    printer.heatUp(HeaterEx1, t1*0.9, t1*0.9-2, log=True)
+
                     print "\nHeating extruder (t1: %d)...\n" % t1
-                    printer.heatUp(HeaterEx1, t1, t1-1, log=True)
+                    printer.heatUp(HeaterEx1, t1, t1-2, log=True)
 
                     # Send print command
                     printer.sendCommandParamV(CmdMove, [MoveTypeNormal])

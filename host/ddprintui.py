@@ -518,8 +518,14 @@ class MainForm(npyscreen.FormBaseNew):
 
                         self.log( "\nHeating bed (t0: %d)...\n" % self.mat_t0 )
                         self.printer.heatUp(HeaterBed, self.mat_t0, wait=self.mat_t0)
+
+                    
+                        # avoid big overswing
+                        self.log( "\nHeating extruder (t1: %d)...\n" % (self.mat_t1*0.9) )
+                        self.printer.heatUp(HeaterEx1, self.mat_t1*0.9, self.mat_t1*0.9-2)
+
                         self.log( "\nHeating extruder (t1: %d)...\n" % self.mat_t1 )
-                        self.printer.heatUp(HeaterEx1, self.mat_t1, self.mat_t1-1)
+                        self.printer.heatUp(HeaterEx1, self.mat_t1, self.mat_t1-2)
 
                         # Send print command
                         self.printer.sendCommandParamV(CmdMove, [MoveTypeNormal])
