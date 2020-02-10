@@ -24,7 +24,6 @@
 #include "pins.h"
 #include "thermistortables.h"
 #include "eepromSettings.h"
-#include "Configuration.h"
 #include "ddserial.h"
 #include "ddcommands.h"
 #include "fastio.h"
@@ -91,9 +90,7 @@ void TempControl::init() {
 
     // Wait for initial conversion and read value
     while (ADCSRA & (1<<ADSC));
-    raw_temp_0_value = ADC * OVERSAMPLENR;
-
-    // printf("Initial hotend raw temp: %d\n", raw_temp_0_value);
+    avgHotendTemp.addValue(tempFromRawADC(ADC));
 
     //
     // Start initial bedtemp measure
@@ -110,10 +107,8 @@ void TempControl::init() {
 
     // Wait for initial conversion and read value
     while (ADCSRA & (1<<ADSC));
-    raw_temp_bed_value = ADC * OVERSAMPLENR;
+    avgBedTemp.addValue(tempFromRawADC(ADC));
     
-    // printf("Initial hotend raw temp: %d\n", raw_temp_bed_value);
-
     //
     // Get PID values from eeprom
     //
@@ -125,6 +120,7 @@ void TempControl::init() {
 
     eSum = 0;
     eAlt = 0;
+    lastGoodESum = 0;
 
     cobias = 0;
     pid_output = 0;
@@ -163,8 +159,8 @@ bool TempControl::Run() {
     // printf("TempControl::Run() wait for hotend\n");
     PT_WAIT_WHILE( ADCSRA & (1<<ADSC) );
 
-    raw_temp_0_value = raw_temp_0_value - (raw_temp_0_value / OVERSAMPLENR) + ADC;
-    current_temperature[0] = tempFromRawADC(raw_temp_0_value);
+    avgHotendTemp.addValue(tempFromRawADC(ADC));
+    current_temperature[0] = avgHotendTemp.value();
 
     ////////////////////////////////
     // Handle heated bed 
@@ -187,8 +183,8 @@ bool TempControl::Run() {
     // printf("TempControl::Run() wait for bed\n");
     PT_WAIT_WHILE( ADCSRA & (1<<ADSC) );
 
-    raw_temp_bed_value = raw_temp_bed_value - (raw_temp_bed_value / OVERSAMPLENR) + ADC;
-    current_temperature_bed = tempFromRawADC(raw_temp_bed_value);
+    avgBedTemp.addValue(tempFromRawADC(ADC));
+    current_temperature_bed = avgBedTemp.value();
 
     PT_RESTART();
         
@@ -240,6 +236,9 @@ void TempControl::setTemp(uint8_t heater, uint16_t temp) {
             //
         }
 
+        if (temp < target_temperature[heater-1])
+            lastGoodESum = 0;
+
         target_temperature[heater-1] = temp;
 
         // eAlt = 0;
@@ -273,17 +272,13 @@ void TempControl::heater() {
             // Regeldifferenz, grösser 0 falls temperatur zu klein
             float e = target_temperature[0] - current_temperature[0];
 
+            eSum = constrain(
+                eSum + e,
+                -PID_DRIVE_MAX,
+                PID_DRIVE_MAX);
+
             if (e >= 0)
-                eSum = constrain(
-                    eSum + e,
-                    -PID_DRIVE_MAX,
-                    PID_DRIVE_MAX);
-            else 
-                if (e < -5)
-                    eSum = constrain(
-                        eSum + e,
-                        -PID_DRIVE_MAX,
-                        PID_DRIVE_MAX);
+                lastGoodESum = eSum;
 
             float pTerm = Kp * e;
 
@@ -371,6 +366,11 @@ void TempControl::setTempPWM(uint8_t heater, uint8_t pwmValue) {
 #endif
 
     pwmValueOverride = pwmValue;
+
+    float e = target_temperature[0] - current_temperature[0];
+
+    if (e < 0.0)
+        eSum = lastGoodESum;
 }
 
 #if defined(PIDAutoTune)

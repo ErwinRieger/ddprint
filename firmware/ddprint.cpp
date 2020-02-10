@@ -469,10 +469,6 @@ bool FillBufferTask::Run() {
                     // Change stepper direction(s)
                     sd.dirBits = flags & 0x9F;
 
-                // if (flags & 0x200)
-                    // // Start filament sensor measurement
-                    // printer.restartFilsensor = true;
-
                 cmdSync = true;
 
                 //
@@ -567,7 +563,6 @@ bool FillBufferTask::Run() {
 
                 if (flags & 0x200) {
                     // Start filament sensor measurement
-                    // printer.restartFilsensor = true;
                     sDReader.setBytesToRead1();
                     PT_WAIT_THREAD(sDReader);
                     setNAvg(FromBuf(uint8_t, sDReader.readData));
@@ -754,10 +749,6 @@ bool FillBufferTask::Run() {
                     // Change stepper direction(s)
                     sd.dirBits = flags & 0x9F;
 
-                // if (flags & 0x100)
-                    // // Start filament sensor measurement
-                    // printer.restartFilsensor = true;
-
                 // ???
                 // cmdSync = true;
 
@@ -817,7 +808,6 @@ bool FillBufferTask::Run() {
     
                 if (flags & 0x100) {
                     // Start filament sensor measurement
-                    // printer.restartFilsensor = true;
                     sDReader.setBytesToRead1();
                     PT_WAIT_THREAD(sDReader);
                     setNAvg(FromBuf(uint8_t, sDReader.readData));
@@ -973,8 +963,6 @@ Printer::Printer() {
 
     for (int heater=0; heater<N_HEATERS; heater++)
         increaseTemp[heater] = 0;
-
-    restartFilsensor = true;
 };
 
 void Printer::printerInit() {
@@ -985,8 +973,6 @@ void Printer::printerInit() {
     // Erase sd-swap to speed up block writes.
     //
     if (! swapErased) {
-
-        // unsigned long eStart = millis();
 
         uint32_t sdsize = swapDev.cardSize();
 
@@ -1108,6 +1094,11 @@ void Printer::cmdGetFSReadings(uint8_t nReadings) {
     }
 
     txBuffer.sendResponseEnd();
+}
+
+void Printer::cmdSetP0pwm(uint8_t pwm) {
+
+    p0pwm = pwm;
 }
 
 void Printer::cmdFanSpeed(uint8_t speed) {
@@ -1671,6 +1662,13 @@ class UsbCommand : public Protothread {
                             txBuffer.sendACK();
                         }
                         break;
+                    case CmdSetP0pwm:
+                        {
+                            uint8_t pwm = serialPort.readNoCheckCobs();
+                            printer.cmdSetP0pwm(pwm);
+                            txBuffer.sendACK();
+                        }
+                        break;
                     case CmdStopMove:
                         printer.cmdStopMove();
                         txBuffer.sendACK();
@@ -1881,15 +1879,8 @@ FWINLINE void loop() {
     static unsigned long timer10mS = millis() + 10;
     static unsigned long timer100mS = millis() + 100;
 
-    // if (printer.restartFilsensor) {
-
-        // filamentSensor.init();
-
-        // printer.restartFilsensor = false;
-    // }
-
     if (fillBufferTask.pulseEnd && (millis() >= fillBufferTask.pulseEnd)) {
-        tempControl.setTempPWM(fillBufferTask.targetHeater, 87); // Xxxxxxxxxxxxxxxxxxx hardcoded p0
+        tempControl.setTempPWM(fillBufferTask.targetHeater, printer.getP0pwm());
         fillBufferTask.pulseEnd = 0;
     }
 
@@ -1927,7 +1918,7 @@ FWINLINE void loop() {
         }
 
         //
-        // Measure temperatures every 10ms (build mean value by OVERSAMPLENR)
+        // Measure temperatures every 10ms
         //
         tempControl.Run();
 

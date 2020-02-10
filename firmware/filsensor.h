@@ -31,117 +31,6 @@
 
 // #define MINSTEPPERSTEPS 0.25
 
-// #if 0
-// Weight for exponential filter of e-speed [percent]
-#define ESpeedWeight 0.33
-
-class SpeedExpoFilter {
-
-    // float weight;
-    float current;
-    // int16_t current;
-
-  public:
-
-    SpeedExpoFilter(/* float w*/) {
-        // weight = w;
-        current = 0;
-    }
-
-    void /*int16_t*/ addValue(float v) {
-
-        current = (ESpeedWeight * v + (1.0 - ESpeedWeight) * current);
-        // return current;
-    }
-
-    float value() { return current; }
-
-    void reset() { current = 0; }
-};
-// #endif
-
-// Window size running average filament speed.
-// Poll rate is 100ms (see ddprint.cpp).
-#define RAVGWINDOW 10
-
-/*
-class RunninAvg {
-
-    int16_t values[RAVGWINDOW];
-    uint8_t i;
-    uint8_t n;
-    int16_t avg;
-
-  public:
-
-    RunninAvg() {
-        i = n = 0;
-        avg = 0;
-    }
-
-    inline void addValue(int16_t v) {
-
-        values[i++] = v;
-        if (i == RAVGWINDOW)
-            i = 0;
-        if (n < RAVGWINDOW)
-            n++;
-
-        avg = 0;
-        for (uint8_t j=0; j<n; j++)
-            avg += values[j];
-        avg /= n;
-    }
-
-    inline int16_t value() { return avg; }
-
-    void reset(int16_t av = 0) { n = 0; avg = av;}
-};
-*/
-
-// xxx runningsum
-class RunningAvgF {
-
-    float values[RAVGWINDOW];
-    uint8_t i;
-    uint8_t n;
-    float sum;
-
-  public:
-
-    RunningAvgF() {
-        i = n = 0;
-        sum = 0;
-    }
-
-    inline void addValue(float v) {
-
-        values[i++] = v;
-        if (i == RAVGWINDOW)
-            i = 0;
-        if (n < RAVGWINDOW)
-            n++;
-
-        sum = 0;
-        for (uint8_t j=0; j<n; j++)
-            sum += values[j];
-        // avg /= n;
-    }
-
-    inline float value() { return sum; }
-
-    void reset(float av = 0) { 
-
-        sum = 0;
-        for (uint8_t j=0; j<RAVGWINDOW; j++) {
-            values[j] = av;
-            sum += av;
-        }
-        i = 0;
-        n = RAVGWINDOW;
-    }
-};
-
 typedef struct {
     unsigned long timeStamp;
     int16_t       dy;
@@ -222,14 +111,13 @@ class FilamentSensorPMW3360 {
         int32_t lastSensorCount;
 
         int16_t rest = 0;
-        // int16_t lastecount = 0;
         int16_t lastEncoderPos;
 
         uint8_t readLoc(uint8_t addr);
 
         void writeLoc(uint8_t addr, uint8_t value);
         uint8_t pullbyte();
-        bool feedrateLimiterEnabled; // , started;
+        bool feedrateLimiterEnabled;
 
         // Ratio between measured filament sensor counts and the 
         // extruder stepper motor steps.
@@ -246,11 +134,6 @@ class FilamentSensorPMW3360 {
 
         int16_t getDY();
         int32_t sensorCount;
-
-        // Ratio of target e-steps and filament sensor steps, this is a 
-        // measure of the *feeder slippage*.
-        // RunningAvgF slippageStep;
-        // RunningAvgF slippageSens;
 
         // Factor to slow down movement because feeder slippage is greater than 10%.
         float grip;
@@ -270,7 +153,6 @@ class FilamentSensorPMW3360 {
             // minStepperSteps = (MINSTEPPERSTEPS * axis_steps_per_mm_e);
         }
 
-        // inline float slippage() { return (slippageStep.value() * filSensorCalibration) / slippageSens.value(); }
         float slippage();
 };
 
@@ -289,14 +171,13 @@ class FilamentSensorEMS22 {
         int32_t lastSensorCount;
 
         int16_t rest = 0;
-        // int16_t lastecount = 0;
         int16_t lastEncoderPos = 0;
 
         uint8_t readLoc(uint8_t addr);
 
         void writeLoc(uint8_t addr, uint8_t value);
         uint8_t pullbyte();
-        bool feedrateLimiterEnabled, started;
+        bool feedrateLimiterEnabled;
 
         // Ratio between measured filament sensor counts and the 
         // extruder stepper motor steps.
@@ -316,11 +197,6 @@ class FilamentSensorEMS22 {
         int16_t getDY();
         int32_t sensorCount;
 
-        // Ratio of target e-steps and filament sensor steps, this is a 
-        // measure of the *feeder slippage*.
-        // RunningAvgF slippageStep;
-        // RunningAvgF slippageSens;
-
         // Factor to slow down movement because feeder slippage is greater than 10%.
         float grip;
 
@@ -339,7 +215,7 @@ class FilamentSensorEMS22 {
             // minStepperSteps = (MINSTEPPERSTEPS * axis_steps_per_mm_e);
         }
 
-        float slippage(); //  { return (slippageStep.value() * filSensorCalibration) / slippageSens.value(); }
+        float slippage();
 };
 
 extern FilamentSensorEMS22 filamentSensor;

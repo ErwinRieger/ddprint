@@ -23,8 +23,6 @@
 #include <Arduino.h>
 #include <avr/pgmspace.h>
 
-#define OVERSAMPLENR 8
-
 // PT100 with INA826 amp on Ultimaker v2.0 electronics
 
 //
@@ -436,7 +434,7 @@ const float thermistorTable[] PROGMEM = {
 
 inline float tempFromRawADC(float rawADC) {
 
-    int16_t index = rawADC/OVERSAMPLENR + 0.5 - ThermistorTableLowADC;
+    int16_t index = rawADC + 0.5 - ThermistorTableLowADC;
 
     // Check lower end of table
     if (index < 0)

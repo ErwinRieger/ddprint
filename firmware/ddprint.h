@@ -68,10 +68,10 @@ class Printer {
         // To adjust temperature-niveau at runtime
         uint16_t increaseTemp[N_HEATERS];
 
-    public:
+        // Idle pmw value if in *pmw temperature mode*
+        uint8_t p0pwm;
 
-        // xxx make private
-        bool restartFilsensor;
+    public:
 
         // State enum
         // XXX can we combine the StateIdle and StateInit states?
@@ -96,6 +96,8 @@ class Printer {
 
         Printer();
         void printerInit();
+        uint8_t getP0pwm() { return p0pwm; }
+
         void cmdMove(MoveType);
         void cmdEot();
         void setHomePos( int32_t x, int32_t y, int32_t z);
@@ -111,6 +113,7 @@ class Printer {
         void cmdGetHomed();
         void cmdGetEndstops();
         void cmdGetPos();
+        void cmdSetP0pwm(uint8_t pwm);
         void cmdFanSpeed(uint8_t speed);
         void cmdContinuousE(uint16_t timerValue);
         void cmdSetFilSensorCal(float cal);
