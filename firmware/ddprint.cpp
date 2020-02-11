@@ -304,6 +304,9 @@ class SDReader: public Protothread {
         FWINLINE void setBytesToRead4() {
             Restart();
             bytesToRead = 4; }
+        FWINLINE void setBytesToRead5() {
+            Restart();
+            bytesToRead = 5; }
 
         bool Run() {
 
@@ -928,14 +931,17 @@ bool FillBufferTask::Run() {
 
             HandleCmdSyncHotendPulse:
 
-                sDReader.setBytesToRead3();
+                sDReader.setBytesToRead5();
                 PT_WAIT_THREAD(sDReader);
 
                 targetHeater = *sDReader.readData;
                 pulseEnd = millis() + FromBuf(uint16_t, sDReader.readData+1);
+                targetTemp = FromBuf(uint16_t, sDReader.readData+3);
 
                 PT_WAIT_UNTIL( printer.printerState == Printer::StateStart );
+
                 tempControl.setTempPWM(targetHeater, 255);
+                tempControl.setTemp(targetHeater, HEATER_0_MAXTEMP - increaseTemp[targetHeater]);
 
                 PT_RESTART();
 
@@ -1004,11 +1010,6 @@ void Printer::cmdEot() {
 
 void Printer::cmdMove(MoveType mt) {
 
-    //
-    // Busy state des swapmem ist erlaubt hier.
-    //
-    // massert(! swapDev.isWriteBusy());
-
     massert(mt != MoveTypeNone);
     massert(printerState == StateInit);
 
@@ -1027,16 +1028,6 @@ void Printer::cmdMove(MoveType mt) {
     else {
         ENABLE_STEPPER_DRIVER_INTERRUPT();
     }
-
-#if 0
-    if (mt == MoveTypeForced) {
-
-        // Prevent trigger of software endstop
-        current_pos_steps[X_AXIS] = (X_MAX_POS_STEPS - X_MIN_POS_STEPS) / 2;
-        current_pos_steps[Y_AXIS] = (Y_MAX_POS_STEPS - Y_MIN_POS_STEPS) / 2;
-        current_pos_steps[Z_AXIS] = (Z_MAX_POS_STEPS - Z_MIN_POS_STEPS) / 2;
-    }
-#endif
 
     enable_x();
     enable_y();
@@ -1880,7 +1871,8 @@ FWINLINE void loop() {
     static unsigned long timer100mS = millis() + 100;
 
     if (fillBufferTask.pulseEnd && (millis() >= fillBufferTask.pulseEnd)) {
-        tempControl.setTempPWM(fillBufferTask.targetHeater, printer.getP0pwm());
+        // tempControl.setTempPWM(fillBufferTask.targetHeater, printer.getP0pwm());
+        printer.cmdSetTargetTemp(fillBufferTask.targetHeater, fillBufferTask.targetTemp);
         fillBufferTask.pulseEnd = 0;
     }
 

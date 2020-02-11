@@ -153,7 +153,7 @@ class FillBufferTask : public Protothread {
 
         // Hotend target temp for CmdSyncTargetTemp
         // uint8_t targetHeater;
-        uint16_t targetTemp;
+        // uint16_t targetTemp;
 
         // Hotend target pwm for CmdSyncHotendPWM
         uint8_t heaterPWM;
@@ -180,6 +180,7 @@ class FillBufferTask : public Protothread {
         // xxxx getter/setter
         uint8_t targetHeater;
         unsigned long pulseEnd;
+        uint16_t targetTemp;
 
         bool Run();
 

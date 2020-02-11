@@ -120,9 +120,10 @@ void TempControl::init() {
 
     eSum = 0;
     eAlt = 0;
-    lastGoodESum = 0;
+    // lastGoodESum = 0;
+    pwmMode = false;
 
-    cobias = 0;
+    // cobias = 0;
     pid_output = 0;
 
     //
@@ -209,7 +210,7 @@ void TempControl::setTemp(uint8_t heater, uint16_t temp) {
         // we switch "from manual mode to automatic".
         if (target_temperature[heater-1] == 0) {
             eSum = 0;
-            cobias = 0;
+            // cobias = 0;
         }
         else {
 
@@ -236,8 +237,8 @@ void TempControl::setTemp(uint8_t heater, uint16_t temp) {
             //
         }
 
-        if (temp < target_temperature[heater-1])
-            lastGoodESum = 0;
+        // if (pwmMode && (temp < target_temperature[heater-1]))
+            // eSum = 0;
 
         target_temperature[heater-1] = temp;
 
@@ -272,13 +273,26 @@ void TempControl::heater() {
             // Regeldifferenz, grösser 0 falls temperatur zu klein
             float e = target_temperature[0] - current_temperature[0];
 
-            eSum = constrain(
-                eSum + e,
-                -PID_DRIVE_MAX,
-                PID_DRIVE_MAX);
+            if (pwmMode) {
 
-            if (e >= 0)
-                lastGoodESum = eSum;
+                float maxe = max(260 - target_temperature[0], 0);
+
+                if ((e > 0) || (abs(e) > maxe)) {
+                    eSum = constrain(
+                        eSum + e,
+                        -PID_DRIVE_MAX,
+                        PID_DRIVE_MAX);
+                }
+            }
+            else {
+                eSum = constrain(
+                    eSum + e,
+                    -PID_DRIVE_MAX,
+                    PID_DRIVE_MAX);
+            }
+
+            // if (e >= 0)
+                // lastGoodESum = eSum;
 
             float pTerm = Kp * e;
 
@@ -287,7 +301,7 @@ void TempControl::heater() {
             float dTerm = Kd * (e - eAlt) / pid_dt;
 
             // int32_t pid_output = cobias + pTerm + iTerm + dTerm + 0.5;
-            pid_output = cobias + pTerm + iTerm + dTerm + 0.5;
+            pid_output = pTerm + iTerm + dTerm + 0.5;
 
             if (pid_output > PID_MAX) {
                 pid_output = PID_MAX;
@@ -365,12 +379,17 @@ void TempControl::setTempPWM(uint8_t heater, uint8_t pwmValue) {
         analogWrite(HEATER_1_PIN, pwmValue);
 #endif
 
+    if (pwmValue)
+        pwmMode = true;
+    else
+        pwmMode = false;
+
     pwmValueOverride = pwmValue;
 
-    float e = target_temperature[0] - current_temperature[0];
+    // float e = target_temperature[0] - current_temperature[0];
 
-    if (e < 0.0)
-        eSum = lastGoodESum;
+    // if (e < 0.0)
+        // eSum = lastGoodESum;
 }
 
 #if defined(PIDAutoTune)

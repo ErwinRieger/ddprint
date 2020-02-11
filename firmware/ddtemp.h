@@ -82,12 +82,14 @@ class TempControl: public Protothread
 
     float eSum; // For I-Part
     float eAlt; // For D-Part
-    float lastGoodESum; // For I-Part
+    // float lastGoodESum; // For I-Part
 
     // Running sum of pwm output values to handle clipping
     float pwmSum;
-    int32_t cobias;
+    // int32_t cobias;
     int32_t pid_output;
+
+    bool pwmMode;
 
     // PWM value controlled by host firmware part. Normal PID
     // temperature control is added to this value.
