@@ -160,7 +160,7 @@ class PathData (object):
         self.energy = 0
 
         # AutoTemp
-        self.lastTemp = 0
+        # self.lastTemp = 0
 
     # Number of moves
     def incCount(self):
@@ -213,16 +213,19 @@ class PathData (object):
 
             assert((tOn*1000) < pow(2, 16))
 
+            # temp
+            newTemp = int(round(MatProfile.getHotendStartTemp() + (rateDiff / self.ktemp) * adj))
+            newTemp = min(newTemp, MatProfile.getHotendMaxTemp())
+
             # Schedule target temp command
             self.planner.addSynchronizedCommand(
                 CmdSyncHotendPulse, 
                 p1 = packedvalue.uint8_t(HeaterEx1),
                 p2 = packedvalue.uint16_t(tOn * 1000),  # xxx check 16 bit overflow
+                p3 = packedvalue.uint16_t(newTemp), 
                 moveNumber = move.moveNumber)
 
-            # temp
-            newTemp = int(round(MatProfile.getHotendStartTemp() + (rateDiff / self.ktemp) * adj))
-
+            """
             if newTemp != self.lastTemp:
 
                 # Schedule target temp command
@@ -233,6 +236,7 @@ class PathData (object):
                     moveNumber = move.moveNumber)
             
                 self.lastTemp = newTemp
+            """
 
             if debugAutoTemp:
                 self.planner.gui.log( "AutoTemp: collected %d moves with %.2f s duration." % (len(moves), tsum))
@@ -380,12 +384,12 @@ class Planner (object):
 
         return (homePosMM, homePosStepped)
 
-    def addSynchronizedCommand(self, command, p1=None, p2=None, moveNumber=None):
+    def addSynchronizedCommand(self, command, p1=None, p2=None, p3=None, moveNumber=None):
 
         if moveNumber == None:
             moveNumber = max(self.pathData.count, 0)
 
-        self.syncCommands[moveNumber].append((command, p1, p2))
+        self.syncCommands[moveNumber].append((command, p1, p2, p3))
 
     # Called from gcode parser
     def newPart(self, partNumber):
@@ -603,9 +607,9 @@ class Planner (object):
 
         def sendSyncCommands(moveNumber):
 
-            for (cmd, p1, p2) in self.syncCommands[moveNumber]:
+            for (cmd, p1, p2, p3) in self.syncCommands[moveNumber]:
                 if self.args.mode != "pre":
-                    self.printer.sendCommandParamV(cmd, [p1, p2])
+                    self.printer.sendCommandParamV(cmd, [p1, p2, p3])
 
             del self.syncCommands[moveNumber]
 
