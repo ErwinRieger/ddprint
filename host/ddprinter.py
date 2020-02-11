@@ -411,7 +411,7 @@ class Printer(Serial):
 
         self.sendCommandParamV(CmdSetFilSensorCal, [packedvalue.float_t(settings["filSensorCalibration"])])
 
-        self.sendCommandParamV(CmdSetStepsPerMME, [packedvalue.uint16_t(settings["stepsPerMME"])])
+        # self.sendCommandParamV(CmdSetStepsPerMME, [packedvalue.uint16_t(settings["stepsPerMME"])])
         
         self.sendCommandParamV(CmdSetPIDValues, [packedvalue.float_t(settings["Kp"]), packedvalue.float_t(settings["Ki"]), packedvalue.float_t(settings["Kd"])])
 

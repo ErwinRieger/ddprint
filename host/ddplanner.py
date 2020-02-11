@@ -178,44 +178,44 @@ class PathData (object):
 
         avgERate = vsum / tsum
 
+        # adjustment for:
+        # * 10% for minratio (90%)
+        # * 10% measurement errors
+        adj = 1.0 + self.slippage + 0.1
+
         # Compute heater-PWM for this segment and add pwm-pulse command into the stream. 
-        rateDiff = avgERate - self.fr0
+        rateDiff = avgERate - (self.fr0 / adj)
+
+        pwmMaxStep = 255 - self.p0
+
+        newTemp = MatProfile.getHotendStartTemp()
 
         if rateDiff > 0.0:
             #
             # add energy
             #
-            # adjustment for:
-            # * 10% for minratio (90%)
-            # * 10% measurement errors
-            adj = 1.0 + self.slippage + 0.1
             de = (rateDiff / self.ks) * adj * tsum
             print "need additional energy:", de
             self.energy += de
 
-        if self.energy:
+            # temp
+            newTemp += int(round((rateDiff / self.ktemp) * adj))
+            newTemp = min(newTemp, MatProfile.getHotendMaxTemp())
+
+        if (self.energy / pwmMaxStep) > 0.1: # timing heater loop
 
             print "need energy:", self.energy, "[pwm*sec]"
 
-            pwmMaxStep = 255 - self.p0
-            tOn = self.energy / pwmMaxStep
+            T66 = 125 # xxx hardcoded
+            tOn = min(self.energy / pwmMaxStep, min(T66/4, 65))
 
             print "this is %.2f seconds with %.2f pwm, move time: %.2f" % (tOn, pwmMaxStep, tsum)
 
-            if tOn <= tsum:
-                # Long enough for pulse
-                self.energy = 0
-                
-            else:
+            if tOn > tsum:
                 # Not long enough for pulse, add left over energy to next segment
                 tOn = tsum
-                self.energy -= pwmMaxStep * tOn
 
-            assert((tOn*1000) < pow(2, 16))
-
-            # temp
-            newTemp = int(round(MatProfile.getHotendStartTemp() + (rateDiff / self.ktemp) * adj))
-            newTemp = min(newTemp, MatProfile.getHotendMaxTemp())
+            self.energy -= pwmMaxStep * tOn
 
             # Schedule target temp command
             self.planner.addSynchronizedCommand(
@@ -241,7 +241,21 @@ class PathData (object):
             if debugAutoTemp:
                 self.planner.gui.log( "AutoTemp: collected %d moves with %.2f s duration." % (len(moves), tsum))
                 self.planner.gui.log( "AutoTemp: avg extrusion rate: %.2f mm³/s." % avgERate)
-                self.planner.gui.log( "AutoTemp: pwm pulse: %.2f sec, temp: %.2f" % (tOn, newTemp))
+                self.planner.gui.log( "AutoTemp: pwm pulse: %.2f sec, new temp: %.2f" % (tOn, newTemp))
+
+        else:
+
+            # Schedule target temp command
+            self.planner.addSynchronizedCommand(
+                CmdSyncTargetTemp, 
+                p1 = packedvalue.uint8_t(HeaterEx1),
+                p2 = packedvalue.uint16_t(newTemp), 
+                moveNumber = move.moveNumber)
+            
+            if debugAutoTemp:
+                self.planner.gui.log( "AutoTemp: collected %d moves with %.2f s duration." % (len(moves), tsum))
+                self.planner.gui.log( "AutoTemp: avg extrusion rate: %.2f mm³/s." % avgERate)
+                self.planner.gui.log( "AutoTemp: new temp: %.2f" % newTemp)
 
 
 #####################################################################

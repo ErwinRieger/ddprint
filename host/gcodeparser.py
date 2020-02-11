@@ -306,9 +306,12 @@ class UM2GcodeParser:
                 elif upperLine.endswith("GAP FILL"):
                     # print "gcodeparser: Starting gapfill..."
                     self.layerPart = "gapfill"
-                elif upperLine.endswith("tool"):
+                elif upperLine.endswith("TOOL"):
                     # print "gcodeparser: Starting tool..."
                     self.layerPart = "tool"
+                elif upperLine.endswith("SINGLE EXTRUSION"):
+                    # print "gcodeparser: Starting single extrusion..."
+                    self.layerPart = "single extrusion"
                 else:
                     if not (("LAYER" in upperLine) or ("TOOL" in upperLine)):
                         self.logger.log("gcodeparser: Unhandled comment:", line)

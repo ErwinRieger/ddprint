@@ -24,7 +24,7 @@ logging.basicConfig(filename=datetime.datetime.now().strftime("/tmp/ddprint_%y.%
 
 import npyscreen , time, curses, sys, threading, Queue
 import argparse
-import ddprint, stoppableThread, ddhome
+import ddprint, stoppableThread, ddhome, movingavg
 import ddprintutil as util
 
 from serial import SerialException
@@ -127,8 +127,8 @@ class MainForm(npyscreen.FormBaseNew):
     def create(self):
 
         self.keypress_timeout = 1
-        # self.state = 0
         self.lastUpdate = time.time()
+        self.gripAvg = movingavg.MovingAvg(10)
 
         self.printThread = None
         # self.threadStopCount = 0
@@ -406,6 +406,7 @@ class MainForm(npyscreen.FormBaseNew):
         self.extRate.update()
 
         slippage = status["slippage"]
+        self.gripAvg.add(slippage)
 
         if slippage:
             if slippage <= (1/.85):
@@ -414,7 +415,7 @@ class MainForm(npyscreen.FormBaseNew):
                 self.extGrip.entry_widget.color = "WARNING"
             else:
                 self.extGrip.entry_widget.color = "DANGER"
-            self.extGrip.set_value( "%8.1f %%" % (100.0/slippage) )
+            self.extGrip.set_value( "%8.1f, %8.1f %%" % (100.0/slippage, 100.0/self.gripAvg.mean()) )
         else:
             self.extGrip.entry_widget.color = "GOOD"
             self.extGrip.set_value( "   ?   ")

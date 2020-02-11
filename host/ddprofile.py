@@ -195,7 +195,7 @@ class PrinterProfile(ProfileBase):
     def getSettings(cls):
         return {
             "filSensorCalibration": cls.getValues()["filSensorCalibration"],
-            "stepsPerMME": cls.getStepsPerMM(A_AXIS),
+            # "stepsPerMME": cls.getStepsPerMM(A_AXIS),
             "Kp": cls.getValues()["Kp"],
             "Ki": cls.getValues()["Ki"],
             "Kd": cls.getValues()["Kd"],
