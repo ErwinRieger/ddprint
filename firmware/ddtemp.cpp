@@ -372,13 +372,12 @@ void TempControl::heater() {
 
 void TempControl::setTempPWM(uint8_t heater, uint8_t pwmValue) {
 
-#if 0
     if (heater == 1) 
         analogWrite(HEATER_0_PIN, pwmValue);
     else
         analogWrite(HEATER_1_PIN, pwmValue);
-#endif
 
+#if 0
     if (pwmValue)
         pwmMode = true;
     else
@@ -390,6 +389,7 @@ void TempControl::setTempPWM(uint8_t heater, uint8_t pwmValue) {
 
     // if (e < 0.0)
         // eSum = lastGoodESum;
+#endif
 }
 
 #if defined(PIDAutoTune)

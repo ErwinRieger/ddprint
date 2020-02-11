@@ -29,8 +29,6 @@
     #define HASFILAMENTSENSOR
 #endif
 
-// #define MINSTEPPERSTEPS 0.25
-
 typedef struct {
     unsigned long timeStamp;
     int16_t       dy;
@@ -119,6 +117,11 @@ class FilamentSensorPMW3360 {
         uint8_t pullbyte();
         bool feedrateLimiterEnabled;
 
+        int32_t sensorCount;
+
+        // Factor to slow down movement because feeder slippage is greater than 10%.
+        float grip;
+
         // Ratio between measured filament sensor counts and the 
         // extruder stepper motor steps.
         // For example if steps per mm of the extruder stepper is 141 and
@@ -126,17 +129,11 @@ class FilamentSensorPMW3360 {
         // filSensorCalibration = 197 Counts / 141 Steps = 1.4
         float filSensorCalibration;
 
-        uint16_t axis_steps_per_mm_e;
-        // Ignore filament moves smaller than MINSTEPPERSTEPS mm (35.25 for 141, 70.50 for 282 steps stepper).
-        // float minStepperSteps;
-
-    public:
+        // uint16_t axis_steps_per_mm_e;
 
         int16_t getDY();
-        int32_t sensorCount;
 
-        // Factor to slow down movement because feeder slippage is greater than 10%.
-        float grip;
+    public:
 
         FilamentSensorPMW3360();
         void init();
@@ -148,19 +145,20 @@ class FilamentSensorPMW3360 {
 
         void enableFeedrateLimiter(bool flag) { feedrateLimiterEnabled = flag; }
         void setFilSensorCalibration(float fc) { filSensorCalibration = fc; }
-        void setStepsPerMME(uint16_t steps) {
-            axis_steps_per_mm_e = steps;
-            // minStepperSteps = (MINSTEPPERSTEPS * axis_steps_per_mm_e);
-        }
+        // void setStepsPerMME(uint16_t steps) {
+            // axis_steps_per_mm_e = steps;
+        // }
 
         float slippage();
+        int32_t getSensorCount() { return sensorCount; }
+        float getGrip() { return grip; }
 };
 
 extern FilamentSensorPMW3360 filamentSensor;
 
 #elif defined(BournsEMS22AFS)
 
-#define VAR_FILSENSOR_GRIP (filamentSensor.grip)
+#define VAR_FILSENSOR_GRIP (filamentSensor.getGrip())
 
 /*
  * Inteface to a PMW3360 'Mousesensor'
@@ -179,26 +177,25 @@ class FilamentSensorEMS22 {
         uint8_t pullbyte();
         bool feedrateLimiterEnabled;
 
-        // Ratio between measured filament sensor counts and the 
-        // extruder stepper motor steps.
-        // For example if steps per mm of the extruder stepper is 141 and
-        // the resolution of the filament sensor is 5000 cpi, then:
-        // filSensorCalibration = 197 Counts / 141 Steps = 1.4
-        float filSensorCalibration;
-
-        uint16_t axis_steps_per_mm_e;
-        // // Ignore filament moves smaller than MINSTEPPERSTEPS mm (35.25 for 141, 70.50 for 282 steps stepper).
-        // float minStepperSteps;
-
-        uint16_t readEncoderPos();
-
-    public:
-
-        int16_t getDY();
         int32_t sensorCount;
 
         // Factor to slow down movement because feeder slippage is greater than 10%.
         float grip;
+
+        // Ratio between measured filament sensor counts and the 
+        // extruder stepper motor steps.
+        // For example if steps per mm of the extruder stepper is 141 and
+        // the resolution of the filament sensor is 102.8 counts/mm, then:
+        // filSensorCalibration = 102.8 Counts / 141 Steps = 0.73.
+        float filSensorCalibration;
+
+        // uint16_t axis_steps_per_mm_e;
+
+        uint16_t readEncoderPos();
+
+        int16_t getDY();
+
+    public:
 
         FilamentSensorEMS22();
         void init();
@@ -210,12 +207,13 @@ class FilamentSensorEMS22 {
 
         void enableFeedrateLimiter(bool flag) { feedrateLimiterEnabled = flag; }
         void setFilSensorCalibration(float fc) { filSensorCalibration = fc; }
-        void setStepsPerMME(uint16_t steps) {
-            axis_steps_per_mm_e = steps;
-            // minStepperSteps = (MINSTEPPERSTEPS * axis_steps_per_mm_e);
-        }
+        // void setStepsPerMME(uint16_t steps) {
+            // axis_steps_per_mm_e = steps;
+        // }
 
         float slippage();
+        int32_t getSensorCount() { return sensorCount; }
+        float getGrip() { return grip; }
 };
 
 extern FilamentSensorEMS22 filamentSensor;

@@ -911,8 +911,8 @@ bool FillBufferTask::Run() {
                 dwellEnd = millis() + FromBuf(uint16_t, sDReader.readData);
                 printer.dwellStart();
 
-                PT_WAIT_WHILE(millis() < dwellEnd);
-                printer.dwellEnd();
+                // PT_WAIT_WHILE(millis() < dwellEnd);
+                // printer.dwellEnd();
 
                 PT_RESTART();
 
@@ -940,8 +940,11 @@ bool FillBufferTask::Run() {
 
                 PT_WAIT_UNTIL( printer.printerState == Printer::StateStart );
 
+                // Hotend full throttle, pwm value is reset with next heater run (every 100mS),
+                // temp is reset in loop()!
                 tempControl.setTempPWM(targetHeater, 255);
-                tempControl.setTemp(targetHeater, HEATER_0_MAXTEMP - increaseTemp[targetHeater]);
+                // xxx 260 hardcoded max hotend temp
+                tempControl.setTemp(targetHeater, 260 - printer.getIncreaseTemp(targetHeater));
 
                 PT_RESTART();
 
@@ -1107,6 +1110,9 @@ void Printer::cmdStopMove() {
 
     cmdSetTargetTemp(0, 0);
     cmdSetTargetTemp(1, 0);
+#if EXTRUDERS > 1
+    cmdSetTargetTemp(2, 0);
+#endif
 
     DISABLE_STEPPER_DRIVER_INTERRUPT();
     DISABLE_STEPPER1_DRIVER_INTERRUPT();
@@ -1167,12 +1173,7 @@ void Printer::checkMoveFinished() {
              (! sDReader.available()) &&
              stepBuffer.empty() ) {
 
-            DISABLE_STEPPER_DRIVER_INTERRUPT();
-            DISABLE_STEPPER1_DRIVER_INTERRUPT();
-
-            // printerState = StateInit;
-            printerState = StateIdle;
-            moveType = MoveTypeNone;
+            cmdStopMove();
         }
     }
 }
@@ -1278,7 +1279,7 @@ void Printer::cmdGetStatus() {
 void Printer::cmdGetFilSensor() {
 
     txBuffer.sendResponseStart(CmdGetFilSensor);
-    txBuffer.sendResponseValue(filamentSensor.sensorCount);
+    txBuffer.sendResponseValue(filamentSensor.getSensorCount());
     txBuffer.sendResponseEnd();
 }
 #endif
@@ -1290,12 +1291,12 @@ void Printer::cmdSetFilSensorCal(float cal) {
 #endif
 }
 
-void Printer::cmdSetStepsPerMME(uint16_t steps) {
+// void Printer::cmdSetStepsPerMME(uint16_t steps) {
 
-#if defined(HASFILAMENTSENSOR)
-    filamentSensor.setStepsPerMME(steps);
-#endif
-}
+// #if defined(HASFILAMENTSENSOR)
+    // filamentSensor.setStepsPerMME(steps);
+// #endif
+// }
 
 #if defined(USEExtrusionRateTable)
 void Printer::cmdGetTempTable() {
@@ -1700,12 +1701,12 @@ class UsbCommand : public Protothread {
                         txBuffer.sendACK();
                         }
                         break;
-                    case CmdSetStepsPerMME: {
-                        uint16_t steps = serialPort.readUInt16NoCheckCobs();
-                        printer.cmdSetStepsPerMME(steps);
-                        txBuffer.sendACK();
-                        }
-                        break;
+                    // case CmdSetStepsPerMME: {
+                        // uint16_t steps = serialPort.readUInt16NoCheckCobs();
+                        // printer.cmdSetStepsPerMME(steps);
+                        // txBuffer.sendACK();
+                        // }
+                        // break;
 
 
                     //
@@ -1871,9 +1872,16 @@ FWINLINE void loop() {
     static unsigned long timer100mS = millis() + 100;
 
     if (fillBufferTask.pulseEnd && (millis() >= fillBufferTask.pulseEnd)) {
+
+        fillBufferTask.pulseEnd = 0;
         // tempControl.setTempPWM(fillBufferTask.targetHeater, printer.getP0pwm());
         printer.cmdSetTargetTemp(fillBufferTask.targetHeater, fillBufferTask.targetTemp);
-        fillBufferTask.pulseEnd = 0;
+    }
+
+    if (fillBufferTask.dwellEnd && (millis() >= fillBufferTask.dwellEnd)) {
+
+        fillBufferTask.dwellEnd = 0;
+        printer.dwellEnd();
     }
 
     if (millis() >= timer10mS) { // Every 10 mS

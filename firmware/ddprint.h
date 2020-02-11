@@ -97,6 +97,7 @@ class Printer {
         Printer();
         void printerInit();
         uint8_t getP0pwm() { return p0pwm; }
+        uint8_t getIncreaseTemp(uint8_t heater) { return increaseTemp[heater]; }
 
         void cmdMove(MoveType);
         void cmdEot();
@@ -159,7 +160,7 @@ class FillBufferTask : public Protothread {
         uint8_t heaterPWM;
         // unsigned long pulseEnd;
 
-        unsigned long dwellEnd;
+        // unsigned long dwellEnd;
 
         bool cmdSync;
 
@@ -180,6 +181,7 @@ class FillBufferTask : public Protothread {
         // xxxx getter/setter
         uint8_t targetHeater;
         unsigned long pulseEnd;
+        unsigned long dwellEnd;
         uint16_t targetTemp;
 
         bool Run();

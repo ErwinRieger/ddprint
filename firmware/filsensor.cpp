@@ -57,11 +57,9 @@ FilamentSensorPMW3360::FilamentSensorPMW3360() {
 
     feedrateLimiterEnabled = true;
     filSensorCalibration = 1.0;
-    axis_steps_per_mm_e = 100;
+    // axis_steps_per_mm_e = 100;
 
     sensorCount = 0;
-
-    // minStepperSteps = MINSTEPPERSTEPS * axis_steps_per_mm_e;
 
     init();
 }
@@ -292,7 +290,7 @@ FilamentSensorEMS22::FilamentSensorEMS22() {
 
     feedrateLimiterEnabled = true;
     filSensorCalibration = 1.0;
-    axis_steps_per_mm_e = 100;
+    // axis_steps_per_mm_e = 100;
 
     sensorCount = 0;
 
@@ -306,28 +304,16 @@ void FilamentSensorEMS22::init() {
     grip = 1.0;
 }
 
-/*
-void spiInit(uint8_t spiRate) {
-  // See avr processor documentation
-  SPCR = (1 << SPE) | (1 << MSTR) | (spiRate >> 1) | (1<<CPHA); // Mode 1
-  SPSR = spiRate & 1 || spiRate == 6 ? 0 : 1 << SPI2X;
-}
-*/
-
 uint16_t FilamentSensorEMS22::readEncoderPos() {
 
     //
     // Read rotary encoder pos (0...1023)
     //
-    // spiInit(3);
-    dDPrintSpi.beginTransaction(spiSettingsFS);
 
     digitalWrite(FILSENSNCS, LOW);
     delayMicroseconds(1); // Tclkfe
 
-    // uint8_t byte1 = spiRec();
     uint8_t byte1 = dDPrintSpi.transfer(0);
-    // uint8_t byte2 = spiRec();
     uint8_t byte2 = dDPrintSpi.transfer(0);
 
     digitalWrite(FILSENSNCS, HIGH);
@@ -391,7 +377,7 @@ void FilamentSensorEMS22::run() {
     int32_t astep = current_pos_steps[E_AXIS];
     CRITICAL_SECTION_END
 
-    // dDPrintSpi.beginTransaction(spiSettingsFS);
+    dDPrintSpi.beginTransaction(spiSettingsFS);
     
     int16_t dy = getDY(); // read distance delta from filament sensor
 
