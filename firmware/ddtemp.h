@@ -82,7 +82,6 @@ class TempControl: public Protothread
 
     float eSum; // For I-Part
     float eAlt; // For D-Part
-    // float lastGoodESum; // For I-Part
 
     // Running sum of pwm output values to handle clipping
     float pwmSum;
@@ -96,6 +95,8 @@ class TempControl: public Protothread
     // Set to 0 to re-enable PID temperature control.
     // Maxtemp is still checked even if PID is disabled.
     uint8_t pwmValueOverride;
+
+    float eSumLimit;
 
     public:
         TempControl():
@@ -112,15 +113,19 @@ class TempControl: public Protothread
         // Set heater PWM value directly for PID AutoTune
         // and filament measurements
         void setTempPWM(uint8_t heater, uint8_t pwmValue);
+        void hotendOn(uint8_t heater);
 
-#if defined(PIDAutoTune)
-        // Set heater PWM value directly for PID AutoTune
-        void setHeaterY(uint8_t heater, uint8_t pwmValue);
-#endif
         void setPIDValues(float kp, float ki, float kd) {
             Kp = kp;
             Ki = ki;
             Kd = kd;
+
+            // isum begrenzen auf max. 255 output
+            //
+            // Ki * pid_dt * eSum = iTerm < 255
+            // eSummax = 255 / (Ki * pid_dt)
+            //
+            eSumLimit = 255.0 / ((ki * TIMER100MS) / 1000.0);
         }
         uint8_t getPwmOutput() { return (uint8_t)
                     min( max(pid_output, 0) + pwmValueOverride, 255 ); }

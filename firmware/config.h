@@ -37,5 +37,8 @@
 // switched off (target temp == 0) or if setpoint temperature
 // could not be reached.
 // #define PID_DRIVE_MAX 100000.0
-#define PID_DRIVE_MAX 25000.0
+// #define PID_DRIVE_MAX 25000.0
+
+#define TIMER10MS 10
+#define TIMER100MS 100
 

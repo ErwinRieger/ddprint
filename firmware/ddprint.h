@@ -71,6 +71,9 @@ class Printer {
         // Idle pmw value if in *pmw temperature mode*
         uint8_t p0pwm;
 
+        // Timeconstant hotend [ms]
+        uint16_t Tu;
+
     public:
 
         // State enum
@@ -97,6 +100,7 @@ class Printer {
         Printer();
         void printerInit();
         uint8_t getP0pwm() { return p0pwm; }
+        uint16_t getTu() { return Tu; }
         uint8_t getIncreaseTemp(uint8_t heater) { return increaseTemp[heater]; }
 
         void cmdMove(MoveType);
@@ -115,6 +119,7 @@ class Printer {
         void cmdGetEndstops();
         void cmdGetPos();
         void cmdSetP0pwm(uint8_t pwm);
+        void cmdSetPIDValues(float kp, float ki, float kd, uint16_t Tu);
         void cmdFanSpeed(uint8_t speed);
         void cmdContinuousE(uint16_t timerValue);
         void cmdSetFilSensorCal(float cal);
@@ -180,6 +185,8 @@ class FillBufferTask : public Protothread {
 
         // xxxx getter/setter
         uint8_t targetHeater;
+        uint32_t pulseTime;
+        // uint16_t pulsePause;
         unsigned long pulseEnd;
         unsigned long dwellEnd;
         uint16_t targetTemp;

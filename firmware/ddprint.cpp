@@ -307,6 +307,9 @@ class SDReader: public Protothread {
         FWINLINE void setBytesToRead5() {
             Restart();
             bytesToRead = 5; }
+        FWINLINE void setBytesToRead9() {
+            Restart();
+            bytesToRead = 9; }
 
         bool Run() {
 
@@ -935,14 +938,16 @@ bool FillBufferTask::Run() {
                 PT_WAIT_THREAD(sDReader);
 
                 targetHeater = *sDReader.readData;
-                pulseEnd = millis() + FromBuf(uint16_t, sDReader.readData+1);
+                pulseTime = FromBuf(uint16_t, sDReader.readData+1);
                 targetTemp = FromBuf(uint16_t, sDReader.readData+3);
+
+                pulseEnd = millis() + pulseTime;
 
                 PT_WAIT_UNTIL( printer.printerState == Printer::StateStart );
 
                 // Hotend full throttle, pwm value is reset with next heater run (every 100mS),
                 // temp is reset in loop()!
-                tempControl.setTempPWM(targetHeater, 255);
+                tempControl.hotendOn(targetHeater);
                 // xxx 260 hardcoded max hotend temp
                 tempControl.setTemp(targetHeater, 260 - printer.getIncreaseTemp(targetHeater));
 
@@ -1090,9 +1095,17 @@ void Printer::cmdGetFSReadings(uint8_t nReadings) {
     txBuffer.sendResponseEnd();
 }
 
+#if 0
 void Printer::cmdSetP0pwm(uint8_t pwm) {
 
     p0pwm = pwm;
+}
+#endif
+
+void Printer::cmdSetPIDValues(float kp, float ki, float kd, uint16_t tu) {
+
+    tempControl.setPIDValues(kp, ki, kd);
+    Tu = tu;
 }
 
 void Printer::cmdFanSpeed(uint8_t speed) {
@@ -1654,6 +1667,7 @@ class UsbCommand : public Protothread {
                             txBuffer.sendACK();
                         }
                         break;
+#if 0
                     case CmdSetP0pwm:
                         {
                             uint8_t pwm = serialPort.readNoCheckCobs();
@@ -1661,6 +1675,7 @@ class UsbCommand : public Protothread {
                             txBuffer.sendACK();
                         }
                         break;
+#endif
                     case CmdStopMove:
                         printer.cmdStopMove();
                         txBuffer.sendACK();
@@ -1788,7 +1803,8 @@ class UsbCommand : public Protothread {
                             float Kp = serialPort.readFloatNoCheckCobs();
                             float Ki = serialPort.readFloatNoCheckCobs();
                             float Kd = serialPort.readFloatNoCheckCobs();
-                            tempControl.setPIDValues(Kp, Ki, Kd);
+                            uint16_t Tu = serialPort.readUInt16NoCheckCobs();
+                            printer.cmdSetPIDValues(Kp, Ki, Kd, Tu);
                             txBuffer.sendACK();
                         }
                         break;
@@ -1868,13 +1884,12 @@ static UsbCommand usbCommand;
 FWINLINE void loop() {
 
     // Timer for slow running tasks (temp, encoder)
-    static unsigned long timer10mS = millis() + 10;
-    static unsigned long timer100mS = millis() + 100;
+    static unsigned long timer10mS = millis() + TIMER10MS;
+    static unsigned long timer100mS = millis() + TIMER100MS;
 
     if (fillBufferTask.pulseEnd && (millis() >= fillBufferTask.pulseEnd)) {
 
         fillBufferTask.pulseEnd = 0;
-        // tempControl.setTempPWM(fillBufferTask.targetHeater, printer.getP0pwm());
         printer.cmdSetTargetTemp(fillBufferTask.targetHeater, fillBufferTask.targetTemp);
     }
 
@@ -1886,7 +1901,7 @@ FWINLINE void loop() {
 
     if (millis() >= timer10mS) { // Every 10 mS
 
-        timer10mS = millis() + 10;
+        timer10mS = millis() + TIMER10MS;
 
         // Check hardware and software endstops:
         if (printer.moveType == Printer::MoveTypeNormal) {
@@ -1939,7 +1954,7 @@ FWINLINE void loop() {
 
     if (millis() >= timer100mS) { // Every 100 mS
 
-        timer100mS = millis() + 100;
+        timer100mS = millis() + TIMER100MS;
 
         //
         // Control heater 
