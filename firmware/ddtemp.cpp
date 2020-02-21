@@ -203,8 +203,6 @@ void TempControl::setTemp(uint8_t heater, uint16_t temp) {
 
     if (heater == 0) {
 
-        // xxx debug: avoid shutdown
-        // massert(temp <= HEATER_0_MAXTEMP);
         if (temp > HEATER_0_MAXTEMP)
             return;
 

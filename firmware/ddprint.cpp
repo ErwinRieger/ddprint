@@ -48,6 +48,9 @@
 
 uint16_t extrusionLimitBaseTemp = 170;
 
+// xxxx
+static unsigned long timerPause = 0;
+
 //
 // Limit extrusion rate by the hotend temperature. This is the initial table
 // with no real limitations. The pertinent values are downloaded by the host
@@ -275,9 +278,9 @@ class SDReader: public Protothread {
         uint16_t bytesToRead;
 
         // Temporary buffer if we cross a block boundary,
-        // the size is 4 bytes - the length of the longest
-        // datatype to read (int32).
-        uint8_t tempBuffer[4]; 
+        // the size is 5 bytes - the length of the longest
+        // datablock to read (setBytesToReadX())
+        uint8_t tempBuffer[9]; 
 
         uint16_t haveBytes;
 
@@ -405,6 +408,8 @@ bool FillBufferTask::Run() {
             int32_t d;
             int32_t d1;
             int32_t d2;
+
+            uint32_t pulse;
 
 #if defined(USEExtrusionRateTable)
             // Timervalue of max e-speed of our basemove
@@ -901,7 +906,7 @@ bool FillBufferTask::Run() {
                 targetHeater = *sDReader.readData;
                 targetTemp = FromBuf(uint16_t, sDReader.readData+1);
 
-                PT_WAIT_UNTIL( printer.printerState == Printer::StateStart );
+                PT_WAIT_UNTIL( printer.printerState == Printer::StateStart ); // ??? useful?
                 printer.cmdSetTargetTemp(targetHeater, targetTemp);
 
                 PT_RESTART();
@@ -927,23 +932,38 @@ bool FillBufferTask::Run() {
                 targetHeater = *sDReader.readData;
                 heaterPWM = *(sDReader.readData+1);
 
-                PT_WAIT_UNTIL( printer.printerState == Printer::StateStart );
+                PT_WAIT_UNTIL( printer.printerState == Printer::StateStart ); // ??? useful?
                 tempControl.setTempPWM(targetHeater, heaterPWM);
 
                 PT_RESTART();
 
             HandleCmdSyncHotendPulse:
 
-                sDReader.setBytesToRead5();
+
+                if (pulseEnd) {
+                    printer.sendGenericMessage("pulseEnd", sizeof("pulseEnd"));
+                }
+                if (pulseTime) {
+                    printer.sendGenericMessage("pulseTime", sizeof("pulseTime"));
+                }
+                if (timerPause) {
+                    printer.sendGenericMessage("timerPause", sizeof("timerPause"));
+                }
+
+                sDReader.setBytesToRead9();
                 PT_WAIT_THREAD(sDReader);
 
                 targetHeater = *sDReader.readData;
-                pulseTime = FromBuf(uint16_t, sDReader.readData+1);
-                targetTemp = FromBuf(uint16_t, sDReader.readData+3);
+                pulseTime = FromBuf(uint32_t, sDReader.readData+1);
+                pulsePause = FromBuf(uint16_t, sDReader.readData+5);
+                targetTemp = FromBuf(uint16_t, sDReader.readData+7);
 
-                pulseEnd = millis() + pulseTime;
+                pulse = min(pulseTime, (uint32_t)printer.getTu());
+                pulseEnd = millis() + pulse;
 
-                PT_WAIT_UNTIL( printer.printerState == Printer::StateStart );
+                pulseTime -= pulse;
+
+                PT_WAIT_UNTIL( printer.printerState == Printer::StateStart ); // ??? useful?
 
                 // Hotend full throttle, pwm value is reset with next heater run (every 100mS),
                 // temp is reset in loop()!
@@ -983,6 +1003,8 @@ void Printer::printerInit() {
 
     // XXX handle already running state
 
+    nGenericMessage = 0;
+
     //
     // Erase sd-swap to speed up block writes.
     //
@@ -1007,6 +1029,18 @@ void Printer::printerInit() {
     analogWrite(LED_PIN, 255);
 
     bufferLow = -1;
+}
+
+
+void Printer::sendGenericMessage(const char *s, uint8_t l) {
+
+    if (nGenericMessage++ > 50)
+        return;
+
+    txBuffer.sendResponseStart(RespUnsolicitedMsg);
+    txBuffer.sendResponseUint8(GenericMessage);
+    txBuffer.sendResponseString(s, l);
+    txBuffer.sendResponseEnd();
 }
 
 void Printer::cmdEot() {
@@ -1045,6 +1079,8 @@ void Printer::cmdMove(MoveType mt) {
 #if defined(HASFILAMENTSENSOR)
     filamentSensor.init();
 #endif
+
+    printer.sendGenericMessage("Printer::cmdMove called", sizeof("Printer::cmdMove called"));
 }
 
 void Printer::setHomePos(int32_t x, int32_t y, int32_t z) {
@@ -1284,6 +1320,8 @@ void Printer::cmdGetStatus() {
     txBuffer.sendResponseValue((float)0.0);
     // txBuffer.sendResponseInt16(0);
 #endif
+
+    txBuffer.sendResponseValue(current_pos_steps[E_AXIS]);
 
     txBuffer.sendResponseEnd();
 }
@@ -1891,6 +1929,26 @@ FWINLINE void loop() {
 
         fillBufferTask.pulseEnd = 0;
         printer.cmdSetTargetTemp(fillBufferTask.targetHeater, fillBufferTask.targetTemp);
+
+        if (fillBufferTask.pulseTime > 0) {
+            timerPause = millis() + fillBufferTask.pulsePause;
+        }
+    }
+
+    if (timerPause && (millis() >= timerPause)) {
+
+        timerPause = 0;
+
+        uint32_t pulse = min(fillBufferTask.pulseTime, (uint32_t)printer.getTu());
+        fillBufferTask.pulseEnd = millis() + pulse;
+
+        fillBufferTask.pulseTime -= pulse;
+
+        // Hotend full throttle, pwm value is reset with next heater run (every 100mS),
+        // temp is reset in loop()!
+        tempControl.hotendOn(fillBufferTask.targetHeater);
+        // xxx 260 hardcoded max hotend temp
+        tempControl.setTemp(fillBufferTask.targetHeater, 260 - printer.getIncreaseTemp(fillBufferTask.targetHeater));
     }
 
     if (fillBufferTask.dwellEnd && (millis() >= fillBufferTask.dwellEnd)) {

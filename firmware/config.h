@@ -31,7 +31,7 @@
 
 #define USEExtrusionRateTable
 
-#define PID_DEBUG // Sends debug data to the serial port.
+#define PID_DEBUG // Sends hotend pid values as RespUnsolicitedMsg, type PidDebug
 
 // Limit for the integral term and for pwmSum if heater is
 // switched off (target temp == 0) or if setpoint temperature

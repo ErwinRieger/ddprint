@@ -150,9 +150,10 @@
 //
 // Unsolicited message types
 //
-#define ExtrusionLimitDbg       0x0
+// #define ExtrusionLimitDbg       0x0
 #define PidDebug                0x1
-#define FilSensorDebugMsg       0x2
+// #define FilSensorDebugMsg       0x2
+#define GenericMessage       0x3
 
 
 

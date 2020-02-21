@@ -74,6 +74,8 @@ class Printer {
         // Timeconstant hotend [ms]
         uint16_t Tu;
 
+        uint8_t nGenericMessage;
+
     public:
 
         // State enum
@@ -99,6 +101,8 @@ class Printer {
 
         Printer();
         void printerInit();
+        void sendGenericMessage(const char *s, uint8_t l);
+
         uint8_t getP0pwm() { return p0pwm; }
         uint16_t getTu() { return Tu; }
         uint8_t getIncreaseTemp(uint8_t heater) { return increaseTemp[heater]; }
@@ -186,7 +190,7 @@ class FillBufferTask : public Protothread {
         // xxxx getter/setter
         uint8_t targetHeater;
         uint32_t pulseTime;
-        // uint16_t pulsePause;
+        uint16_t pulsePause;
         unsigned long pulseEnd;
         unsigned long dwellEnd;
         uint16_t targetTemp;
