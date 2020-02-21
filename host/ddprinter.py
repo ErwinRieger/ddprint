@@ -24,7 +24,7 @@
 # at second connect).
 #
 import time, struct, crc_ccitt_kermit, termios, pprint, sys
-import dddumbui, cobs, ddprintutil
+import dddumbui, cobs, ddprintutil, types
 
 from serial import Serial, SerialException, SerialTimeoutException
 from ddconfig import debugComm
@@ -233,8 +233,8 @@ class Printer(Serial):
                 (tempIndex, actSpeed, targetSpeed, grip) = struct.unpack("<hhhh", payload[1:])
                 self.gui.logRecv("Limit extrusion index: %d, act: %d, target: %d, grip: %d" % (tempIndex, actSpeed, targetSpeed, grip))
             elif msgType == PidDebug:
-                (pid_dt, pTerm, iTerm, dTerm, pwmOutput) = struct.unpack("<ffffi", payload[1:])
-                self.gui.logRecv("PidDebug: pid_dt: %f, pTerm: %f, iTerm: %f, dTerm: %f, pwmOutput: %d" % (pid_dt, pTerm, iTerm, dTerm, pwmOutput))
+                (pid_dt, pTerm, iTerm, dTerm, pwmOutput, e) = struct.unpack("<ffffif", payload[1:])
+                self.gui.logRecv("PidDebug: pid_dt: %f, pTerm: %f, iTerm: %f, dTerm: %f, pwmOutput: %d, e: %f" % (pid_dt, pTerm, iTerm, dTerm, pwmOutput, e))
             elif msgType == RespSDReadError:
                 # payload: SD errorcode, SPI status byte
                 (errorCode, spiStatus) = struct.unpack("<BB", payload[1:])
@@ -243,7 +243,11 @@ class Printer(Serial):
                 # payload: deltaStepperSteps(float) deltaSensorSteps(i32) filSensorCalibration(float) slip(float) s(float)
                 (deltaStepperSteps, deltaSensorSteps, filSensorCalibration, slip, s) = struct.unpack("<fifff", payload[1:])
                 self.gui.logError("FilSensorDebug: deltaStepperSteps: %f deltaSensorSteps: %d filSensorCalibration: %f slip: %f s: %f" % (deltaStepperSteps, deltaSensorSteps, filSensorCalibration, slip, s))
-
+            elif msgType == GenericMessage:
+                # payload: generic message string
+                (slen,) = struct.unpack("<B", payload[1:2])
+                message = payload[2:2+slen]
+                self.gui.logRecv("GenericMessage: '%s'" % message)
             return True # consume message
 
         return False # continue message processing
@@ -413,11 +417,18 @@ class Printer(Serial):
 
         # self.sendCommandParamV(CmdSetStepsPerMME, [packedvalue.uint16_t(settings["stepsPerMME"])])
         
-        self.sendCommandParamV(CmdSetPIDValues, [packedvalue.float_t(settings["Kp"]), packedvalue.float_t(settings["Ki"]), packedvalue.float_t(settings["Kd"])])
+        self.sendCommandParamV(CmdSetPIDValues, [
+            packedvalue.float_t(settings["Kp"]),
+            packedvalue.float_t(settings["Ki"]),
+            packedvalue.float_t(settings["Kd"]),
+            packedvalue.uint16_t(settings["Tu"] * 1000), # xxx Tu < 65 s
+            ])
 
         # self.sendCommandParamV(CmdSetBedlevelOffset, [packedvalue.float_t(settings["add_homeing_z"])])
 
-        self.sendCommandParamV(CmdSetP0pwm, [packedvalue.uint8_t(settings["P0pwm"])])
+        # self.sendCommandParamV(CmdSetP0pwm, [packedvalue.uint8_t(settings["P0pwm"])])
+
+        # self.sendCommandParamV(CmdSetTu, [packedvalue.uint16_t(settings["Tu"] * 1000)]) # xxx Tu < 65 s
 
         self.sendCommandParamV(CmdSetIncTemp, [packedvalue.uint8_t(HeaterEx1), packedvalue.int16_t(args.inctemp)]);
 
@@ -659,11 +670,11 @@ class Printer(Serial):
 
     def getStatus(self):
 
-        valueNames = ["state", "t0", "t1", "Swap", "SDReader", "StepBuffer", "StepBufUnderRuns", "targetT1", "pwmOutput", "slippage"]
+        valueNames = ["state", "t0", "t1", "Swap", "SDReader", "StepBuffer", "StepBufUnderRuns", "targetT1", "pwmOutput", "slippage", "extruder_pos"]
 
         (cmd, payload) = self.query(CmdGetStatus, doLog=False)
 
-        tup = struct.unpack("<BffIHBhHBf", payload)
+        tup = struct.unpack("<BffIHBhHBfi", payload)
 
         statusDict = {}
         for i in range(len(valueNames)):
@@ -682,27 +693,11 @@ class Printer(Serial):
         self.gui.statusCb(statusDict)
         return statusDict
 
-    # xxx remove 
-    def getEepromSettings(self):
-
-        (cmd, payload) = self.query(CmdGetEepromSettings, doLog=False)
-        tup = struct.unpack("<fffffff", payload)
-        valueNames = ["add_homeing_x", "add_homeing_y", "add_homeing_z", "add_homeing_e", "Kp", "Ki", "Kd"]
-
-        settingsDict = {}
-        for i in range(len(valueNames)):
-            valueName = valueNames[i]
-            settingsDict[valueName] = tup[i]
-
-        return settingsDict
-
     # Get printer (-profile) name from printer eeprom
     def getPrinterName(self):
 
         resp = self.query(CmdGetPrinterName)
-
         pn = ddprintutil.getResponseString(resp[1], 1)
-        print "PrinterName: ", pn
         return pn
 
     def setPrinterName(self, args):
@@ -711,10 +706,6 @@ class Printer(Serial):
 
         self.sendCommandParamV(CmdSetPrinterName,
             [packedvalue.pString_t(args.name)])
-
-    def getAddHomeing_z(self):
-
-        return self.getEepromSettings()["add_homeing_z"]
 
     def waitForState(self, destState, wait=1):
 
@@ -765,6 +756,8 @@ class Printer(Serial):
 
     def heatUp(self, heater, temp, wait=None, log=False):
 
+        assert(type(temp) == types.IntType)
+
         payload = struct.pack("<BH", heater, temp) # Parameters: heater, temp
         self.sendCommand(CmdSetTargetTemp, binPayload=payload)
 
@@ -797,7 +790,9 @@ class Printer(Serial):
 
     ####################################################################################################
 
-    def coolDown(self, heater, temp=0, wait=None):
+    def coolDown(self, heater, temp=0, wait=None, log=False):
+
+        assert(type(temp) == types.IntType)
 
         if heater > HeaterBed:
             # Switch on PID mode
@@ -810,6 +805,10 @@ class Printer(Serial):
         while wait !=  None:
             time.sleep(2)
             temps = self.getTemps()
+
+            if log:
+                print "\rTemp: %.2f (%.2f)" % (temps[heater], wait),
+                sys.stdout.flush()
 
             if temps[heater] <= wait:
                 break

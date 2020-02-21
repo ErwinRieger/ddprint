@@ -143,8 +143,6 @@ class Advance (object):
         if self.__kAdv == None:
             self.__kAdv = MatProfile.getKAdv()
 
-        self.planner.gui.log("Advance: usinge K-Advance value of %.3f" % self.__kAdv)
-
         self.kFeederComp = 0.0
         if UseFeederCompensation:
 
@@ -178,6 +176,9 @@ class Advance (object):
 
         self.maxEFeedrate = PrinterProfile.getMaxFeedrate(A_AXIS)
         self.maxFeedrateVector = PrinterProfile.getMaxFeedrateVector()
+
+    def getKAdv(self):
+        return self.__kAdv
 
     def maxAxisAcceleration(self, useAdvance):
 
@@ -269,12 +270,15 @@ class Advance (object):
             # Smooth extrusion rate, compute average extrusion rate of this path and
             # scale the speed of all moves in this path to get an more even flowrate.
             # This decreases the amount of advance ramps.
-            rateList = []
+            rateSum = 0
+            dSum = 0
             for move in path:
 
-                rateList.append(move.topSpeed.speed().eSpeed)
+                d = move.eDistance;
+                rateSum += move.topSpeed.speed().eSpeed * d
+                dSum += d
 
-            avgRate = sum(rateList) / len(rateList)
+            avgRate = rateSum / dSum
             avgRate = min(avgRate, vExtruderMax)
 
             if debugAdvance:

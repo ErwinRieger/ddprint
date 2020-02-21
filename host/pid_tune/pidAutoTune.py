@@ -21,18 +21,19 @@
 #*/
 
 import matplotlib.pyplot as plt
+import numpy as np
 from libautotune import *
 
 import sys
-import ddprintutil as util
-
-fig = plt.figure()
-ax = fig.add_subplot(111)
+import ddprintutil as util, movingavg
 
 f=open(sys.argv[1])
 raw = util.jsonLoad(f)
-# data = raw["data"]
 d = raw["data"]
+
+# Get sampling frequency
+ts = np.array(map(lambda x: x[0], d), dtype=float) # [:,0]
+times = np.diff(ts)
 
 Xo = raw["Xo"]
 data = []
@@ -49,53 +50,136 @@ print "##################################################"
 print "## PID Parameter aus Sprungantwort              ##"
 print "##################################################"
 
-print "\nKs is:", Ks
+print "\nMax time between samples: %.4f s" % np.max(times)
+fs = 1.0 / np.mean(times)
+print "Mean sampling freq %.4f s, %.4f Hz" % (np.mean(times), fs)
 
-print "\nTp/Td nach Gregory Reeves, https://www.youtube.com/watch?v=4o4cqsu8JnE:"
+print "\nKs,Kp is:", Ks
+
+print "\nTg/Tu nach Gregory Reeves, https://www.youtube.com/watch?v=4o4cqsu8JnE:"
 # "Time Constant"
-Tp1 = (t066-t033) / 0.7
-print "Tp:", Tp1
+Tg1 = (t066-t033) / 0.7
+print "Tg:", Tg1
 # "Dead Time"
-Td1 = t033 - 0.4*Tp1
-print "Td:", Td1
+Tu1 = t033 - 0.4*Tg1
+print "Tu:", Tu1
 
-print "\nTp/Td nach http://controlguru.com/:"
+print "\nTg/Tu nach http://controlguru.com/:"
 # "Time Constant"
-Tp2 = getPercentT(data, endTemp*0.632)
-print "Tp:", Tp2
+Tg2 = getPercentT(data, endTemp*0.632)
+print "Tg:", Tg2
 # "Dead Time"
-Td2 = getFoptdTd(data, Ks)
-print "Td:", Td2
+Tu2 = getFoptdTd(data, Ks)
+print "Tu:", Tu2
 
-# Mittelwert Tp, Td:
-print "\nAverage Tp/Td:"
-avgTp = (Tp1+Tp2)/2.0
-avgTd = (Td1+Td2)/2.0
-print "Tp:", avgTp
-print "Td:", avgTd
+# tangente über steigung
+
+print "\nTg/Tu über steigung"
+nAvgShortterm = int(round(((Tu1+Tu2)/20.0) * fs))
+print "nAvgShortterm:", nAvgShortterm
+tangentAvg = movingavg.MovingAvg(nAvgShortterm)
+
+last = data[0]
+tangente = []
+i = 0
+while i < len(data)-1:
+    
+    (t, y) = data[i+1]
+
+    dt = t - last[0]
+    dy = y - last[1]
+
+    s = dy / dt
+
+    # print "s:", abs(s)
+    tangentAvg.add(s)
+
+    if tangentAvg.valid():
+        tforavg = data[i+1-nAvgShortterm/2][0]
+        tangente.append((tforavg, s, tangentAvg.mean()))
+    else:
+        if (i < nAvgShortterm/2):
+            tangente.append((t, s, 0))
+
+    i += 1
+    last = (t, y)
+
+# max steigung tangente:
+tts = np.array(map(lambda x: x[0], tangente), dtype=float)
+ty = np.array(map(lambda x: x[2], tangente), dtype=float)
+
+smax = np.max(ty)
+idx = np.argmax(ty)
+tempidx = data[idx][1]
+ttu = tts[idx] - (tempidx / smax)
+ttg = tts[idx] + ((Ks - tempidx) / smax)
+
+# print "max steigung:", smax, idx, tempidx
+print "Tg from tangent:", ttg
+print "Tu from tangent:", ttu
+
+#end # tangente über steigung
+
+# Mittelwert Tg, Tu:
+print "\nAverage Tg/Tu:"
+Tg = (Tg1+Tg2+ttg)/3.0
+Tu = (Tu1+Tu2+ttu)/3.0
+print "Tu, Tu:", Tu
+print "Tg, Tg:", Tg
+
+print "\nZiegler PID:"
+Kr = (0.9 / Ks) * (Tg / Tu) 
+Tn = 2.0 * Tu 
+Tv = 0.5 * Tu
+print "kr:", Kr
+print "ti:", Kr / Tn
+print "tv:", Kr / Tv
 
 
-print "\nmoderate PID values:     Tc is the larger of    1·Tp  or     8·Өp"
-Tc = max(avgTp, 8*avgTd)
-pidParameters(Ks, Tc, avgTp, avgTd)
+print "\nChien aperiodisch PID, gute führung:"
+Kr = (0.6 / Ks) * (Tg / Tu) 
+Tn = Tg 
+Tv = 0.5 * Tu
+print "kr:", Kr
+print "ti:", Kr / Tn
+print "td:", Kr / Tv
 
-print "\naggressive PID values:     Tc is the larger of    0.1·Tp  or     0.8·Өp"
-Tc = max(0.1*avgTp, 0.8*avgTd)
-pidParameters(Ks, Tc, avgTp, avgTd)
-
+plt.subplot(3,1,1)
 plt.title('Raw temperature step response')
+plt.grid(True)
+plt.plot(map(lambda t: t[0], d), map(lambda t: t[1], d), '-')
+
+plt.subplot(3,1,2)
+plt.title('Tangente')
+plt.grid(True)
+plt.plot(map(lambda t: t[0], tangente), map(lambda t: t[2], tangente), '-')
+plt.plot((tts[idx], tts[idx]), (0, smax*1.1))
+
+plt.subplot(3,1,3)
+plt.title('Step response')
 plt.grid(True)
 plt.plot(map(lambda t: t[0], data), map(lambda t: t[1], data), '-')
 plt.plot([0, data[-1][0]], [Ks, Ks])
+
 plt.plot([t033, t033], [0, 0.4*Ks])
+plt.annotate('1/3', xy=(t033*1.1, 0.3*Ks))
+
 plt.plot([t066, t066], [0, 0.7*Ks])
-plt.plot([avgTp, avgTp], [0, 1.1*Ks])
-plt.plot([avgTd, avgTd], [0, 1.1*Ks])
+plt.annotate('2/3', xy=(t066*1.05, 0.6*Ks))
 
-ax.annotate('1/3', xy=(t033*1.1, 0.3*Ks))
-ax.annotate('2/3', xy=(t066*1.05, 0.6*Ks))
+plt.plot([Tg, Tg], [0, 1.1*Ks])
+plt.annotate('Tg %.1f' % Tg, xy=(Tg*1.05, 1.1*Ks))
+
+plt.plot([Tu, Tu], [0, 1.1*Ks])
+plt.annotate('Tu %.1f' % Tu, xy=(Tu*1.05, 1.1*Ks))
+
+plt.plot([Tu, Tg], [0, Ks])
+plt.plot([Tu1, Tg1], [0, Ks])
+plt.plot([Tu1, Tg2], [0, Ks])
+plt.plot([ttu, ttg], [0, Ks])
+# plt.annotate('Tg %.1f' % Tu, xy=(Tu*1.05, 1.1*Ks))
+
 plt.show()
-
 
 
 

@@ -32,6 +32,7 @@ from ddprintcommands import *
 from ddprintstates import *
 from ddprofile import MatProfile, PrinterProfile
 from ddprinter import FatalPrinterError
+from ddprintconstants import A_AXIS
 
 class SyncCall:
     def __init__(self, meth, *args):
@@ -128,7 +129,12 @@ class MainForm(npyscreen.FormBaseNew):
 
         self.keypress_timeout = 1
         self.lastUpdate = time.time()
-        self.gripAvg = movingavg.MovingAvg(10)
+
+        self.gripAvg1 = movingavg.MovingAvg(10)
+        self.gripAvg10 = movingavg.MovingAvg(100)
+
+        self.frAvg1 = movingavg.MovingAvg(10)
+        self.frAvg10 = movingavg.MovingAvg(100)
 
         self.printThread = None
         # self.threadStopCount = 0
@@ -141,6 +147,9 @@ class MainForm(npyscreen.FormBaseNew):
 
         self.printerState = None
         self.stateNames = ["IDLE", "INIT", "MOVING", "DWELL"]
+
+        self.lastEPos = None
+        self.lastTime = None
 
         # t  = self.add(npyscreen.TitleText, name = "Text:",) 
         # t.entry_widget.add_handlers({ curses.ascii.NL: self.msgBox}) 
@@ -157,19 +166,24 @@ class MainForm(npyscreen.FormBaseNew):
         self.printerProfile.editable = False
 
         rely += 1
-        self.nozzleProfile = self.add(npyscreen.TitleFixedText, name = "Nozzle Profile      :", relx=1, rely=rely, use_two_lines=False, begin_entry_at=23,
+        self.nozzleProfile = self.add(npyscreen.TitleFixedText, name =  "Nozzle Profile      :", relx=1, rely=rely, use_two_lines=False, begin_entry_at=23,
                 width=w-1)
         self.nozzleProfile.editable = False
 
         rely += 1
-        self.matProfile = self.add(npyscreen.TitleFixedText, name = "Material Profile    :", relx=1, rely=rely, use_two_lines=False, begin_entry_at=23,
+        self.matProfile = self.add(npyscreen.TitleFixedText, name =     "Material Profile    :", relx=1, rely=rely, use_two_lines=False, begin_entry_at=23,
                 width=w-1)
         self.matProfile.editable = False
 
         rely += 1
-        self.smatProfile = self.add(npyscreen.TitleFixedText, name = "Specific Mat Profile:", relx=1, rely=rely, use_two_lines=False, begin_entry_at=23,
+        self.smatProfile = self.add(npyscreen.TitleFixedText, name =    "Specific Mat Profile:", relx=1, rely=rely, use_two_lines=False, begin_entry_at=23,
                 width=w-1)
         self.smatProfile.editable = False
+
+        rely += 1
+        self.kAdvance = self.add(npyscreen.TitleFixedText, name =    "K-Advance           :", relx=1, rely=rely, use_two_lines=False, begin_entry_at=23,
+                width=w-1)
+        self.kAdvance.editable = False
 
         rely += 2
         """
@@ -237,12 +251,12 @@ class MainForm(npyscreen.FormBaseNew):
         self.underrun.editable = False
 
         rely += 1
-        self.extRate = self.add(npyscreen.TitleFixedText, name =  "Extrusion Rate      :", relx=w, rely=rely, use_two_lines=False, begin_entry_at=27)
-        self.extRate.editable = False
-
-        rely += 1
         self.extGrip = self.add(npyscreen.TitleFixedText, name =  "Feeder Grip         :", relx=w, rely=rely, use_two_lines=False, begin_entry_at=23)
         self.extGrip.editable = False
+
+        rely += 1
+        self.extRate = self.add(npyscreen.TitleFixedText, name =  "Extrusion Rate      :", relx=w, rely=rely, use_two_lines=False, begin_entry_at=27)
+        self.extRate.editable = False
 
         rely += 1
         self.errors = self.add(npyscreen.TitleFixedText, name =   "Errors              :", relx=w, rely=rely, use_two_lines=False, begin_entry_at=23, color="WARNING") 
@@ -325,6 +339,7 @@ class MainForm(npyscreen.FormBaseNew):
             self.guiQueue.put(SyncCallUpdate(self.smatProfile.set_value, self.args.smat))
         else:
             self.guiQueue.put(SyncCallUpdate(self.smatProfile.set_value, "---"))
+        self.guiQueue.put(SyncCallUpdate(self.kAdvance.set_value, self.planner.advance.getKAdv()))
         self.guiQueue.put(SyncCallUpdate(self.fn.set_value, self.args.file))
         
         try:
@@ -402,25 +417,49 @@ class MainForm(npyscreen.FormBaseNew):
 
         self.underrun.update()
 
-        self.extRate.set_value("%8s" % "todo mm³/s")
-        self.extRate.update()
 
         slippage = status["slippage"]
-        self.gripAvg.add(slippage)
+        self.gripAvg1.add(slippage)
+        self.gripAvg10.add(slippage)
 
-        if slippage:
-            if slippage <= (1/.85):
-                self.extGrip.entry_widget.color = "GOOD"
-            elif slippage <= (1/0.75):
-                self.extGrip.entry_widget.color = "WARNING"
-            else:
-                self.extGrip.entry_widget.color = "DANGER"
-            self.extGrip.set_value( "%8.1f, %8.1f %%" % (100.0/slippage, 100.0/self.gripAvg.mean()) )
-        else:
+        slippageAvg1 = self.gripAvg1.mean()
+        slippageAvg10 = self.gripAvg10.mean()
+
+        if slippage <= (1/.85):
             self.extGrip.entry_widget.color = "GOOD"
-            self.extGrip.set_value( "   ?   ")
+        elif slippage <= (1/0.75):
+            self.extGrip.entry_widget.color = "WARNING"
+        else:
+            self.extGrip.entry_widget.color = "DANGER"
+
+        self.extGrip.set_value( "%8.1f, %.1f %%" % (100.0/slippageAvg1, 100.0/slippageAvg10) )
 
         self.extGrip.update()
+
+        ePos = status["extruder_pos"]
+        t = time.time()
+
+        e_steps_per_mm = PrinterProfile.getStepsPerMM(A_AXIS)
+
+        if self.lastEPos != None:
+
+            deltaE = ePos - self.lastEPos
+            deltaTime = t - self.lastTime
+
+            deltaEmm = float(deltaE)/e_steps_per_mm
+            matArea = MatProfile.getMatArea()
+
+            flowrate = (deltaEmm*matArea)/deltaTime
+            self.frAvg1.add(flowrate)
+            self.frAvg10.add(flowrate)
+
+            fr1 = self.frAvg1.mean()
+            fr10 = self.frAvg10.mean()
+            self.extRate.set_value("%8.1f/%.1f, %.1f/%.1f mm³/s" % (fr1, fr1/slippageAvg1, fr10, fr10/slippageAvg10))
+            self.extRate.update()
+
+        self.lastEPos = ePos
+        self.lastTime = t
 
     def display(self, clear=False):
 
@@ -474,6 +513,8 @@ class MainForm(npyscreen.FormBaseNew):
 
     def startPrintFile(self):
 
+        # reset averages here...
+
         try:
 
             self.parser.reset()
@@ -495,7 +536,7 @@ class MainForm(npyscreen.FormBaseNew):
 
             time.sleep(10)
 
-            t = int(self.mat_t1 * 0.5)
+            t = int(round(self.mat_t1 * 0.5))
             self.log( "\nPre-Heating extruder (t1: %d)...\n" % t)
             self.printer.heatUp(HeaterEx1, t)
 
@@ -522,8 +563,8 @@ class MainForm(npyscreen.FormBaseNew):
 
                     
                         # avoid big overswing
-                        self.log( "\nHeating extruder (t1: %d)...\n" % (self.mat_t1*0.9) )
-                        self.printer.heatUp(HeaterEx1, self.mat_t1*0.9, self.mat_t1*0.9-2)
+                        self.log( "\nHeating extruder (t1: %d)...\n" % (int(round(self.mat_t1*0.9))) )
+                        self.printer.heatUp(HeaterEx1, int(round(self.mat_t1*0.9)), self.mat_t1*0.9-2)
 
                         self.log( "\nHeating extruder (t1: %d)...\n" % self.mat_t1 )
                         self.printer.heatUp(HeaterEx1, self.mat_t1, self.mat_t1-2)

@@ -20,104 +20,10 @@
 # along with ddprint.  If not, see <http://www.gnu.org/licenses/>.
 #*/
 
-def getTEnd(data, temp):
-
-    nTemp = 0
-    for (tim, Y) in data:
-
-        if Y >= temp:
-            nTemp += 1
-
-        if nTemp == 10:
-            return tim
-
-    # constant phase not reached?
-    assert(0)
-
 def getFoptdTd(data, temp):
 
     start = temp * 0.01
     return getPercentT(data, start)
-
-def sumArea(data, endTemp, endTime):
-
-    aSum = 0
-    lastTime = data[0][0]
-    lastY = data[0][1]
-
-    for (tim, Y) in data[1:]:
-
-        if tim > endTime:
-            return aSum
-
-        aSum += (tim - lastTime) * (endTemp - lastY)
-
-        lastTime = tim
-        lastY = Y
-
-    # constant phase not reached?
-    assert(0)
-
-def sumArea2(data, endTemp, endTime):
-
-    print "Computing sumArea 2..."
-
-    def sumA(endIndex):
-
-        aSum = 0
-        lastTime = data[0][0]
-        lastY = data[0][1]
-        i = 1
-        while True:
-
-            (tim, Y) = data[i]
-
-            if i == endIndex:
-                return aSum
-
-            aSum += (tim - lastTime) * lastY
-
-            lastTime = tim
-            lastY = Y
-            i += 1
-
-        assert(0)
-
-    def sumB(startIndex):
-
-        aSum = 0
-        lastTime = data[startIndex][0]
-        lastY = data[startIndex][1]
-
-        i = startIndex + 1
-        while True:
-
-            (tim, Y) = data[i]
-
-            if tim > endTime:
-                return aSum
-
-            aSum += (tim - lastTime) * (endTemp - lastY)
-
-            lastTime = tim
-            lastY = Y
-            i += 1
-
-        assert(0)
-
-    index = 1
-    while True:
-
-        sa = sumA(index)
-        sb = sumB(index)
-
-        ds = sa - sb
-        # print "sa - sb:", sa - sb
-
-        if ds >= 0:
-            return data[index][0]
-
-        index += 1
 
 def getPercentT(data, temp):
 
@@ -142,26 +48,6 @@ def getPercentT(data, temp):
 
     # print "t1, t2", tim1, tim2
     return (tim1+tim2) / 2.0
-
-
-# PID parameters as of http://controlguru.com/pid-control-of-the-heat-exchanger/
-def pidParameters(Ks, Tc, Tp, Td):
-
-    print "Ks,Kp:", Ks, "Tc:", Tc
-
-    Kc = 1/Ks * (Tp + 0.5*Td) / (Tc + 0.5*Td)
-    print "Kc: %f (Kc,independent == Kc,ideal" % Kc
-
-    Ti = Tp + 0.5*Td
-    print "Ti,ideal:", Ti
-    print "Ki,independent:", Kc/Ti
-
-    Td = (Tp * Td) / (2*Tp + Td)
-    print "Td,ideal:", Td
-    print "Kd,independent:", Kc*Td
-
-
-
 
 
 

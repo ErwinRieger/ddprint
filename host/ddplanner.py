@@ -157,6 +157,8 @@ class PathData (object):
         self.fr0 = matProfile.getFR0pwm(hwVersion, nozzleDiam)
         self.slippage = matProfile._getSlippage(hwVersion, nozzleDiam)
 
+        self.Tu = PrinterProfile.getTu()
+
         self.energy = 0
 
         # AutoTemp
@@ -206,23 +208,25 @@ class PathData (object):
 
             print "need energy:", self.energy, "[pwm*sec]"
 
-            T66 = 125 # xxx hardcoded
-            tOn = min(self.energy / pwmMaxStep, min(T66/4, 65))
+            tOn = min( (self.energy*0.8) / pwmMaxStep, tsum)
 
             print "this is %.2f seconds with %.2f pwm, move time: %.2f" % (tOn, pwmMaxStep, tsum)
 
-            if tOn > tsum:
-                # Not long enough for pulse, add left over energy to next segment
-                tOn = tsum
-
             self.energy -= pwmMaxStep * tOn
+
+            tPause = tsum - tOn
+            if tOn > self.Tu:
+
+                nPulse = int(math.ceil(tOn/self.Tu))
+                tPause = (tsum - tOn) / nPulse
 
             # Schedule target temp command
             self.planner.addSynchronizedCommand(
                 CmdSyncHotendPulse, 
                 p1 = packedvalue.uint8_t(HeaterEx1),
-                p2 = packedvalue.uint16_t(tOn * 1000),  # xxx check 16 bit overflow
-                p3 = packedvalue.uint16_t(newTemp), 
+                p2 = packedvalue.uint32_t(tOn * 1000), 
+                p3 = packedvalue.uint16_t(tPause * 1000), 
+                p4 = packedvalue.uint16_t(newTemp), 
                 moveNumber = move.moveNumber)
 
             """
@@ -398,12 +402,12 @@ class Planner (object):
 
         return (homePosMM, homePosStepped)
 
-    def addSynchronizedCommand(self, command, p1=None, p2=None, p3=None, moveNumber=None):
+    def addSynchronizedCommand(self, command, p1=None, p2=None, p3=None, p4=None, moveNumber=None):
 
         if moveNumber == None:
             moveNumber = max(self.pathData.count, 0)
 
-        self.syncCommands[moveNumber].append((command, p1, p2, p3))
+        self.syncCommands[moveNumber].append((command, p1, p2, p3, p4))
 
     # Called from gcode parser
     def newPart(self, partNumber):
@@ -621,9 +625,9 @@ class Planner (object):
 
         def sendSyncCommands(moveNumber):
 
-            for (cmd, p1, p2, p3) in self.syncCommands[moveNumber]:
+            for (cmd, p1, p2, p3, p4) in self.syncCommands[moveNumber]:
                 if self.args.mode != "pre":
-                    self.printer.sendCommandParamV(cmd, [p1, p2, p3])
+                    self.printer.sendCommandParamV(cmd, [p1, p2, p3, p4])
 
             del self.syncCommands[moveNumber]
 

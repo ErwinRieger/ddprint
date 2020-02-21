@@ -41,6 +41,10 @@ class uint16_t(PackedValue):
     def __init__(self, value):
         PackedValue.__init__(self, value, "H")
 
+class uint32_t(PackedValue):
+    def __init__(self, value):
+        PackedValue.__init__(self, value, "I")
+
 class float_t(PackedValue):
     def __init__(self, value):
         PackedValue.__init__(self, value, "f")

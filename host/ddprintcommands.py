@@ -54,8 +54,6 @@ CmdResetLineNr = 131
 CmdSetHomePos = 133
 # Set heater target temp
 CmdSetTargetTemp = 134 # Parameters: heater, temp
-# CmdWriteEepromFloat = 135 # Parameters: valuename (len max 63 chars!), value
-# CmdEepromFactory = 136 # Factory reset of eeprom values, bed leveling needed
 CmdFanSpeed = 137
 CmdStopMove = 138
 # Set heater PWM value (stellgrösse) directly, used by PID autoTune. Parameters: heater, pwmvalue
@@ -66,8 +64,6 @@ CmdGetDirBits = 150
 CmdGetHomed = 151
 # Get endstop switch state
 CmdGetEndstops = 152   # Get endstop state and pos
-# CmdGetEepromVersion = 153
-# CmdGetEepromSettings = 154
 # currently not used: CmdDisableStepperIsr = 155
 CmdDisableSteppers = 156
 # Get temperatures
@@ -94,7 +90,8 @@ CmdSetIncTemp   =    174 # Adjust temperature niveau
 CmdGetFreeMem   =    175 # Get number of free memory bytes
 CmdGetFSReadings =   176 # Get last n filsensor readings
 CmdSetTempPWM =      177 # Set PWM value of hotend heater (for filament profile measurement)
-CmdSetP0pwm   =      178 # Set PWM value of hotend heater (for filament profile measurement)
+# CmdSetP0pwm   =      178 # Set PWM value of hotend heater (for filament profile measurement)
+# CmdSetTu =           179 # Set Tu timeconstant
 
 CommandNames = {
 }
@@ -130,8 +127,6 @@ for (cmd, cmdName) in [
     (CmdResetLineNr, "CmdResetLineNr",),
     (CmdSetHomePos, "CmdSetHomePos",),
     (CmdSetTargetTemp, "CmdSetTargetTemp",),
-    # (CmdWriteEepromFloat, "CmdWriteEepromFloat",),
-    # (CmdEepromFactory, "CmdEepromFactory",),
     (CmdSyncFanSpeed, "CmdSyncFanSpeed",),
     (CmdFanSpeed, "CmdFanSpeed",),
     (CmdStopMove, "CmdStopMove",),
@@ -142,8 +137,6 @@ for (cmd, cmdName) in [
     (CmdGetDirBits, "CmdGetDirBits",),
     (CmdGetHomed, "CmdGetHomed",),
     (CmdGetEndstops, "CmdGetEndstops",),
-    # (CmdGetEepromVersion, "CmdGetEepromVersion",),
-    # (CmdGetEepromSettings, "CmdGetEepromSettings",),
     # currently not used: CmdDisableStepperIsr: "CmdDisableStepperIsr",
     (CmdDisableSteppers, "CmdDisableSteppers",),
     (CmdGetCurrentTemps, "CmdGetCurrentTemps",),
@@ -167,7 +160,8 @@ for (cmd, cmdName) in [
     (CmdGetFreeMem, "CmdGetFreeMem",),
     (CmdGetFSReadings, "CmdGetFSReadings",),
     (CmdSetTempPWM, "CmdSetTempPWM",),
-    (CmdSetP0pwm, "CmdSetP0pwm",),
+    # (CmdSetP0pwm, "CmdSetP0pwm",),
+    # (CmdSetTu, "CmdSetTu",),
     ]:
 
         insertCommandName(cmd, cmdName)

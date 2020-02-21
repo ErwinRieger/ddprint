@@ -54,16 +54,36 @@ class MovingAvg:
         self.array = [float(steps)] * self.navg
 
     def trim(self, navg):
-        self.array = self.array[self.navg - navg:]
+
+        assert(navg <= self.navg)
+
+        # self.array = self.array[self.navg - navg:]
+
+        array = np.array([0.0] * navg)
+        for i in range(navg):
+            if (self.index - (i+1)) >= 0:
+                array[i] = self.array[self.index - (i+1)]
+            else:
+                array[i] = self.array[self.index - (i+1) + self.navg]
+
+        self.array = array
         self.index = 0
+        self.navg = navg
+
+    def expand(self, navg):
+
+        assert(navg >= self.navg)
+
+        self.array = np.append(self.array, np.array([self.mean()] * (navg-self.navg)))
         self.navg = navg
 
     def valid(self):
         return self.nValues >= self.navg
 
-    def near(self, rel):
+    def near(self, rel, avg=None):
 
-        avg = self.mean()
+        if avg == None:
+            avg = self.mean()
 
         for v in self.array:
             if abs(avg - v) > (avg * rel * 0.5):

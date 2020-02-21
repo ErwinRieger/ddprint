@@ -5,7 +5,7 @@
   # Dual feeder motor, adns9800 flowrate sensor
   # "hwVersion": 2,
   # Dual feeder motor, pmw3360 flowrate sensor
-  "hwVersion": 3,
+  "hwVersion": 4,
   "axes"  : {
     "X" : {
       "platform_length" : 230,
@@ -62,9 +62,20 @@
   # filamentsensor counts to e-stepper steps.
   "filSensorCalibration": 0.7463,
   # Hotend PID values
-  "Kp": 3,
-  "Ki": 0.1,
-  "Kd": 12.5,
+  # "Kp": 3,
+  # "Ki": 0.1,
+  # "Kd": 12.5,
+  # chien aperiodisch PID, gute führung
+  "Kp": 3.708,
+  "Ki": 0.033,
+  "Kd": 0.845,
+  # ziegler pid
+  # "Kp": 5.563,
+  # "Ki": 0.318,
+  # "Kd": 1.267,
+  # From pidAutoTune.py:
+  "Tu": 8.779,
+  "Tg": 113.663,
   # Bedleveling Z value
   "add_homeing_z": -16.35,
   # Diameter of feeder (knurled) wheel, take some 

@@ -1200,32 +1200,33 @@ def changeNozzle(args, parser):
 #
 def stepResponse(args, parser):
 
+    assert(broken_temp_curve)
+
+
     planner = parser.planner
     printer = planner.printer
 
     def stopHeater():
-        payload = struct.pack("<BH", HeaterEx1, 0) # Parameters: heater, temp
-        printer.sendCommand(CmdSetTargetTemp, binPayload=payload)
+        printer.coolDown(HeaterEx1)
         printer.sendCommandParamV(CmdFanSpeed, [packedvalue.uint8_t(0)])
 
     # Destination temperature
     tDest1 = args.t1 or 200
-    tDest2 = tDest1 * 1.2
-    tDest3 = tDest1 * 0.9
+    tDest2 = int(round(tDest1 * 1.2))
+    tDest3 = int(round(tDest1 * 0.9))
     assert(tDest1 <= 275)
 
     # Bail out if tmax reached
     tmax = tDest1 * 1.5
 
     printer.commandInit(args, PrinterProfile.getSettings())
-    es = printer.getEepromSettings()
 
     # Open output gnuplot file
     f = open("stepresponse_closed.gnuplot", "w")
 
-    f.write("# Kp: %f\n" % es["Kp"])
-    f.write("# Ki: %f\n" % es["Ki"])
-    f.write("# Kd: %f\n" % es["Kd"])
+    # f.write("# Kp: %f\n" % es["Kp"])
+    # f.write("# Ki: %f\n" % es["Ki"])
+    # f.write("# Kd: %f\n" % es["Kd"])
     f.write("set yrange [0:%d]\n" % tmax)
     f.write("set grid\n")
     f.write("plot \"-\" using 1:2 with linespoints title \"StepResponse\",")
@@ -1233,8 +1234,7 @@ def stepResponse(args, parser):
 
     # Do the first step
     print "Starting input step to %d °" % tDest1
-    payload = struct.pack("<BH", HeaterEx1, tDest1) # Parameters: heater, temp
-    printer.sendCommand(CmdSetTargetTemp, binPayload=payload)
+    printer.heatUp(HeaterEx1, tDest1)
     printer.sendCommandParamV(CmdFanSpeed, [packedvalue.uint8_t(100)])
 
     timeStart = time.time()
@@ -1291,8 +1291,7 @@ def stepResponse(args, parser):
         
     # Do the second step
     print "Starting input step to %d °" % tDest2
-    payload = struct.pack("<BH", HeaterEx1, tDest2) # Parameters: heater, temp
-    printer.sendCommand(CmdSetTargetTemp, binPayload=payload)
+    printer.heatUp(HeaterEx1, tDest2)
 
     aAvg = nAvg * 1.0
 
@@ -1336,8 +1335,7 @@ def stepResponse(args, parser):
         
     # Do the third step
     print "Starting input step to %d °" % tDest3
-    payload = struct.pack("<BH", HeaterEx1, tDest3) # Parameters: heater, temp
-    printer.sendCommand(CmdSetTargetTemp, binPayload=payload)
+    printer.heatUp(HeaterEx1, tDest3)
 
     aAvg = nAvg * 1.0
 
@@ -1382,55 +1380,60 @@ def stepResponse(args, parser):
     f.write("e\npause mouse close\n")
     stopHeater()
 
-# Open loop step response to determine control parameters.
 def measureHotendStepResponse(args, parser):
+
+
+    print "*************************************************************"
+    print "* Record open loop step response of hotend to determine     *"
+    print "* the pid control parameters for temperature control.       *"
+    print "*************************************************************"
 
     planner = parser.planner
     printer = planner.printer
 
     def stopHeater():
-        payload = struct.pack("<BB", HeaterEx1, 0) # heater, pwmvalue
-        printer.sendCommand(CmdSetHeaterY, binPayload=payload)
+        printer.setTempPWM(HeaterEx1, 0)
 
     printer.commandInit(args, PrinterProfile.getSettings())
 
-    tmax = 260
+    tmax = MatProfile.getHotendMaxTemp()
 
     ## Eingangssprung, nicht die volle leistung, da sonst die temperatur am ende
     ## der sprungantwort zu stark überschwingt und zu hoch wird.
     Xo = 100.0
-    interval = 0.01
+    interval = 0.1
 
     temp = tempStart = printer.getTemp(doLog = False)[1]
 
     # Output file for raw data
     fraw = open("autotune.raw.json", "w")
     fraw.write("""{
+    "PrinterName": "%s",
     "Xo": %d,
     "dt": %f,
     "startTemp": %f,
     "columns":  "time temperature",
-    """ % (Xo, interval, tempStart))
+    """ % (printer.getPrinterName(), Xo, interval, tempStart))
 
-    print "Starting input step, tmax is:", tmax
+    print "Starting input step with pwm value: %d, tmax is: %.2f" % (Xo, tmax)
 
     # Fan is running while printing (and filament has to be molten), so run fan 
     # at max speed to simulate this energy-loss.
     printer.sendCommandParamV(CmdFanSpeed, [packedvalue.uint8_t(255)])
-    payload = struct.pack("<BB", HeaterEx1, Xo) # heater, pwmvalue
-    printer.sendCommand(CmdSetHeaterY, binPayload=payload)
+    printer.setTempPWM(HeaterEx1, Xo)
 
     timeStart = time.time()
 
     print "Starting temp:", tempStart
     data = []
 
-    # Abbruch, falls 10 sekunden lang keine steigerung der temperatur mehr auftritt
     maxTemp = 0
-    tMaxTemp = timeStart
 
-    while (time.time() - tMaxTemp) < 30:
+    navg = int(round(30/interval))
+    tempAvg = movingavg.MovingAvg( navg )
+    while True:
 
+        # Window for running average to detect 5% steady state (min 30 seconds):
         if temp > tmax:
             print "Error, max temp (%d) reached (you should decrease Xo): " % tmax, temp
             stopHeater()
@@ -1442,16 +1445,23 @@ def measureHotendStepResponse(args, parser):
         relTime = tim-timeStart
         Mu = temp-tempStart
 
-        data.append("       [%f, %f]" % (relTime, Mu))
-
         if Mu > maxTemp:
             maxTemp = Mu
-            tMaxTemp = tim
 
-        print "Time, Temp, tconst:", relTime, temp, tim-tMaxTemp
+        data.append("       [%f, %f]" % (relTime, Mu))
 
-        lastTime = tim
-        lastTemp = temp
+        tempAvg.add(Mu)
+
+        print "\rTime %.2f, dTemp %.2f, navg: %d, moving temp avg: %.2f" % (relTime, Mu, navg, tempAvg.mean()),
+        sys.stdout.flush()
+
+        if tempAvg.valid() and tempAvg.near(0.05):
+            print "\nTemp reached 5% steady state...", relTime, Mu, tempAvg.mean()
+            break
+
+        navg = int(round(max( len(data)/2, 30/interval )))
+        tempAvg.expand(navg)
+
         time.sleep(interval)
 
     stopHeater()
@@ -1464,9 +1474,9 @@ def measureHotendStepResponse(args, parser):
     fraw.write("    ]\n}\n")
     fraw.close()
 
-    print "Step response done, result in autotune.raw."
+    print "Step response done, result in file ./autotune.raw, evaluate it with pidAutoTune.py."
 
-    printer.coolDown(HeaterEx1, wait=100)
+    printer.coolDown(HeaterEx1, wait=100, log=True)
     printer.sendCommandParamV(CmdFanSpeed, [packedvalue.uint8_t(0)])
 
 ####################################################################################################
@@ -1505,58 +1515,6 @@ def getResponseString(s, offset):
     return s[offset+1:offset+1+length]
 
 ####################################################################################################
-
-def old_genTempTable(planner):
-
-    hwVersion = PrinterProfile.getHwVersion()
-    nozzleDiam = NozzleProfile.getSize()
-    baseTemp = MatProfile.getHotendBaseTemp(hwVersion, nozzleDiam)
-    baseFlowrate = MatProfile.getFlowrateForTemp(baseTemp, hwVersion, nozzleDiam) * (1.0-AutotempSafetyMargin)
-
-    # Temps lower than 170 not handled yet
-    assert(baseTemp >= 170)
-
-    aFilament = MatProfile.getMatArea()
-    spm = PrinterProfile.getStepsPerMM(A_AXIS)
-
-    of = open("/tmp/temptable0.txt", "w")
-    of.write("# xxx mat, nozzle, settings...\n")
-    of.write("# basetemp: %f\n" % baseTemp)
-    of.write("# temp flowrate steprate timer\n")
-
-    print "TempTable (basetemp: %f):" % baseTemp
-    table = []
-    for i in range(NExtrusionLimit):
-
-        # t = baseTemp + i*2
-        # t = baseTemp + i
-        t = 170 + i
-
-        if t < baseTemp:
-            # Note: simple interpolation for values between 170° and start of profile basetemp
-            f = (baseFlowrate-0.1) / (baseTemp-170)
-            flowrate = 0.1 + i*f
-        else:
-            flowrate = MatProfile.getFlowrateForTemp(t, hwVersion, nozzleDiam) * (1.0-AutotempSafetyMargin)
-
-        espeed = flowrate / aFilament
-        print "flowrate for temp %f: %f -> espeed %f" % (t, flowrate, espeed)
-
-        # espeed = planner.advance.eComp(espeed)
-        # print "corrected espeed:", espeed
-
-        steprate = espeed * spm
-        tvs = 1.0/steprate
-        timerValue = min(int(fTimer / steprate), 0xffff)
-
-        print "    Temp: %f, max flowrate: %.2f mm³/s, max espeed: %.2f mm/s, steps/s: %d, steprate: %d us, timervalue: %d" % (t, flowrate, espeed, int(steprate), int(tvs*1000000), timerValue)
-        table.append(timerValue)
-
-        of.write("%f %4.1f %d %d\n" % (t, flowrate, int(steprate), timerValue))
-
-    of.close()
-
-    return (170, table)
 
 def genTempTable(planner):
 
@@ -1773,76 +1731,7 @@ def old_getStartupTime(feedrate):
 
 def measureFlowrateStepResponse(args, parser):
 
-    def writeDataSet(f, dataSet):
-
-        temps = dataSet.keys()
-        temps.sort()
-
-        for temp in temps:
-            tup = dataSet[temp]
-            f.write("%d %f %f %f %f\n" % (temp, tup[0], tup[1], tup[2], tup[3]))
-
-        f.write("E\n")
-
-    def writeGnuplot(t1, dataSet):
-
-        gnuplotFile = open("temp-flowrate-curve.gnuplot", "w")
-        gnuplotFile.write("""
-
-set grid
-set yrange [0:35]
-
-# BaseTemp=%d
-
-# Startwert steigung
-a=0.5
-
-# Startwert y-achse
-b=5
-f(x)=b+a*(x-%d)
-
-fit f(x) "-" using 1:3 noerror via a,b\n""" % (t1, t1))
-
-        writeDataSet(gnuplotFile, dataSet)
-
-        gnuplotFile.write("""
-plot "-" using 1:2 with linespoints title "Target Flowrate", \\
-     "-" using 1:3 with linespoints title "Actual Flowrate", \\
-     "-" using 1:3 with linespoints smooth bezier title "Actual Flowrate smooth", \\
-     f(x) title sprintf("y=B+A*x, A=%.2f, B=%.1f, TempFactor 1/A: %.2f", a, b, 1/a)\n""")
-
-        writeDataSet(gnuplotFile, dataSet)
-        writeDataSet(gnuplotFile, dataSet)
-        writeDataSet(gnuplotFile, dataSet)
-
-        gnuplotFile.write("pause mouse close")
-        gnuplotFile.close()
-
     nozzleSize = NozzleProfile.getSize()
-
-    def writeJson(dataSet, slippage):
-
-        jsonFile = open("temp-flowrate-curve.json", "w")
-        jsonFile.write("""
-    "tempFlowrateCurve_%d": {
-        "version": %d,
-        "slippage": %f,
-        "data": [\n""" % (nozzleSize*100, PrinterProfile.getHwVersion(), slippage))
-    
-        temps = dataSet.keys()
-        temps.sort()
-
-        strings = []
-        for temp in temps:
-            tup = dataSet[temp]
-            strings.append("            [%d, %f, %f]" % (temp, tup[1], tup[3]))
-
-        jsonFile.write(",\n".join(strings))
-        jsonFile.write("\n        ]\n    }\n")
-        jsonFile.close()
-
-    def tempGood(actT1, t1):
-        return actT1 >= (t1-2) and actT1 <= (t1+2)
 
     planner = parser.planner
     printer = planner.printer
@@ -1853,11 +1742,11 @@ plot "-" using 1:2 with linespoints title "Target Flowrate", \\
 
     # Override integral value for temperature PID to avoid big temperature-overshots
     printerProfile = PrinterProfile.get()
-    printerProfile.override("Ki", printerSettings["Ki"] * 0.75)
+    # printerProfile.override("Ki", printerSettings["Ki"] * 0.75)
 
     printer.commandInit(args, PrinterProfile.getSettings())
 
-    print "overwritten Ki: ", printerSettings["Ki"], PrinterProfile.getSettings()["Ki"]
+    # print "overwritten Ki: ", printerSettings["Ki"], PrinterProfile.getSettings()["Ki"]
 
     # ddhome.home(parser, args.fakeendstop)
 
@@ -1909,9 +1798,6 @@ plot "-" using 1:2 with linespoints title "Target Flowrate", \\
 
     pcal = PrinterProfile.get().getFilSensorCalibration()
 
-    pwmOutput = 0
-    pwmMax = 255
-
     # ratioAvg.setValue(minGrip + (1.0-minGrip)/10.0)
     # ratio = minGrip + (1.0-minGrip)/10.0
 
@@ -1925,7 +1811,7 @@ plot "-" using 1:2 with linespoints title "Target Flowrate", \\
     Ks = 2.09997869
     # Tp: 109.869478607
     # Td: 7.72118860714
-    T66 = 125
+    T66 = 125 # xxx use timeConstant here...
     sprung = min(255-pwm0, (endTemp-startTemp) / Ks)
 
     ####################################################################################################
@@ -1968,9 +1854,6 @@ plot "-" using 1:2 with linespoints title "Target Flowrate", \\
     mode = "starting"
 
     tStart = time.time()
-    tStep = 30        # debug
-    tEnd = tStep + 30 # debug
-
     tStep = 2*T66
     tEnd = tStep + 2*T66
 
@@ -2050,11 +1933,6 @@ plot "-" using 1:2 with linespoints title "Target Flowrate", \\
 
 ####################################################################################################
 # 
-# Ks is: 2.09997869
-# Tp: 109.869478607
-# Td: 7.72118860714
-#
-#
 # * Lege start-pwm wert von z.b. 100 an
 # * messe temperatur und starte messvorgang falls t >= 190
 # * messvorgang: mit kurzer avg funktion messen, das ist zwar etwas ungenauer, aber wir können
@@ -2064,76 +1942,19 @@ plot "-" using 1:2 with linespoints title "Target Flowrate", \\
 
 def measureTempFlowrateCurve(args, parser):
 
-    def writeDataSet(f, dataSet):
-
-        temps = dataSet.keys()
-        temps.sort()
-
-        for temp in temps:
-            tup = dataSet[temp]
-            f.write("%d %f %f %f %f\n" % (temp, tup[0], tup[1], tup[2], tup[3]))
-
-        f.write("E\n")
-
-    def writeGnuplot(t1, dataSet):
-
-        gnuplotFile = open("temp-flowrate-curve.gnuplot", "w")
-        gnuplotFile.write("""
-
-set grid
-set yrange [0:35]
-
-# BaseTemp=%d
-
-# Startwert steigung
-a=0.5
-
-# Startwert y-achse
-b=5
-f(x)=b+a*(x-%d)
-
-fit f(x) "-" using 1:3 noerror via a,b\n""" % (t1, t1))
-
-        writeDataSet(gnuplotFile, dataSet)
-
-        gnuplotFile.write("""
-plot "-" using 1:2 with linespoints title "Target Flowrate", \\
-     "-" using 1:3 with linespoints title "Actual Flowrate", \\
-     "-" using 1:3 with linespoints smooth bezier title "Actual Flowrate smooth", \\
-     f(x) title sprintf("y=B+A*x, A=%.2f, B=%.1f, TempFactor 1/A: %.2f", a, b, 1/a)\n""")
-
-        writeDataSet(gnuplotFile, dataSet)
-        writeDataSet(gnuplotFile, dataSet)
-        writeDataSet(gnuplotFile, dataSet)
-
-        gnuplotFile.write("pause mouse close")
-        gnuplotFile.close()
-
-    nozzleSize = NozzleProfile.getSize()
-
-    def writeJson(dataSet, slippage):
-
-        jsonFile = open("temp-flowrate-curve.json", "w")
-        jsonFile.write("""
-    "tempFlowrateCurve_%d": {
-        "version": %d,
-        "slippage": %f,
-        "data": [\n""" % (nozzleSize*100, PrinterProfile.getHwVersion(), slippage))
-    
-        temps = dataSet.keys()
-        temps.sort()
-
-        strings = []
-        for temp in temps:
-            tup = dataSet[temp]
-            strings.append("            [%d, %f, %f]" % (temp, tup[1], tup[3]))
-
-        jsonFile.write(",\n".join(strings))
-        jsonFile.write("\n        ]\n    }\n")
-        jsonFile.close()
+    dTemp = 2.5 # temperature-band 
 
     def tempGood(actT1, t1):
-        return actT1 >= (t1-2) and actT1 <= (t1+2)
+
+        if actT1.valid():
+
+            return actT1.near(dTemp / 100.0, t1)
+
+        return False
+
+
+
+    nozzleSize = NozzleProfile.getSize()
 
     planner = parser.planner
     printer = planner.printer
@@ -2144,13 +1965,18 @@ plot "-" using 1:2 with linespoints title "Target Flowrate", \\
 
     # Override integral value for temperature PID to avoid big temperature-overshots
     printerProfile = PrinterProfile.get()
-    printerProfile.override("Ki", printerSettings["Ki"] * 0.75)
+    # printerProfile.override("Ki", printerSettings["Ki"] * 1.25)
+    # printerProfile.override("Kp", 2.512)
+    # printerProfile.override("Ki", 0.278)
+    # printerProfile.override("Kd", 0.0)
 
     printer.commandInit(args, PrinterProfile.getSettings())
 
-    print "overwritten Ki: ", printerSettings["Ki"], PrinterProfile.getSettings()["Ki"]
+    # print "overwritten Kp: ", printerSettings["Kp"], PrinterProfile.getSettings()["Kp"]
+    # print "overwritten Ki: ", printerSettings["Ki"], PrinterProfile.getSettings()["Ki"]
+    # print "overwritten Kd: ", printerSettings["Kd"], PrinterProfile.getSettings()["Kd"]
 
-    # ddhome.home(parser, args.fakeendstop)
+    ddhome.home(parser, args.fakeendstop)
 
     # Disable flowrate limit
     printer.sendCommandParamV(CmdEnableFRLimit, [packedvalue.uint8_t(0)])
@@ -2159,14 +1985,14 @@ plot "-" using 1:2 with linespoints title "Target Flowrate", \\
     downloadDummyTempTable(printer)
 
     # Move to mid-position
-    # printer.sendPrinterInit()
-    # feedrate = PrinterProfile.getMaxFeedrate(X_AXIS)
-    # parser.execute_line("G0 F%d X%f Y%f" % (feedrate*60, planner.MAX_POS[X_AXIS]/2, planner.MAX_POS[Y_AXIS]/2))
+    printer.sendPrinterInit()
+    feedrate = PrinterProfile.getMaxFeedrate(X_AXIS)
+    parser.execute_line("G0 F%d X%f Y%f" % (feedrate*60, planner.MAX_POS[X_AXIS]/2, planner.MAX_POS[Y_AXIS]/2))
 
-    # planner.finishMoves()
-    # printer.sendCommandParamV(CmdMove, [MoveTypeNormal])
-    # printer.sendCommand(CmdEOT)
-    # printer.waitForState(StateIdle)
+    planner.finishMoves()
+    printer.sendCommandParamV(CmdMove, [MoveTypeNormal])
+    printer.sendCommand(CmdEOT)
+    printer.waitForState(StateIdle)
 
     dataSet = {}
 
@@ -2178,81 +2004,59 @@ plot "-" using 1:2 with linespoints title "Target Flowrate", \\
 
     tWait = 0.1
 
-    t1 = args.t1 or MatProfile.getHotendStartTemp()
     dt = PrinterProfile.getFilSensorInterval()
     steps_per_mm = PrinterProfile.getStepsPerMM(A_AXIS)
     pcal = PrinterProfile.get().getFilSensorCalibration()
 
     ####################################################################################################
-
     # * set initial pwm value and wait for min temp
     # * start measurement loop
-    # pwm0 = 90 # 100
-    startTemp = 170     # xxx use profile.mintemp
-    endTemp = 260       # xxx use profile.maxtemp
-    # Ks = 2.09997869
-    # Tp: 109.869478607
-    # Td: 7.72118860714
-    T66 = 125
+    endTemp = MatProfile.getHotendMaxTemp()
+    timeConstant = printerProfile.getTu() + printerProfile.getTg() 
 
-    # Averaging window, 1/4 of timeconstant
-    nAvg = int(round(T66 / (dt * 4))) # debug
-    nAvg = int(round(T66 / (dt * 10))) # debug
+    # Averaging window, 1/4 of hotend timeconstant timeConstant
+    nAvg = int(round(timeConstant / (dt * 4)))
     print "navg:", nAvg
-
-    # sprung = min(255-pwm0, (endTemp-startTemp) / Ks)
     ####################################################################################################
 
-    # ######################eMotorRunning = False
-    # ######################primed = False
+    eMotorRunning = False
 
     # Running average of hotend temperature
-    # tempAvg = EWMA(0.5)
     tempAvg = movingavg.MovingAvg(10)
     flowAvg = movingavg.MovingAvgReadings(10)
-    # Running average of *grip*
-    # ratioAvg = EWMA(0.5)
-    # ratioAvg = MovingAvg(10)
-    # pwmAvg = EWMA(0.5)
-
-    pwmAvg = movingavg.MovingAvg(nAvg)
 
     minGrip = 0.90
-    pwmOutput = 0
-    pwmMax = 255
 
-    # ratioAvg.setValue(minGrip + (1.0-minGrip)/10.0)
-    # ratio = minGrip + (1.0-minGrip)/10.0
+    data = []
+    for t1 in [MatProfile.getHotendStartTemp(), int(round(MatProfile.getHotendMaxTemp()*0.975))]:
 
-    ####################################################################################################
-    # Output file for raw data
-    fraw = open("flowrateMeasurement.raw.json", "w")
-    fraw.write("""{
-    "PrinterName": "%s",
-    "p0": %d,
-    "step": %f,
-    "dt": %f,
-    "startTemp": %f,
-    "columns":  "time targetFlowrate ratio flowrate temp",
-    "data": [
-    """ % (printer.getPrinterName(), 0, 0, dt, startTemp))
-    ####################################################################################################
+      ####################################################################################################
+      # Output file for raw data
+      fraw = open("flowrateMeasurement.raw.json", "w")
+      fraw.write("""{
+      "PrinterName": "%s",
+      "p0": %d,
+      "step": %f,
+      "dt": %f,
+      "startTemp": %f,
+      "columns":  "time targetFlowrate ratio flowrate temp",
+      "data": [
+      """ % (printer.getPrinterName(), 0, 0, dt, t1))
+      ####################################################################################################
 
-    print "setting initial temp:", t1
-    printer.heatUp(HeaterEx1, t1, wait=t1-1.5, log=True)
+      pwmAvg = movingavg.MovingAvg(nAvg)
 
-    # start motor
-    print "\nstarting motor with %.2f mm/s" % feedrate
-    printer.sendCommandParamV(CmdContinuousE, [packedvalue.uint16_t(eTimerValue(planner, feedrate))])
+      print "Setting target temp:", t1
+      printer.heatUp(HeaterEx1, t1, wait=t1-dTemp, log=True)
 
-    tStart = time.time()
-    # tStep = 30        # debug
-    # tEnd = tStep + 30 # debug
+      # start motor
+      if not eMotorRunning:
+        print "\nstarting motor with %.2f mm/s" % feedrate
+        printer.sendCommandParamV(CmdContinuousE, [packedvalue.uint16_t(eTimerValue(planner, feedrate))])
 
-    # tStep = 2*T66
-    # tEnd = tStep + 2*T66
+      tStart = time.time()
 
-    while True:
+      while True:
 
         status = printer.getStatus()
         actT1 = status["t1"]
@@ -2261,9 +2065,12 @@ plot "-" using 1:2 with linespoints title "Target Flowrate", \\
         fsreadings = printer.getFSReadings()
         flowAvg.addReadings(fsreadings)
 
-        pwmAvg.add(status["pwmOutput"])
-
         t1Avg = tempAvg.mean()
+
+        if tempGood(tempAvg, t1):
+            pwmAvg.add(status["pwmOutput"])
+
+        pAvg = pwmAvg.mean()
 
         meanShort = flowAvg.mean()
         targetFlowRate = feedrate * aFilament
@@ -2274,16 +2081,17 @@ plot "-" using 1:2 with linespoints title "Target Flowrate", \\
         # pcal: 0.7463
         r = meanShort / (stepsPerInterval * pcal)
 
-        print "t: %.2f, TempAvg: %.1f, target flowrate: %.3f mm³/s, actual flowrate: %.2f mm³/s, current ratio: %.2f" % \
-                (time.time()-tStart, t1Avg, targetFlowRate, targetFlowRate*r, r)
+        print "\rt: %.2f, TempAvg: %.1f, pwm avg: %.2f, target flowrate: %.3f mm³/s, actual flowrate: %.2f mm³/s, current ratio: %.2f" % \
+                (time.time()-tStart, t1Avg, pAvg, targetFlowRate, targetFlowRate*r, r),
+        sys.stdout.flush()
 
         # addcomma = False
-        if r > minGrip:
+        if r > minGrip and tempGood(tempAvg, t1):
             # increase speed
 
             frincrease = feedrate * max(0.05 * (max(r, minGrip) - minGrip), 0.0001) # increase feedrate by max 5% and min 0.1% mm per second
             feedrate += frincrease
-            print "\nincreased feedrate by %.3f to %.3f" % (frincrease, feedrate)
+            # print "\nincreased feedrate by %.3f to %.3f" % (frincrease, feedrate)
             
             # set new feedrate:
             printer.sendCommandParamV(CmdSetContTimer, [packedvalue.uint16_t(eTimerValue(planner, feedrate))])
@@ -2292,26 +2100,25 @@ plot "-" using 1:2 with linespoints title "Target Flowrate", \\
         # addcomma = True
 
         if pwmAvg.valid():
-            print "pwm avg valid:", pwmAvg.mean()
+            # print "pwm avg valid:", pAvg
             if pwmAvg.near(0.05):
-                print "pwm in 5% tolerance band, break"
+                print "\nPwm settled in 5%% tolerance band, average target flowrate: %.2f mm³/s at pwm: %.2f, temp: %.1f °C, break" % \
+                    (targetFlowRate, pAvg, t1Avg)
+                data.append( (targetFlowRate, pAvg, t1Avg) )
                 break
-        else:
-            print "pwm avg not valid, yet:", pwmAvg.mean()
 
         # if addcomma:
         fraw.write(",\n")
 
         time.sleep(tWait)
 
+      # Done
+      fraw.write("""  ],\n""")
+      fraw.write("""  "tStep": %f\n""" % 0.0)
+      fraw.write("}\n")
+      fraw.close()
+
     ####################################################################################################
-
-
-    # Done
-    fraw.write("""  ],\n""")
-    fraw.write("""  "tStep": %f\n""" % 0.0)
-    fraw.write("}\n")
-    fraw.close()
 
     # printer.setTempPWM(HeaterEx1, 0) # re-enable temperature PID
     printer.coolDown(HeaterEx1)
@@ -2328,6 +2135,16 @@ plot "-" using 1:2 with linespoints title "Target Flowrate", \\
     # Re-enable flowrate limit
     printer.sendCommandParamV(CmdEnableFRLimit, [packedvalue.uint8_t(1)])
 
+    ####################################################################################################
+    dfr = data[1][0] - data[0][0]
+    dpwm = data[1][1] - data[0][1]
+    dtemp = data[1][2] - data[0][2]
+
+    print "Material properties:"
+    print "Kpwm:", dfr / dpwm
+    print "Ktemp:", dfr / dtemp
+    print "P0pwm:", data[0][1]
+    print "FR0pwm:", data[0][0]
 
 ####################################################################################################
 #

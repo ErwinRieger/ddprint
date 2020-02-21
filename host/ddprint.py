@@ -348,7 +348,7 @@ def main():
     sp = subparsers.add_parser("print", help=u"Download and print file at once.")
     sp.add_argument("gfile", help="Input GCode file.")
 
-    sp = subparsers.add_parser("setPrinterName", help=u"Store printer name into printer eeprom.")
+    sp = subparsers.add_parser("setPrinterName", help=u"Store printer name in eeprom.")
     sp.add_argument("name", help="Printer name.")
 
     # sp = subparsers.add_parser("reset", help=u"Try to stop/reset printer.")
@@ -420,8 +420,6 @@ def main():
     sp = subparsers.add_parser("calibrateFilSensor", help=u"Debug: helper to determine the ratio of stepper to flowrate sensor.")
 
     args = argParser.parse_args()
-
-    print "args: ", args
 
     if args.mode == "setPrinterName":
         printer = Printer()
