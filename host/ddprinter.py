@@ -707,18 +707,17 @@ class Printer(Serial):
         self.sendCommandParamV(CmdSetPrinterName,
             [packedvalue.pString_t(args.name)])
 
-    def waitForState(self, destState, wait=1):
+    def waitForState(self, destState, wait=1, log=False):
 
         status = self.getStatus()
-        pprint.pprint(status)
+        if log:
+            pprint.pprint(status)
 
         while status['state'] != destState:
             time.sleep(wait)
-            # try:
             status = self.getStatus()
-            pprint.pprint(status)
-            # except RxTimeout:
-                # print "GetStatus raised RxTimeout error!"
+            if log:
+                pprint.pprint(status)
 
     def stateMoving(self, status=None):
 

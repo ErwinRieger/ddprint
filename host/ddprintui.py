@@ -238,13 +238,13 @@ class MainForm(npyscreen.FormBaseNew):
         self.swapSize = self.add(npyscreen.TitleFixedText, name = "Size Swap File      :", relx=w, rely=rely, use_two_lines=False, begin_entry_at=25)
         self.swapSize.editable = False
 
-        rely += 1
-        self.sdrSize = self.add(npyscreen.TitleFixedText, name =  "Size SDReader       :", relx=w, rely=rely, use_two_lines=False, begin_entry_at=25)
-        self.sdrSize.editable = False
+        # rely += 1
+        # self.sdrSize = self.add(npyscreen.TitleFixedText, name =  "Size SDReader       :", relx=w, rely=rely, use_two_lines=False, begin_entry_at=25)
+        # self.sdrSize.editable = False
 
-        rely += 1
-        self.sbSisze = self.add(npyscreen.TitleFixedText, name =  "Size StepBuffer     :", relx=w, rely=rely, use_two_lines=False, begin_entry_at=25)
-        self.sbSisze.editable = False
+        # rely += 1
+        # self.sbSisze = self.add(npyscreen.TitleFixedText, name =  "Size StepBuffer     :", relx=w, rely=rely, use_two_lines=False, begin_entry_at=25)
+        # self.sbSisze.editable = False
 
         rely += 1
         self.underrun = self.add(npyscreen.TitleFixedText, name = "Stepbuffer underruns:", relx=w, rely=rely, use_two_lines=False, begin_entry_at=23)
@@ -298,13 +298,13 @@ class MainForm(npyscreen.FormBaseNew):
         # Note: update() can raise a TypeError if we receive non-printable characters over the
         # usb-serial link. Ignore this exceptions here.
         #
-        try:
-            for w in self._widgets__: # [self.commLog, self.appLog]:
-                if hasattr(w, '_need_update') and w._need_update:
-                    w._need_update = False
+        for w in self._widgets__: # [self.commLog, self.appLog]:
+            if hasattr(w, '_need_update') and w._need_update:
+                w._need_update = False
+                try:
                     w.update()
-        except TypeError:
-            self._log("while_waiting(): Ignoring exception: ", traceback.format_exc())
+                except TypeError:
+                    self._log("while_waiting(): Ignoring exception: ", traceback.format_exc())
 
 
     def printWorker(self):
@@ -406,10 +406,10 @@ class MainForm(npyscreen.FormBaseNew):
         self.curPWM.update()
         self.swapSize.set_value( "%8s" % util.sizeof_fmt(status["Swap"]))
         self.swapSize.update()
-        self.sdrSize.set_value( "%8s" % util.sizeof_fmt(status["SDReader"]))
-        self.sdrSize.update()
-        self.sbSisze.set_value( "%8s" % util.sizeof_fmt(status["StepBuffer"]))
-        self.sbSisze.update()
+        # self.sdrSize.set_value( "%8s" % util.sizeof_fmt(status["SDReader"]))
+        # self.sdrSize.update()
+        # self.sbSisze.set_value( "%8s" % util.sizeof_fmt(status["StepBuffer"]))
+        # self.sbSisze.update()
         if status["StepBufUnderRuns"] > 0:
             self.underrun.set_value( "%8s" % str(status["StepBufUnderRuns"]))
         else:
@@ -432,7 +432,10 @@ class MainForm(npyscreen.FormBaseNew):
         else:
             self.extGrip.entry_widget.color = "DANGER"
 
-        self.extGrip.set_value( "%8.1f, %.1f %%" % (100.0/slippageAvg1, 100.0/slippageAvg10) )
+        if slippageAvg1 and slippageAvg10:
+            self.extGrip.set_value( "%8.1f, %.1f %%" % (100.0/slippageAvg1, 100.0/slippageAvg10) )
+        else:
+            self.extGrip.set_value( "--" )
 
         self.extGrip.update()
 

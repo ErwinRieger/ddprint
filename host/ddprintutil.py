@@ -876,7 +876,7 @@ def insertFilament(args, parser, feedrate):
     printer.waitForState(StateIdle)
 
     t1 = MatProfile.getHotendStartTemp()
-    printer.heatUp(HeaterEx1, t1, wait=t1 - 5, log=True)
+    printer.heatUp(HeaterEx1, t1, wait=t1 * 0.95, log=True)
 
     print "\nInsert filament.\n"
     manualMoveE()
@@ -1523,28 +1523,26 @@ def genTempTable(planner):
     nozzleDiam = NozzleProfile.getSize()
     aFilament = MatProfile.getMatArea()
 
-    baseTemp = MatProfile.getHotendBaseTemp(hwVersion, nozzleDiam)
-    baseFlowrate = MatProfile.getFlowrateForTemp(baseTemp, hwVersion, nozzleDiam) * (1.0-AutotempSafetyMargin)
+    startTemp = MatProfile.getHotendStartTemp()
+    baseFlowrate = MatProfile.getFlowrateForTemp(startTemp, hwVersion, nozzleDiam) * (1.0-AutotempSafetyMargin)
 
     # Temps lower than 170 not handled yet
-    assert(baseTemp >= 170)
+    assert(startTemp >= 170)
 
     table = []
     for i in range(NExtrusionLimit):
 
-        # t = baseTemp + i*2
-        # t = baseTemp + i
         t = 170 + i
 
-        if t < baseTemp:
-            # Note: simple interpolation for values between 170° and start of profile basetemp
-            f = (baseFlowrate-0.1) / (baseTemp-170)
+        if t < startTemp:
+            # Note: simple interpolation for values between 170° and start of profile startTemp
+            f = (baseFlowrate-0.1) / (startTemp-170)
             flowrate = 0.1 + i*f
         else:
             flowrate = MatProfile.getFlowrateForTemp(t, hwVersion, nozzleDiam) * (1.0-AutotempSafetyMargin)
 
         espeed = flowrate / aFilament
-        print "flowrate for temp %f: %f -> espeed %f" % (t, flowrate, espeed)
+        # print "flowrate for temp %f: %f -> espeed %f" % (t, flowrate, espeed)
 
         steprate = espeed * spm
         tvs = 1.0/steprate
@@ -1552,46 +1550,6 @@ def genTempTable(planner):
 
         print "    Temp: %f, max flowrate: %.2f mm³/s, max espeed: %.2f mm/s, steps/s: %d, steprate: %d us, timervalue: %d" % (t, flowrate, espeed, int(steprate), int(tvs*1000000), timerValue)
         table.append(timerValue)
-
-    return (170, table)
-
-
-    of = open("/tmp/temptable0.txt", "w")
-    of.write("# xxx mat, nozzle, settings...\n")
-    of.write("# basetemp: %f\n" % baseTemp)
-    of.write("# temp flowrate steprate timer\n")
-
-    print "TempTable (basetemp: %f):" % baseTemp
-    table = []
-    for i in range(NExtrusionLimit):
-
-        # t = baseTemp + i*2
-        # t = baseTemp + i
-        t = 170 + i
-
-        if t < baseTemp:
-            # Note: simple interpolation for values between 170° and start of profile basetemp
-            f = (baseFlowrate-0.1) / (baseTemp-170)
-            flowrate = 0.1 + i*f
-        else:
-            flowrate = MatProfile.getFlowrateForTemp(t, hwVersion, nozzleDiam) * (1.0-AutotempSafetyMargin)
-
-        espeed = flowrate / aFilament
-        print "flowrate for temp %f: %f -> espeed %f" % (t, flowrate, espeed)
-
-        # espeed = planner.advance.eComp(espeed)
-        # print "corrected espeed:", espeed
-
-        steprate = espeed * spm
-        tvs = 1.0/steprate
-        timerValue = min(int(fTimer / steprate), 0xffff)
-
-        print "    Temp: %f, max flowrate: %.2f mm³/s, max espeed: %.2f mm/s, steps/s: %d, steprate: %d us, timervalue: %d" % (t, flowrate, espeed, int(steprate), int(tvs*1000000), timerValue)
-        table.append(timerValue)
-
-        of.write("%f %4.1f %d %d\n" % (t, flowrate, int(steprate), timerValue))
-
-    of.close()
 
     return (170, table)
 
@@ -1636,13 +1594,13 @@ def printTempTable(temp, tempTable):
 
 ####################################################################################################
 
-def downloadTempTable(planner):
+def old_downloadTempTable(planner):
 
     assert(0)
 
-    (baseTemp, table) = genTempTable(planner)
+    (startTemp, table) = genTempTable(planner)
 
-    payload = struct.pack("<HB", baseTemp, NExtrusionLimit)
+    payload = struct.pack("<HB", startTemp, NExtrusionLimit)
 
     print "Downloading TempTable..."
 
@@ -1653,9 +1611,9 @@ def downloadTempTable(planner):
 
 def newdownloadTempTable(planner):
 
-    (baseTemp, table) = genTempTable(planner)
+    (startTemp, table) = genTempTable(planner)
 
-    payload = struct.pack("<HB", baseTemp, NExtrusionLimit)
+    payload = struct.pack("<HB", startTemp, NExtrusionLimit)
 
     print "Downloading TempTable..."
 
@@ -1738,15 +1696,9 @@ def measureFlowrateStepResponse(args, parser):
 
     aFilament = MatProfile.getMatArea()
 
-    printerSettings = PrinterProfile.getSettings()
-
-    # Override integral value for temperature PID to avoid big temperature-overshots
     printerProfile = PrinterProfile.get()
-    # printerProfile.override("Ki", printerSettings["Ki"] * 0.75)
 
     printer.commandInit(args, PrinterProfile.getSettings())
-
-    # print "overwritten Ki: ", printerSettings["Ki"], PrinterProfile.getSettings()["Ki"]
 
     # ddhome.home(parser, args.fakeendstop)
 
@@ -1952,8 +1904,6 @@ def measureTempFlowrateCurve(args, parser):
 
         return False
 
-
-
     nozzleSize = NozzleProfile.getSize()
 
     planner = parser.planner
@@ -1961,20 +1911,10 @@ def measureTempFlowrateCurve(args, parser):
 
     aFilament = MatProfile.getMatArea()
 
-    printerSettings = PrinterProfile.getSettings()
-
     # Override integral value for temperature PID to avoid big temperature-overshots
     printerProfile = PrinterProfile.get()
-    # printerProfile.override("Ki", printerSettings["Ki"] * 1.25)
-    # printerProfile.override("Kp", 2.512)
-    # printerProfile.override("Ki", 0.278)
-    # printerProfile.override("Kd", 0.0)
 
     printer.commandInit(args, PrinterProfile.getSettings())
-
-    # print "overwritten Kp: ", printerSettings["Kp"], PrinterProfile.getSettings()["Kp"]
-    # print "overwritten Ki: ", printerSettings["Ki"], PrinterProfile.getSettings()["Ki"]
-    # print "overwritten Kd: ", printerSettings["Kd"], PrinterProfile.getSettings()["Kd"]
 
     ddhome.home(parser, args.fakeendstop)
 
@@ -2102,9 +2042,9 @@ def measureTempFlowrateCurve(args, parser):
         if pwmAvg.valid():
             # print "pwm avg valid:", pAvg
             if pwmAvg.near(0.05):
-                print "\nPwm settled in 5%% tolerance band, average target flowrate: %.2f mm³/s at pwm: %.2f, temp: %.1f °C, break" % \
-                    (targetFlowRate, pAvg, t1Avg)
-                data.append( (targetFlowRate, pAvg, t1Avg) )
+                print "\nPwm settled in 5%% tolerance band, average flowrate: %.2f mm³/s at pwm: %.2f, temp: %.1f °C, break" % \
+                    (targetFlowRate*r, pAvg, t1Avg)
+                data.append( (targetFlowRate*r, pAvg, t1Avg) )
                 break
 
         # if addcomma:
@@ -2140,11 +2080,20 @@ def measureTempFlowrateCurve(args, parser):
     dpwm = data[1][1] - data[0][1]
     dtemp = data[1][2] - data[0][2]
 
-    print "Material properties:"
-    print "Kpwm:", dfr / dpwm
-    print "Ktemp:", dfr / dtemp
-    print "P0pwm:", data[0][1]
-    print "FR0pwm:", data[0][0]
+    # todo: create template material profile with name from commandline
+    print "# Material properties:"
+    print "# a1 for pwm"
+    print '"Kpwm": %.4f,' % (dfr / dpwm)
+    print "# a1 for temp"
+    print '"Ktemp": %.4f,' % (dfr / dtemp)
+
+    print "# a0 for temp"
+    print '"P0pwm": %.4f,' % data[0][1]
+    print "# a0 for temp"
+    print '"P0temp": %.4f,' % data[0][2]
+
+    print "# feedrate at a0"
+    print '"FR0pwm": %.4f,' % data[0][0]
 
 ####################################################################################################
 #

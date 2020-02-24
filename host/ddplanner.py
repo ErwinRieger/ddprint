@@ -161,9 +161,6 @@ class PathData (object):
 
         self.energy = 0
 
-        # AutoTemp
-        # self.lastTemp = 0
-
     # Number of moves
     def incCount(self):
         self.count += 10 # leave space for advance-submoves
@@ -228,19 +225,6 @@ class PathData (object):
                 p3 = packedvalue.uint16_t(tPause * 1000), 
                 p4 = packedvalue.uint16_t(newTemp), 
                 moveNumber = move.moveNumber)
-
-            """
-            if newTemp != self.lastTemp:
-
-                # Schedule target temp command
-                self.planner.addSynchronizedCommand(
-                    CmdSyncTargetTemp, 
-                    p1 = packedvalue.uint8_t(HeaterEx1),
-                    p2 = packedvalue.uint16_t(newTemp), 
-                    moveNumber = move.moveNumber)
-            
-                self.lastTemp = newTemp
-            """
 
             if debugAutoTemp:
                 self.planner.gui.log( "AutoTemp: collected %d moves with %.2f s duration." % (len(moves), tsum))

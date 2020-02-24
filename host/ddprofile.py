@@ -242,7 +242,7 @@ class PrinterProfile(ProfileBase):
 # To access tempearture curve data
 #
 ####################################################################################################
-class TempCurve:
+class old_TempCurve:
 
     def __init__(self, curveList):
 
@@ -362,14 +362,6 @@ class MatProfile(ProfileBase):
         return float(cls.getValues()["material_diameter"])
 
     @classmethod
-    def oldgetHotendBaseTemp(cls, hwVersion, nozzleDiam):
-        return  cls.get().getTempCurve(hwVersion, nozzleDiam).minTemp
-
-    @classmethod
-    def getHotendBaseTemp(cls, hwVersion, nozzleDiam):
-        return  cls.get().getHotendStartTemp()
-
-    @classmethod
     def getHotendStartTemp(cls):
         return int(cls.getValues()["hotendStartTemp"])
 
@@ -407,13 +399,13 @@ class MatProfile(ProfileBase):
         return float(cls.getValues()["kAdvance"])
 
     @classmethod
-    def getTempForFlowrate(cls, flowrate, hwVersion, nozzleDiam):
+    def old_getTempForFlowrate(cls, flowrate, hwVersion, nozzleDiam):
         return cls.get()._getTempForFlowrate(flowrate, hwVersion, nozzleDiam)
 
     def _getTempForFlowrate(self, flowrate, hwVersion, nozzleDiam):
 
-        tempCurve = self.getTempCurve(hwVersion, nozzleDiam)
-        return tempCurve.lookupFlowrate(flowrate)
+        old_tempCurve = self.getTempCurve(hwVersion, nozzleDiam)
+        return old_tempCurve.lookupFlowrate(flowrate)
 
     @classmethod
     def getFlowrateForTemp(cls, temp, hwVersion, nozzleDiam):
@@ -451,19 +443,25 @@ class MatProfile(ProfileBase):
         assert(flowrateData["version"] == hwVersion)
         return flowrateData["FR0pwm"]
 
+    def getP0temp(self, hwVersion, nozzleDiam):
+
+        flowrateData = self.getValues()["properties_%d" % (nozzleDiam*100)]
+        # Check hardware version
+        assert(flowrateData["version"] == hwVersion)
+        return flowrateData["P0temp"]
+
     def old_getFlowrateForTemp(self, temp, hwVersion, nozzleDiam):
 
-        tempCurve = self.getTempCurve(hwVersion, nozzleDiam)
-        return tempCurve.lookupTemp(temp)
+        old_tempCurve = self.getTempCurve(hwVersion, nozzleDiam)
+        return old_tempCurve.lookupTemp(temp)
 
     def _getFlowrateForTemp(self, temp, hwVersion, nozzleDiam):
 
-        FR0pwm= self.getFR0pwm(hwVersion, nozzleDiam)
-        Ktemp = self.getKtemp (hwVersion, nozzleDiam)
+        FR0pwm= self.getFR0pwm(hwVersion, nozzleDiam)   # a0 feedrate
+        Ktemp = self.getKtemp (hwVersion, nozzleDiam)   # a1
+        p0Temp = self.getP0temp(hwVersion, nozzleDiam)  # a0 temperature
 
-        basetemp = self.getHotendBaseTemp(hwVersion, nozzleDiam)
-
-        fr = FR0pwm + (temp - basetemp) * Ktemp
+        fr = FR0pwm + (temp - p0Temp) * Ktemp
 
         print "flowrate for temp:", temp, fr
         return fr
@@ -481,8 +479,8 @@ class MatProfile(ProfileBase):
             # Check hardware version
             assert(flowrateData["version"] == hwVersion)
 
-            tempCurve = TempCurve(flowrateData["data"])
-            self.tempCurves[nozzleDiam] = tempCurve
+            old_tempCurve = TempCurve(flowrateData["data"])
+            old_self.tempCurves[nozzleDiam] = tempCurve
 
         return self.tempCurves[nozzleDiam]
 

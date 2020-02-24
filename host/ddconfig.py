@@ -56,8 +56,7 @@ UseFeederCompensation = False
 #
 # Smooth out extrusion rates of moves by adjusting the XY speed
 #
-# SmoothExtrusionRate = True
-SmoothExtrusionRate = False
+SmoothExtrusionRate = True
 
 
 # Hardcoded: 

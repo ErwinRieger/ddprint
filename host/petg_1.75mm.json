@@ -14,7 +14,8 @@
       "Kpwm": 0.15,
       "Ktemp": 0.2,
       "P0pwm": 90,
-      "FR0pwm": 5
+      "FR0pwm": 5,
+      "P0temp": 205.0
   },
 
   "properties_40" : {
@@ -23,7 +24,8 @@
       "Kpwm": 0.1,
       "Ktemp": 0.1,
       "P0pwm": 90,
-      "FR0pwm": 2.5
+      "FR0pwm": 2.5,
+      "P0temp": 205.0
   }
 }
 

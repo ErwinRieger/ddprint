@@ -228,7 +228,6 @@ class StepData:
 
             # Store window size of running average
             nAvg = min (256, PrinterProfile.getNShortInterval(move.getBaseMove().measureSpeed))
-            print "start segment/measurement moves, nAvg:", nAvg
             payLoad += struct.pack("<B", nAvg)
 
         payLoad += struct.pack("<HH",
@@ -381,7 +380,6 @@ class RawStepData:
 
             # Store window size of running average
             nAvg = min (256, PrinterProfile.getNShortInterval(move.getBaseMove().measureSpeed))
-            print "start segment/measurement moves, nAvg:", nAvg
             payLoad += struct.pack("<B", nAvg)
 
         if timerByteFlag:
