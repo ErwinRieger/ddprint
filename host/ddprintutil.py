@@ -875,7 +875,7 @@ def insertFilament(args, parser, feedrate):
 
     printer.waitForState(StateIdle)
 
-    t1 = MatProfile.getHotendStartTemp()
+    t1 = MatProfile.getHotendGoodTemp()
     printer.heatUp(HeaterEx1, t1, wait=t1 * 0.95, log=True)
 
     print "\nInsert filament.\n"
@@ -926,7 +926,7 @@ def removeFilament(args, parser, feedrate):
 
     printer.waitForState(StateIdle)
 
-    t1 = MatProfile.getHotendStartTemp()
+    t1 = MatProfile.getHotendGoodTemp()
     printer.heatUp(HeaterEx1, t1, wait=t1, log=True)
 
     # Etwas warten und filament vorwärts feeden um den retract-pfropfen einzuschmelzen
@@ -946,7 +946,7 @@ def retract(args, parser, doCooldown = True):
 
     commonInit(args, parser)
 
-    t1 = MatProfile.getHotendStartTemp()
+    t1 = MatProfile.getHotendGoodTemp()
     printer.heatUp(HeaterEx1, t1, wait=t1 - 5, log=True)
 
     parser.execute_line("G10")
@@ -1138,7 +1138,7 @@ def heatHotend(args, parser):
 
     printer.commandInit(args, PrinterProfile.getSettings())
 
-    t1 = MatProfile.getHotendStartTemp()
+    t1 = MatProfile.getHotendGoodTemp()
 
     printer.heatUp(HeaterEx1, t1, wait=t1-5, log=True)
 
@@ -1523,7 +1523,7 @@ def genTempTable(planner):
     nozzleDiam = NozzleProfile.getSize()
     aFilament = MatProfile.getMatArea()
 
-    startTemp = MatProfile.getHotendStartTemp()
+    startTemp = MatProfile.getHotendBaseTemp()
     baseFlowrate = MatProfile.getFlowrateForTemp(startTemp, hwVersion, nozzleDiam) * (1.0-AutotempSafetyMargin)
 
     # Temps lower than 170 not handled yet
@@ -1742,7 +1742,7 @@ def measureFlowrateStepResponse(args, parser):
 
     minGrip = 0.90
 
-    t1 = args.t1 or MatProfile.getHotendStartTemp()
+    t1 = args.t1 or MatProfile.getHotendBaseTemp()
 
     dt = PrinterProfile.getFilSensorInterval()
 
@@ -1830,7 +1830,6 @@ def measureFlowrateStepResponse(args, parser):
 
         print "t: %.2f, TempAvg: %.1f, target flowrate: %.3f mm³/s, actual flowrate: %.2f mm³/s, current ratio: %.2f" % (time.time()-tStart, t1Avg, targetFlowRate, targetFlowRate*r, r)
 
-        # addcomma = False
         if r > minGrip:
             # increase speed
 
@@ -1842,7 +1841,6 @@ def measureFlowrateStepResponse(args, parser):
             printer.sendCommandParamV(CmdSetContTimer, [packedvalue.uint16_t(eTimerValue(planner, feedrate))])
 
         fraw.write("    [%f, %f, %f, %f, %f]" % (time.time()-tStart, targetFlowRate, r, targetFlowRate*r, t1Avg))
-        # addcomma = True
 
         if time.time() >= tStart+tStep and mode == "starting":
             print "T66 reached, do step %d --> %d" % (pwm0, pwm0+sprung)
@@ -1853,7 +1851,6 @@ def measureFlowrateStepResponse(args, parser):
             print "2*T66 reached, break"
             break
 
-        # if addcomma:
         fraw.write(",\n")
 
         time.sleep(tWait)
@@ -1968,7 +1965,7 @@ def measureTempFlowrateCurve(args, parser):
     minGrip = 0.90
 
     data = []
-    for t1 in [MatProfile.getHotendStartTemp(), int(round(MatProfile.getHotendMaxTemp()*0.975))]:
+    for t1 in [MatProfile.getHotendBaseTemp(), int(round(MatProfile.getHotendMaxTemp()*0.975))]:
 
       ####################################################################################################
       # Output file for raw data
@@ -2025,7 +2022,6 @@ def measureTempFlowrateCurve(args, parser):
                 (time.time()-tStart, t1Avg, pAvg, targetFlowRate, targetFlowRate*r, r),
         sys.stdout.flush()
 
-        # addcomma = False
         if r > minGrip and tempGood(tempAvg, t1):
             # increase speed
 
@@ -2037,7 +2033,6 @@ def measureTempFlowrateCurve(args, parser):
             printer.sendCommandParamV(CmdSetContTimer, [packedvalue.uint16_t(eTimerValue(planner, feedrate))])
 
         fraw.write("    [%f, %f, %f, %f, %f]" % (time.time()-tStart, targetFlowRate, r, targetFlowRate*r, t1Avg))
-        # addcomma = True
 
         if pwmAvg.valid():
             # print "pwm avg valid:", pAvg
@@ -2047,7 +2042,6 @@ def measureTempFlowrateCurve(args, parser):
                 data.append( (targetFlowRate*r, pAvg, t1Avg) )
                 break
 
-        # if addcomma:
         fraw.write(",\n")
 
         time.sleep(tWait)

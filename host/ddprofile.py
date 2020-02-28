@@ -362,8 +362,12 @@ class MatProfile(ProfileBase):
         return float(cls.getValues()["material_diameter"])
 
     @classmethod
-    def getHotendStartTemp(cls):
-        return int(cls.getValues()["hotendStartTemp"])
+    def getHotendBaseTemp(cls):
+        return int(cls.getValues()["hotendBaseTemp"])
+
+    @classmethod
+    def getHotendGoodTemp(cls):
+        return int(cls.getValues()["hotendGoodTemp"])
 
     @classmethod
     def getHotendMaxTemp(cls):

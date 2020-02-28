@@ -187,7 +187,7 @@ class PathData (object):
 
         pwmMaxStep = 255 - self.p0
 
-        newTemp = MatProfile.getHotendStartTemp()
+        newTemp = MatProfile.getHotendGoodTemp()
 
         if rateDiff > 0.0:
             #

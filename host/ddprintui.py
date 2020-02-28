@@ -146,7 +146,7 @@ class MainForm(npyscreen.FormBaseNew):
         self.cmdQueue = Queue.Queue()
 
         self.printerState = None
-        self.stateNames = ["IDLE", "INIT", "MOVING", "DWELL"]
+        self.stateNames = ["IDLE", "INIT", "PRINTING", "DWELL"]
 
         self.lastEPos = None
         self.lastTime = None
@@ -251,11 +251,15 @@ class MainForm(npyscreen.FormBaseNew):
         self.underrun.editable = False
 
         rely += 1
-        self.extGrip = self.add(npyscreen.TitleFixedText, name =  "Feeder Grip         :", relx=w, rely=rely, use_two_lines=False, begin_entry_at=23)
+        self.extGripC = self.add(npyscreen.TitleFixedText, name =  "Feeder Grip         :", relx=w, rely=rely, use_two_lines=False, begin_entry_at=23)
+        self.extGrip = self.add(npyscreen.TitleFixedText, relx=w+int(w*0.50), width=int(0.25*w), rely=rely, use_two_lines=False, begin_entry_at=0)
+        self.extGripC.editable = False
         self.extGrip.editable = False
 
         rely += 1
-        self.extRate = self.add(npyscreen.TitleFixedText, name =  "Extrusion Rate      :", relx=w, rely=rely, use_two_lines=False, begin_entry_at=27)
+        self.extRateC = self.add(npyscreen.TitleFixedText, name =  "Extrusion Rate      :", relx=w, rely=rely, use_two_lines=False, begin_entry_at=27)
+        self.extRate = self.add(npyscreen.TitleFixedText, relx=w+int(w*0.50), width=int(0.25*w), rely=rely, use_two_lines=False, begin_entry_at=0)
+        self.extRateC.editable = False
         self.extRate.editable = False
 
         rely += 1
@@ -304,7 +308,8 @@ class MainForm(npyscreen.FormBaseNew):
                 try:
                     w.update()
                 except TypeError:
-                    self._log("while_waiting(): Ignoring exception: ", traceback.format_exc())
+                    # self._log("while_waiting(): Ignoring exception: ", traceback.format_exc())
+                    pass
 
 
     def printWorker(self):
@@ -351,7 +356,7 @@ class MainForm(npyscreen.FormBaseNew):
 
         self.mat_t0 = MatProfile.getBedTemp()
         self.mat_t0_reduced = MatProfile.getBedTempReduced()
-        self.mat_t1 = MatProfile.getHotendStartTemp() + self.planner.l0TempIncrease
+        self.mat_t1 = MatProfile.getHotendGoodTemp() + self.planner.l0TempIncrease
 
         while True:
 
@@ -425,18 +430,22 @@ class MainForm(npyscreen.FormBaseNew):
         slippageAvg1 = self.gripAvg1.mean()
         slippageAvg10 = self.gripAvg10.mean()
 
+        color = "DANGER"
         if slippage <= (1/.85):
-            self.extGrip.entry_widget.color = "GOOD"
+            color = "GOOD"
         elif slippage <= (1/0.75):
-            self.extGrip.entry_widget.color = "WARNING"
-        else:
-            self.extGrip.entry_widget.color = "DANGER"
+            color = "WARNING"
 
         if slippageAvg1 and slippageAvg10:
-            self.extGrip.set_value( "%8.1f, %.1f %%" % (100.0/slippageAvg1, 100.0/slippageAvg10) )
+            self.extGripC.set_value( "%8.1f" % (100.0/slippageAvg1))
+            self.extGrip.set_value( "%.1f %%" % (100.0/slippageAvg10) )
         else:
+            self.extGripC.set_value( "--" )
             self.extGrip.set_value( "--" )
 
+        self.extGripC.entry_widget.color = color
+
+        self.extGripC.update()
         self.extGrip.update()
 
         ePos = status["extruder_pos"]
@@ -456,9 +465,18 @@ class MainForm(npyscreen.FormBaseNew):
             self.frAvg1.add(flowrate)
             self.frAvg10.add(flowrate)
 
-            fr1 = self.frAvg1.mean()
-            fr10 = self.frAvg10.mean()
-            self.extRate.set_value("%8.1f/%.1f, %.1f/%.1f mm³/s" % (fr1, fr1/slippageAvg1, fr10, fr10/slippageAvg10))
+            if slippageAvg1 and slippageAvg10:
+                fr1 = self.frAvg1.mean()
+                fr10 = self.frAvg10.mean()
+                self.extRateC.set_value("%.1f/%.1f" % (fr1, fr1/slippageAvg1))
+                self.extRate.set_value("%.1f/%.1f mm³/s" % (fr10, fr10/slippageAvg10))
+            else:
+                self.extRateC.set_value( "--" )
+                self.extRate.set_value( "--" )
+
+            self.extRateC.entry_widget.color = color
+
+            self.extRateC.update()
             self.extRate.update()
 
         self.lastEPos = ePos

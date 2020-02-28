@@ -28,7 +28,6 @@
     "A" : {
       "max_feedrate"  : 45,
       "steps_per_mm"  : 136,
-      # "jerk"          : 5
       "jerk"          : 7.5
     },
     "Abulldog" : {
@@ -42,12 +41,6 @@
       "jerk"          : 7.5
     }
   },
-  # 3 mm filament, [mm/s]
-  # "RetractFeedrate"  : 40,
-  # "RetractLength"  : 4.5,
-  # 1.75 mm filament [mm/s]
-  # "RetractFeedrate"  : 50,
-  # "RetractLength"  : 5.0
   # 1.75 mm filament, with advance [mm/s]
   "RetractFeedrate"  : 50,
   "RetractLength"  : 2.0,
@@ -69,10 +62,6 @@
   "Kp": 3.708,
   "Ki": 0.033,
   "Kd": 0.845,
-  # ziegler pid
-  # "Kp": 5.563,
-  # "Ki": 0.318,
-  # "Kd": 1.267,
   # From pidAutoTune.py:
   "Tu": 8.779,
   "Tg": 113.663,

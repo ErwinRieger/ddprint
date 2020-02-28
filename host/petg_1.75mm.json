@@ -1,7 +1,8 @@
 {
   "material_diameter" : 1.75,
   "flow"              : 100,
-  "hotendStartTemp"   : 200,
+  "hotendBaseTemp"    : 200,
+  "hotendGoodTemp"    : 230,
   "hotendMaxTemp"     : 260,
   "bedTemp"           : 85,
   "bedTempReduced"    : 80,
