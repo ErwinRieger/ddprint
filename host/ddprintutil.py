@@ -1138,7 +1138,7 @@ def heatHotend(args, parser):
 
     printer.commandInit(args, PrinterProfile.getSettings())
 
-    t1 = MatProfile.getHotendGoodTemp()
+    t1 = args.t1 or MatProfile.getHotendGoodTemp()
 
     printer.heatUp(HeaterEx1, t1, wait=t1-5, log=True)
 
@@ -1403,7 +1403,13 @@ def measureHotendStepResponse(args, parser):
     Xo = 100.0
     interval = 0.1
 
-    temp = tempStart = printer.getTemp(doLog = False)[1]
+    temp = tempStart = printer.getTemp(doLog = False)[1] # current temp
+   
+    #
+    # End temperature will be sum of HotendBaseTemp and the 
+    # temp. rise from the pwm step of Xo.
+    #
+    baseTemp = MatProfile.getHotendBaseTemp()
 
     # Output file for raw data
     fraw = open("autotune.raw.json", "w")
@@ -1415,7 +1421,10 @@ def measureHotendStepResponse(args, parser):
     "columns":  "time temperature",
     """ % (printer.getPrinterName(), Xo, interval, tempStart))
 
-    print "Starting input step with pwm value: %d, tmax is: %.2f" % (Xo, tmax)
+    navg = int(round(30/interval))
+    tempAvg = movingavg.MovingAvg( navg )
+
+    print "Starting input step with pwm value: %d, tmax is: %.2f, nAvg: %d" % (Xo, tmax, navg)
 
     # Fan is running while printing (and filament has to be molten), so run fan 
     # at max speed to simulate this energy-loss.
@@ -1424,13 +1433,17 @@ def measureHotendStepResponse(args, parser):
 
     timeStart = time.time()
 
-    print "Starting temp:", tempStart
+    if temp > 30.0: # xxx arbitrary value, should run autoTune with a cold hotend
+        print "Current hotend temp %f, this is higher than the starting temp of %.2f."
+        print "waiting for hotend to cool down, please wait..."
+        util.coolDown(baseTemp)
+    else:
+        print "Current hotend temp: %.f, starting temp %.2f" % (temp, baseTemp)
+
     data = []
 
     maxTemp = 0
 
-    navg = int(round(30/interval))
-    tempAvg = movingavg.MovingAvg( navg )
     while True:
 
         # Window for running average to detect 5% steady state (min 30 seconds):
@@ -1452,7 +1465,7 @@ def measureHotendStepResponse(args, parser):
 
         tempAvg.add(Mu)
 
-        print "\rTime %.2f, dTemp %.2f, navg: %d, moving temp avg: %.2f" % (relTime, Mu, navg, tempAvg.mean()),
+        print "\rTime %.2f, temp: %.2f, Mu: %.2f, navg: %d, moving temp avg: %.2f" % (relTime, temp, Mu, navg, tempAvg.mean()),
         sys.stdout.flush()
 
         if tempAvg.valid() and tempAvg.near(0.05):

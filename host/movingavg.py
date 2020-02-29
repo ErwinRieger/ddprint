@@ -74,7 +74,13 @@ class MovingAvg:
 
         assert(navg >= self.navg)
 
-        self.array = np.append(self.array, np.array([self.mean()] * (navg-self.navg)))
+        lastIndex = self.index - 1
+        if lastIndex < 0:
+            lastIndex += navg;
+
+        lastValue = self.array[lastIndex]
+
+        self.array = np.append(self.array, np.array([lastValue]))
         self.navg = navg
 
     def valid(self):
