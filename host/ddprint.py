@@ -322,9 +322,7 @@ def main():
     argParser.add_argument("-advIncrease", dest="advIncrease", action="store", type=float, help="Gradual advance: increase kAdvance by advIncrease after each step.")
     argParser.add_argument("-advStepHeight", dest="advStepHeight", action="store", type=int, help="Gradual advance: height of each step (number of layers).")
 
-    argParser.add_argument("-mat", dest="mat", action="store", help="Name of generic material profile to use [pla, abs...].")
     argParser.add_argument("-smat", dest="smat", action="store", help="Name of specific material profile to use.")
-    argParser.add_argument("-noz", dest="nozzle", action="store", help="Name of nozzle profile to use [nozzle40, nozzle80...].")
 
     argParser.add_argument("-np", dest="noPrime", action="store_const", const=True, help="Debug: don't prime nozzle, to test extrusion-less moves.")
 
@@ -354,6 +352,8 @@ def main():
     # sp = subparsers.add_parser("reset", help=u"Try to stop/reset printer.")
 
     sp = subparsers.add_parser("pre", help=u"Preprocess gcode, for debugging purpose.")
+    sp.add_argument("nozzle", help="Name of nozzle profile to use [nozzle40, nozzle80...].")
+    sp.add_argument("mat", help="Name of generic material profile to use [pla, abs...].")
     sp.add_argument("gfile", help="Input GCode file.")
 
     sp = subparsers.add_parser("test", help=u"Debug: tests for debugging purpose.")
@@ -724,16 +724,16 @@ def main():
 
 if __name__ == "__main__":
 
-    res = 0
+    # res = 0
 
-    try:
+    # try:
         main()
-    except:
-        import traceback
-        print "Exception: ", traceback.format_exc()
-        res = 1
+    # except:
+        # import traceback
+        # print "Exception: ", traceback.format_exc()
+        # res = 1
 
-    sys.exit(res)
+    # sys.exit(res)
 
 
 

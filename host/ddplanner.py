@@ -194,22 +194,20 @@ class PathData (object):
             # add energy
             #
             de = (rateDiff / self.ks) * tsum
-            print "need additional energy:", de
+            # print "need additional energy:", de
             self.energy += de
 
             # temp
             newTemp += int(round(rateDiff / self.ktemp))
             newTemp = min(newTemp, MatProfile.getHotendMaxTemp())
 
-            print "rate diff:", rateDiff, "temp diff:", rateDiff / self.ktemp
-            
-        if (self.energy / pwmMaxStep) > 0.1: # timing heater loop
+        if newTemp < MatProfile.getHotendMaxTemp() and (self.energy / pwmMaxStep) > 0.1: # timing heater loop
 
-            print "need energy:", self.energy, "[pwm*sec]"
+            # print "need energy:", self.energy, "[pwm*sec]"
 
             tOn = min( (self.energy*0.8) / pwmMaxStep, tsum)
 
-            print "this is %.2f seconds with %.2f pwm, move time: %.2f" % (tOn, pwmMaxStep, tsum)
+            # print "this is %.2f seconds with %.2f pwm, move time: %.2f" % (tOn, pwmMaxStep, tsum)
 
             self.energy -= pwmMaxStep * tOn
 
