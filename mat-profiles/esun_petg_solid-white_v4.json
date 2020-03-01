@@ -5,6 +5,7 @@
       "Kpwm":     0.21,
       "Ktemp":    0.24,
       "P0pwm":   81.0,
-      "FR0pwm":   4
+      "FR0pwm":   4,
+      "P0temp":   200.0
   }
 }
