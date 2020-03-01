@@ -2031,8 +2031,10 @@ def measureTempFlowrateCurve(args, parser):
         # pcal: 0.7463
         r = meanShort / (stepsPerInterval * pcal)
 
+        currentFlowrate = targetFlowRate * r
+
         print "\rt: %.2f, TempAvg: %.1f, pwm avg: %.2f, target flowrate: %.3f mm³/s, actual flowrate: %.2f mm³/s, current ratio: %.2f" % \
-                (time.time()-tStart, t1Avg, pAvg, targetFlowRate, targetFlowRate*r, r),
+                (time.time()-tStart, t1Avg, pAvg, targetFlowRate, currentFlowrate, r),
         sys.stdout.flush()
 
         if r > minGrip and tempGood(tempAvg, t1):
@@ -2045,14 +2047,15 @@ def measureTempFlowrateCurve(args, parser):
             # set new feedrate:
             printer.sendCommandParamV(CmdSetContTimer, [packedvalue.uint16_t(eTimerValue(planner, feedrate))])
 
-        fraw.write("    [%f, %f, %f, %f, %f]" % (time.time()-tStart, targetFlowRate, r, targetFlowRate*r, t1Avg))
+            lastGoodFlowrate = currentFlowrate
+
+        fraw.write("    [%f, %f, %f, %f, %f]" % (time.time()-tStart, targetFlowRate, r, currentFlowrate, t1Avg))
 
         if pwmAvg.valid():
             # print "pwm avg valid:", pAvg
             if pwmAvg.near(0.05):
-                print "\nPwm settled in 5%% tolerance band, average flowrate: %.2f mm³/s at pwm: %.2f, temp: %.1f °C, break" % \
-                    (targetFlowRate*r, pAvg, t1Avg)
-                data.append( (targetFlowRate*r, pAvg, t1Avg) )
+                print "\nPwm settled in 5%% tolerance band, average flowrate: %.2f mm³/s at pwm: %.2f, temp: %.1f °C, break" % (lastGoodFlowrate, pAvg, t1Avg)
+                data.append( (lastGoodFlowrate, pAvg, t1Avg) )
                 break
 
         fraw.write(",\n")

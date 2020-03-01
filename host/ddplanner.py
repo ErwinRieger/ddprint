@@ -183,7 +183,7 @@ class PathData (object):
         adj = 1.0 + self.slippage + 0.1
 
         # Compute heater-PWM for this segment and add pwm-pulse command into the stream. 
-        rateDiff = avgERate - (self.fr0 / adj)
+        rateDiff = (avgERate * adj) - self.fr0
 
         pwmMaxStep = 255 - self.p0
 
@@ -193,14 +193,16 @@ class PathData (object):
             #
             # add energy
             #
-            de = (rateDiff / self.ks) * adj * tsum
+            de = (rateDiff / self.ks) * tsum
             print "need additional energy:", de
             self.energy += de
 
             # temp
-            newTemp += int(round((rateDiff / self.ktemp) * adj))
+            newTemp += int(round(rateDiff / self.ktemp))
             newTemp = min(newTemp, MatProfile.getHotendMaxTemp())
 
+            print "rate diff:", rateDiff, "temp diff:", rateDiff / self.ktemp
+            
         if (self.energy / pwmMaxStep) > 0.1: # timing heater loop
 
             print "need energy:", self.energy, "[pwm*sec]"
