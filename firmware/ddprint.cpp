@@ -1002,6 +1002,7 @@ Printer::Printer() {
 void Printer::printerInit() {
 
     // XXX handle already running state
+    massert(printerState <= StateInit);
 
     nGenericMessage = 0;
 
@@ -1017,8 +1018,6 @@ void Printer::printerInit() {
 
         swapErased = true;
     }
-
-    massert(printerState <= StateInit);
 
     // Init buffers
     fillBufferTask.flush();
@@ -1079,8 +1078,6 @@ void Printer::cmdMove(MoveType mt) {
 #if defined(HASFILAMENTSENSOR)
     filamentSensor.init();
 #endif
-
-    printer.sendGenericMessage("Printer::cmdMove called", sizeof("Printer::cmdMove called"));
 }
 
 void Printer::setHomePos(int32_t x, int32_t y, int32_t z) {
@@ -1222,7 +1219,11 @@ void Printer::checkMoveFinished() {
              (! sDReader.available()) &&
              stepBuffer.empty() ) {
 
-            cmdStopMove();
+            DISABLE_STEPPER_DRIVER_INTERRUPT();
+            DISABLE_STEPPER1_DRIVER_INTERRUPT();
+
+            printerState = StateIdle;
+            moveType = MoveTypeNone;
         }
     }
 }
