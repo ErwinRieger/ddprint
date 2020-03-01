@@ -322,9 +322,9 @@ def main():
     argParser.add_argument("-advIncrease", dest="advIncrease", action="store", type=float, help="Gradual advance: increase kAdvance by advIncrease after each step.")
     argParser.add_argument("-advStepHeight", dest="advStepHeight", action="store", type=int, help="Gradual advance: height of each step (number of layers).")
 
-    argParser.add_argument("-mat", dest="mat", action="store", help="Name of generic material profile to use [pla, abs...], default is pla.", default="pla_1.75mm")
+    argParser.add_argument("-mat", dest="mat", action="store", help="Name of generic material profile to use [pla, abs...].")
     argParser.add_argument("-smat", dest="smat", action="store", help="Name of specific material profile to use.")
-    argParser.add_argument("-noz", dest="nozzle", action="store", help="Name of nozzle profile to use [nozzle40, nozzle80...], default is nozzle40.", default="nozzle40")
+    argParser.add_argument("-noz", dest="nozzle", action="store", help="Name of nozzle profile to use [nozzle40, nozzle80...].")
 
     argParser.add_argument("-np", dest="noPrime", action="store_const", const=True, help="Debug: don't prime nozzle, to test extrusion-less moves.")
 
