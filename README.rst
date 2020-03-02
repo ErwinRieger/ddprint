@@ -59,7 +59,7 @@ The software is split into two main parts:
 
 * The host part where the cpu intensive work (gcode preprocessing, path planning, lookahead, acceleration, advance...) is done.
   The host part is written in Python.
-* And the firmware part that runs on the ATMega Controller. This part executes the move commands from
+* And the firmware part that runs on the ATMega Controller in the printer. This part executes the move commands from
   the host and does other things like the temperature control of the printer.
 * Host software and printer firmware are connected through the usual atmega rs232 USB emulation.
 
