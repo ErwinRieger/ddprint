@@ -166,8 +166,8 @@ const bool Z_ENDSTOPS_INVERTING = true; // set to true to invert the logic of th
 #define POSITIVE_X_DIR false
 #define POSITIVE_Y_DIR true
 #define POSITIVE_Z_DIR false
-#define POSITIVE_E1_DIR true
-#define POSITIVE_E2_DIR true
+#define POSITIVE_E1_DIR false
+#define POSITIVE_E2_DIR false
 
 // ENDSTOP SETTINGS:
 // Sets direction of endstops when homing; 1=MAX, -1=MIN
