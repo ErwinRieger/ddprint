@@ -287,7 +287,7 @@ def initParser(args, mode=None, gui=None):
     printer = Printer(gui=gui)
 
     if args.mode == "pre":
-        printerProfile = PrinterProfile("UM2")
+        printerProfile = PrinterProfile(args.printer)
     else:
         printer.initSerial(args.device, args.baud)
         printerProfile = PrinterProfile(printer.getPrinterName())
@@ -352,6 +352,7 @@ def main():
     # sp = subparsers.add_parser("reset", help=u"Try to stop/reset printer.")
 
     sp = subparsers.add_parser("pre", help=u"Preprocess gcode, for debugging purpose.")
+    sp.add_argument("printer", help="Name of printer profile to use.")
     sp.add_argument("nozzle", help="Name of nozzle profile to use [nozzle40, nozzle80...].")
     sp.add_argument("mat", help="Name of generic material profile to use [pla, abs...].")
     sp.add_argument("gfile", help="Input GCode file.")

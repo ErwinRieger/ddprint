@@ -442,12 +442,14 @@ def testFeederUniformity(args, parser):
     printer.sendCommand(CmdEOT)
     printer.sendCommandParamV(CmdMove, [MoveTypeNormal])
 
-    hack = 1 # 5
-    tWait = 0.75 * hack
+    tWait = 0.75
     tMove = (tRound * nRound) * 1.1
 
     t = time.time()
     tEnd = t + tMove
+
+    time.sleep(10 * tWait) # fill fsreadings buffer
+
     while t < tEnd:
 
         time.sleep(tWait)
@@ -472,12 +474,17 @@ def testFeederUniformity(args, parser):
 
     timeStamps = readings.keys()
     timeStamps.sort()
-    lastTs = timeStamps[0] - 100 * hack
+    lastTs = timeStamps[0] - 100
     for ts in timeStamps:
 
-        assert(abs(ts - lastTs) < 150 * hack)
+        dt = ts - lastTs
+        v = readings[ts]
 
-        measurements.append((ts, readings[ts]))
+        # print "dt:", ts, lastTs, dt, v
+
+        assert(abs(dt) < 150)
+
+        measurements.append((ts, v))
 
         lastTs = ts
 
