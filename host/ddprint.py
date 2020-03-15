@@ -268,11 +268,19 @@ def plot4v(nom1, nom2, v1, v2, jerk, diff, fn = "/tmp/4v.gnuplot"):
     f.write("e\n")
     f.close()
 
-def initParser(args, mode=None, gui=None):
+# Create printer profile singleton instance
+def initPrinterProfile(args):
 
-    # Create printer profile singleton instance
-    # printerProfile = PrinterProfile(args.pp)
-    # Create material profile singleton instance
+    if args.mode == "pre":
+        return PrinterProfile(args.printer)
+    else:
+        printer = Printer.get()
+        printer.initSerial(args.device, args.baud)
+        return PrinterProfile(printer.getPrinterName())
+
+# Create material profile singleton instance
+def initMatProfile(args):
+
     mat = MatProfile(args.mat, args.smat)
 
     # Overwrite settings from material profile with command line arguments:
@@ -281,20 +289,20 @@ def initParser(args, mode=None, gui=None):
     if args.t1:
         mat.override("hotendStartTemp", args.t1)
 
+    return mat
+
+def initParser(args, mode=None, gui=None):
+
+    # Create material profile singleton instance
+    initMatProfile(args)
+
     nozzle = NozzleProfile(args.nozzle)
 
     # Create the Printer singleton instance
     printer = Printer(gui=gui)
 
-    if args.mode == "pre":
-        printerProfile = PrinterProfile(args.printer)
-    else:
-        printer.initSerial(args.device, args.baud)
-        printerProfile = PrinterProfile(printer.getPrinterName())
-
-    # Overwrite settings from printer profile with command line arguments:
-    if args.retractLength:
-        printerProfile.override("RetractLength", args.retractLength)
+    # Create printer profile singleton instance
+    printerProfile = initPrinterProfile(args)
 
     # Create the planner singleton instance
     planner = Planner(args, gui)
@@ -331,13 +339,13 @@ def main():
     argParser.add_argument("-nc", dest="noCoolDown", action="store", type=bool, help="Debug: don't wait for heater cool down after print.", default=False)
 
     argParser.add_argument("-fr", dest="feedrate", action="store", type=float, help="Feedrate for move commands.", default=0)
-    argParser.add_argument("-rl", dest="retractLength", action="store", type=float, help="Retraction length, default comes from printer profile.", default=0)
 
     argParser.add_argument("-inctemp", dest="inctemp", action="store", type=int, help="Increase extruder temperature niveau (layer bonding).", default=0)
 
     subparsers = argParser.add_subparsers(dest="mode", help='Mode: mon(itor)|print|store|reset|pre(process).')
 
     sp = subparsers.add_parser("autoTune", help=u"Autotune hotend PID values (open-loop).")
+    sp.add_argument("mat", help="Name of generic material profile to use [pla, abs...].")
 
     sp = subparsers.add_parser("binmon", help=u"Monitor serial printer interface (binary responses).")
 
@@ -427,8 +435,10 @@ def main():
 
     if args.mode == 'autoTune':
 
-        printer = Printer()
-        util.measureHotendStepResponse(args, printer)
+        Printer()
+        initPrinterProfile(args)
+        initMatProfile(args)
+        util.measureHotendStepResponse(args)
 
     elif args.mode == 'changenozzle':
 

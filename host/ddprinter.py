@@ -64,9 +64,8 @@ class RxChecksumError(Exception):
 
 class Printer(Serial):
 
-    __single = None 
+    _single = None 
 
-    # endStoreToken = "Done saving"
     # Number of rx errors till we assume the
     # line is dead.
     # maxRXErrors = 10
@@ -76,10 +75,10 @@ class Printer(Serial):
 
     def __init__(self, gui=None):
 
-        if Printer.__single:
-            raise RuntimeError('A Printer already exists')
+        if Printer._single:
+            raise RuntimeError('Error: a Printer instance already exists')
 
-        Printer.__single = self
+        Printer._single = self
 
         if gui:
             self.gui = gui
@@ -104,7 +103,11 @@ class Printer(Serial):
 
     @classmethod
     def get(cls):
-        return cls.__single
+
+        if not cls._single:
+            raise RuntimeError('Printer instance not created, yet')
+
+        return cls._single
 
     def commandResend(self, lastLine):
 
@@ -811,6 +814,9 @@ class Printer(Serial):
 
             if temps[heater] <= wait:
                 break
+
+        if log:
+            print ""
 
     ####################################################################################################
 

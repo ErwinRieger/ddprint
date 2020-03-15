@@ -24,6 +24,7 @@ import ddprintconstants, ddhome, ddadvance, pprint, movingavg
 
 from ddprintcommands import *
 from ddprintstates import *
+from ddprinter import Printer
 from ddprintconstants import *
 from ddconfig import *
 from ddprofile import PrinterProfile, MatProfile, NozzleProfile
@@ -1380,13 +1381,14 @@ def stepResponse(args, parser):
     f.write("e\npause mouse close\n")
     stopHeater()
 
-def measureHotendStepResponse(args, printer):
-
+def measureHotendStepResponse(args):
 
     print "*************************************************************"
     print "* Record open loop step response of hotend to determine     *"
     print "* the pid control parameters for temperature control.       *"
     print "*************************************************************"
+
+    printer = Printer.get()
 
     def stopHeater():
         printer.setTempPWM(HeaterEx1, 0)
@@ -1400,13 +1402,24 @@ def measureHotendStepResponse(args, printer):
     Xo = 100.0
     interval = 0.1
 
-    temp = tempStart = printer.getTemp(doLog = False)[1] # current temp
-   
-    #
-    # End temperature will be sum of HotendBaseTemp and the 
-    # temp. rise from the pwm step of Xo.
-    #
-    baseTemp = MatProfile.getHotendBaseTemp()
+    navg = int(round(30/interval))
+    tempAvg = movingavg.MovingAvg( navg )
+
+    print "Starting input step with pwm value: %d, tmax is: %.2f, nAvg: %d" % (Xo, tmax, navg)
+
+    # Fan is running while printing (and filament has to be molten), so run fan 
+    # at max speed to simulate this energy-loss.
+    printer.sendCommandParamV(CmdFanSpeed, [packedvalue.uint8_t(255)])
+
+    maxStartTemp = 35 # Note: arbitrary value, autoTune shold be run with a cold hotend
+
+    temp = printer.getTemp(doLog = False)[HeaterEx1] # current temp
+    if temp > maxStartTemp:
+        print "Current hotend temp %.2f, this is higher than the max. starting temp of %.2f." % (temp, maxStartTemp)
+        print "waiting for hotend to cool down, please wait..."
+        printer.coolDown(HeaterEx1, 0, wait=maxStartTemp, log=True)
+
+    temp = tempStart = printer.getTemp(doLog = False)[HeaterEx1] # current temp
 
     # Output file for raw data
     fraw = open("autotune.raw.json", "w")
@@ -1418,24 +1431,11 @@ def measureHotendStepResponse(args, printer):
     "columns":  "time temperature",
     """ % (printer.getPrinterName(), Xo, interval, tempStart))
 
-    navg = int(round(30/interval))
-    tempAvg = movingavg.MovingAvg( navg )
+    print "Current hotend temp: %.f" % tempStart
 
-    print "Starting input step with pwm value: %d, tmax is: %.2f, nAvg: %d" % (Xo, tmax, navg)
-
-    # Fan is running while printing (and filament has to be molten), so run fan 
-    # at max speed to simulate this energy-loss.
-    printer.sendCommandParamV(CmdFanSpeed, [packedvalue.uint8_t(255)])
+    # Apply input step:
     printer.setTempPWM(HeaterEx1, Xo)
-
     timeStart = time.time()
-
-    if temp > 30.0: # xxx arbitrary value, should run autoTune with a cold hotend
-        print "Current hotend temp %f, this is higher than the starting temp of %.2f."
-        print "waiting for hotend to cool down, please wait..."
-        util.coolDown(baseTemp)
-    else:
-        print "Current hotend temp: %.f, starting temp %.2f" % (temp, baseTemp)
 
     data = []
 
@@ -1443,7 +1443,6 @@ def measureHotendStepResponse(args, printer):
 
     while True:
 
-        # Window for running average to detect 5% steady state (min 30 seconds):
         if temp > tmax:
             print "Error, max temp (%d) reached (you should decrease Xo): " % tmax, temp
             stopHeater()
@@ -1465,6 +1464,7 @@ def measureHotendStepResponse(args, printer):
         print "\rTime %.2f, temp: %.2f, Mu: %.2f, navg: %d, moving temp avg: %.2f" % (relTime, temp, Mu, navg, tempAvg.mean()),
         sys.stdout.flush()
 
+        # Window for running average to detect steady state is 5%
         if tempAvg.valid() and tempAvg.near(0.05):
             print "\nTemp reached 5% steady state...", relTime, Mu, tempAvg.mean()
             break

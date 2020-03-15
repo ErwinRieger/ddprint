@@ -76,7 +76,7 @@ class MovingAvg:
 
         lastIndex = self.index - 1
         if lastIndex < 0:
-            lastIndex += navg;
+            lastIndex += self.navg;
 
         lastValue = self.array[lastIndex]
 

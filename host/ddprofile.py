@@ -114,10 +114,17 @@ class PrinterProfile(ProfileBase):
 
     def __init__(self, name):
 
+        if PrinterProfile._single:
+            raise RuntimeError('Error: a PrinterProfile instance already exists')
+
         super(PrinterProfile, self).__init__(PrinterProfile, name)
 
     @classmethod
     def get(cls):
+
+        if not cls._single:
+            raise RuntimeError('PrinterProfile instance not created, yet')
+
         return cls._single
 
     @classmethod
@@ -339,6 +346,9 @@ class MatProfile(ProfileBase):
 
     def __init__(self, name, smatName):
 
+        if MatProfile._single:
+            raise RuntimeError('Error: a MatProfile instance already exists')
+
         super(MatProfile, self).__init__(MatProfile, name, smatName)
 
         self.matArea = (math.pi * pow(float(self.values["material_diameter"]), 2)) / 4.0
@@ -351,6 +361,10 @@ class MatProfile(ProfileBase):
 
     @classmethod
     def get(cls):
+
+        if not cls._single:
+            raise RuntimeError('MatProfile instance not created, yet')
+
         return cls._single
 
     @classmethod
@@ -508,10 +522,17 @@ class NozzleProfile(ProfileBase):
 
     def __init__(self, name):
 
+        if NozzleProfile._single:
+            raise RuntimeError('Error: a NozzleProfile instance already exists')
+
         super(NozzleProfile, self).__init__(NozzleProfile, name)
 
     @classmethod
     def get(cls):
+
+        if not cls._single:
+            raise RuntimeError('NozzleProfile instance not created, yet')
+
         return cls._single
 
     @classmethod
