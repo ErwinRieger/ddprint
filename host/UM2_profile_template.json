@@ -1,0 +1,86 @@
+{
+  "machinenames" : ["UM2"],
+  # Single feeder motor, adns9800 flowrate sensor
+  # "hwVersion": 1,
+  # Dual feeder motor, adns9800 flowrate sensor
+  # "hwVersion": 2,
+  # Dual feeder motor, pmw3360 flowrate sensor
+  "hwVersion": 4,
+  "axes"  : {
+    "X" : {
+      "platform_length" : 230,
+      "max_feedrate"  : 300,
+      "steps_per_mm"  : 80,
+      "jerk"          : 20
+    },
+    "Y" : {
+      "platform_length":  230,
+      "max_feedrate"  : 300,
+      "steps_per_mm"  : 80,
+      "jerk"          : 20
+    },
+    "Z" : {
+      "platform_length": 230,
+      "max_feedrate"  : 40,
+      "steps_per_mm"  : 200,
+      "jerk"          : 0.5
+    },
+    "A" : {
+      "max_feedrate"  : 45,
+      "steps_per_mm"  : 136,
+      "jerk"          : 7.5
+    },
+    "Abulldog" : {
+      "max_feedrate"  : 45,
+      "steps_per_mm"  : 495,
+      "jerk"          : 5
+    },
+    "B" : {
+      "max_feedrate"  : 45,
+      "steps_per_mm"  : 136,
+      "jerk"          : 7.5
+    }
+  },
+  # 1.75 mm filament, with advance [mm/s]
+  "RetractFeedrate"  : 50,
+  "RetractLength"  : 2.0,
+  # Maximum acceleration of each axis X, Y, Z, A, B [mm/s²]
+  "MaxAxisAcceleration": [9000, 9000, 100, 10000, 10000],
+  # Sensor counts per mm
+  # 1024/(3.17*math.pi)
+  "filSensorCountsPerMM": 102.823,
+  # Sensor reading interval [s]
+  "filSensorInterval": 0.1,
+  # Filamentsensor calibration data. This is the ratio of
+  # filamentsensor counts to e-stepper steps.
+  "filSensorCalibration": 0.7463,
+  # Hotend PID values
+  # "Kp": 3,
+  # "Ki": 0.1,
+  # "Kd": 12.5,
+  # chien aperiodisch PID, gute führung
+  "Kp": 3.708,
+  "Ki": 0.033,
+  "Kd": 0.845,
+  # From pidAutoTune.py:
+  "Tu": 8.779,
+  "Tg": 113.663,
+  # Bedleveling Z value
+  "add_homeing_z": -16.35,
+  # Diameter of feeder (knurled) wheel, take some 
+  # filament compression into account.
+  # UM2 knurled wheel diameter is about 8 mm.
+  "feederWheelDiam": 7.8
+}
+
+
+
+
+
+
+
+
+
+
+
+
