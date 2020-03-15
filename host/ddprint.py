@@ -337,7 +337,7 @@ def main():
 
     subparsers = argParser.add_subparsers(dest="mode", help='Mode: mon(itor)|print|store|reset|pre(process).')
 
-    sp = subparsers.add_parser("autoTune", help=u"Autotune hotend PID values.")
+    sp = subparsers.add_parser("autoTune", help=u"Autotune hotend PID values (open-loop).")
 
     sp = subparsers.add_parser("binmon", help=u"Monitor serial printer interface (binary responses).")
 
@@ -404,7 +404,7 @@ def main():
 
     sp = subparsers.add_parser("stop", help=u"Stop print, cooldown, home, disable steppers.")
 
-    sp = subparsers.add_parser("stepResponse", help=u"Measure and plot stepResponse of hotend PID.")
+    sp = subparsers.add_parser("stepResponse", help=u"Measure and plot stepResponse of hotend PID (closed-loop).")
 
     sp = subparsers.add_parser("retract", help=u"Debug: Do the end-of-print retract manually after heating up.")
 
