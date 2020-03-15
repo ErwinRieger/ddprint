@@ -1469,7 +1469,7 @@ def measureHotendStepResponse(args):
             print "\nTemp reached 5% steady state...", relTime, Mu, tempAvg.mean()
             break
 
-        navg = int(round(max( len(data)/2, 30/interval )))
+        navg = int(round(max( len(data)/3, 30/interval )))
         tempAvg.expand(navg)
 
         time.sleep(interval)
@@ -1484,7 +1484,7 @@ def measureHotendStepResponse(args):
     fraw.write("    ]\n}\n")
     fraw.close()
 
-    print "Step response done, result in file ./autotune.raw, evaluate it with pidAutoTune.py."
+    print "Step response done, result in file ./autotune.raw.json, evaluate it with pidAutoTune.py."
 
     printer.coolDown(HeaterEx1, wait=100, log=True)
     printer.sendCommandParamV(CmdFanSpeed, [packedvalue.uint8_t(0)])
