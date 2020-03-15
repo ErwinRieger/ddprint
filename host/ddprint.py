@@ -422,18 +422,13 @@ def main():
 
     args = argParser.parse_args()
 
-    if args.mode == "setPrinterName":
-        printer = Printer()
-        printer.setPrinterName(args)
-        return
-
-    (parser, planner, printer) = initParser(args, mode=args.mode)
-
-    steps_per_mm = PrinterProfile.getStepsPerMMVector()
+    # xxx todo create objects on demand...
+    # (parser, planner, printer) = initParser(args, mode=args.mode)
 
     if args.mode == 'autoTune':
 
-        util.measureHotendStepResponse(args, parser)
+        printer = Printer()
+        util.measureHotendStepResponse(args, printer)
 
     elif args.mode == 'changenozzle':
 
@@ -635,6 +630,8 @@ def main():
 
         res = printer.getPos()
 
+        steps_per_mm = PrinterProfile.getStepsPerMMVector()
+
         curPosMM = util.MyPoint(
             X = res[0] / float(steps_per_mm[0]),
             Y = res[1] / float(steps_per_mm[1]),
@@ -699,16 +696,25 @@ def main():
         printer.commandInit(args, PrinterProfile.getSettings())
         printer.sendCommandParamV(CmdFanSpeed, [packedvalue.uint8_t(args.speed)])
 
+    elif args.mode == "setPrinterName":
+
+        printer = Printer()
+        printer.setPrinterName(args)
+
     elif args.mode == 'testFeederUniformity':
+
         ddtest.testFeederUniformity(args, parser)
 
     elif args.mode == 'testFilSensor':
+
         ddtest.testFilSensor(args, parser)
 
     elif args.mode == 'calibrateESteps':
+
         ddtest.calibrateESteps(args, parser)
 
     elif args.mode == 'calibrateFilSensor':
+
         ddtest.calibrateFilSensor(args, parser)
 
     elif args.mode == 'test':

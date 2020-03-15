@@ -1380,16 +1380,13 @@ def stepResponse(args, parser):
     f.write("e\npause mouse close\n")
     stopHeater()
 
-def measureHotendStepResponse(args, parser):
+def measureHotendStepResponse(args, printer):
 
 
     print "*************************************************************"
     print "* Record open loop step response of hotend to determine     *"
     print "* the pid control parameters for temperature control.       *"
     print "*************************************************************"
-
-    planner = parser.planner
-    printer = planner.printer
 
     def stopHeater():
         printer.setTempPWM(HeaterEx1, 0)
