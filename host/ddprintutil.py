@@ -1685,18 +1685,6 @@ def old_getStartupTime(feedrate):
 
 ####################################################################################################
 # 
-# Ks is: 2.09997869
-# Tp: 109.869478607
-# Td: 7.72118860714
-#
-#
-# * Lege start-pwm wert von z.b. 100 an
-# * messe temperatur und starte messvorgang falls t >= 190
-# * messvorgang: mit kurzer avg funktion messen, das ist zwar etwas ungenauer, aber wir können
-#   ja richtig gegen den anschlag fahren und z.b. 75% grip als grenze vorgeben.
-#
-#
-
 def measureFlowrateStepResponse(args, parser):
 
     nozzleSize = NozzleProfile.getSize()
@@ -1727,8 +1715,6 @@ def measureFlowrateStepResponse(args, parser):
     # printer.sendCommandParamV(CmdMove, [MoveTypeNormal])
     # printer.sendCommand(CmdEOT)
     # printer.waitForState(StateIdle)
-
-    dataSet = {}
 
     printer.sendCommandParamV(CmdFanSpeed, [packedvalue.uint8_t(100)])
 
@@ -1891,14 +1877,6 @@ def measureFlowrateStepResponse(args, parser):
 
 
 ####################################################################################################
-# 
-# * Lege start-pwm wert von z.b. 100 an
-# * messe temperatur und starte messvorgang falls t >= 190
-# * messvorgang: mit kurzer avg funktion messen, das ist zwar etwas ungenauer, aber wir können
-#   ja richtig gegen den anschlag fahren und z.b. 75% grip als grenze vorgeben.
-#
-#
-
 def measureTempFlowrateCurve(args, parser):
 
     dTemp = 2.5 # temperature-band 
@@ -1911,17 +1889,19 @@ def measureTempFlowrateCurve(args, parser):
 
         return False
 
-    nozzleSize = NozzleProfile.getSize()
-
     planner = parser.planner
     printer = planner.printer
 
     aFilament = MatProfile.getMatArea()
 
-    # Override integral value for temperature PID to avoid big temperature-overshots
     printerProfile = PrinterProfile.get()
 
-    printer.commandInit(args, PrinterProfile.getSettings())
+    # Override differential value for temperature PID to smooth pid pwm output
+    printerProfile.override("Kd", 0.0)
+
+    settings = PrinterProfile.getSettings()
+
+    printer.commandInit(args, settings)
 
     ddhome.home(parser, args.fakeendstop)
 
@@ -1941,8 +1921,6 @@ def measureTempFlowrateCurve(args, parser):
     printer.sendCommand(CmdEOT)
     printer.waitForState(StateIdle)
 
-    dataSet = {}
-
     printer.sendCommandParamV(CmdFanSpeed, [packedvalue.uint8_t(100)])
 
     # start with 1mm³/s
@@ -1958,15 +1936,12 @@ def measureTempFlowrateCurve(args, parser):
     ####################################################################################################
     # * set initial pwm value and wait for min temp
     # * start measurement loop
-    endTemp = MatProfile.getHotendMaxTemp()
     timeConstant = printerProfile.getTu() + printerProfile.getTg() 
 
     # Averaging window, 1/4 of hotend timeconstant timeConstant
     nAvg = int(round(timeConstant / (dt * 4)))
     print "navg:", nAvg
     ####################################################################################################
-
-    eMotorRunning = False
 
     # Running average of hotend temperature
     tempAvg = movingavg.MovingAvg(10)
@@ -1975,31 +1950,19 @@ def measureTempFlowrateCurve(args, parser):
     minGrip = 0.90
 
     data = []
-    for t1 in [MatProfile.getHotendBaseTemp(), int(round(MatProfile.getHotendMaxTemp()*0.975))]:
 
-      ####################################################################################################
-      # Output file for raw data
-      fraw = open("flowrateMeasurement.raw.json", "w")
-      fraw.write("""{
-      "PrinterName": "%s",
-      "p0": %d,
-      "step": %f,
-      "dt": %f,
-      "startTemp": %f,
-      "columns":  "time targetFlowrate ratio flowrate temp",
-      "data": [
-      """ % (printer.getPrinterName(), 0, 0, dt, t1))
-      ####################################################################################################
+    ####################################################################################################
+
+    for t1 in [MatProfile.getHotendBaseTemp(), MatProfile.getHotendMaxTemp()]:
 
       pwmAvg = movingavg.MovingAvg(nAvg)
 
       print "Setting target temp:", t1
       printer.heatUp(HeaterEx1, t1, wait=t1-dTemp, log=True)
 
-      # start motor
-      if not eMotorRunning:
-        print "\nstarting motor with %.2f mm/s" % feedrate
-        printer.sendCommandParamV(CmdContinuousE, [packedvalue.uint16_t(eTimerValue(planner, feedrate))])
+      # Set extruder motor speed
+      print "\nRunning extruder motor with %.2f mm/s" % feedrate
+      printer.sendCommandParamV(CmdContinuousE, [packedvalue.uint16_t(eTimerValue(planner, feedrate))])
 
       tStart = time.time()
 
@@ -2025,7 +1988,6 @@ def measureTempFlowrateCurve(args, parser):
         # should be speed:
         stepsPerInterval = feedrate * steps_per_mm * dt
 
-        # pcal: 0.7463
         r = meanShort / (stepsPerInterval * pcal)
 
         currentFlowrate = targetFlowRate * r
@@ -2035,18 +1997,17 @@ def measureTempFlowrateCurve(args, parser):
         sys.stdout.flush()
 
         if r > minGrip and tempGood(tempAvg, t1):
-            # increase speed
 
-            frincrease = feedrate * max(0.05 * (max(r, minGrip) - minGrip), 0.0001) # increase feedrate by max 5% and min 0.1% mm per second
+            # Increase speed
+            # Increase feedrate by max 5% and min 0.01% mm per second
+            frincrease = feedrate * max(0.05 * (max(r, minGrip) - minGrip), 0.0001)
             feedrate += frincrease
             # print "\nincreased feedrate by %.3f to %.3f" % (frincrease, feedrate)
             
-            # set new feedrate:
+            # Set new feedrate:
             printer.sendCommandParamV(CmdSetContTimer, [packedvalue.uint16_t(eTimerValue(planner, feedrate))])
 
             lastGoodFlowrate = currentFlowrate
-
-        fraw.write("    [%f, %f, %f, %f, %f]" % (time.time()-tStart, targetFlowRate, r, currentFlowrate, t1Avg))
 
         if pwmAvg.valid():
             # print "pwm avg valid:", pAvg
@@ -2055,26 +2016,17 @@ def measureTempFlowrateCurve(args, parser):
                 data.append( (lastGoodFlowrate, pAvg, t1Avg) )
                 break
 
-        fraw.write(",\n")
-
         time.sleep(tWait)
-
-      # Done
-      fraw.write("""  ],\n""")
-      fraw.write("""  "tStep": %f\n""" % 0.0)
-      fraw.write("}\n")
-      fraw.close()
 
     ####################################################################################################
 
-    # printer.setTempPWM(HeaterEx1, 0) # re-enable temperature PID
     printer.coolDown(HeaterEx1)
 
     # Slow down E move
     while feedrate > 1:
         feedrate -= 0.1
         printer.sendCommandParamV(CmdSetContTimer, [packedvalue.uint16_t(eTimerValue(planner, feedrate))])
-        time.sleep(0.5)
+        time.sleep(0.1)
 
     # Stop continuos e-mode
     printer.sendCommandParamV(CmdContinuousE, [packedvalue.uint16_t(0)])
