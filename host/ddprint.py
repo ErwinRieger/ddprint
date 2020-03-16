@@ -319,8 +319,6 @@ def main():
     argParser.add_argument("-b", dest="baud", action="store", type=int, help="Baudrate, default 500000.", default=500000)
     argParser.add_argument("-d", dest="device", action="store", type=str, help="Device to use, default: /dev/ttyACM0.", default="/dev/ttyACM0")
 
-    # argParser.add_argument("-h")
-
     argParser.add_argument("-t0", dest="t0", action="store", type=int, help="Temp 0 (heated bed), default comes from mat. profile.")
     argParser.add_argument("-t1", dest="t1", action="store", type=int, help="Temp 1 (hotend 1), default comes from mat. profile.")
 
@@ -372,6 +370,8 @@ def main():
     sp = subparsers.add_parser("home", help=u"Home the printer.")
 
     sp = subparsers.add_parser("measureTempFlowrateCurve", help=u"Determine temperature/flowrate properties of filament.")
+    sp.add_argument("nozzle", help="Name of nozzle profile to use [nozzle40, nozzle80...].")
+    sp.add_argument("mat", help="Name of generic material profile to use [pla, abs...].")
     sp.add_argument("flowrate", action="store", help="Start-flowrate in mm³/s.", type=float)
 
     sp = subparsers.add_parser("moverel", help=u"Debug: Move axis manually, relative coords.")
@@ -578,6 +578,7 @@ def main():
 
     elif args.mode == 'measureTempFlowrateCurve':
 
+        (parser, _, _) = initParser(args, mode=args.mode)
         util.measureTempFlowrateCurve(args, parser)
 
     elif args.mode == 'moverel':
