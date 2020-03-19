@@ -350,6 +350,8 @@ def main():
     sp = subparsers.add_parser("changenozzle", help=u"Heat hotend and change nozzle.")
 
     sp = subparsers.add_parser("print", help=u"Download and print file at once.")
+    sp.add_argument("nozzle", help="Name of nozzle profile to use [nozzle40, nozzle80...].")
+    sp.add_argument("mat", help="Name of generic material profile to use [pla, abs...].")
     sp.add_argument("gfile", help="Input GCode file.")
 
     sp = subparsers.add_parser("setPrinterName", help=u"Store printer name in eeprom.")
@@ -457,6 +459,8 @@ def main():
 
     elif args.mode == 'print':
 
+        (parser, planner, printer) = initParser(args, mode=args.mode)
+
         util.commonInit(args, parser)
 
         t0 = MatProfile.getBedTemp()
@@ -499,7 +503,7 @@ def main():
 
                     # avoid big overswing
                     print "\nHeating extruder (t1: %d)...\n" % (t1*0.9)
-                    printer.heatUp(HeaterEx1, t1*0.9, t1*0.9-2, log=True)
+                    printer.heatUp(HeaterEx1, int(round(t1*0.9)), t1*0.9-2, log=True)
 
                     print "\nHeating extruder (t1: %d)...\n" % t1
                     printer.heatUp(HeaterEx1, t1, t1-2, log=True)
@@ -556,6 +560,8 @@ def main():
         # printer.sendCommand(CmdExit)
 
     elif args.mode == "pre":
+
+        (parser, planner, printer) = initParser(args, mode=args.mode)
 
         # Virtuelle position des druckkopfes falls 'gehomed'
         homePosMM = planner.getHomePos()[0]
