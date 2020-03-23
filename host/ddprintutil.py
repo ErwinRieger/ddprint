@@ -920,7 +920,7 @@ def removeFilament(args, parser, feedrate):
     maxFeedrate = PrinterProfile.getMaxFeedrate(X_AXIS)
     parser.execute_line("G0 F%d X%f Y%f" % (maxFeedrate*60, planner.MAX_POS[X_AXIS]/2, planner.MAX_POS[Y_AXIS]/2))
 
-    planner.finishMoves()
+    planner.finishMoves(travelMovesOnly=True)
 
     printer.sendCommandParamV(CmdMove, [MoveTypeNormal])
     printer.sendCommand(CmdEOT)

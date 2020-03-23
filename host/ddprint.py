@@ -291,12 +291,17 @@ def initMatProfile(args):
 
     return mat
 
-def initParser(args, mode=None, gui=None):
+def initParser(args, mode=None, gui=None, travelMovesOnly=False):
 
     # Create material profile singleton instance
     initMatProfile(args)
 
-    nozzle = NozzleProfile(args.nozzle)
+    try:
+        nozzle = args.nozzle
+    except AttributeError:
+        pass
+    else:
+        NozzleProfile(nozzle)
 
     # Create the Printer singleton instance
     printer = Printer(gui=gui)
@@ -305,7 +310,7 @@ def initParser(args, mode=None, gui=None):
     printerProfile = initPrinterProfile(args)
 
     # Create the planner singleton instance
-    planner = Planner(args, gui)
+    planner = Planner(args, gui, travelMovesOnly=travelMovesOnly)
 
     # Create parser singleton instance
     parser = gcodeparser.UM2GcodeParser(gui)
@@ -387,6 +392,8 @@ def main():
     sp = subparsers.add_parser("insertFilament", help=u"Insert filament (heatup, forward filament).")
 
     sp = subparsers.add_parser("removeFilament", help=u"Remove filament (heatup, retract filament).")
+    sp.add_argument("printer", help="Name of printer profile to use.")
+    sp.add_argument("mat", help="Name of generic material profile to use [pla, abs...].")
 
     sp = subparsers.add_parser("bedLeveling", help=u"Do bed leveling sequence.")
 
@@ -610,6 +617,7 @@ def main():
 
     elif args.mode == 'removeFilament':
 
+        (parser, planner, printer) = initParser(args, mode=args.mode, travelMovesOnly=True)
         util.removeFilament(args, parser, args.feedrate)
 
     elif args.mode == 'bedLeveling':
