@@ -139,27 +139,28 @@ class StepRounders(object):
 
 class PathData (object):
 
-    def __init__(self, planner):
+    def __init__(self, planner, travelMovesOnly=False):
 
         self.planner = planner
 
         self.path = []
         self.count = -10
 
-        matProfile = MatProfile.get()
-
-        hwVersion = PrinterProfile.getHwVersion()
-        nozzleDiam = NozzleProfile.getSize()
-
-        self.ks = matProfile.getKpwm(hwVersion, nozzleDiam)
-        self.ktemp = matProfile.getKtemp(hwVersion, nozzleDiam)
-        self.p0 = matProfile.getP0pwm(hwVersion, nozzleDiam) # xxx hardcoded in firmware!
-        self.fr0 = matProfile.getFR0pwm(hwVersion, nozzleDiam)
-        self.slippage = matProfile._getSlippage(hwVersion, nozzleDiam)
+        self.energy = 0
 
         self.Tu = PrinterProfile.getTu()
 
-        self.energy = 0
+        if not travelMovesOnly:
+
+            hwVersion = PrinterProfile.getHwVersion()
+            nozzleDiam = NozzleProfile.getSize()
+
+            matProfile = MatProfile.get()
+            self.ks = matProfile.getKpwm(hwVersion, nozzleDiam)
+            self.ktemp = matProfile.getKtemp(hwVersion, nozzleDiam)
+            self.p0 = matProfile.getP0pwm(hwVersion, nozzleDiam) # xxx hardcoded in firmware!
+            self.fr0 = matProfile.getFR0pwm(hwVersion, nozzleDiam)
+            self.slippage = matProfile._getSlippage(hwVersion, nozzleDiam)
 
     # Number of moves
     def incCount(self):
@@ -273,7 +274,7 @@ class Planner (object):
 
     __single = None 
 
-    def __init__(self, args, gui=None):
+    def __init__(self, args, gui=None, travelMovesOnly=False):
 
         if Planner.__single:
             raise RuntimeError('A Planner already exists')
@@ -332,13 +333,14 @@ class Planner (object):
 
         self.plotfile = None
 
-        self.advance = Advance(self, args)
+        if not travelMovesOnly:
+            self.advance = Advance(self, args)
 
-        self.reset()
+        self.reset(travelMovesOnly)
 
-    def reset(self):
+    def reset(self, travelMovesOnly=False):
 
-        self.pathData = PathData(self)
+        self.pathData = PathData(self, travelMovesOnly)
 
         self.syncCommands = collections.defaultdict(list)
         self.partNumber = 1
@@ -580,7 +582,7 @@ class Planner (object):
             print "***** End planTravelPath() *****"
 
     # xxx should be called finishPath()
-    def finishMoves(self):
+    def finishMoves(self, travelMovesOnly=False):
 
         # debug
         self.stepRounders.check()
@@ -603,7 +605,7 @@ class Planner (object):
                 self.planTravelPath(self.pathData.path)
 
         assert(not self.syncCommands)
-        self.reset()
+        self.reset(travelMovesOnly)
 
     def streamMove(self, move):
 

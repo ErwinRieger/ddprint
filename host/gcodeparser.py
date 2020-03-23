@@ -129,7 +129,7 @@ class UM2GcodeParser:
 
     __single = None 
 
-    def __init__(self, logger=None):
+    def __init__(self, logger=None, travelMovesOnly=False):
 
         if UM2GcodeParser.__single:
             raise RuntimeError('A UM2GcodeParser already exists')
@@ -178,7 +178,8 @@ class UM2GcodeParser:
                 }
 
         # Apply material flow parameter from material profile
-        self.e_to_filament_length = MatProfile.getFlow() / 100.0
+        if not travelMovesOnly:
+            self.e_to_filament_length = MatProfile.getFlow() / 100.0
 
         self.steps_per_mm = PrinterProfile.getStepsPerMMVector()
         self.mm_per_step = map(lambda dim: 1.0 / self.steps_per_mm[dim], range(5))

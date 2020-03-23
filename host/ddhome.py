@@ -49,7 +49,7 @@ def homeMove(parser, dim, direction, dist, fakeHomingEndstops, feedRateFactor=1.
 
     parser.execute_line(cmd);
 
-    planner.finishMoves()
+    planner.finishMoves(travelMovesOnly=True)
 
     # Send homing command
     printer.sendCommandParamV(CmdMove, [MoveTypeHoming])
@@ -126,7 +126,7 @@ def home(parser, fakeHomingEndstops=False, force=False):
                     PrinterProfile.getMaxFeedrate(util.X_AXIS)*60, 
                     homePosMM.X, homePosMM.Y))
 
-            planner.finishMoves()
+            planner.finishMoves(travelMovesOnly=True)
             printer.sendCommandParamV(CmdMove, [MoveTypeNormal])
             printer.sendCommand(CmdEOT)
 

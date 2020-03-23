@@ -345,7 +345,7 @@ def main():
     sp = subparsers.add_parser("autoTune", help=u"Autotune hotend PID values (open-loop).")
     sp.add_argument("mat", help="Name of generic material profile to use [pla, abs...].")
 
-    sp = subparsers.add_parser("binmon", help=u"Monitor serial printer interface (binary responses).")
+    sp = subparsers.add_parser("mon", help=u"Monitor serial printer interface.")
 
     sp = subparsers.add_parser("changenozzle", help=u"Heat hotend and change nozzle.")
 
@@ -416,11 +416,6 @@ def main():
 
     sp = subparsers.add_parser("stepResponse", help=u"Measure and plot stepResponse of hotend PID (closed-loop).")
 
-    sp = subparsers.add_parser("retract", help=u"Debug: Do the end-of-print retract manually after heating up.")
-
-    sp = subparsers.add_parser("fanspeed", help=u"Set fan speed manually.")
-    sp.add_argument("speed", help="Fanspeed 0 - 255.", type=int)
-
     sp = subparsers.add_parser("testFeederUniformity", help=u"Debug: check smoothness/roundness of feeder measurements.")
 
     sp = subparsers.add_parser("testFilSensor", help=u"Debug: move filament manually, output filament sensor measurement.")
@@ -444,9 +439,14 @@ def main():
 
     elif args.mode == 'changenozzle':
 
+        # xxx todo create printer/profile singletons ...
         util.changeNozzle(args, parser)
 
-    elif args.mode == "binmon":
+    elif args.mode == "mon":
+
+        printer = Printer()
+        printer.initSerial(args.device, args.baud)
+
         while True:
             try:
                 (cmd, payload) = printer.readResponse()        
@@ -483,12 +483,11 @@ def main():
         for line in f:
             parser.execute_line(line)
 
-            #
-            # Send more than one 512 byte block for dlprint
-            #
             if lineNr > 1000 and (lineNr % 250) == 0:
-                # check temp and start print
 
+                #
+                # Check temp and start print
+                #
                 if  not printStarted:
 
                     sleepTime = max(0, (startTime+30) - time.time())
@@ -579,6 +578,8 @@ def main():
 
     elif args.mode == 'disableSteppers':
 
+        printer = Printer()
+        initPrinterProfile(args)
         printer.commandInit(args, PrinterProfile.getSettings())
         printer.sendCommand(CmdDisableSteppers)
 
@@ -688,54 +689,50 @@ def main():
 
     elif args.mode == 'home':
 
-        printer.commandInit(args, PrinterProfile.getSettings())
+        printer = Printer()
+        initPrinterProfile(args)
+        planner = Planner(args, travelMovesOnly=True)
+        parser = gcodeparser.UM2GcodeParser(travelMovesOnly=True)
         ddhome.home(parser, args.fakeendstop)
 
-    elif args.mode == 'zRepeatability':
+    elif args.mode == 'todo zRepeatability':
 
         util.zRepeatability(parser)
 
-    elif args.mode == 'stepResponse':
+    elif args.mode == 'todo stepResponse':
 
         util.stepResponse(args, parser)
 
-    elif args.mode == 'retract':
-
-        util.retract(args, parser)
-
-    elif args.mode == 'stop':
+    elif args.mode == 'todo stop':
 
         printer.commandInit(args, PrinterProfile.getSettings())
         util.stopMove(args, parser)
-
-    elif args.mode == 'fanspeed':
-
-        printer.commandInit(args, PrinterProfile.getSettings())
-        printer.sendCommandParamV(CmdFanSpeed, [packedvalue.uint8_t(args.speed)])
 
     elif args.mode == "setPrinterName":
 
         printer = Printer()
         printer.setPrinterName(args)
 
-    elif args.mode == 'testFeederUniformity':
+    elif args.mode == 'todo testFeederUniformity':
 
         ddtest.testFeederUniformity(args, parser)
 
-    elif args.mode == 'testFilSensor':
+    elif args.mode == 'todo testFilSensor':
 
         ddtest.testFilSensor(args, parser)
 
-    elif args.mode == 'calibrateESteps':
+    elif args.mode == 'todo calibrateESteps':
 
         ddtest.calibrateESteps(args, parser)
 
-    elif args.mode == 'calibrateFilSensor':
+    elif args.mode == 'todo calibrateFilSensor':
 
         ddtest.calibrateFilSensor(args, parser)
 
     elif args.mode == 'test':
 
+        printer = Printer()
+        initPrinterProfile(args)
         printer.commandInit(args, PrinterProfile.getSettings())
         readings = printer.getFSReadings(10)
         print "Readings: "
@@ -743,7 +740,7 @@ def main():
         # printer.setTempPWM(HeaterEx1, 0)
 
     else:
-        print "Unknown command: ", args.mode
+        print "Unknown/not implemented command: ", args.mode
         assert(0)
 
 if __name__ == "__main__":

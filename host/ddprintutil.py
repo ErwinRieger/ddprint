@@ -940,30 +940,6 @@ def removeFilament(args, parser, feedrate):
 
 ####################################################################################################
 
-def retract(args, parser, doCooldown = True):
-
-    planner = parser.planner
-    printer = planner.printer
-
-    commonInit(args, parser)
-
-    t1 = MatProfile.getHotendGoodTemp()
-    printer.heatUp(HeaterEx1, t1, wait=t1 - 5, log=True)
-
-    parser.execute_line("G10")
-
-    planner.finishMoves()
-
-    printer.sendCommandParamV(CmdMove, [MoveTypeNormal])
-    printer.sendCommand(CmdEOT)
-
-    printer.waitForState(StateIdle)
-
-    if doCooldown:
-        printer.coolDown(HeaterEx1,wait=150)
-
-####################################################################################################
-
 def bedLeveling(args, parser):
 
     planner = parser.planner
