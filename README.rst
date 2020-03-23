@@ -50,7 +50,7 @@ Terminal Userinterface, TUI
 :Note: todo...
 
 Some implementation notes
-++++***++++++++++++++++++
+++++++++++++++++++++++++++++
 
 Host side preprocessing and stepgeneration
 ----------------------------------------------
@@ -82,6 +82,31 @@ Other
 * Hardened USB communication using COBS encoding and CCITT checksums in BOTH directions.
 * Simulator mode for testing/development: Firmware runs as a host-program with serial communication over a ptty device.
 * Debugging: plot/display generated acceleration ramps
+
+
+
+Usage examples
+++++++++++++++++++++++++++++
+
+Store printer name in printer's eeprom:
+
+.. code-block:: sh
+
+    ./ddprint.py setPrinterName UM2-1
+
+Run PID autotune to determine the hotend PID parameters:
+
+.. code-block:: sh
+
+    ./ddprint.py autoTune petg_1.75mm
+    cd pid_tune
+    PYTHONPATH=.. ./pidAutoTune.py ../autotune.raw.json
+
+
+
+
+
+
 
 
 
