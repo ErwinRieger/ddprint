@@ -392,7 +392,6 @@ def main():
     sp = subparsers.add_parser("insertFilament", help=u"Insert filament (heatup, forward filament).")
 
     sp = subparsers.add_parser("removeFilament", help=u"Remove filament (heatup, retract filament).")
-    sp.add_argument("printer", help="Name of printer profile to use.")
     sp.add_argument("mat", help="Name of generic material profile to use [pla, abs...].")
 
     sp = subparsers.add_parser("bedLeveling", help=u"Do bed leveling sequence.")
