@@ -816,7 +816,7 @@ def manualMove(parser, axis, distance, feedrate=0, absolute=False):
         assert(abs(distance) <= 1000)
         parser.execute_line("G0 F%d %s%f" % (feedrate*60, dimNames[axis], current_position[axis] + distance))
 
-    planner.finishMoves()
+    planner.finishMoves(travelMovesOnly=True)
 
     printer.sendCommand(CmdEOT)
 
