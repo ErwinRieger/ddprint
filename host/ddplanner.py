@@ -357,10 +357,6 @@ class Planner (object):
         for dim in dimNames:
             jerk.append(PrinterProfile.getValues()['axes'][dim]['jerk'])
 
-        # self.jerk = Vector(jerk)
-        # self.gui.log("Jerk vector: ", self.jerk)
-        # self.gui.log("Jerk vector: ", jerk)
-
         return jerk
 
     def getHomePos(self):
@@ -377,7 +373,7 @@ class Planner (object):
             X = self.X_HOME_POS,
             Y = self.Y_HOME_POS,
             #    
-            # add_homeing_z is the not-usable space oft the z dimension of the
+            # add_homeing_z is the not-usable space of the z dimension of the
             # build volume.
             #    
             Z = self._Z_HOME_POS + add_homeing_z

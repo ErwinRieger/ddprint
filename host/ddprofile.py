@@ -246,97 +246,6 @@ class PrinterProfile(ProfileBase):
 
 ####################################################################################################
 #
-# To access tempearture curve data
-#
-####################################################################################################
-class old_TempCurve:
-
-    def __init__(self, curveList):
-
-        self.curveList = curveList
-        
-        (minTemp, minFlowrate) = curveList[0]
-        self.minTemp = minTemp
-        self.minFlowrate = minFlowrate
-
-        (maxTemp, maxFlowrate) = curveList[-1]
-        self.maxTemp = maxTemp
-        self.maxFlowrate = maxFlowrate
-
-        # Init dict for faster lookup
-        self.tempCurveDict = {}
-        for temp, frate in curveList:
-
-            key = int(frate*10)
-            if key not in self.tempCurveDict:
-                self.tempCurveDict[key] = temp
-
-    def lookupFlowrate(self, flowrate):
-
-        key = int(flowrate*10)
-        if key in self.tempCurveDict:
-            return self.tempCurveDict[key]
-
-        if flowrate <= self.minFlowrate:
-            return self.minTemp
-
-        if flowrate >= self.maxFlowrate:
-            return self.maxTemp
-
-        # print "flowrate not found:", flowrate, key
-
-        # Linear interpolation
-        for i in range(len(self.curveList)-1):
-
-            temp1, fr1 = self.curveList[i]
-            temp2, fr2 = self.curveList[i+1]
-
-            if flowrate >= fr1 and flowrate < fr2 :
-                # print "found range:", fr1, flowrate, fr2
-
-                dx = fr2 - fr1
-                dy = temp2 - temp1
-
-                t = temp1 + (dy / dx) * (flowrate - fr1)
-
-                # print "interpolated temp: ", t
-                self.tempCurveDict[key] = t
-                return t
-
-        assert(0)
-
-    # Lookup allowed flowrate for a given temp.
-    # Used for temp-table download, so this is not time-critical
-    # and therefore not optimized.
-    def lookupTemp(self, temp):
-
-        if temp <= self.minTemp:
-            print "match mintemp:", temp, self.minTemp
-            return self.minFlowrate
-
-        if temp >= self.maxTemp:
-            print "match maxtemp:", temp, self.maxTemp
-            return self.maxFlowrate
-
-        print "temp not found:", temp
-
-        # Linear interpolation
-        for i in range(len(self.curveList)-1):
-
-            temp1, fr1 = self.curveList[i]
-            temp2, fr2 = self.curveList[i+1]
-
-            if temp >= temp1 and temp < temp2:
-
-                fr = fr1 + ((fr2 - fr1) / (temp2 - temp1)) * (temp - temp1)
-
-                print "interpolated feedrate: ", fr
-                return fr
-
-        assert(0)
-
-####################################################################################################
-#
 # Material profile, singleton
 #
 ####################################################################################################
@@ -344,16 +253,17 @@ class MatProfile(ProfileBase):
 
     _single = None 
 
-    def __init__(self, name, smatName):
+    def __init__(self, name, smatName, printerName):
 
         if MatProfile._single:
             raise RuntimeError('Error: a MatProfile instance already exists')
 
+        if smatName:
+            smatName = os.path.join(printerName, smatName)
+
         super(MatProfile, self).__init__(MatProfile, name, smatName)
 
         self.matArea = (math.pi * pow(float(self.values["material_diameter"]), 2)) / 4.0
-
-        self.tempCurves = {}
 
     def override(self, key, value):
         assert(key != "material_diameter")
@@ -417,15 +327,6 @@ class MatProfile(ProfileBase):
         return float(cls.getValues()["kAdvance"])
 
     @classmethod
-    def old_getTempForFlowrate(cls, flowrate, hwVersion, nozzleDiam):
-        return cls.get()._getTempForFlowrate(flowrate, hwVersion, nozzleDiam)
-
-    def _getTempForFlowrate(self, flowrate, hwVersion, nozzleDiam):
-
-        old_tempCurve = self.getTempCurve(hwVersion, nozzleDiam)
-        return old_tempCurve.lookupFlowrate(flowrate)
-
-    @classmethod
     def getFlowrateForTemp(cls, temp, hwVersion, nozzleDiam):
         return cls.get()._getFlowrateForTemp(temp, hwVersion, nozzleDiam)
 
@@ -468,11 +369,6 @@ class MatProfile(ProfileBase):
         assert(flowrateData["version"] == hwVersion)
         return flowrateData["P0temp"]
 
-    def old_getFlowrateForTemp(self, temp, hwVersion, nozzleDiam):
-
-        old_tempCurve = self.getTempCurve(hwVersion, nozzleDiam)
-        return old_tempCurve.lookupTemp(temp)
-
     def _getFlowrateForTemp(self, temp, hwVersion, nozzleDiam):
 
         FR0pwm= self.getFR0pwm(hwVersion, nozzleDiam)   # a0 feedrate
@@ -483,24 +379,6 @@ class MatProfile(ProfileBase):
 
         print "flowrate for temp:", temp, fr
         return fr
-
-    def getTempCurve(self, hwVersion, nozzleDiam):
-
-        if nozzleDiam not in self.tempCurves:
-
-            flowrateData = self.getValues()["properties_%d" % (nozzleDiam*100)]
-
-            # if type(data) == types.DictType:
-                # data = data["data"]
-            # assert(type(data) == types.ListType)
-
-            # Check hardware version
-            assert(flowrateData["version"] == hwVersion)
-
-            old_tempCurve = TempCurve(flowrateData["data"])
-            old_self.tempCurves[nozzleDiam] = tempCurve
-
-        return self.tempCurves[nozzleDiam]
 
     @classmethod
     def getSlippage(cls, hwVersion, nozzleDiam):

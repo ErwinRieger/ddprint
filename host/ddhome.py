@@ -90,9 +90,6 @@ def home(args, parser, force=False):
     planner = parser.planner
     printer = planner.printer
 
-    # Send init command
-    printer.commandInit(args, PrinterProfile.getSettings())
-
     print "*"
     print "* Start homing..."
     print "*"
@@ -140,6 +137,9 @@ def home(args, parser, force=False):
         print "*"
         return
 
+    # Send init command
+    printer.commandInit(args, PrinterProfile.getSettings())
+
     #
     # Z Achse isoliert und als erstes bewegen, um zusammenstoss mit den klammern
     # der buildplatte oder mit einem modell zu vermeiden.
@@ -173,14 +173,9 @@ def home(args, parser, force=False):
             print "Error, Bounce %s - endstop!" % dimNames[dim]
             assert(0)
 
-
     #
     # Set position in steps on the printer side and set our 'virtual position':
     #
-    # xxx set end-of-print retraction e-pos also here?
-    #
-    # parser.setPos(planner.homePosMM)
-    # payload = struct.pack("<iiiii", *planner.homePosStepped)
     (homePosMM, homePosStepped) = planner.getHomePos()
     parser.setPos(homePosMM)
 

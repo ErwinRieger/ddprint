@@ -279,9 +279,9 @@ def initPrinterProfile(args):
         return PrinterProfile(printer.getPrinterName())
 
 # Create material profile singleton instance
-def initMatProfile(args):
+def initMatProfile(args, printerName):
 
-    mat = MatProfile(args.mat, args.smat)
+    mat = MatProfile(args.mat, args.smat, printerName)
 
     # Overwrite settings from material profile with command line arguments:
     if args.t0:
@@ -293,8 +293,14 @@ def initMatProfile(args):
 
 def initParser(args, mode=None, gui=None, travelMovesOnly=False):
 
+    # Create the Printer singleton instance
+    printer = Printer(gui=gui)
+
+    # Create printer profile singleton instance
+    printerProfile = initPrinterProfile(args)
+
     # Create material profile singleton instance
-    initMatProfile(args)
+    initMatProfile(args, printer.getPrinterName())
 
     try:
         nozzle = args.nozzle
@@ -302,12 +308,6 @@ def initParser(args, mode=None, gui=None, travelMovesOnly=False):
         pass
     else:
         NozzleProfile(nozzle)
-
-    # Create the Printer singleton instance
-    printer = Printer(gui=gui)
-
-    # Create printer profile singleton instance
-    printerProfile = initPrinterProfile(args)
 
     # Create the planner singleton instance
     planner = Planner(args, gui, travelMovesOnly=travelMovesOnly)
@@ -439,9 +439,9 @@ def main():
 
     if args.mode == 'autoTune':
 
-        Printer()
+        printer = Printer()
         initPrinterProfile(args)
-        initMatProfile(args)
+        initMatProfile(args, printer.getPrinterName())
         util.measureHotendStepResponse(args)
 
     elif args.mode == 'changenozzle':

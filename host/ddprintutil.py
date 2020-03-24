@@ -703,7 +703,7 @@ def commonInit(args, parser):
     planner = parser.planner
     printer = planner.printer
 
-    printer.commandInit(args, PrinterProfile.getSettings())
+    # done by home: printer.commandInit(args, PrinterProfile.getSettings())
 
     ddhome.home(args, parser)
     downloadTempTable(planner)
