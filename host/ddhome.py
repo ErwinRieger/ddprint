@@ -21,10 +21,13 @@
 
 import struct
 
+import gcodeparser
+
 from ddprintcommands import *
 from ddprintstates import *
 from ddprintconstants import dimNames
 from ddprofile import PrinterProfile
+from ddplanner import Planner
 
 import ddprintutil as util
 
@@ -85,10 +88,13 @@ def homeBounce(parser, dim, fakeHomingEndstops):
 
 ####################################################################################################
 
-def home(args, parser, force=False):
+def home(args, printer, force=False):
 
-    planner = parser.planner
-    printer = planner.printer
+    # xxxx debug, check if printer is a instance of Printer
+    printer.lineNr
+
+    planner = Planner(args, printer.gui, travelMovesOnly=True)
+    parser = gcodeparser.UM2GcodeParser(planner, logger=printer.gui, travelMovesOnly=True)
 
     print "*"
     print "* Start homing..."

@@ -20,13 +20,11 @@
 
 import math, struct
 
-import ddprintcommands, cobs, cStringIO
+import ddprintcommands, cobs, cStringIO, ddprintutil
 
-from ddprintconstants import maxTimerValue16, fTimer, _MAX_ACCELERATION
+from ddprintconstants import maxTimerValue16, fTimer, _MAX_ACCELERATION, X_AXIS, Y_AXIS, A_AXIS
 from ddprintconstants import AdvanceEThreshold, StepDataTypeBresenham, StepDataTypeRaw
-from ddprintutil import X_AXIS, Y_AXIS, Z_AXIS, A_AXIS, B_AXIS, circaf, sign
 from ddvector import Vector, VelocityVector32, VelocityVector5, vectorLength, vectorSub, vectorAbs
-from ddprintutil import pdbAssert
 from ddprintcommands import CommandNames, DecelByteFlagBit, AccelByteFlagBit, DirBitsBit, DirBitsBitRaw, MoveStartBit, MeasureStartBit, MeasureStartBitRaw
 from ddprintcommands import TimerByteFlagBit, MoveStartBitRaw
 from ddprofile import PrinterProfile
@@ -489,7 +487,7 @@ class AdvanceData:
 
     # Check if sign changes at accel/decel
     def startSignChange(self):
-        return sign(self.startEFeedrate()) != sign(self.startEReachedFeedrate())
+        return ddprintutil.sign(self.startEFeedrate()) != ddprintutil.sign(self.startEReachedFeedrate())
 
     def endSignChange(self):
 

@@ -25,11 +25,10 @@ import shutil, os, re
 from ddprofile import MatProfile, PrinterProfile
 from ddplanner import Planner
 from ddprintcommands import CmdSyncFanSpeed, CmdUnknown, CmdDwellMS
-from ddprintconstants import dimNames, GCODEUNKNOWN, GCODEULTI, GCODES3D
+from ddprintconstants import dimNames, GCODEUNKNOWN, GCODEULTI, GCODES3D, X_AXIS, Y_AXIS, Z_AXIS, A_AXIS, B_AXIS
 from ddconfig import *
 from move import TravelMove, PrintMove
 from ddvector import Vector, vectorDistance
-from ddprintutil import X_AXIS, Y_AXIS, Z_AXIS, A_AXIS, B_AXIS, circaf
 
 import ddprintutil as util
 
@@ -127,14 +126,14 @@ def isPrintMove(displacement_vector):
 
 class UM2GcodeParser: 
 
-    __single = None 
+    # __single = None 
 
-    def __init__(self, logger=None, travelMovesOnly=False):
+    def __init__(self, planner, logger=None, travelMovesOnly=False):
 
-        if UM2GcodeParser.__single:
-            raise RuntimeError('A UM2GcodeParser already exists')
+        # if UM2GcodeParser.__single:
+            # raise RuntimeError('A UM2GcodeParser already exists')
 
-        UM2GcodeParser.__single = self
+        # UM2GcodeParser.__single = self
 
         if logger:
             self.logger = logger
@@ -185,11 +184,11 @@ class UM2GcodeParser:
         self.mm_per_step = map(lambda dim: 1.0 / self.steps_per_mm[dim], range(5))
         self.maxFeedrateVector = PrinterProfile.getMaxFeedrateVector()
 
-        self.planner = Planner.get()
+        self.planner = planner
 
-    @classmethod
-    def get(cls):
-        return cls.__single
+    # @classmethod
+    # def get(cls):
+        # return cls.__single
 
     def reset(self):
 

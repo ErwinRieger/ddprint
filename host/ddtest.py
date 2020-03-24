@@ -419,8 +419,6 @@ def testFeederUniformity(args, parser):
 
     printer.commandInit(args, PrinterProfile.getSettings())
 
-    # ddhome.home(args, parser)
-
     # Disable flowrate limit
     printer.sendCommandParamV(CmdEnableFRLimit, [packedvalue.uint8_t(0)])
 

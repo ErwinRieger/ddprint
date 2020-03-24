@@ -291,7 +291,7 @@ def initMatProfile(args, printerName):
 
     return mat
 
-def initParser(args, mode=None, gui=None, travelMovesOnly=False):
+def initParser(args, mode=None, gui=None):
 
     # Create the Printer singleton instance
     printer = Printer(gui=gui)
@@ -309,11 +309,9 @@ def initParser(args, mode=None, gui=None, travelMovesOnly=False):
     else:
         NozzleProfile(nozzle)
 
-    # Create the planner singleton instance
-    planner = Planner(args, gui, travelMovesOnly=travelMovesOnly)
+    planner = Planner(args, gui)
 
-    # Create parser singleton instance
-    parser = gcodeparser.UM2GcodeParser(gui)
+    parser = gcodeparser.UM2GcodeParser(planner, logger=gui)
 
     return (parser, planner, printer)
 
@@ -554,7 +552,7 @@ def main():
         printer.coolDown(HeaterEx1)
         printer.coolDown(HeaterBed)
 
-        ddhome.home(args, parser)
+        ddhome.home(args, printer)
 
         printer.sendCommand(CmdDisableSteppers)
 
@@ -613,12 +611,16 @@ def main():
 
     elif args.mode == 'insertFilament':
 
-        (parser, _, _) = initParser(args, mode=args.mode, travelMovesOnly=True)
+        # (parser, _, _) = initParser(args, mode=args.mode, travelMovesOnly=True)
+        planner = Planner(args, travelMovesOnly=True)
+        parser = gcodeparser.UM2GcodeParser(planner, travelMovesOnly=True)
         util.insertFilament(args, parser, args.feedrate)
 
     elif args.mode == 'removeFilament':
 
-        (parser, _, _) = initParser(args, mode=args.mode, travelMovesOnly=True)
+        # (parser, _, _) = initParser(args, mode=args.mode, travelMovesOnly=True)
+        planner = Planner(args, travelMovesOnly=True)
+        parser = gcodeparser.UM2GcodeParser(planner, travelMovesOnly=True)
         util.removeFilament(args, parser, args.feedrate)
 
     elif args.mode == 'bedLeveling':
@@ -702,9 +704,7 @@ def main():
 
         printer = Printer()
         initPrinterProfile(args)
-        planner = Planner(args, travelMovesOnly=True)
-        parser = gcodeparser.UM2GcodeParser(travelMovesOnly=True)
-        ddhome.home(args, parser)
+        ddhome.home(args, printer)
 
     elif args.mode == 'todo zRepeatability':
 

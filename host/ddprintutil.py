@@ -705,7 +705,7 @@ def commonInit(args, parser):
 
     # done by home: printer.commandInit(args, PrinterProfile.getSettings())
 
-    ddhome.home(args, parser)
+    ddhome.home(args, printer)
     downloadTempTable(planner)
 
 ####################################################################################################
@@ -771,7 +771,7 @@ def zRepeatability(parser):
 
     feedrate = PrinterProfile.getMaxFeedrate(Z_AXIS)
 
-    ddhome.home(args, parser)
+    ddhome.home(args, printer)
 
     for i in range(10):
 
@@ -827,7 +827,7 @@ def insertFilament(args, parser, feedrate):
 
     # done by home: printer.commandInit(args, PrinterProfile.getSettings())
 
-    ddhome.home(args, parser)
+    ddhome.home(args, printer)
 
     def manualMoveE():
 
@@ -905,7 +905,7 @@ def removeFilament(args, parser, feedrate):
 
     # printer.commandInit(args, PrinterProfile.getSettings()) xxx done by homing
 
-    ddhome.home(args, parser)
+    ddhome.home(args, printer)
 
     # Move to mid-position
     maxFeedrate = PrinterProfile.getMaxFeedrate(X_AXIS)
@@ -941,7 +941,7 @@ def bedLeveling(args, parser):
     # Reset bedlevel offset in printer profile
     PrinterProfile.get().override("add_homeing_z", 0)
 
-    ddhome.home(args, parser, True)
+    ddhome.home(args, printer, True)
 
     zFeedrate = PrinterProfile.getMaxFeedrate(Z_AXIS)
     kbd = GetChar("Enter (u)p (d)own (U)p 1mm (D)own 1mm (2-5) Up Xmm (q)uit")
@@ -1047,7 +1047,7 @@ def bedLeveling(args, parser):
 
     raw_input("\nAdjust right fron buildplate screw and press <Return>\n")
 
-    ddhome.home(args, parser)
+    ddhome.home(args, printer)
 
     raw_input("\n! Please update your Z-Offset (add_homeing_z) in printer profile: %.3f\n" % add_homeing_z)
 
@@ -1087,7 +1087,7 @@ def stopMove(args, parser):
     if printer.isHomed():
         parser.reset()
         planner.reset()
-        ddhome.home(args, parser)
+        ddhome.home(args, printer)
 
     printer.sendCommand(CmdStopMove)
     printer.sendCommand(CmdDisableSteppers)
@@ -1646,7 +1646,7 @@ def measureFlowrateStepResponse(args, parser):
 
     printer.commandInit(args, PrinterProfile.getSettings())
 
-    # ddhome.home(args, parser)
+    # ddhome.home(args, printer)
 
     # Disable flowrate limit
     printer.sendCommandParamV(CmdEnableFRLimit, [packedvalue.uint8_t(0)])
@@ -1846,7 +1846,7 @@ def measureTempFlowrateCurve(args, parser):
     # Override differential value for temperature PID to smooth pid pwm output
     printerProfile.override("Kd", 0.0)
 
-    ddhome.home(args, parser)
+    ddhome.home(args, printer)
 
     # Disable flowrate limit
     printer.sendCommandParamV(CmdEnableFRLimit, [packedvalue.uint8_t(0)])

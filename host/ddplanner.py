@@ -27,7 +27,6 @@ from ddprofile import PrinterProfile, MatProfile, NozzleProfile
 from ddvector import Vector, vectorMul, vectorAbs
 from ddprintconstants import *
 from ddconfig import *
-from ddprintutil import Z_AXIS, circaf
 from ddprinter import Printer
 from ddprintcommands import CmdSyncTargetTemp, CmdSyncHotendPWM, CmdSyncHotendPulse
 from ddprintstates import HeaterEx1, HeaterBed
@@ -272,14 +271,14 @@ class DebugPlot (object):
 
 class Planner (object):
 
-    __single = None 
+    # __single = None 
 
     def __init__(self, args, gui=None, travelMovesOnly=False):
 
-        if Planner.__single:
-            raise RuntimeError('A Planner already exists')
+        # if Planner.__single:
+            # raise RuntimeError('A Planner already exists')
 
-        Planner.__single = self
+        # Planner.__single = self
 
         if gui:
             self.gui = gui
@@ -347,9 +346,9 @@ class Planner (object):
 
         self.stepRounders = StepRounders()
 
-    @classmethod
-    def get(cls):
-        return cls.__single
+    # @classmethod
+    # def get(cls):
+        # return cls.__single
 
     def getJerk(self):
 
