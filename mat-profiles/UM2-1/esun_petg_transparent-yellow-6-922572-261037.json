@@ -1,0 +1,18 @@
+{
+  "properties_80" : {
+      "version":  4,
+      "slippage": 0.10,
+      "printerName": "UM2-1",
+      # Material properties:
+      # a1 for pwm
+      "Kpwm": 0.1691,
+      # a1 for temp
+      "Ktemp": 0.1697,
+      # a0 for temp
+      "P0pwm": 91.9369,
+      # a0 for temp
+      "P0temp": 198.7150,
+      # feedrate at a0
+      "FR0pwm": 7.6710
+  }
+}
