@@ -903,7 +903,7 @@ def insertFilament(args, parser, feedrate):
     printer.waitForState(StateInit)
 
     if not args.noCoolDown:
-        printer.coolDown(HeaterEx1, wait=150)
+        printer.coolDown(HeaterEx1, wait=150, log=True)
 
 ####################################################################################################
 
@@ -938,7 +938,7 @@ def removeFilament(args, parser, feedrate):
     manualMove(parser, A_AXIS, -1.3*FILAMENT_REVERSAL_LENGTH, feedrate)
 
     if not args.noCoolDown:
-        printer.coolDown(HeaterEx1,wait=150)
+        printer.coolDown(HeaterEx1,wait=150, log=True)
 
 ####################################################################################################
 
@@ -1124,7 +1124,7 @@ def heatHotend(args, parser):
     raw_input("Press return to stop heating...")
 
     if not args.noCoolDown:
-        printer.coolDown(HeaterEx1, wait=150)
+        printer.coolDown(HeaterEx1, wait=150, log=True)
 
 ####################################################################################################
 
@@ -1168,7 +1168,7 @@ def changeNozzle(args, parser):
     execSingleGcode(parser, "G11")
 
     if not args.noCoolDown:
-        printer.coolDown(HeaterEx1, wait=100)
+        printer.coolDown(HeaterEx1, wait=100, log=True)
 
 ####################################################################################################
 #
