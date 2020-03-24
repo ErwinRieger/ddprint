@@ -1862,10 +1862,6 @@ def measureTempFlowrateCurve(args, parser):
     # Override differential value for temperature PID to smooth pid pwm output
     printerProfile.override("Kd", 0.0)
 
-    settings = PrinterProfile.getSettings()
-
-    printer.commandInit(args, settings)
-
     ddhome.home(args, parser)
 
     # Disable flowrate limit
