@@ -545,8 +545,6 @@ class MainForm(npyscreen.FormBaseNew):
 
             util.downloadTempTable(self.planner)
 
-            self.printer.sendPrinterInit()
-
             # Send heat up  command
             self.log( "\nPre-Heating bed (t0: %d)...\n" % self.mat_t0)
             self.printer.heatUp(HeaterBed, self.mat_t0)

@@ -708,8 +708,6 @@ def commonInit(args, parser):
     ddhome.home(args, parser)
     downloadTempTable(planner)
 
-    printer.sendPrinterInit()
-
 ####################################################################################################
 
 def getVirtualPos(parser):
@@ -775,8 +773,6 @@ def zRepeatability(parser):
 
     ddhome.home(args, parser)
 
-    printer.sendPrinterInit()
-
     for i in range(10):
 
         parser.execute_line("G0 F%d X115 Y210 Z10" % (feedrate*60))
@@ -795,7 +791,7 @@ def manualMove(parser, axis, distance, feedrate=0, absolute=False):
     planner = parser.planner
     printer = planner.printer
 
-    printer.sendPrinterInit()
+    printer.commandInit(args, PrinterProfile.getSettings())
 
     assert(printer.isHomed())
 
@@ -855,8 +851,6 @@ def insertFilament(args, parser, feedrate):
             elif ch == "B":     # filament backwards, 'big' step
                 aofs -= 10
 
-            # xxx printer.sendPrinterInit()
-
             # XXX hardcoded feedrate
             parser.execute_line("G0 F%d A%f" % (5*60, aofs))
 
@@ -864,8 +858,6 @@ def insertFilament(args, parser, feedrate):
             printer.sendCommandParamV(CmdMove, [MoveTypeNormal])
             printer.sendCommand(CmdEOT)
             printer.waitForState(StateInit, wait=0.1)
-
-    # xxx commonInit(args, parser)
 
     # Move to mid-position
     maxFeedrate = PrinterProfile.getMaxFeedrate(X_AXIS)
@@ -893,7 +885,6 @@ def insertFilament(args, parser, feedrate):
     #
     # Retract
     #
-    printer.sendPrinterInit()
     parser.execute_line("G10")
     planner.finishMoves(travelMovesOnly=True)
 
@@ -915,8 +906,6 @@ def removeFilament(args, parser, feedrate):
     # printer.commandInit(args, PrinterProfile.getSettings()) xxx done by homing
 
     ddhome.home(args, parser)
-
-    printer.sendPrinterInit() # xxx unused
 
     # Move to mid-position
     maxFeedrate = PrinterProfile.getMaxFeedrate(X_AXIS)
@@ -985,8 +974,6 @@ def bedLeveling(args, parser):
                     continue
                 zofs -= o
 
-            printer.sendPrinterInit()
-
             parser.execute_line("G0 F%d Z%f" % (zFeedrate*60, zofs))
 
             planner.finishMoves()
@@ -1001,7 +988,6 @@ def bedLeveling(args, parser):
     #######################################################################################################
     print "Level point 1/3"
 
-    printer.sendPrinterInit()
     parser.execute_line("G0 F%d X%f Y%f Z%f" % (feedrate*60, planner.X_MAX_POS/2, planner.Y_MAX_POS - 10, planner.HEAD_HEIGHT))
 
     planner.finishMoves()
@@ -1034,7 +1020,6 @@ def bedLeveling(args, parser):
     #######################################################################################################
     print "Level point 2/3", current_position
 
-    printer.sendPrinterInit()
     parser.execute_line("G0 F%d Z5" % (zFeedrate*60))
     parser.execute_line("G0 F%d X35 Y20" % (feedrate*60))
     parser.execute_line("G0 F%d Z%f" % (zFeedrate*60, planner.LEVELING_OFFSET))
@@ -1050,7 +1035,6 @@ def bedLeveling(args, parser):
     #######################################################################################################
     print "Level point 3/3", current_position
 
-    printer.sendPrinterInit()
     parser.execute_line("G0 F%d Z5" % (zFeedrate*60))
     parser.execute_line("G0 F%d X%f" % (feedrate*60, planner.X_MAX_POS-10))
     parser.execute_line("G0 F%d Z%f" % (zFeedrate*60, planner.LEVELING_OFFSET))
@@ -1136,7 +1120,8 @@ def execSingleGcode(parser, gcode):
     planner = parser.planner
     printer = planner.printer
 
-    printer.sendPrinterInit()
+    # xxxx use commandInit() here or do homing/move to mid first
+    printer.xsendPrinterInit()
 
     parser.execute_line(gcode)
     planner.finishMoves()
@@ -1670,7 +1655,6 @@ def measureFlowrateStepResponse(args, parser):
     downloadDummyTempTable(printer)
 
     # Move to mid-position, xxx move code to own function
-    printer.sendPrinterInit()
     feedrate = PrinterProfile.getMaxFeedrate(X_AXIS)
     parser.execute_line("G0 F%d X%f Y%f" % (feedrate*60, planner.MAX_POS[X_AXIS]/2, planner.MAX_POS[Y_AXIS]/2))
 
@@ -1871,7 +1855,6 @@ def measureTempFlowrateCurve(args, parser):
     downloadDummyTempTable(printer)
 
     # Move to mid-position
-    printer.sendPrinterInit()
     feedrate = PrinterProfile.getMaxFeedrate(X_AXIS)
     parser.execute_line("G0 F%d X%f Y%f" % (feedrate*60, planner.MAX_POS[X_AXIS]/2, planner.MAX_POS[Y_AXIS]/2))
 

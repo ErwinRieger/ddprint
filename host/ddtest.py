@@ -260,7 +260,6 @@ def calibrateFilSensor(args, parser):
     # stepsOneRev = oneRev * steps_per_mm
 
     # Start feeder 
-    # printer.sendPrinterInit()
     printer.sendCommandParamV(CmdContinuousE, [packedvalue.uint16_t(maxTimerValue16)])
 
     stepperValues = []
@@ -436,7 +435,6 @@ def testFeederUniformity(args, parser):
     print "running feeder with %.2f mm/s and %.2f mm distance" % (feedrate, d)
 
     # Start feeder motor
-    printer.sendPrinterInit()
     parser.execute_line("G0 F%d %s%f" % (feedrate*60, util.dimNames[A_AXIS], startPos + d))
     planner.finishMoves()
     printer.sendCommand(CmdEOT)
@@ -531,7 +529,6 @@ plot '-' using 1:2 with linespoints title 'sensor counts', \\
 
     # Rewind
     # print "Rewinding..."
-    # printer.sendPrinterInit()
     # parser.execute_line("G0 F%d %s%f" % (PrinterProfile.getMaxFeedrate(A_AXIS)*60, util.dimNames[A_AXIS], startPos))
     # planner.finishMoves()
     # printer.sendCommand(CmdEOT)

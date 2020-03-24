@@ -442,14 +442,6 @@ class Printer(Serial):
 
         self.commandInitDone = True
 
-    def sendPrinterInit(self):
-        # xxx new
-        # self.sendCommand(CmdPrinterInit)
-        # self.curDirBits = self.getDirBits()
-
-        print "\nXXXXXX UUSED sendPrinterInit called... !!!"
-        assert(self.commandInitDone == True)
-
     def resetLineNumber(self):
         self.lineNr = 1
         self.sendCommand(CmdResetLineNr)
