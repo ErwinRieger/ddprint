@@ -79,19 +79,18 @@ class Printer {
     public:
 
         // State enum
-        // XXX can we combine the StateIdle and StateInit states?
         enum {
-            StateIdle,       // 
-            StateInit,       // 
-            StateStart,      //
-            StateDwell       //
+            StateIdle,       // The state when printer is turned on.
+            StateInit,       // Host part has initialized the printer and has
+                             // done printer setup.
+            StateStart,      // We are printing.
+            StateDwell       // Temporary state
             } printerState;
 
         typedef enum {
             MoveTypeNone,
             MoveTypeHoming,
             MoveTypeNormal,
-            // notused MoveTypeForced
             } MoveType;
 
         MoveType moveType;

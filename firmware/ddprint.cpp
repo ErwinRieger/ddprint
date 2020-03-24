@@ -1163,8 +1163,7 @@ void Printer::cmdStopMove() {
     DISABLE_STEPPER_DRIVER_INTERRUPT();
     DISABLE_STEPPER1_DRIVER_INTERRUPT();
 
-    // printerState = StateInit;
-    printerState = StateIdle;
+    printerState = StateInit;
     moveType = MoveTypeNone;
 
     // Flush remaining steps
@@ -1222,8 +1221,11 @@ void Printer::checkMoveFinished() {
             DISABLE_STEPPER_DRIVER_INTERRUPT();
             DISABLE_STEPPER1_DRIVER_INTERRUPT();
 
-            printerState = StateIdle;
+            printerState = StateInit;
             moveType = MoveTypeNone;
+
+            // Reset swap/buffers
+            fillBufferTask.flush();
         }
     }
 }
