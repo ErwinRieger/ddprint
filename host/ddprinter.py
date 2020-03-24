@@ -101,6 +101,9 @@ class Printer(Serial):
 
         self.curDirBits = 0
 
+        # xxx debug
+        self.commandInitDone = False
+
     @classmethod
     def get(cls):
 
@@ -412,14 +415,18 @@ class Printer(Serial):
 
         self.resetLineNumber()
 
+    # Initialize serial interface and download printer settings.
     def commandInit(self, args, settings):
+
+        # XXX check already initialized/running printer here?
+
+        # xxx debug
+        assert(self.commandInitDone == False)
 
         self.initSerial(args.device, args.baud, True)
 
         self.sendCommandParamV(CmdSetFilSensorCal, [packedvalue.float_t(settings["filSensorCalibration"])])
 
-        # self.sendCommandParamV(CmdSetStepsPerMME, [packedvalue.uint16_t(settings["stepsPerMME"])])
-        
         self.sendCommandParamV(CmdSetPIDValues, [
             packedvalue.float_t(settings["Kp"]),
             packedvalue.float_t(settings["Ki"]),
@@ -427,13 +434,21 @@ class Printer(Serial):
             packedvalue.uint16_t(settings["Tu"] * 1000), # xxx Tu < 65 s
             ])
 
-        # self.sendCommandParamV(CmdSetBedlevelOffset, [packedvalue.float_t(settings["add_homeing_z"])])
-
-        # self.sendCommandParamV(CmdSetP0pwm, [packedvalue.uint8_t(settings["P0pwm"])])
-
-        # self.sendCommandParamV(CmdSetTu, [packedvalue.uint16_t(settings["Tu"] * 1000)]) # xxx Tu < 65 s
-
         self.sendCommandParamV(CmdSetIncTemp, [packedvalue.uint8_t(HeaterEx1), packedvalue.int16_t(args.inctemp)]);
+
+        # xxx new
+        self.curDirBits = self.getDirBits()
+        self.sendCommand(CmdPrinterInit)
+
+        self.commandInitDone = True
+
+    def sendPrinterInit(self):
+        # xxx new
+        # self.sendCommand(CmdPrinterInit)
+        # self.curDirBits = self.getDirBits()
+
+        print "\nXXXXXX UUSED sendPrinterInit called... !!!"
+        assert(self.commandInitDone == True)
 
     def resetLineNumber(self):
         self.lineNr = 1
@@ -448,10 +463,6 @@ class Printer(Serial):
         if self.lineNr == 1:
             return 255
         return self.lineNr-1
-
-    def sendPrinterInit(self):
-        self.sendCommand(CmdPrinterInit)
-        self.curDirBits = self.getDirBits()
 
     # Send a command to the printer
     def send(self, cmd):

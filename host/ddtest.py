@@ -420,7 +420,7 @@ def testFeederUniformity(args, parser):
 
     printer.commandInit(args, PrinterProfile.getSettings())
 
-    # ddhome.home(parser, args.fakeendstop)
+    # ddhome.home(args, parser)
 
     # Disable flowrate limit
     printer.sendCommandParamV(CmdEnableFRLimit, [packedvalue.uint8_t(0)])
@@ -527,7 +527,7 @@ plot '-' using 1:2 with linespoints title 'sensor counts', \\
     f.write("pause mouse close\n")
     f.close()
 
-    printer.waitForState(StateIdle)
+    printer.waitForState(StateInit)
 
     # Rewind
     # print "Rewinding..."
@@ -536,7 +536,7 @@ plot '-' using 1:2 with linespoints title 'sensor counts', \\
     # planner.finishMoves()
     # printer.sendCommand(CmdEOT)
     # printer.sendCommandParamV(CmdMove, [MoveTypeNormal])
-    # printer.waitForState(StateIdle)
+    # printer.waitForState(StateInit)
 
     # Re-enable flowrate limit
     printer.sendCommandParamV(CmdEnableFRLimit, [packedvalue.uint8_t(1)])

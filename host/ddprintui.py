@@ -498,7 +498,7 @@ class MainForm(npyscreen.FormBaseNew):
 
     def preparePreheat(self):
 
-        if self.printerState != StateIdle:
+        if self.printerState > StateInit:
             self.msgBox("Can't start print - printer is not in IDLE state!.")
             return
 
@@ -518,7 +518,7 @@ class MainForm(npyscreen.FormBaseNew):
 
     def preparePrintFile(self):
 
-        if self.printerState != StateIdle:
+        if self.printerState > StateInit:
             self.msgBox("Can't start print - printer is not in IDLE state!.")
             return
 
@@ -541,13 +541,9 @@ class MainForm(npyscreen.FormBaseNew):
             self.parser.reset()
             self.planner.reset()
 
-            ddhome.home(self.parser, self.args.fakeendstop)
+            ddhome.home(args, self.parser)
 
-            # util.downloadTempTable(self.planner)
-            # print "xxx pmwumbau, temptable"
-            # util.downloadDummyTempTable(self.printer)
-            print "xxx newdownloadTempTable"
-            util.newdownloadTempTable(self.planner)
+            util.downloadTempTable(self.planner)
 
             self.printer.sendPrinterInit()
 
@@ -635,7 +631,7 @@ class MainForm(npyscreen.FormBaseNew):
 
             status = self.printer.getStatus()
             # self.guiQueue.put(SyncCall(self.updateStatus, status))
-            while status['state'] != StateIdle:
+            while status['state'] != StateInit:
 
                 # xxxx move to own method
                 if not self.cmdQueue.empty():
@@ -651,7 +647,7 @@ class MainForm(npyscreen.FormBaseNew):
             self.printer.coolDown(HeaterEx1)
             self.printer.coolDown(HeaterBed)
 
-            ddhome.home(self.parser, self.args.fakeendstop)
+            ddhome.home(args, self.parser)
 
             self.printer.sendCommand(CmdDisableSteppers)
 

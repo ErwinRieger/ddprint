@@ -705,11 +705,9 @@ def commonInit(args, parser):
 
     printer.commandInit(args, PrinterProfile.getSettings())
 
-    ddhome.home(parser, args.fakeendstop)
-    # downloadTempTable(planner)
-    # downloadDummyTempTable(printer)
-    print "xxx newdownloadTempTable"
-    newdownloadTempTable(planner)
+    ddhome.home(args, parser)
+    downloadTempTable(planner)
+
     printer.sendPrinterInit()
 
 ####################################################################################################
@@ -775,7 +773,7 @@ def zRepeatability(parser):
 
     feedrate = PrinterProfile.getMaxFeedrate(Z_AXIS)
 
-    ddhome.home(parser, args.fakeendstop)
+    ddhome.home(args, parser)
 
     printer.sendPrinterInit()
 
@@ -788,7 +786,7 @@ def zRepeatability(parser):
     printer.sendCommandParamV(CmdMove, [MoveTypeNormal])
     printer.sendCommand(CmdEOT)
 
-    printer.waitForState(StateIdle)
+    printer.waitForState(StateInit)
 
 ####################################################################################################
 
@@ -822,7 +820,7 @@ def manualMove(parser, axis, distance, feedrate=0, absolute=False):
 
     printer.sendCommandParamV(CmdMove, [MoveTypeNormal])
 
-    printer.waitForState(StateIdle)
+    printer.waitForState(StateInit)
 
 ####################################################################################################
 
@@ -830,6 +828,10 @@ def insertFilament(args, parser, feedrate):
 
     planner = parser.planner
     printer = planner.printer
+
+    # done by home: printer.commandInit(args, PrinterProfile.getSettings())
+
+    ddhome.home(args, parser)
 
     def manualMoveE():
 
@@ -853,28 +855,28 @@ def insertFilament(args, parser, feedrate):
             elif ch == "B":     # filament backwards, 'big' step
                 aofs -= 10
 
-            printer.sendPrinterInit()
+            # xxx printer.sendPrinterInit()
 
             # XXX hardcoded feedrate
             parser.execute_line("G0 F%d A%f" % (5*60, aofs))
 
-            planner.finishMoves()
+            planner.finishMoves(travelMovesOnly=True)
             printer.sendCommandParamV(CmdMove, [MoveTypeNormal])
             printer.sendCommand(CmdEOT)
-            printer.waitForState(StateIdle, wait=0.1)
+            printer.waitForState(StateInit, wait=0.1)
 
-    commonInit(args, parser)
+    # xxx commonInit(args, parser)
 
     # Move to mid-position
     maxFeedrate = PrinterProfile.getMaxFeedrate(X_AXIS)
     parser.execute_line("G0 F%d X%f Y%f" % (maxFeedrate*60, planner.MAX_POS[X_AXIS]/2, planner.MAX_POS[Y_AXIS]/2))
 
-    planner.finishMoves()
+    planner.finishMoves(travelMovesOnly=True)
 
     printer.sendCommandParamV(CmdMove, [MoveTypeNormal])
     printer.sendCommand(CmdEOT)
 
-    printer.waitForState(StateIdle)
+    printer.waitForState(StateInit)
 
     t1 = MatProfile.getHotendGoodTemp()
     printer.heatUp(HeaterEx1, t1, wait=t1 * 0.95, log=True)
@@ -893,12 +895,12 @@ def insertFilament(args, parser, feedrate):
     #
     printer.sendPrinterInit()
     parser.execute_line("G10")
-    planner.finishMoves()
+    planner.finishMoves(travelMovesOnly=True)
 
     printer.sendCommandParamV(CmdMove, [MoveTypeNormal])
     printer.sendCommand(CmdEOT)
 
-    printer.waitForState(StateIdle)
+    printer.waitForState(StateInit)
 
     if not args.noCoolDown:
         printer.coolDown(HeaterEx1, wait=150)
@@ -910,11 +912,11 @@ def removeFilament(args, parser, feedrate):
     planner = parser.planner
     printer = planner.printer
 
-    printer.commandInit(args, PrinterProfile.getSettings())
+    # printer.commandInit(args, PrinterProfile.getSettings()) xxx done by homing
 
-    ddhome.home(parser, args.fakeendstop)
+    ddhome.home(args, parser)
 
-    printer.sendPrinterInit()
+    printer.sendPrinterInit() # xxx unused
 
     # Move to mid-position
     maxFeedrate = PrinterProfile.getMaxFeedrate(X_AXIS)
@@ -925,12 +927,12 @@ def removeFilament(args, parser, feedrate):
     printer.sendCommandParamV(CmdMove, [MoveTypeNormal])
     printer.sendCommand(CmdEOT)
 
-    printer.waitForState(StateIdle)
+    printer.waitForState(StateInit)
 
     t1 = MatProfile.getHotendGoodTemp()
     printer.heatUp(HeaterEx1, t1, wait=t1, log=True)
 
-    # Etwas warten und filament vorwärts feeden um den retract-pfropfen einzuschmelzen
+    # Filament vorwärts feeden um den 'retract-pfropfen' einzuschmelzen
     manualMove(parser, A_AXIS, PrinterProfile.getRetractLength() + 50, 5)
 
     manualMove(parser, A_AXIS, -1.3*FILAMENT_REVERSAL_LENGTH, feedrate)
@@ -950,7 +952,7 @@ def bedLeveling(args, parser):
     # Reset bedlevel offset in printer profile
     PrinterProfile.get().override("add_homeing_z", 0)
 
-    ddhome.home(parser, args.fakeendstop, True)
+    ddhome.home(args, parser, True)
 
     zFeedrate = PrinterProfile.getMaxFeedrate(Z_AXIS)
     kbd = GetChar("Enter (u)p (d)own (U)p 1mm (D)own 1mm (2-5) Up Xmm (q)uit")
@@ -991,7 +993,7 @@ def bedLeveling(args, parser):
             printer.sendCommandParamV(CmdMove, [MoveTypeNormal])
             printer.sendCommand(CmdEOT)
 
-            printer.waitForState(StateIdle, wait=0.1)
+            printer.waitForState(StateInit, wait=0.1)
 
 
     feedrate = PrinterProfile.getMaxFeedrate(X_AXIS)
@@ -1006,7 +1008,7 @@ def bedLeveling(args, parser):
     printer.sendCommandParamV(CmdMove, [MoveTypeNormal])
     printer.sendCommand(CmdEOT)
 
-    printer.waitForState(StateIdle, wait=0.1)
+    printer.waitForState(StateInit, wait=0.1)
 
     manualMoveZ()
 
@@ -1041,7 +1043,7 @@ def bedLeveling(args, parser):
     printer.sendCommandParamV(CmdMove, [MoveTypeNormal])
     printer.sendCommand(CmdEOT)
 
-    printer.waitForState(StateIdle, wait=0.1)
+    printer.waitForState(StateInit, wait=0.1)
 
     raw_input("\nAdjust left front buildplate screw and press <Return>\n")
 
@@ -1057,11 +1059,11 @@ def bedLeveling(args, parser):
     printer.sendCommandParamV(CmdMove, [MoveTypeNormal])
     printer.sendCommand(CmdEOT)
 
-    printer.waitForState(StateIdle, wait=0.1)
+    printer.waitForState(StateInit, wait=0.1)
 
     raw_input("\nAdjust right fron buildplate screw and press <Return>\n")
 
-    ddhome.home(parser, args.fakeendstop)
+    ddhome.home(args, parser)
 
     raw_input("\n! Please update your Z-Offset (add_homeing_z) in printer profile: %.3f\n" % add_homeing_z)
 
@@ -1101,7 +1103,7 @@ def stopMove(args, parser):
     if printer.isHomed():
         parser.reset()
         planner.reset()
-        ddhome.home(parser, args.fakeendstop)
+        ddhome.home(args, parser)
 
     printer.sendCommand(CmdStopMove)
     printer.sendCommand(CmdDisableSteppers)
@@ -1142,7 +1144,7 @@ def execSingleGcode(parser, gcode):
     printer.sendCommandParamV(CmdMove, [MoveTypeNormal])
     printer.sendCommand(CmdEOT)
 
-    printer.waitForState(StateIdle)
+    printer.waitForState(StateInit)
 
 ####################################################################################################
 
@@ -1580,22 +1582,7 @@ def printTempTable(temp, tempTable):
 
 ####################################################################################################
 
-def old_downloadTempTable(planner):
-
-    assert(0)
-
-    (startTemp, table) = genTempTable(planner)
-
-    payload = struct.pack("<HB", startTemp, NExtrusionLimit)
-
-    print "Downloading TempTable..."
-
-    for timerValue in table:
-        payload += struct.pack("<H", timerValue)
-    resp = planner.printer.query(CmdSetTempTable, binPayload=payload)
-    assert(handleGenericResponse(resp))
-
-def newdownloadTempTable(planner):
+def downloadTempTable(planner):
 
     (startTemp, table) = genTempTable(planner)
 
@@ -1674,7 +1661,7 @@ def measureFlowrateStepResponse(args, parser):
 
     printer.commandInit(args, PrinterProfile.getSettings())
 
-    # ddhome.home(parser, args.fakeendstop)
+    # ddhome.home(args, parser)
 
     # Disable flowrate limit
     printer.sendCommandParamV(CmdEnableFRLimit, [packedvalue.uint8_t(0)])
@@ -1682,15 +1669,15 @@ def measureFlowrateStepResponse(args, parser):
     # Disable temp-flowrate limit
     downloadDummyTempTable(printer)
 
-    # Move to mid-position
-    # printer.sendPrinterInit()
-    # feedrate = PrinterProfile.getMaxFeedrate(X_AXIS)
-    # parser.execute_line("G0 F%d X%f Y%f" % (feedrate*60, planner.MAX_POS[X_AXIS]/2, planner.MAX_POS[Y_AXIS]/2))
+    # Move to mid-position, xxx move code to own function
+    printer.sendPrinterInit()
+    feedrate = PrinterProfile.getMaxFeedrate(X_AXIS)
+    parser.execute_line("G0 F%d X%f Y%f" % (feedrate*60, planner.MAX_POS[X_AXIS]/2, planner.MAX_POS[Y_AXIS]/2))
 
-    # planner.finishMoves()
-    # printer.sendCommandParamV(CmdMove, [MoveTypeNormal])
-    # printer.sendCommand(CmdEOT)
-    # printer.waitForState(StateIdle)
+    planner.finishMoves()
+    printer.sendCommandParamV(CmdMove, [MoveTypeNormal])
+    printer.sendCommand(CmdEOT)
+    printer.waitForState(StateInit)
 
     printer.sendCommandParamV(CmdFanSpeed, [packedvalue.uint8_t(100)])
 
@@ -1879,7 +1866,7 @@ def measureTempFlowrateCurve(args, parser):
 
     printer.commandInit(args, settings)
 
-    ddhome.home(parser, args.fakeendstop)
+    ddhome.home(args, parser)
 
     # Disable flowrate limit
     printer.sendCommandParamV(CmdEnableFRLimit, [packedvalue.uint8_t(0)])
@@ -1895,7 +1882,7 @@ def measureTempFlowrateCurve(args, parser):
     planner.finishMoves()
     printer.sendCommandParamV(CmdMove, [MoveTypeNormal])
     printer.sendCommand(CmdEOT)
-    printer.waitForState(StateIdle)
+    printer.waitForState(StateInit)
 
     printer.sendCommandParamV(CmdFanSpeed, [packedvalue.uint8_t(100)])
 

@@ -390,6 +390,7 @@ def main():
     sp.add_argument("distance", action="store", help="Move-distance (+/-) in mm.", type=float)
 
     sp = subparsers.add_parser("insertFilament", help=u"Insert filament (heatup, forward filament).")
+    sp.add_argument("mat", help="Name of generic material profile to use [pla, abs...].")
 
     sp = subparsers.add_parser("removeFilament", help=u"Remove filament (heatup, retract filament).")
     sp.add_argument("mat", help="Name of generic material profile to use [pla, abs...].")
@@ -548,12 +549,12 @@ def main():
             # Send print command
             printer.sendCommandParamV(CmdMove, [MoveTypeNormal])
 
-        printer.waitForState(StateIdle)
+        printer.waitForState(StateInit)
 
         printer.coolDown(HeaterEx1)
         printer.coolDown(HeaterBed)
 
-        ddhome.home(parser, args.fakeendstop)
+        ddhome.home(args, parser)
 
         printer.sendCommand(CmdDisableSteppers)
 
@@ -612,11 +613,12 @@ def main():
 
     elif args.mode == 'insertFilament':
 
+        (parser, _, _) = initParser(args, mode=args.mode, travelMovesOnly=True)
         util.insertFilament(args, parser, args.feedrate)
 
     elif args.mode == 'removeFilament':
 
-        (parser, planner, printer) = initParser(args, mode=args.mode, travelMovesOnly=True)
+        (parser, _, _) = initParser(args, mode=args.mode, travelMovesOnly=True)
         util.removeFilament(args, parser, args.feedrate)
 
     elif args.mode == 'bedLeveling':
@@ -662,7 +664,7 @@ def main():
             Y = res[1] / float(steps_per_mm[1]),
             Z = res[2] / float(steps_per_mm[2]),
             A = res[3] / float(steps_per_mm[3]),
-            # B = res[4] / float(steps_per_mm[4]),
+            B = res[4] / float(steps_per_mm[4]),
             )
 
         (homePosMM, homePosStepped) = planner.getHomePos()
@@ -702,7 +704,7 @@ def main():
         initPrinterProfile(args)
         planner = Planner(args, travelMovesOnly=True)
         parser = gcodeparser.UM2GcodeParser(travelMovesOnly=True)
-        ddhome.home(parser, args.fakeendstop)
+        ddhome.home(args, parser)
 
     elif args.mode == 'todo zRepeatability':
 
