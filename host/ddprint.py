@@ -466,7 +466,7 @@ def main():
 
         (parser, planner, printer) = initParser(args, mode=args.mode)
 
-        util.commonInit(args, parser)
+        util.commonInit(args, printer)
 
         t0 = MatProfile.getBedTemp()
         t1 = MatProfile.getHotendGoodTemp() + planner.l0TempIncrease
@@ -633,7 +633,7 @@ def main():
 
     elif args.mode == 'genTempTable':
 
-        util.genTempTable(planner)
+        util.genTempTable()
 
     elif args.mode == 'getEndstops':
 

@@ -298,7 +298,6 @@ class RawStepData:
 
     def __init__(self):
         self.pulses = []
-        # self.leadAxisXYZ = None
         self.setDirBits = False
         self.dirBits = 0
 
@@ -309,10 +308,6 @@ class RawStepData:
 
     def empty(self):
         return not self.pulses
-
-    # Used for debugging only
-    # def setLeadAxisXYZ(self, leadAxisXYZ):
-        # self.leadAxisXYZ = leadAxisXYZ
 
     def __repr__(self):
         return "RawStepData:" + \
@@ -409,15 +404,12 @@ class RawStepData:
 
             cmds.append(( ddprintcommands.CmdBlock, cobsBlock ))
 
-        # print "commands: ", ddprintcommands.CmdG1Raw, len(cmds)
-
         return cmds
 
     def debugPlot(self):
 
         d = {
                 "stepType": "raw",
-                # "leadAxisXYZ": self.leadAxisXYZ,
                 "pulses": self.pulses,
                 }
 

@@ -1636,12 +1636,14 @@ class Advance (object):
         #
         move.stepData.setBresenhamParameters(leadAxis, abs_displacement_vector_steps)
 
-        dirBits = util.directionBits(dispS, self.printer.curDirBits)
+        dirBits = util.directionBits(dispS)
 
-        if dirBits != self.printer.curDirBits:
+        print "2: Dirbits: ", id(self), self.planner.curDirBits, "-->", dirBits
+
+        if True: # if dirBits != self.planner.curDirBits:
             move.stepData.setDirBits = True
             move.stepData.dirBits = dirBits
-            self.printer.curDirBits = dirBits
+            self.planner.curDirBits = dirBits
 
         steps_per_mm = PrinterProfile.getStepsPerMM(leadAxis)
 
@@ -1767,7 +1769,7 @@ class Advance (object):
         endSpeedS = endSpeed.feedrate3()
         endSpeedE = endSpeed.eSpeed
 
-        # Some tests
+        # Some sanity tests
         assert(ta == 0)
         assert(tl == 0)
         assert(td > 0)
@@ -1794,12 +1796,14 @@ class Advance (object):
 
         abs_displacement_vector_steps = vectorAbs(dispS)
 
-        dirBits = util.directionBits(dispS, self.printer.curDirBits)
+        dirBits = util.directionBits(dispS)
 
-        if dirBits != self.printer.curDirBits:
+        print "3: Dirbits: ", id(self), self.planner.curDirBits, "-->", dirBits
+
+        if True: # if dirBits != self.planner.curDirBits:
             move.stepData.setDirBits = True
             move.stepData.dirBits = dirBits
-            self.printer.curDirBits = dirBits
+            self.planner.curDirBits = dirBits
 
         leadAxisxy = move.leadAxis(nAxes = 2, disp=dispS)
         leadAxis_stepsxy = abs_displacement_vector_steps[leadAxisxy]

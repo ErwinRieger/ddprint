@@ -99,7 +99,7 @@ class Printer(Serial):
 
         self.startTime = None
 
-        self.curDirBits = 0
+        # self.curDirBits = 0
 
         # xxx debug
         self.commandInitDone = False
@@ -437,7 +437,7 @@ class Printer(Serial):
         self.sendCommandParamV(CmdSetIncTemp, [packedvalue.uint8_t(HeaterEx1), packedvalue.int16_t(args.inctemp)]);
 
         # xxx new
-        self.curDirBits = self.getDirBits()
+        # self.curDirBits = self.getDirBits()
         self.sendCommand(CmdPrinterInit)
 
         self.commandInitDone = True

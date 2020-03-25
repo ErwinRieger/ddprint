@@ -543,7 +543,7 @@ class MainForm(npyscreen.FormBaseNew):
 
             ddhome.home(args, self.parser)
 
-            util.downloadTempTable(self.planner)
+            util.downloadTempTable(self.printer)
 
             # Send heat up  command
             self.log( "\nPre-Heating bed (t0: %d)...\n" % self.mat_t0)

@@ -683,30 +683,26 @@ class EWMA:
 ####################################################################################################
 
 # Compute new stepper direction bits
-def directionBits(disp, curDirBits):
+def directionBits(disp):
+
+    dirbits = 0
 
     for i in range(5):
 
-        mask = 1 << i
+        if disp[i] >= 0:
+            mask = 1 << i
+            dirbits += mask
 
-        if disp[i] > 0 and not (curDirBits & mask):
-            curDirBits += mask
-        elif disp[i] < 0 and (curDirBits & mask):
-            curDirBits -= mask
-
-    return curDirBits
+    return dirbits
 
 ####################################################################################################
 
-def commonInit(args, parser):
-
-    planner = parser.planner
-    printer = planner.printer
+def commonInit(args, printer):
 
     # done by home: printer.commandInit(args, PrinterProfile.getSettings())
 
     ddhome.home(args, printer)
-    downloadTempTable(planner)
+    downloadTempTable(printer)
 
 ####################################################################################################
 
@@ -723,7 +719,7 @@ def getVirtualPos(parser):
         Y = res[1] / float(parser.steps_per_mm[1]),
         Z = res[2] / float(parser.steps_per_mm[2]),
         A = res[3] / float(parser.steps_per_mm[3]),
-        # B = res[4] / float(parser.steps_per_mm[4]),
+        B = 0.0 # res[4] / float(parser.steps_per_mm[4]),
         )
 
     print "Printer is at [mm]: ", curPosMM
@@ -1489,7 +1485,7 @@ def getResponseString(s, offset):
 
 ####################################################################################################
 
-def genTempTable(planner):
+def genTempTable():
 
     hwVersion = PrinterProfile.getHwVersion()
     spm = PrinterProfile.getStepsPerMM(A_AXIS)
@@ -1567,9 +1563,9 @@ def printTempTable(temp, tempTable):
 
 ####################################################################################################
 
-def downloadTempTable(planner):
+def downloadTempTable(printer):
 
-    (startTemp, table) = genTempTable(planner)
+    (startTemp, table) = genTempTable()
 
     payload = struct.pack("<HB", startTemp, NExtrusionLimit)
 
@@ -1577,7 +1573,7 @@ def downloadTempTable(planner):
 
     for timerValue in table:
         payload += struct.pack("<H", timerValue)
-    resp = planner.printer.query(CmdSetTempTable, binPayload=payload)
+    resp = printer.query(CmdSetTempTable, binPayload=payload)
     assert(handleGenericResponse(resp))
 
 ####################################################################################################

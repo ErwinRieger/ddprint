@@ -346,6 +346,8 @@ class Planner (object):
 
         self.stepRounders = StepRounders()
 
+        self.curDirBits = None
+
     # @classmethod
     # def get(cls):
         # return cls.__single
@@ -905,12 +907,14 @@ class Planner (object):
         leadAxis = move.leadAxis(disp=dispS)
         leadAxis_steps = abs_displacement_vector_steps[leadAxis]
 
-        dirBits = util.directionBits(dispS, self.printer.curDirBits)
+        dirBits = util.directionBits(dispS)
 
-        if dirBits != self.printer.curDirBits:
+        print "1: Dirbits: ", id(self), self.curDirBits, "-->", dirBits
+
+        if True: # if dirBits != self.curDirBits:
             move.stepData.setDirBits = True
             move.stepData.dirBits = dirBits
-            self.printer.curDirBits = dirBits
+            self.curDirBits = dirBits
 
         steps_per_mm = PrinterProfile.getStepsPerMM(leadAxis)
 
