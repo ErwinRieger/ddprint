@@ -51,42 +51,22 @@
 #define DISABLE_STEPPER1_DRIVER_INTERRUPT() TIMSK1 &= ~(1<<OCIE1B)
 #define STEPPER1_DRIVER_INTERRUPT_ENABLED() (TIMSK1 & (1<<OCIE1B))
 
-#if defined(X_ENABLE_PIN) && X_ENABLE_PIN > -1
-  #define  enable_x() WRITE(X_ENABLE_PIN, X_ENABLE_ON)
-  #define disable_x() WRITE(X_ENABLE_PIN,!X_ENABLE_ON)
+#define  enable_x() WRITE(X_ENABLE_PIN, X_ENABLE_ON)
+#define disable_x() WRITE(X_ENABLE_PIN,!X_ENABLE_ON)
+
+#define  enable_y() WRITE(Y_ENABLE_PIN, Y_ENABLE_ON)
+#define disable_y() WRITE(Y_ENABLE_PIN,!Y_ENABLE_ON)
+
+#ifdef Z_DUAL_STEPPER_DRIVERS
+  #define  enable_z() { WRITE(Z_ENABLE_PIN, Z_ENABLE_ON); WRITE(Z2_ENABLE_PIN, Z_ENABLE_ON); }
+  #define disable_z() { WRITE(Z_ENABLE_PIN,!Z_ENABLE_ON); WRITE(Z2_ENABLE_PIN,!Z_ENABLE_ON); }
 #else
-  #define enable_x() ;
-  #define disable_x() ;
+  #define  enable_z() WRITE(Z_ENABLE_PIN, Z_ENABLE_ON)
+  #define disable_z() WRITE(Z_ENABLE_PIN,!Z_ENABLE_ON)
 #endif
 
-#if defined(Y_ENABLE_PIN) && Y_ENABLE_PIN > -1
-  #define  enable_y() WRITE(Y_ENABLE_PIN, Y_ENABLE_ON)
-  #define disable_y() WRITE(Y_ENABLE_PIN,!Y_ENABLE_ON)
-#else
-  #define enable_y() ;
-  #define disable_y() ;
-#endif
-
-#if defined(Z_ENABLE_PIN) && Z_ENABLE_PIN > -1
-  #ifdef Z_DUAL_STEPPER_DRIVERS
-    #define  enable_z() { WRITE(Z_ENABLE_PIN, Z_ENABLE_ON); WRITE(Z2_ENABLE_PIN, Z_ENABLE_ON); }
-    #define disable_z() { WRITE(Z_ENABLE_PIN,!Z_ENABLE_ON); WRITE(Z2_ENABLE_PIN,!Z_ENABLE_ON); }
-  #else
-    #define  enable_z() WRITE(Z_ENABLE_PIN, Z_ENABLE_ON)
-    #define disable_z() WRITE(Z_ENABLE_PIN,!Z_ENABLE_ON)
-  #endif
-#else
-  #define enable_z() ;
-  #define disable_z() ;
-#endif
-
-#if defined(E0_ENABLE_PIN) && (E0_ENABLE_PIN > -1)
-  #define enable_e0() WRITE(E0_ENABLE_PIN, E_ENABLE_ON)
-  #define disable_e0() WRITE(E0_ENABLE_PIN,!E_ENABLE_ON)
-#else
-  #define enable_e0()  /* nothing */
-  #define disable_e0() /* nothing */
-#endif
+#define enable_e0() WRITE(E0_ENABLE_PIN, E_ENABLE_ON)
+#define disable_e0() WRITE(E0_ENABLE_PIN,!E_ENABLE_ON)
 
 #if MOTOR_CURRENT_PWM_XY_PIN > -1
 extern const int motor_current_setting[3];
@@ -105,25 +85,25 @@ template<typename MOVE>
 void st_set_position_steps(long value);
 
 template<>
-void st_set_position_steps<XMove>(long value);
+void st_set_position_steps<XAxisSelector>(long value);
 template<>
-void st_set_position_steps<YMove>(long value);
+void st_set_position_steps<YAxisSelector>(long value);
 template<>
-void st_set_position_steps<ZMove>(long value);
+void st_set_position_steps<ZAxisSelector>(long value);
 template<>
-void st_set_position_steps<EMove>(long value);
+void st_set_position_steps<EAxisSelector>(long value);
 
 template<typename MOVE>
 long st_get_position_steps();
 
 template<>
-long st_get_position_steps<XMove>();
+long st_get_position_steps<XAxisSelector>();
 template<>
-long st_get_position_steps<YMove>();
+long st_get_position_steps<YAxisSelector>();
 template<>
-long st_get_position_steps<ZMove>();
+long st_get_position_steps<ZAxisSelector>();
 template<>
-long st_get_position_steps<EMove>();
+long st_get_position_steps<EAxisSelector>();
 
 //
 // Three different positions:
@@ -141,19 +121,19 @@ template<typename MOVE>
 void st_inc_current_pos_steps();
 
 template<>
-inline void st_inc_current_pos_steps<XMove>() {
+inline void st_inc_current_pos_steps<XAxisSelector>() {
     current_pos_steps[X_AXIS] ++;
 }
 template<>
-inline void st_inc_current_pos_steps<YMove>() {
+inline void st_inc_current_pos_steps<YAxisSelector>() {
     current_pos_steps[Y_AXIS] ++;
 }
 template<>
-inline void st_inc_current_pos_steps<ZMove>() {
+inline void st_inc_current_pos_steps<ZAxisSelector>() {
     current_pos_steps[Z_AXIS] ++;
 }
 template<>
-inline void st_inc_current_pos_steps<EMove>() {
+inline void st_inc_current_pos_steps<EAxisSelector>() {
     current_pos_steps[E_AXIS] ++;
 }
 
@@ -161,19 +141,19 @@ template<typename MOVE>
 void st_dec_current_pos_steps();
 
 template<>
-inline void st_dec_current_pos_steps<XMove>() {
+inline void st_dec_current_pos_steps<XAxisSelector>() {
     current_pos_steps[X_AXIS] --;
 }
 template<>
-inline void st_dec_current_pos_steps<YMove>() {
+inline void st_dec_current_pos_steps<YAxisSelector>() {
     current_pos_steps[Y_AXIS] --;
 }
 template<>
-inline void st_dec_current_pos_steps<ZMove>() {
+inline void st_dec_current_pos_steps<ZAxisSelector>() {
     current_pos_steps[Z_AXIS] --;
 }
 template<>
-inline void st_dec_current_pos_steps<EMove>() {
+inline void st_dec_current_pos_steps<EAxisSelector>() {
     current_pos_steps[E_AXIS] --;
 }
 
@@ -216,7 +196,7 @@ template<typename MOVE>
 bool st_endstop_pressed(bool);
 
 template<>
-inline bool st_endstop_pressed<XMove>(bool forward) {
+inline bool st_endstop_pressed<XAxisSelector>(bool forward) {
 
     static uint8_t nPresses = 0;
 
@@ -244,7 +224,7 @@ inline bool st_endstop_pressed<XMove>(bool forward) {
 }
 
 template<>
-inline bool st_endstop_pressed<YMove>(bool forward) {
+inline bool st_endstop_pressed<YAxisSelector>(bool forward) {
 
     static uint8_t nPresses = 0;
 
@@ -272,7 +252,7 @@ inline bool st_endstop_pressed<YMove>(bool forward) {
 }
 
 template<>
-inline bool st_endstop_pressed<ZMove>(bool forward) {
+inline bool st_endstop_pressed<ZAxisSelector>(bool forward) {
 
     static uint8_t nPresses = 0;
 
@@ -303,7 +283,7 @@ template<typename MOVE>
 bool st_endstop_released(bool);
 
 template<>
-inline bool st_endstop_released<XMove>(bool forward) {
+inline bool st_endstop_released<XAxisSelector>(bool forward) {
 
     static uint8_t nRelease = 0;
 
@@ -331,7 +311,7 @@ inline bool st_endstop_released<XMove>(bool forward) {
 }
 
 template<>
-inline bool st_endstop_released<YMove>(bool forward) {
+inline bool st_endstop_released<YAxisSelector>(bool forward) {
 
     static uint8_t nRelease = 0;
 
@@ -359,7 +339,7 @@ inline bool st_endstop_released<YMove>(bool forward) {
 }
 
 template<>
-inline bool st_endstop_released<ZMove>(bool forward) {
+inline bool st_endstop_released<ZAxisSelector>(bool forward) {
 
     static uint8_t nRelease = 0;
 
@@ -389,16 +369,18 @@ inline bool st_endstop_released<ZMove>(bool forward) {
 template<typename MOVE>
 inline void st_step_motor(uint8_t stepBits, uint8_t dirbits) {
 
-    if (stepBits & st_get_move_bit_mask<MOVE>()) {
+    uint8_t mask = st_get_move_bit_mask<MOVE>();
 
-        st_write_step_pin<MOVE>(! st_get_invert_step_pin<MOVE>());
+    if (stepBits & mask) {
 
-        if (dirbits & st_get_move_bit_mask<MOVE>())
+        st_write_step_pin<MOVE>(HIGH);
+
+        if (dirbits & mask)
             st_inc_current_pos_steps<MOVE>();
         else
             st_dec_current_pos_steps<MOVE>();
 
-        st_write_step_pin<MOVE>(  st_get_invert_step_pin<MOVE>());
+        st_write_step_pin<MOVE>(LOW);
     }
 }
 
@@ -408,9 +390,11 @@ inline void st_step_motor(uint8_t stepBits, uint8_t dirbits) {
 template<typename MOVE>
 inline void st_step_motor_es(uint8_t stepBits, uint8_t dirbits) {
 
-    if (stepBits & st_get_move_bit_mask<MOVE>()) {
+    uint8_t mask = st_get_move_bit_mask<MOVE>();
 
-        bool forward = dirbits & st_get_move_bit_mask<MOVE>();
+    if (stepBits & mask) {
+
+        bool forward = dirbits & mask;
 
         bool endStop = st_endstop_pressed<MOVE>(forward);
 
@@ -426,14 +410,14 @@ inline void st_step_motor_es(uint8_t stepBits, uint8_t dirbits) {
             return;
         }
 
-        st_write_step_pin<MOVE>(! st_get_invert_step_pin<MOVE>());
+        st_write_step_pin<MOVE>(HIGH);
 
         if (forward)
             st_inc_current_pos_steps<MOVE>();
         else
             st_dec_current_pos_steps<MOVE>();
 
-        st_write_step_pin<MOVE>(  st_get_invert_step_pin<MOVE>());
+        st_write_step_pin<MOVE>(LOW);
     }
 }
 
@@ -557,7 +541,7 @@ class StepBuffer {
                     enable_e0();
 
                     // Direction forward
-                    st_write_dir_pin<EMove>( st_get_positive_dir<EMove>() );
+                    st_write_dir_pin<EAxisSelector>( st_get_positive_dir<EAxisSelector>() );
 
                     // Start interrupt
                     ENABLE_STEPPER1_DRIVER_INTERRUPT();
@@ -601,17 +585,17 @@ class StepBuffer {
                     if (sd.dirBits & 0x80) {
 
                         // Set direction bits
-                        st_set_direction<XMove>(sd.dirBits);
-                        st_set_direction<YMove>(sd.dirBits);
-                        st_set_direction<ZMove>(sd.dirBits);
-                        st_set_direction<EMove>(sd.dirBits);
+                        st_set_direction<XAxisSelector>(sd.dirBits);
+                        st_set_direction<YAxisSelector>(sd.dirBits);
+                        st_set_direction<ZAxisSelector>(sd.dirBits);
+                        st_set_direction<EAxisSelector>(sd.dirBits);
                     }
 
                     // Step the motors and update step-coordinates (current_pos_steps): st_step_motor<>()
-                    st_step_motor<XMove>(sd.stepBits, sd.dirBits);
-                    st_step_motor<YMove>(sd.stepBits, sd.dirBits);
-                    st_step_motor<ZMove>(sd.stepBits, sd.dirBits);
-                    st_step_motor<EMove>(sd.stepBits, sd.dirBits);
+                    st_step_motor<XAxisSelector>(sd.stepBits, sd.dirBits);
+                    st_step_motor<YAxisSelector>(sd.stepBits, sd.dirBits);
+                    st_step_motor<ZAxisSelector>(sd.stepBits, sd.dirBits);
+                    st_step_motor<EAxisSelector>(sd.stepBits, sd.dirBits);
                 }
             }
 
@@ -641,24 +625,24 @@ class StepBuffer {
                 if (sd.dirBits & 0x80) {
 
                     // Set direction bits
-                    st_set_direction<XMove>(sd.dirBits);
-                    st_set_direction<YMove>(sd.dirBits);
-                    st_set_direction<ZMove>(sd.dirBits);
+                    st_set_direction<XAxisSelector>(sd.dirBits);
+                    st_set_direction<YAxisSelector>(sd.dirBits);
+                    st_set_direction<ZAxisSelector>(sd.dirBits);
                 }
 
                 // * Step the motors
                 // * Check endstops
                 // * Update step-coordinates (current_pos_steps)
-                st_step_motor_es<XMove>(sd.stepBits, sd.dirBits);
-                st_step_motor_es<YMove>(sd.stepBits, sd.dirBits);
-                st_step_motor_es<ZMove>(sd.stepBits, sd.dirBits);
+                st_step_motor_es<XAxisSelector>(sd.stepBits, sd.dirBits);
+                st_step_motor_es<YAxisSelector>(sd.stepBits, sd.dirBits);
+                st_step_motor_es<ZAxisSelector>(sd.stepBits, sd.dirBits);
             }
         }
 
         FWINLINE void runContinuosSteps() {
 
             OCR1A = OCR1B = continuosTimer;
-            st_step_motor<EMove>(st_get_move_bit_mask<EMove>(), st_get_move_bit_mask<EMove>());
+            st_step_motor<EAxisSelector>(st_get_move_bit_mask<EAxisSelector>(), st_get_move_bit_mask<EAxisSelector>());
         }
 
 };

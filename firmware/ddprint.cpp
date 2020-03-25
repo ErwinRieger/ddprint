@@ -1288,7 +1288,11 @@ void Printer::cmdGetPos() {
 
 void Printer::cmdGetDirBits() {
 
-    uint8_t dirbits = st_get_direction<XMove>() | st_get_direction<YMove>() | st_get_direction<ZMove>() | st_get_direction<EMove>();
+    uint8_t dirbits =
+        st_get_direction<XAxisSelector>() |
+        st_get_direction<YAxisSelector>() |
+        st_get_direction<ZAxisSelector>() |
+        st_get_direction<EAxisSelector>();
 
     txBuffer.sendResponseStart(CmdGetDirBits);
     txBuffer.sendResponseUint8(dirbits);

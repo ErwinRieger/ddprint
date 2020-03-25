@@ -53,7 +53,6 @@
 
 #define TEMP_SENSOR_0 20
 #define TEMP_SENSOR_1 20
-#define TEMP_SENSOR_2 0
 #define TEMP_SENSOR_BED 20
 
 // This makes temp sensor 1 a redundant sensor for sensor 0. If the temperatures difference between these sensors is to high the print will be aborted.
@@ -104,27 +103,15 @@
 //=============================Mechanical Settings===========================
 //===========================================================================
 
-// Uncomment the following line to enable CoreXY kinematics
-// #define COREXY
-
-// fine Enstop settings: Individual Pullups. will be ignored if ENDSTOPPULLUPS is defined
-#define ENDSTOPPULLUP_XMAX
-#define ENDSTOPPULLUP_YMAX
-#define ENDSTOPPULLUP_ZMAX
-#define ENDSTOPPULLUP_XMIN
-#define ENDSTOPPULLUP_YMIN
-//#define ENDSTOPPULLUP_ZMIN
-
-// The pullups are needed if you directly connect a mechanical endswitch between the signal and ground pins.
 const bool X_ENDSTOPS_INVERTING = true; // set to true to invert the logic of the endstops.
 const bool Y_ENDSTOPS_INVERTING = true; // set to true to invert the logic of the endstops.
 const bool Z_ENDSTOPS_INVERTING = true; // set to true to invert the logic of the endstops.
 
-// For Inverting Stepper Enable Pins (Active Low) use 0, Non Inverting (Active High) use 1
-#define X_ENABLE_ON 0
-#define Y_ENABLE_ON 0
-#define Z_ENABLE_ON 0
-#define E_ENABLE_ON 0 // For all extruders
+// Logic levels for Stepper Enable Pins (Active Low = LOW), Active High = HIGH)
+#define X_ENABLE_ON LOW
+#define Y_ENABLE_ON LOW
+#define Z_ENABLE_ON LOW
+#define E_ENABLE_ON LOW // For all extruders
 
 //
 // Stepper direction pins. Set this to true, if the output pin has to be switched HIGH
@@ -241,10 +228,10 @@ const bool Z_ENDSTOPS_INVERTING = true; // set to true to invert the logic of th
 //#define WATCH_TEMP_INCREASE 10  //Heat up at least 10 degree in 20 seconds
 
 //By default pololu step drivers require an active high signal. However, some high power drivers require an active low signal as step.
-#define INVERT_X_STEP_PIN false
-#define INVERT_Y_STEP_PIN false
-#define INVERT_Z_STEP_PIN false
-#define INVERT_E_STEP_PIN false
+// #define INVERT_X_STEP_PIN false
+// #define INVERT_Y_STEP_PIN false
+// #define INVERT_Z_STEP_PIN false
+// #define INVERT_E_STEP_PIN false
 
 // Default motor current for XY,Z,E in mA
 // #define DEFAULT_PWM_MOTOR_CURRENT {1300, 1300, 1250}
