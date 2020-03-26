@@ -162,27 +162,27 @@ class MainForm(npyscreen.FormBaseNew):
         #
         rely = 2
         self.printerProfile = self.add(npyscreen.TitleFixedText, name = "PrinterProfile      :", relx=1, rely=rely, use_two_lines=False, begin_entry_at=23,
-                width=w-1)
+                max_width=w-1)
         self.printerProfile.editable = False
 
         rely += 1
         self.nozzleProfile = self.add(npyscreen.TitleFixedText, name =  "Nozzle Profile      :", relx=1, rely=rely, use_two_lines=False, begin_entry_at=23,
-                width=w-1)
+                max_width=w-1)
         self.nozzleProfile.editable = False
 
         rely += 1
         self.matProfile = self.add(npyscreen.TitleFixedText, name =     "Material Profile    :", relx=1, rely=rely, use_two_lines=False, begin_entry_at=23,
-                width=w-1)
+                max_width=w-1)
         self.matProfile.editable = False
 
         rely += 1
         self.smatProfile = self.add(npyscreen.TitleFixedText, name =    "Specific Mat Profile:", relx=1, rely=rely, use_two_lines=False, begin_entry_at=23,
-                width=w-1)
+                max_width=w-1)
         self.smatProfile.editable = False
 
         rely += 1
         self.kAdvance = self.add(npyscreen.TitleFixedText, name =    "K-Advance           :", relx=1, rely=rely, use_two_lines=False, begin_entry_at=23,
-                width=w-1)
+                max_width=w-1)
         self.kAdvance.editable = False
 
         rely += 2
@@ -202,12 +202,12 @@ class MainForm(npyscreen.FormBaseNew):
             The colour of the blocks that show the level of the slider. By default (None) the same value as the colour of the slider itself.
         """
         self.tempAdjust = self.add(TitleTempAdjSlider, name = "Temp. Level adjust  :", relx=1, rely=rely, use_two_lines=False, begin_entry_at=23,
-                width=w-1, out_of=30, block_color="CONTROL", app=self)
+                max_width=w-1, out_of=30, block_color="CONTROL", app=self)
         self.tempAdjust.value = 15
 
         rely += 2
         self.fn = self.add(npyscreen.TitleFilename, name = "GCode File          :", relx=1, rely=rely, use_two_lines=False, begin_entry_at=23,
-                width=w-1)
+                max_width=w-1)
 
         rely += 2
         self.add(MainForm.Preheat_Button, name = "Preheat", relx=1, rely=rely)
@@ -252,13 +252,13 @@ class MainForm(npyscreen.FormBaseNew):
 
         rely += 1
         self.extGripC = self.add(npyscreen.TitleFixedText, name =  "Feeder Grip (avg)   :", relx=w, rely=rely, use_two_lines=False, begin_entry_at=23)
-        self.extGrip = self.add(npyscreen.TitleFixedText, relx=w+int(w*0.50), width=int(0.25*w), rely=rely, use_two_lines=False, begin_entry_at=0)
+        self.extGrip = self.add(npyscreen.TitleFixedText, relx=w+int(w*0.4), max_width=int(0.25*w), rely=rely, use_two_lines=False, begin_entry_at=0)
         self.extGripC.editable = False
         self.extGrip.editable = False
 
         rely += 1
-        self.extRateC = self.add(npyscreen.TitleFixedText, name =  "Extrusion Rate (avg):", relx=w, rely=rely, use_two_lines=False, begin_entry_at=27)
-        self.extRate = self.add(npyscreen.TitleFixedText, relx=w+int(w*0.50), width=int(0.25*w), rely=rely, use_two_lines=False, begin_entry_at=0)
+        self.extRateC = self.add(npyscreen.TitleFixedText, name =  "Extrusion Rate (avg):", relx=w, rely=rely, use_two_lines=False, begin_entry_at=23)
+        self.extRate = self.add(npyscreen.TitleFixedText, relx=w+int(w*0.4), max_width=int(0.25*w), rely=rely, use_two_lines=False, begin_entry_at=0)
         self.extRateC.editable = False
         self.extRate.editable = False
 
@@ -272,7 +272,7 @@ class MainForm(npyscreen.FormBaseNew):
         t = self.add(npyscreen.FixedText, value = "Communication Log:", relx=1, rely=h, color='LABEL') 
         t.editable = False
 
-        self.commLog = self.add(npyscreen.BufferPager, maxlen=h, relx=1, rely=h+2, width=w-2) # , height=h-2, width=w-2)
+        self.commLog = self.add(npyscreen.BufferPager, maxlen=h, relx=1, rely=h+2, max_width=w-2) # , height=h-2, width=w-2)
         self.commLog.editable = False
         self.commLog._need_update = False
         # self.commLog.buffer(["Scrolling buffer:"])
@@ -283,7 +283,7 @@ class MainForm(npyscreen.FormBaseNew):
         t = self.add(npyscreen.FixedText, value = "Application Log:", relx=w, rely=h, color='LABEL') 
         t.editable = False
 
-        self.appLog = self.add(npyscreen.BufferPager, maxlen=h, relx=w, rely=h+2, width=w-3) # , height=h-2, width=w-2)
+        self.appLog = self.add(npyscreen.BufferPager, maxlen=h, relx=w, rely=h+2, max_width=w-3) # , height=h-2, width=w-2)
         self.appLog.editable = False
         self.appLog._need_update = False
 
@@ -452,7 +452,7 @@ class MainForm(npyscreen.FormBaseNew):
 
             self.extGripC.set_value( "%8.1f" % (100.0/slippageAvg1))
         else:
-            self.extGripC.set_value( "--" )
+            self.extGripC.set_value( "      --" )
 
         if slippageAvg10 > 0:
             self.extGrip.set_value( "%.1f %%" % (100.0/slippageAvg10) )
@@ -484,10 +484,10 @@ class MainForm(npyscreen.FormBaseNew):
             if slippageAvg1 > 0 and slippageAvg10 > 0:
                 fr1 = self.frAvg1.mean()
                 fr10 = self.frAvg10.mean()
-                self.extRateC.set_value("%.1f/%.1f" % (fr1/slippageAvg1, fr1))
+                self.extRateC.set_value("%8.1f/%.1f" % (fr1/slippageAvg1, fr1))
                 self.extRate.set_value("%.1f/%.1f mm³/s" % (fr10/slippageAvg10, fr10))
             else:
-                self.extRateC.set_value( "--" )
+                self.extRateC.set_value( "      --" )
                 self.extRate.set_value( "--" )
 
             self.extRateC.entry_widget.color = color
