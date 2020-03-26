@@ -1286,6 +1286,7 @@ void Printer::cmdGetPos() {
     txBuffer.sendResponseEnd();
 }
 
+#if 0
 void Printer::cmdGetDirBits() {
 
     uint8_t dirbits =
@@ -1298,6 +1299,7 @@ void Printer::cmdGetDirBits() {
     txBuffer.sendResponseUint8(dirbits);
     txBuffer.sendResponseEnd();
 }
+#endif
 
 // uint16_t waitCount = 0;
 void Printer::cmdGetStatus() {
@@ -1772,9 +1774,11 @@ class UsbCommand : public Protothread {
                     //
                     // Commands with response payload
                     //
+#if 0
                     case CmdGetDirBits:
                         printer.cmdGetDirBits();
                         break;
+#endif
                     case CmdGetStatus:
                         printer.cmdGetStatus();
                         break;
