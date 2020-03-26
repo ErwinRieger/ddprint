@@ -127,22 +127,22 @@ inline uint8_t st_get_dir_pin<EAxisSelector>() {
 #endif
 
 template<typename MOVE>
-void st_write_dir_pin(bool);
+void st_write_dir_pin(uint8_t);
 
 template<>
-inline void st_write_dir_pin<XAxisSelector>(bool v) {
+inline void st_write_dir_pin<XAxisSelector>(uint8_t v) {
     WRITE( X_DIR_PIN, v);
 }
 template<>
-inline void st_write_dir_pin<YAxisSelector>(bool v) {
+inline void st_write_dir_pin<YAxisSelector>(uint8_t v) {
     WRITE( Y_DIR_PIN, v);
 }
 template<>
-inline void st_write_dir_pin<ZAxisSelector>(bool v) {
+inline void st_write_dir_pin<ZAxisSelector>(uint8_t v) {
     WRITE( Z_DIR_PIN, v);
 }
 template<>
-inline void st_write_dir_pin<EAxisSelector>(bool v) {
+inline void st_write_dir_pin<EAxisSelector>(uint8_t v) {
     WRITE( E0_DIR_PIN, v);
 }
 
@@ -209,22 +209,22 @@ inline void st_write_step_pin<EAxisSelector>(uint8_t v) {
 }
 
 template<typename MOVE>
-bool st_get_positive_dir();
+uint8_t st_get_positive_dir();
 
 template<>
-inline bool st_get_positive_dir<XAxisSelector>() {
+inline uint8_t st_get_positive_dir<XAxisSelector>() {
     return POSITIVE_X_DIR;
 }
 template<>
-inline bool st_get_positive_dir<YAxisSelector>() {
+inline uint8_t st_get_positive_dir<YAxisSelector>() {
     return POSITIVE_Y_DIR;
 }
 template<>
-inline bool st_get_positive_dir<ZAxisSelector>() {
+inline uint8_t st_get_positive_dir<ZAxisSelector>() {
     return POSITIVE_Z_DIR;
 }
 template<>
-inline bool st_get_positive_dir<EAxisSelector>() {
+inline uint8_t st_get_positive_dir<EAxisSelector>() {
     return POSITIVE_E1_DIR;
 }
 

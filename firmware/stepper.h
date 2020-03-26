@@ -166,6 +166,7 @@ inline void st_set_direction(uint8_t dirbits) {
         st_write_dir_pin<MOVE>(! st_get_positive_dir<MOVE>());
 }
 
+#if 0
 template<typename MOVE>
 inline uint8_t st_get_direction() {
 
@@ -182,6 +183,7 @@ inline uint8_t st_get_direction() {
 
     return 0;
 }
+#endif
 
 #define X_ENDSTOP_PRESSED (READ(X_STOP_PIN) != X_ENDSTOPS_INVERTING)
 #define Y_ENDSTOP_PRESSED (READ(Y_STOP_PIN) != Y_ENDSTOPS_INVERTING)
