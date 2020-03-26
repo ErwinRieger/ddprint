@@ -906,7 +906,7 @@ bool FillBufferTask::Run() {
                 targetHeater = *sDReader.readData;
                 targetTemp = FromBuf(uint16_t, sDReader.readData+1);
 
-                PT_WAIT_UNTIL( printer.printerState == Printer::StateStart ); // ??? useful?
+                // PT_WAIT_UNTIL( printer.printerState == Printer::StateStart ); // ??? useful?
                 printer.cmdSetTargetTemp(targetHeater, targetTemp);
 
                 PT_RESTART();
@@ -932,7 +932,7 @@ bool FillBufferTask::Run() {
                 targetHeater = *sDReader.readData;
                 heaterPWM = *(sDReader.readData+1);
 
-                PT_WAIT_UNTIL( printer.printerState == Printer::StateStart ); // ??? useful?
+                // PT_WAIT_UNTIL( printer.printerState == Printer::StateStart ); // ??? useful?
                 tempControl.setTempPWM(targetHeater, heaterPWM);
 
                 PT_RESTART();
@@ -963,7 +963,7 @@ bool FillBufferTask::Run() {
 
                 pulseTime -= pulse;
 
-                PT_WAIT_UNTIL( printer.printerState == Printer::StateStart ); // ??? useful?
+                // PT_WAIT_UNTIL( printer.printerState == Printer::StateStart ); // ??? useful?
 
                 // Hotend full throttle, pwm value is reset with next heater run (every 100mS),
                 // temp is reset in loop()!
@@ -1026,8 +1026,6 @@ void Printer::printerInit() {
     eotReceived = false;
 
     analogWrite(LED_PIN, 255);
-
-    bufferLow = -1;
 }
 
 
@@ -1074,6 +1072,8 @@ void Printer::cmdMove(MoveType mt) {
     enable_y();
     enable_z();
     enable_e0();
+
+    bufferLow = -1;
 
 #if defined(HASFILAMENTSENSOR)
     filamentSensor.init();
@@ -1226,6 +1226,9 @@ void Printer::checkMoveFinished() {
 
             // Reset swap/buffers
             fillBufferTask.flush();
+
+            eotReceived = false;
+            bufferLow = -1;
         }
     }
 }
