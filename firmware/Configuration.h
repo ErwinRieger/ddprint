@@ -114,14 +114,13 @@ const bool Z_ENDSTOPS_INVERTING = true; // set to true to invert the logic of th
 #define E_ENABLE_ON LOW // For all extruders
 
 //
-// Stepper direction pins. Set this to true, if the output pin has to be switched HIGH
-// for a movement into positive direction.
+// Stepper direction pins. Set this to the logical level for a movement into positive direction.
 //
-#define POSITIVE_X_DIR false
-#define POSITIVE_Y_DIR true
-#define POSITIVE_Z_DIR false
-#define POSITIVE_E1_DIR false
-#define POSITIVE_E2_DIR false
+#define POSITIVE_X_DIR LOW
+#define POSITIVE_Y_DIR HIGH
+#define POSITIVE_Z_DIR LOW
+#define POSITIVE_E1_DIR LOW
+#define POSITIVE_E2_DIR LOW
 
 // ENDSTOP SETTINGS:
 // Sets direction of endstops when homing; 1=MAX, -1=MIN
