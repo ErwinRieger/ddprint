@@ -126,14 +126,14 @@ def isPrintMove(displacement_vector):
 
 class UM2GcodeParser: 
 
-    # __single = None 
+    __single = None 
 
     def __init__(self, planner, logger=None, travelMovesOnly=False):
 
-        # if UM2GcodeParser.__single:
-            # raise RuntimeError('A UM2GcodeParser already exists')
+        if UM2GcodeParser.__single:
+            raise RuntimeError('A UM2GcodeParser already exists')
 
-        # UM2GcodeParser.__single = self
+        UM2GcodeParser.__single = self
 
         if logger:
             self.logger = logger
@@ -187,8 +187,8 @@ class UM2GcodeParser:
         self.planner = planner
 
     # @classmethod
-    # def get(cls):
-        # return cls.__single
+    def get(cls):
+        return cls.__single
 
     def reset(self):
 

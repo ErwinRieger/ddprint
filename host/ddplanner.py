@@ -138,7 +138,7 @@ class StepRounders(object):
 
 class PathData (object):
 
-    def __init__(self, planner, travelMovesOnly=False):
+    def __init__(self, planner):
 
         self.planner = planner
 
@@ -149,7 +149,7 @@ class PathData (object):
 
         self.Tu = PrinterProfile.getTu()
 
-        if not travelMovesOnly:
+        if not planner.travelMovesOnly:
 
             hwVersion = PrinterProfile.getHwVersion()
             nozzleDiam = NozzleProfile.getSize()
@@ -271,14 +271,14 @@ class DebugPlot (object):
 
 class Planner (object):
 
-    # __single = None 
+    __single = None 
 
     def __init__(self, args, gui=None, travelMovesOnly=False):
 
-        # if Planner.__single:
-            # raise RuntimeError('A Planner already exists')
+        if Planner.__single:
+            raise RuntimeError('A Planner already exists')
 
-        # Planner.__single = self
+        Planner.__single = self
 
         if gui:
             self.gui = gui
@@ -331,15 +331,16 @@ class Planner (object):
         self.l0TempIncrease = Layer0TempIncrease
 
         self.plotfile = None
+        self.travelMovesOnly = travelMovesOnly
 
         if not travelMovesOnly:
             self.advance = Advance(self, args)
 
-        self.reset(travelMovesOnly)
+        self.reset()
 
-    def reset(self, travelMovesOnly=False):
+    def reset(self):
 
-        self.pathData = PathData(self, travelMovesOnly)
+        self.pathData = PathData(self)
 
         self.syncCommands = collections.defaultdict(list)
         self.partNumber = 1
@@ -349,8 +350,8 @@ class Planner (object):
         self.curDirBits = None
 
     # @classmethod
-    # def get(cls):
-        # return cls.__single
+    def get(cls):
+        return cls.__single
 
     def getJerk(self):
 
@@ -579,7 +580,7 @@ class Planner (object):
             print "***** End planTravelPath() *****"
 
     # xxx should be called finishPath()
-    def finishMoves(self, travelMovesOnly=False):
+    def finishMoves(self):
 
         # debug
         self.stepRounders.check()
@@ -602,7 +603,7 @@ class Planner (object):
                 self.planTravelPath(self.pathData.path)
 
         assert(not self.syncCommands)
-        self.reset(travelMovesOnly)
+        self.reset()
 
     def streamMove(self, move):
 
@@ -909,9 +910,7 @@ class Planner (object):
 
         dirBits = util.directionBits(dispS)
 
-        print "1: Dirbits: ", id(self), self.curDirBits, "-->", dirBits
-
-        if True: # if dirBits != self.curDirBits:
+        if dirBits != self.curDirBits:
             move.stepData.setDirBits = True
             move.stepData.dirBits = dirBits
             self.curDirBits = dirBits

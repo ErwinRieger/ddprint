@@ -251,13 +251,13 @@ class MainForm(npyscreen.FormBaseNew):
         self.underrun.editable = False
 
         rely += 1
-        self.extGripC = self.add(npyscreen.TitleFixedText, name =  "Feeder Grip         :", relx=w, rely=rely, use_two_lines=False, begin_entry_at=23)
+        self.extGripC = self.add(npyscreen.TitleFixedText, name =  "Feeder Grip (avg)   :", relx=w, rely=rely, use_two_lines=False, begin_entry_at=23)
         self.extGrip = self.add(npyscreen.TitleFixedText, relx=w+int(w*0.50), width=int(0.25*w), rely=rely, use_two_lines=False, begin_entry_at=0)
         self.extGripC.editable = False
         self.extGrip.editable = False
 
         rely += 1
-        self.extRateC = self.add(npyscreen.TitleFixedText, name =  "Extrusion Rate      :", relx=w, rely=rely, use_two_lines=False, begin_entry_at=27)
+        self.extRateC = self.add(npyscreen.TitleFixedText, name =  "Extrusion Rate (avg):", relx=w, rely=rely, use_two_lines=False, begin_entry_at=27)
         self.extRate = self.add(npyscreen.TitleFixedText, relx=w+int(w*0.50), width=int(0.25*w), rely=rely, use_two_lines=False, begin_entry_at=0)
         self.extRateC.editable = False
         self.extRate.editable = False
@@ -317,17 +317,22 @@ class MainForm(npyscreen.FormBaseNew):
         parser = argparse.ArgumentParser(description='%s, Direct Drive USB Print.' % sys.argv[0])
         parser.add_argument("-d", dest="device", action="store", type=str, help="Device to use, default: /dev/ttyACM0.", default="/dev/ttyACM0")
         parser.add_argument("-b", dest="baud", action="store", type=int, help="Baudrate, default 500000.", default=500000)
-        parser.add_argument("-f", dest="file", action="store", type=str, help="Gcode to print")
         parser.add_argument("-F", dest="fakeendstop", action="store", type=bool, help="fake endstops", default=False)
         parser.add_argument("-nc", dest="noCoolDown", action="store", type=bool, help="Debug: don't wait for heater cool down after print.", default=False)
         parser.add_argument("-t0", dest="t0", action="store", type=int, help="Temp 0 (heated bed), default comes from mat. profile.")
         parser.add_argument("-t1", dest="t1", action="store", type=int, help="Temp 1 (hotend 1), default comes from mat. profile.")
         parser.add_argument("-kAdvance", dest="kAdvance", action="store", type=float, help="K-Advance factor, default comes from mat. profile.")
-        parser.add_argument("-mat", dest="mat", action="store", help="Name of material profile to use [pla, abs...], default is pla.", default="pla_1.75mm")
         parser.add_argument("-rl", dest="retractLength", action="store", type=float, help="Retraction length, default comes from printer profile.", default=0)
         parser.add_argument("-inctemp", dest="inctemp", action="store", type=int, help="Increase extruder temperature niveau (layer bonding).", default=0)
+
         parser.add_argument("-smat", dest="smat", action="store", help="Name of specific material profile to use.")
-        parser.add_argument("-noz", dest="nozzle", action="store", help="Name of nozzle profile to use [nozzle40, nozzle80...], default is nozzle40.", default="nozzle40")
+        # parser.add_argument("-noz", dest="nozzle", action="store", help="Name of nozzle profile to use [nozzle40, nozzle80...], default is nozzle40.", default="nozzle40")
+        # parser.add_argument("-mat", dest="mat", action="store", help="Name of material profile to use [pla, abs...], default is pla.", default="pla_1.75mm")
+        # parser.add_argument("-f", dest="file", action="store", type=str, help="Gcode to print")
+
+        parser.add_argument("nozzle", help="Name of nozzle profile to use [nozzle40, nozzle80...].")
+        parser.add_argument("mat", help="Name of generic material profile to use [pla, abs...].")
+        parser.add_argument("file", help="Input GCode file.")
 
         self.args = parser.parse_args()
         self.args.mode = "dlprint"
@@ -335,7 +340,11 @@ class MainForm(npyscreen.FormBaseNew):
         # print "args: ", self.args
 
         (self.parser, self.planner, self.printer) = ddprint.initParser(self.args, gui=self)
-        # util.commonInit(self.args, self.parser)
+        # util.commonInit(self.args, self.printer, self.planner, self.parser)
+
+        self.mat_t0 = MatProfile.getBedTemp()
+        self.mat_t0_reduced = MatProfile.getBedTempReduced()
+        self.mat_t1 = MatProfile.getHotendGoodTemp() + self.planner.l0TempIncrease
 
         self.guiQueue.put(SyncCallUpdate(self.printerProfile.set_value, PrinterProfile.get().name))
         self.guiQueue.put(SyncCallUpdate(self.nozzleProfile.set_value, self.args.nozzle))
@@ -348,15 +357,12 @@ class MainForm(npyscreen.FormBaseNew):
         self.guiQueue.put(SyncCallUpdate(self.fn.set_value, self.args.file))
         
         try:
-            self.printer.commandInit(self.args, PrinterProfile.getSettings())
+            # self.printer.commandInit(self.args, PrinterProfile.getSettings())
+            util.commonInit(self.args, self.printer, self.planner, self.parser)
         except SerialException:
             msg = "Can't open serial device '%s' (baudrate: %d)!\n\nPress OK to exit." % (self.args.device, self.args.baud)
             self.guiQueue.put(SyncCall(self.quit, msg))
             return
-
-        self.mat_t0 = MatProfile.getBedTemp()
-        self.mat_t0_reduced = MatProfile.getBedTempReduced()
-        self.mat_t1 = MatProfile.getHotendGoodTemp() + self.planner.l0TempIncrease
 
         while True:
 
@@ -422,25 +428,35 @@ class MainForm(npyscreen.FormBaseNew):
 
         self.underrun.update()
 
-
         slippage = status["slippage"]
         self.gripAvg1.add(slippage)
         self.gripAvg10.add(slippage)
 
-        slippageAvg1 = self.gripAvg1.mean()
-        slippageAvg10 = self.gripAvg10.mean()
+        slippageAvg1 = 0.0
+        if self.gripAvg1.valid():
+            slippageAvg1 = self.gripAvg1.mean()
 
-        color = "DANGER"
-        if slippage <= (1/.85):
-            color = "GOOD"
-        elif slippage <= (1/0.75):
-            color = "WARNING"
+        slippageAvg10 = 0.0
+        if self.gripAvg10.valid():
+            slippageAvg10 = self.gripAvg10.mean()
 
-        if slippageAvg1 and slippageAvg10:
+        color = "GOOD"
+
+        if slippageAvg1 > 0:
+        
+            color = "DANGER"
+            if slippage <= (1/.85):
+                color = "GOOD"
+            elif slippage <= (1/0.75):
+                color = "WARNING"
+
             self.extGripC.set_value( "%8.1f" % (100.0/slippageAvg1))
-            self.extGrip.set_value( "%.1f %%" % (100.0/slippageAvg10) )
         else:
             self.extGripC.set_value( "--" )
+
+        if slippageAvg10 > 0:
+            self.extGrip.set_value( "%.1f %%" % (100.0/slippageAvg10) )
+        else:
             self.extGrip.set_value( "--" )
 
         self.extGripC.entry_widget.color = color
@@ -465,11 +481,11 @@ class MainForm(npyscreen.FormBaseNew):
             self.frAvg1.add(flowrate)
             self.frAvg10.add(flowrate)
 
-            if slippageAvg1 and slippageAvg10:
+            if slippageAvg1 > 0 and slippageAvg10 > 0:
                 fr1 = self.frAvg1.mean()
                 fr10 = self.frAvg10.mean()
-                self.extRateC.set_value("%.1f/%.1f" % (fr1, fr1/slippageAvg1))
-                self.extRate.set_value("%.1f/%.1f mm³/s" % (fr10, fr10/slippageAvg10))
+                self.extRateC.set_value("%.1f/%.1f" % (fr1/slippageAvg1, fr1))
+                self.extRate.set_value("%.1f/%.1f mm³/s" % (fr10/slippageAvg10, fr10))
             else:
                 self.extRateC.set_value( "--" )
                 self.extRate.set_value( "--" )
@@ -507,13 +523,14 @@ class MainForm(npyscreen.FormBaseNew):
     def preheat(self):
 
         t = int(self.mat_t0 * 0.9)
-        self.log( "\nPre-Heating bed (t0: %d)...\n" % t)
+        self.log( "Pre-Heating bed (t0: %d)...\n" % t)
         self.printer.heatUp(HeaterBed, t)
 
-        time.sleep(10)
+        self.log( "Waiting 30 seconds... (weak power supply)\n")
+        time.sleep(30)
 
         t = int(self.mat_t1 * 0.5)
-        self.log( "\nPre-Heating extruder (t1: %d)...\n" % t)
+        self.log( "Pre-Heating extruder (t1: %d)...\n" % t)
         self.printer.heatUp(HeaterEx1, t)
 
     def preparePrintFile(self):
@@ -538,21 +555,20 @@ class MainForm(npyscreen.FormBaseNew):
 
         try:
 
-            self.parser.reset()
-            self.planner.reset()
-
-            ddhome.home(args, self.parser)
+            # self.parser.reset()
+            # self.planner.reset()
 
             util.downloadTempTable(self.printer)
 
             # Send heat up  command
-            self.log( "\nPre-Heating bed (t0: %d)...\n" % self.mat_t0)
+            self.log( "Pre-Heating bed (t0: %d)...\n" % self.mat_t0)
             self.printer.heatUp(HeaterBed, self.mat_t0)
 
-            time.sleep(10)
+            self.log( "Waiting 30 seconds... (weak power supply)\n")
+            time.sleep(30)
 
             t = int(round(self.mat_t1 * 0.5))
-            self.log( "\nPre-Heating extruder (t1: %d)...\n" % t)
+            self.log( "Pre-Heating extruder (t1: %d)...\n" % t)
             self.printer.heatUp(HeaterEx1, t)
 
             f = self.parser.preParse(self.fn.get_value())
@@ -573,15 +589,15 @@ class MainForm(npyscreen.FormBaseNew):
 
                     if lineNr > 1000 and not printStarted:
 
-                        self.log( "\nHeating bed (t0: %d)...\n" % self.mat_t0 )
+                        self.log( "Heating bed (t0: %d)...\n" % self.mat_t0 )
                         self.printer.heatUp(HeaterBed, self.mat_t0, wait=self.mat_t0)
 
                     
                         # avoid big overswing
-                        self.log( "\nHeating extruder (t1: %d)...\n" % (int(round(self.mat_t1*0.9))) )
+                        self.log( "Heating extruder (t1: %d)...\n" % (int(round(self.mat_t1*0.9))) )
                         self.printer.heatUp(HeaterEx1, int(round(self.mat_t1*0.9)), self.mat_t1*0.9-2)
 
-                        self.log( "\nHeating extruder (t1: %d)...\n" % self.mat_t1 )
+                        self.log( "Heating extruder (t1: %d)...\n" % self.mat_t1 )
                         self.printer.heatUp(HeaterEx1, self.mat_t1, self.mat_t1-2)
 
                         # Send print command
@@ -619,9 +635,9 @@ class MainForm(npyscreen.FormBaseNew):
             # Start print if less than 1000 lines or temp not yet reached:
             if not printStarted:
 
-                self.log( "\nHeating bed (t0: %d)...\n" % self.mat_t0 )
+                self.log( "Heating bed (t0: %d)...\n" % self.mat_t0 )
                 self.printer.heatUp(HeaterBed, self.mat_t0, self.mat_t0)
-                self.log( "\nHeating extruder (t1: %d)...\n" % self.mat_t1 )
+                self.log( "Heating extruder (t1: %d)...\n" % self.mat_t1 )
                 self.printer.heatUp(HeaterEx1, self.mat_t1, self.mat_t1-1)
 
                 # Send print command
@@ -645,7 +661,7 @@ class MainForm(npyscreen.FormBaseNew):
             self.printer.coolDown(HeaterEx1)
             self.printer.coolDown(HeaterBed)
 
-            ddhome.home(args, self.parser)
+            ddhome.home(self.args, self.printer, self.planner, self.parser)
 
             self.printer.sendCommand(CmdDisableSteppers)
 

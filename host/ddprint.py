@@ -309,8 +309,10 @@ def initParser(args, mode=None, gui=None):
     else:
         NozzleProfile(nozzle)
 
-    planner = Planner(args, gui)
+    # Create planner singleton instance
+    planner = Planner(args, gui=gui)
 
+    # Create parser singleton instance
     parser = gcodeparser.UM2GcodeParser(planner, logger=gui)
 
     return (parser, planner, printer)
@@ -466,7 +468,7 @@ def main():
 
         (parser, planner, printer) = initParser(args, mode=args.mode)
 
-        util.commonInit(args, printer)
+        util.commonInit(args, printer, planner, parser)
 
         t0 = MatProfile.getBedTemp()
         t1 = MatProfile.getHotendGoodTemp() + planner.l0TempIncrease
@@ -552,7 +554,7 @@ def main():
         printer.coolDown(HeaterEx1)
         printer.coolDown(HeaterBed)
 
-        ddhome.home(args, printer)
+        ddhome.home(args, printer, planner, parser)
 
         printer.sendCommand(CmdDisableSteppers)
 
@@ -597,7 +599,10 @@ def main():
 
         assert(args.axis.upper() in "XYZAB")
 
-        printer.commandInit(args, PrinterProfile.getSettings())
+        printer = Printer()
+        initPrinterProfile(args)
+        planner = Planner(args, travelMovesOnly=True)
+        parser = gcodeparser.UM2GcodeParser(planner, travelMovesOnly=True)
         axis = util.dimIndex[args.axis.upper()]
         util.manualMove(parser, axis, args.distance, args.feedrate)
 
@@ -605,7 +610,10 @@ def main():
 
         assert(args.axis.upper() in "XYZAB")
 
-        printer.commandInit(args, PrinterProfile.getSettings())
+        printer = Printer()
+        initPrinterProfile(args)
+        planner = Planner(args, travelMovesOnly=True)
+        parser = gcodeparser.UM2GcodeParser(planner, travelMovesOnly=True)
         axis = util.dimIndex[args.axis.upper()]
         util.manualMove(parser, axis, args.distance, args.feedrate, True)
 
@@ -704,7 +712,10 @@ def main():
 
         printer = Printer()
         initPrinterProfile(args)
-        ddhome.home(args, printer)
+        planner = Planner(args, printer.gui, travelMovesOnly=True)
+        parser = gcodeparser.UM2GcodeParser(planner, logger=printer.gui, travelMovesOnly=True)
+
+        ddhome.home(args, printer, planner, parser)
 
     elif args.mode == 'todo zRepeatability':
 

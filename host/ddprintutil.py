@@ -697,11 +697,11 @@ def directionBits(disp):
 
 ####################################################################################################
 
-def commonInit(args, printer):
+def commonInit(args, printer, planner, parser):
 
     # done by home: printer.commandInit(args, PrinterProfile.getSettings())
 
-    ddhome.home(args, printer)
+    ddhome.home(args, printer, planner, parser)
     downloadTempTable(printer)
 
 ####################################################################################################
@@ -787,7 +787,7 @@ def manualMove(parser, axis, distance, feedrate=0, absolute=False):
     planner = parser.planner
     printer = planner.printer
 
-    printer.commandInit(args, PrinterProfile.getSettings())
+    # printer.commandInit(args, PrinterProfile.getSettings())
 
     assert(printer.isHomed())
 
@@ -806,7 +806,7 @@ def manualMove(parser, axis, distance, feedrate=0, absolute=False):
         assert(abs(distance) <= 1000)
         parser.execute_line("G0 F%d %s%f" % (feedrate*60, dimNames[axis], current_position[axis] + distance))
 
-    planner.finishMoves(travelMovesOnly=True)
+    planner.finishMoves()
 
     printer.sendCommand(CmdEOT)
 
@@ -850,7 +850,7 @@ def insertFilament(args, parser, feedrate):
             # XXX hardcoded feedrate
             parser.execute_line("G0 F%d A%f" % (5*60, aofs))
 
-            planner.finishMoves(travelMovesOnly=True)
+            planner.finishMoves()
             printer.sendCommandParamV(CmdMove, [MoveTypeNormal])
             printer.sendCommand(CmdEOT)
             printer.waitForState(StateInit, wait=0.1)
@@ -859,7 +859,7 @@ def insertFilament(args, parser, feedrate):
     maxFeedrate = PrinterProfile.getMaxFeedrate(X_AXIS)
     parser.execute_line("G0 F%d X%f Y%f" % (maxFeedrate*60, planner.MAX_POS[X_AXIS]/2, planner.MAX_POS[Y_AXIS]/2))
 
-    planner.finishMoves(travelMovesOnly=True)
+    planner.finishMoves()
 
     printer.sendCommandParamV(CmdMove, [MoveTypeNormal])
     printer.sendCommand(CmdEOT)
@@ -882,7 +882,7 @@ def insertFilament(args, parser, feedrate):
     # Retract
     #
     parser.execute_line("G10")
-    planner.finishMoves(travelMovesOnly=True)
+    planner.finishMoves()
 
     printer.sendCommandParamV(CmdMove, [MoveTypeNormal])
     printer.sendCommand(CmdEOT)
@@ -907,7 +907,7 @@ def removeFilament(args, parser, feedrate):
     maxFeedrate = PrinterProfile.getMaxFeedrate(X_AXIS)
     parser.execute_line("G0 F%d X%f Y%f" % (maxFeedrate*60, planner.MAX_POS[X_AXIS]/2, planner.MAX_POS[Y_AXIS]/2))
 
-    planner.finishMoves(travelMovesOnly=True)
+    planner.finishMoves()
 
     printer.sendCommandParamV(CmdMove, [MoveTypeNormal])
     printer.sendCommand(CmdEOT)

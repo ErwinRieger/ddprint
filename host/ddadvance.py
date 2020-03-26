@@ -1638,9 +1638,7 @@ class Advance (object):
 
         dirBits = util.directionBits(dispS)
 
-        print "2: Dirbits: ", id(self), self.planner.curDirBits, "-->", dirBits
-
-        if True: # if dirBits != self.planner.curDirBits:
+        if dirBits != self.planner.curDirBits:
             move.stepData.setDirBits = True
             move.stepData.dirBits = dirBits
             self.planner.curDirBits = dirBits
@@ -1798,9 +1796,7 @@ class Advance (object):
 
         dirBits = util.directionBits(dispS)
 
-        print "3: Dirbits: ", id(self), self.planner.curDirBits, "-->", dirBits
-
-        if True: # if dirBits != self.planner.curDirBits:
+        if dirBits != self.planner.curDirBits:
             move.stepData.setDirBits = True
             move.stepData.dirBits = dirBits
             self.planner.curDirBits = dirBits

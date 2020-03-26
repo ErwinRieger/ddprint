@@ -59,7 +59,7 @@ CmdStopMove = 138
 # Set heater PWM value (stellgrösse) directly, used by PID autoTune. Parameters: heater, pwmvalue
 CmdSetHeaterY = 139
 
-CmdGetDirBits = 150
+# CmdGetDirBits = 150
 # Get homed flag
 CmdGetHomed = 151
 # Get endstop switch state
@@ -134,7 +134,7 @@ for (cmd, cmdName) in [
     (CmdRaw, "CmdRaw",),
     
     # Getters
-    (CmdGetDirBits, "CmdGetDirBits",),
+    # (CmdGetDirBits, "CmdGetDirBits",),
     (CmdGetHomed, "CmdGetHomed",),
     (CmdGetEndstops, "CmdGetEndstops",),
     # currently not used: CmdDisableStepperIsr: "CmdDisableStepperIsr",

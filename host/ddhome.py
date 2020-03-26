@@ -50,7 +50,7 @@ def homeMove(parser, dim, direction, dist, fakeHomingEndstops, feedRateFactor=1.
 
     parser.execute_line(cmd);
 
-    planner.finishMoves(travelMovesOnly=True)
+    planner.finishMoves()
 
     # Send homing command
     printer.sendCommandParamV(CmdMove, [MoveTypeHoming])
@@ -88,13 +88,7 @@ def homeBounce(parser, dim, fakeHomingEndstops):
 
 ####################################################################################################
 
-def home(args, printer, force=False):
-
-    # xxxx debug, check if printer is a instance of Printer
-    printer.lineNr
-
-    planner = Planner(args, printer.gui, travelMovesOnly=True)
-    parser = gcodeparser.UM2GcodeParser(planner, logger=printer.gui, travelMovesOnly=True)
+def home(args, printer, planner, parser, force=False):
 
     print "*"
     print "* Start homing..."
@@ -127,7 +121,7 @@ def home(args, printer, force=False):
                     PrinterProfile.getMaxFeedrate(util.X_AXIS)*60, 
                     homePosMM.X, homePosMM.Y))
 
-            planner.finishMoves(travelMovesOnly=True)
+            planner.finishMoves()
             printer.sendCommandParamV(CmdMove, [MoveTypeNormal])
             printer.sendCommand(CmdEOT)
 
