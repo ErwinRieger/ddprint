@@ -252,13 +252,13 @@ class MainForm(npyscreen.FormBaseNew):
 
         rely += 1
         self.extGripC = self.add(npyscreen.TitleFixedText, name =  "Feeder Grip (avg)   :", relx=w, rely=rely, use_two_lines=False, begin_entry_at=23)
-        self.extGrip = self.add(npyscreen.TitleFixedText, relx=w+int(w*0.4), max_width=int(0.25*w), rely=rely, use_two_lines=False, begin_entry_at=0)
+        self.extGrip = self.add(npyscreen.TitleFixedText, relx=w+int(w*0.5), max_width=int(0.25*w), rely=rely, use_two_lines=False, begin_entry_at=0)
         self.extGripC.editable = False
         self.extGrip.editable = False
 
         rely += 1
         self.extRateC = self.add(npyscreen.TitleFixedText, name =  "Extrusion Rate (avg):", relx=w, rely=rely, use_two_lines=False, begin_entry_at=23)
-        self.extRate = self.add(npyscreen.TitleFixedText, relx=w+int(w*0.4), max_width=int(0.25*w), rely=rely, use_two_lines=False, begin_entry_at=0)
+        self.extRate = self.add(npyscreen.TitleFixedText, relx=w+int(w*0.5), max_width=int(0.25*w), rely=rely, use_two_lines=False, begin_entry_at=0)
         self.extRateC.editable = False
         self.extRate.editable = False
 
