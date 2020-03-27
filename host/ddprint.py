@@ -291,7 +291,7 @@ def initMatProfile(args, printerName):
 
     return mat
 
-def initParser(args, mode=None, gui=None):
+def initParser(args, mode=None, gui=None, travelMovesOnly=False):
 
     # Create the Printer singleton instance
     printer = Printer(gui=gui)
@@ -310,10 +310,10 @@ def initParser(args, mode=None, gui=None):
         NozzleProfile(nozzle)
 
     # Create planner singleton instance
-    planner = Planner(args, gui=gui)
+    planner = Planner(args, gui=gui, travelMovesOnly=travelMovesOnly)
 
     # Create parser singleton instance
-    parser = gcodeparser.UM2GcodeParser(planner, logger=gui)
+    parser = gcodeparser.UM2GcodeParser(planner, logger=gui, travelMovesOnly=travelMovesOnly)
 
     return (parser, planner, printer)
 
@@ -619,16 +619,12 @@ def main():
 
     elif args.mode == 'insertFilament':
 
-        # (parser, _, _) = initParser(args, mode=args.mode, travelMovesOnly=True)
-        planner = Planner(args, travelMovesOnly=True)
-        parser = gcodeparser.UM2GcodeParser(planner, travelMovesOnly=True)
+        (parser, _, _) = initParser(args, mode=args.mode, travelMovesOnly=True)
         util.insertFilament(args, parser, args.feedrate)
 
     elif args.mode == 'removeFilament':
 
-        # (parser, _, _) = initParser(args, mode=args.mode, travelMovesOnly=True)
-        planner = Planner(args, travelMovesOnly=True)
-        parser = gcodeparser.UM2GcodeParser(planner, travelMovesOnly=True)
+        (parser, _, _) = initParser(args, mode=args.mode, travelMovesOnly=True)
         util.removeFilament(args, parser, args.feedrate)
 
     elif args.mode == 'bedLeveling':
