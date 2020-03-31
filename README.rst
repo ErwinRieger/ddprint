@@ -20,6 +20,7 @@ DDPrint FDM firmware: `http://github.com/ErwinRieger/ddprint <http://github.com/
 
 Project homepage: `http://www.ibrieger.de/close_the_loop_for_e.html <http://www.ibrieger.de/close_the_loop_for_e.html>`_.
 
+Video: https://youtu.be/1Kbl9AZd10Y
 
 Features
 +++++++++++++
