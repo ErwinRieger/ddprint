@@ -104,4 +104,9 @@ Run PID autotune to determine the hotend PID parameters:
     cd pid_tune
     PYTHONPATH=.. ./pidAutoTune.py ../autotune.raw.json
 
+Print a gcode file with the TUI:
+
+.. code-block:: sh
+
+    ./ddprintui.py  -smat esun_petg_transparent-orange-6-922572-263079 nozzle80 petg_1.75mm /3dmodels/tests/s3d/quader_10x20.gcode
 
