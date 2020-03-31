@@ -35,6 +35,8 @@ CmdSyncTargetTemp= 0xb # Parameters: heater, temp
 CmdDwellMS       = 0xc # Parameters: dwell time in mS
 CmdG1Raw         = 0xd # Raw print move steps, bresenham algo already done.
 # CmdDirG1Raw      = 0xe # CmdDirBits and CmdG1Raw combined
+CmdSyncHotendPWM = 0xf # Set hotend pmw value, Parameters: heater, pmw value
+CmdSyncHotendPulse = 0x10 # Hotend pmw pulss, Parameters: heater, pulsewidth [ms]
 
 CmdUnknown       = 0x7f # Unknown command for debugging
 
@@ -52,20 +54,16 @@ CmdResetLineNr = 131
 CmdSetHomePos = 133
 # Set heater target temp
 CmdSetTargetTemp = 134 # Parameters: heater, temp
-# CmdWriteEepromFloat = 135 # Parameters: valuename (len max 63 chars!), value
-# CmdEepromFactory = 136 # Factory reset of eeprom values, bed leveling needed
 CmdFanSpeed = 137
 CmdStopMove = 138
 # Set heater PWM value (stellgrösse) directly, used by PID autoTune. Parameters: heater, pwmvalue
 CmdSetHeaterY = 139
 
-CmdGetDirBits = 150
+# CmdGetDirBits = 150
 # Get homed flag
 CmdGetHomed = 151
 # Get endstop switch state
 CmdGetEndstops = 152   # Get endstop state and pos
-# CmdGetEepromVersion = 153
-# CmdGetEepromSettings = 154
 # currently not used: CmdDisableStepperIsr = 155
 CmdDisableSteppers = 156
 # Get temperatures
@@ -82,13 +80,18 @@ CmdEnableFRLimit = 165 # Enable/disable flowrate limit
 CmdSetContTimer =    166 # Timer value for CmdContinuousE -> E-Speed
 CmdContinuousE =     167 # Start/Stop continuous e-move for filament measurement
 CmdSetFilSensorCal = 168 # Flowrate sensor: set calibration value.
-CmdSetStepsPerMME =  169 # Set steps per mm value
+# CmdSetStepsPerMME =  169 # Set steps per mm value
 CmdSetPrinterName =  170 # Set printer (-profile) name from printer eeprom, payload is a 'pascal string'
 CmdGetPrinterName =  171 # Read printer (-profile) name from printer eeprom, payload is a 'pascal string'
 
 CmdSetPIDValues =    172
 # CmdSetBedlevelOffset = 173
 CmdSetIncTemp   =    174 # Adjust temperature niveau 
+CmdGetFreeMem   =    175 # Get number of free memory bytes
+CmdGetFSReadings =   176 # Get last n filsensor readings
+CmdSetTempPWM =      177 # Set PWM value of hotend heater (for filament profile measurement)
+# CmdSetP0pwm   =      178 # Set PWM value of hotend heater (for filament profile measurement)
+# CmdSetTu =           179 # Set Tu timeconstant
 
 CommandNames = {
 }
@@ -109,6 +112,8 @@ for (cmd, cmdName) in [
     # CmdDirG1Raw, "CmdDirG1Raw",
     (CmdSyncTargetTemp, "CmdSyncTargetTemp",),
     (CmdDwellMS, "CmdDwellMS",),
+    (CmdSyncHotendPWM, "CmdSyncHotendPWM",),
+    (CmdSyncHotendPulse, "CmdSyncHotendPulse",),
     (CmdUnknown, "CmdUnknown",),
     #
     # Direct commands:
@@ -122,8 +127,6 @@ for (cmd, cmdName) in [
     (CmdResetLineNr, "CmdResetLineNr",),
     (CmdSetHomePos, "CmdSetHomePos",),
     (CmdSetTargetTemp, "CmdSetTargetTemp",),
-    # (CmdWriteEepromFloat, "CmdWriteEepromFloat",),
-    # (CmdEepromFactory, "CmdEepromFactory",),
     (CmdSyncFanSpeed, "CmdSyncFanSpeed",),
     (CmdFanSpeed, "CmdFanSpeed",),
     (CmdStopMove, "CmdStopMove",),
@@ -131,11 +134,9 @@ for (cmd, cmdName) in [
     (CmdRaw, "CmdRaw",),
     
     # Getters
-    (CmdGetDirBits, "CmdGetDirBits",),
+    # (CmdGetDirBits, "CmdGetDirBits",),
     (CmdGetHomed, "CmdGetHomed",),
     (CmdGetEndstops, "CmdGetEndstops",),
-    # (CmdGetEepromVersion, "CmdGetEepromVersion",),
-    # (CmdGetEepromSettings, "CmdGetEepromSettings",),
     # currently not used: CmdDisableStepperIsr: "CmdDisableStepperIsr",
     (CmdDisableSteppers, "CmdDisableSteppers",),
     (CmdGetCurrentTemps, "CmdGetCurrentTemps",),
@@ -150,12 +151,17 @@ for (cmd, cmdName) in [
     (CmdSetContTimer, "CmdSetContTimer",),
     (CmdContinuousE, "CmdContinuousE",),
     (CmdSetFilSensorCal, "CmdSetFilSensorCal",),
-    (CmdSetStepsPerMME, "CmdSetStepsPerMME",),
+    # (CmdSetStepsPerMME, "CmdSetStepsPerMME",),
     (CmdSetPrinterName, "CmdSetPrinterName",),
     (CmdGetPrinterName, "CmdGetPrinterName",),
     (CmdSetPIDValues, "CmdSetPIDValues",),
     # (CmdSetBedlevelOffset, "CmdSetBedlevelOffset",),
     (CmdSetIncTemp, "CmdSetIncTemp",),
+    (CmdGetFreeMem, "CmdGetFreeMem",),
+    (CmdGetFSReadings, "CmdGetFSReadings",),
+    (CmdSetTempPWM, "CmdSetTempPWM",),
+    # (CmdSetP0pwm, "CmdSetP0pwm",),
+    # (CmdSetTu, "CmdSetTu",),
     ]:
 
         insertCommandName(cmd, cmdName)

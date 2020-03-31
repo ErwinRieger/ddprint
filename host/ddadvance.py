@@ -143,18 +143,19 @@ class Advance (object):
         if self.__kAdv == None:
             self.__kAdv = MatProfile.getKAdv()
 
-        self.planner.gui.log("Advance: usinge K-Advance value of %.3f" % self.__kAdv)
-
         self.kFeederComp = 0.0
         if UseFeederCompensation:
 
             hwVersion = PrinterProfile.getHwVersion()
             nozzleDiam = NozzleProfile.getSize()
-            slippage = MatProfile.getSlippage(hwVersion, nozzleDiam)
 
-            tempCurve = MatProfile.get().getTempCurve(hwVersion, nozzleDiam)
+            matProfile = MatProfile.get()
+            slippage = matProfile._getSlippage(hwVersion, nozzleDiam)
 
-            area = MatProfile.getMatArea()
+            tempCurve = matProfile.getTempCurve(hwVersion, nozzleDiam)
+
+            area = matProfile._getMatArea()
+
             flowRate = tempCurve.maxFlowrate                           # [mm³/s]
             feedRate = flowRate / area                                 # [mm/s]
 
@@ -175,6 +176,9 @@ class Advance (object):
 
         self.maxEFeedrate = PrinterProfile.getMaxFeedrate(A_AXIS)
         self.maxFeedrateVector = PrinterProfile.getMaxFeedrateVector()
+
+    def getKAdv(self):
+        return self.__kAdv
 
     def maxAxisAcceleration(self, useAdvance):
 
@@ -266,12 +270,15 @@ class Advance (object):
             # Smooth extrusion rate, compute average extrusion rate of this path and
             # scale the speed of all moves in this path to get an more even flowrate.
             # This decreases the amount of advance ramps.
-            rateList = []
+            rateSum = 0
+            dSum = 0
             for move in path:
 
-                rateList.append(move.topSpeed.speed().eSpeed)
+                d = move.eDistance;
+                rateSum += move.topSpeed.speed().eSpeed * d
+                dSum += d
 
-            avgRate = sum(rateList) / len(rateList)
+            avgRate = rateSum / dSum
             avgRate = min(avgRate, vExtruderMax)
 
             if debugAdvance:
@@ -375,9 +382,7 @@ class Advance (object):
                 if debugPlot and debugPlotLevel == "plotLevelPlanned":
                     self.plotPlannedPath(path)
 
-                # print "hi"
-
-            # aufteilung in segmente, die advance benutzen und die 
+            # Aufteilung in segmente, die advance benutzen und die ohne
             currentHasAdvance = path[0].hasAdvance()
             currentPath = []
 
@@ -393,15 +398,8 @@ class Advance (object):
 
                 currentPath.append(move)
 
-
-            if currentPath:
-                
-                if currentHasAdvance:
-                    processAdvancedMoves(currentPath)
-                else:
-                    print "skipping %d non-advance moves..." % (len(currentPath))
-                    # assert(0)
-
+            if currentPath and currentHasAdvance:
+                processAdvancedMoves(currentPath)
 
             """
             xxx path
@@ -528,6 +526,7 @@ class Advance (object):
         #debug if debugPlot and debugPlotLevel == "plotLevelPlanned":
             #debug self.plotPlannedPath(path)
 
+        """
         esum = 0
         measureMove = None
         # Mark filament sensor measure moves
@@ -560,6 +559,16 @@ class Advance (object):
 
             assert(not measureMove.isSubMove())
             measureMove.isMeasureMove = True
+        """
+
+        rateList = []
+        for move in path:
+            rateList.append(move.topSpeed.speed().eSpeed)
+
+        avgRate = sum(rateList) / len(rateList)
+        assert(avgRate > 0)
+        path[0].isMeasureMove = True
+        path[0].measureSpeed = avgRate
 
         newPath = []
         for move in path:
@@ -1627,12 +1636,12 @@ class Advance (object):
         #
         move.stepData.setBresenhamParameters(leadAxis, abs_displacement_vector_steps)
 
-        dirBits = util.directionBits(dispS, self.printer.curDirBits)
+        dirBits = util.directionBits(dispS)
 
-        if dirBits != self.printer.curDirBits:
+        if dirBits != self.planner.curDirBits:
             move.stepData.setDirBits = True
             move.stepData.dirBits = dirBits
-            self.printer.curDirBits = dirBits
+            self.planner.curDirBits = dirBits
 
         steps_per_mm = PrinterProfile.getStepsPerMM(leadAxis)
 
@@ -1758,7 +1767,7 @@ class Advance (object):
         endSpeedS = endSpeed.feedrate3()
         endSpeedE = endSpeed.eSpeed
 
-        # Some tests
+        # Some sanity tests
         assert(ta == 0)
         assert(tl == 0)
         assert(td > 0)
@@ -1785,12 +1794,12 @@ class Advance (object):
 
         abs_displacement_vector_steps = vectorAbs(dispS)
 
-        dirBits = util.directionBits(dispS, self.printer.curDirBits)
+        dirBits = util.directionBits(dispS)
 
-        if dirBits != self.printer.curDirBits:
+        if dirBits != self.planner.curDirBits:
             move.stepData.setDirBits = True
             move.stepData.dirBits = dirBits
-            self.printer.curDirBits = dirBits
+            self.planner.curDirBits = dirBits
 
         leadAxisxy = move.leadAxis(nAxes = 2, disp=dispS)
         leadAxis_stepsxy = abs_displacement_vector_steps[leadAxisxy]
@@ -1806,8 +1815,7 @@ class Advance (object):
                 abs( topSpeed.eSpeed ),
                 abs( endSpeed.eSpeed ),
                 abs(move.endAccel.eAccel()),
-                eStepsToMove,
-                forceFill=False)
+                eStepsToMove)
 
         if debugAdvance:
             print "Generated %d/%d E steps" % (len(eClocks), eStepsToMove)

@@ -57,13 +57,17 @@ class TxBuffer: public Protothread {
 
         int16_t cf, csh, csl;
 
-        FWINLINE void pushByte(uint8_t c) {
+        FWINLINE bool pushByte(uint8_t c) {
 
-#if defined(HEAVYDEBUG)
-            massert(! full());
-#endif
+// #if defined(HEAVYDEBUG)
+            // massert(! full());
+// #endif
 
-            txBuffer[head++] = c;
+            if (! full()) {
+                txBuffer[head++] = c;
+                return true;
+            }
+            return false;
         }
 
         FWINLINE void pushCharCobs(uint8_t c) {
@@ -194,13 +198,19 @@ class TxBuffer: public Protothread {
             // Init cobs encoder
             cobsStart = -1;
 
-            pushByte(0x0); // SOH
-            pushByte(respCode);
+            if (! pushByte(0x0)) return; // SOH
+            if (! pushByte(respCode)) return;
             lenIndex = head;
             pushByte(1);
         }
 
         void sendResponseEnd() {
+
+            if (full()) {
+                // Rollback
+                head = lenIndex - 2;
+                return;
+            }
 
             if (cobsStart != -1) {
                 // Cobs block does not end with 0x0, mark block as a

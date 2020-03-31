@@ -1,58 +1,32 @@
 {
   "material_diameter" : 1.75,
   "flow"              : 100,
-  "hotendStartTemp"   : 210,
+  "hotendBaseTemp"    : 200,
+  "hotendGoodTemp"    : 210,
   "hotendMaxTemp"     : 260,
   "bedTemp"           : 85,
   "bedTempReduced"    : 80,
   "fanPercent"        : 75,
   "kAdvance"          : 0.2,
-  # Default parameters for measureTempFlowrateCurve
-  "mtfStartTemp": 210,
-  "mtfEndTemp": 260,
-  "mtfTempStep": 5,
-  # Generic temp-flowrate table, this could/should be overridden
-  # by a specific material profile with a measured temp-flowrate curve.
-  # This table is used by the "auto-temp" algorithm to detemine the
-  # needed hotend temperature for a given flowrate.
-  # It is used by the firmware part to limit the printing speed if
-  # the temperature is to low.
-  # This is the temp-flowrate curve for a 0.8mm nozzle.
-  "tempFlowrateCurve_80" : {
-      "version": 3,
-      "slippage": 0.05,
-      "data": [
-          [210.000000, 5.000000],
-          [215.000000, 5.714286],
-          [220.000000, 6.428571],
-          [225.000000, 7.142857],
-          [230.000000, 7.857143],
-          [235.000000, 8.571429],
-          [240.000000, 9.285714],
-          [245.000000, 10.000000],
-          [250.000000, 10.714286],
-          [255.000000, 11.428571],
-          [260.000000, 12.142857]
-    ]
+
+  "properties_80" : {
+      "version": 4,
+      "slippage": 0.10,
+      "Kpwm": 0.15,
+      "Ktemp": 0.2,
+      "P0pwm": 90,
+      "FR0pwm": 5,
+      "P0temp": 205.0
   },
 
-  # This is the generic temp-flowrate curve for a 0.4mm nozzle.
-  "tempFlowrateCurve_40" : {
-      "version": 3,
-      "slippage": 0.05,
-      "data": [
-          [210.000000, 4.000000],
-          [215.000000, 4.250000],
-          [220.000000, 4.500000],
-          [225.000000, 4.750000],
-          [230.000000, 5.000000],
-          [235.000000, 5.250000],
-          [240.000000, 5.500000],
-          [245.000000, 5.750000],
-          [250.000000, 6.000000],
-          [255.000000, 6.250000],
-          [260.000000, 6.500000]
-    ]
+  "properties_40" : {
+      "version": 4,
+      "slippage": 0.10,
+      "Kpwm": 0.1,
+      "Ktemp": 0.1,
+      "P0pwm": 90,
+      "FR0pwm": 2.5,
+      "P0temp": 205.0
   }
 }
 

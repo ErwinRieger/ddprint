@@ -23,8 +23,8 @@
 # Note: pyserial 2.6.1 seems to have a bug with reconnect (read only garbage 
 # at second connect).
 #
-import time, struct, crc_ccitt_kermit, termios
-import dddumbui, cobs, ddprintutil
+import time, struct, crc_ccitt_kermit, termios, pprint, sys
+import dddumbui, cobs, ddprintutil, types
 
 from serial import Serial, SerialException, SerialTimeoutException
 from ddconfig import debugComm
@@ -64,9 +64,8 @@ class RxChecksumError(Exception):
 
 class Printer(Serial):
 
-    __single = None 
+    _single = None 
 
-    # endStoreToken = "Done saving"
     # Number of rx errors till we assume the
     # line is dead.
     # maxRXErrors = 10
@@ -76,10 +75,10 @@ class Printer(Serial):
 
     def __init__(self, gui=None):
 
-        if Printer.__single:
-            raise RuntimeError('A Printer already exists')
+        if Printer._single:
+            raise RuntimeError('Error: a Printer instance already exists')
 
-        Printer.__single = self
+        Printer._single = self
 
         if gui:
             self.gui = gui
@@ -100,11 +99,18 @@ class Printer(Serial):
 
         self.startTime = None
 
-        self.curDirBits = 0
+        # self.curDirBits = 0
+
+        # xxx debug
+        self.commandInitDone = False
 
     @classmethod
     def get(cls):
-        return cls.__single
+
+        if not cls._single:
+            raise RuntimeError('Printer instance not created, yet')
+
+        return cls._single
 
     def commandResend(self, lastLine):
 
@@ -233,8 +239,8 @@ class Printer(Serial):
                 (tempIndex, actSpeed, targetSpeed, grip) = struct.unpack("<hhhh", payload[1:])
                 self.gui.logRecv("Limit extrusion index: %d, act: %d, target: %d, grip: %d" % (tempIndex, actSpeed, targetSpeed, grip))
             elif msgType == PidDebug:
-                (pid_dt, pTerm, iTerm, dTerm, pwmSum, pwmOutput) = struct.unpack("<fffffi", payload[1:])
-                self.gui.logRecv("PidDebug: pid_dt: %f, pTerm: %f, iTerm: %f, dTerm: %f, pwmSum: %f, pwmOutput: %d" % (pid_dt, pTerm, iTerm, dTerm, pwmSum, pwmOutput))
+                (pid_dt, pTerm, iTerm, dTerm, pwmOutput, e) = struct.unpack("<ffffif", payload[1:])
+                self.gui.logRecv("PidDebug: pid_dt: %f, pTerm: %f, iTerm: %f, dTerm: %f, pwmOutput: %d, e: %f" % (pid_dt, pTerm, iTerm, dTerm, pwmOutput, e))
             elif msgType == RespSDReadError:
                 # payload: SD errorcode, SPI status byte
                 (errorCode, spiStatus) = struct.unpack("<BB", payload[1:])
@@ -243,7 +249,11 @@ class Printer(Serial):
                 # payload: deltaStepperSteps(float) deltaSensorSteps(i32) filSensorCalibration(float) slip(float) s(float)
                 (deltaStepperSteps, deltaSensorSteps, filSensorCalibration, slip, s) = struct.unpack("<fifff", payload[1:])
                 self.gui.logError("FilSensorDebug: deltaStepperSteps: %f deltaSensorSteps: %d filSensorCalibration: %f slip: %f s: %f" % (deltaStepperSteps, deltaSensorSteps, filSensorCalibration, slip, s))
-
+            elif msgType == GenericMessage:
+                # payload: generic message string
+                (slen,) = struct.unpack("<B", payload[1:2])
+                message = payload[2:2+slen]
+                self.gui.logRecv("GenericMessage: '%s'" % message)
             return True # consume message
 
         return False # continue message processing
@@ -372,27 +382,6 @@ class Printer(Serial):
         payload = cobs.decodeCobs(payload)
         return (cmd, payload)
 
-    # Monitor printer responses for a while (wait waitcount * 0.1 seconds)
-    def readMore(self, waitcount=100):
-
-        self.gui.log("waiting %.2f seconds for more messages..." % (waitcount/20.0))
-
-        for i in range(waitcount):
-
-            try:
-                recvLine = self.safeReadline()        
-            except SERIALDISCON:
-                self.gui.logError("Line disconnected in readMore(), reconnecting!")
-                self.reconnect()
-                time.sleep(0.1)
-                continue
-
-            if recvLine and debugComm:
-                if ord(recvLine[0]) > 20:
-                    self.gui.logRecv("Reply: ", recvLine,)
-                else:
-                    self.gui.logRecv("Reply: 0x%s" % recvLine.encode("hex"))
-
     def initSerial(self, device, br, bootloaderWait=False):
 
         if self.isOpen():
@@ -426,19 +415,32 @@ class Printer(Serial):
 
         self.resetLineNumber()
 
+    # Initialize serial interface and download printer settings.
     def commandInit(self, args, settings):
+
+        # XXX check already initialized/running printer here?
+
+        # xxx debug
+        assert(self.commandInitDone == False)
 
         self.initSerial(args.device, args.baud, True)
 
         self.sendCommandParamV(CmdSetFilSensorCal, [packedvalue.float_t(settings["filSensorCalibration"])])
 
-        self.sendCommandParamV(CmdSetStepsPerMME, [packedvalue.uint16_t(settings["stepsPerMME"])])
-        
-        self.sendCommandParamV(CmdSetPIDValues, [packedvalue.float_t(settings["Kp"]), packedvalue.float_t(settings["Ki"]), packedvalue.float_t(settings["Kd"])])
-
-        # self.sendCommandParamV(CmdSetBedlevelOffset, [packedvalue.float_t(settings["add_homeing_z"])])
+        self.sendCommandParamV(CmdSetPIDValues, [
+            packedvalue.float_t(settings["Kp"]),
+            packedvalue.float_t(settings["Ki"]),
+            packedvalue.float_t(settings["Kd"]),
+            packedvalue.uint16_t(settings["Tu"] * 1000), # xxx Tu < 65 s
+            ])
 
         self.sendCommandParamV(CmdSetIncTemp, [packedvalue.uint8_t(HeaterEx1), packedvalue.int16_t(args.inctemp)]);
+
+        # xxx new
+        # self.curDirBits = self.getDirBits()
+        self.sendCommand(CmdPrinterInit)
+
+        self.commandInitDone = True
 
     def resetLineNumber(self):
         self.lineNr = 1
@@ -454,12 +456,7 @@ class Printer(Serial):
             return 255
         return self.lineNr-1
 
-    def sendPrinterInit(self):
-        self.sendCommand(CmdPrinterInit)
-        self.curDirBits = self.getDirBits()
-
-    # Send a command to the printer, add a newline if 
-    # needed.
+    # Send a command to the printer
     def send(self, cmd):
 
         while True:
@@ -560,10 +557,10 @@ class Printer(Serial):
     # Query info from printer, use this to receive returned data, use [sendCommand, sendCommandParamV] for 
     # 'write only' commands.
     # Note: Commands must be 'restartable' without sideeffects (see commandResend(), ResendWasOK)
-    def query(self, cmd, binPayload=None, doLog=True):
+    def query(self, cmd, binPayload=None, doLog="notused-variable"):
 
-        if doLog:
-            self.gui.logSend("query: ", CommandNames[cmd])
+        # if doLog:
+            # self.gui.logSend("query: ", CommandNames[cmd])
 
         cobsBlock = binPayload and cobs.encodeCobsString(binPayload)
         binary = self.buildBinaryCommand(cmd, cobsBlock)
@@ -673,19 +670,17 @@ class Printer(Serial):
                 return (cmd, payload)
 
             print "unknown reply: 0x%x" % cmd, payload
-            self.readMore(10);
             assert(0)
 
         # Notreached
 
     def getStatus(self):
 
-        # valueNames = ["state", "t0", "t1", "Swap", "SDReader", "StepBuffer", "StepBufUnderRuns", "targetT1", "targetExtrusionSpeed", "actualExtrusionSpeed", "actualGrip", "grip"]
-        valueNames = ["state", "t0", "t1", "Swap", "SDReader", "StepBuffer", "StepBufUnderRuns", "targetT1", "slippage"]
+        valueNames = ["state", "t0", "t1", "Swap", "SDReader", "StepBuffer", "StepBufUnderRuns", "targetT1", "pwmOutput", "slippage", "extruder_pos"]
 
         (cmd, payload) = self.query(CmdGetStatus, doLog=False)
 
-        tup = struct.unpack("<BffIHBhHf", payload)
+        tup = struct.unpack("<BffIHBhHBfi", payload)
 
         statusDict = {}
         for i in range(len(valueNames)):
@@ -704,27 +699,11 @@ class Printer(Serial):
         self.gui.statusCb(statusDict)
         return statusDict
 
-    # xxx remove 
-    def getEepromSettings(self):
-
-        (cmd, payload) = self.query(CmdGetEepromSettings, doLog=False)
-        tup = struct.unpack("<fffffff", payload)
-        valueNames = ["add_homeing_x", "add_homeing_y", "add_homeing_z", "add_homeing_e", "Kp", "Ki", "Kd"]
-
-        settingsDict = {}
-        for i in range(len(valueNames)):
-            valueName = valueNames[i]
-            settingsDict[valueName] = tup[i]
-
-        return settingsDict
-
     # Get printer (-profile) name from printer eeprom
     def getPrinterName(self):
 
         resp = self.query(CmdGetPrinterName)
-
         pn = ddprintutil.getResponseString(resp[1], 1)
-        print "PrinterName: ", pn
         return pn
 
     def setPrinterName(self, args):
@@ -734,20 +713,17 @@ class Printer(Serial):
         self.sendCommandParamV(CmdSetPrinterName,
             [packedvalue.pString_t(args.name)])
 
-    def getAddHomeing_z(self):
-
-        return self.getEepromSettings()["add_homeing_z"]
-
-    def waitForState(self, destState, wait=1):
+    def waitForState(self, destState, wait=1, log=False):
 
         status = self.getStatus()
+        if log:
+            pprint.pprint(status)
 
         while status['state'] != destState:
             time.sleep(wait)
-            # try:
             status = self.getStatus()
-            # except RxTimeout:
-                # print "GetStatus raised RxTimeout error!"
+            if log:
+                pprint.pprint(status)
 
     def stateMoving(self, status=None):
 
@@ -783,7 +759,9 @@ class Printer(Serial):
 
     ####################################################################################################
 
-    def heatUp(self, heater, temp, wait=None):
+    def heatUp(self, heater, temp, wait=None, log=False):
+
+        assert(type(temp) == types.IntType)
 
         payload = struct.pack("<BH", heater, temp) # Parameters: heater, temp
         self.sendCommand(CmdSetTargetTemp, binPayload=payload)
@@ -792,8 +770,14 @@ class Printer(Serial):
             time.sleep(2)
             temps = self.getTemps()
 
+            if log:
+                print "\rTemp: %.2f (%.2f)" % (temps[heater], wait),
+                sys.stdout.flush()
+
             if temps[heater] >= wait:
                 break
+
+        print "\n"
 
     ####################################################################################################
 
@@ -804,7 +788,21 @@ class Printer(Serial):
 
     ####################################################################################################
 
-    def coolDown(self, heater, temp=0, wait=None):
+    def setTempPWM(self, heater, pwmvalue):
+
+        payload = struct.pack("<Bh", heater, pwmvalue) # Parameters: heater, adjtemp
+        self.sendCommand(CmdSetTempPWM, binPayload=payload)
+
+    ####################################################################################################
+
+    def coolDown(self, heater, temp=0, wait=None, log=False):
+
+        assert(type(temp) == types.IntType)
+
+        if heater > HeaterBed:
+            # Switch on PID mode
+            payload = struct.pack("<BB", heater, 0)
+            self.sendCommand(CmdSetTempPWM, binPayload=payload)
 
         payload = struct.pack("<BH", heater, temp)
         self.sendCommand(CmdSetTargetTemp, binPayload=payload)
@@ -813,8 +811,15 @@ class Printer(Serial):
             time.sleep(2)
             temps = self.getTemps()
 
+            if log:
+                print "\rTemp: %.2f (%.2f)" % (temps[heater], wait),
+                sys.stdout.flush()
+
             if temps[heater] <= wait:
                 break
+
+        if log:
+            print ""
 
     ####################################################################################################
 
@@ -872,6 +877,24 @@ class Printer(Serial):
         (cmd, payload) = self.query(CmdGetFilSensor)
         t = struct.unpack("<i", payload)
         return t[0]
+
+    ####################################################################################################
+
+    def getFreeMem(self):
+
+        (cmd, payload) = self.query(CmdGetFreeMem)
+        t = struct.unpack("<H", payload)
+        return t[0]
+
+    def getFSReadings(self, notused_nNeadings=None):
+
+        (cmd, payload) = self.query(CmdGetFSReadings)
+
+        readings = []
+        for i in range(10):
+            (ts, dy) = struct.unpack("<Ih", payload[i*6:(i+1)*6])
+            readings.append((ts, dy))
+        return readings
 
     ####################################################################################################
 

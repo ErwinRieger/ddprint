@@ -68,25 +68,29 @@ class Printer {
         // To adjust temperature-niveau at runtime
         uint16_t increaseTemp[N_HEATERS];
 
+        // Idle pmw value if in *pmw temperature mode*
+        uint8_t p0pwm;
+
+        // Timeconstant hotend [ms]
+        uint16_t Tu;
+
+        uint8_t nGenericMessage;
+
     public:
 
-        // xxx make private
-        bool restartFilsensor;
-
         // State enum
-        // XXX can we combine the StateIdle and StateInit states?
         enum {
-            StateIdle,       // 
-            StateInit,       // 
-            StateStart,      //
-            StateDwell       //
+            StateIdle,       // The state when printer is turned on.
+            StateInit,       // Host part has initialized the printer and has
+                             // done printer setup.
+            StateStart,      // We are printing.
+            StateDwell       // Temporary state
             } printerState;
 
         typedef enum {
             MoveTypeNone,
             MoveTypeHoming,
             MoveTypeNormal,
-            // notused MoveTypeForced
             } MoveType;
 
         MoveType moveType;
@@ -96,11 +100,19 @@ class Printer {
 
         Printer();
         void printerInit();
+        void sendGenericMessage(const char *s, uint8_t l);
+
+        uint8_t getP0pwm() { return p0pwm; }
+        uint16_t getTu() { return Tu; }
+        uint8_t getIncreaseTemp(uint8_t heater) { return increaseTemp[heater]; }
+
         void cmdMove(MoveType);
         void cmdEot();
         void setHomePos( int32_t x, int32_t y, int32_t z);
         void cmdSetTargetTemp(uint8_t heater, uint16_t temp);
         void cmdSetIncTemp(uint8_t heater, int16_t incTemp);
+        void cmdGetFreeMem();
+        void cmdGetFSReadings(uint8_t nReadings);
         void checkMoveFinished();
         void disableSteppers();
         void cmdDisableSteppers();
@@ -109,6 +121,8 @@ class Printer {
         void cmdGetHomed();
         void cmdGetEndstops();
         void cmdGetPos();
+        void cmdSetP0pwm(uint8_t pwm);
+        void cmdSetPIDValues(float kp, float ki, float kd, uint16_t Tu);
         void cmdFanSpeed(uint8_t speed);
         void cmdContinuousE(uint16_t timerValue);
         void cmdSetFilSensorCal(float cal);
@@ -147,10 +161,14 @@ class FillBufferTask : public Protothread {
         int32_t deltaLead, step;
 
         // Hotend target temp for CmdSyncTargetTemp
-        uint8_t targetHeater;
-        uint16_t targetTemp;
+        // uint8_t targetHeater;
+        // uint16_t targetTemp;
 
-        unsigned long dwellEnd;
+        // Hotend target pwm for CmdSyncHotendPWM
+        uint8_t heaterPWM;
+        // unsigned long pulseEnd;
+
+        // unsigned long dwellEnd;
 
         bool cmdSync;
 
@@ -165,7 +183,16 @@ class FillBufferTask : public Protothread {
         FillBufferTask() {
             sd.dirBits = 0;
             cmdSync = false;
+            pulseEnd = 0;
         }
+
+        // xxxx getter/setter
+        uint8_t targetHeater;
+        uint32_t pulseTime;
+        uint16_t pulsePause;
+        unsigned long pulseEnd;
+        unsigned long dwellEnd;
+        uint16_t targetTemp;
 
         bool Run();
 

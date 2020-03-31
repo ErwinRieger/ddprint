@@ -54,6 +54,8 @@
 #define CmdDwellMS         0xc
 #define CmdG1Raw           0xd
 // #define CmdDirG1Raw        0xe
+#define CmdSyncHotendPWM   0xf
+#define CmdSyncHotendPulse 0x10
 
 //
 // Direct commands:
@@ -76,7 +78,7 @@
     #define CmdSetHeaterY       139
 #endif
 
-#define CmdGetDirBits           150
+// #define CmdGetDirBits           150
 #define CmdGetHomed             151
 #define CmdGetEndstops          152
 // #define CmdGetEepromVersion     153
@@ -103,7 +105,7 @@
 #define CmdSetContTimer         166 // Timer value for CmdContinuousE -> E-Speed
 #define CmdContinuousE          167 // Start/Stop continuous e-move for filament measurement
 #define CmdSetFilSensorCal      168 // Set filament sensor calibration vaue
-#define CmdSetStepsPerMME       169 // 
+// #define CmdSetStepsPerMME       169 // 
 
 #define CmdSetPrinterName       170 // Write printer (-profile) name to printer eeprom
 #define CmdGetPrinterName       171 // Read printer (-profile) name from printer eeprom
@@ -111,6 +113,10 @@
 #define CmdSetPIDValues         172
 // #define CmdSetBedlevelOffset    173
 #define CmdSetIncTemp           174 // Adjust temperature niveau 
+#define CmdGetFreeMem           175 // Get number of free memory bytes [uint16]
+#define CmdGetFSReadings        176 // Get last n filsensor readings 
+#define CmdSetTempPWM           177 // Set PWM value of hotend heater (for filament profile measurement)
+// #define CmdSetP0pwm             178 // Set P0 PMW value
 
 //
 // Response types 
@@ -144,9 +150,10 @@
 //
 // Unsolicited message types
 //
-#define ExtrusionLimitDbg       0x0
+// #define ExtrusionLimitDbg       0x0
 #define PidDebug                0x1
-#define FilSensorDebugMsg       0x2
+// #define FilSensorDebugMsg       0x2
+#define GenericMessage       0x3
 
 
 

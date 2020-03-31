@@ -25,11 +25,10 @@ import shutil, os, re
 from ddprofile import MatProfile, PrinterProfile
 from ddplanner import Planner
 from ddprintcommands import CmdSyncFanSpeed, CmdUnknown, CmdDwellMS
-from ddprintconstants import dimNames, GCODEUNKNOWN, GCODEULTI, GCODES3D
+from ddprintconstants import dimNames, GCODEUNKNOWN, GCODEULTI, GCODES3D, X_AXIS, Y_AXIS, Z_AXIS, A_AXIS, B_AXIS
 from ddconfig import *
 from move import TravelMove, PrintMove
 from ddvector import Vector, vectorDistance
-from ddprintutil import X_AXIS, Y_AXIS, Z_AXIS, A_AXIS, B_AXIS, circaf
 
 import ddprintutil as util
 
@@ -129,7 +128,7 @@ class UM2GcodeParser:
 
     __single = None 
 
-    def __init__(self, logger=None):
+    def __init__(self, planner, logger=None, travelMovesOnly=False):
 
         if UM2GcodeParser.__single:
             raise RuntimeError('A UM2GcodeParser already exists')
@@ -178,15 +177,16 @@ class UM2GcodeParser:
                 }
 
         # Apply material flow parameter from material profile
-        self.e_to_filament_length = MatProfile.getFlow() / 100.0
+        if not travelMovesOnly:
+            self.e_to_filament_length = MatProfile.getFlow() / 100.0
 
         self.steps_per_mm = PrinterProfile.getStepsPerMMVector()
         self.mm_per_step = map(lambda dim: 1.0 / self.steps_per_mm[dim], range(5))
         self.maxFeedrateVector = PrinterProfile.getMaxFeedrateVector()
 
-        self.planner = Planner.get()
+        self.planner = planner
 
-    @classmethod
+    # @classmethod
     def get(cls):
         return cls.__single
 
@@ -306,9 +306,12 @@ class UM2GcodeParser:
                 elif upperLine.endswith("GAP FILL"):
                     # print "gcodeparser: Starting gapfill..."
                     self.layerPart = "gapfill"
-                elif upperLine.endswith("tool"):
+                elif upperLine.endswith("TOOL"):
                     # print "gcodeparser: Starting tool..."
                     self.layerPart = "tool"
+                elif upperLine.endswith("SINGLE EXTRUSION"):
+                    # print "gcodeparser: Starting single extrusion..."
+                    self.layerPart = "single extrusion"
                 else:
                     if not (("LAYER" in upperLine) or ("TOOL" in upperLine)):
                         self.logger.log("gcodeparser: Unhandled comment:", line)

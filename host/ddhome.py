@@ -21,10 +21,13 @@
 
 import struct
 
+import gcodeparser
+
 from ddprintcommands import *
 from ddprintstates import *
 from ddprintconstants import dimNames
 from ddprofile import PrinterProfile
+from ddplanner import Planner
 
 import ddprintutil as util
 
@@ -35,17 +38,15 @@ def homeMove(parser, dim, direction, dist, fakeHomingEndstops, feedRateFactor=1.
     planner = parser.planner
     printer = planner.printer
 
-    printer.sendPrinterInit()
-
     parser.setPos(planner.zeroPos)
 
-    print "--- homeMove(): send %s - homing move, dist: %.2f" % (dimNames[dim], dist*direction * planner.HOME_DIR[dim])
+    # print "--- homeMove(): send %s - homing move, dist: %.2f" % (dimNames[dim], dist*direction * planner.HOME_DIR[dim])
 
     cmd = "G0 F%f %s%f" % (
         planner.HOMING_FEEDRATE[dim]*60*feedRateFactor,
         dimNames[dim], dist * direction * planner.HOME_DIR[dim])
 
-    print "homeMove: ", cmd
+    # print "homeMove: ", cmd
 
     parser.execute_line(cmd);
 
@@ -55,7 +56,7 @@ def homeMove(parser, dim, direction, dist, fakeHomingEndstops, feedRateFactor=1.
     printer.sendCommandParamV(CmdMove, [MoveTypeHoming])
     printer.sendCommand(CmdEOT)
 
-    printer.waitForState(StateIdle, wait=0.05)
+    printer.waitForState(StateInit, wait=0.05)
 
     if direction > 0:
         # Move towards endstop
@@ -87,19 +88,13 @@ def homeBounce(parser, dim, fakeHomingEndstops):
 
 ####################################################################################################
 
-def home(parser, fakeHomingEndstops=False, force=False):
-
-    planner = parser.planner
-    printer = planner.printer
+def home(args, printer, planner, parser, force=False):
 
     print "*"
     print "* Start homing..."
     print "*"
     if printer.isHomed() and not force:
         print "Printer is homed already..."
-
-        # Send init command
-        printer.sendPrinterInit()
 
         # Get current pos from printer and set our virtual pos
         curPosMM = util.getVirtualPos(parser)
@@ -130,7 +125,7 @@ def home(parser, fakeHomingEndstops=False, force=False):
             printer.sendCommandParamV(CmdMove, [MoveTypeNormal])
             printer.sendCommand(CmdEOT)
 
-            printer.waitForState(StateIdle, wait=0.05)
+            printer.waitForState(StateInit, wait=0.05)
 
         #
         # Set Virtual E-pos 0:
@@ -142,6 +137,9 @@ def home(parser, fakeHomingEndstops=False, force=False):
         print "*"
         return
 
+    # Send init command
+    printer.commandInit(args, PrinterProfile.getSettings())
+
     #
     # Z Achse isoliert und als erstes bewegen, um zusammenstoss mit den klammern
     # der buildplatte oder mit einem modell zu vermeiden.
@@ -151,38 +149,33 @@ def home(parser, fakeHomingEndstops=False, force=False):
         print "\nHoming axis %s" % dimNames[dim]
 
         # Try fast home if endstop is pressed
-        if printer.endStopTriggered(dim, fakeHomingEndstops):
+        if printer.endStopTriggered(dim, args.fakeendstop):
 
             print "Homing: %s - endstop is triggered, trying fast home." % dimNames[dim]
-            if homeBounce(parser, dim, fakeHomingEndstops):
+            if homeBounce(parser, dim, args.fakeendstop):
                 continue
 
         # Try fast home if head/bed is near the endstop
         print "Homing: doing short/fast home."
-        if homeMove(parser, dim, 1, planner.MAX_POS[dim] / 10.0, fakeHomingEndstops): # Move towards endstop fast
+        if homeMove(parser, dim, 1, planner.MAX_POS[dim] / 10.0, args.fakeendstop): # Move towards endstop fast
 
             print "Homing: %s - endstop is triggered, trying fast home." % dimNames[dim]
-            if homeBounce(parser, dim, fakeHomingEndstops):
+            if homeBounce(parser, dim, args.fakeendstop):
                 continue
 
         # Do the full slow homing move
         print "Homing: doing full/slow home."
-        if not homeMove(parser, dim, 1, planner.MAX_POS[dim] * 1.25, fakeHomingEndstops): # Move towards endstop fast
+        if not homeMove(parser, dim, 1, planner.MAX_POS[dim] * 1.25, args.fakeendstop): # Move towards endstop fast
             print "Error, %s - endstop NOT hit!" % dimNames[dim]
             assert(0)
 
-        if not homeBounce(parser, dim, fakeHomingEndstops):
+        if not homeBounce(parser, dim, args.fakeendstop):
             print "Error, Bounce %s - endstop!" % dimNames[dim]
             assert(0)
-
 
     #
     # Set position in steps on the printer side and set our 'virtual position':
     #
-    # xxx set end-of-print retraction e-pos also here?
-    #
-    # parser.setPos(planner.homePosMM)
-    # payload = struct.pack("<iiiii", *planner.homePosStepped)
     (homePosMM, homePosStepped) = planner.getHomePos()
     parser.setPos(homePosMM)
 

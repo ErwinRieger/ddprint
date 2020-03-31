@@ -85,76 +85,60 @@ void st_init() {
     SET_OUTPUT(E2_DIR_PIN);
   #endif
 
-    // Set initial direction to 0
-    st_set_direction<XMove>(0);
-    st_set_direction<YMove>(0);
-    st_set_direction<ZMove>(0);
-    st_set_direction<EMove>(0);
+  // Set initial direction to 0
+  // st_set_direction<XAxisSelector>(LOW);
+  // st_set_direction<YAxisSelector>(LOW);
+  // st_set_direction<ZAxisSelector>(LOW);
+  // st_set_direction<EAxisSelector>(LOW);
 
-  //Initialize Enable Pins - steppers default to disabled.
+  // Initialize Enable Pins - steppers default to disabled.
+  SET_OUTPUT(X_ENABLE_PIN);
+  WRITE(X_ENABLE_PIN, ! X_ENABLE_ON);
 
-  #if defined(X_ENABLE_PIN) && X_ENABLE_PIN > -1
-    SET_OUTPUT(X_ENABLE_PIN);
-    if(!X_ENABLE_ON) WRITE(X_ENABLE_PIN,HIGH);
-  #endif
-  #if defined(Y_ENABLE_PIN) && Y_ENABLE_PIN > -1
-    SET_OUTPUT(Y_ENABLE_PIN);
-    if(!Y_ENABLE_ON) WRITE(Y_ENABLE_PIN,HIGH);
-  #endif
-  #if defined(Z_ENABLE_PIN) && Z_ENABLE_PIN > -1
-    SET_OUTPUT(Z_ENABLE_PIN);
-    if(!Z_ENABLE_ON) WRITE(Z_ENABLE_PIN,HIGH);
+  SET_OUTPUT(Y_ENABLE_PIN);
+  WRITE(Y_ENABLE_PIN, ! Y_ENABLE_ON);
 
-  #endif
-  #if defined(E0_ENABLE_PIN) && (E0_ENABLE_PIN > -1)
-    SET_OUTPUT(E0_ENABLE_PIN);
-    if(!E_ENABLE_ON) WRITE(E0_ENABLE_PIN,HIGH);
-  #endif
-  #if defined(E1_ENABLE_PIN) && (E1_ENABLE_PIN > -1)
+  SET_OUTPUT(Z_ENABLE_PIN);
+  WRITE(Z_ENABLE_PIN, ! Z_ENABLE_ON);
+
+  SET_OUTPUT(E0_ENABLE_PIN);
+  WRITE(E0_ENABLE_PIN, ! E_ENABLE_ON);
+
+  #if defined(E1_ENABLE_PIN)
     SET_OUTPUT(E1_ENABLE_PIN);
-    if(!E_ENABLE_ON) WRITE(E1_ENABLE_PIN,HIGH);
-  #endif
-  #if defined(E2_ENABLE_PIN) && (E2_ENABLE_PIN > -1)
-    SET_OUTPUT(E2_ENABLE_PIN);
-    if(!E_ENABLE_ON) WRITE(E2_ENABLE_PIN,HIGH);
+    WRITE(E1_ENABLE_PIN, ! E_ENABLE_ON);
   #endif
 
   //endstops and pullups
 
-    SET_INPUT(X_STOP_PIN);
-    #ifdef ENDSTOPPULLUP_XMIN
-      WRITE(X_STOP_PIN,HIGH);
-    #endif
+  SET_INPUT(X_STOP_PIN);
+  WRITE(X_STOP_PIN,HIGH);
 
-    SET_INPUT(Y_STOP_PIN);
-    #ifdef ENDSTOPPULLUP_YMIN
-      WRITE(Y_STOP_PIN,HIGH);
-    #endif
+  SET_INPUT(Y_STOP_PIN);
+  WRITE(Y_STOP_PIN,HIGH);
 
-    SET_INPUT(Z_STOP_PIN);
-    #ifdef ENDSTOPPULLUP_ZMIN
-      WRITE(Z_STOP_PIN,HIGH);
-    #endif
+  SET_INPUT(Z_STOP_PIN);
+  WRITE(Z_STOP_PIN,HIGH);
 
   //Initialize Step Pins
   #if defined(X_STEP_PIN) && (X_STEP_PIN > -1)
     SET_OUTPUT(X_STEP_PIN);
-    WRITE(X_STEP_PIN,INVERT_X_STEP_PIN);
+    WRITE(X_STEP_PIN, LOW);
     disable_x();
   #endif
   #if defined(Y_STEP_PIN) && (Y_STEP_PIN > -1)
     SET_OUTPUT(Y_STEP_PIN);
-    WRITE(Y_STEP_PIN,INVERT_Y_STEP_PIN);
+    WRITE(Y_STEP_PIN, LOW);
     disable_y();
   #endif
   #if defined(Z_STEP_PIN) && (Z_STEP_PIN > -1)
     SET_OUTPUT(Z_STEP_PIN);
-    WRITE(Z_STEP_PIN,INVERT_Z_STEP_PIN);
+    WRITE(Z_STEP_PIN, LOW);
     disable_z();
   #endif
   #if defined(E0_STEP_PIN) && (E0_STEP_PIN > -1)
     SET_OUTPUT(E0_STEP_PIN);
-    WRITE(E0_STEP_PIN,INVERT_E_STEP_PIN);
+    WRITE(E0_STEP_PIN, LOW);
     disable_e0();
   #endif
 

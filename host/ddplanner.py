@@ -27,9 +27,8 @@ from ddprofile import PrinterProfile, MatProfile, NozzleProfile
 from ddvector import Vector, vectorMul, vectorAbs
 from ddprintconstants import *
 from ddconfig import *
-from ddprintutil import Z_AXIS, circaf
 from ddprinter import Printer
-from ddprintcommands import CmdSyncTargetTemp
+from ddprintcommands import CmdSyncTargetTemp, CmdSyncHotendPWM, CmdSyncHotendPulse
 from ddprintstates import HeaterEx1, HeaterBed
 from ddadvance import Advance
 
@@ -146,10 +145,21 @@ class PathData (object):
         self.path = []
         self.count = -10
 
-        # AutoTemp
-        if UseExtrusionAutoTemp:
+        self.energy = 0
 
-            self.lastTemp = MatProfile.getHotendStartTemp()
+        self.Tu = PrinterProfile.getTu()
+
+        if not planner.travelMovesOnly:
+
+            hwVersion = PrinterProfile.getHwVersion()
+            nozzleDiam = NozzleProfile.getSize()
+
+            matProfile = MatProfile.get()
+            self.ks = matProfile.getKpwm(hwVersion, nozzleDiam)
+            self.ktemp = matProfile.getKtemp(hwVersion, nozzleDiam)
+            self.p0 = matProfile.getP0pwm(hwVersion, nozzleDiam) # xxx hardcoded in firmware!
+            self.fr0 = matProfile.getFR0pwm(hwVersion, nozzleDiam)
+            self.slippage = matProfile._getSlippage(hwVersion, nozzleDiam)
 
     # Number of moves
     def incCount(self):
@@ -167,17 +177,61 @@ class PathData (object):
 
         avgERate = vsum / tsum
 
-        # Compute temperature for this segment and add tempcommand into the stream. 
-        newTemp = \
-            MatProfile.getTempForFlowrate(avgERate * (1.0+AutotempSafetyMargin), PrinterProfile.getHwVersion(), NozzleProfile.getSize()) + \
-            self.planner.l0TempIncrease
+        # adjustment for:
+        # * 10% for minratio (90%)
+        # * 10% measurement errors
+        adj = 1.0 + self.slippage + 0.1
 
-        # Don't go below startTemp from material profile
-        newTemp = max(newTemp, MatProfile.getHotendStartTemp())
-        # Don't go above max temp from material profile
-        newTemp = min(newTemp, MatProfile.getHotendMaxTemp())
+        # Compute heater-PWM for this segment and add pwm-pulse command into the stream. 
+        rateDiff = (avgERate * adj) - self.fr0
 
-        if newTemp != self.lastTemp: #  and self.mode != "pre":
+        pwmMaxStep = 255 - self.p0
+
+        newTemp = MatProfile.getHotendGoodTemp()
+
+        if rateDiff > 0.0:
+            #
+            # add energy
+            #
+            de = (rateDiff / self.ks) * tsum
+            # print "need additional energy:", de
+            self.energy += de
+
+            # temp
+            newTemp += int(round(rateDiff / self.ktemp))
+            newTemp = min(newTemp, MatProfile.getHotendMaxTemp())
+
+        if newTemp < MatProfile.getHotendMaxTemp() and (self.energy / pwmMaxStep) > 0.1: # timing heater loop
+
+            # print "need energy:", self.energy, "[pwm*sec]"
+
+            tOn = min( (self.energy*0.8) / pwmMaxStep, tsum)
+
+            # print "this is %.2f seconds with %.2f pwm, move time: %.2f" % (tOn, pwmMaxStep, tsum)
+
+            self.energy -= pwmMaxStep * tOn
+
+            tPause = tsum - tOn
+            if tOn > self.Tu:
+
+                nPulse = int(math.ceil(tOn/self.Tu))
+                tPause = (tsum - tOn) / nPulse
+
+            # Schedule target temp command
+            self.planner.addSynchronizedCommand(
+                CmdSyncHotendPulse, 
+                p1 = packedvalue.uint8_t(HeaterEx1),
+                p2 = packedvalue.uint32_t(tOn * 1000), 
+                p3 = packedvalue.uint16_t(tPause * 1000), 
+                p4 = packedvalue.uint16_t(newTemp), 
+                moveNumber = move.moveNumber)
+
+            if debugAutoTemp:
+                self.planner.gui.log( "AutoTemp: collected %d moves with %.2f s duration." % (len(moves), tsum))
+                self.planner.gui.log( "AutoTemp: avg extrusion rate: %.2f mm³/s." % avgERate)
+                self.planner.gui.log( "AutoTemp: pwm pulse: %.2f sec, new temp: %.2f" % (tOn, newTemp))
+
+        else:
 
             # Schedule target temp command
             self.planner.addSynchronizedCommand(
@@ -185,13 +239,12 @@ class PathData (object):
                 p1 = packedvalue.uint8_t(HeaterEx1),
                 p2 = packedvalue.uint16_t(newTemp), 
                 moveNumber = move.moveNumber)
-
-            self.lastTemp = int(newTemp)
-
+            
             if debugAutoTemp:
                 self.planner.gui.log( "AutoTemp: collected %d moves with %.2f s duration." % (len(moves), tsum))
                 self.planner.gui.log( "AutoTemp: avg extrusion rate: %.2f mm³/s." % avgERate)
-                self.planner.gui.log( "AutoTemp: new temp: %d." % newTemp)
+                self.planner.gui.log( "AutoTemp: new temp: %.2f" % newTemp)
+
 
 #####################################################################
 
@@ -220,7 +273,7 @@ class Planner (object):
 
     __single = None 
 
-    def __init__(self, args, gui=None):
+    def __init__(self, args, gui=None, travelMovesOnly=False):
 
         if Planner.__single:
             raise RuntimeError('A Planner already exists')
@@ -278,8 +331,10 @@ class Planner (object):
         self.l0TempIncrease = Layer0TempIncrease
 
         self.plotfile = None
+        self.travelMovesOnly = travelMovesOnly
 
-        self.advance = Advance(self, args)
+        if not travelMovesOnly:
+            self.advance = Advance(self, args)
 
         self.reset()
 
@@ -292,7 +347,9 @@ class Planner (object):
 
         self.stepRounders = StepRounders()
 
-    @classmethod
+        self.curDirBits = None
+
+    # @classmethod
     def get(cls):
         return cls.__single
 
@@ -301,10 +358,6 @@ class Planner (object):
         jerk = []
         for dim in dimNames:
             jerk.append(PrinterProfile.getValues()['axes'][dim]['jerk'])
-
-        # self.jerk = Vector(jerk)
-        # self.gui.log("Jerk vector: ", self.jerk)
-        # self.gui.log("Jerk vector: ", jerk)
 
         return jerk
 
@@ -322,7 +375,7 @@ class Planner (object):
             X = self.X_HOME_POS,
             Y = self.Y_HOME_POS,
             #    
-            # add_homeing_z is the not-usable space oft the z dimension of the
+            # add_homeing_z is the not-usable space of the z dimension of the
             # build volume.
             #    
             Z = self._Z_HOME_POS + add_homeing_z
@@ -333,12 +386,12 @@ class Planner (object):
 
         return (homePosMM, homePosStepped)
 
-    def addSynchronizedCommand(self, command, p1=None, p2=None, moveNumber=None):
+    def addSynchronizedCommand(self, command, p1=None, p2=None, p3=None, p4=None, moveNumber=None):
 
         if moveNumber == None:
             moveNumber = max(self.pathData.count, 0)
 
-        self.syncCommands[moveNumber].append((command, p1, p2))
+        self.syncCommands[moveNumber].append((command, p1, p2, p3, p4))
 
     # Called from gcode parser
     def newPart(self, partNumber):
@@ -499,6 +552,17 @@ class Planner (object):
         if debugMoves:
             print "Streaming %d travel moves..." % len(path)
 
+        rateList = []
+        for move in path:
+            # rateList.append(move.topSpeed.speed().eSpeed)
+            rateList.append(move.topSpeed.speed()[3])
+
+        avgRate = sum(rateList) / len(rateList)
+
+        if avgRate > 0:
+            path[0].isMeasureMove = True
+            path[0].measureSpeed = avgRate
+
         for move in path:
 
             self.planTravelSteps(move)
@@ -545,9 +609,9 @@ class Planner (object):
 
         def sendSyncCommands(moveNumber):
 
-            for (cmd, p1, p2) in self.syncCommands[moveNumber]:
+            for (cmd, p1, p2, p3, p4) in self.syncCommands[moveNumber]:
                 if self.args.mode != "pre":
-                    self.printer.sendCommandParamV(cmd, [p1, p2])
+                    self.printer.sendCommandParamV(cmd, [p1, p2, p3, p4])
 
             del self.syncCommands[moveNumber]
 
@@ -844,12 +908,12 @@ class Planner (object):
         leadAxis = move.leadAxis(disp=dispS)
         leadAxis_steps = abs_displacement_vector_steps[leadAxis]
 
-        dirBits = util.directionBits(dispS, self.printer.curDirBits)
+        dirBits = util.directionBits(dispS)
 
-        if dirBits != self.printer.curDirBits:
+        if dirBits != self.curDirBits:
             move.stepData.setDirBits = True
             move.stepData.dirBits = dirBits
-            self.printer.curDirBits = dirBits
+            self.curDirBits = dirBits
 
         steps_per_mm = PrinterProfile.getStepsPerMM(leadAxis)
 

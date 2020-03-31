@@ -24,7 +24,6 @@
 #include "pins.h"
 #include "thermistortables.h"
 #include "eepromSettings.h"
-#include "Configuration.h"
 #include "ddserial.h"
 #include "ddcommands.h"
 #include "fastio.h"
@@ -40,6 +39,7 @@ extern void watchdog_reset();
 extern void kill();
 
 void TempControl::init() {
+
     //
     // Set analog inputs
     //
@@ -90,9 +90,7 @@ void TempControl::init() {
 
     // Wait for initial conversion and read value
     while (ADCSRA & (1<<ADSC));
-    raw_temp_0_value = ADC * OVERSAMPLENR;
-
-    // printf("Initial hotend raw temp: %d\n", raw_temp_0_value);
+    avgHotendTemp.addValue(tempFromRawADC(ADC));
 
     //
     // Start initial bedtemp measure
@@ -109,10 +107,8 @@ void TempControl::init() {
 
     // Wait for initial conversion and read value
     while (ADCSRA & (1<<ADSC));
-    raw_temp_bed_value = ADC * OVERSAMPLENR;
+    avgBedTemp.addValue(tempFromRawADC(ADC));
     
-    // printf("Initial hotend raw temp: %d\n", raw_temp_bed_value);
-
     //
     // Get PID values from eeprom
     //
@@ -124,8 +120,9 @@ void TempControl::init() {
 
     eSum = 0;
     eAlt = 0;
+    pwmMode = false;
 
-    cobias = 0;
+    // cobias = 0;
     pid_output = 0;
 
     //
@@ -135,6 +132,13 @@ void TempControl::init() {
 
     for (uint8_t e=0; e<EXTRUDERS; e++)
         current_temperature[e] = HEATER_1_MINTEMP;
+
+    // isum begrenzen auf max. 255 output
+    //
+    // Ki * pid_dt * eSum = iTerm < 255
+    // eSummax = 255 / (Ki * pid_dt)
+    //
+    eSumLimit = 255.0 / ((Ki * TIMER100MS) / 1000.0);
 }
 
 bool TempControl::Run() {
@@ -162,8 +166,8 @@ bool TempControl::Run() {
     // printf("TempControl::Run() wait for hotend\n");
     PT_WAIT_WHILE( ADCSRA & (1<<ADSC) );
 
-    raw_temp_0_value = raw_temp_0_value - (raw_temp_0_value / OVERSAMPLENR) + ADC;
-    current_temperature[0] = tempFromRawADC(raw_temp_0_value);
+    avgHotendTemp.addValue(tempFromRawADC(ADC));
+    current_temperature[0] = avgHotendTemp.value();
 
     ////////////////////////////////
     // Handle heated bed 
@@ -186,8 +190,8 @@ bool TempControl::Run() {
     // printf("TempControl::Run() wait for bed\n");
     PT_WAIT_WHILE( ADCSRA & (1<<ADSC) );
 
-    raw_temp_bed_value = raw_temp_bed_value - (raw_temp_bed_value / OVERSAMPLENR) + ADC;
-    current_temperature_bed = tempFromRawADC(raw_temp_bed_value);
+    avgBedTemp.addValue(tempFromRawADC(ADC));
+    current_temperature_bed = avgBedTemp.value();
 
     PT_RESTART();
         
@@ -199,7 +203,9 @@ void TempControl::setTemp(uint8_t heater, uint16_t temp) {
 
     if (heater == 0) {
 
-        massert(temp <= HEATER_0_MAXTEMP);
+        if (temp > HEATER_0_MAXTEMP)
+            return;
+
         target_temperature_bed = temp;
     }
     else {
@@ -211,18 +217,22 @@ void TempControl::setTemp(uint8_t heater, uint16_t temp) {
         // already stable setpoint. Reset integral sum if
         // we switch "from manual mode to automatic".
         if (target_temperature[heater-1] == 0) {
+            eSum = 0;
+            // cobias = 0;
+        }
+        else {
 
             // Switch to "automatic mode", bumpless
 
             // Bumpless mode
 
             // We achieve this desired outcome at switchover by initializing the controller integral sum of error to zero.
-            eSum = 0;
+            // eSum = 0;
             // Also, the set point and controller bias value are initialized by setting:
             //    ▪ SP equal to the current PV
             //    ▪ CObias equal to the current CO
             // sp = pv;
-            cobias = pid_output;
+            // cobias = pid_output;
 
             // CO = controller output signal (the wire out)
             // CObias = controller bias; set by bumpless transfer
@@ -234,6 +244,9 @@ void TempControl::setTemp(uint8_t heater, uint16_t temp) {
             // Thus, when switching to automatic, SP is set equal to the current PV and CObias is set equal to the current CO.
             //
         }
+
+        // if (pwmMode && (temp < target_temperature[heater-1]))
+            // eSum = 0;
 
         target_temperature[heater-1] = temp;
 
@@ -256,77 +269,68 @@ void TempControl::heater() {
             kill();
         }
         else {
-#if ! defined(PIDAutoTune)
-#ifdef PIDTEMP
 
-            // y = Kp*e + Ki*Ta*esum + Kd/Ta*(e – ealt);   //Reglergleichung
+            if (pwmValueOverride) {
 
-            // PID interval [s]
-            unsigned long ts = millis();
-            float pid_dt = (ts - lastPidCompute) / 1000.0;
+                analogWrite( HEATER_0_PIN, max(pwmValueOverride, 0) );
+            }
+            else {
 
-            // Regeldifferenz, grösser 0 falls temperatur zu klein
-            float e = target_temperature[0] - current_temperature[0];
+                // y = Kp*e + Ki*Ta*esum + Kd/Ta*(e – ealt);   //Reglergleichung
 
-            eSum = constrain(
+                // PID interval [s]
+                unsigned long ts = millis();
+                float pid_dt = (ts - lastPidCompute) / 1000.0;
+
+                // Regeldifferenz, grösser 0 falls temperatur zu klein
+                float e = target_temperature[0] - current_temperature[0];
+
+
+                eSum = constrain(
                     eSum + e,
-                    -PID_DRIVE_MAX,
-                    PID_DRIVE_MAX);
+                    -eSumLimit,
+                    eSumLimit);
 
-            float pTerm = Kp * e;
+                float pTerm = Kp * e;
 
-            float iTerm = Ki * pid_dt * eSum;
+                float iTerm = Ki * pid_dt * eSum;
 
-            float dTerm = Kd * (e - eAlt) / pid_dt;
+                float dTerm = Kd * (e - eAlt) / pid_dt;
 
-            // int32_t pid_output = cobias + pTerm + iTerm + dTerm + 0.5;
-            pid_output = cobias + pTerm + iTerm + dTerm + 0.5;
+                // int32_t pid_output = cobias + pTerm + iTerm + dTerm + 0.5;
+                pid_output = pTerm + iTerm + dTerm + 0.5;
 
-            if (pid_output > PID_MAX) {
-                pid_output = PID_MAX;
-            }
-            else if (pid_output < -PID_MAX) {
-                pid_output = -PID_MAX;
-            }
+                if (pid_output > PID_MAX) {
+                    pid_output = PID_MAX;
+                }
+                else if (pid_output < -PID_MAX) {
+                    pid_output = -PID_MAX;
+                }
 
-            analogWrite(HEATER_0_PIN, max(pid_output, 0));
-
-            eAlt = e;
+                analogWrite( HEATER_0_PIN, max(pid_output, 0) );
+                eAlt = e;
 
 #ifdef PID_DEBUG
 
-            static int dbgcount=0;
-            
-            if ((dbgcount++ % 10) == 0) {
-
-                txBuffer.sendResponseStart(RespUnsolicitedMsg);
-                txBuffer.sendResponseUint8(PidDebug);
-                txBuffer.sendResponseValue(pid_dt);
-                txBuffer.sendResponseValue(pTerm);
-                txBuffer.sendResponseValue(iTerm);
-                txBuffer.sendResponseValue(dTerm);
-                /* txBuffer.sendResponseValue(pwmSum); */
-                txBuffer.sendResponseInt32(pid_output);
-                txBuffer.sendResponseEnd();
-            }
+                static int dbgcount=0;
+        
+                if ((dbgcount++ % 10) == 0) {
+                    txBuffer.sendResponseStart(RespUnsolicitedMsg);
+                    txBuffer.sendResponseUint8(PidDebug);
+                    txBuffer.sendResponseValue(pid_dt);
+                    txBuffer.sendResponseValue(pTerm);
+                    txBuffer.sendResponseValue(iTerm);
+                    txBuffer.sendResponseValue(dTerm);
+                    /* txBuffer.sendResponseValue(pwmSum); */
+                    txBuffer.sendResponseValue(pid_output);
+                    txBuffer.sendResponseValue(e);
+                    txBuffer.sendResponseEnd();
+                }
 
 #endif //PID_DEBUG
 
-            lastPidCompute = ts;
-
-            // ---------------------------------------------------
-
-#else
-            if(current_temperature[0] >= target_temperature[0])
-            {
-                WRITE(HEATER_0_PIN, LOW);
+                lastPidCompute = ts;
             }
-            else
-            {
-                WRITE(HEATER_0_PIN, HIGH);
-            }
-#endif  // PIDTEMP
-#endif  // PIDAutoTune
         }
     }
 
@@ -364,16 +368,28 @@ void TempControl::heater() {
     watchdog_reset();
 }
 
-#if defined(PIDAutoTune)
-// Set heater PWM value directly for PID AutoTune
-void TempControl::setHeaterY(uint8_t heater, uint8_t pwmValue) {
+void TempControl::setTempPWM(uint8_t heater, uint8_t pwmValue) {
 
     if (heater == 1) 
         analogWrite(HEATER_0_PIN, pwmValue);
     else
         analogWrite(HEATER_1_PIN, pwmValue);
+
+    if (pwmValue)
+        pwmMode = true;
+    else
+        pwmMode = false;
+
+    pwmValueOverride = pwmValue;
 }
-#endif
+
+void TempControl::hotendOn(uint8_t heater) {
+
+    if (heater == 1) 
+        analogWrite(HEATER_0_PIN, 255);
+    else
+        analogWrite(HEATER_1_PIN, 255);
+}
 
 TempControl tempControl;
 

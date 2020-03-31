@@ -78,17 +78,6 @@ void tp_init()
     #endif
   #endif
 
-#if (EXTRUDERS > 1) && defined(HEATER_1_MAXTEMP)
-  // maxttemp[1] = HEATER_1_MAXTEMP;
-  while(analog2temp(maxttemp_raw[1], 1) > HEATER_1_MAXTEMP) {
-#if HEATER_1_RAW_LO_TEMP < HEATER_1_RAW_HI_TEMP
-    maxttemp_raw[1] -= OVERSAMPLENR;
-#else
-    maxttemp_raw[1] += OVERSAMPLENR;
-#endif
-  }
-#endif //MAXTEMP 1
-
     tempControl.init();
 }
 

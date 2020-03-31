@@ -24,7 +24,7 @@ logging.basicConfig(filename=datetime.datetime.now().strftime("/tmp/ddprint_%y.%
 
 import npyscreen , time, curses, sys, threading, Queue
 import argparse
-import ddprint, stoppableThread, ddhome
+import ddprint, stoppableThread, ddhome, movingavg
 import ddprintutil as util
 
 from serial import SerialException
@@ -32,6 +32,7 @@ from ddprintcommands import *
 from ddprintstates import *
 from ddprofile import MatProfile, PrinterProfile
 from ddprinter import FatalPrinterError
+from ddprintconstants import A_AXIS
 
 class SyncCall:
     def __init__(self, meth, *args):
@@ -127,8 +128,13 @@ class MainForm(npyscreen.FormBaseNew):
     def create(self):
 
         self.keypress_timeout = 1
-        # self.state = 0
         self.lastUpdate = time.time()
+
+        self.gripAvg1 = movingavg.MovingAvg(10)
+        self.gripAvg10 = movingavg.MovingAvg(100)
+
+        self.frAvg1 = movingavg.MovingAvg(10)
+        self.frAvg10 = movingavg.MovingAvg(100)
 
         self.printThread = None
         # self.threadStopCount = 0
@@ -140,7 +146,10 @@ class MainForm(npyscreen.FormBaseNew):
         self.cmdQueue = Queue.Queue()
 
         self.printerState = None
-        self.stateNames = ["IDLE", "INIT", "MOVING", "DWELL"]
+        self.stateNames = ["IDLE", "INIT", "PRINTING", "DWELL"]
+
+        self.lastEPos = None
+        self.lastTime = None
 
         # t  = self.add(npyscreen.TitleText, name = "Text:",) 
         # t.entry_widget.add_handlers({ curses.ascii.NL: self.msgBox}) 
@@ -153,23 +162,28 @@ class MainForm(npyscreen.FormBaseNew):
         #
         rely = 2
         self.printerProfile = self.add(npyscreen.TitleFixedText, name = "PrinterProfile      :", relx=1, rely=rely, use_two_lines=False, begin_entry_at=23,
-                width=w-1)
+                max_width=w-1)
         self.printerProfile.editable = False
 
         rely += 1
-        self.nozzleProfile = self.add(npyscreen.TitleFixedText, name = "Nozzle Profile      :", relx=1, rely=rely, use_two_lines=False, begin_entry_at=23,
-                width=w-1)
+        self.nozzleProfile = self.add(npyscreen.TitleFixedText, name =  "Nozzle Profile      :", relx=1, rely=rely, use_two_lines=False, begin_entry_at=23,
+                max_width=w-1)
         self.nozzleProfile.editable = False
 
         rely += 1
-        self.matProfile = self.add(npyscreen.TitleFixedText, name = "Material Profile    :", relx=1, rely=rely, use_two_lines=False, begin_entry_at=23,
-                width=w-1)
+        self.matProfile = self.add(npyscreen.TitleFixedText, name =     "Material Profile    :", relx=1, rely=rely, use_two_lines=False, begin_entry_at=23,
+                max_width=w-1)
         self.matProfile.editable = False
 
         rely += 1
-        self.smatProfile = self.add(npyscreen.TitleFixedText, name = "Specific Mat Profile:", relx=1, rely=rely, use_two_lines=False, begin_entry_at=23,
-                width=w-1)
+        self.smatProfile = self.add(npyscreen.TitleFixedText, name =    "Specific Mat Profile:", relx=1, rely=rely, use_two_lines=False, begin_entry_at=23,
+                max_width=w-1)
         self.smatProfile.editable = False
+
+        rely += 1
+        self.kAdvance = self.add(npyscreen.TitleFixedText, name =    "K-Advance           :", relx=1, rely=rely, use_two_lines=False, begin_entry_at=23,
+                max_width=w-1)
+        self.kAdvance.editable = False
 
         rely += 2
         """
@@ -188,12 +202,12 @@ class MainForm(npyscreen.FormBaseNew):
             The colour of the blocks that show the level of the slider. By default (None) the same value as the colour of the slider itself.
         """
         self.tempAdjust = self.add(TitleTempAdjSlider, name = "Temp. Level adjust  :", relx=1, rely=rely, use_two_lines=False, begin_entry_at=23,
-                width=w-1, out_of=30, block_color="CONTROL", app=self)
+                max_width=w-1, out_of=30, block_color="CONTROL", app=self)
         self.tempAdjust.value = 15
 
         rely += 2
         self.fn = self.add(npyscreen.TitleFilename, name = "GCode File          :", relx=1, rely=rely, use_two_lines=False, begin_entry_at=23,
-                width=w-1)
+                max_width=w-1)
 
         rely += 2
         self.add(MainForm.Preheat_Button, name = "Preheat", relx=1, rely=rely)
@@ -205,7 +219,7 @@ class MainForm(npyscreen.FormBaseNew):
         # Upper right side: the status area
         #
         rely = 2
-        self.pState = self.add(npyscreen.TitleFixedText, name = "Printer State        :", relx=w, rely=rely, use_two_lines=False, begin_entry_at=23)
+        self.pState = self.add(npyscreen.TitleFixedText, name =   "Printer State       :", relx=w, rely=rely, use_two_lines=False, begin_entry_at=23)
         self.pState.editable = False
 
         rely += 1
@@ -217,28 +231,36 @@ class MainForm(npyscreen.FormBaseNew):
         self.curT1.editable = False
 
         rely += 1
+        self.curPWM = self.add(npyscreen.TitleFixedText, name =   "PWM - Hotend 1      :", relx=w, rely=rely, use_two_lines=False, begin_entry_at=23) 
+        self.curPWM.editable = False
+
+        rely += 1
         self.swapSize = self.add(npyscreen.TitleFixedText, name = "Size Swap File      :", relx=w, rely=rely, use_two_lines=False, begin_entry_at=25)
         self.swapSize.editable = False
 
-        rely += 1
-        self.sdrSize = self.add(npyscreen.TitleFixedText, name =  "Size SDReader       :", relx=w, rely=rely, use_two_lines=False, begin_entry_at=25)
-        self.sdrSize.editable = False
+        # rely += 1
+        # self.sdrSize = self.add(npyscreen.TitleFixedText, name =  "Size SDReader       :", relx=w, rely=rely, use_two_lines=False, begin_entry_at=25)
+        # self.sdrSize.editable = False
 
-        rely += 1
-        self.sbSisze = self.add(npyscreen.TitleFixedText, name =  "Size StepBuffer     :", relx=w, rely=rely, use_two_lines=False, begin_entry_at=25)
-        self.sbSisze.editable = False
+        # rely += 1
+        # self.sbSisze = self.add(npyscreen.TitleFixedText, name =  "Size StepBuffer     :", relx=w, rely=rely, use_two_lines=False, begin_entry_at=25)
+        # self.sbSisze.editable = False
 
         rely += 1
         self.underrun = self.add(npyscreen.TitleFixedText, name = "Stepbuffer underruns:", relx=w, rely=rely, use_two_lines=False, begin_entry_at=23)
         self.underrun.editable = False
 
         rely += 1
-        self.extRate = self.add(npyscreen.TitleFixedText, name =  "Extrusion Rate      :", relx=w, rely=rely, use_two_lines=False, begin_entry_at=27)
-        self.extRate.editable = False
+        self.extGripC = self.add(npyscreen.TitleFixedText, name =  "Feeder Grip (avg)   :", relx=w, rely=rely, use_two_lines=False, begin_entry_at=23)
+        self.extGrip = self.add(npyscreen.TitleFixedText, relx=w+int(w*0.5), max_width=int(0.25*w), rely=rely, use_two_lines=False, begin_entry_at=0)
+        self.extGripC.editable = False
+        self.extGrip.editable = False
 
         rely += 1
-        self.extGrip = self.add(npyscreen.TitleFixedText, name =  "Feeder Grip         :", relx=w, rely=rely, use_two_lines=False, begin_entry_at=23)
-        self.extGrip.editable = False
+        self.extRateC = self.add(npyscreen.TitleFixedText, name =  "Extrusion Rate (avg):", relx=w, rely=rely, use_two_lines=False, begin_entry_at=23)
+        self.extRate = self.add(npyscreen.TitleFixedText, relx=w+int(w*0.5), max_width=int(0.25*w), rely=rely, use_two_lines=False, begin_entry_at=0)
+        self.extRateC.editable = False
+        self.extRate.editable = False
 
         rely += 1
         self.errors = self.add(npyscreen.TitleFixedText, name =   "Errors              :", relx=w, rely=rely, use_two_lines=False, begin_entry_at=23, color="WARNING") 
@@ -250,7 +272,7 @@ class MainForm(npyscreen.FormBaseNew):
         t = self.add(npyscreen.FixedText, value = "Communication Log:", relx=1, rely=h, color='LABEL') 
         t.editable = False
 
-        self.commLog = self.add(npyscreen.BufferPager, maxlen=h, relx=1, rely=h+2, width=w-2) # , height=h-2, width=w-2)
+        self.commLog = self.add(npyscreen.BufferPager, maxlen=h, relx=1, rely=h+2, max_width=w-2) # , height=h-2, width=w-2)
         self.commLog.editable = False
         self.commLog._need_update = False
         # self.commLog.buffer(["Scrolling buffer:"])
@@ -261,7 +283,7 @@ class MainForm(npyscreen.FormBaseNew):
         t = self.add(npyscreen.FixedText, value = "Application Log:", relx=w, rely=h, color='LABEL') 
         t.editable = False
 
-        self.appLog = self.add(npyscreen.BufferPager, maxlen=h, relx=w, rely=h+2, width=w-3) # , height=h-2, width=w-2)
+        self.appLog = self.add(npyscreen.BufferPager, maxlen=h, relx=w, rely=h+2, max_width=w-3) # , height=h-2, width=w-2)
         self.appLog.editable = False
         self.appLog._need_update = False
 
@@ -280,13 +302,14 @@ class MainForm(npyscreen.FormBaseNew):
         # Note: update() can raise a TypeError if we receive non-printable characters over the
         # usb-serial link. Ignore this exceptions here.
         #
-        try:
-            for w in self._widgets__: # [self.commLog, self.appLog]:
-                if hasattr(w, '_need_update') and w._need_update:
-                    w._need_update = False
+        for w in self._widgets__: # [self.commLog, self.appLog]:
+            if hasattr(w, '_need_update') and w._need_update:
+                w._need_update = False
+                try:
                     w.update()
-        except TypeError:
-            self._log("while_waiting(): Ignoring exception: ", traceback.format_exc())
+                except TypeError:
+                    # self._log("while_waiting(): Ignoring exception: ", traceback.format_exc())
+                    pass
 
 
     def printWorker(self):
@@ -294,17 +317,22 @@ class MainForm(npyscreen.FormBaseNew):
         parser = argparse.ArgumentParser(description='%s, Direct Drive USB Print.' % sys.argv[0])
         parser.add_argument("-d", dest="device", action="store", type=str, help="Device to use, default: /dev/ttyACM0.", default="/dev/ttyACM0")
         parser.add_argument("-b", dest="baud", action="store", type=int, help="Baudrate, default 500000.", default=500000)
-        parser.add_argument("-f", dest="file", action="store", type=str, help="Gcode to print")
         parser.add_argument("-F", dest="fakeendstop", action="store", type=bool, help="fake endstops", default=False)
         parser.add_argument("-nc", dest="noCoolDown", action="store", type=bool, help="Debug: don't wait for heater cool down after print.", default=False)
         parser.add_argument("-t0", dest="t0", action="store", type=int, help="Temp 0 (heated bed), default comes from mat. profile.")
         parser.add_argument("-t1", dest="t1", action="store", type=int, help="Temp 1 (hotend 1), default comes from mat. profile.")
         parser.add_argument("-kAdvance", dest="kAdvance", action="store", type=float, help="K-Advance factor, default comes from mat. profile.")
-        parser.add_argument("-mat", dest="mat", action="store", help="Name of material profile to use [pla, abs...], default is pla.", default="pla_1.75mm")
         parser.add_argument("-rl", dest="retractLength", action="store", type=float, help="Retraction length, default comes from printer profile.", default=0)
         parser.add_argument("-inctemp", dest="inctemp", action="store", type=int, help="Increase extruder temperature niveau (layer bonding).", default=0)
+
         parser.add_argument("-smat", dest="smat", action="store", help="Name of specific material profile to use.")
-        parser.add_argument("-noz", dest="nozzle", action="store", help="Name of nozzle profile to use [nozzle40, nozzle80...], default is nozzle40.", default="nozzle40")
+        # parser.add_argument("-noz", dest="nozzle", action="store", help="Name of nozzle profile to use [nozzle40, nozzle80...], default is nozzle40.", default="nozzle40")
+        # parser.add_argument("-mat", dest="mat", action="store", help="Name of material profile to use [pla, abs...], default is pla.", default="pla_1.75mm")
+        # parser.add_argument("-f", dest="file", action="store", type=str, help="Gcode to print")
+
+        parser.add_argument("nozzle", help="Name of nozzle profile to use [nozzle40, nozzle80...].")
+        parser.add_argument("mat", help="Name of generic material profile to use [pla, abs...].")
+        parser.add_argument("file", help="Input GCode file.")
 
         self.args = parser.parse_args()
         self.args.mode = "dlprint"
@@ -312,7 +340,11 @@ class MainForm(npyscreen.FormBaseNew):
         # print "args: ", self.args
 
         (self.parser, self.planner, self.printer) = ddprint.initParser(self.args, gui=self)
-        # util.commonInit(self.args, self.parser)
+        # util.commonInit(self.args, self.printer, self.planner, self.parser)
+
+        self.mat_t0 = MatProfile.getBedTemp()
+        self.mat_t0_reduced = MatProfile.getBedTempReduced()
+        self.mat_t1 = MatProfile.getHotendGoodTemp() + self.planner.l0TempIncrease
 
         self.guiQueue.put(SyncCallUpdate(self.printerProfile.set_value, PrinterProfile.get().name))
         self.guiQueue.put(SyncCallUpdate(self.nozzleProfile.set_value, self.args.nozzle))
@@ -321,18 +353,16 @@ class MainForm(npyscreen.FormBaseNew):
             self.guiQueue.put(SyncCallUpdate(self.smatProfile.set_value, self.args.smat))
         else:
             self.guiQueue.put(SyncCallUpdate(self.smatProfile.set_value, "---"))
+        self.guiQueue.put(SyncCallUpdate(self.kAdvance.set_value, self.planner.advance.getKAdv()))
         self.guiQueue.put(SyncCallUpdate(self.fn.set_value, self.args.file))
         
         try:
-            self.printer.commandInit(self.args, PrinterProfile.getSettings())
+            # self.printer.commandInit(self.args, PrinterProfile.getSettings())
+            util.commonInit(self.args, self.printer, self.planner, self.parser)
         except SerialException:
             msg = "Can't open serial device '%s' (baudrate: %d)!\n\nPress OK to exit." % (self.args.device, self.args.baud)
             self.guiQueue.put(SyncCall(self.quit, msg))
             return
-
-        self.mat_t0 = MatProfile.getBedTemp()
-        self.mat_t0_reduced = MatProfile.getBedTempReduced()
-        self.mat_t1 = MatProfile.getHotendStartTemp() + self.planner.l0TempIncrease
 
         while True:
 
@@ -383,12 +413,14 @@ class MainForm(npyscreen.FormBaseNew):
         self.pState.set_value( "%8s" % self.stateNames[status["state"]])
         self.pState.update()
         self.updateTemps(status["t0"], status["t1"], status["targetT1"])
+        self.curPWM.set_value( "%8d" % status["pwmOutput"])
+        self.curPWM.update()
         self.swapSize.set_value( "%8s" % util.sizeof_fmt(status["Swap"]))
         self.swapSize.update()
-        self.sdrSize.set_value( "%8s" % util.sizeof_fmt(status["SDReader"]))
-        self.sdrSize.update()
-        self.sbSisze.set_value( "%8s" % util.sizeof_fmt(status["StepBuffer"]))
-        self.sbSisze.update()
+        # self.sdrSize.set_value( "%8s" % util.sizeof_fmt(status["SDReader"]))
+        # self.sdrSize.update()
+        # self.sbSisze.set_value( "%8s" % util.sizeof_fmt(status["StepBuffer"]))
+        # self.sbSisze.update()
         if status["StepBufUnderRuns"] > 0:
             self.underrun.set_value( "%8s" % str(status["StepBufUnderRuns"]))
         else:
@@ -396,34 +428,114 @@ class MainForm(npyscreen.FormBaseNew):
 
         self.underrun.update()
 
-        self.extRate.set_value("%8s" % "todo mm³/s")
-        self.extRate.update()
-
         slippage = status["slippage"]
+        self.gripAvg1.add(slippage)
+        self.gripAvg10.add(slippage)
 
-        if slippage:
+        slippageAvg1 = 0.0
+        if self.gripAvg1.valid():
+            slippageAvg1 = self.gripAvg1.mean()
+
+        slippageAvg10 = 0.0
+        if self.gripAvg10.valid():
+            slippageAvg10 = self.gripAvg10.mean()
+
+        color = "GOOD"
+
+        if slippageAvg1 > 0:
+        
+            color = "DANGER"
             if slippage <= (1/.85):
-                self.extGrip.entry_widget.color = "GOOD"
+                color = "GOOD"
             elif slippage <= (1/0.75):
-                self.extGrip.entry_widget.color = "WARNING"
-            else:
-                self.extGrip.entry_widget.color = "DANGER"
-            self.extGrip.set_value( "%8.1f %%" % (100.0/slippage) )
-        else:
-            self.extGrip.entry_widget.color = "GOOD"
-            self.extGrip.set_value( "   ?   ")
+                color = "WARNING"
 
+            self.extGripC.set_value( "%8.1f" % (100.0/slippageAvg1))
+        else:
+            self.extGripC.set_value( "      --" )
+
+        if slippageAvg10 > 0:
+            self.extGrip.set_value( "%.1f %%" % (100.0/slippageAvg10) )
+        else:
+            self.extGrip.set_value( "--" )
+
+        self.extGripC.entry_widget.color = color
+
+        self.extGripC.update()
         self.extGrip.update()
+
+        ePos = status["extruder_pos"]
+        t = time.time()
+
+        e_steps_per_mm = PrinterProfile.getStepsPerMM(A_AXIS)
+
+        if self.lastEPos != None:
+
+            deltaE = ePos - self.lastEPos
+            deltaTime = t - self.lastTime
+
+            deltaEmm = float(deltaE)/e_steps_per_mm
+            matArea = MatProfile.getMatArea()
+
+            flowrate = (deltaEmm*matArea)/deltaTime
+            self.frAvg1.add(flowrate)
+            self.frAvg10.add(flowrate)
+
+            if slippageAvg1 > 0 and slippageAvg10 > 0:
+                fr1 = self.frAvg1.mean()
+                fr10 = self.frAvg10.mean()
+                self.extRateC.set_value("%8.1f/%.1f" % (fr1/slippageAvg1, fr1))
+                self.extRate.set_value("%.1f/%.1f mm³/s" % (fr10/slippageAvg10, fr10))
+            else:
+                self.extRateC.set_value( "      --" )
+                self.extRate.set_value( "--" )
+
+            self.extRateC.entry_widget.color = color
+
+            self.extRateC.update()
+            self.extRate.update()
+
+        self.lastEPos = ePos
+        self.lastTime = t
 
     def display(self, clear=False):
 
-        super(MainForm, self).display(clear)
-
-        # try:
+        # Todo: Why this exception ???
+        """
+            File "/usr/local/lib/python2.7/dist-packages/npyscreen/npyssafewrapper.py", line 41, in wrapper
+                wrapper_no_fork(call_function)
+            File "/usr/local/lib/python2.7/dist-packages/npyscreen/npyssafewrapper.py", line 97, in wrapper_no_fork
+                return_code = call_function(_SCREEN)    
+            File "/usr/local/lib/python2.7/dist-packages/npyscreen/apNPSApplication.py", line 25, in __remove_argument_call_main
+                return self.main()
+            File "./ddprintui.py", line 746, in main
+                F.edit() 
+            File "/usr/local/lib/python2.7/dist-packages/npyscreen/fm_form_edit_loop.py", line 47, in edit
+                self.edit_loop()
+            File "/usr/local/lib/python2.7/dist-packages/npyscreen/fm_form_edit_loop.py", line 41, in edit_loop
+                self.handle_exiting_widgets(self._widgets__[self.editw].how_exited)
+            File "/usr/local/lib/python2.7/dist-packages/npyscreen/fmForm.py", line 153, in handle_exiting_widgets
+                self.how_exited_handers[condition]()
+            File "/usr/local/lib/python2.7/dist-packages/npyscreen/fmForm.py", line 279, in find_next_editable
+                self.display()
+            File "./ddprintui.py", line 503, in display
+                super(MainForm, self).display(clear)
+            File "/usr/local/lib/python2.7/dist-packages/npyscreen/fmForm.py", line 321, in display
+                w.update(clear=clear)
+            File "/usr/local/lib/python2.7/dist-packages/npyscreen/wgmultiline.py", line 723, in update
+                w.update(clear=True)
+            File "/usr/local/lib/python2.7/dist-packages/npyscreen/wgtextbox.py", line 132, in update
+                self._print()
+            File "/usr/local/lib/python2.7/dist-packages/npyscreen/wgtextbox.py", line 299, in _print
+                color
+            TypeError: int,int,str,attr
+        """
+        try:
             # npyscreen.Form.display(self, clear)
-        # except TypeError:
-            # self._log("display(): Ignoring exception: ", traceback.format_exc())
-            # return
+            super(MainForm, self).display(clear)
+        except TypeError:
+            self._log("display(): Ignoring exception: ", traceback.format_exc())
+            return
 
         self.curses_pad.vline( 1, self.columns/2-1, curses.ACS_VLINE, self.lines-2)
         self.curses_pad.hline( self.lines/2-1, 1, curses.ACS_HLINE, self.columns/2-2)
@@ -431,7 +543,7 @@ class MainForm(npyscreen.FormBaseNew):
 
     def preparePreheat(self):
 
-        if self.printerState != StateIdle:
+        if self.printerState > StateInit:
             self.msgBox("Can't start print - printer is not in IDLE state!.")
             return
 
@@ -440,18 +552,19 @@ class MainForm(npyscreen.FormBaseNew):
     def preheat(self):
 
         t = int(self.mat_t0 * 0.9)
-        self.log( "\nPre-Heating bed (t0: %d)...\n" % t)
+        self.log( "Pre-Heating bed (t0: %d)...\n" % t)
         self.printer.heatUp(HeaterBed, t)
 
-        time.sleep(10)
+        self.log( "Waiting 30 seconds... (weak power supply)\n")
+        time.sleep(30)
 
         t = int(self.mat_t1 * 0.5)
-        self.log( "\nPre-Heating extruder (t1: %d)...\n" % t)
+        self.log( "Pre-Heating extruder (t1: %d)...\n" % t)
         self.printer.heatUp(HeaterEx1, t)
 
     def preparePrintFile(self):
 
-        if self.printerState != StateIdle:
+        if self.printerState > StateInit:
             self.msgBox("Can't start print - printer is not in IDLE state!.")
             return
 
@@ -467,23 +580,24 @@ class MainForm(npyscreen.FormBaseNew):
 
     def startPrintFile(self):
 
+        # reset averages here...
+
         try:
 
-            self.parser.reset()
-            self.planner.reset()
+            # self.parser.reset()
+            # self.planner.reset()
 
-            ddhome.home(self.parser, self.args.fakeendstop)
-            util.downloadTempTable(self.planner)
-            self.printer.sendPrinterInit()
+            util.downloadTempTable(self.printer)
 
             # Send heat up  command
-            self.log( "\nPre-Heating bed (t0: %d)...\n" % self.mat_t0)
+            self.log( "Pre-Heating bed (t0: %d)...\n" % self.mat_t0)
             self.printer.heatUp(HeaterBed, self.mat_t0)
 
-            time.sleep(10)
+            self.log( "Waiting 30 seconds... (weak power supply)\n")
+            time.sleep(30)
 
-            t = int(self.mat_t1 * 0.5)
-            self.log( "\nPre-Heating extruder (t1: %d)...\n" % t)
+            t = int(round(self.mat_t1 * 0.5))
+            self.log( "Pre-Heating extruder (t1: %d)...\n" % t)
             self.printer.heatUp(HeaterEx1, t)
 
             f = self.parser.preParse(self.fn.get_value())
@@ -498,19 +612,22 @@ class MainForm(npyscreen.FormBaseNew):
                 self.parser.execute_line(line)
 
                 #
-                # Send more than one 512 byte block for dlprint
+                # Check temp and start print
                 #
-                # if lineNr > 1000 and (lineNr % 250) == 0:
                 if time.time() > (lastUpdate + 0.5):
-
-                    # check temp and start print
 
                     if lineNr > 1000 and not printStarted:
 
-                        self.log( "\nHeating bed (t0: %d)...\n" % self.mat_t0 )
+                        self.log( "Heating bed (t0: %d)...\n" % self.mat_t0 )
                         self.printer.heatUp(HeaterBed, self.mat_t0, wait=self.mat_t0)
-                        self.log( "\nHeating extruder (t1: %d)...\n" % self.mat_t1 )
-                        self.printer.heatUp(HeaterEx1, self.mat_t1, self.mat_t1-1)
+
+                    
+                        # avoid big overswing
+                        self.log( "Heating extruder (t1: %d)...\n" % (int(round(self.mat_t1*0.9))) )
+                        self.printer.heatUp(HeaterEx1, int(round(self.mat_t1*0.9)), self.mat_t1*0.9-2)
+
+                        self.log( "Heating extruder (t1: %d)...\n" % self.mat_t1 )
+                        self.printer.heatUp(HeaterEx1, self.mat_t1, self.mat_t1-2)
 
                         # Send print command
                         self.printer.sendCommandParamV(CmdMove, [MoveTypeNormal])
@@ -528,6 +645,8 @@ class MainForm(npyscreen.FormBaseNew):
                         obj.call()
                         # self.log("hack ...done")
 
+                    time.sleep(0.5) # give some cpu time to main/ui thread
+
                     lastUpdate = time.time()
 
                 lineNr += 1
@@ -535,20 +654,19 @@ class MainForm(npyscreen.FormBaseNew):
             print "Parsed %d gcode lines." % lineNr
 
             # 
-            # Add a move to lift the nozzle from the print if not ultigcode flavor
+            # Add a move to lift the nozzle from the print
             # 
-            # if not self.parser.ultiGcodeFlavor:
             util.endOfPrintLift(self.parser)
 
             self.planner.finishMoves()
             self.printer.sendCommand(CmdEOT)
 
-            # XXX start print if less than 1000 lines or temp not yet reached:
+            # Start print if less than 1000 lines or temp not yet reached:
             if not printStarted:
 
-                self.log( "\nHeating bed (t0: %d)...\n" % self.mat_t0 )
+                self.log( "Heating bed (t0: %d)...\n" % self.mat_t0 )
                 self.printer.heatUp(HeaterBed, self.mat_t0, self.mat_t0)
-                self.log( "\nHeating extruder (t1: %d)...\n" % self.mat_t1 )
+                self.log( "Heating extruder (t1: %d)...\n" % self.mat_t1 )
                 self.printer.heatUp(HeaterEx1, self.mat_t1, self.mat_t1-1)
 
                 # Send print command
@@ -556,7 +674,7 @@ class MainForm(npyscreen.FormBaseNew):
 
             status = self.printer.getStatus()
             # self.guiQueue.put(SyncCall(self.updateStatus, status))
-            while status['state'] != StateIdle:
+            while status['state'] != StateInit:
 
                 # xxxx move to own method
                 if not self.cmdQueue.empty():
@@ -572,7 +690,7 @@ class MainForm(npyscreen.FormBaseNew):
             self.printer.coolDown(HeaterEx1)
             self.printer.coolDown(HeaterBed)
 
-            ddhome.home(self.parser, self.args.fakeendstop)
+            ddhome.home(self.args, self.printer, self.planner, self.parser)
 
             self.printer.sendCommand(CmdDisableSteppers)
 

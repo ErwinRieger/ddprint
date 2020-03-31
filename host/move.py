@@ -20,13 +20,11 @@
 
 import math, struct
 
-import ddprintcommands, cobs, cStringIO
+import ddprintcommands, cobs, cStringIO, ddprintutil
 
-from ddprintconstants import maxTimerValue16, fTimer, _MAX_ACCELERATION
+from ddprintconstants import maxTimerValue16, fTimer, _MAX_ACCELERATION, X_AXIS, Y_AXIS, A_AXIS
 from ddprintconstants import AdvanceEThreshold, StepDataTypeBresenham, StepDataTypeRaw
-from ddprintutil import X_AXIS, Y_AXIS, Z_AXIS, A_AXIS, B_AXIS, circaf, sign
 from ddvector import Vector, VelocityVector32, VelocityVector5, vectorLength, vectorSub, vectorAbs
-from ddprintutil import pdbAssert
 from ddprintcommands import CommandNames, DecelByteFlagBit, AccelByteFlagBit, DirBitsBit, DirBitsBitRaw, MoveStartBit, MeasureStartBit, MeasureStartBitRaw
 from ddprintcommands import TimerByteFlagBit, MoveStartBitRaw
 from ddprofile import PrinterProfile
@@ -220,8 +218,15 @@ class StepData:
 
                 # print "StartMove, E-Timer:", nominalSpeed, timerValue
                 payLoad += struct.pack("<H", min(timerValue, 0xffff))
+
             else:
                 payLoad += struct.pack("<H", 0)
+
+        if move.isMeasureMove:
+
+            # Store window size of running average
+            nAvg = min (255, PrinterProfile.getNShortInterval(move.getBaseMove().measureSpeed))
+            payLoad += struct.pack("<B", nAvg)
 
         payLoad += struct.pack("<HH",
                 self.linearTimer,
@@ -293,7 +298,6 @@ class RawStepData:
 
     def __init__(self):
         self.pulses = []
-        # self.leadAxisXYZ = None
         self.setDirBits = False
         self.dirBits = 0
 
@@ -304,10 +308,6 @@ class RawStepData:
 
     def empty(self):
         return not self.pulses
-
-    # Used for debugging only
-    # def setLeadAxisXYZ(self, leadAxisXYZ):
-        # self.leadAxisXYZ = leadAxisXYZ
 
     def __repr__(self):
         return "RawStepData:" + \
@@ -369,6 +369,12 @@ class RawStepData:
             # print "StartMove, E-Timer:", nominalSpeed, timerValue
             payLoad += struct.pack("<H", min(timerValue, 0xffff))
 
+        if move.isMeasureMove:
+
+            # Store window size of running average
+            nAvg = min (256, PrinterProfile.getNShortInterval(move.getBaseMove().measureSpeed))
+            payLoad += struct.pack("<B", nAvg)
+
         if timerByteFlag:
 
             (lastTimer, stepBits) = self.pulses[0]
@@ -398,15 +404,12 @@ class RawStepData:
 
             cmds.append(( ddprintcommands.CmdBlock, cobsBlock ))
 
-        # print "commands: ", ddprintcommands.CmdG1Raw, len(cmds)
-
         return cmds
 
     def debugPlot(self):
 
         d = {
                 "stepType": "raw",
-                # "leadAxisXYZ": self.leadAxisXYZ,
                 "pulses": self.pulses,
                 }
 
@@ -476,7 +479,7 @@ class AdvanceData:
 
     # Check if sign changes at accel/decel
     def startSignChange(self):
-        return sign(self.startEFeedrate()) != sign(self.startEReachedFeedrate())
+        return ddprintutil.sign(self.startEFeedrate()) != ddprintutil.sign(self.startEReachedFeedrate())
 
     def endSignChange(self):
 

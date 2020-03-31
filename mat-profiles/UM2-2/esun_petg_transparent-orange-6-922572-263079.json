@@ -1,0 +1,17 @@
+{
+  "properties_80" : {
+      "version":  4,
+      "slippage": 0.10,
+      # Material properties:
+      # a1 for pwm
+      "Kpwm": 0.2180,
+      # a1 for temp
+      "Ktemp": 0.2497,
+      # a0 for temp
+      "P0pwm": 96.6818,
+      # a0 for temp
+      "P0temp": 201.5665,
+      # feedrate at a0
+      "FR0pwm": 6.2287
+  }
+}

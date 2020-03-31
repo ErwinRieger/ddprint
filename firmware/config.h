@@ -23,19 +23,22 @@
 // Compile firmware in the PID autoTune version:
 // #define PIDAutoTune 1
 
-// #if MOTHERBOARD != 33
 // Use PMW3360 as a flowrate sensor
-#define PMWFS 1
-// #endif
+// #define PMWFS 1
+
+// Use Bourns ems22a Rotary Encoder as a flowrate sensor
+#define BournsEMS22AFS 1
 
 #define USEExtrusionRateTable
 
-// #define PID_DEBUG // Sends debug data to the serial port.
+// #define PID_DEBUG // Sends hotend pid values as RespUnsolicitedMsg, type PidDebug
 
 // Limit for the integral term and for pwmSum if heater is
 // switched off (target temp == 0) or if setpoint temperature
 // could not be reached.
-#define PID_DRIVE_MAX 100000.0
+// #define PID_DRIVE_MAX 100000.0
+// #define PID_DRIVE_MAX 25000.0
 
-
+#define TIMER10MS 10
+#define TIMER100MS 100
 
