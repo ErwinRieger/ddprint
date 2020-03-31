@@ -5,9 +5,9 @@ FDM 3d printer firmware with host preprocessing.
 :tags: FDM, 3DDruck, 3dprinting, python
 :slug: ddprint-3d-printer-firmware
 
-:Note: This is work in progress...
-
 Improve your FDM printer with a closed loop E-Axis: http://www.ibrieger.de/close_the_loop_for_e.html.
+
+**Note: Experimental and work in progress.**
 
 .. contents::
 
