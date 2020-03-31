@@ -1,7 +1,7 @@
 
 /************************************************************************************************
 * Note by erwin.rieger@ibrieger.de:
-* This file is part of ddprint - a direct drive 3d printer firmware.
+* This file is part of ddprint - a 3d printer firmware.
 * The Origin of this code is Ultimaker2Marlin (https://github.com/Ultimaker/Ultimaker2Marlin).
 ************************************************************************************************/
 
