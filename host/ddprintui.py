@@ -500,13 +500,42 @@ class MainForm(npyscreen.FormBaseNew):
 
     def display(self, clear=False):
 
-        super(MainForm, self).display(clear)
-
-        # try:
+        # Todo: Why this exception ???
+        """
+            File "/usr/local/lib/python2.7/dist-packages/npyscreen/npyssafewrapper.py", line 41, in wrapper
+                wrapper_no_fork(call_function)
+            File "/usr/local/lib/python2.7/dist-packages/npyscreen/npyssafewrapper.py", line 97, in wrapper_no_fork
+                return_code = call_function(_SCREEN)    
+            File "/usr/local/lib/python2.7/dist-packages/npyscreen/apNPSApplication.py", line 25, in __remove_argument_call_main
+                return self.main()
+            File "./ddprintui.py", line 746, in main
+                F.edit() 
+            File "/usr/local/lib/python2.7/dist-packages/npyscreen/fm_form_edit_loop.py", line 47, in edit
+                self.edit_loop()
+            File "/usr/local/lib/python2.7/dist-packages/npyscreen/fm_form_edit_loop.py", line 41, in edit_loop
+                self.handle_exiting_widgets(self._widgets__[self.editw].how_exited)
+            File "/usr/local/lib/python2.7/dist-packages/npyscreen/fmForm.py", line 153, in handle_exiting_widgets
+                self.how_exited_handers[condition]()
+            File "/usr/local/lib/python2.7/dist-packages/npyscreen/fmForm.py", line 279, in find_next_editable
+                self.display()
+            File "./ddprintui.py", line 503, in display
+                super(MainForm, self).display(clear)
+            File "/usr/local/lib/python2.7/dist-packages/npyscreen/fmForm.py", line 321, in display
+                w.update(clear=clear)
+            File "/usr/local/lib/python2.7/dist-packages/npyscreen/wgmultiline.py", line 723, in update
+                w.update(clear=True)
+            File "/usr/local/lib/python2.7/dist-packages/npyscreen/wgtextbox.py", line 132, in update
+                self._print()
+            File "/usr/local/lib/python2.7/dist-packages/npyscreen/wgtextbox.py", line 299, in _print
+                color
+            TypeError: int,int,str,attr
+        """
+        try:
             # npyscreen.Form.display(self, clear)
-        # except TypeError:
-            # self._log("display(): Ignoring exception: ", traceback.format_exc())
-            # return
+            super(MainForm, self).display(clear)
+        except TypeError:
+            self._log("display(): Ignoring exception: ", traceback.format_exc())
+            return
 
         self.curses_pad.vline( 1, self.columns/2-1, curses.ACS_VLINE, self.lines-2)
         self.curses_pad.hline( self.lines/2-1, 1, curses.ACS_HLINE, self.columns/2-2)
