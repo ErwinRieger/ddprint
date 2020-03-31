@@ -1,12 +1,30 @@
 # -*- coding: utf-8 -*-
+#/*
+# This file is part of ddprint - a 3D printer firmware.
+# 
+# Copyright 2015 erwin.rieger@ibrieger.de
+# 
+# ddprint is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+# 
+# ddprint is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+# 
+# You should have received a copy of the GNU General Public License
+# along with ddprint.  If not, see <http://www.gnu.org/licenses/>.
+#*/
 
 import sys, struct, crc16, cStringIO
 
-LenLen = 1
-LenHeader =          1+1+1+LenLen+1+2
+LenLen    = 1
+LenHeader = 1+1+1+LenLen+1+2
 # Rxbuffer in firmare is 256 bytes, but for simpler index handling
 # we use only 255 bytes of it.
-LenCobs =               255 - LenHeader
+LenCobs   = 255 - LenHeader
 
 #
 # Paketgrösse insgesamt max. 256 bytes
@@ -132,20 +150,5 @@ def decodeCobs(data):
         result += nullByte
 
     return result
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
