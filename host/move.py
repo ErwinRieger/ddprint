@@ -372,7 +372,7 @@ class RawStepData:
         if move.isMeasureMove:
 
             # Store window size of running average
-            nAvg = min (256, PrinterProfile.getNShortInterval(move.getBaseMove().measureSpeed))
+            nAvg = min (255, PrinterProfile.getNShortInterval(move.getBaseMove().measureSpeed))
             payLoad += struct.pack("<B", nAvg)
 
         if timerByteFlag:
