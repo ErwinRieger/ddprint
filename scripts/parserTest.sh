@@ -9,7 +9,8 @@ for inp in $(ls -rS $* test_files/*.gcode); do
 
     for kadv in 0 0.1 0.4 0.5 1; do
 
-        python ddprint.py -kAdvance $kadv pre $inp
+        echo "python ddprint.py -kAdvance $kadv pre UM2_profile_template nozzle40 pla_1.75mm $inp"
+        python ddprint.py -kAdvance $kadv pre UM2_profile_template nozzle40 pla_1.75mm $inp 2>&1 | tail -100
 
         if [ "$?" != "0" ]; then
             echo "########################################################"
