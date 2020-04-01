@@ -300,7 +300,7 @@ def initParser(args, mode=None, gui=None, travelMovesOnly=False):
     printerProfile = initPrinterProfile(args)
 
     # Create material profile singleton instance
-    initMatProfile(args, printer.getPrinterName())
+    initMatProfile(args, args.printer or printer.getPrinterName())
 
     try:
         nozzle = args.nozzle
