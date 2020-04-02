@@ -1,7 +1,5 @@
 
-# 1.0.5:
 # ARDUINO_DIR  = /usr/share/arduino
-# 1.6.13:
 ARDUINO_DIR  = ../../arduino-1.6.13
 
 TARGET       = firmware.fw
