@@ -32,12 +32,93 @@ Features
 Installation
 +++++++++++++
 
+Firmware part
+-------------
+
+Requirements
+************
+
+* Arduino code/libraries and avr compiler
+* Arduino-Makefile
+* SdCard library
+* Protothreads header
+
+Install them along the checked out ddprint sources so that the
+directory structure looks like this:
+
+.. code-block:: sh
+
+    .
+    ├── ddprint
+    │   ├── LICENSE
+    │   ...
+    ├── arduino-1.6.13
+    │   ├── arduino
+    │   ...
+    ├── Arduino-Makefile
+    │   ├── Arduino.mk
+    │   ...
+    ├── SdFat-1.0.5
+    │   ...
+    │   └── src
+    ├── protothreads-cpp
+    │   ├── LICENSE.txt
+    │   ...
+
+The following versions are used at the moment (maybe other versions will also work):
+
+.. code-block:: sh
+
+    Arduino IDE 1.6.13, installed from downloaded archive.
+
+    Arduino-Makefile from github.com/sudar/Arduino-Makefile.git
+        commit c3fe5dcc2fbd5c895b032ca5a5a1f60af163b744
+        Merge: 7a26a86 6d3d973
+        Author: Simon John <git@the-jedi.co.uk>
+        Date:   Thu Dec 28 18:05:18 2017 +0000
+
+    SdFat-1.0.5, installed from downloaded archive, apply ddprint/patches/SdFat-1.0.5.patch.
+
+    protothreads-cpp/Protothread.h
+        commit 984aa540dd4325b7e23dc76135ca28a36526f0c6
+        Author: Ben Hoyt <benhoyt@gmail.com>
+        Date:   Tue Dec 4 16:48:52 2018 -0500
+
+        Apply ddprint/patches/protothreads-cpp.patch
+
+
+Build and upload firmware
+***************************
+
+:Note: keep a backup of your previous firmware in case you want to go back.
+:Note: keep a backup of your EEProm in case yout want to go back, EEProm content will be erased.
+
+For a ultimaker UM2 do:
+
+.. code-block:: sh
+
+    make -f Makefile.fw
+    make -f Makefile.fw do_upload
+
+For a ramps based printer do:
+
+.. code-block:: sh
+
+    make -f Makefile.ramps
+    make -f Makefile.ramps do_upload
+
+:Todo: Add info about configuration.
+
+Host part
+-------------
+
 Requirements:
 
 * apt-get install python python-serial
 * pip install npyscreen vor the TUI (ddprintui.py)
 
-No installation procedure yet, checkout the repository and run *ddprint.py* or *ddprintui.py* from there.
+No installation procedure yet, checkout the repository and run *ddprint.py* or *ddprintui.py* from the
+*ddprint/host* subdirectory.
 
 Usage
 +++++++++++++
