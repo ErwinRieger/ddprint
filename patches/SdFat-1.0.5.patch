@@ -1,0 +1,42 @@
+diff --git a/src/SdCard/SdSpiCard.h b/src/SdCard/SdSpiCard.h
+index 4c2fa08..c8f5748 100644
+--- a/src/SdCard/SdSpiCard.h
++++ b/src/SdCard/SdSpiCard.h
+@@ -256,7 +256,11 @@ class SdSpiCard {
+     cardCommand(CMD55, 0);
+     return cardCommand(cmd, arg);
+   }
++
++ protected:
+   uint8_t cardCommand(uint8_t cmd, uint32_t arg);
++
++ private:
+   bool isTimedOut(uint16_t startMS, uint16_t timeoutMS);
+   bool readData(uint8_t* dst, size_t count);
+   bool readRegister(uint8_t cmd, void* buf);
+@@ -266,8 +270,12 @@ class SdSpiCard {
+   }
+ 
+   bool waitNotBusy(uint16_t timeoutMS);
++
++ protected:
+   bool writeData(uint8_t token, const uint8_t* src);
+ 
++ private:
++
+   //---------------------------------------------------------------------------
+   // functions defined in SdSpiDriver.h
+   void spiActivate() {
+diff --git a/src/SdFatConfig.h b/src/SdFatConfig.h
+index 9e7127d..ff3f7a9 100644
+--- a/src/SdFatConfig.h
++++ b/src/SdFatConfig.h
+@@ -104,7 +104,7 @@
+  * Set USE_SD_CRC to 2 to used a larger table driven CRC-CCITT function.  This
+  * function is faster for AVR but may be slower for ARM and other processors.
+  */
+-#define USE_SD_CRC 0
++#define USE_SD_CRC 2
+ //------------------------------------------------------------------------------
+ /**
+  * Handle Watchdog Timer for WiFi modules.
