@@ -25,7 +25,7 @@ Video: https://youtu.be/1Kbl9AZd10Y
 Features
 +++++++++++++
 
-* Closed loop E-Axis using a PMW3360 optical sensor.
+* Closed loop E-Axis using a Bourns EMS22 incremental encoder.
 * auto tempearture control
 * extruder pressure advance
 
@@ -65,21 +65,22 @@ directory structure looks like this:
     │   ├── LICENSE.txt
     │   ...
 
-The following versions are used at the moment (maybe other versions will also work):
+The following versions are used at the moment (maybe newer versions will also work):
 
 .. code-block:: sh
 
     Arduino IDE 1.6.13, installed from downloaded archive.
 
-    Arduino-Makefile from github.com/sudar/Arduino-Makefile.git
+    Arduino-Makefile from https://github.com/sudar/Arduino-Makefile.git
         commit c3fe5dcc2fbd5c895b032ca5a5a1f60af163b744
         Merge: 7a26a86 6d3d973
         Author: Simon John <git@the-jedi.co.uk>
         Date:   Thu Dec 28 18:05:18 2017 +0000
 
-    SdFat-1.0.5, installed from downloaded archive, apply ddprint/patches/SdFat-1.0.5.patch.
+    SdFat-1.0.5, installed from downloaded zip archive (downloads.arduino.cc/libraries/github.com/greiman/SdFat-1.0.5.zip),
+    apply ddprint/patches/SdFat-1.0.5.patch.
 
-    protothreads-cpp/Protothread.h
+    Protothreads from https://github.com/benhoyt/protothreads-cpp.git
         commit 984aa540dd4325b7e23dc76135ca28a36526f0c6
         Author: Ben Hoyt <benhoyt@gmail.com>
         Date:   Tue Dec 4 16:48:52 2018 -0500
