@@ -958,8 +958,8 @@ bool FillBufferTask::Run() {
 
                 targetHeater = *sDReader.readData;
                 pulseTime = FromBuf(uint16_t, sDReader.readData+1) * 100; //  stored as 1/10 seconds
-                pulsePause = FromBuf(uint16_t, sDReader.readData+5) * 100; // stored as 1/10 seconds
-                targetTemp = FromBuf(uint16_t, sDReader.readData+7);
+                pulsePause = FromBuf(uint16_t, sDReader.readData+3) * 100; // stored as 1/10 seconds
+                targetTemp = FromBuf(uint16_t, sDReader.readData+5);
 
                 pulse = min(pulseTime, (uint32_t)printer.getTu());
                 pulseEnd = millis() + pulse;
@@ -971,7 +971,8 @@ bool FillBufferTask::Run() {
                 // Hotend full throttle, pwm value is reset with next heater run (every 100mS),
                 // temp is reset in loop()!
                 tempControl.hotendOn(targetHeater);
-                // xxx 260 hardcoded max hotend temp
+                // xxx 260 hardcoded max hotend temp, this is the max hotend temp value
+                // from material profile
                 tempControl.setTemp(targetHeater, 260 - printer.getIncreaseTemp(targetHeater));
 
                 PT_RESTART();
