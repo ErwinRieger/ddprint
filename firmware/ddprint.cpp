@@ -310,6 +310,9 @@ class SDReader: public Protothread {
         FWINLINE void setBytesToRead5() {
             Restart();
             bytesToRead = 5; }
+        FWINLINE void setBytesToRead7() {
+            Restart();
+            bytesToRead = 7; }
         FWINLINE void setBytesToRead9() {
             Restart();
             bytesToRead = 9; }
@@ -950,7 +953,7 @@ bool FillBufferTask::Run() {
                     printer.sendGenericMessage("timerPause", sizeof("timerPause"));
                 }
 
-                sDReader.setBytesToRead9();
+                sDReader.setBytesToRead7();
                 PT_WAIT_THREAD(sDReader);
 
                 targetHeater = *sDReader.readData;
