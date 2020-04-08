@@ -954,8 +954,8 @@ bool FillBufferTask::Run() {
                 PT_WAIT_THREAD(sDReader);
 
                 targetHeater = *sDReader.readData;
-                pulseTime = FromBuf(uint32_t, sDReader.readData+1);
-                pulsePause = FromBuf(uint16_t, sDReader.readData+5);
+                pulseTime = FromBuf(uint16_t, sDReader.readData+1) * 100; //  stored as 1/10 seconds
+                pulsePause = FromBuf(uint16_t, sDReader.readData+5) * 100; // stored as 1/10 seconds
                 targetTemp = FromBuf(uint16_t, sDReader.readData+7);
 
                 pulse = min(pulseTime, (uint32_t)printer.getTu());

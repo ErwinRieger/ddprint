@@ -203,11 +203,9 @@ class PathData (object):
 
         if newTemp < MatProfile.getHotendMaxTemp() and (self.energy / pwmMaxStep) > 0.1: # timing heater loop
 
-            # print "need energy:", self.energy, "[pwm*sec]"
+            print "need energy:", self.energy, "[pwm*sec]"
 
             tOn = min( (self.energy*0.8) / pwmMaxStep, tsum)
-
-            # print "this is %.2f seconds with %.2f pwm, move time: %.2f" % (tOn, pwmMaxStep, tsum)
 
             self.energy -= pwmMaxStep * tOn
 
@@ -217,12 +215,21 @@ class PathData (object):
                 nPulse = int(math.ceil(tOn/self.Tu))
                 tPause = (tsum - tOn) / nPulse
 
+            print "this is %.2f seconds with %.2f pwm, move time: %.2f, tPause is %.2f" % (tOn, pwmMaxStep, tsum, tPause)
+
+            # Note tOn and tPause stored as 1/10th seconds, they are stored in a uint16 datatype.
+            # assert(tOn*10 < pow(2, 16))
+            # assert(tPause*10 < pow(2, 16))
+
             # Schedule target temp command
+            # Printer is running the hotend for time tOn at full throttlel, pulse is clipped 
+            # at Tu. If tOn is longer than Tu, a pause of tPause is inserted. If some tOn is left
+            # after tPause, further pulse(s) are done.
             self.planner.addSynchronizedCommand(
                 CmdSyncHotendPulse, 
                 p1 = packedvalue.uint8_t(HeaterEx1),
-                p2 = packedvalue.uint32_t(tOn * 1000), 
-                p3 = packedvalue.uint16_t(tPause * 1000), 
+                p2 = packedvalue.uint16_t(tOn * 10), 
+                p3 = packedvalue.uint16_t(tPause * 10), 
                 p4 = packedvalue.uint16_t(newTemp), 
                 moveNumber = move.moveNumber)
 

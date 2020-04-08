@@ -189,7 +189,7 @@ class FillBufferTask : public Protothread {
         // xxxx getter/setter
         uint8_t targetHeater;
         uint32_t pulseTime;
-        uint16_t pulsePause;
+        uint32_t pulsePause;
         unsigned long pulseEnd;
         unsigned long dwellEnd;
         uint16_t targetTemp;
