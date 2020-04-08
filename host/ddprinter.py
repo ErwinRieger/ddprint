@@ -799,6 +799,9 @@ class Printer(Serial):
 
         assert(type(temp) == types.IntType)
 
+        if log:
+            print "coolDown(): cooling down hotend..."
+
         if heater > HeaterBed:
             # Switch on PID mode
             payload = struct.pack("<BB", heater, 0)

@@ -203,7 +203,7 @@ class PathData (object):
 
         if newTemp < MatProfile.getHotendMaxTemp() and (self.energy / pwmMaxStep) > 0.1: # timing heater loop
 
-            print "need energy:", self.energy, "[pwm*sec]"
+            # print "need energy:", self.energy, "[pwm*sec]"
 
             tOn = min( (self.energy*0.8) / pwmMaxStep, tsum)
 
@@ -215,7 +215,7 @@ class PathData (object):
                 nPulse = int(math.ceil(tOn/self.Tu))
                 tPause = (tsum - tOn) / nPulse
 
-            print "this is %.2f seconds with %.2f pwm, move time: %.2f, tPause is %.2f" % (tOn, pwmMaxStep, tsum, tPause)
+            # print "this is %.2f seconds with %.2f pwm, move time: %.2f, tPause is %.2f" % (tOn, pwmMaxStep, tsum, tPause)
 
             # Note tOn and tPause stored as 1/10th seconds, they are stored in a uint16 datatype.
             # assert(tOn*10 < pow(2, 16))

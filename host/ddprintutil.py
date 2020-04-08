@@ -1375,7 +1375,6 @@ def measureHotendStepResponse(args):
     temp = printer.getTemp(doLog = False)[HeaterEx1] # current temp
     if temp > maxStartTemp:
         print "Current hotend temp %.2f, this is higher than the max. starting temp of %.2f." % (temp, maxStartTemp)
-        print "waiting for hotend to cool down, please wait..."
         printer.coolDown(HeaterEx1, 0, wait=maxStartTemp, log=True)
 
     temp = tempStart = printer.getTemp(doLog = False)[HeaterEx1] # current temp
