@@ -1989,6 +1989,8 @@ def measureTempFlowrateCurve(args, parser):
     print "# feedrate at a0"
     print '"FR0pwm": %.4f,' % data[0][0]
 
+    printer.coolDown(HeaterEx1, wait=100, log=True)
+
 ####################################################################################################
 #
 # Create a list of stepper pulses for a acceleration ramp.
