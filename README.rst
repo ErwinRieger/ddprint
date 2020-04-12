@@ -25,7 +25,7 @@ Video: https://youtu.be/1Kbl9AZd10Y
 Features
 +++++++++++++
 
-* Closed loop E-Axis using a Bourns EMS22 incremental encoder.
+* Closed loop E-Axis using a Bourns EMS22AFS incremental encoder.
 * auto tempearture control
 * extruder pressure advance
 
@@ -120,6 +120,17 @@ Requirements:
 
 No installation procedure yet, checkout the repository and run *ddprint.py* or *ddprintui.py* from the
 *ddprint/host* subdirectory.
+
+Configuration
++++++++++++++
+
+Parts of printer configuration hardcoded in firmware, parts come from printer profile at runtime.
+
+:Todo: describe configuration.
+
+Only one setting stored in eeprom: the printer name.
+
+:Todo: describe printer name setting.
 
 Usage
 +++++++++++++
