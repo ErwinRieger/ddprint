@@ -2,10 +2,12 @@
 FDM 3d printer firmware with host preprocessing.
 =================================================
 
-:tags: FDM, 3DDruck, 3dprinting, python
+:tags: FDM, 3DDruck, 3dprinting, python, ddprint
 :slug: ddprint-3d-printer-firmware
 
 3d printer firmware for atmega based cartesian printers (ultimaker 2 and ramps based only at this time).
+
+Ultimaker 2 with ddprint modification: http://www.ibrieger.de/pimped-ultimaker-2.html
 
 Improve your FDM printer with a closed loop E-Axis: http://www.ibrieger.de/close_the_loop_for_e.html.
 
