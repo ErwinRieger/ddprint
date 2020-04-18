@@ -7,9 +7,11 @@ FDM 3d printer firmware with host preprocessing.
 
 3d printer firmware for atmega based cartesian printers (ultimaker 2 and ramps based only at this time).
 
-Ultimaker 2 with ddprint modification: http://www.ibrieger.de/pimped-ultimaker-2.html
+This firmware is part of the *ddprint printing system*, this immproves a common FDM printer with
+a closed loop E-Axis: http://www.ibrieger.de/close_the_loop_for_e.html.
 
-Improve your FDM printer with a closed loop E-Axis: http://www.ibrieger.de/close_the_loop_for_e.html.
+Reference printer is a Ultimaker 2 with ddprint installed and some hardware
+modifications: http://www.ibrieger.de/pimped-ultimaker-2.html
 
 **Note: Experimental and work in progress.**
 
@@ -18,18 +20,31 @@ Improve your FDM printer with a closed loop E-Axis: http://www.ibrieger.de/close
 Github Mirror, project Homepage
 ++++++++++++++++++++++++++++++++
 
-DDPrint FDM firmware: `http://github.com/ErwinRieger/ddprint <http://github.com/ErwinRieger/ddprint>`_.
+DDPrint FDM firmware: `github.com/ErwinRieger/ddprint <http://github.com/ErwinRieger/ddprint>`_, mirrored here: http://www.ibrieger.de/ddprint-3d-printer-firmware.html.
 
-Project homepage: `http://www.ibrieger.de/close_the_loop_for_e.html <http://www.ibrieger.de/close_the_loop_for_e.html>`_.
+DDprint system project homepage: `ibrieger.de/close_the_loop_for_e.html <http://www.ibrieger.de/close_the_loop_for_e.html>`_.
 
-Video: https://youtu.be/1Kbl9AZd10Y
+Video: https://youtu.be/1Kbl9AZd10Y, ddprint playlist: https://www.youtube.com/playlist?list=PLzn7lnnZpS7XP-JhLw_o7p27ayv5bJ29o.
 
-Features
+HackadayIO project: https://hackaday.io/project/170695-ddprint.
+
+Key features:
 +++++++++++++
 
-* Closed loop E-Axis using a Bourns EMS22AFS incremental encoder.
-* auto tempearture control
-* extruder pressure advance
+* Uses a incremental sensor to measure extruder flowrate at realtime
+  to "close the loop for E". This limits the speed of the printer
+  if feeder tends to slip.
+* Automatic measurement of feeder system caracteristics for calibration.
+* Automatic measurement of filament caracteristics to create filament
+  profiles .
+* "Auto temperature algorithm": hotend temperature depends on the
+  gcode-requested flowrate. 
+* "Temperature-flowrate limiter": speed of printer is limited if hotend
+  has not (yet) the right temperature for the requested flowrate.
+* Extruder pressure advance, of course ;-)
+
+Main part is the Flowrate Sensor realized with a Bourns EMS22AFS incremental
+encoder: http://www.ibrieger.de/pimped-ultimaker-2.html#feeder-flowratesensor.
 
 Installation
 +++++++++++++
