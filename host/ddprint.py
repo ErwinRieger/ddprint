@@ -401,6 +401,8 @@ def main():
     sp = subparsers.add_parser("bedLeveling", help=u"Do bed leveling sequence.")
 
     sp = subparsers.add_parser("heatHotend", help=u"Heat up hotend (to clean it, etc).")
+    sp.add_argument("printer", help="Name of printer profile to use.")
+    sp.add_argument("mat", help="Name of generic material profile to use [pla, abs...].")
 
     sp = subparsers.add_parser("genTempTable", help=u"Generate extrusion rate limit table.")
 
@@ -639,7 +641,10 @@ def main():
 
     elif args.mode == 'heatHotend':
 
-        util.heatHotend(args, parser)
+        printer = Printer()
+        initPrinterProfile(args)
+        initMatProfile(args, printer.getPrinterName())
+        util.heatHotend(args, printer)
 
     elif args.mode == 'genTempTable':
 

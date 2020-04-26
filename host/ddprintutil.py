@@ -1090,10 +1090,7 @@ def stopMove(args, parser):
 
 ####################################################################################################
 
-def heatHotend(args, parser):
-
-    planner = parser.planner
-    printer = planner.printer
+def heatHotend(args, printer):
 
     printer.commandInit(args, PrinterProfile.getSettings())
 
