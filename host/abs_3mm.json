@@ -1,6 +1,5 @@
 {
   "material_diameter" : 3.0,
-  "flow"              : 100,
   "hotendBaseTemp"    : 240,
   "hotendMaxTemp"     : 275,
   "bedTemp"           : 100,

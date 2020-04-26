@@ -176,9 +176,7 @@ class UM2GcodeParser:
                 "U": self.unknown, # unknown command for testing purposes
                 }
 
-        # Apply material flow parameter from material profile
-        if not travelMovesOnly:
-            self.e_to_filament_length = MatProfile.getFlow() / 100.0
+        self.e_to_filament_length = 1.0
 
         self.steps_per_mm = PrinterProfile.getStepsPerMMVector()
         self.mm_per_step = map(lambda dim: 1.0 / self.steps_per_mm[dim], range(5))
@@ -259,7 +257,7 @@ class UM2GcodeParser:
                     # To compute extrude length from volume (see getValues()):
                     # V = A * h, h = V / A, A = pi/4 * diameter²
                     aFilament = MatProfile.getMatArea()
-                    self.e_to_filament_length = self.e_to_filament_length / aFilament
+                    self.e_to_filament_length = 1.0 / aFilament
                 elif "SIMPLIFY3D" in upperLine:
                     self.gcodeType = GCODES3D
 
@@ -347,7 +345,7 @@ class UM2GcodeParser:
 
             rest = param[1:]
 
-            factor = 1
+            factor = 1.0
 
             # XXX assuming ultiGcode here !!! --> parse ;FLAVOR:UltiGCode
             if valueChar == "E":
