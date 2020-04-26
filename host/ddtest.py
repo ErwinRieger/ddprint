@@ -92,10 +92,7 @@ def writeData(f, measurements):
     f.write("E\n")
 
 
-def testFilSensor(args, parser):
-
-    planner = parser.planner
-    printer = planner.printer
+def testFilSensor(args, printer, parser):
 
     feedrate = args.feedrate or 1.0
 
@@ -124,10 +121,7 @@ def testFilSensor(args, parser):
 # * wait for average-lock
 # * print out ratio of dialed in speed and measured speed
 #
-def calibrateESteps(args, parser):
-
-    planner = parser.planner
-    printer = planner.printer
+def calibrateESteps(args, printer, planner):
 
     feedrate = args.feedrate or 5.0
     feedrate = min(feedrate, PrinterProfile.getValues()['axes']["A"]['jerk'])
@@ -221,19 +215,9 @@ def calibrateESteps(args, parser):
 # * run the feeder with different feedrates
 # * build average stepper-to-flowsensor ratio
 #
-def calibrateFilSensor(args, parser):
+def calibrateFilSensor(args, printer, planner):
 
-    planner = parser.planner
-    printer = planner.printer
-
-    aFilament = MatProfile.getMatArea()
-
-    # 0.8 nozzle
-    max80 = 25 # mm3/s
-    maxFeedrate = args.feedrate or max80/aFilament
-
-    # 0.4 nozzle
-    # max40 = 10 # mm3/s
+    maxFeedrate = args.feedrate or 10.0 # mm/s
 
     printer.commandInit(args, PrinterProfile.getSettings())
 
@@ -253,11 +237,7 @@ def calibrateFilSensor(args, parser):
     calValues = []
     valueSum = 0
 
-    dFeederWheel = PrinterProfile.getFeederWheelDiam()
-    oneRev = math.pi * dFeederWheel # [mm]
-
     steps_per_mm = PrinterProfile.getStepsPerMM(A_AXIS)
-    # stepsOneRev = oneRev * steps_per_mm
 
     # Start feeder 
     printer.sendCommandParamV(CmdContinuousE, [packedvalue.uint16_t(maxTimerValue16)])
@@ -267,9 +247,6 @@ def calibrateFilSensor(args, parser):
     steps = [0.25, 0.5, 0.75, 1.0]
     stepindex = 0
     stepfactor = 1.0
-
-    # xxx debug feedrate = 2.5
-    # stepfactor = 10.0
 
     # Start feedrate
     feedrate = steps[0] * stepfactor

@@ -429,11 +429,14 @@ def main():
     sp = subparsers.add_parser("testFeederUniformity", help=u"Debug: check smoothness/roundness of feeder measurements.")
 
     sp = subparsers.add_parser("testFilSensor", help=u"Debug: move filament manually, output filament sensor measurement.")
+    sp.add_argument("printer", help="Name of printer profile to use.")
     sp.add_argument("distance", action="store", help="Move-distance (+/-) in mm.", type=float)
 
     sp = subparsers.add_parser("calibrateESteps", help=u"Debug: helper to determine the e-steps value.")
+    sp.add_argument("printer", help="Name of printer profile to use.")
 
     sp = subparsers.add_parser("calibrateFilSensor", help=u"Debug: helper to determine the ratio of stepper to flowrate sensor.")
+    sp.add_argument("printer", help="Name of printer profile to use.")
 
     args = argParser.parse_args()
 
@@ -738,17 +741,30 @@ def main():
 
         ddtest.testFeederUniformity(args, parser)
 
-    elif args.mode == 'todo testFilSensor':
+    elif args.mode == 'testFilSensor':
 
-        ddtest.testFilSensor(args, parser)
+        printer = Printer()
+        initPrinterProfile(args)
+        planner = Planner(args, printer.gui, travelMovesOnly=True)
+        parser = gcodeparser.UM2GcodeParser(planner, logger=printer.gui, travelMovesOnly=True)
 
-    elif args.mode == 'todo calibrateESteps':
+        ddtest.testFilSensor(args, printer, parser)
 
-        ddtest.calibrateESteps(args, parser)
+    elif args.mode == 'calibrateESteps':
 
-    elif args.mode == 'todo calibrateFilSensor':
+        printer = Printer()
+        initPrinterProfile(args)
+        planner = Planner(args, printer.gui, travelMovesOnly=True)
+        # parser = gcodeparser.UM2GcodeParser(planner, logger=printer.gui, travelMovesOnly=True)
+        ddtest.calibrateESteps(args, printer, planner)
 
-        ddtest.calibrateFilSensor(args, parser)
+    elif args.mode == 'calibrateFilSensor':
+
+        printer = Printer()
+        initPrinterProfile(args)
+        planner = Planner(args, printer.gui, travelMovesOnly=True)
+        # parser = gcodeparser.UM2GcodeParser(planner, logger=printer.gui, travelMovesOnly=True)
+        ddtest.calibrateFilSensor(args, printer, planner)
 
     elif args.mode == 'test':
 
