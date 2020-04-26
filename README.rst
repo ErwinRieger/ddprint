@@ -1,9 +1,15 @@
 
-FDM 3d printer firmware with host preprocessing.
-=================================================
+FDM 3d printer firmware with host preprocessing and *closed loop E*
+=====================================================================
 
 :tags: FDM, 3DDruck, 3dprinting, python, ddprint
 :slug: ddprint-3d-printer-firmware
+
+**Note: Experimental and work in progress.**
+
+.. image:: ./images/flowsensor_red.jpg
+   :width: 200px
+   :target: ./images/flowsensor_red.jpg
 
 3d printer firmware for atmega based cartesian printers (ultimaker 2 and ramps based only at this time).
 
@@ -12,8 +18,6 @@ a closed loop E-Axis: http://www.ibrieger.de/close_the_loop_for_e.html.
 
 Reference printer is a Ultimaker 2 with ddprint installed and some hardware
 modifications: http://www.ibrieger.de/pimped-ultimaker-2.html
-
-**Note: Experimental and work in progress.**
 
 .. contents::
 
@@ -206,6 +210,24 @@ Store printer name in printer's eeprom:
 .. code-block:: sh
 
     ./ddprint.py setPrinterName UM2-1
+
+Automatically determine extruder *e-steps* value for printer profile:
+
+.. code-block:: sh
+
+    ./ddprint.py calibrateESteps UM2-2
+
+Automatically determine flowrate sensor calibration value for printer profile:
+
+.. code-block:: sh
+
+    ./ddprint.py calibrateFilSensor UM2-2
+
+Test *e-steps* and flowrate sensor calibration:
+
+.. code-block:: sh
+
+    ./ddprint.py testFilSensor UM2-2 100
 
 Run PID autotune to determine the hotend PID parameters:
 
