@@ -153,6 +153,28 @@ Only one setting stored in eeprom: the printer name.
 
 :Todo: describe printer name setting.
 
+
+Gcode input
++++++++++++++
+
+Easier slicing, simple gcode
+-----------------------------
+
+:Note: Simplify3d is used as of this writing.
+
+Use mostly plain gcode with ddprint, many of the *advanced features* of the slicers (i call it *slicer hacks*) are not
+needed, see http://www.ibrieger.de/close_the_loop_for_e.html#simpler-gcode.
+
+The (automatically measured) material profile gives a picture of the hotend melting capacity for a given machine/filament combination.
+This eases the determination of a good printing speed. 
+
+Simplify3d example slicer settings in https://github.com/ErwinRieger/ddprint/tree/master/examples/s3d_profiles.
+
+Supported gcodes
+-----------------
+
+*Todo*
+
 Usage
 +++++++++++++
 
@@ -191,6 +213,11 @@ AutoTemp
 -----------
 
 AutoTemp algorithm: the hotend temperature is increased for parts of the model where high printing speeds are reached and vice-versa.
+
+Protothreads
+------------
+
+The firmware part is implemented using the great *protothreads* library: http://github.com/benhoyt/protothreads-cpp, thanks for this work.
 
 Other 
 ------
@@ -241,5 +268,12 @@ Print a gcode file with the TUI:
 
 .. code-block:: sh
 
-    ./ddprintui.py  -smat esun_petg_transparent-orange-6-922572-263079 nozzle80 petg_1.75mm /3dmodels/tests/s3d/quader_10x20.gcode
+    ./ddprintui.py  -smat esun_petg_transparent-orange-6-922572-263079 nozzle80 petg_1.75mm quader_10x20.gcode
+
+Thanks
++++++++++++++
+
+Thanks to all open/free software people that make this all possible.
+
+
 
