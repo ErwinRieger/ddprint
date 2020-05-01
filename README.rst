@@ -181,12 +181,208 @@ Usage
 Commandline Interface, CLI
 -----------------------------
 
-:Note: todo...
+*setPrinterName*
+**************************************
 
-Terminal Userinterface, TUI
------------------------------
+Store printer name in printer's eeprom:
 
-:Note: todo...
+.. code-block:: sh
+
+    ./ddprint.py setPrinterName UM2-1
+
+*calibrateESteps*
+**************************************
+
+Automatically determine extruder *e-steps* value for printer profile:
+
+.. code-block:: sh
+
+    ./ddprint.py calibrateESteps UM2-2
+
+*calibrateFilSensor*
+**************************************
+
+Automatically determine flowrate sensor calibration value for printer profile:
+
+.. code-block:: sh
+
+    ./ddprint.py calibrateFilSensor UM2-2
+
+*testFilSensor*
+**************************************
+
+Test *e-steps* and flowrate sensor calibration:
+
+.. code-block:: sh
+
+    ./ddprint.py testFilSensor UM2-2 100
+
+Autotune hotend PID, *autoTune*
+**************************************
+
+Run PID autotune to determine the hotend PID parameters:
+
+.. code-block:: sh
+
+    ./ddprint.py autoTune petg_1.75mm
+    cd pid_tune
+    PYTHONPATH=.. ./pidAutoTune.py ../autotune.raw.json
+
+Print gcode file, *print*
+**************************************
+
+Print a gcode file with the commandline tool:
+
+.. code-block:: sh
+
+    ./ddprint.py  -smat esun_petg_transparent-orange-6-922572-263079 print nozzle80 petg_1.75mm quader_10x20.gcode
+
+Preprocess gcode file, *pre*
+**************************************
+
+Preprocess a gcode file, this parses the given gcode file and runs all processing steps without actually 
+sending anything to the printer. Used for development, debugging and to check if a given gcode file can be 
+processed by ddprint.
+
+.. code-block:: sh
+
+    ./ddprint.py  -smat esun_petg_transparent-orange-6-922572-263079 pre UM2-1 nozzle80 petg_1.75mm quader_10x20.gcode
+
+*disableSteppers*
+**************************************
+
+Switch off stepper current, printer no longer homed after that.
+
+.. code-block:: sh
+
+    ./ddprint.py disableSteppers
+
+Measure material profile, *measureTempFlowrateCurve*
+*********************************************************
+
+Extrude some filament into air and measure the material properties (melting capacity, temperatures)
+of this machine/filament combination.
+
+.. code-block:: sh
+
+    ./ddprint.py measureTempFlowrateCurve nozzle80 petg_1.75mm 2.5
+
+Manual movement, *moverel*
+**************************************
+
+Move axis relative to current position.
+
+.. code-block:: sh
+
+    ./ddprint.py moverel X 100
+
+Manual movement, *moveabs*
+**************************************
+
+Move axis to absolute position.
+
+.. code-block:: sh
+
+    ./ddprint.py moveabs X 0
+
+*insertFilament*
+**************************************
+
+:Todo: describe command
+
+*removeFilament*
+**************************************
+
+:Todo: describe command
+
+*bedLeveling*
+**************************************
+
+:Todo: describe command
+
+*heatHotend*
+**************************************
+
+:Todo: describe command
+
+*getEndstops*
+**************************************
+
+Get current endstop state.
+
+.. code-block:: sh
+
+    ./ddprint.py getEndstops
+
+*getFilSensor*
+**************************************
+
+Get current position of filament sensor
+
+.. code-block:: sh
+
+    ./ddprint.py getFilSensor
+
+*getFreeMem*
+**************************************
+
+Get current printer free memory.
+
+.. code-block:: sh
+
+    ./ddprint.py getFreeMem
+
+*getpos*
+**************************************
+
+Get current printer positions.
+
+.. code-block:: sh
+
+    ./ddprint.py getpos
+
+Read printer name from eeprom, *getPrinterName*
+**************************************************
+
+Read printer name from printer, this is stored in eeprom.
+
+.. code-block:: sh
+
+    ./ddprint.py getPrinterName
+
+*getTemps*
+**************************************
+
+Get bed- and hotend temperatures from printer.
+
+.. code-block:: sh
+
+    ./ddprint.py getTemps
+
+*getStatus*
+**************************************
+
+.. code-block:: sh
+
+    ./ddprint.py getStatus
+
+
+*home*
+**************************************
+
+.. code-block:: sh
+
+    ./ddprint.py home
+
+
+Print gcode file with the Userinterface (TUI)
++++++++++++++++++++++++++++++++++++++++++++++++++
+
+Print a gcode file with the TUI:
+
+.. code-block:: sh
+
+    ./ddprintui.py  -smat esun_petg_transparent-orange-6-922572-263079 nozzle80 petg_1.75mm quader_10x20.gcode
 
 Some implementation notes
 ++++++++++++++++++++++++++++
@@ -228,52 +424,9 @@ Other
 * Debugging: plot/display generated acceleration ramps
 
 
-
-Usage examples
-++++++++++++++++++++++++++++
-
-Store printer name in printer's eeprom:
-
-.. code-block:: sh
-
-    ./ddprint.py setPrinterName UM2-1
-
-Automatically determine extruder *e-steps* value for printer profile:
-
-.. code-block:: sh
-
-    ./ddprint.py calibrateESteps UM2-2
-
-Automatically determine flowrate sensor calibration value for printer profile:
-
-.. code-block:: sh
-
-    ./ddprint.py calibrateFilSensor UM2-2
-
-Test *e-steps* and flowrate sensor calibration:
-
-.. code-block:: sh
-
-    ./ddprint.py testFilSensor UM2-2 100
-
-Run PID autotune to determine the hotend PID parameters:
-
-.. code-block:: sh
-
-    ./ddprint.py autoTune petg_1.75mm
-    cd pid_tune
-    PYTHONPATH=.. ./pidAutoTune.py ../autotune.raw.json
-
-Print a gcode file with the TUI:
-
-.. code-block:: sh
-
-    ./ddprintui.py  -smat esun_petg_transparent-orange-6-922572-263079 nozzle80 petg_1.75mm quader_10x20.gcode
-
 Thanks
 +++++++++++++
 
-Thanks to all open/free software people that make this all possible.
-
+Thanks to all open/free software people that make this all possible.  
 
 
