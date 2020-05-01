@@ -864,6 +864,7 @@ class Printer(Serial):
 
     ####################################################################################################
 
+    # Is this useful (anymore)?
     def getTempTable(self):
 
         (cmd, payload) = self.query(CmdGetTempTable)

@@ -445,6 +445,7 @@ class UM2GcodeParser:
             # unknown parameter
             assert(0)
 
+    # Firmware Retraction
     def g10_retract(self, line, values):
         # print "g10_retract", values
 
@@ -464,6 +465,7 @@ class UM2GcodeParser:
 
         self.setPos(current_position)
             
+    # Firmware Retraction
     def g11_retract_recover(self, line, values):
         # print "g11_retract_recover", values
 

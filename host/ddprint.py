@@ -33,16 +33,6 @@ from ddprinter import Printer, RxTimeout
 from ddprintconstants import A_AXIS
 
 #
-# Firmware Retraction:
-# --------------------
-#
-# G10, G11, end-of-print-retraction
-#
-# UM2 Microstepping:
-# ------------------
-#
-# micorsteps = [16, 16, 8, 16]
-#
 # USB packet format:
 # --------------------
 #
@@ -79,7 +69,6 @@ from ddprintconstants import A_AXIS
 #
 # Note: 16 bit is enough for 819mm/327mm/232mm (XY,Z,E) acceleration/linear/decceleration distances. 
 #
-
 
 #
 # Firmware commands: 
@@ -404,7 +393,7 @@ def main():
     sp.add_argument("printer", help="Name of printer profile to use.")
     sp.add_argument("mat", help="Name of generic material profile to use [pla, abs...].")
 
-    sp = subparsers.add_parser("genTempTable", help=u"Generate extrusion rate limit table.")
+    # sp = subparsers.add_parser("genTempTable", help=u"Generate extrusion rate limit table.")
 
     sp = subparsers.add_parser("getEndstops", help=u"Get current endstop state.")
 
@@ -418,7 +407,7 @@ def main():
 
     sp = subparsers.add_parser("getTemps", help=u"Get current temperatures (Bed, Extruder1, [Extruder2]).")
 
-    sp = subparsers.add_parser("getTempTable", help=u"Get temperature-speed table from printer, print it to stdout and to /tmp/temptable_printer.txt.")
+    # sp = subparsers.add_parser("getTempTable", help=u"Get temperature-speed table from printer, print it to stdout and to /tmp/temptable_printer.txt.")
 
     sp = subparsers.add_parser("getStatus", help=u"Get current printer status.")
 
@@ -455,6 +444,8 @@ def main():
     elif args.mode == 'changenozzle':
 
         # xxx todo create printer/profile singletons ...
+        print "command %s currently disabled, exiting" % args.mode
+        return
         util.changeNozzle(args, parser)
 
     elif args.mode == "mon":
@@ -594,8 +585,7 @@ def main():
     elif args.mode == 'disableSteppers':
 
         printer = Printer()
-        initPrinterProfile(args)
-        printer.commandInit(args, PrinterProfile.getSettings())
+        printer.initSerial(args.device, args.baud)
         printer.sendCommand(CmdDisableSteppers)
 
     elif args.mode == 'measureTempFlowrateCurve':
@@ -646,31 +636,37 @@ def main():
         initMatProfile(args, printer.getPrinterName())
         util.heatHotend(args, printer)
 
-    elif args.mode == 'genTempTable':
-
-        util.genTempTable()
+    # elif args.mode == 'genTempTable':
+        #
+        # (parser, _, _) = initParser(args, mode=args.mode, travelMovesOnly=True)
+        # util.genTempTable()
 
     elif args.mode == 'getEndstops':
 
-        printer.commandInit(args, PrinterProfile.getSettings())
+        printer = Printer()
+        printer.initSerial(args.device, args.baud)
         res = printer.getEndstops()
         print "Endstop state: ", res
     
     elif args.mode == 'getFilSensor':
 
-        printer.commandInit(args, PrinterProfile.getSettings())
+        printer = Printer()
+        printer.initSerial(args.device, args.baud)
         counts = printer.getFilSensor()
         print "Filament pos:", counts
 
     elif args.mode == 'getFreeMem':
 
-        printer.commandInit(args, PrinterProfile.getSettings())
+        printer = Printer()
+        printer.initSerial(args.device, args.baud)
         freeMem = printer.getFreeMem()
         print "Free memory: %d bytes" % freeMem
 
     elif args.mode == 'getpos':
 
-        printer.commandInit(args, PrinterProfile.getSettings())
+        printer = Printer()
+        initPrinterProfile(args)
+        planner = Planner(args, travelMovesOnly=True)
 
         res = printer.getPos()
 
@@ -681,7 +677,7 @@ def main():
             Y = res[1] / float(steps_per_mm[1]),
             Z = res[2] / float(steps_per_mm[2]),
             A = res[3] / float(steps_per_mm[3]),
-            B = res[4] / float(steps_per_mm[4]),
+            # B = res[4] / float(steps_per_mm[4]),
             )
 
         (homePosMM, homePosStepped) = planner.getHomePos()
@@ -698,19 +694,23 @@ def main():
 
     elif args.mode == 'getTemps':
 
-        printer.commandInit(args, PrinterProfile.getSettings())
-        printer.getTemps()
+        printer = Printer()
+        printer.initSerial(args.device, args.baud)
+        temps = printer.getTemps()
+        print "temperatures: ", temps
 
-    elif args.mode == 'getTempTable':
-
-        printer.commandInit(args, PrinterProfile.getSettings())
-        (baseTemp, tempTable) = printer.getTempTable()
-        print "tempTable: ", pprint.pprint(tempTable)
-        util.printTempTable(baseTemp, tempTable)
+    # elif args.mode == 'getTempTable':
+        #
+        # printer = Printer()
+        # printer.initSerial(args.device, args.baud)
+        # (baseTemp, tempTable) = printer.getTempTable()
+        # print "tempTable: ", pprint.pprint(tempTable)
+        # util.printTempTable(baseTemp, tempTable)
 
     elif args.mode == 'getStatus':
 
-        printer.commandInit(args, PrinterProfile.getSettings())
+        printer = Printer()
+        printer.initSerial(args.device, args.baud)
         status = printer.getStatus()
         print "Status: "
         pprint.pprint(status)

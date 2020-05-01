@@ -164,10 +164,6 @@ class Advance (object):
 
         self.e_steps_per_mm = PrinterProfile.getStepsPerMM(A_AXIS)
 
-        # Half full step in microsteps.
-        # YYY add microstep setting to printer profile, rename
-        # self.eightESteps = 8.0/self.e_steps_per_mm
-
         # Compute minimal e speed
         # maxStepTime = maxTimerValue16 / fTimer
         # v = (1.0/self.e_steps_per_mm) / maxStepTime
