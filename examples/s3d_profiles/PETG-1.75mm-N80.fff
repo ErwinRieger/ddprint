@@ -1,5 +1,5 @@
 <?xml version="1.0"?>
-<profile name="PETG-1.75mm-N80" version="2020-04-28 11:58:13" app="S3D-Software 4.1.2">
+<profile name="PETG-1.75mm-N80" version="2020-05-05 00:03:05" app="S3D-Software 4.1.2">
   <baseProfile>Ultimaker 2 (modified)</baseProfile>
   <printMaterial>PETG</printMaterial>
   <printQuality>Medium</printQuality>
@@ -144,7 +144,7 @@
   <baudRateOverride>250000</baudRateOverride>
   <overridePrinterModels>1</overridePrinterModels>
   <printerModelsOverride></printerModelsOverride>
-  <startingGcode>M907 E1400 ; increase extruder current,G28 ; home all axes,;G1 X20 Y10 F3000 ; bring extruder to front,;G92 E0 ; zero the extruded length,;G1 Z10 ; lower,;G1 E19 F200 ; purge nozzle quickly,;G1 E26 F60 ; purge nozzle slowly,;G92 E0 ; zero the extruded length again,;G1 E-5.5 F400 ; retract,;G1 X190 Z0 F9000 ; pull away filament,;G1 X210 F9000 ; wipe,;G1 Y20 F9000 ; wipe,;G1 E0 ; feed filament back</startingGcode>
+  <startingGcode>M907 E1400 ; increase extruder current,G28 ; home all axes,; purging:,G1 X5 Y6 F[travel_speed]  ; move to front, near the clamp,G1 Z5 F2400                 ; lower head,G92 E0                           ; reset E,G1 E50 F150                  ; extrude 50mm, make a blob,G92 E0                           ; reset E,G1 Z15 F60                    ; higher (hopeing blob will stay on bed),G1 E-5 F2400                  ; retract,G1 X200 Z0 F[travel_speed]  ; move away,G1 E0 F[retract_speed]     ; unretract</startingGcode>
   <layerChangeGcode></layerChangeGcode>
   <retractionGcode></retractionGcode>
   <toolChangeGcode></toolChangeGcode>
