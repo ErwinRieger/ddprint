@@ -602,8 +602,6 @@ class MainForm(npyscreen.FormBaseNew):
 
             f = self.parser.preParse(self.fn.get_value())
             
-            util.prime(self.parser)
-
             lineNr = 0
             printStarted = False
             lastUpdate = time.time()

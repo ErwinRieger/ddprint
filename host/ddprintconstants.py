@@ -31,23 +31,6 @@ _MAX_ACCELERATION =         3000    # [ mm/s^s ]
 StepDataTypeBresenham = 0
 StepDataTypeRaw       = 1
 
-
-############################################################################
-#
-# Priming
-#
-#// number of mm^3 of plastic to extrude when priming
-#// (Ultimaker 2 hot end capacity is approx 80 mm^3)
-PRIMING_MM3	= 60 # increased because of end-of-print retraction
-
-#// Rate at which to prime head (in mm^3/s)
-#// (Ultimaker 2 upper limit is 8-10)
-PRIMING_MM3_PER_SEC = 5
-
-#// Height at which to perform the priming extrusions
-PRIMING_HEIGHT = 20
-
-
 ############################################################################
 #
 # Board config, move to printer-profile ?

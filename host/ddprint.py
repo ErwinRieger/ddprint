@@ -327,8 +327,6 @@ def main():
 
     argParser.add_argument("-smat", dest="smat", action="store", help="Name of specific material profile to use.")
 
-    argParser.add_argument("-np", dest="noPrime", action="store_const", const=True, help="Debug: don't prime nozzle, to test extrusion-less moves.")
-
     # fake endstops as long we have no real ones
     argParser.add_argument("-F", dest="fakeendstop", action="store", type=bool, help="Debug: fake endstops", default=False)
     argParser.add_argument("-nc", dest="noCoolDown", action="store", type=bool, help="Debug: don't wait for heater cool down after print.", default=False)
@@ -477,9 +475,6 @@ def main():
         printer.heatUp(HeaterBed, t0, log=True)
 
         f = parser.preParse(args.gfile)
-
-        if not args.noPrime:
-            util.prime(parser)
 
         lineNr = 0
         printStarted = False
