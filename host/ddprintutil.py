@@ -179,7 +179,6 @@ def joinMoves2(move1, move2, advInstance): # jerk):
             #
             jerk = advInstance.planner.getJerk()
             speedDiff = {}
-            toMuch = False
             for dim in range(3):
 
                 vdim = startSpeedV2[dim]
@@ -192,12 +191,9 @@ def joinMoves2(move1, move2, advInstance): # jerk):
                 dimJerk = jerk[dim]
 
                 if vdiffAbs > dimJerk: 
-                    toMuch = True
-
-                if vdiffAbs > 1:
                     speedDiff[dim] = (vdiff, vdiffAbs)
 
-            if toMuch:
+            if speedDiff:
 
                 if debugMoves:
                     print "E-speed ok, XY-speedDiff:", speedDiff
@@ -308,7 +304,6 @@ def joinMoves3(move1, move2, advInstance): # jerk):
 
         jerk = advInstance.planner.getJerk()
         speedDiff = {}
-        toMuch = False
         for dim in range(3):
 
             vdim = startSpeedV2[dim]
@@ -321,18 +316,15 @@ def joinMoves3(move1, move2, advInstance): # jerk):
             dimJerk = jerk[dim]
 
             if vdiffAbs > dimJerk: 
-                toMuch = True
-
-            if vdiffAbs > 1:
                 speedDiff[dim] = (vdiff, vdiffAbs)
 
-        if toMuch:
-
-            differenceVector = endSpeedV1.subVVector(startSpeedV2)
-            # print "differenceVector, jerk:", differenceVector, jerk
+        if speedDiff:
 
             if debugMoves:
                 print "E-speed angepasst, XY-speedDiff:", speedDiff
+
+            differenceVector = endSpeedV1.subVVector(startSpeedV2)
+            # print "differenceVector, jerk:", differenceVector, jerk
 
             # 
             # Der geschwindigkeitsunterschied mindestens einer achse ist grösser als der 
@@ -459,7 +451,6 @@ def joinTravelMoves(move1, move2, jerk):
         # Join in bezug auf den maximalen jerk aller achsen betrachten:
         #
         speedDiff = {}
-        toMuch = False
         for dim in range(5):
 
             vdim = startSpeedVMove2[dim]
@@ -472,15 +463,12 @@ def joinTravelMoves(move1, move2, jerk):
             dimJerk = jerk[dim]
 
             if vdiffAbs > dimJerk: 
-                toMuch = True
-
-            if vdiffAbs > 1:
                 speedDiff[dim] = (vdiff, vdiffAbs)
 
-        if debugMoves:
-            print "speedDiff:", speedDiff
+        if speedDiff:
 
-        if toMuch:
+            if debugMoves:
+                print "speedDiff:", speedDiff
 
             # 
             # Der geschwindigkeitsunterschied mindestens einer achse ist grösser als der 
@@ -726,36 +714,6 @@ def getVirtualPos(parser):
     parser.setPos(curPosMM)
 
     return curPosMM
-
-####################################################################################################
-
-def prime(parser):
-
-    planner = parser.planner
-
-    parser.execute_line("G0 F%f Y0 Z%f" % (planner.HOMING_FEEDRATE[X_AXIS]*60, ddprintconstants.PRIMING_HEIGHT))
-
-    pos = parser.getPos()
-
-    aFilament = MatProfile.getMatArea()
-
-    parser.execute_line("G0 F%f A%f" % (
-        ((ddprintconstants.PRIMING_MM3_PER_SEC / aFilament) * 60),
-        pos[A_AXIS] + (ddprintconstants.PRIMING_MM3 / aFilament)))
-
-    # Set E to 0
-    current_position = parser.getPos()
-    current_position[A_AXIS] = 0.0
-    parser.setPos(current_position)
-
-    #
-    # Retract
-    #
-    # parser.execute_line("G10")
-
-    # Wipe priming material if not ultigcode flavor 
-    if not parser.gcodeType == GCODEULTI:
-        parser.execute_line("G0 F9000 X20 Z0.1")
 
 ####################################################################################################
 
@@ -1662,7 +1620,6 @@ def measureFlowrateStepResponse(args, parser):
     tWait = 0.1
 
     eMotorRunning = False
-    primed = False
 
     # Running average of hotend temperature
     # tempAvg = EWMA(0.5)
