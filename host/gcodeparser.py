@@ -369,7 +369,7 @@ class UM2GcodeParser:
         return values
 
     def m25_stop_reading(self, line, values):
-        print "XXX todo implement M25", values
+        print "ignoring m25 (stop reading)"
 
     def m82_extruder_abs_values(self, line, values):
 
@@ -382,10 +382,10 @@ class UM2GcodeParser:
         self.absolute[B_AXIS] = False
 
     def m84_disable_motors(self, line, values):
-        self.logger.log("ignoring m84...")
+        self.logger.log("ignoring m84 (disable steppers)")
 
     def m104_extruder_temp(self, line, values):
-        self.logger.log("ignoring m104 (set extruder temp)...")
+        self.logger.log("ignoring m104 (extruder temp)")
 
     def m106_fan_on(self, line, values):
         # print "m106_fan_on", values
@@ -405,35 +405,35 @@ class UM2GcodeParser:
         self.planner.addSynchronizedCommand(CmdSyncFanSpeed, p1=packedvalue.uint8_t(0))
 
     def m109_extruder_temp_wait(self, line, values):
-        self.logger.log("ignoring m109 (wait for extruder temp)...")
+        self.logger.log("ignoring m109 (wait for extruder temp)")
 
     def m117_message(self, line):
         self.logger.log("m117_message: ", line)
 
     def m140_bed_temp(self, line, values):
-        self.logger.log("ignoring m140...")
+        self.logger.log("ignoring m140 (bed temp)")
 
     def m190_bed_temp_wait(self, line, values):
-        self.logger.log("ignoring m190 (wait for bed temp)...")
+        self.logger.log("ignoring m190 (wait for bed temp)")
 
     def m204_set_accel(self, line, values):
-        self.logger.log("ignoring m204 (set acceleration)...")
+        self.logger.log("ignoring m204 (set acceleration)")
 
     def m501_reset_params(self, line, values):
-        self.logger.log("ignoring m501 (reset params)...")
+        self.logger.log("ignoring m501 (reset params)")
 
     def m502_reset_params(self, line, values):
-        self.logger.log("ignoring m502 (reset params)...")
+        self.logger.log("ignoring m502 (reset params)")
 
     def m900_set_kAdvance(self, line, values):
 
         self.planner.g900(values)
 
     def m907_motor_current(self, line, values):
-        self.logger.log("ignoring m907...")
+        self.logger.log("ignoring m907 (motor current)")
 
     def t0(self, line, values):
-        self.logger.log("ignoring t0...")
+        self.logger.log("ignoring t0 (tool select)")
 
     def g4_dwell(self, line, values):
         if "P" in values:
@@ -487,18 +487,20 @@ class UM2GcodeParser:
 
     def g21_metric_values(self, line, values):
         # We're always using metric values...
-        pass
+        print "ignoring g21 (metric values)"
 
+    # Homing is done by the host part of ddprint. Because it would be
+    # difficult get things in the right order, g28 is ignored and done
+    # implicitly by ddprint.
     def g28_home(self, line, values):
-        # Homing is done implicitly...
-        pass
+        print "ignoring g28 (homing)"
 
     def g29_autolevel(self, line, values):
         # Autoleveling not implemented
-        pass
+        print "ignoring g29 (autolevel)"
 
     def g80_bed_leveling(self, line, values):
-        print "ignoring g80..."
+        print "ignoring g80 (bedlevel)"
 
     def g90_abs_values(self, line, values):
 
