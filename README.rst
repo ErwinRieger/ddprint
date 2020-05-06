@@ -32,7 +32,7 @@ Video: https://youtu.be/1Kbl9AZd10Y, ddprint playlist: https://www.youtube.com/p
 
 HackadayIO project: https://hackaday.io/project/170695-ddprint.
 
-Key features:
+Key features
 +++++++++++++
 
 * Uses a incremental sensor to measure extruder flowrate at realtime
@@ -288,12 +288,20 @@ Move axis to absolute position.
 *insertFilament*
 **************************************
 
-:Todo: describe command
+Heat hotend and start filament insertion process.
+
+.. code-block:: sh
+
+    ./ddprint.py removeFilament petg_1.75mm
 
 *removeFilament*
 **************************************
 
-:Todo: describe command
+Heat hotend and pull back/remove filament.
+
+.. code-block:: sh
+
+    ./ddprint.py removeFilament petg_1.75mm
 
 *bedLeveling*
 **************************************
