@@ -553,8 +553,7 @@ def main():
         printer.sendCommand(CmdDisableSteppers)
 
         if not args.noCoolDown:
-            printer.coolDown(HeaterEx1, wait=150)
-            printer.coolDown(HeaterBed, wait=55)
+            printer.coolDown(HeaterEx1, wait=150, log=True)
 
         # Exit simulator for profiling
         # printer.sendCommand(CmdExit)
