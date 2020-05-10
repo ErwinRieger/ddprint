@@ -1,5 +1,5 @@
 <?xml version="1.0"?>
-<profile name="PLA-1.75mm-N80" version="2020-05-04 22:49:20" app="S3D-Software 4.1.2">
+<profile name="PLA-1.75mm-N80" version="2020-05-09 14:48:46" app="S3D-Software 4.1.2">
   <baseProfile>Ultimaker 2 (modified)</baseProfile>
   <printMaterial>PLA</printMaterial>
   <printQuality>Medium</printQuality>
@@ -62,24 +62,24 @@
   <infillExtruder>0</infillExtruder>
   <internalInfillPattern>Rectilinear</internalInfillPattern>
   <externalInfillPattern>Rectilinear</externalInfillPattern>
-  <infillPercentage>15</infillPercentage>
-  <outlineOverlapPercentage>35</outlineOverlapPercentage>
+  <infillPercentage>10</infillPercentage>
+  <outlineOverlapPercentage>30</outlineOverlapPercentage>
   <infillExtrusionWidthPercentage>100</infillExtrusionWidthPercentage>
   <minInfillLength>1</minInfillLength>
   <infillLayerInterval>1</infillLayerInterval>
   <internalInfillAngles>45,-45</internalInfillAngles>
   <overlapInternalInfillAngles>0</overlapInternalInfillAngles>
   <externalInfillAngles>45,-45</externalInfillAngles>
-  <generateSupport>0</generateSupport>
+  <generateSupport>1</generateSupport>
   <supportExtruder>0</supportExtruder>
-  <supportInfillPercentage>15</supportInfillPercentage>
+  <supportInfillPercentage>10</supportInfillPercentage>
   <supportExtraInflation>0</supportExtraInflation>
-  <supportBaseLayers>1</supportBaseLayers>
+  <supportBaseLayers>0</supportBaseLayers>
   <denseSupportExtruder>0</denseSupportExtruder>
   <denseSupportLayers>0</denseSupportLayers>
   <denseSupportInfillPercentage>70</denseSupportInfillPercentage>
   <supportLayerInterval>1</supportLayerInterval>
-  <supportHorizontalPartOffset>0.5</supportHorizontalPartOffset>
+  <supportHorizontalPartOffset>0.4</supportHorizontalPartOffset>
   <supportUpperSeparationLayers>1</supportUpperSeparationLayers>
   <supportLowerSeparationLayers>1</supportLowerSeparationLayers>
   <supportType>0</supportType>
@@ -145,7 +145,7 @@
   <baudRateOverride>250000</baudRateOverride>
   <overridePrinterModels>1</overridePrinterModels>
   <printerModelsOverride></printerModelsOverride>
-  <startingGcode>M907 E1400 ; increase extruder current,G28 ; home all axes,; purging:,G1 X5 Y6 F[travel_speed]  ; move to front, near the clamp,G1 Z5 F2400                 ; lower head,G92 E0                           ; reset E,G1 E50 F150                  ; extrude 50mm, make a blob,G92 E0                           ; reset E,G1 Z15 F60                    ; higher (hopeing blob will stay on bed),G1 E-5 F2400                  ; retract,G1 X200 Z0 F[travel_speed]  ; move away,G1 E0 F[retract_speed]     ; unretract</startingGcode>
+  <startingGcode>M907 E1400 ; increase extruder current,G28 ; home all axes,; purging:,G1 X5 Y6 F[travel_speed]  ; move to front near the clamp,G1 Z5 F2400                 ; lower head,G92 E0                           ; reset E,G1 E50 F150                  ; extrude 50mm make a blob,G92 E0                           ; reset E,G1 Z15 F60                    ; higher (hopeing blob will stay on bed),G1 E-5 F2400                  ; retract,G1 X200 Z0 F[travel_speed]  ; move away,G1 E0 F[retract_speed]     ; unretract</startingGcode>
   <layerChangeGcode></layerChangeGcode>
   <retractionGcode></retractionGcode>
   <toolChangeGcode></toolChangeGcode>
@@ -250,8 +250,8 @@
     <bottomSolidLayers>2</bottomSolidLayers>
     <firstLayerHeightPercentage>80</firstLayerHeightPercentage>
     <skirtLayers>1</skirtLayers>
-    <infillPercentage>15</infillPercentage>
-    <supportInfillPercentage>15</supportInfillPercentage>
+    <infillPercentage>10</infillPercentage>
+    <supportInfillPercentage>10</supportInfillPercentage>
   </autoConfigureQuality>
   <autoConfigureQuality name="High">
     <layerHeight>0.1</layerHeight>

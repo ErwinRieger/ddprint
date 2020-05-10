@@ -1,5 +1,5 @@
 <?xml version="1.0"?>
-<profile name="PETG-1.75mm-N80" version="2020-05-05 00:03:05" app="S3D-Software 4.1.2">
+<profile name="PETG-1.75mm-N80" version="2020-05-09 14:49:06" app="S3D-Software 4.1.2">
   <baseProfile>Ultimaker 2 (modified)</baseProfile>
   <printMaterial>PETG</printMaterial>
   <printQuality>Medium</printQuality>
@@ -45,7 +45,7 @@
   <useSkirt>1</useSkirt>
   <skirtExtruder>0</skirtExtruder>
   <skirtLayers>1</skirtLayers>
-  <skirtOutlines>5</skirtOutlines>
+  <skirtOutlines>3</skirtOutlines>
   <skirtOffset>2</skirtOffset>
   <usePrimePillar>0</usePrimePillar>
   <primePillarExtruder>999</primePillarExtruder>
@@ -144,7 +144,7 @@
   <baudRateOverride>250000</baudRateOverride>
   <overridePrinterModels>1</overridePrinterModels>
   <printerModelsOverride></printerModelsOverride>
-  <startingGcode>M907 E1400 ; increase extruder current,G28 ; home all axes,; purging:,G1 X5 Y6 F[travel_speed]  ; move to front, near the clamp,G1 Z5 F2400                 ; lower head,G92 E0                           ; reset E,G1 E50 F150                  ; extrude 50mm, make a blob,G92 E0                           ; reset E,G1 Z15 F60                    ; higher (hopeing blob will stay on bed),G1 E-5 F2400                  ; retract,G1 X200 Z0 F[travel_speed]  ; move away,G1 E0 F[retract_speed]     ; unretract</startingGcode>
+  <startingGcode>M907 E1400 ; increase extruder current,G28 ; home all axes,; purging:,G1 X5 Y6 F[travel_speed]  ; move to front near the clamp,G1 Z5 F2400                 ; lower head,G92 E0                           ; reset E,G1 E50 F150                  ; extrude 50mm make a blob,G92 E0                           ; reset E,G1 Z15 F60                    ; higher (hopeing blob will stay on bed),G1 E-5 F2400                  ; retract,G1 X200 Z0 F[travel_speed]  ; move away,G1 E0 F[retract_speed]     ; unretract</startingGcode>
   <layerChangeGcode></layerChangeGcode>
   <retractionGcode></retractionGcode>
   <toolChangeGcode></toolChangeGcode>
