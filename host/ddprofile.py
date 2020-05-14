@@ -244,6 +244,10 @@ class PrinterProfile(ProfileBase):
         nAvg = max(nAvg, 2)
         return nAvg
 
+    def getWeakPowerBedTemp(self):
+        return int(self.getValues()["weakPowerBedTemp"])
+
+
 ####################################################################################################
 #
 # Material profile, singleton

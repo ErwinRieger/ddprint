@@ -307,7 +307,7 @@ def initParser(args, mode=None, gui=None, travelMovesOnly=False):
     # Create parser singleton instance
     parser = gcodeparser.UM2GcodeParser(planner, logger=gui, travelMovesOnly=travelMovesOnly)
 
-    return (parser, planner, printer)
+    return (parser, planner, printer, printerProfile)
 
 def main():
 
@@ -430,7 +430,7 @@ def main():
     args = argParser.parse_args()
 
     # xxx todo create objects on demand...
-    # (parser, planner, printer) = initParser(args, mode=args.mode)
+    # (parser, planner, printer, printerProfile) = initParser(args, mode=args.mode)
 
     if args.mode == 'autoTune':
 
@@ -463,16 +463,18 @@ def main():
 
     elif args.mode == 'print':
 
-        (parser, planner, printer) = initParser(args, mode=args.mode)
+        (parser, planner, printer, printerProfile) = initParser(args, mode=args.mode)
 
         util.commonInit(args, printer, planner, parser)
 
         t0 = MatProfile.getBedTemp()
+        t0Wait = min(t0, printerProfile.getWeakPowerBedTemp())
+
         t1 = MatProfile.getHotendGoodTemp() + planner.l0TempIncrease
 
         # Send heat up  command
         print "\nHeating bed (t0: %d)...\n" % t0
-        printer.heatUp(HeaterBed, t0, log=True)
+        printer.heatUp(HeaterBed, t0, t0Wait, log=True)
 
         f = parser.preParse(args.gfile)
 
@@ -490,10 +492,6 @@ def main():
                 # Check temp and start print
                 #
                 if  not printStarted:
-
-                    sleepTime = max(0, (startTime+30) - time.time())
-                    print "waiting to fire hotend...", sleepTime
-                    time.sleep( sleepTime )
 
                     print "\nPre-Heating extruder %.2f (t1: %d)...\n" % (t1/2.0, t1)
                     printer.heatUp(HeaterEx1, t1/2, log=True)
@@ -560,7 +558,7 @@ def main():
 
     elif args.mode == "pre":
 
-        (parser, planner, printer) = initParser(args, mode=args.mode)
+        (parser, planner, printer, _) = initParser(args, mode=args.mode)
 
         # Virtuelle position des druckkopfes falls 'gehomed'
         homePosMM = planner.getHomePos()[0]
@@ -584,7 +582,7 @@ def main():
 
     elif args.mode == 'measureTempFlowrateCurve':
 
-        (parser, _, _) = initParser(args, mode=args.mode)
+        (parser, _, _, _) = initParser(args, mode=args.mode)
         util.measureTempFlowrateCurve(args, parser)
 
     elif args.mode == 'moverel':
@@ -611,12 +609,12 @@ def main():
 
     elif args.mode == 'insertFilament':
 
-        (parser, _, _) = initParser(args, mode=args.mode, travelMovesOnly=True)
+        (parser, _, _, _) = initParser(args, mode=args.mode, travelMovesOnly=True)
         util.insertFilament(args, parser, args.feedrate)
 
     elif args.mode == 'removeFilament':
 
-        (parser, _, _) = initParser(args, mode=args.mode, travelMovesOnly=True)
+        (parser, _, _, _) = initParser(args, mode=args.mode, travelMovesOnly=True)
         util.removeFilament(args, parser, args.feedrate)
 
     elif args.mode == 'bedLeveling':
@@ -632,7 +630,7 @@ def main():
 
     # elif args.mode == 'genTempTable':
         #
-        # (parser, _, _) = initParser(args, mode=args.mode, travelMovesOnly=True)
+        # (parser, _, _, _) = initParser(args, mode=args.mode, travelMovesOnly=True)
         # util.genTempTable()
 
     elif args.mode == 'getEndstops':

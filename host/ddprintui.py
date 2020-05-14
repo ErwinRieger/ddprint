@@ -339,14 +339,15 @@ class MainForm(npyscreen.FormBaseNew):
 
         # print "args: ", self.args
 
-        (self.parser, self.planner, self.printer) = ddprint.initParser(self.args, gui=self)
+        (self.parser, self.planner, self.printer, printerProfile) = ddprint.initParser(self.args, gui=self)
         # util.commonInit(self.args, self.printer, self.planner, self.parser)
 
         self.mat_t0 = MatProfile.getBedTemp()
         self.mat_t0_reduced = MatProfile.getBedTempReduced()
+        self.mat_t0_wait = printerProfile.getWeakPowerBedTemp()
         self.mat_t1 = MatProfile.getHotendGoodTemp() + self.planner.l0TempIncrease
 
-        self.guiQueue.put(SyncCallUpdate(self.printerProfile.set_value, PrinterProfile.get().name))
+        self.guiQueue.put(SyncCallUpdate(self.printerProfile.set_value, printerProfile.name))
         self.guiQueue.put(SyncCallUpdate(self.nozzleProfile.set_value, self.args.nozzle))
         self.guiQueue.put(SyncCallUpdate(self.matProfile.set_value, self.args.mat))
         if self.args.smat:
@@ -372,7 +373,7 @@ class MainForm(npyscreen.FormBaseNew):
 
                 while not self.cmdQueue.empty():
                     obj = self.cmdQueue.get()
-                    self.log("call()...")
+                    # self.log("call()...")
                     obj.call()
                     # self.log("...done")
                     workDone = True
@@ -548,6 +549,7 @@ class MainForm(npyscreen.FormBaseNew):
             return
 
         self.cmdQueue.put(SyncCall(self.preheat))
+        self.cmdQueue.put(SyncCall(self.preheatHotend))
 
     def preheat(self):
 
@@ -555,8 +557,17 @@ class MainForm(npyscreen.FormBaseNew):
         self.log( "Pre-Heating bed (t0: %d)...\n" % t)
         self.printer.heatUp(HeaterBed, t)
 
-        self.log( "Waiting 30 seconds... (weak power supply)\n")
-        time.sleep(30)
+    def preheatHotend(self):
+
+        if self.printerState > StateInit:
+            return
+
+        # Special handling of weak power supply
+        temps = self.printer.getTemps()
+        if temps[0] < self.mat_t0_wait:
+            time.sleep(2)
+            self.cmdQueue.put(SyncCall(self.preheatHotend))
+            return
 
         t = int(self.mat_t1 * 0.5)
         self.log( "Pre-Heating extruder (t1: %d)...\n" % t)
@@ -593,8 +604,8 @@ class MainForm(npyscreen.FormBaseNew):
             self.log( "Pre-Heating bed (t0: %d)...\n" % self.mat_t0)
             self.printer.heatUp(HeaterBed, self.mat_t0)
 
-            self.log( "Waiting 30 seconds... (weak power supply)\n")
-            time.sleep(30)
+            # self.log( "Waiting 30 seconds... (weak power supply)\n")
+            # time.sleep(30)
 
             t = int(round(self.mat_t1 * 0.5))
             self.log( "Pre-Heating extruder (t1: %d)...\n" % t)
@@ -618,7 +629,6 @@ class MainForm(npyscreen.FormBaseNew):
 
                         self.log( "Heating bed (t0: %d)...\n" % self.mat_t0 )
                         self.printer.heatUp(HeaterBed, self.mat_t0, wait=self.mat_t0)
-
                     
                         # avoid big overswing
                         self.log( "Heating extruder (t1: %d)...\n" % (int(round(self.mat_t1*0.9))) )
@@ -770,6 +780,52 @@ class Application(npyscreen.NPSAppManaged):
         sys.stdout = F
 
         # Run eventloop, blocking call.
+        # Todo: Why this exception ???
+        """
+        File "./ddprintui.py", line 778, in <module>
+            App.run()
+        File "/usr/local/lib/python2.7/dist-packages/npyscreen/apNPSApplication.py", line 30, in run
+            return npyssafewrapper.wrapper(self.__remove_argument_call_main)
+        File "/usr/local/lib/python2.7/dist-packages/npyscreen/npyssafewrapper.py", line 41, in wrapper
+            wrapper_no_fork(call_function)
+        File "/usr/local/lib/python2.7/dist-packages/npyscreen/npyssafewrapper.py", line 97, in wrapper_no_fork
+            return_code = call_function(_SCREEN)
+        File "/usr/local/lib/python2.7/dist-packages/npyscreen/apNPSApplication.py", line 25, in __remove_argument_call_main
+            return self.main()
+        File "./ddprintui.py", line 773, in main
+            F.edit()
+        File "/usr/local/lib/python2.7/dist-packages/npyscreen/fm_form_edit_loop.py", line 47, in edit
+            self.edit_loop()
+        File "/usr/local/lib/python2.7/dist-packages/npyscreen/fm_form_edit_loop.py", line 38, in edit_loop
+            self._widgets__[self.editw].edit()
+        File "/usr/local/lib/python2.7/dist-packages/npyscreen/wgwidget.py", line 447, in edit
+            self._edit_loop()
+        File "/usr/local/lib/python2.7/dist-packages/npyscreen/wgwidget.py", line 463, in _edit_loop
+            self.get_and_use_key_press()
+        File "/usr/local/lib/python2.7/dist-packages/npyscreen/wgwidget.py", line 599, in get_and_use_key_press
+            self.handle_input(ch)
+        File "/usr/local/lib/python2.7/dist-packages/npyscreen/wgwidget.py", line 95, in handle_input
+            if self.parent.handle_input(_input):
+        File "/usr/local/lib/python2.7/dist-packages/npyscreen/wgwidget.py", line 71, in handle_input
+            self.handlers[_input](_input)
+        File "/usr/local/lib/python2.7/dist-packages/npyscreen/fmForm.py", line 116, in _resize
+            w._resize()
+        File "/usr/local/lib/python2.7/dist-packages/npyscreen/wgwidget.py", line 315, in _resize
+            self.resize()
+        File "/usr/local/lib/python2.7/dist-packages/npyscreen/wgmultiline.py", line 671, in resize
+            super(Pager, self).resize()
+        File "/usr/local/lib/python2.7/dist-packages/npyscreen/wgmultiline.py", line 105, in resize
+            self.display()
+        File "/usr/local/lib/python2.7/dist-packages/npyscreen/wgwidget.py", line 418, in display
+            self.update()
+        File "/usr/local/lib/python2.7/dist-packages/npyscreen/wgmultiline.py", line 723, in update
+            w.update(clear=True)
+        File "/usr/local/lib/python2.7/dist-packages/npyscreen/wgtextbox.py", line 132, in update
+            self._print()
+        File "/usr/local/lib/python2.7/dist-packages/npyscreen/wgtextbox.py", line 299, in _print
+            color
+        TypeError: must be string without null bytes, not str
+        """
         F.edit() 
 
 if __name__ == "__main__": 

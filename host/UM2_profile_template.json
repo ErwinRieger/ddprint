@@ -70,7 +70,10 @@
   # Diameter of feeder (knurled) wheel, take some 
   # filament compression into account.
   # UM2 knurled wheel diameter is about 8 mm.
-  "feederWheelDiam": 7.8
+  "feederWheelDiam": 7.8,
+  # Special handling of weak UM2 power supply:
+  # Wait for this bedtemp until print continues.
+  "weakPowerBedTemp": 0
 }
 
 
