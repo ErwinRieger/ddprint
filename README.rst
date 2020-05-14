@@ -413,6 +413,23 @@ To overcome the limited memory of the atmega, the unused SD card is converted to
 and actual use of the received data, too.
 The SD card is used in 'raw/blockwise mode' without a filesystem on it.
 
+Working SD cards
+*******************
+
+Not all cards are working in SPI mode, some fail to initialize, some freeze after some time. See https://github.com/greiman/SdFat/issues/160, also.
+
+Some working ones:
+
+* The ones that come with your printer should work.
+* SandDisk, 2Gb, SD
+* SandDisk, 2Gb, Micro-SD
+* SandDisk, 4Gb, SDHC, Class 2
+* SandDisk, 4Gb, SDHC, Class 4
+
+Not working ones:
+
+* MediaRange, 4Gb, SDHC, Class 10
+
 AutoTemp
 -----------
 
