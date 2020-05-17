@@ -1447,7 +1447,7 @@ def genTempTable():
     aFilament = MatProfile.getMatArea()
 
     startTemp = MatProfile.getHotendBaseTemp()
-    baseFlowrate = MatProfile.getFlowrateForTemp(startTemp, hwVersion, nozzleDiam) * (1.0-AutotempSafetyMargin)
+    baseFlowrate = MatProfile.getFlowrateForTemp(startTemp, hwVersion, nozzleDiam)
 
     # Temps lower than 170 not handled yet
     assert(startTemp >= 170)
@@ -1462,7 +1462,7 @@ def genTempTable():
             f = (baseFlowrate-0.1) / (startTemp-170)
             flowrate = 0.1 + i*f
         else:
-            flowrate = MatProfile.getFlowrateForTemp(t, hwVersion, nozzleDiam) * (1.0-AutotempSafetyMargin)
+            flowrate = MatProfile.getFlowrateForTemp(t, hwVersion, nozzleDiam)
 
         espeed = flowrate / aFilament
         # print "flowrate for temp %f: %f -> espeed %f" % (t, flowrate, espeed)
