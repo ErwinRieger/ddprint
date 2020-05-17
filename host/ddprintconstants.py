@@ -102,11 +102,9 @@ AutotempSafetyMargin = 0.0
 
 ############################################################################
 #
-# Layer 0 temperature increase
+# Layer 0 hotend temperature increase
 #
-# Layer0TempIncrease = 15
-# pmwchange
-Layer0TempIncrease = 0
+Layer0TempIncrease = 10
 
 ############################################################################
 #

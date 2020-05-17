@@ -187,7 +187,7 @@ class PathData (object):
 
         pwmMaxStep = 255 - self.p0
 
-        newTemp = MatProfile.getHotendGoodTemp()
+        newTemp = MatProfile.getHotendGoodTemp() + self.planner.l0TempIncrease
 
         if rateDiff > 0.0:
             #
@@ -411,7 +411,7 @@ class Planner (object):
 
         if layer == 0:
 
-            self.gui.log("Layer 0, increasing temp by", Layer0TempIncrease)
+            self.gui.log("Layer 0, increasing hotend temp by ", Layer0TempIncrease)
             self.l0TempIncrease = Layer0TempIncrease
 
         else:
