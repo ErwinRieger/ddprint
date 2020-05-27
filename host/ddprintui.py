@@ -734,7 +734,6 @@ class MainForm(npyscreen.FormBaseNew):
 
     # Thread save version
     def log(self, *args):
-        # self.appLog.buffer([util.stringFromArgs(*args)])
         s = util.stringFromArgs(*args)
         logging.info(s)
         self.guiQueue.put(SyncCallUpdate(self.appLog.buffer, [s]))
@@ -743,21 +742,13 @@ class MainForm(npyscreen.FormBaseNew):
         # xxx special error handling
         self.guiQueue.put(SyncCall(self._logError, util.stringFromArgs(*args)))
 
-    def logSend(self, *args):
-        # self.commLog.buffer([util.stringFromArgs(*args)])
+    def logComm(self, *args):
         s = util.stringFromArgs(*args)
-        logging.info("SEND: %s", s)
+        logging.info("CommLog: %s", s)
         self.guiQueue.put(SyncCallUpdate(self.commLog.buffer, [s]))
-
-    def logRecv(self, *args):
-        # self.commLog.buffer(["    " + util.stringFromArgs(*args) ])
-        s = util.stringFromArgs(*args)
-        logging.info("REPLY: %s", s)
-        self.guiQueue.put(SyncCallUpdate(self.commLog.buffer, ["    " + s]))
 
     # Stdout redirection 
     def write(self, s):
-        # self.appLog.buffer(["STDOUT:" + s])
         s = s.strip()
         if s:
             logging.info("STDOUT: %s", s)

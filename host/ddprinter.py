@@ -196,28 +196,28 @@ class Printer(Serial):
                 flagstr += "Parity  "
 
             # flags: M_UCSRxA & 0x1C;
-            self.gui.logRecv("RespRXError: LastLine %d, flags: 0x%x (%s)" % (lastLine, flags, flagstr))
+            self.gui.logComm("RespRXError: LastLine %d, flags: 0x%x (%s)" % (lastLine, flags, flagstr))
             if handleError:
                 return self.commandResend(lastLine)
 
         elif respCode == RespRXCRCError:
 
             lastLine = ord(payload)
-            self.gui.logRecv("RespRXCRCError:", lastLine)
+            self.gui.logComm("RespRXCRCError:", lastLine)
             if handleError:
                 return self.commandResend(lastLine)
 
         elif respCode == RespSerNumberError:
 
             lastLine = ord(payload)
-            self.gui.logRecv("RespSerNumberError:", lastLine)
+            self.gui.logComm("RespSerNumberError:", lastLine)
             if handleError:
                 return self.commandResend(lastLine)
 
         elif respCode == RespRXTimeoutError:
 
             lastLine = ord(payload)
-            # self.gui.logRecv("RespRXTimeoutError:", lastLine)
+            # self.gui.logComm("RespRXTimeoutError:", lastLine)
             if handleError:
                 return self.commandResend(lastLine)
 
@@ -233,14 +233,14 @@ class Printer(Serial):
         if respCode == RespUnsolicitedMsg:
 
             msgType = ord(payload[0])
-            self.gui.logRecv("RespUnsolicitedMsg:", msgType)
+            self.gui.logComm("RespUnsolicitedMsg:", msgType)
 
             if msgType == ExtrusionLimitDbg:
                 (tempIndex, actSpeed, targetSpeed, grip) = struct.unpack("<hhhh", payload[1:])
-                self.gui.logRecv("Limit extrusion index: %d, act: %d, target: %d, grip: %d" % (tempIndex, actSpeed, targetSpeed, grip))
+                self.gui.logComm("Limit extrusion index: %d, act: %d, target: %d, grip: %d" % (tempIndex, actSpeed, targetSpeed, grip))
             elif msgType == PidDebug:
                 (pid_dt, pTerm, iTerm, dTerm, pwmOutput, e) = struct.unpack("<ffffif", payload[1:])
-                self.gui.logRecv("PidDebug: pid_dt: %f, pTerm: %f, iTerm: %f, dTerm: %f, pwmOutput: %d, e: %f" % (pid_dt, pTerm, iTerm, dTerm, pwmOutput, e))
+                self.gui.logComm("PidDebug: pid_dt: %f, pTerm: %f, iTerm: %f, dTerm: %f, pwmOutput: %d, e: %f" % (pid_dt, pTerm, iTerm, dTerm, pwmOutput, e))
             elif msgType == RespSDReadError:
                 # payload: SD errorcode, SPI status byte
                 (errorCode, spiStatus) = struct.unpack("<BB", payload[1:])
@@ -253,7 +253,7 @@ class Printer(Serial):
                 # payload: generic message string
                 (slen,) = struct.unpack("<B", payload[1:2])
                 message = payload[2:2+slen]
-                self.gui.logRecv("GenericMessage: '%s'" % message)
+                self.gui.logComm("GenericMessage: '%s'" % message)
             return True # consume message
 
         return False # continue message processing
@@ -343,7 +343,7 @@ class Printer(Serial):
 
         length = ord(l) - 1
         if debugComm:
-            self.gui.logRecv("Response 0x%x, reading %d b" % (cmd, length))
+            self.gui.logComm("Response 0x%x, reading %d b" % (cmd, length))
 
         payload = ""
         if length:
@@ -409,8 +409,8 @@ class Printer(Serial):
         # Read left over garbage
         recvLine = self.safeReadline()        
         while recvLine:
-            # self.gui.logRecv("Initial read: '%s'" % recvLine)
-            self.gui.logRecv("Initail read: " + recvLine.encode("hex"), "\n")
+            # self.gui.logComm("Initial read: '%s'" % recvLine)
+            self.gui.logComm("Initail read: " + recvLine.encode("hex"), "\n")
             recvLine = self.safeReadline()        
 
         self.resetLineNumber()
@@ -560,7 +560,7 @@ class Printer(Serial):
     def query(self, cmd, binPayload=None, doLog="notused-variable"):
 
         # if doLog:
-            # self.gui.logSend("query: ", CommandNames[cmd])
+            # self.gui.logComm("query: ", CommandNames[cmd])
 
         cobsBlock = binPayload and cobs.encodeCobsString(binPayload)
         binary = self.buildBinaryCommand(cmd, cobsBlock)
@@ -602,7 +602,7 @@ class Printer(Serial):
         """
 
         if debugComm:
-            self.gui.logSend("*** sendCommand %s (0x%x, len: %d, seq: %d) *** " % (CommandNames[sendCmd], sendCmd, len(binary), self.prevLineNumber()))
+            self.gui.logComm("*** sendCommand %s (0x%x, len: %d, seq: %d) *** " % (CommandNames[sendCmd], sendCmd, len(binary), self.prevLineNumber()))
         # print "send: ", binary.encode("hex")
         self.send(binary)
 
@@ -623,13 +623,13 @@ class Printer(Serial):
                 continue
 
             except RxTimeout:
-                self.gui.logError("RxTimeout, resending command...")
+                self.gui.logComm("RxTimeout, resending command...")
                 startTime = time.time()
                 self.send(binary)
                 continue
 
             except RxChecksumError:
-                self.gui.logError("RxChecksumError, resending command...")
+                self.gui.logComm("RxChecksumError, resending command...")
                 startTime = time.time()
                 self.send(binary)
                 continue
@@ -638,7 +638,7 @@ class Printer(Serial):
             dt = time.time() - startTime
             if cmd == 0x6:
                 if debugComm:
-                    self.gui.logRecv("ACK, Sent %d bytes in %.2f ms, %.2f Kb/s" % (n, dt*1000, n/(dt*1000)))
+                    self.gui.logComm("ACK, Sent %d bytes in %.2f ms, %.2f Kb/s" % (n, dt*1000, n/(dt*1000)))
                 return (cmd, payload)
 
             # if cmd == RespGenericString:
@@ -663,7 +663,7 @@ class Printer(Serial):
                 continue
 
             if debugComm:
-                self.gui.logRecv("ACK (0x%x/0x%x), Sent %d bytes in %.2f ms, %.2f Kb/s" % (cmd, sendCmd, n, dt*1000, n/(dt*1000)))
+                self.gui.logComm("ACK (0x%x/0x%x), Sent %d bytes in %.2f ms, %.2f Kb/s" % (cmd, sendCmd, n, dt*1000, n/(dt*1000)))
 
             if cmd == sendCmd:
                 # print "got reply:", payload
