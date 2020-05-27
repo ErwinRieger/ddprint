@@ -29,11 +29,8 @@ class DumbGui:
     def log(self, *args):
         logging.info(util.stringFromArgs(*args))
 
-    def logRecv(self, *args):
-        logging.info("REPLY: %s", util.stringFromArgs(*args))
-
-    def logSend(self, *args):
-        logging.info("SEND: %s", util.stringFromArgs(*args))
+    def logComm(self, *args):
+        logging.info("CommLog: %s", util.stringFromArgs(*args))
 
     def logError(self, *args):
         logging.error(util.stringFromArgs(*args))
