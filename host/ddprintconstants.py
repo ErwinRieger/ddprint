@@ -21,7 +21,6 @@
 ############################################################################
 
 # Maximum combined acceleration of the X, Y, Z and E axes 
-#define DEFAULT_ACCELERATION          3000
 _MAX_ACCELERATION =         3000    # [ mm/s^s ]
 
 ############################################################################
@@ -64,7 +63,6 @@ SOH = 0x0 # 'Start of header', startbit for COBS encoded data block.
 # firmware (ddprint.h).
 #
 NExtrusionLimit = 100
-# ExtrusionLimitBaseTemp = 190
 
 
 ############################################################################
@@ -74,7 +72,6 @@ NExtrusionLimit = 100
 # Threshold value, if the difference of the velocity at the start or end
 # of a move is below this value, we do not generate a accel-/deceleration ramp .
 AccelThreshold=0.001 # [mm/s]
-AccelThreshold=0.000001 # [mm/s]
 
 ############################################################################
 #
@@ -82,23 +79,12 @@ AccelThreshold=0.000001 # [mm/s]
 #
 # Threshold value, if the difference of the extrusion rate of two moves
 # is below this value, we assume they have the same extrusion rate.
-AdvanceEThreshold=0.001 # [mm/s]
 AdvanceEThreshold=0.000001 # [mm/s]
 
 #
 # Minimum len in mm of acceleration- or deceleration ramp to apply advance.
-AdvanceMinRamp = 0.05
-# AdvanceMinRamp = 0.1
-
-
-############################################################################
 #
-# Auto-temp algorithm
-#
-# Safety margin for temperature calculations and speed limiter. We assume
-# a bit more flowrate to get more temperature.
-# AutotempSafetyMargin = 0.1 # 10% margin
-AutotempSafetyMargin = 0.0
+AdvanceMinRamp = 0.1
 
 ############################################################################
 #
