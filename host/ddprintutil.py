@@ -1556,31 +1556,6 @@ def getStartupTime(feedrate):
 
     return tAccel
 
-def old_getStartupTime(feedrate):
-
-    eAccel = PrinterProfile.getMaxAxisAcceleration()[A_AXIS]
-    e_steps_per_mm = PrinterProfile.getStepsPerMM(A_AXIS)
-
-    # Zeit bis sich der messwert der target geschwindigkeit
-    # stabilisiert hat.
-    # 1. timer accel ramp
-    tAccel = feedrate / eAccel
-    # 2. time for 50 steps (50 steps: siehe FilamentSensorADNS9800::run())
-    stepsPerSecond = feedrate * e_steps_per_mm
-    t50 = 50 / stepsPerSecond
-    tTargetStartup = tAccel + 2*t50
-
-    # Zeit bis sich der messwert der filsensor geschwindigkeit
-    # stabilisiert hat.
-    # 1. timer accel ramp
-    # 2. time for 50 steps (50 steps: siehe FilamentSensorADNS9800::run())
-    stepsPerSecond = feedrate * 250
-    t50 = 50 / stepsPerSecond
-    tActualStartup = tAccel + 2*t50
-    print "tTargetStartup:", tTargetStartup, ", tActualStartup", tActualStartup
-
-    return max(tTargetStartup, tActualStartup)
-
 ####################################################################################################
 # 
 def measureFlowrateStepResponse(args, parser):
