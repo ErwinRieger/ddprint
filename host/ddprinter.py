@@ -164,7 +164,7 @@ class Printer(Serial):
             elif reason in [RespSDReadError, RespSDWriteError]:
 
                 (errorCode, spiStatus) = struct.unpack("<BB", payload[1:])
-                self.gui.logError("ERROR: PRINTER KILLED! Reason: %s, ErrorCode: %d, spiStatus: 0x%x" % (RespCodeNames[reason], errorCode, spiStatus))
+                self.gui.logError("ERROR: PRINTER KILLED! Reason: %s, ErrorCode: %d (0x%x), spiStatus: 0x%x" % (RespCodeNames[reason], errorCode, errorCode, spiStatus))
 
             elif reason == RespMinTemp:
 
