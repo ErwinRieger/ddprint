@@ -916,14 +916,25 @@ bool FillBufferTask::Run() {
 
             HandleCmdDwellMS:
 
+                //
+                // Dwell is is done by executing a number of *NOP* moves that don't step any stepper
+                // but are waiting for 25 mS.
+                //
+                // Read number of 25 mS nop segemnts as 16 bit unsigned int
                 sDReader.setBytesToRead2();
                 PT_WAIT_THREAD(sDReader);
 
-                dwellEnd = millis() + FromBuf(uint16_t, sDReader.readData);
-                printer.dwellStart();
+                nDwell = FromBuf(uint16_t, sDReader.readData);
 
-                // PT_WAIT_WHILE(millis() < dwellEnd);
-                // printer.dwellEnd();
+                sd.dirBits  = 0;     // We don't step
+                sd.stepBits = 0;     // We don't step
+                sd.timer    = 50000; // 25 mS for 2 mhz clock
+
+                while (nDwell-- > 0) {
+
+                    PT_WAIT_WHILE(stepBuffer.full());
+                    stepBuffer.push(sd);
+                }
 
                 PT_RESTART();
 
@@ -944,13 +955,13 @@ bool FillBufferTask::Run() {
 
 
                 if (pulseEnd) {
-                    printer.sendGenericMessage("pulseEnd", sizeof("pulseEnd"));
+                    printer.sendGenericMessage("pulseEnd", sizeof("pulseEnd")+1);
                 }
                 if (pulseTime) {
-                    printer.sendGenericMessage("pulseTime", sizeof("pulseTime"));
+                    printer.sendGenericMessage("pulseTime", sizeof("pulseTime")+1);
                 }
                 if (timerPause) {
-                    printer.sendGenericMessage("timerPause", sizeof("timerPause"));
+                    printer.sendGenericMessage("timerPause", sizeof("timerPause")+1);
                 }
 
                 sDReader.setBytesToRead7();
@@ -1399,18 +1410,6 @@ void Printer::cmdSetTempTable() {
     txBuffer.sendSimpleResponse(CmdSetTempTable, RespOK);
 }
 #endif
-
-void Printer::dwellStart() {
-
-    massert(printerState == StateStart);
-
-    printerState = StateDwell;
-}
-
-void Printer::dwellEnd() {
-
-    printerState = StateStart;
-}
 
 Printer printer;
 
@@ -1967,12 +1966,6 @@ FWINLINE void loop() {
         tempControl.hotendOn(fillBufferTask.targetHeater);
         // xxx 260 hardcoded max hotend temp
         tempControl.setTemp(fillBufferTask.targetHeater, 260 - printer.getIncreaseTemp(fillBufferTask.targetHeater));
-    }
-
-    if (fillBufferTask.dwellEnd && (millis() >= fillBufferTask.dwellEnd)) {
-
-        fillBufferTask.dwellEnd = 0;
-        printer.dwellEnd();
     }
 
     if (millis() >= timer10mS) { // Every 10 mS

@@ -84,7 +84,6 @@ class Printer {
             StateInit,       // Host part has initialized the printer and has
                              // done printer setup.
             StateStart,      // We are printing.
-            StateDwell       // Temporary state
             } printerState;
 
         typedef enum {
@@ -134,8 +133,6 @@ class Printer {
         void cmdGetFilSensor();
         void cmdGetTempTable();
         void cmdSetTempTable();
-        void dwellStart();
-        void dwellEnd();
 };
 
 extern Printer printer;
@@ -168,7 +165,8 @@ class FillBufferTask : public Protothread {
         uint8_t heaterPWM;
         // unsigned long pulseEnd;
 
-        // unsigned long dwellEnd;
+        // Number of 25 mS nop segments for G4/dwell
+        uint16_t nDwell;
 
         bool cmdSync;
 
@@ -191,7 +189,6 @@ class FillBufferTask : public Protothread {
         uint32_t pulseTime;
         uint32_t pulsePause;
         unsigned long pulseEnd;
-        unsigned long dwellEnd;
         uint16_t targetTemp;
 
         bool Run();
