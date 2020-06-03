@@ -18,6 +18,9 @@
 #*/
 
 
+Uint8Max = pow(2, 8) - 1
+Uint16Max = pow(2, 16) - 1
+
 ############################################################################
 
 # Maximum combined acceleration of the X, Y, Z and E axes 
@@ -35,7 +38,7 @@ StepDataTypeRaw       = 1
 # Board config, move to printer-profile ?
 #
 fTimer = 2000000.0 # Hz
-maxTimerValue16 = pow(2, 16) - 1
+maxTimerValue16 = Uint16Max
 
 ############################################################################
 #

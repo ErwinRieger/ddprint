@@ -24,8 +24,9 @@ import shutil, os, re
 
 from ddprofile import MatProfile, PrinterProfile
 from ddplanner import Planner
-from ddprintcommands import CmdSyncFanSpeed, CmdUnknown, CmdDwellMS
-from ddprintconstants import dimNames, GCODEUNKNOWN, GCODEULTI, GCODES3D, X_AXIS, Y_AXIS, Z_AXIS, A_AXIS, B_AXIS
+from ddprintcommands import CmdUnknown
+# , CmdDwellMS
+from ddprintconstants import dimNames, GCODEUNKNOWN, GCODEULTI, GCODES3D, X_AXIS, Y_AXIS, Z_AXIS, A_AXIS, B_AXIS, Uint8Max
 from ddconfig import *
 from move import TravelMove, PrintMove
 from ddvector import Vector, vectorDistance
@@ -388,21 +389,25 @@ class UM2GcodeParser:
         self.logger.log("ignoring m104 (extruder temp)")
 
     def m106_fan_on(self, line, values):
+
         # print "m106_fan_on", values
         fanSpeed = (values["S"] * MatProfile.getFanPercent()) / 100
 
+        blipTime = 0.0
+
+        if "B" in values:
+            blipTime = values["B"] * 1000.0
+
         # "Blip fan" for Cura (S3D supports blip fan)
         if fanSpeed < 50 and self.gcodeType==GCODEULTI:
-            # Start fan with full power
-            self.planner.addSynchronizedCommand(CmdSyncFanSpeed, p1=packedvalue.uint8_t(255))
-            # Dwell 0.25s
-            self.planner.addSynchronizedCommand(CmdDwellMS, p1=packedvalue.uint16_t(250))
+            blipTime = 250.0
 
-        self.planner.addSynchronizedCommand(CmdSyncFanSpeed, p1=packedvalue.uint8_t(fanSpeed))
+        # self.planner.addSynchronizedCommand(CmdSyncFanSpeed, p1=packedvalue.uint8_t(fanSpeed))
+        self.planner.fanOn(fanSpeed, min(blipTime, Uint8Max))
 
     def m107_fan_off(self, line, values):
         # print "m107_fan_off", values
-        self.planner.addSynchronizedCommand(CmdSyncFanSpeed, p1=packedvalue.uint8_t(0))
+        self.planner.fanOn(0, 0)
 
     def m109_extruder_temp_wait(self, line, values):
         self.logger.log("ignoring m109 (wait for extruder temp)")
@@ -437,10 +442,11 @@ class UM2GcodeParser:
 
     def g4_dwell(self, line, values):
         if "P" in values:
-            self.logger.log("dwell, ", values["P"], "ms")
-            self.planner.addSynchronizedCommand(CmdDwellMS, p1=packedvalue.uint16_t(values["P"]))
+            self.logger.log("dwell, ", values["P"], " ms")
+            self.planner.dwellMS(values["P"])
         elif "S" in values:
-            self.planner.addSynchronizedCommand(CmdDwellMS, p1=packedvalue.uint16_t(values["S"] * 1000))
+            self.logger.log("dwell, ", values["S"], " s")
+            self.planner.dwellMS(values["S"] * 1000)
         else:
             # unknown parameter
             assert(0)

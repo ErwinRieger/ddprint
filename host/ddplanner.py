@@ -28,7 +28,7 @@ from ddvector import Vector, vectorMul, vectorAbs
 from ddprintconstants import *
 from ddconfig import *
 from ddprinter import Printer
-from ddprintcommands import CmdSyncTargetTemp, CmdSyncHotendPWM, CmdSyncHotendPulse
+from ddprintcommands import CmdSyncTargetTemp, CmdSyncHotendPWM, CmdSyncHotendPulse, CmdDwellMS, CmdSyncFanSpeed
 from ddprintstates import HeaterEx1, HeaterBed
 from ddadvance import Advance
 
@@ -402,6 +402,7 @@ class Planner (object):
 
     # Called from gcode parser
     def newPart(self, partNumber):
+
         self.partNumber = partNumber
 
     # Called from gcode parser
@@ -432,6 +433,7 @@ class Planner (object):
                 p1 = packedvalue.uint8_t(HeaterBed),
                 p2 = packedvalue.uint16_t(bedTemp))
 
+    # Called from gcode parser
     def g92(self, values):
 
         self.stepRounders.g92(values)
@@ -440,6 +442,64 @@ class Planner (object):
     def g900(self, values):
 
         self.advance.g900(values)
+
+    # Called from gcode parser, pause the print for the specified amount
+    # of time.
+    def dwellMS(self, ms):
+
+        # A timervalue of 50,000 gives us a 25 mS pause:
+        nNop = ms / 25.0
+
+        assert(nNop <= Uint16Max)
+
+        # Ignore pause's smaller than 25 mS
+        if nNop > 0:
+
+            # This ends the current path and stops the head
+            self.endPath()
+
+            # Add NOP moves
+            if self.args.mode != "pre":
+                self.printer.sendCommandParamV(CmdDwellMS, [packedvalue.uint16_t(nNop)])
+
+    # Called from gcode parser, start fan
+    def fanOn(self, fanSpeed, blipTime):
+
+        self.addSynchronizedCommand(CmdSyncFanSpeed, p1=packedvalue.uint8_t(fanSpeed), p2=packedvalue.uint8_t(blipTime))
+
+    # Start planning of this path
+    def endPath(self):
+
+        if self.pathData.path:
+
+            lastMove = self.pathData.path[-1]
+
+            if lastMove.isPrintMove():
+
+                #
+                # Finish path of printmoves.
+                #
+                # print "addMove(): ending path print with %d moves" % len(self.pathData.path)
+                self.advance.planPath(self.pathData.path)
+
+                if debugPlot:
+                    self.plotfile.close()
+                    self.plotfile = None
+
+            else:
+
+                #
+                # Finish path of travelmoves.
+                #
+                #
+                # Do a simple path planning for traveling moves:
+                # * start/stop at jerk/2
+                # * don't do advance
+                #
+                # print "addMove(): ending travel path with %d moves" % len(self.pathData.path)
+                self.planTravelPath(self.pathData.path)
+
+            self.pathData.path = []
 
     # Called from gcode parser
     def addMove(self, move):
@@ -464,33 +524,7 @@ class Planner (object):
                 pathEnding = True
 
         if pathEnding:
-
-            if move.isPrintMove():
-
-                #
-                # Finish preceding travelmoves.
-                #
-                #
-                # Do a simple path planning for traveling moves:
-                # * start/stop at jerk/2
-                # * don't do advance
-                #
-                # print "addMove(): ending travel path with %d moves" % len(self.pathData.path)
-                self.planTravelPath(self.pathData.path)
-
-            else:
-
-                #
-                # Finish preceding printmoves.
-                #
-                # print "addMove(): ending path print with %d moves" % len(self.pathData.path)
-                self.advance.planPath(self.pathData.path)
-
-                if debugPlot:
-                    self.plotfile.close()
-                    self.plotfile = None
-
-            self.pathData.path = []
+            self.endPath()
 
         self.pathData.path.append(move)
 
@@ -586,6 +620,14 @@ class Planner (object):
         if debugMoves:
             print "***** End planTravelPath() *****"
 
+    def sendSyncCommands(self, moveNumber):
+
+        for (cmd, p1, p2, p3, p4) in self.syncCommands[moveNumber]:
+            if self.args.mode != "pre":
+                self.printer.sendCommandParamV(cmd, [p1, p2, p3, p4])
+
+        del self.syncCommands[moveNumber]
+
     # xxx should be called finishPath()
     def finishMoves(self):
 
@@ -609,18 +651,18 @@ class Planner (object):
                 # print "finishMoves(): ending travel path with %d moves" % len(self.pathData.path)
                 self.planTravelPath(self.pathData.path)
 
+        else:
+
+            if self.syncCommands:
+                # No move, send leftofver synccommands
+                self.sendSyncCommands(0)
+
+        # Debug
         assert(not self.syncCommands)
+
         self.reset()
 
     def streamMove(self, move):
-
-        def sendSyncCommands(moveNumber):
-
-            for (cmd, p1, p2, p3, p4) in self.syncCommands[moveNumber]:
-                if self.args.mode != "pre":
-                    self.printer.sendCommandParamV(cmd, [p1, p2, p3, p4])
-
-            del self.syncCommands[moveNumber]
 
         if debugPlot:
 
@@ -630,10 +672,10 @@ class Planner (object):
             self.plotfile.plotSteps(move)
 
         if move.moveNumber in self.syncCommands:
-            sendSyncCommands(move.moveNumber)
+            self.sendSyncCommands(move.moveNumber)
 
         if move.isSubMove() and move.parentMove.moveNumber in self.syncCommands:
-            sendSyncCommands(move.parentMove.moveNumber)
+            self.sendSyncCommands(move.parentMove.moveNumber)
 
         for (cmd, cobsBlock) in move.commands():
             if self.args.mode != "pre":

@@ -553,6 +553,9 @@ def main():
         if not args.noCoolDown:
             printer.coolDown(HeaterEx1, wait=150, log=True)
 
+        # Stop hotend fan
+        printer.sendCommandParamV(CmdFanSpeed, [packedvalue.uint8_t(0)])
+
         # Exit simulator for profiling
         # printer.sendCommand(CmdExit)
 

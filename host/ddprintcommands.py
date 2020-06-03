@@ -24,7 +24,7 @@
 #
 CmdNull          = 0x0
 # CmdDirBits       = 0x2
-CmdSyncFanSpeed  = 0x3 # Parameters: pwm value 0 - 255
+CmdSyncFanSpeed  = 0x3 # Parameters: pwm value 0 - 255, blipTime 0 - 255 mS
 CmdRaw           = 0x4 # Parameters: blob data
 CmdBlock         = 0x6 # A 512byte block of a lager command
 
@@ -32,7 +32,7 @@ CmdG1            = 0x7
 # CmdDirG1         = 0x8 # CmdDirBits and CmdG1 combined
 
 CmdSyncTargetTemp= 0xb # Parameters: heater, temp 
-CmdDwellMS       = 0xc # Parameters: dwell time in mS
+CmdDwellMS       = 0xc # Parameters: number of 25 mS dwell NOP moves
 CmdG1Raw         = 0xd # Raw print move steps, bresenham algo already done.
 # CmdDirG1Raw      = 0xe # CmdDirBits and CmdG1Raw combined
 CmdSyncHotendPWM = 0xf # Set hotend pmw value, Parameters: heater, pmw value

@@ -702,6 +702,10 @@ class MainForm(npyscreen.FormBaseNew):
 
             self.printer.sendCommand(CmdDisableSteppers)
 
+            # Stop hotend fan
+            self.printer.sendCommandParamV(CmdFanSpeed, [packedvalue.uint8_t(0)])
+
+
         except stoppableThread.StopThread:
             # Stop of current action requested
             self.printThread.incStopCount()
