@@ -122,7 +122,7 @@ class Printer {
         void cmdGetPos();
         void cmdSetP0pwm(uint8_t pwm);
         void cmdSetPIDValues(float kp, float ki, float kd, uint16_t Tu);
-        void cmdFanSpeed(uint8_t speed);
+        void cmdFanSpeed(uint8_t speed, uint8_t blipTime);
         void cmdContinuousE(uint16_t timerValue);
         void cmdSetFilSensorCal(float cal);
         void cmdSetStepsPerMME(uint16_t steps);
@@ -232,8 +232,37 @@ class FillBufferTask : public Protothread {
 
 extern FillBufferTask fillBufferTask;
 
+//
+// One-shot timer for
+// * fan blip
+// * hotend pulsing
+//
+class Timer {
 
+    // Fan timer
+    uint8_t fanSpeed;
+    unsigned long fanEndTime;
 
+    public:
+        Timer() {
+            fanEndTime = 0;
+        }
+
+        void run(unsigned long m);
+
+        void startFanTimer(uint8_t speed, uint8_t blipTime) {
+
+            fanSpeed = speed;
+            fanEndTime = millis() + blipTime;
+        }
+
+        void endFanTimer() {
+
+            fanEndTime = 0;
+        }
+};
+
+extern Timer timer;
 
 
 

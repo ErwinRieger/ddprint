@@ -894,10 +894,11 @@ bool FillBufferTask::Run() {
 
             HandleCmdSyncFanSpeed:
 
-                sDReader.setBytesToRead1();
+                // Read fanspeed, bliptime
+                sDReader.setBytesToRead2();
                 PT_WAIT_THREAD(sDReader);
 
-                printer.cmdFanSpeed(*sDReader.readData);
+                printer.cmdFanSpeed(*sDReader.readData, *(sDReader.readData+1));
 
                 PT_RESTART();
 
@@ -906,6 +907,7 @@ bool FillBufferTask::Run() {
                 sDReader.setBytesToRead3();
                 PT_WAIT_THREAD(sDReader);
 
+                // todo: remove targetHeater, targetTemp members
                 targetHeater = *sDReader.readData;
                 targetTemp = FromBuf(uint16_t, sDReader.readData+1);
 
@@ -1002,6 +1004,17 @@ void FillBufferTask::flush() {
 }
 
 FillBufferTask fillBufferTask;
+
+void Timer::run(unsigned long m) {
+
+    if (fanEndTime && (m >= fanEndTime)) {
+
+        analogWrite(FAN_PIN, fanSpeed);
+        fanEndTime = 0;
+    }
+}
+
+Timer timer;
 
 Printer::Printer() {
 
@@ -1156,8 +1169,19 @@ void Printer::cmdSetPIDValues(float kp, float ki, float kd, uint16_t tu) {
     Tu = tu;
 }
 
-void Printer::cmdFanSpeed(uint8_t speed) {
+void Printer::cmdFanSpeed(uint8_t speed, uint8_t blipTime) {
 
+    // If no blip is used, start fan directly, else
+    // start fan at 100% and start a timer to lower
+    // pwm value after the bliptime.
+    if (blipTime) {
+
+        analogWrite(FAN_PIN, 255);
+        timer.startFanTimer(speed, blipTime);
+        return;
+    }
+
+    timer.endFanTimer();
     analogWrite(FAN_PIN, speed);
 }
 
@@ -1184,7 +1208,7 @@ void Printer::cmdStopMove() {
     // Flush remaining steps
     fillBufferTask.flush();
 
-    cmdFanSpeed(0);
+    cmdFanSpeed(0, 0);
 }
 
 void Printer::cmdGetTargetTemps() {
@@ -1734,7 +1758,7 @@ class UsbCommand : public Protothread {
                         txBuffer.sendACK();
                         break;
                     case CmdFanSpeed:
-                        printer.cmdFanSpeed(serialPort.readNoCheckCobs());
+                        printer.cmdFanSpeed(serialPort.readNoCheckCobs(), 0);
                         txBuffer.sendACK();
                         break;
 #if defined(PIDAutoTune)
@@ -1938,26 +1962,28 @@ static UsbCommand usbCommand;
 
 FWINLINE void loop() {
 
-    // Timer for slow running tasks (temp, encoder)
-    static unsigned long timer10mS = millis() + TIMER10MS;
-    static unsigned long timer100mS = millis() + TIMER100MS;
+    unsigned long m = millis();
 
-    if (fillBufferTask.pulseEnd && (millis() >= fillBufferTask.pulseEnd)) {
+    // Timer for slow running tasks (temp, encoder)
+    static unsigned long timer10mS = m + TIMER10MS;
+    static unsigned long timer100mS = m + TIMER100MS;
+
+    if (fillBufferTask.pulseEnd && (m >= fillBufferTask.pulseEnd)) {
 
         fillBufferTask.pulseEnd = 0;
         printer.cmdSetTargetTemp(fillBufferTask.targetHeater, fillBufferTask.targetTemp);
 
         if (fillBufferTask.pulseTime > 0) {
-            timerPause = millis() + fillBufferTask.pulsePause;
+            timerPause = m + fillBufferTask.pulsePause;
         }
     }
 
-    if (timerPause && (millis() >= timerPause)) {
+    if (timerPause && (m >= timerPause)) {
 
         timerPause = 0;
 
         uint32_t pulse = min(fillBufferTask.pulseTime, (uint32_t)printer.getTu());
-        fillBufferTask.pulseEnd = millis() + pulse;
+        fillBufferTask.pulseEnd = m + pulse;
 
         fillBufferTask.pulseTime -= pulse;
 
@@ -1968,9 +1994,10 @@ FWINLINE void loop() {
         tempControl.setTemp(fillBufferTask.targetHeater, 260 - printer.getIncreaseTemp(fillBufferTask.targetHeater));
     }
 
-    if (millis() >= timer10mS) { // Every 10 mS
+    m = millis();
+    if (m >= timer10mS) { // Every 10 mS
 
-        timer10mS = millis() + TIMER10MS;
+        timer10mS = m + TIMER10MS;
 
         // Check hardware and software endstops:
         if (printer.moveType == Printer::MoveTypeNormal) {
@@ -2019,11 +2046,15 @@ FWINLINE void loop() {
             WRITE(HOTEND_FAN_PIN, LOW);
         }
 #endif
+
+        // Run timer
+        timer.run(m);
     }
 
-    if (millis() >= timer100mS) { // Every 100 mS
+    m = millis();
+    if (m >= timer100mS) { // Every 100 mS
 
-        timer100mS = millis() + TIMER100MS;
+        timer100mS = m + TIMER100MS;
 
         //
         // Control heater 
