@@ -54,8 +54,9 @@
 #define CmdDwellMS         0xc
 #define CmdG1Raw           0xd
 // #define CmdDirG1Raw        0xe
-#define CmdSyncHotendPWM   0xf
+// #define CmdSyncHotendPWM   0xf
 #define CmdSyncHotendPulse 0x10
+#define CmdSuggestPwm      0x11
 
 //
 // Direct commands:

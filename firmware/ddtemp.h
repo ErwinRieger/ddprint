@@ -99,13 +99,18 @@ class TempControl: public Protothread
     float eSumLimit;
 
     public:
+
+        // xxx todo setter
+        uint8_t suggestPwm;
+
         TempControl():
             avgBedTemp(HEATER_0_MINTEMP),
             avgHotendTemp(HEATER_1_MINTEMP),
             Kp(1.0),
             Ki(0.1),
             Kd(1.0),
-            pwmValueOverride(0) {};
+            pwmValueOverride(0),
+            suggestPwm(0) {};
         void init();
         virtual bool Run();
         void setTemp(uint8_t heater, uint16_t newTarget);

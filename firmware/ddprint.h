@@ -162,7 +162,7 @@ class FillBufferTask : public Protothread {
         // uint16_t targetTemp;
 
         // Hotend target pwm for CmdSyncHotendPWM
-        uint8_t heaterPWM;
+        // uint8_t heaterPWM;
         // unsigned long pulseEnd;
 
         // Number of 25 mS nop segments for G4/dwell
@@ -243,9 +243,18 @@ class Timer {
     uint8_t fanSpeed;
     unsigned long fanEndTime;
 
+    // Hotend pulsing timer
+    uint8_t targetHeater;
+    uint16_t targetTemp;
+    uint32_t pulseTime;
+    uint32_t pauseTime;
+    unsigned long hotendPwmEndTime;
+    uint8_t hotendPwmState;
+
     public:
         Timer() {
             fanEndTime = 0;
+            hotendPwmEndTime = 0;
         }
 
         void run(unsigned long m);
@@ -259,6 +268,43 @@ class Timer {
         void endFanTimer() {
 
             fanEndTime = 0;
+        }
+
+        void startHotenPulseTimer(uint8_t th, uint32_t pulseT, uint32_t pauseT, uint16_t tt) {
+
+            targetHeater = th;
+            pauseTime = pauseT;
+            targetTemp = tt;
+            hotendPwmState = 1;
+
+            uint32_t thisPulse;
+            uint16_t tu = printer.getTu();
+
+            // Carefull for interger underflow
+            if (tu <= pulseT) {
+                thisPulse = tu;
+                pulseTime = pulseT - tu; 
+            }
+            else {
+                thisPulse = pulseT;
+                pulseTime = 0;
+            }
+
+            // Time when to end this pulse:
+            hotendPwmEndTime = millis() + thisPulse;
+
+#if 0
+            // Hotend full throttle, pwm value is reset with next heater run (every 100mS)
+            tempControl.hotendOn(targetHeater);
+            // TODO 260 hardcoded max hotend temp, this is the max hotend temp value
+            // from material profile
+            tempControl.setTemp(targetHeater, 260 - printer.getIncreaseTemp(targetHeater));
+#endif
+        }
+
+        void endHotenPulseTimer() {
+
+            hotendPwmEndTime = 0;
         }
 };
 

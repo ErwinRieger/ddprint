@@ -250,6 +250,10 @@ void TempControl::setTemp(uint8_t heater, uint16_t temp) {
 
         target_temperature[heater-1] = temp;
 
+        // xxx hack, reset/clear suggestPwm
+        if (temp < 50) {
+            suggestPwm = 0;
+        }
         // eAlt = 0;
     }
 }
@@ -285,7 +289,6 @@ void TempControl::heater() {
                 // Regeldifferenz, grösser 0 falls temperatur zu klein
                 float e = target_temperature[0] - current_temperature[0];
 
-
                 eSum = constrain(
                     eSum + e,
                     -eSumLimit,
@@ -307,11 +310,13 @@ void TempControl::heater() {
                     pid_output = -PID_MAX;
                 }
 
+                if (pid_output < suggestPwm) {
+                    pid_output = suggestPwm;
+                }
+
                 analogWrite( HEATER_0_PIN, max(pid_output, 0) );
-                eAlt = e;
 
 #ifdef PID_DEBUG
-
                 static int dbgcount=0;
         
                 if ((dbgcount++ % 10) == 0) {
@@ -329,6 +334,8 @@ void TempControl::heater() {
 
 #endif //PID_DEBUG
 
+                // Kept values of last pidrun
+                eAlt = e;
                 lastPidCompute = ts;
             }
         }
