@@ -35,8 +35,9 @@ CmdSyncTargetTemp= 0xb # Parameters: heater, temp
 CmdDwellMS       = 0xc # Parameters: number of 25 mS dwell NOP moves
 CmdG1Raw         = 0xd # Raw print move steps, bresenham algo already done.
 # CmdDirG1Raw      = 0xe # CmdDirBits and CmdG1Raw combined
-CmdSyncHotendPWM = 0xf # Set hotend pmw value, Parameters: heater, pmw value
+# CmdSyncHotendPWM = 0xf # Set hotend pmw value, Parameters: heater, pmw value
 CmdSyncHotendPulse = 0x10 # Hotend pmw pulss, Parameters: heater, pulsewidth [ms]
+CmdSuggestPwm      = 0x11 # Parameters: heater, target temp, pwm value
 
 CmdUnknown       = 0x7f # Unknown command for debugging
 
@@ -112,8 +113,9 @@ for (cmd, cmdName) in [
     # CmdDirG1Raw, "CmdDirG1Raw",
     (CmdSyncTargetTemp, "CmdSyncTargetTemp",),
     (CmdDwellMS, "CmdDwellMS",),
-    (CmdSyncHotendPWM, "CmdSyncHotendPWM",),
+    # (CmdSyncHotendPWM, "CmdSyncHotendPWM",),
     (CmdSyncHotendPulse, "CmdSyncHotendPulse",),
+    (CmdSuggestPwm, "CmdSuggestPwm",),
     (CmdUnknown, "CmdUnknown",),
     #
     # Direct commands:
