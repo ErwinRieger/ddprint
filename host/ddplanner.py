@@ -28,7 +28,7 @@ from ddvector import Vector, vectorMul, vectorAbs
 from ddprintconstants import *
 from ddconfig import *
 from ddprinter import Printer
-from ddprintcommands import CmdSyncTargetTemp, CmdSyncHotendPWM, CmdSyncHotendPulse, CmdDwellMS, CmdSyncFanSpeed
+from ddprintcommands import CmdSyncTargetTemp, CmdSyncHotendPulse, CmdDwellMS, CmdSyncFanSpeed, CmdSuggestPwm
 from ddprintstates import HeaterEx1, HeaterBed
 from ddadvance import Advance
 
@@ -161,9 +161,12 @@ class PathData (object):
             self.fr0 = matProfile.getFR0pwm(hwVersion, nozzleDiam)
             self.slippage = matProfile._getSlippage(hwVersion, nozzleDiam)
 
+    def nextMoveNumber(self):
+        return self.count + 10 # leave space for advance-submoves
+
     # Number of moves
     def incCount(self):
-        self.count += 10 # leave space for advance-submoves
+        self.count = self.nextMoveNumber()
         return self.count
 
     def doAutoTemp(self, moves):
@@ -181,6 +184,46 @@ class PathData (object):
         # * 10% for minratio (90%)
         # * 10% measurement errors
         adj = 1.0 + self.slippage + 0.1
+
+        # Compute new temp and suggested heater-PWM for this segment
+
+        # Amount of flowrate above floor
+        rateDiff = (avgERate * adj) - self.fr0
+
+        # Floor temp
+        newTemp = MatProfile.getHotendGoodTemp() + self.planner.l0TempIncrease
+
+        suggestPwm = 0
+
+        if rateDiff > 0.0:
+            #
+            # add energy
+            #
+            suggestPwm = int(round(self.p0 + (rateDiff / self.ks)))
+
+            # temp
+            newTemp += int(round(rateDiff / self.ktemp))
+
+        newTemp = min(newTemp, MatProfile.getHotendMaxTemp())
+        suggestPwm = min(suggestPwm, 255)
+
+        # xxx debug
+        assert(type(newTemp) == types.IntType)
+        
+        # Schedule target temp command
+        self.planner.addSynchronizedCommand(
+            CmdSuggestPwm, 
+            p1 = packedvalue.uint8_t(HeaterEx1),
+            p2 = packedvalue.uint16_t(newTemp), 
+            p3 = packedvalue.uint8_t(suggestPwm), 
+            moveNumber = move.moveNumber)
+        
+        if debugAutoTemp:
+            self.planner.gui.log( "AutoTemp: collected %d moves with %.2f s duration." % (len(moves), tsum))
+            self.planner.gui.log( "AutoTemp: avg extrusion rate: %.2f mm³/s." % avgERate)
+            self.planner.gui.log( "AutoTemp: new temp: %d, suggested PWM: %d" % (newTemp, suggestPwm))
+
+        return
 
         # Compute heater-PWM for this segment and add pwm-pulse command into the stream. 
         rateDiff = (avgERate * adj) - self.fr0
@@ -396,7 +439,12 @@ class Planner (object):
     def addSynchronizedCommand(self, command, p1=None, p2=None, p3=None, p4=None, moveNumber=None):
 
         if moveNumber == None:
-            moveNumber = max(self.pathData.count, 0)
+            # Associate command with the last move if we have one, else
+            # with the next one:
+            if self.pathData.path:
+                moveNumber = self.pathData.path[-1].moveNumber
+            else:
+                moveNumber = self.pathData.nextMoveNumber()
 
         self.syncCommands[moveNumber].append((command, p1, p2, p3, p4))
 
@@ -448,7 +496,7 @@ class Planner (object):
     def dwellMS(self, ms):
 
         # A timervalue of 50,000 gives us a 25 mS pause:
-        nNop = ms / 25.0
+        nNop = int(round(ms / 25.0))
 
         assert(nNop <= Uint16Max)
 
@@ -608,9 +656,6 @@ class Planner (object):
 
             self.planTravelSteps(move)
 
-            if debugMoves:
-                print "Streaming travel-move:", move.moveNumber
-
             self.streamMove(move)
 
             # Help garbage collection
@@ -653,16 +698,25 @@ class Planner (object):
 
         else:
 
+            # debug
             if self.syncCommands:
+                print "left synccommands: ", self.syncCommands
+                assert(0)
                 # No move, send leftofver synccommands
                 self.sendSyncCommands(0)
 
-        # Debug
+        # debug
         assert(not self.syncCommands)
 
         self.reset()
 
     def streamMove(self, move):
+
+        if debugMoves:
+            if move.isSubMove():
+                print "Streaming sub-move:", move.moveNumber, move.parentMove.moveNumber
+            else:
+                print "Streaming move:", move.moveNumber
 
         if debugPlot:
 
