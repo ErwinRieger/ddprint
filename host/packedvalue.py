@@ -17,7 +17,8 @@
 # along with ddprint.  If not, see <http://www.gnu.org/licenses/>.
 #*/
 
-import struct
+import struct, types
+from dddebug import assertType
 
 ####################################################################################################
 
@@ -29,24 +30,32 @@ class PackedValue:
     def pack(self):
         return struct.pack("<%s" % self.fmt, self.value)
 
+    def __repr__(self):
+        return "PackedValue: typ: %s, value: %s" % (self.fmt, str(self.value))
+
 class uint8_t(PackedValue):
     def __init__(self, value):
+        assertType(value, types.IntType)
         PackedValue.__init__(self, value, "B")
 
 class int16_t(PackedValue):
     def __init__(self, value):
+        assertType(value, types.IntType)
         PackedValue.__init__(self, value, "h")
 
 class uint16_t(PackedValue):
     def __init__(self, value):
+        assertType(value, types.IntType)
         PackedValue.__init__(self, value, "H")
 
 class uint32_t(PackedValue):
     def __init__(self, value):
+        assertType(value, types.IntType)
         PackedValue.__init__(self, value, "I")
 
 class float_t(PackedValue):
     def __init__(self, value):
+        assertType(value, types.FloatType)
         PackedValue.__init__(self, value, "f")
 
 class pString_t(PackedValue):
