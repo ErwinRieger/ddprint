@@ -38,6 +38,13 @@ import dddumbui
 ############################################################################
 ############################################################################
 
+class GcodeException(Exception):
+    def __init__(self, msg):
+        self.msg = msg
+
+    def __str__(self):
+        return "Gcode parser error: " + self.msg
+
 CuraLayerRE = re.compile("; \s* LAYER \s* : \s* (\d+) $", re.VERBOSE)
 
 #
@@ -362,10 +369,10 @@ class UM2GcodeParser:
                 # Param without value
                 continue
 
-            # try:
-                # values[valueChar] = int(rest) * factor
-            # except ValueError:
-            values[valueChar] = float(rest) * factor
+            try:
+                values[valueChar] = float(rest) * factor
+            except ValueError:
+                raise GcodeException("Error converting '%s' to float!" % rest)
 
         return values
 
@@ -391,16 +398,16 @@ class UM2GcodeParser:
     def m106_fan_on(self, line, values):
 
         # print "m106_fan_on", values
-        fanSpeed = (values["S"] * MatProfile.getFanPercent()) / 100
+        fanSpeed = int((values["S"] * MatProfile.getFanPercent()) / 100.0)
 
-        blipTime = 0.0
+        blipTime = 0
 
         if "B" in values:
-            blipTime = values["B"] * 1000.0
+            blipTime = int(values["B"] * 1000)
 
         # "Blip fan" for Cura (S3D supports blip fan)
         if fanSpeed < 50 and self.gcodeType==GCODEULTI:
-            blipTime = 250.0
+            blipTime = 250
 
         # self.planner.addSynchronizedCommand(CmdSyncFanSpeed, p1=packedvalue.uint8_t(fanSpeed))
         self.planner.fanOn(fanSpeed, min(blipTime, Uint8Max))
