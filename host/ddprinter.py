@@ -431,7 +431,7 @@ class Printer(Serial):
             packedvalue.float_t(settings["Kp"]),
             packedvalue.float_t(settings["Ki"]),
             packedvalue.float_t(settings["Kd"]),
-            packedvalue.uint16_t(settings["Tu"] * 1000), # xxx Tu < 65 s
+            packedvalue.uint16_t(int(settings["Tu"] * 1000)), # xxx Tu < 65 s
             ])
 
         self.sendCommandParamV(CmdSetIncTemp, [packedvalue.uint8_t(HeaterEx1), packedvalue.int16_t(args.inctemp)]);
