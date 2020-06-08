@@ -481,8 +481,6 @@ def main():
         lineNr = 0
         printStarted = False
 
-        startTime = time.time()
-
         for line in f:
             parser.execute_line(line)
 
@@ -506,8 +504,9 @@ def main():
                     print "\nHeating extruder (t1: %d)...\n" % t1
                     printer.heatUp(HeaterEx1, t1, t1-2, log=True)
 
-                    # Send print command
-                    printer.sendCommandParamV(CmdMove, [MoveTypeNormal])
+                    # Send print start command
+                    printer.startPrint()
+
                     printStarted = True
 
                 else:
@@ -530,7 +529,7 @@ def main():
         planner.finishMoves()
         printer.sendCommand(CmdEOT)
 
-        # Start print if less than 1000 lines or temp not yet reached:
+        # Start print if not started yet (less than 1000 lines or temp not yet reached):
         if not printStarted:
 
             print "\nHeating bed (t0: %d)...\n" % t0
@@ -538,10 +537,12 @@ def main():
             print "\nHeating extruder (t1: %d)...\n" % t1
             printer.heatUp(HeaterEx1, t1, t1-1, log=True)
 
-            # Send print command
-            printer.sendCommandParamV(CmdMove, [MoveTypeNormal])
+            # Send print start command
+            printer.startPrint()
 
         printer.waitForState(StateInit, log=True)
+
+        print "Print finished, duration:", printer.getPrintDuration()
 
         printer.coolDown(HeaterEx1)
         printer.coolDown(HeaterBed)

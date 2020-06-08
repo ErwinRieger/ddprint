@@ -97,7 +97,8 @@ class Printer(Serial):
         self.rxErrors = 0
         self.txErrors = 0
 
-        self.startTime = None
+        self.printStartedAt = None
+        self.printEndedAt = None
 
         # self.curDirBits = 0
 
@@ -696,6 +697,10 @@ class Printer(Serial):
 
         # print "statusDict:", statusDict
 
+        # Update print duration
+        if statusDict["state"] == StateInit and self.printEndedAt == None:
+            self.printEndedAt = time.time()
+
         self.gui.statusCb(statusDict)
         return statusDict
 
@@ -778,6 +783,14 @@ class Printer(Serial):
                 break
 
         print "\n"
+
+   ####################################################################################################
+   # Start printing process, and record print start time
+    def startPrint(self):
+
+        self.printStartedAt = time.time()
+        self.printEndedAt = None
+        self.sendCommandParamV(CmdMove, [MoveTypeNormal])
 
     ####################################################################################################
 
@@ -909,6 +922,56 @@ class Printer(Serial):
         return struct.unpack("<B", payload)[0]
 
     ####################################################################################################
+
+    # Get print duration, string-formatted
+    def getPrintDuration(self):
+
+        delta = 0.0
+
+        if self.printStartedAt:
+
+            if self.printEndedAt:
+                delta = self.printEndedAt - self.printStartedAt
+            else:
+                delta = time.time() - self.printStartedAt
+
+        hours, remainder = divmod(delta, 3600)
+        minutes, seconds = divmod(remainder, 60)
+        return '{:0}:{:02}:{:02}'.format(int(hours), int(minutes), int(seconds))
+
+    ####################################################################################################
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

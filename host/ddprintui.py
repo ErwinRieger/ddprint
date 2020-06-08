@@ -22,7 +22,7 @@
 import logging, datetime, traceback
 logging.basicConfig(filename=datetime.datetime.now().strftime("/tmp/ddprint_%y.%m.%d_%H:%M:%S.log"), level=logging.DEBUG)
 
-import npyscreen , time, curses, sys, threading, Queue
+import npyscreen, time, curses, sys, threading, Queue
 import argparse
 import ddprint, stoppableThread, ddhome, movingavg
 import ddprintutil as util
@@ -263,6 +263,10 @@ class MainForm(npyscreen.FormBaseNew):
         self.extRate.editable = False
 
         rely += 1
+        self.printDuration = self.add(npyscreen.TitleFixedText, name =   "Print duration      :", relx=w, rely=rely, use_two_lines=False, begin_entry_at=23)
+        self.printDuration.editable = False
+
+        rely += 1
         self.errors = self.add(npyscreen.TitleFixedText, name =   "Errors              :", relx=w, rely=rely, use_two_lines=False, begin_entry_at=23, color="WARNING") 
         # self.errors.editable = False
 
@@ -499,6 +503,9 @@ class MainForm(npyscreen.FormBaseNew):
         self.lastEPos = ePos
         self.lastTime = t
 
+        self.printDuration.set_value(self.printer.getPrintDuration())
+        self.printDuration.update()
+
     def display(self, clear=False):
 
         # Todo: Why this exception ???
@@ -637,8 +644,9 @@ class MainForm(npyscreen.FormBaseNew):
                         self.log( "Heating extruder (t1: %d)...\n" % self.mat_t1 )
                         self.printer.heatUp(HeaterEx1, self.mat_t1, self.mat_t1-2)
 
-                        # Send print command
-                        self.printer.sendCommandParamV(CmdMove, [MoveTypeNormal])
+                        # Send print start command
+                        self.printer.startPrint()
+
                         printStarted = True
 
                     status = self.printer.getStatus()
@@ -677,8 +685,8 @@ class MainForm(npyscreen.FormBaseNew):
                 self.log( "Heating extruder (t1: %d)...\n" % self.mat_t1 )
                 self.printer.heatUp(HeaterEx1, self.mat_t1, self.mat_t1-1)
 
-                # Send print command
-                self.printer.sendCommandParamV(CmdMove, [MoveTypeNormal])
+                # Send print start command
+                self.printer.startPrint()
 
             status = self.printer.getStatus()
             # self.guiQueue.put(SyncCall(self.updateStatus, status))
