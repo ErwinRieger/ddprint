@@ -79,7 +79,6 @@ class AccelData:
             assert(self.decelTime >= 0)
 
     def __repr__(self):
-
         return "\n  AccelTime: %f, LinearTime: %f, DecelTime: %f" % (self.accelTime, self.linearTime, self.decelTime)
 
 class StepData:
@@ -663,6 +662,9 @@ class MoveBase(object):
 
         self.isMeasureMove = False
 
+    def isMove(self):
+        return True
+
     def isSubMove(self):
         return False
 
@@ -685,6 +687,10 @@ class MoveBase(object):
     def decelTime(self):
 
         return self.accelData.decelTime
+
+    def getTime(self):
+
+        return self.accelData.getTime()
 
     # Get vector of absolute steps.
     def absStepsVector(self, disp=None):

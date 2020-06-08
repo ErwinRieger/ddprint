@@ -365,7 +365,6 @@ class Advance (object):
         # Step 4: handle extruder advance
         if self.__kAdv:
 
-
             def processAdvancedMoves(path):
 
                 #debug:
@@ -641,8 +640,14 @@ class Advance (object):
         if debugAdvance:
             print "Streaming %d moves..." % len(newPath)
 
+        # Move timeline housekeeping
+        # for move in newPath:
+            # self.pathData.updateTimeline(move)
+
         for move in newPath:
-            self.planner.streamMove(move)
+
+            # self.planner.streamMove(move)
+            self.planner.pathData.updateHistory(move)
 
             # Help garbage collection
             move.prevMove = util.StreamedMove()
