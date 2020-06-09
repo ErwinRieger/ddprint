@@ -1910,7 +1910,7 @@ def measureTempFlowrateCurve(args, parser):
     print "# a1 for temp"
     print '"Ktemp": %.4f,' % (dfr / dtemp)
 
-    print "# a0 for temp"
+    print "# a0 for pwm"
     print '"P0pwm": %.4f,' % data[0][1]
     print "# a0 for temp"
     print '"P0temp": %.4f,' % data[0][2]
