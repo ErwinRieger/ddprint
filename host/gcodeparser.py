@@ -274,11 +274,11 @@ class UM2GcodeParser:
         f.seek(0) # rewind
         return f
 
-    def execute_line(self, line):
+    def execute_line(self, rawLine):
 
-        # print " execute_line:", line
+        # print " execute_line:", rawLine
 
-        line = line.strip()
+        line = rawLine.strip()
         if line:
             tokens = line.split()
 
@@ -318,9 +318,22 @@ class UM2GcodeParser:
                 elif upperLine.endswith("SINGLE EXTRUSION"):
                     # print "gcodeparser: Starting single extrusion..."
                     self.layerPart = "single extrusion"
+                elif upperLine.endswith("purging:"):
+                    pass
+                elif tokens[1].upper() == "PROCESS":
+                    pass
+                elif tokens[1].upper() == "FEATURE":
+                    pass
                 else:
                     if not (("LAYER" in upperLine) or ("TOOL" in upperLine)):
-                        self.logger.log("gcodeparser: Unhandled comment:", line)
+
+                        self.logger.log("gcodeparser comment:", line)
+
+                        # Log this info into printlog, too. Dont log values that end 
+                        # with ",0" and ",-1" to save space.
+                        if not (line.endswith(",0") or line.endswith(",0")):
+                            self.logger.logPrintLog(rawLine)
+
                         if self.layerPart == "infill":
                             assert(0)
 

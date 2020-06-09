@@ -172,7 +172,8 @@ class PathData (object):
 
         # History for auto temp feed forward
         self.ffTime = self.Tu * 1.5
-        # self.ffTime = self.Tu
+        # xxxnew self.ffTime = self.Tu * 2.0
+
         # History of last fftime moves
         self.history = []
         # Length of history (time)
@@ -299,8 +300,10 @@ class PathData (object):
 
         # adjustment for:
         # * 10% for minratio (90%)
-        # * 10% measurement errors
+        # * 10% for into-the-air measurement
+        # * 10% for measurement errors
         adj = 1.0 + self.slippage + 0.1
+        # xxxnew adj = 1.0 + self.slippage + 0.1 + 0.1
 
         # Compute new temp and suggested heater-PWM for this segment
 

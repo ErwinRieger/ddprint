@@ -19,7 +19,7 @@
 # along with ddprint.  If not, see <http://www.gnu.org/licenses/>.
 #*/
 
-import logging, datetime, traceback
+import logging, datetime, traceback, os
 logging.basicConfig(filename=datetime.datetime.now().strftime("/tmp/ddprint_%y.%m.%d_%H:%M:%S.log"), level=logging.DEBUG)
 
 import npyscreen, time, curses, sys, threading, Queue
@@ -92,6 +92,7 @@ class TempAdjSlider(AdjSlider):
 class TitleTempAdjSlider(npyscreen.TitleSlider):
     _entry_type = TempAdjSlider
 
+# Main TUI class
 class MainForm(npyscreen.FormBaseNew): 
 
     # Preheat bed (90%) and heater (50%)
@@ -591,6 +592,31 @@ class MainForm(npyscreen.FormBaseNew):
         self.printerState = None
 
         self.errors.set_value("")
+
+        fnGcode = self.fn.get_value()
+
+        # Initialize printlog
+        self.printLog = None
+        fn = os.path.join(
+                os.environ["HOME"],
+                ".ddprint",
+                "printlog",
+                datetime.datetime.now().strftime("%y.%m.%d_%H:%M:%S-") + os.path.basename(fnGcode) + ".log")
+        try:
+            self.printLog = open(fn, "w")
+        except IOError:
+            self.logError("Can't open print log '%s'" % fn)
+
+        # Update printlog with gcode file information
+        try:
+            stat = os.stat(fnGcode)
+        except OSError, why:
+            self.logError("Can't stat gcode input file: '%s'" % str(why))
+            return
+
+        self.logPrintLog("Gcode file    : %s\n" % fnGcode)
+        self.logPrintLog("Gcode filesize: %s, %d bytes\n" % (util.sizeof_fmt(stat.st_size), stat.st_size))
+
         self.cmdQueue.put(SyncCall(self.startPrintFile))
 
     def prepareStopMove(self):
@@ -713,6 +739,9 @@ class MainForm(npyscreen.FormBaseNew):
             # Stop hotend fan
             self.printer.sendCommandParamV(CmdFanSpeed, [packedvalue.uint8_t(0)])
 
+            # Update print log
+            self.logPrintLog("Print duration: %s\n" % self.printer.getPrintDuration())
+            self.printLog.close()
 
         except stoppableThread.StopThread:
             # Stop of current action requested
@@ -738,6 +767,9 @@ class MainForm(npyscreen.FormBaseNew):
         self.appLog.buffer([s])
         self.appLog._need_update = True
 
+        # Errors go into print log, too
+        self.logPrintLog("Print duration: %s\n" % self.printer.getPrintDuration())
+
     def _logError(self, err):
         # xxx manage error-log here ...
         logging.error( err )
@@ -758,6 +790,10 @@ class MainForm(npyscreen.FormBaseNew):
         s = util.stringFromArgs(*args)
         logging.info("CommLog: %s", s)
         self.guiQueue.put(SyncCallUpdate(self.commLog.buffer, [s]))
+
+    def logPrintLog(self, s):
+        if self.printLog:
+            self.printLog.write(s)
 
     # Stdout redirection 
     def write(self, s):

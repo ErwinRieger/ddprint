@@ -41,5 +41,8 @@ class DumbGui:
     def statusCb(self, status):
         pass
 
+    def logPrintLog(self, s):
+        logging.info("PrintLog: %s" % s)
+
 
 
