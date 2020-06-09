@@ -171,8 +171,7 @@ class PathData (object):
         # self.timestamp = 0.0
 
         # History for auto temp feed forward
-        self.ffTime = self.Tu * 1.5
-        # xxxnew self.ffTime = self.Tu * 2.0
+        self.ffTime = self.Tu * 2.0
 
         # History of last fftime moves
         self.history = []
@@ -193,7 +192,6 @@ class PathData (object):
             self.ktemp = matProfile.getKtemp(hwVersion, nozzleDiam)
             self.p0 = matProfile.getP0pwm(hwVersion, nozzleDiam) # xxx hardcoded in firmware!
             self.fr0 = matProfile.getFR0pwm(hwVersion, nozzleDiam)
-            self.slippage = matProfile._getSlippage(hwVersion, nozzleDiam)
 
     # Add move to path and update times list
     def updateTimeline(self, move):
@@ -298,12 +296,11 @@ class PathData (object):
 
         avgERate = vsum / tsum
 
-        # adjustment for:
-        # * 10% for minratio (90%)
+        # Increase temp somewhat above the values in the meterial
+        # profile, adjust for:
         # * 10% for into-the-air measurement
-        # * 10% for measurement errors
-        adj = 1.0 + self.slippage + 0.1
-        # xxxnew adj = 1.0 + self.slippage + 0.1 + 0.1
+        # * 10% for measurement errors and some safety bonus
+        adj = 1.0 + 0.1 + 0.1
 
         # Compute new temp and suggested heater-PWM for this segment
 
