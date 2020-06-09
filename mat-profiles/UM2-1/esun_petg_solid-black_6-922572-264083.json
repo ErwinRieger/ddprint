@@ -1,0 +1,18 @@
+{
+  "properties_80" : {
+      "version":  4,
+      "slippage": 0.10,
+      # Pwm settled in 5% tolerance band, average flowrate: 19.79 mm³/s at pwm: 155.19, temp: 257.6 °C, break
+      # Material properties:
+      # a1 for pwm
+      "Kpwm": 0.1502,
+      # a1 for temp
+      "Ktemp": 0.1429,
+      # a0 for pwm
+      "P0pwm": 98.9085,
+      # a0 for temp
+      "P0temp": 198.4064,
+      # feedrate at a0
+      "FR0pwm": 11.3408
+  }
+}
