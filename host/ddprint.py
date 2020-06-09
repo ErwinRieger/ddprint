@@ -623,7 +623,11 @@ def main():
 
     elif args.mode == 'bedLeveling':
 
-        util.bedLeveling(args, parser)
+        printer = Printer()
+        initPrinterProfile(args)
+        planner = Planner(args, travelMovesOnly=True)
+        parser = gcodeparser.UM2GcodeParser(planner, travelMovesOnly=True)
+        util.bedLeveling(args, parser, planner, printer)
 
     elif args.mode == 'heatHotend':
 

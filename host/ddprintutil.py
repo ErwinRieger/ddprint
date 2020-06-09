@@ -885,12 +885,7 @@ def removeFilament(args, parser, feedrate):
 
 ####################################################################################################
 
-def bedLeveling(args, parser):
-
-    planner = parser.planner
-    printer = planner.printer
-
-    printer.commandInit(args, PrinterProfile.getSettings())
+def bedLeveling(args, parser, planner, printer):
 
     # Reset bedlevel offset in printer profile
     PrinterProfile.get().override("add_homeing_z", 0)
