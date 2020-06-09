@@ -30,7 +30,7 @@ import ddprintutil as util
 from serial import SerialException
 from ddprintcommands import *
 from ddprintstates import *
-from ddprofile import MatProfile, PrinterProfile
+from ddprofile import MatProfile, PrinterProfile, NozzleProfile
 from ddprinter import FatalPrinterError
 from ddprintconstants import A_AXIS
 
@@ -162,9 +162,9 @@ class MainForm(npyscreen.FormBaseNew):
         # Upper left side: the input/configuration area
         #
         rely = 2
-        self.printerProfile = self.add(npyscreen.TitleFixedText, name = "PrinterProfile      :", relx=1, rely=rely, use_two_lines=False, begin_entry_at=23,
+        self.printerProfileName = self.add(npyscreen.TitleFixedText, name = "PrinterProfile      :", relx=1, rely=rely, use_two_lines=False, begin_entry_at=23,
                 max_width=w-1)
-        self.printerProfile.editable = False
+        self.printerProfileName.editable = False
 
         rely += 1
         self.nozzleProfile = self.add(npyscreen.TitleFixedText, name =  "Nozzle Profile      :", relx=1, rely=rely, use_two_lines=False, begin_entry_at=23,
@@ -344,15 +344,15 @@ class MainForm(npyscreen.FormBaseNew):
 
         # print "args: ", self.args
 
-        (self.parser, self.planner, self.printer, printerProfile) = ddprint.initParser(self.args, gui=self)
+        (self.parser, self.planner, self.printer, self.printerProfile) = ddprint.initParser(self.args, gui=self)
         # util.commonInit(self.args, self.printer, self.planner, self.parser)
 
         self.mat_t0 = MatProfile.getBedTemp()
         self.mat_t0_reduced = MatProfile.getBedTempReduced()
-        self.mat_t0_wait = printerProfile.getWeakPowerBedTemp()
+        self.mat_t0_wait = self.printerProfile.getWeakPowerBedTemp()
         self.mat_t1 = MatProfile.getHotendGoodTemp() + self.planner.l0TempIncrease
 
-        self.guiQueue.put(SyncCallUpdate(self.printerProfile.set_value, printerProfile.name))
+        self.guiQueue.put(SyncCallUpdate(self.printerProfileName.set_value, self.printerProfile.name))
         self.guiQueue.put(SyncCallUpdate(self.nozzleProfile.set_value, self.args.nozzle))
         self.guiQueue.put(SyncCallUpdate(self.matProfile.set_value, self.args.mat))
         if self.args.smat:
@@ -363,7 +363,6 @@ class MainForm(npyscreen.FormBaseNew):
         self.guiQueue.put(SyncCallUpdate(self.fn.set_value, self.args.file))
         
         try:
-            # self.printer.commandInit(self.args, PrinterProfile.getSettings())
             util.commonInit(self.args, self.printer, self.planner, self.parser)
         except SerialException:
             msg = "Can't open serial device '%s' (baudrate: %d)!\n\nPress OK to exit." % (self.args.device, self.args.baud)
@@ -473,7 +472,7 @@ class MainForm(npyscreen.FormBaseNew):
         ePos = status["extruder_pos"]
         t = time.time()
 
-        e_steps_per_mm = PrinterProfile.getStepsPerMM(A_AXIS)
+        e_steps_per_mm = self.printerProfile.getStepsPerMM(A_AXIS)
 
         if self.lastEPos != None:
 
@@ -617,6 +616,12 @@ class MainForm(npyscreen.FormBaseNew):
         self.logPrintLog("Gcode file    : %s\n" % fnGcode)
         self.logPrintLog("Gcode filesize: %s, %d bytes\n" % (util.sizeof_fmt(stat.st_size), stat.st_size))
 
+        # Update printlog with used profiles:
+        self.printerProfile.logValues("Printer profile", self)
+        NozzleProfile.get().logValues("Nozzle profile", self)
+        MatProfile.get().logValues("Material profile", self)
+        self.logPrintLog("\n")
+
         self.cmdQueue.put(SyncCall(self.startPrintFile))
 
     def prepareStopMove(self):
@@ -740,7 +745,7 @@ class MainForm(npyscreen.FormBaseNew):
             self.printer.sendCommandParamV(CmdFanSpeed, [packedvalue.uint8_t(0)])
 
             # Update print log
-            self.logPrintLog("Print duration: %s\n" % self.printer.getPrintDuration())
+            self.logPrintLog("\nPrint duration: %s\n" % self.printer.getPrintDuration())
             self.printLog.close()
 
         except stoppableThread.StopThread:
@@ -768,7 +773,7 @@ class MainForm(npyscreen.FormBaseNew):
         self.appLog._need_update = True
 
         # Errors go into print log, too
-        self.logPrintLog("Print duration: %s\n" % self.printer.getPrintDuration())
+        self.logPrintLog("Error: %s\n" % s)
 
     def _logError(self, err):
         # xxx manage error-log here ...

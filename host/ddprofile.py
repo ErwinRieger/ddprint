@@ -35,6 +35,7 @@ class ProfileBase(object):
             raise RuntimeError('A ' + str(cls) + ' instance already exists')
 
         self.name = name
+        self.specificName = specificName
 
         f = self.openJson(name)
 
@@ -102,6 +103,15 @@ class ProfileBase(object):
 
     def override(self, key, value):
         self.values[key] = value
+
+    def logValues(self, heading, logger):
+
+        logger.logPrintLog("\n%s: %s\n" % (heading, self.name))
+        if self.specificName:
+            logger.logPrintLog("  Specific profile: %s\n" % self.specificName)
+        for key in self.values.keys():
+            logger.logPrintLog("  %s: %s\n" % (key, str(self.values[key])))
+
 
 ####################################################################################################
 #

@@ -285,8 +285,6 @@ class UM2GcodeParser:
             cmd = tokens[0]
             if cmd.startswith(";"):
 
-                upperLine = line.upper()
-
                 layerNum = getCuraLayer(line)
                 if layerNum != None:
                     self.planner.layerChange(layerNum)
@@ -296,6 +294,9 @@ class UM2GcodeParser:
                 if layerNum != None:
                     self.planner.layerChange(layerNum)
                     return
+
+                upperLine = line.upper()
+                upperToken1 = tokens[1].upper()
 
                 if upperLine.endswith("INFILL"):
                     # print "gcodeparser: Starting infill..."
@@ -318,11 +319,7 @@ class UM2GcodeParser:
                 elif upperLine.endswith("SINGLE EXTRUSION"):
                     # print "gcodeparser: Starting single extrusion..."
                     self.layerPart = "single extrusion"
-                elif upperLine.endswith("purging:"):
-                    pass
-                elif tokens[1].upper() == "PROCESS":
-                    pass
-                elif tokens[1].upper() == "FEATURE":
+                elif upperToken1 in [ "PURGING:", "PROCESS", "FEATURE" ]:
                     pass
                 else:
                     if not (("LAYER" in upperLine) or ("TOOL" in upperLine)):
