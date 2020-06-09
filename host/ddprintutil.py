@@ -872,7 +872,7 @@ def removeFilament(args, parser, feedrate):
 
     printer.waitForState(StateInit)
 
-    t1 = MatProfile.getHotendGoodTemp()
+    t1 = (MatProfile.getHotendGoodTemp() + MatProfile.getHotendMaxTemp()) / 2
     printer.heatUp(HeaterEx1, t1, wait=t1, log=True)
 
     # Filament vorwärts feeden um den 'retract-pfropfen' einzuschmelzen
