@@ -308,32 +308,37 @@ class PathData (object):
         rateDiff = (avgERate * adj) - self.fr0
 
         # Floor temp
-        newTemp = MatProfile.getHotendGoodTemp() + self.planner.l0TempIncrease
+        baseTemp = MatProfile.getHotendGoodTemp() + self.planner.l0TempIncrease
+        tempIncreas = 0.0
 
-        suggestPwm = 0
+        # suggestPwm = 0
 
         if rateDiff > 0.0:
             #
             # add energy
             #
-            suggestPwm = int(round(self.p0 + (rateDiff / self.ks) + 0.5))
+            # suggestPwm = int(round(self.p0 + (rateDiff / self.ks) + 0.5))
 
             # temp
-            newTemp += int(round((rateDiff / self.ktemp) + 0.5))
+            tempIncrease = round((rateDiff / self.ktemp) + 0.5)
 
-        newTemp = min(newTemp, MatProfile.getHotendMaxTemp())
+        newTemp = min(baseTemp+tempIncrease, MatProfile.getHotendMaxTemp())
+      
+        rateDiff = (newTemp - baseTemp) * self.ktemp
+
+        suggestPwm = int(round(self.p0 + (rateDiff / self.ks) + 0.5))
         suggestPwm = min(suggestPwm, 255)
 
         if debugAutoTemp:
             self.planner.gui.log( "AutoTemp: collected %d moves with %.2f s duration." % (len(moves), tsum))
             self.planner.gui.log( "AutoTemp: avg extrusion rate: %.2f mm³/s." % avgERate)
-            self.planner.gui.log( "AutoTemp: new temp: %d, suggested PWM: %d" % (newTemp, suggestPwm))
+            self.planner.gui.log( "AutoTemp: new temp: %.2f, suggested PWM: %d" % (newTemp, suggestPwm))
 
         cmd = SyncedCommand(
             CmdSuggestPwm,
             0.0, [
              packedvalue.uint8_t(HeaterEx1),
-             packedvalue.uint16_t(newTemp), 
+             packedvalue.uint16_t(int(newTemp)), 
              packedvalue.uint8_t(suggestPwm) ])
 
         # Insert temp command into stream at fftime in the past, moves are not yet part
