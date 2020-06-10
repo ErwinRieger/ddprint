@@ -310,7 +310,7 @@ void TempControl::heater() {
                     pid_output = -PID_MAX;
                 }
 
-                if (pid_output < suggestPwm) {
+                if ((pid_output < suggestPwm) && (e > 0.0)) {
                     pid_output = suggestPwm;
                 }
 
