@@ -309,7 +309,7 @@ class PathData (object):
 
         # Floor temp
         baseTemp = MatProfile.getHotendGoodTemp() + self.planner.l0TempIncrease
-        tempIncreas = 0.0
+        tempIncrease = 0.0
 
         # suggestPwm = 0
 
