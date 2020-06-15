@@ -296,7 +296,6 @@ class UM2GcodeParser:
                     return
 
                 upperLine = line.upper()
-                upperToken1 = tokens[1].upper()
 
                 if upperLine.endswith("INFILL"):
                     # print "gcodeparser: Starting infill..."
@@ -319,7 +318,7 @@ class UM2GcodeParser:
                 elif upperLine.endswith("SINGLE EXTRUSION"):
                     # print "gcodeparser: Starting single extrusion..."
                     self.layerPart = "single extrusion"
-                elif upperToken1 in [ "PURGING:", "PROCESS", "FEATURE" ]:
+                elif len(tokens) > 1 and tokens[1].upper() in [ "PURGING:", "PROCESS", "FEATURE" ]:
                     pass
                 else:
                     if not (("LAYER" in upperLine) or ("TOOL" in upperLine)):

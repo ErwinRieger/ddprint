@@ -225,9 +225,11 @@ class PathData (object):
     def wayBack(self, tBack, cmd):
 
         # Look, where to insert command:
-        i = len(self.history) - 1
+        i = len(self.history)
         t = 0.0
-        while i >= 0:
+        while i > 0:
+
+            i -= 1
 
             move = self.history[i]
             t += move.getTime()
@@ -237,28 +239,22 @@ class PathData (object):
                 print "hist long enough, break", tBack
                 break
 
-            i -= 1
+        # debug
+        if t < tBack:
+            assert(i == 0)
 
         # Insert command before this move or at the beginning:
-        if i>=0:
-            print "insert cmd at ", i, cmd
-            assert(self.history[i].isMove())
-            self.history.insert(i, cmd)
-        else:
-            if len(self.history) and not self.history[0].isMove() and self.history[0].cmd == CmdSuggestPwm:
-                # already a autotemp command here, preserve the higher temp
-                # of them
-                if cmd.params[1] > self.history[0].params[1]:
-                    print "replacing autotem cmd...", cmd
-                    self.history[0] = cmd
-                else:
-                    print "keeping autotem cmd..."
+        if len(self.history) and not self.history[i].isMove() and self.history[i].cmd == CmdSuggestPwm:
+            # already a autotemp command here, preserve the higher temp
+            # of them
+            if cmd.params[1] > self.history[i].params[1]:
+                print "replacing autotem cmd at", i, cmd
+                self.history[i] = cmd
             else:
-                print "insert cmd at 0", cmd
-                self.history.insert(0, cmd)
-
-        if t < tBack:
-            assert(i == -1)
+                print "keeping autotem cmd at", i
+        else:
+            print "insert cmd at ", i, cmd
+            self.history.insert(i, cmd)
 
         # Stream moves up to this command
         i -= 1
