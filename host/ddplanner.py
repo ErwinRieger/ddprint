@@ -311,15 +311,8 @@ class PathData (object):
         baseTemp = MatProfile.getHotendGoodTemp() + self.planner.l0TempIncrease
         tempIncrease = 0.0
 
-        # suggestPwm = 0
-
         if rateDiff > 0.0:
-            #
-            # add energy
-            #
-            # suggestPwm = int(round(self.p0 + (rateDiff / self.ks) + 0.5))
-
-            # temp
+            # Needed temp increase for this flowrate delta
             tempIncrease = round((rateDiff / self.ktemp) + 0.5)
 
         newTemp = min(baseTemp+tempIncrease, MatProfile.getHotendMaxTemp())
