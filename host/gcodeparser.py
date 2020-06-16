@@ -29,7 +29,7 @@ from ddprintcommands import CmdUnknown
 from ddprintconstants import dimNames, GCODEUNKNOWN, GCODEULTI, GCODES3D, X_AXIS, Y_AXIS, Z_AXIS, A_AXIS, B_AXIS, Uint8Max
 from ddconfig import *
 from move import TravelMove, PrintMove
-from ddvector import Vector, vectorDistance
+from ddvector import Vector, vectorDistance, vectorLength
 
 import ddprintutil as util
 
@@ -222,6 +222,53 @@ class UM2GcodeParser:
     def getPos(self):
         return self.position.copy()
 
+    # Preprocess gcode to
+    # * determine gcode type (cura, simplify3d)
+    # * determine number of parts
+    # * compute amount of preload data
+    # 
+    # xxx todo: cache preprocesse data for later real parsing?
+    #
+    # preload: ratio between time used to move head and time needed to download data
+    #
+    # to estimate move time: worst case for movetime: a move without
+    # acceleration/deceleration -> simply use the commanded
+    # feedrate.
+    #
+    # to estimate download time: 
+    # size of data packages depend on amount of acceleration/decelleration, but those
+    # moves are also slower...
+    # we use a simple estimation here: 2 times the size of a small packet
+    #
+    # todo: baudrate as parameter
+    # todo: implement relative mode
+
+    """
+    Packet around data payload:
+
+        *  1 byte, SOH
+        *  3 bytes, header (linenumber, cmd, payloadsize)
+        *  3 bytes, flags + checksum
+
+        -> 7 bytes
+
+    Move payload:
+
+        * 2 + 1 + 5*4 + 2  bytes header, flags, axes
+        *               2  bytes E-timer
+        *               1  byte avg window size
+        *               4  bytes linear timer, decel pulses
+        *               2  bytes accel timer
+        *              [n] bytes accel timer delta's
+        *               2  bytes decel timer
+        *              [n] bytes decel timer delta's
+
+        -> 36 bytes 
+
+    entire packet around 43 bytes -> round up to 45 bytes
+    """
+
+
     def preParse(self, fn):
 
         # Copy file to prevet problems with overwritten files
@@ -235,6 +282,18 @@ class UM2GcodeParser:
         os.unlink(tmpfname)
 
         self.numParts = 0
+
+        # preload
+        moveTime = 0.0
+        downloadTime = 0.0
+        feedrate = 0.0
+        pos = [0.0, 0.0, 0.0] # use vector 3 here
+
+        # Time to send one move at given baudrate:
+        # * assume we send 10 bits for a byte
+        bitsPerMove = 2.0 * 45.0 * 10.0
+        timePerMove = bitsPerMove / 500000.0
+        print "timePerMove:", timePerMove
 
         self.logger.log("Pre-parsing ", fn, tmpfname)
         for line in f:
@@ -255,7 +314,7 @@ class UM2GcodeParser:
                     # self.planner.newPart(self.numParts)
 
                 # Simplify3D: "; skirt "
-                if upperLine.startswith("; SKIRT"):
+                elif upperLine.startswith("; SKIRT"):
                     self.numParts += 1
                     self.planner.newPart(self.numParts)
 
@@ -269,6 +328,74 @@ class UM2GcodeParser:
                 elif "SIMPLIFY3D" in upperLine:
                     self.gcodeType = GCODES3D
 
+            else:
+
+                # Look for movement codes
+                tokens = line.split()
+                cmd = tokens[0]
+
+                print "cmd:", cmd
+                if cmd == "G1" or cmd == "G0":
+                    print "line:", line
+                    values = self.getValues(tokens[1:])
+
+                    if 'F' in values:
+                        feedrate = values['F']
+
+                    if not ("X" in values or "Y" in values or "Z" in values):
+                        # Nothing to move, F-Only gcode or invalid
+                        continue
+
+                    displacement_vector = [0.0, 0.0, 0.0]
+                    newPos = [0.0, 0.0, 0.0]
+
+                    for dim in range(3):
+
+                        dimC = dimNames[dim]
+                        if dimC not in values:
+                            continue
+
+                        # if self.absolute[dim]:
+                        rDiff = values[dimC] - pos[dim]
+                        newPos[dim] = values[dimC]
+                        # else:
+                            # rDiff = values[dimC]
+                            # newPos[dim] += values[dimC]
+
+                        displacement_vector[dim] = rDiff
+
+                    # Check if zero length:
+                    if displacement_vector == [0.0, 0.0, 0.0]:
+                        # Skip this empty move.
+                        continue
+
+                    # Todo: Constrain feedrate to max values
+
+                    l = vectorLength(displacement_vector)
+
+                    print "move distance:", displacement_vector, l, feedrate
+
+                    t = l / feedrate
+
+                    moveTime += t
+                    downloadTime += timePerMove
+                    print "t, tmove, tdownload:", t, moveTime, downloadTime
+
+                    pos = newPos
+
+                elif cmd == "G2" or cmd == "G3":
+                    print "line:", line
+                    assert(0) # not implemented
+                elif cmd == "G92":
+
+                    print "line:", line
+                    values = self.getValues(tokens[1:])
+
+                    if not ("X" in values or "Y" in values or "Z" in values):
+                        # Nothing to move, F-Only gcode or invalid
+                        continue
+
+                    assert(0) # set pos
 
         self.logger.log("pre-parsing # parts:", self.numParts)
         f.seek(0) # rewind
@@ -555,7 +682,6 @@ class UM2GcodeParser:
         feedrate = self.feedrate
 
         if not ("X" in values or "Y" in values or "Z" in values or "A" in values or "B" in values):
-
             # Nothing to move, F-Only gcode or invalid
             return
 
