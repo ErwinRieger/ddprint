@@ -521,7 +521,7 @@ def main():
             if time.time() > checkTime:
 
                 status = printer.getStatus()
-                pprint.pprint(status)
+                printer.ppStatus(status)
 
                 #
                 # Check temp and start print
@@ -757,6 +757,7 @@ def main():
         status = printer.getStatus()
         print "Status: "
         pprint.pprint(status)
+        printer.ppStatus(status)
 
     elif args.mode == 'home':
 

@@ -699,6 +699,11 @@ class Printer(Serial):
         self.gui.statusCb(statusDict)
         return statusDict
 
+    # Prettyprint pritner status
+    def ppStatus(self, statusDict):
+        print "State: %d, Bed: %5.1f, Hotend: %5.1f(%5.1f), Pwm: %3d, Swap: %10d, Underrun: %5d, Grip: %3.1f" % \
+            (statusDict["state"], statusDict["t0"], statusDict["t1"], statusDict["targetT1"], statusDict["pwmOutput"], statusDict["Swap"], statusDict["StepBufUnderRuns"], 1.0/statusDict["slippage"])
+
     # Get printer (-profile) name from printer eeprom
     def getPrinterName(self):
 
