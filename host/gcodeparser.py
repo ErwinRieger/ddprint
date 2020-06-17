@@ -240,8 +240,10 @@ class UM2GcodeParser:
     # moves are also slower...
     # we use a simple estimation here: 2 times the size of a small packet
     #
-    # todo: baudrate as parameter
     # todo: implement relative mode
+    # 
+    # Return: number of gcode lines to preload.
+    # 
 
     """
     Packet around data payload:
@@ -265,11 +267,9 @@ class UM2GcodeParser:
 
         -> 36 bytes 
 
-    entire packet around 43 bytes -> round up to 45 bytes
+    Entire packet about 43 bytes -> round up to 45 bytes
     """
-
-
-    def preParse(self, fn):
+    def preParse(self, fn, baudrate):
 
         # Copy file to prevet problems with overwritten files
         # while reading.
@@ -288,16 +288,21 @@ class UM2GcodeParser:
         downloadTime = 0.0
         feedrate = 0.0
         pos = [0.0, 0.0, 0.0] # use vector 3 here
+        lineNumber = 0
+        preloadLines = 0
 
         # Time to send one move at given baudrate:
         # * assume we send 10 bits for a byte
         bitsPerMove = 2.0 * 45.0 * 10.0
-        timePerMove = bitsPerMove / 500000.0
-        print "timePerMove:", timePerMove
+        timePerMove = bitsPerMove / baudrate
 
         self.logger.log("Pre-parsing ", fn, tmpfname)
+
         for line in f:
+
+            lineNumber += 1
             line = line.strip()
+
             if line.startswith(";"):
 
                 upperLine = line.upper()
@@ -328,15 +333,14 @@ class UM2GcodeParser:
                 elif "SIMPLIFY3D" in upperLine:
                     self.gcodeType = GCODES3D
 
-            else:
+            elif line:
 
                 # Look for movement codes
                 tokens = line.split()
                 cmd = tokens[0]
 
-                print "cmd:", cmd
                 if cmd == "G1" or cmd == "G0":
-                    print "line:", line
+                
                     values = self.getValues(tokens[1:])
 
                     if 'F' in values:
@@ -373,33 +377,49 @@ class UM2GcodeParser:
 
                     l = vectorLength(displacement_vector)
 
-                    print "move distance:", displacement_vector, l, feedrate
+                    # print "move distance:", displacement_vector, l, feedrate
 
                     t = l / feedrate
 
                     moveTime += t
                     downloadTime += timePerMove
-                    print "t, tmove, tdownload:", t, moveTime, downloadTime
+                    # print "t, tmove, tdownload:", t, moveTime, downloadTime
+
+                    if downloadTime > moveTime:
+                        preloadLines = lineNumber
 
                     pos = newPos
 
                 elif cmd == "G2" or cmd == "G3":
-                    print "line:", line
-                    assert(0) # not implemented
-                elif cmd == "G92":
 
                     print "line:", line
+                    assert(0) # not implemented
+
+                elif cmd == "G92":
+
                     values = self.getValues(tokens[1:])
 
                     if not ("X" in values or "Y" in values or "Z" in values):
-                        # Nothing to move, F-Only gcode or invalid
+                        # No head move, E-Only 
                         continue
 
-                    assert(0) # set pos
+                    for dim in range(3):
+
+                        dimC = dimNames[dim]
+                        if dimC not in values:
+                            continue
+
+                        pos[dim] = values[dimC]
 
         self.logger.log("pre-parsing # parts:", self.numParts)
         f.seek(0) # rewind
-        return f
+
+        if downloadTime < moveTime:
+            print "downloadTime %.2f smaller than printing time %.2f, can use preload..." % (downloadTime, moveTime)
+        else:
+            print "downloadTime %.2f greater than printing time %.2f, no preload possible..." % (downloadTime, moveTime)
+
+        return (f, max(preloadLines, 1000))
 
     def execute_line(self, rawLine):
 
