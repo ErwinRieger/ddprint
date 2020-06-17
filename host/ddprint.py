@@ -20,7 +20,7 @@
 #*/
 
 import logging, pprint, sys
-import argparse, time
+import argparse, time, cProfile
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -474,62 +474,104 @@ def main():
 
         # Send heat up  command
         print "\nHeating bed (t0: %d)...\n" % t0
-        printer.heatUp(HeaterBed, t0, t0Wait, log=True)
+        # printer.heatUp(HeaterBed, t0, t0Wait, log=True)
+        printer.heatUp(HeaterBed, t0, log=True)
 
-        f = parser.preParse(args.gfile)
+        (f, preloadLines) = parser.preParse(args.gfile, args.baud)
+
+        print "Nuber of lines to preload:", preloadLines
 
         lineNr = 0
-        printStarted = False
+        # printStarted = False
 
-        for line in f:
-            parser.execute_line(line)
+        checkTime = time.time() + 2
 
-            if lineNr > 1000 and (lineNr % 250) == 0:
+        StateWeakPreheat = 0
+        StatePreload = 1
+        StateHeating = 2
+        StateStarting = 3
+        StatePrinting = 4
+        # StateDone = 5
+        state = StateWeakPreheat
+
+        # for line in f:
+        while True:
+
+            if f:
+                line = f.readline()
+                if line:
+                    parser.execute_line(line)
+                    lineNr += 1
+                else:
+                    # Reading done
+
+                    print "Parsed %d gcode lines." % lineNr
+
+                    # 
+                    # Add a move to lift the nozzle at end of print
+                    # 
+                    util.endOfPrintLift(parser)
+
+                    planner.finishMoves()
+                    printer.sendCommand(CmdEOT)
+
+                    f = None
+
+            # if lineNr >= preloadLines and time.time() > checkTime:
+            if time.time() > checkTime:
+
+                status = printer.getStatus()
+                pprint.pprint(status)
 
                 #
                 # Check temp and start print
                 #
-                if  not printStarted:
+                if state == StateWeakPreheat:
+                    
+                    if status["t0"] >= t0Wait:
+                        # Start pre-heating of hotend, bed is still heating
+                        print "\nPre-Heating extruder %.2f (t1: %d)...\n" % (t1/2.0, t1)
+                        printer.heatUp(HeaterEx1, t1/2)
+                        state = StatePreload
 
-                    print "\nPre-Heating extruder %.2f (t1: %d)...\n" % (t1/2.0, t1)
-                    printer.heatUp(HeaterEx1, t1/2, log=True)
+                elif state == StatePreload:
 
-                    print "\nHeating bed (t0: %d)...\n" % t0
-                    printer.heatUp(HeaterBed, t0, t0, log=True)
+                    if ((not f) or (lineNr >= preloadLines)) and status["t0"] >= t0:
+                        # Heat hotend further if bed is at temp
+                        print "\nHeating extruder (t1: %d)...\n" % int(round(t1*0.9))
+                        printer.heatUp(HeaterEx1, int(round(t1*0.9)))
+                        state = StateHeating
 
-                    # avoid big overswing
-                    print "\nHeating extruder (t1: %d)...\n" % (t1*0.9)
-                    printer.heatUp(HeaterEx1, int(round(t1*0.9)), t1*0.9-2, log=True)
+                elif state == StateHeating:
 
-                    print "\nHeating extruder (t1: %d)...\n" % t1
-                    printer.heatUp(HeaterEx1, t1, t1-2, log=True)
+                    # Preload done, bed is at temp, now heating hotend
+                    if status["t1"] >= (t1*0.9-2):
+                        print "\nHeating extruder (t1: %d)...\n" % t1
+                        printer.heatUp(HeaterEx1, t1)
+                        state = StateStarting
 
-                    # Send print start command
-                    printer.startPrint()
+                elif state == StateStarting:
 
-                    printStarted = True
+                    if status["t1"] >= (t1-2):
 
-                else:
+                        print "\nStarting print...\n"
 
-                    # Stop sending moves on error
-                    status = printer.getStatus()
-                    pprint.pprint(status)
+                        # Send print start command
+                        printer.startPrint()
+
+                        # printStarted = True
+                        state = StatePrinting
+
+                elif state == StatePrinting:
+
+                    # Stop sending moves on error of if print is done
                     if not printer.stateMoving(status):
                         break
 
-            lineNr += 1
+                checkTime = time.time() + 2
 
-        print "Parsed %d gcode lines." % lineNr
-
-        # 
-        # Add a move to lift the nozzle end of print
-        # 
-        util.endOfPrintLift(parser)
-
-        planner.finishMoves()
-        printer.sendCommand(CmdEOT)
-
-        # Start print if not started yet (less than 1000 lines or temp not yet reached):
+        """
+        # Start print if not started yet (less than preloadLines lines or temp not yet reached):
         if not printStarted:
 
             print "\nHeating bed (t0: %d)...\n" % t0
@@ -541,6 +583,7 @@ def main():
             printer.startPrint()
 
         printer.waitForState(StateInit, log=True)
+        """
 
         print "Print finished, duration:", printer.getPrintDuration()
 
@@ -568,7 +611,7 @@ def main():
         homePosMM = planner.getHomePos()[0]
         parser.setPos(homePosMM)
 
-        f = parser.preParse(args.gfile)
+        (f, preloadLines) = parser.preParse(args.gfile, args.baud)
         lineNr = 0
         for line in f:
             parser.execute_line(line)
@@ -790,7 +833,10 @@ if __name__ == "__main__":
     # res = 0
 
     # try:
-        main()
+
+    main()
+    # cProfile.run("main()", "ddprintstats.prof")
+
     # except:
         # import traceback
         # print "Exception: ", traceback.format_exc()
