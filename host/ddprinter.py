@@ -688,11 +688,6 @@ class Printer(Serial):
 
             valueName = valueNames[i]
 
-            # if valueName in ["targetExtrusionSpeed", "actualExtrusionSpeed"]:
-            # if valueName in ["slippage"]:
-                # statusDict[valueName] = tup[i] * 0.01
-                # continue
-
             statusDict[valueName] = tup[i]
 
         # print "statusDict:", statusDict
@@ -735,7 +730,7 @@ class Printer(Serial):
         if not status:
             status = self.getStatus()
 
-        return status['state'] == StateStart or status['state'] == StateDwell
+        return status['state'] == StateStart
 
     def getTemp(self, doLog = False):
 

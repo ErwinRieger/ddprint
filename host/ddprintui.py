@@ -147,7 +147,7 @@ class MainForm(npyscreen.FormBaseNew):
         self.cmdQueue = Queue.Queue()
 
         self.printerState = None
-        self.stateNames = ["IDLE", "INIT", "PRINTING", "DWELL"]
+        self.stateNames = ["IDLE", "INIT", "PRINTING"]
 
         self.lastEPos = None
         self.lastTime = None
@@ -649,7 +649,7 @@ class MainForm(npyscreen.FormBaseNew):
             self.log( "Pre-Heating extruder (t1: %d)...\n" % t)
             self.printer.heatUp(HeaterEx1, t)
 
-            f = self.parser.preParse(self.fn.get_value())
+            (f, preloadLines) = self.parser.preParse(self.fn.get_value(), args.baud)
             
             lineNr = 0
             printStarted = False
