@@ -202,7 +202,7 @@ class Advance (object):
     # Implement gradual advance on layer change
     def layerChange(self, layer):
 
-        self.planner.gui.log("Advance: layer changed: ", layer)
+        # self.planner.gui.log("Advance: layer changed: ", layer)
 
         if layer != None and self.startAdvance != None:
             self.setkAdvance(self.startAdvance + (layer / self.advStepHeight) * self.advIncrease)
