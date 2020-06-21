@@ -222,9 +222,9 @@ class MoveHistory (object):
                 print "replacing autotem cmd at", insertPos, cmd
                 self.history[insertPos] = cmd
             else:
-                print "keeping autotem cmd at", insertPos
+                print "keeping autotemp cmd at", insertPos
         else:
-            print "insert cmd at ", insertPos, cmd
+            # print "insert cmd at ", insertPos, cmd
             self.history.insert(insertPos, cmd)
 
         return
@@ -315,6 +315,7 @@ class PathData (object):
             self.ks = matProfile.getKpwm(hwVersion, nozzleDiam)
             self.ktemp = matProfile.getKtemp(hwVersion, nozzleDiam)
             self.p0 = matProfile.getP0pwm(hwVersion, nozzleDiam) # xxx hardcoded in firmware!
+            self.p0Temp = matProfile.getP0temp(hwVersion, nozzleDiam) # xxx hardcoded in firmware!
             self.fr0 = matProfile.getFR0pwm(hwVersion, nozzleDiam)
 
             self.lastTemp = MatProfile.getHotendGoodTemp()
@@ -437,9 +438,11 @@ class PathData (object):
             # Needed temp increase for this flowrate delta
             tempIncrease = round((rateDiff / self.ktemp) + 0.5)
 
-        newTemp = min(baseTemp+tempIncrease, MatProfile.getHotendMaxTemp())
+        newTemp = min(
+                max(self.p0Temp+tempIncrease, baseTemp),
+                MatProfile.getHotendMaxTemp())
       
-        rateDiff = (newTemp - baseTemp) * self.ktemp
+        rateDiff = (newTemp - self.p0Temp) * self.ktemp
 
         newTemp = int(newTemp)
 
@@ -451,9 +454,7 @@ class PathData (object):
         suggestPwm = min(suggestPwm, 255)
 
         if debugAutoTemp:
-            self.planner.gui.log( "AutoTemp: collected %d moves with %.2f s duration." % (len(moves), tsum))
-            self.planner.gui.log( "AutoTemp: avg extrusion rate: %.2f mm³/s." % avgERate)
-            self.planner.gui.log( "AutoTemp: new temp: %d, suggested PWM: %d" % (newTemp, suggestPwm))
+            self.planner.gui.log( "AutoTemp: %d moves of %.2f s duration, extrusion rate: %.2f mm³/s, temp: %d, PWM: %d" % (len(moves), tsum, avgERate, newTemp, suggestPwm))
 
         cmd = SyncedCommand(
             CmdSuggestPwm,
