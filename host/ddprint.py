@@ -30,7 +30,6 @@ import ddtest
 from ddprofile import PrinterProfile, MatProfile, NozzleProfile
 from ddplanner import Planner
 from ddprinter import Printer, RxTimeout
-from ddprintconstants import A_AXIS
 
 #
 # USB packet format:
@@ -80,182 +79,6 @@ from ddprintcommands import *
 #
 from ddprintstates import *
 
-
-def plotArrow(f, v, startv, color="blue"):
-
-    f.write("set arrow from %f,%f,%f to %f,%f,%f linetype 3 linewidth 5 linecolor rgb \"%s\"\n" % (startv[0], startv[1], startv[2], startv[0]+v[0], startv[1]+v[1], startv[2]+v[2], color))
-
-def getMaxKoord(v, maxkoord):
-    for i in range(2):
-        if v[i] > maxkoord[0]:
-            maxkoord[0] = v[i]
-    if v[2] > maxkoord[1]:
-        maxkoord[1] = v[2]
-
-def plotSpeedChange(v1, v2, jerk, diff, title="Velocity X/Y/Z", fn="/tmp/2v.gnuplot"):
-
-    maxkoord = [0, 0]
-
-    f = open(fn, "w")
-    f.write("set xyplane 0\n")
-    f.write("set grid\n")
-
-    if jerk[0]:
-        v = [jerk[0], 0, 0]
-        getMaxKoord(v, maxkoord)
-        plotArrow(f, v, v1, "green")
-
-    if jerk[1]:
-        v = [0, jerk[1], 0]
-        getMaxKoord(v, maxkoord)
-        plotArrow(f, v, v1, "green")
-
-    if jerk[2]:
-        v = [0, 0, jerk[2]]
-        getMaxKoord(v, maxkoord)
-        plotArrow(f, v, v1, "green")
-
-    getMaxKoord(jerk, maxkoord)
-    plotArrow(f, jerk, v1)
-
-    getMaxKoord(diff, maxkoord)
-    plotArrow(f, diff, v1, "purple")
-
-    getMaxKoord(v1, maxkoord)
-    getMaxKoord(v2, maxkoord)
-
-    f.write("set xrange [0:%f]\n" % (maxkoord[0]*1.2))
-    f.write("set yrange [0:%f]\n" % (maxkoord[0]*1.2))
-    f.write("set zrange [0:%f]\n" % (maxkoord[1]*1.2))
-
-    f.write("splot \"-\" using 1:2:3:4:5:6 with vectors filled head title \"%s\"\n" % title)
-
-    f.write("0 0 0 ")
-    for v in v1[:3]:
-        f.write("%f " % v)
-    f.write("\n")
-
-    f.write("0 0 0 ")
-    for v in v2[:3]:
-        f.write("%f " % v)
-    f.write("\n")
-
-    f.write("e\n")
-    f.close()
-
-def plot2v(v1, v2, jerk, diff, title="Velocity X/Y/Z", fn="/tmp/2v.gnuplot"):
-
-    maxkoord = [0, 0]
-
-    f = open(fn, "w")
-    f.write("set xyplane 0\n")
-    f.write("set grid\n")
-
-    if jerk[0]:
-        v = [jerk[0], 0, 0]
-        getMaxKoord(v, maxkoord)
-        plotArrow(f, v, v1, "green")
-
-    if jerk[1]:
-        v = [0, jerk[1], 0]
-        getMaxKoord(v, maxkoord)
-        plotArrow(f, v, v1, "green")
-
-    if jerk[2]:
-        v = [0, 0, jerk[2]]
-        getMaxKoord(v, maxkoord)
-        plotArrow(f, v, v1, "green")
-
-    getMaxKoord(jerk, maxkoord)
-    plotArrow(f, jerk, v1)
-
-    if diff:
-        getMaxKoord(diff, maxkoord)
-        plotArrow(f, diff, v1, "purple")
-
-    getMaxKoord(v1, maxkoord)
-    getMaxKoord(v2, maxkoord)
-
-    f.write("set xrange [0:%f]\n" % (maxkoord[0]*1.2))
-    f.write("set yrange [0:%f]\n" % (maxkoord[0]*1.2))
-    f.write("set zrange [0:%f]\n" % (maxkoord[1]*1.2))
-
-    f.write("splot \"-\" using 1:2:3:4:5:6 with vectors filled head title \"%s\"\n" % title)
-
-    f.write("0 0 0 ")
-    for v in v1[:3]:
-        f.write("%f " % v)
-    f.write("\n")
-
-    f.write("0 0 0 ")
-    for v in v2[:3]:
-        f.write("%f " % v)
-    f.write("\n")
-
-    f.write("e\n")
-    f.close()
-
-# plot x/y/E
-def plot2vE(v1, v2, jerk, diff):
-    plot2v(v1[:2] + [v1[3]], v2[:2] + [v2[3]],jerk[:2] + [jerk[3]],diff[:2] + [diff[3]], title="Velocity X/Y/E")
-
-def plot4v(nom1, nom2, v1, v2, jerk, diff, fn = "/tmp/4v.gnuplot"):
-
-    maxx = (max(nom1[0], nom2[0]) + diff[0]) * 2
-    maxy = (max(nom1[1], nom2[1]) + diff[1]) * 2
-
-    f = open(fn, "w")
-    f.write("set xyplane 0\n")
-    f.write("set grid\n")
-    f.write("set xrange [0:%f]\n" % max(maxx, maxy))
-    f.write("set yrange [0:%f]\n" % max(maxx, maxy))
-    f.write("set zrange [0:100]\n")
-
-    if jerk[0]:
-        plotArrow(f, [jerk[0], 0, 0], v1, "green")
-
-    if jerk[1]:
-        plotArrow(f, [0, jerk[1], 0], v1, "green")
-
-    if jerk[2]:
-        plotArrow(f, [0, 0, jerk[2]], v1, "green")
-
-    plotArrow(f, jerk, v1)
-
-    plotArrow(f, diff, v1, "purple")
-
-    f.write("splot \"-\" using 1:2:3:4:5:6 with vectors filled head\n")
-
-
-    f.write("0 0 0 ")
-    for v in nom1[:3]:
-        f.write("%f " % v)
-    f.write("\n")
-
-
-    for v in nom1[:3]:
-        f.write("%f " % v)
-    for i in range(3):
-        v = v1[i]
-        f.write("-%f " % (nom1[i] - v))
-    f.write("\n")
-
-
-    f.write("0 0 0 ")
-    for v in nom2[:3]:
-        f.write("%f " % v)
-    f.write("\n")
-
-
-    for v in nom2[:3]:
-        f.write("%f " % v)
-    for i in range(3):
-        v = v2[i]
-        f.write("-%f " % (nom2[i] - v))
-    f.write("\n")
-
-    f.write("e\n")
-    f.close()
 
 # Create printer profile singleton instance
 def initPrinterProfile(args):
@@ -804,7 +627,6 @@ def main():
         printer = Printer()
         initPrinterProfile(args)
         planner = Planner(args, printer.gui, travelMovesOnly=True)
-        # parser = gcodeparser.UM2GcodeParser(planner, logger=printer.gui, travelMovesOnly=True)
         ddtest.calibrateESteps(args, printer, planner)
 
     elif args.mode == 'calibrateFilSensor':
@@ -812,7 +634,6 @@ def main():
         printer = Printer()
         initPrinterProfile(args)
         planner = Planner(args, printer.gui, travelMovesOnly=True)
-        # parser = gcodeparser.UM2GcodeParser(planner, logger=printer.gui, travelMovesOnly=True)
         ddtest.calibrateFilSensor(args, printer, planner)
 
     elif args.mode == 'test':
