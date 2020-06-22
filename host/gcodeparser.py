@@ -328,7 +328,7 @@ class UM2GcodeParser:
                     self.gcodeType = GCODEULTI
                     # To compute extrude length from volume (see getValues()):
                     # V = A * h, h = V / A, A = pi/4 * diameter²
-                    aFilament = MatProfile.getMatArea()
+                    aFilament = self.planner.matProfile._getMatArea()
                     self.e_to_filament_length = 1.0 / aFilament
                 elif "SIMPLIFY3D" in upperLine:
                     self.gcodeType = GCODES3D
@@ -554,7 +554,7 @@ class UM2GcodeParser:
     def m106_fan_on(self, line, values):
 
         # print "m106_fan_on", values
-        fanSpeed = int((values["S"] * MatProfile.getFanPercent()) / 100.0)
+        fanSpeed = int(values["S"])
 
         blipTime = 0
 

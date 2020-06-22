@@ -29,10 +29,7 @@ from ddprintconstants import dimNames, A_AXIS, B_AXIS
 ####################################################################################################
 class ProfileBase(object):
 
-    def __init__(self, cls, name, specificName=""):
-
-        if cls._single:
-            raise RuntimeError('A ' + str(cls) + ' instance already exists')
+    def __init__(self, name, specificName=""):
 
         self.name = name
         self.specificName = specificName
@@ -47,8 +44,6 @@ class ProfileBase(object):
             specificValues = util.jsonLoad(f)
             for k in specificValues.keys():
                 self.values[k] = specificValues[k]
-
-        cls._single = self
 
     def getBaseName(self):
         return os.path.basename(self.name)
@@ -127,7 +122,9 @@ class PrinterProfile(ProfileBase):
         if PrinterProfile._single:
             raise RuntimeError('Error: a PrinterProfile instance already exists')
 
-        super(PrinterProfile, self).__init__(PrinterProfile, name)
+        PrinterProfile._single = self
+
+        super(PrinterProfile, self).__init__(name)
 
     @classmethod
     def get(cls):
@@ -265,17 +262,19 @@ class PrinterProfile(ProfileBase):
 ####################################################################################################
 class MatProfile(ProfileBase):
 
-    _single = None 
+    # _single = None 
 
     def __init__(self, name, smatName, printerName):
 
-        if MatProfile._single:
-            raise RuntimeError('Error: a MatProfile instance already exists')
+        # if MatProfile._single:
+            # raise RuntimeError('Error: a MatProfile instance already exists')
+
+        # MatProfile._single = self
 
         if smatName:
             smatName = os.path.join(printerName, smatName)
 
-        super(MatProfile, self).__init__(MatProfile, name, smatName)
+        super(MatProfile, self).__init__(name, smatName)
 
         self.matArea = (math.pi * pow(float(self.values["material_diameter"]), 2)) / 4.0
 
@@ -295,59 +294,47 @@ class MatProfile(ProfileBase):
     def getValues(cls):
         return cls.get().values
 
+    def getValuesI(self):
+        return self.values
+
     @classmethod
     def getMatDiameter(cls):
         return float(cls.getValues()["material_diameter"])
 
-    @classmethod
-    def getHotendBaseTemp(cls):
-        return int(cls.getValues()["hotendBaseTemp"])
+    def getHotendBaseTemp(self):
+        return int(self.getValue("hotendBaseTemp"))
 
-    @classmethod
-    def getHotendGoodTemp(cls):
-        return int(cls.getValues()["hotendGoodTemp"])
+    def getHotendGoodTemp(self):
+        return int(self.getValue("hotendGoodTemp"))
+    def getHotendMaxTemp(self):
+        return int(self.getValuesI()["hotendMaxTemp"])
 
-    @classmethod
-    def getHotendMaxTemp(cls):
-        return int(cls.getValues()["hotendMaxTemp"])
+    def getBedTemp(self):
+        return int(self.getValue("bedTemp"))
 
-    @classmethod
-    def getBedTemp(cls):
-        return int(cls.getValues()["bedTemp"])
+    def getBedTempReduced(self):
+        return int(self.getValue("bedTempReduced"))
 
-    @classmethod
-    def getBedTempReduced(cls):
-        return int(cls.getValues()["bedTempReduced"])
-
-    @classmethod
-    def getFanPercent(cls):
-        return int(cls.getValues()["fanPercent"])
-
-    @classmethod
-    def getMatArea(cls):
-        return cls.get()._getMatArea()
-
-    def _getMatArea(self):
+    def getMatArea(self):
         return self.matArea
 
     @classmethod
     def getKAdv(cls):
         return float(cls.getValues()["kAdvance"])
 
-    @classmethod
-    def getFlowrateForTemp(cls, temp, hwVersion, nozzleDiam):
-        return cls.get()._getFlowrateForTemp(temp, hwVersion, nozzleDiam)
+    def getKAdvI(self):
+        return float(self.getValue("kAdvance"))
 
     def getKpwm(self, hwVersion, nozzleDiam):
 
-        flowrateData = self.getValues()["properties_%d" % (nozzleDiam*100)]
+        flowrateData = self.getValuesI()["properties_%d" % (nozzleDiam*100)]
         # Check hardware version
         assert(flowrateData["version"] == hwVersion)
         return flowrateData["Kpwm"]
 
     def getKtemp(self, hwVersion, nozzleDiam):
 
-        flowrateData = self.getValues()["properties_%d" % (nozzleDiam*100)]
+        flowrateData = self.getValuesI()["properties_%d" % (nozzleDiam*100)]
         # Check hardware version
         assert(flowrateData["version"] == hwVersion)
         return flowrateData["Ktemp"]
@@ -358,26 +345,26 @@ class MatProfile(ProfileBase):
 
     def _getP0pwm(self, hwVersion, nozzleDiam):
 
-        flowrateData = self.getValues()["properties_%d" % (nozzleDiam*100)]
+        flowrateData = self.getValuesI()["properties_%d" % (nozzleDiam*100)]
         # Check hardware version
         assert(flowrateData["version"] == hwVersion)
         return flowrateData["P0pwm"]
 
     def getFR0pwm(self, hwVersion, nozzleDiam):
 
-        flowrateData = self.getValues()["properties_%d" % (nozzleDiam*100)]
+        flowrateData = self.getValuesI()["properties_%d" % (nozzleDiam*100)]
         # Check hardware version
         assert(flowrateData["version"] == hwVersion)
         return flowrateData["FR0pwm"]
 
     def getP0temp(self, hwVersion, nozzleDiam):
 
-        flowrateData = self.getValues()["properties_%d" % (nozzleDiam*100)]
+        flowrateData = self.getValuesI()["properties_%d" % (nozzleDiam*100)]
         # Check hardware version
         assert(flowrateData["version"] == hwVersion)
         return flowrateData["P0temp"]
 
-    def _getFlowrateForTemp(self, temp, hwVersion, nozzleDiam):
+    def getFlowrateForTemp(self, temp, hwVersion, nozzleDiam):
 
         FR0pwm= self.getFR0pwm(hwVersion, nozzleDiam)   # a0 feedrate
         Ktemp = self.getKtemp (hwVersion, nozzleDiam)   # a1
@@ -411,7 +398,9 @@ class NozzleProfile(ProfileBase):
         if NozzleProfile._single:
             raise RuntimeError('Error: a NozzleProfile instance already exists')
 
-        super(NozzleProfile, self).__init__(NozzleProfile, name)
+        NozzleProfile._single = self
+
+        super(NozzleProfile, self).__init__(name)
 
     @classmethod
     def get(cls):

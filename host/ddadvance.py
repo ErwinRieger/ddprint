@@ -24,7 +24,7 @@ from argparse import Namespace
 
 from ddprintconstants import *
 from ddconfig import *
-from ddprofile import PrinterProfile, MatProfile, NozzleProfile
+from ddprofile import PrinterProfile, NozzleProfile
 from ddvector import VelocityVector32, vectorAdd, vectorSub, vectorLength, vectorAbs
 
 import ddprintutil as util
@@ -141,7 +141,7 @@ class Advance (object):
 
         self.__kAdv = args.kAdvance
         if self.__kAdv == None:
-            self.__kAdv = MatProfile.getKAdv()
+            self.__kAdv = planner.matProfile.getKAdvI()
 
         self.kFeederComp = 0.0
         if UseFeederCompensation:
@@ -149,12 +149,11 @@ class Advance (object):
             hwVersion = PrinterProfile.getHwVersion()
             nozzleDiam = NozzleProfile.getSize()
 
-            matProfile = MatProfile.get()
-            slippage = matProfile._getSlippage(hwVersion, nozzleDiam)
+            slippage = planner.matProfile._getSlippage(hwVersion, nozzleDiam)
 
-            tempCurve = matProfile.getTempCurve(hwVersion, nozzleDiam)
+            tempCurve = planner.matProfile.getTempCurve(hwVersion, nozzleDiam)
 
-            area = matProfile._getMatArea()
+            area = planner.matProfile._getMatArea()
 
             flowRate = tempCurve.maxFlowrate                           # [mm³/s]
             feedRate = flowRate / area                                 # [mm/s]

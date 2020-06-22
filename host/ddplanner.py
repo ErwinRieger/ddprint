@@ -23,7 +23,7 @@ import math, collections, types
 from argparse import Namespace
 
 import ddprintutil as util, dddumbui, packedvalue
-from ddprofile import PrinterProfile, MatProfile, NozzleProfile
+from ddprofile import PrinterProfile, NozzleProfile
 from ddvector import Vector, vectorMul, vectorAbs
 from ddprintconstants import *
 from ddconfig import *
@@ -311,14 +311,12 @@ class PathData (object):
             hwVersion = PrinterProfile.getHwVersion()
             nozzleDiam = NozzleProfile.getSize()
 
-            matProfile = MatProfile.get()
-            self.ks = matProfile.getKpwm(hwVersion, nozzleDiam)
-            self.ktemp = matProfile.getKtemp(hwVersion, nozzleDiam)
-            self.p0 = matProfile.getP0pwm(hwVersion, nozzleDiam) # xxx hardcoded in firmware!
-            self.p0Temp = matProfile.getP0temp(hwVersion, nozzleDiam) # xxx hardcoded in firmware!
-            self.fr0 = matProfile.getFR0pwm(hwVersion, nozzleDiam)
+            self.ks = self.planner.matProfile.getKpwm(hwVersion, nozzleDiam)
+            self.ktemp = self.planner.matProfile.getKtemp(hwVersion, nozzleDiam)
+            self.p0 = self.planner.matProfile._getP0pwm(hwVersion, nozzleDiam) # xxx hardcoded in firmware!
+            self.fr0 = self.planner.matProfile.getFR0pwm(hwVersion, nozzleDiam)
 
-            self.lastTemp = MatProfile.getHotendGoodTemp()
+            self.lastTemp = self.planner.matProfile.getHotendGoodTemp()
 
     # Add move to path and update times list
     def notused_updateTimeline(self, move):
@@ -415,7 +413,7 @@ class PathData (object):
         vsum = 0
         for move in moves:
             tsum += move.accelData.getTime()
-            vsum += move.getExtrusionVolume(MatProfile.get())
+            vsum += move.getExtrusionVolume(self.planner.matProfile)
 
         avgERate = vsum / tsum
 
@@ -423,7 +421,7 @@ class PathData (object):
         # profile, adjust for:
         # * 10% for into-the-air measurement
         # * 10% for measurement errors and some safety bonus
-        adj = 1.0 + 0.1 + 0.1
+        adj = 1.0 + 0.1 #  + 0.1
 
         # Compute new temp and suggested heater-PWM for this segment
 
@@ -431,18 +429,16 @@ class PathData (object):
         rateDiff = (avgERate * adj) - self.fr0
 
         # Floor temp
-        baseTemp = MatProfile.getHotendGoodTemp() + self.planner.l0TempIncrease
+        baseTemp = self.planner.matProfile.getHotendGoodTemp() + self.planner.l0TempIncrease
         tempIncrease = 0.0
 
         if rateDiff > 0.0:
             # Needed temp increase for this flowrate delta
             tempIncrease = round((rateDiff / self.ktemp) + 0.5)
 
-        newTemp = min(
-                max(self.p0Temp+tempIncrease, baseTemp),
-                MatProfile.getHotendMaxTemp())
+        newTemp = min(baseTemp+tempIncrease, self.planner.matProfile.getHotendMaxTemp())
       
-        rateDiff = (newTemp - self.p0Temp) * self.ktemp
+        rateDiff = (newTemp - baseTemp) * self.ktemp
 
         newTemp = int(newTemp)
 
@@ -578,7 +574,7 @@ class Planner (object):
 
     __single = None 
 
-    def __init__(self, args, gui=None, travelMovesOnly=False):
+    def __init__(self, args, materialProfile, gui=None, travelMovesOnly=False):
 
         if Planner.__single:
             raise RuntimeError('A Planner already exists')
@@ -591,6 +587,7 @@ class Planner (object):
             self.gui = dddumbui.DumbGui()
 
         self.args = args
+        self.matProfile = materialProfile
 
         self.printer = Printer.get()
 
@@ -731,7 +728,7 @@ class Planner (object):
                 return
 
             # Reduce bedtemp
-            bedTemp = MatProfile.getBedTempReduced()
+            bedTemp = self.matProfile.getBedTempReduced()
             self.gui.log("Layer2, reducing bedtemp to: ", bedTemp)
             # self.addSynchronizedCommand(
                 # CmdSyncTargetTemp, 

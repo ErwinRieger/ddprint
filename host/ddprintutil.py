@@ -27,7 +27,7 @@ from ddprintstates import *
 from ddprinter import Printer
 from ddprintconstants import *
 from ddconfig import *
-from ddprofile import PrinterProfile, MatProfile, NozzleProfile
+from ddprofile import PrinterProfile, NozzleProfile
 from ddvector import vectorMul
 
 ####################################################################################################
@@ -690,7 +690,7 @@ def commonInit(args, printer, planner, parser):
     # done by home: printer.commandInit(args, PrinterProfile.getSettings())
 
     ddhome.home(args, printer, planner, parser)
-    downloadTempTable(printer)
+    downloadTempTable(printer, planner.matProfile)
 
 ####################################################################################################
 
@@ -1434,15 +1434,15 @@ def getResponseString(s, offset):
 
 ####################################################################################################
 
-def genTempTable():
+def genTempTable(matProfile):
 
     hwVersion = PrinterProfile.getHwVersion()
     spm = PrinterProfile.getStepsPerMM(A_AXIS)
     nozzleDiam = NozzleProfile.getSize()
-    aFilament = MatProfile.getMatArea()
+    aFilament = matProfile.getMatArea()
 
-    startTemp = MatProfile.getHotendBaseTemp()
-    baseFlowrate = MatProfile.getFlowrateForTemp(startTemp, hwVersion, nozzleDiam)
+    startTemp = matProfile.getHotendBaseTemp()
+    baseFlowrate = matProfile.getFlowrateForTemp(startTemp, hwVersion, nozzleDiam)
 
     # Temps lower than 170 not handled yet
     assert(startTemp >= 170)
@@ -1457,7 +1457,7 @@ def genTempTable():
             f = (baseFlowrate-0.1) / (startTemp-170)
             flowrate = 0.1 + i*f
         else:
-            flowrate = MatProfile.getFlowrateForTemp(t, hwVersion, nozzleDiam)
+            flowrate = matProfile.getFlowrateForTemp(t, hwVersion, nozzleDiam)
 
         espeed = flowrate / aFilament
         # print "flowrate for temp %f: %f -> espeed %f" % (t, flowrate, espeed)
@@ -1512,9 +1512,9 @@ def printTempTable(temp, tempTable):
 
 ####################################################################################################
 
-def downloadTempTable(printer):
+def downloadTempTable(printer, matProfile):
 
-    (startTemp, table) = genTempTable()
+    (startTemp, table) = genTempTable(matProfile)
 
     payload = struct.pack("<HB", startTemp, NExtrusionLimit)
 
@@ -1560,7 +1560,7 @@ def measureFlowrateStepResponse(args, parser):
     planner = parser.planner
     printer = planner.printer
 
-    aFilament = MatProfile.getMatArea()
+    aFilament = planner.matProfile.getMatArea()
 
     printerProfile = PrinterProfile.get()
 
@@ -1602,7 +1602,7 @@ def measureFlowrateStepResponse(args, parser):
 
     minGrip = 0.90
 
-    t1 = args.t1 or MatProfile.getHotendBaseTemp()
+    t1 = args.t1 or planner.matProfile.getHotendBaseTemp()
 
     dt = PrinterProfile.getFilSensorInterval()
 
@@ -1756,7 +1756,7 @@ def measureTempFlowrateCurve(args, parser):
     planner = parser.planner
     printer = planner.printer
 
-    aFilament = MatProfile.getMatArea()
+    aFilament = planner.matProfile.getMatArea()
 
     printerProfile = PrinterProfile.get()
 
@@ -1812,7 +1812,7 @@ def measureTempFlowrateCurve(args, parser):
 
     ####################################################################################################
 
-    for t1 in [MatProfile.getHotendBaseTemp(), MatProfile.getHotendMaxTemp()]:
+    for t1 in [planner.matProfile.getHotendBaseTemp(), planner.matProfile.getHotendMaxTemp()]:
 
       pwmAvg = movingavg.MovingAvg(nAvg)
 

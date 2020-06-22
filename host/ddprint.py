@@ -113,9 +113,9 @@ def initParser(args, mode=None, gui=None, travelMovesOnly=False):
 
     # Create material profile singleton instance
     if args.mode == "pre":
-        initMatProfile(args, args.printer)
+        mat = initMatProfile(args, args.printer)
     else:
-        initMatProfile(args, printer.getPrinterName())
+        mat = initMatProfile(args, printer.getPrinterName())
 
     try:
         nozzle = args.nozzle
@@ -125,7 +125,7 @@ def initParser(args, mode=None, gui=None, travelMovesOnly=False):
         NozzleProfile(nozzle)
 
     # Create planner singleton instance
-    planner = Planner(args, gui=gui, travelMovesOnly=travelMovesOnly)
+    planner = Planner(args, materialProfile=mat, gui=gui, travelMovesOnly=travelMovesOnly)
 
     # Create parser singleton instance
     parser = gcodeparser.UM2GcodeParser(planner, logger=gui, travelMovesOnly=travelMovesOnly)
@@ -214,8 +214,6 @@ def main():
     sp.add_argument("printer", help="Name of printer profile to use.")
     sp.add_argument("mat", help="Name of generic material profile to use [pla, abs...].")
 
-    # sp = subparsers.add_parser("genTempTable", help=u"Generate extrusion rate limit table.")
-
     sp = subparsers.add_parser("getEndstops", help=u"Get current endstop state.")
 
     sp = subparsers.add_parser("getFilSensor", help=u"Get current filament position.")
@@ -290,10 +288,10 @@ def main():
 
         util.commonInit(args, printer, planner, parser)
 
-        t0 = MatProfile.getBedTemp()
+        t0 = planner.matProfile.getBedTemp()
         t0Wait = min(t0, printerProfile.getWeakPowerBedTemp())
 
-        t1 = MatProfile.getHotendGoodTemp() + planner.l0TempIncrease
+        t1 = planner.matProfile.getHotendGoodTemp() + planner.l0TempIncrease
 
         # Send heat up  command
         print "\nHeating bed (t0: %d)...\n" % t0
@@ -501,11 +499,6 @@ def main():
         initPrinterProfile(args)
         initMatProfile(args, printer.getPrinterName())
         util.heatHotend(args, printer)
-
-    # elif args.mode == 'genTempTable':
-        #
-        # (parser, _, _, _) = initParser(args, mode=args.mode, travelMovesOnly=True)
-        # util.genTempTable()
 
     elif args.mode == 'getEndstops':
 
