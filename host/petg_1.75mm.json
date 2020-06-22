@@ -5,7 +5,6 @@
   "hotendMaxTemp"     : 260,
   "bedTemp"           : 85,
   "bedTempReduced"    : 80,
-  "fanPercent"        : 75,
   "kAdvance"          : 0.2,
 
   "properties_80" : {
