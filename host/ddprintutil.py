@@ -824,7 +824,7 @@ def insertFilament(args, parser, feedrate):
 
     printer.waitForState(StateInit)
 
-    t1 = MatProfile.getHotendGoodTemp()
+    t1 = planner.matProfile.getHotendGoodTemp()
     printer.heatUp(HeaterEx1, t1, wait=t1 * 0.95, log=True)
 
     print "\nInsert filament.\n"
@@ -872,7 +872,7 @@ def removeFilament(args, parser, feedrate):
 
     printer.waitForState(StateInit)
 
-    t1 = (MatProfile.getHotendGoodTemp() + MatProfile.getHotendMaxTemp()) / 2
+    t1 = (planner.matProfile.getHotendGoodTemp() + planner.matProfile.getHotendMaxTemp()) / 2
     printer.heatUp(HeaterEx1, t1, wait=t1, log=True)
 
     # Filament vorwärts feeden um den 'retract-pfropfen' einzuschmelzen
@@ -1047,7 +1047,7 @@ def heatHotend(args, printer):
 
     printer.commandInit(args, PrinterProfile.getSettings())
 
-    t1 = args.t1 or MatProfile.getHotendGoodTemp()
+    t1 = args.t1 or planner.matProfile.getHotendGoodTemp()
 
     printer.heatUp(HeaterEx1, t1, wait=t1-5, log=True)
 
@@ -1304,7 +1304,7 @@ def measureHotendStepResponse(args):
 
     printer.commandInit(args, PrinterProfile.getSettings())
 
-    tmax = MatProfile.getHotendMaxTemp()
+    tmax = planner.matProfile.getHotendMaxTemp()
 
     ## Eingangssprung, nicht die volle leistung, da sonst die temperatur am ende
     ## der sprungantwort zu stark überschwingt und zu hoch wird.

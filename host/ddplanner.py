@@ -265,7 +265,7 @@ class MoveHistory (object):
     # Stream leftover moves in history
     def finishMoves(self):
 
-        print "finishMoves(): streaming history:", len(self.history)
+        # print "finishMoves(): streaming history:", len(self.history)
         for move in self.history:
             self.streamMove(move)
 
@@ -574,7 +574,7 @@ class Planner (object):
 
     __single = None 
 
-    def __init__(self, args, materialProfile, gui=None, travelMovesOnly=False):
+    def __init__(self, args, materialProfile=None, gui=None, travelMovesOnly=False):
 
         if Planner.__single:
             raise RuntimeError('A Planner already exists')
@@ -644,6 +644,7 @@ class Planner (object):
 
         self.pathData = PathData(self)
 
+	# Todo: remove syncCommands
         self.syncCommands = collections.defaultdict(list)
         self.partNumber = 1
 
@@ -944,7 +945,7 @@ class Planner (object):
 
         del self.syncCommands[moveNumber]
 
-    # xxx should be called finishPath()
+    # Todo: should be called finishPath()
     def finishMoves(self):
 
         # debug
