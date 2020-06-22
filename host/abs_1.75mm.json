@@ -4,7 +4,6 @@
   "hotendMaxTemp"     : 260,
   "bedTemp"           : 100,
   "bedTempReduced"    : 95,
-  "fanPercent"        : 100,
   "kAdvance"          : 0.2,
   # Default parameters for measureTempFlowrateCurve
   "mtfStartTemp": 220,
