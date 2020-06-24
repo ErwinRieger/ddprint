@@ -73,6 +73,19 @@ class ExpoFilter {
 };
 #endif
 
+template<typename MOVE>
+uint16_t axis_steps_per_mm();
+
+template<>
+inline uint16_t axis_steps_per_mm<XAxisSelector>() { return AXIS_STEPS_PER_MM_X; }
+template<>
+inline uint16_t axis_steps_per_mm<YAxisSelector>() { return AXIS_STEPS_PER_MM_Y; }
+template<>
+inline uint16_t axis_steps_per_mm<ZAxisSelector>() { return AXIS_STEPS_PER_MM_Z; }
+template<>
+inline uint16_t axis_steps_per_mm<EAxisSelector>() { return 123; }
+
+
 template <typename MOVE>
 class StepperSim {
 
@@ -113,13 +126,13 @@ class StepperSim {
 
 
 // Start: kopf links (MIN)
-extern StepperSim< XMove > ssx;
+extern StepperSim< XAxisSelector > ssx;
 // Start: kopf hinten (MAX)
-extern StepperSim< YMove > ssy;
+extern StepperSim< YAxisSelector > ssy;
 // Start: buildplate unten (MAX)
-extern StepperSim< ZMove > ssz;
+extern StepperSim< ZAxisSelector > ssz;
 
-extern StepperSim< EMove > sse;
+extern StepperSim< EAxisSelector > sse;
 
 extern double tTimer1A;
 

@@ -127,8 +127,7 @@ void *serialThread(void * data) {
             unsigned char rxChar = buf[i];
 
             // printf("serial read: '0x%x'\n", rxChar);
-
-            if (MSerial._available() == (RX_BUFFER_SIZE-1)) {
+            if (serialPort._available() == (RX_BUFFER_SIZE-1)) {
                 printf("serial overflow maxread: %d, nread: %d\n", maxread, nread);
                 assert(0);
             }
@@ -147,9 +146,8 @@ void *serialThread(void * data) {
                     continue;
                 }
             }
-            MSerial.store_char(rxChar);
-
-            // printf("Stored : '0x%x', size %d bytes\n", rxChar, MSerial._available());
+            serialPort.store_char(rxChar);
+            // printf("Stored : '0x%x', size %d bytes\n", rxChar, serialPort._available());
         }
     }
 

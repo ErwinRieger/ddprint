@@ -116,8 +116,8 @@ class RegUDR0: public SimRegister {
 #endif
         RegUDR0& operator= (const SimRegister &v)
         {
-            // printf("c: %c\n", v.value);
-            write(ptty, &v.value, 1);
+            // printf("serial write: %c\n", v.value);
+            assert(write(ptty, &v.value, 1) == 1);
             return *this;
         }
 
@@ -140,8 +140,31 @@ class RegUDR0: public SimRegister {
 #endif
 };
 
+// extern int sdSpiCommand;
+// extern bool sdChipSelect;
+
+class RegSPDR: public SimRegister {
+
+        uint8_t receiveValue;
+
+    public:
+
+        RegSPDR& operator= (const SimRegister &v);
+
+        // Result for next read
+        void prepareReceive(uint8_t v) {
+           receiveValue = v;
+        }
+
+        void set(uint8_t v) {
+           assert(0);
+           value = v;
+        }
+};
+
 extern RegUCSR0A UCSR0A;
 extern RegUDR0 UDR0;
+extern RegSPDR SPDR;
 
 // #if defined(DDSim)
 
@@ -182,9 +205,14 @@ extern RegUDR0 UDR0;
     #define _BV(x) x
 
     #define ISR(x) void ISR##x()
+    #define digitalWrite(pin, value) WRITE(pin, value)
 
     #define INPUT 0
     #define OUTPUT 1
+
+    #define DORD 5
+    #define SPIE 7
+    #define SPIF 7
 
     extern int DIDR0;
     extern int DIDR2;
@@ -255,6 +283,7 @@ extern RegUDR0 UDR0;
     uint16_t pgm_read_word(const void* ptr);
     float pgm_read_float(const void* ptr);
     typedef std::string String;
+    typedef unsigned char byte;
 
     void SET_OUTPUT(int pin);
 
@@ -281,5 +310,9 @@ extern RegUDR0 UDR0;
 
     int32_t max(int32_t a ,int32_t b);
 
+    void noInterrupts();
+    void yield();
+
+    uint16_t freeRam ();
 // #endif
 

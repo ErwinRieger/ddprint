@@ -24,54 +24,35 @@
 
 #include "filsensorSim.h"
 
+DDPrintSpi dDPrintSpi;
+
 bool sdChipSelect = true; // high
 extern int sdSpiCommand;
 static int commandBytes = 0;
 extern uint32_t sdWritePos;
 // static int spiRes = -1;
 
-#define CMD24Byte (CMD24 | 0x40)
+RegSPDR& RegSPDR::operator= (const SimRegister &v)
+{
 
-/** SPI receive a byte */
-uint8_t spiRec() {
+    // printf("RegSPDR, cs: %d, spicommand: %d\n", sdChipSelect, sdSpiCommand);
 
-    // SPDR = 0XFF;
-    // while (!(SPSR & (1 << SPIF))) { /* Intentionally left empty */ }
-    // return SPDR;
+    if ((sdChipSelect == LOW) && (sdSpiCommand == CMD13) && (v.value == 0xFF)) {
 
-    if (! sdChipSelect) {
+        // Implement behaviour for SdSpiCard::cardCommand(CMD13) SdSpiAltDriver::receive()
+        value = receiveValue;
+        SPSR |= (1 << SPIF);
 
-        assert(! filSensorSim.isEnabled());
-
-        if (sdSpiCommand == -1) {
-
-            // if (busyWait--)
-                // return 0;
-
-            // busyWait = 5;
-            return 0xff;
-        }
-
-        if ((sdSpiCommand == CMD24Byte) && (commandBytes == 0)) {
-            // printf("cmd24 off\n");
-            sdSpiCommand = -1;
-            return 0;
-        }
-
-        if (sdSpiCommand == CMD13) {
-            sdSpiCommand = -1;
-            return 0;
-        }
+        // Cmd13 done now
+        sdSpiCommand = -1;
     }
+    else
+        assert(0);
 
-    if (filSensorSim.isEnabled()) {
-        assert(sdChipSelect == true);
-        return filSensorSim.spiRec();
-    }
-
-    assert(0);
+    return *this;
 }
 
+#if 0
 void spiSend(uint8_t b) {
 
     // static bool spiWrite=false;
@@ -111,13 +92,5 @@ void spiSend(uint8_t b) {
 
     assert(0);
 }
+#endif
 
-//------------------------------------------------------------------------------
-void Sd2Card::chipSelectHigh() {
-  sdChipSelect = true;
-}
-//------------------------------------------------------------------------------
-void Sd2Card::chipSelectLow() {
-  sdChipSelect = false;
-}
-//------------------------------------------------------------------------------

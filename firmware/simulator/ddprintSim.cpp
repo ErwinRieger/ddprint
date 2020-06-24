@@ -120,7 +120,7 @@ void openOutputModel() {
 
 #endif
 
-main(int argc, char** argv) {
+int main(int argc, char** argv) {
 
     printf("usage:\n");
     printf("%s -p<filename>: print file (sdread mode)\n", argv[0]);
@@ -529,24 +529,24 @@ uint8_t READ(int pin) {
 
             case X_DIR_PIN:
                 if (ssx.dir > 0)
-                    return st_get_positive_dir<XMove>();
+                    return st_get_positive_dir<XAxisSelector>();
                 else
-                    return ! st_get_positive_dir<XMove>();
+                    return ! st_get_positive_dir<XAxisSelector>();
             case Y_DIR_PIN:
                 if (ssy.dir > 0)
-                    return st_get_positive_dir<YMove>();
+                    return st_get_positive_dir<YAxisSelector>();
                 else
-                    return ! st_get_positive_dir<YMove>();
+                    return ! st_get_positive_dir<YAxisSelector>();
             case Z_DIR_PIN:
                 if (ssz.dir > 0)
-                    return st_get_positive_dir<ZMove>();
+                    return st_get_positive_dir<ZAxisSelector>();
                 else
-                    return ! st_get_positive_dir<ZMove>();
+                    return ! st_get_positive_dir<ZAxisSelector>();
             case E0_DIR_PIN:
                 if (ssy.dir > 0)
-                    return st_get_positive_dir<EMove>();
+                    return st_get_positive_dir<EAxisSelector>();
                 else
-                    return ! st_get_positive_dir<EMove>();
+                    return ! st_get_positive_dir<EAxisSelector>();
 
         }
         assert(0);
@@ -647,8 +647,19 @@ void WRITE(int pin, uint8_t v) {
                 return;
             case SDSS:
                 // SPI select of sdcard
+                // printf("SD chip select: %d\n");
+                sdChipSelect = v;
+                return;
+            case HOTEND_FAN_PIN:
+                // Switch hotend fan
+                if (v)
+                    printf("ddprintSim.cpp:WRITE(): hotend fan switched on...\n");
+                else
+                    printf("ddprintSim.cpp:WRITE(): hotend fan switched off...\n");
                 return;
         }
+
+        printf("ddprintSim.cpp:WRITE() write %d to pin %d not handled!\n", v, pin);
         assert(0);
 }
 
@@ -742,13 +753,14 @@ void pinMode(int pin, uint8_t m) {
         case PS_ON_PIN:
             printf("Setting PS_ON_PIN to mode %d\n", m);
             break;
+        case SDSS:
+            assert(m == OUTPUT);
+            break;
         default:
+            printf("pinMode(): unhandled pin: %d\n", pin);
             assert(0);
     }
 }
-
-void digitalWrite(int pin, uint8_t m)
-{ assert(0); }
 
 void analogWrite(int pin, uint8_t m) {
     switch(pin) {
@@ -797,8 +809,6 @@ int TIMSK0 = 1;
 int ADC = 250;
 int ADCSRB = 0;
 int ADMUX = 0;
-int SPCR = 0;
-int SPSR = 0;
 
 // extern uint8_t __eeprom__storage[4096];
 static uint8_t * __eeprom__storage = NULL;
@@ -1230,4 +1240,9 @@ bool lcd_lib_button_pressed = 0; // ENCODER_NO_SELECTION;
 int16_t lcd_lib_encoder_pos;
  
 void watchdog_reset() { watchdogCalled = time(NULL); }
+
+uint16_t freeRam () {
+    return 9999;
+}
+
 

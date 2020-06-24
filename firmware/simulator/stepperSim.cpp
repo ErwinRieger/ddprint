@@ -20,13 +20,13 @@
 #include "Configuration.h"
 #include "stepper.h"
 
-StepperSim< XMove > ssx(X_AXIS);
+StepperSim< XAxisSelector > ssx(X_AXIS);
 // Start kopf hinten
-StepperSim< YMove > ssy(Y_AXIS, Y_MAX_POS);
+StepperSim< YAxisSelector > ssy(Y_AXIS, Y_MAX_POS);
 // Start buildplate unten
-StepperSim< ZMove > ssz(Z_AXIS, Z_MAX_POS);
+StepperSim< ZAxisSelector > ssz(Z_AXIS, Z_MAX_POS);
 
-StepperSim< EMove > sse(E_AXIS, 0);
+StepperSim< EAxisSelector > sse(E_AXIS, 0);
 
 // StepperSim<>::viewFile = NULL;
 // int StepperSim<>::layerNum = 0;

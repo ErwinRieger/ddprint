@@ -22,6 +22,7 @@
 
 RegUCSR0A UCSR0A;
 RegUDR0 UDR0;
+RegSPDR SPDR;
 
 void cli() {};
 void sei() {};
@@ -65,4 +66,10 @@ uint8_t PORTK = 0;
 uint8_t DDRL = 0;
 uint8_t PINL = 0;
 uint8_t PORTL = 0;
+
+// Resolve references for arduino-1.6.13/hardware/arduino/avr/libraries/SPI/src/SPI.h,
+// those registers are not emulated, the calls to higher level
+// functions are intercepted (spiRec(), spiSend(), Sd2Card methods).
+int SPCR = 0;
+int SPSR = 0;
 

@@ -19,8 +19,7 @@
 
 
 #include "ddprint.h"
-// #include "swapdev.h"
-//
+#include "SdCard/SdSpiCard.h"
 
 
 static FILE* swapFile = NULL;
@@ -28,24 +27,38 @@ uint32_t sdWritePos = 0;
 
 int sdSpiCommand = -1; // no command
 
-uint8_t Sd2Card::cardCommand(uint8_t cmd, uint32_t arg) {
+uint8_t SdSpiCard::cardCommand(uint8_t cmd, uint32_t arg) {
 
     assert (sdSpiCommand == -1);
 
+    sdSpiCommand = cmd;
+
+    WRITE(SDSS, LOW); // spiStart()
+
     if (cmd == CMD13) {
-        sdSpiCommand = CMD13;
+
+        // set flag for following m_spi.receive() call
+        SPDR.prepareReceive(0);
+        return 0; // OK
+    }
+    else if (cmd == CMD24) {
+
+        // printf("SdSpiCard::cardCommand(CMD24), write pos: %d\n", arg);
+        sdWritePos = arg;
         return 0; // OK
     }
 
     assert(0);
 }
 
-uint8_t Sd2Card::initEC(uint8_t sckRateID, uint8_t chipSelectPin) {
+bool SdSpiCard::begin(SdSpiAltDriver* m_spi, unsigned char chipSelectPin, SPISettings sckRateID) {
+
+    printf("SdSpiCard::begin(), m_spi: %p, select pin: %d, settings: %d\n", m_spi, chipSelectPin, sckRateID);
 
     assert(swapFile == NULL);
 
-    errorCode_ = 0;
-    type_ = 3;
+    // done in SdSpiCard(): m_errorCode = 0;
+    type(SD_CARD_TYPE_SDHC);
 
     //
     // XXX not possible to open a file with O_CREAT | O_APPEND | O_RDWR | O_TRUNC with fopen.
@@ -56,12 +69,13 @@ uint8_t Sd2Card::initEC(uint8_t sckRateID, uint8_t chipSelectPin) {
     // fclose(swapFile);
 
     // assert((swapFile = fopen("swapfile", "a+")) != NULL);
-    assert((swapFile = fopen("swapfile", "w+")) != NULL);
+    assert((swapFile = fopen("simulator/swapfile", "w+")) != NULL);
 
-    return 0;
+    m_spi->begin(chipSelectPin);
+    return true;
 }
 
-uint8_t Sd2Card::writeDataEC(uint8_t token, const uint8_t* src) {
+bool SdSpiCard::writeData(uint8_t token, const uint8_t* src) {
 
     // printf("Write pos: 0x%x\n", sdWritePos);
 
@@ -73,10 +87,12 @@ uint8_t Sd2Card::writeDataEC(uint8_t token, const uint8_t* src) {
     
     fflush(swapFile);
 
-    return written - 512;
+    sdSpiCommand = -1; // CMD24 done
+
+    return written == 512;
 }
 
-uint8_t Sd2Card::readBlockEC(uint32_t blockNumber, uint8_t* dst) {
+bool SdSpiCard::readBlock(uint32_t blockNumber, uint8_t* dst) {
 
     // return SD_CARD_ERROR_CMD17;
 
@@ -89,15 +105,23 @@ uint8_t Sd2Card::readBlockEC(uint32_t blockNumber, uint8_t* dst) {
 }
 
 //------------------------------------------------------------------------------
-uint32_t Sd2Card::cardSize() {
+uint32_t SdSpiCard::cardSize() {
   return 4194304; // 2Gb in 512byte blocks
 }
 //------------------------------------------------------------------------------
-uint8_t Sd2Card::eraseEC(uint32_t firstBlock, uint32_t lastBlock) {
-    return 0;
+bool SdSpiCard::erase(uint32_t firstBlock, uint32_t lastBlock) {
+  printf("SdSpiCard::eraseSingleBlockEnable(): erasing %d blocks, starting with block %d.\n", lastBlock-firstBlock, firstBlock);
+  return true;
 }
 //------------------------------------------------------------------------------
-uint8_t Sd2Card::eraseSingleBlockEnableEC() {
-    return 0;
+bool SdSpiCard::eraseSingleBlockEnable() {
+    printf("SdSpiCard::eraseSingleBlockEnable() called.\n");
+    return true;
 }
 //------------------------------------------------------------------------------
+bool SdSpiCard::isBusy() { return false; }
+
+void SdSpiCard::spiStop() {
+    digitalWrite(SDSS, HIGH);
+}
+
