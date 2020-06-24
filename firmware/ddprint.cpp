@@ -645,7 +645,7 @@ bool FillBufferTask::Run() {
                     PT_WAIT_WHILE(stepBuffer.full());
                     stepBuffer.push(sd);
 
-                    sd.dirBits &= ~0x80; // clear set-direction bit
+                    sd.dirBits &= ~0x80; // clear set-direction bit (after push)
 
                     if (flags & AccelByteFlag) {
 
@@ -692,7 +692,7 @@ bool FillBufferTask::Run() {
                     PT_WAIT_WHILE(stepBuffer.full());
                     stepBuffer.push(sd);
 
-                    sd.dirBits &= ~0x80; // clear set-direction bit
+                    sd.dirBits &= ~0x80; // clear set-direction bit (after push)
 
                     for (; step > 1; step--) {
 
@@ -717,7 +717,7 @@ bool FillBufferTask::Run() {
                     PT_WAIT_WHILE(stepBuffer.full());
                     stepBuffer.push(sd);
 
-                    sd.dirBits &= ~0x80; // clear set-direction bit
+                    sd.dirBits &= ~0x80; // clear set-direction bit (after push)
 
                     if (flags & DecelByteFlag) {
 
@@ -850,7 +850,7 @@ bool FillBufferTask::Run() {
                 PT_WAIT_WHILE(stepBuffer.full());
                 stepBuffer.push(sd);
 
-                sd.dirBits &= ~0x80; // clear set-direction bit
+                sd.dirBits &= ~0x80; // clear set-direction bit (after push)
 
                 if (flags & RawByteFlag) {
                     //
@@ -931,7 +931,6 @@ bool FillBufferTask::Run() {
 
                 nDwell = FromBuf(uint16_t, sDReader.readData);
 
-                sd.dirBits  = 0;     // We don't step
                 sd.stepBits = 0;     // We don't step
                 sd.timer    = 50000; // 25 mS for 2 mhz clock
 
@@ -1003,7 +1002,7 @@ bool FillBufferTask::Run() {
 
 // ###################################
 
-                pulse = min(pulseTime, (uint32_t)printer.getTu());
+                pulse = STD min(pulseTime, (uint32_t)printer.getTu());
                 pulseEnd = millis() + pulse;
 
                 pulseTime -= pulse;
@@ -1130,6 +1129,25 @@ void Printer::sendGenericMessage(const char *s, uint8_t l) {
     txBuffer.sendResponseUint8(GenericMessage);
     txBuffer.sendResponseString(s, l);
     txBuffer.sendResponseEnd();
+}
+
+void Printer::runHotEndFan() {
+
+#if defined(HOTEND_FAN_PIN)
+    if ((hotEndFanOn == false) && (current_temperature[0] >= 40.0)) {
+
+        // Hotend fan on
+        WRITE(HOTEND_FAN_PIN, HIGH);
+        hotEndFanOn = true;
+    }
+    else if ((hotEndFanOn == true) && (current_temperature[0] <= 35.0)) {
+
+        // Hotend fan off
+        WRITE(HOTEND_FAN_PIN, LOW);
+        hotEndFanOn = false;
+    }
+#endif
+
 }
 
 void Printer::cmdEot() {
@@ -2099,19 +2117,10 @@ FWINLINE void loop() {
         //
         tempControl.Run();
 
-#if defined(HOTEND_FAN_PIN)
         //
         // Check new temperature and turn on hotend fan
         //
-        if (current_temperature[0] >= 40.0) {
-            // Hotend fan on
-            WRITE(HOTEND_FAN_PIN, HIGH);
-        }
-        if (current_temperature[0] <= 35.0) {
-            // Hotend fan off
-            WRITE(HOTEND_FAN_PIN, LOW);
-        }
-#endif
+        printer.runHotEndFan();
 
         // Run timer
         timer.run(m);
