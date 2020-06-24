@@ -31,12 +31,6 @@
 // Note: this includes OUR version of SPI.h:
 #include "SdCard/SdSpiCard.h"
 
-#if defined(DDSim)
-    #define STD std::
-#else
-    #define STD
-#endif
-
 // Redefined here from ddcommands.h
 #define RespSDReadError         9  
 #define RespSDWriteError       12 
