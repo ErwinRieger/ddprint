@@ -52,6 +52,7 @@ void killMessage(uint8_t errorCode, uint8_t errorParam1, uint8_t errorParam2, co
 
 #endif
 
+#if defined(AVR)
 //
 // Get free memory, from https://playground.arduino.cc/Code/AvailableMemory/
 //
@@ -60,7 +61,7 @@ inline uint16_t freeRam () {
     int v; 
     return (uint16_t) &v - (__brkval == 0 ? (int) &__heap_start : (int) __brkval); 
 }
-
+#endif
 
 
 
