@@ -1,11 +1,12 @@
 
 
 
+SDFAT = ../../SdFat-1.0.5
 
 HARDWARE_MOTHERBOARD ?= 72
 
-# /usr/share/arduino/hardware/arduino/variants/mega
-ARDUINO_INSTALL_DIR = /usr/share/arduino
+ARDUINO_INSTALL_DIR = ../../arduino-1.6.13
+
 HARDWARE_SUB_VARIANT ?= mega
 
 # PROF = -g -pg -DPROFILING -fno-omit-frame-pointer -msoft-float
@@ -17,7 +18,7 @@ F_CPU ?= 16000000
 DEFINES =  -DDDSim $(PROF) -I./simulator -I. -DMOTHERBOARD=${HARDWARE_MOTHERBOARD} -D__AVR__ -D__ATTR_PROGMEM__=
 DEFINES += -DF_CPU=$(F_CPU) -D__OPTIMIZE__ -D__AVR_ATmega2560__ -DARDUINO=100 
 DEFINES += -fpermissive -Wno-write-strings -g -I$(ARDUINO_INSTALL_DIR)/hardware/arduino/variants/$(HARDWARE_SUB_VARIANT)
-
+DEFINES += -I$(SDFAT)/src -I$(ARDUINO_INSTALL_DIR)/hardware/arduino/avr/libraries
 
 # Gpp = gcc
 srcs = $(wildcard *.cpp) $(wildcard simulator/*.cpp)
