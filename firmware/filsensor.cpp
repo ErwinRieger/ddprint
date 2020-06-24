@@ -299,7 +299,7 @@ FilamentSensorEMS22::FilamentSensorEMS22() {
 
 void FilamentSensorEMS22::init() {
 
-    lastASteps = LONG_MAX; // marker for not set
+    lastASteps = (int32_t)LONG_MAX; // marker for not set
 
     grip = 1.0;
 }
