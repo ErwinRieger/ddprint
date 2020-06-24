@@ -22,6 +22,7 @@
 #include "config.h"
 #include "Configuration.h"
 #include "Protothread.h"
+#include "mdebug.h"
 
 // Window size running average of temperature.
 // Poll rate is 10ms (see ddprint.cpp).
@@ -133,7 +134,7 @@ class TempControl: public Protothread
             eSumLimit = 255.0 / ((ki * TIMER100MS) / 1000.0);
         }
         uint8_t getPwmOutput() { return (uint8_t)
-                    min( max(pid_output, 0) + pwmValueOverride, 255 ); }
+                    STD min( max(pid_output, 0) + pwmValueOverride, 255 ); }
 };
 
 extern TempControl tempControl;
