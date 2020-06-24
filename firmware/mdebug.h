@@ -40,6 +40,9 @@ void killMessage(uint8_t errorCode, uint8_t errorParam1, uint8_t errorParam2, co
     #define FWINLINE inline
 
     #define printf ERROR_PRINTF_USED
+
+    #define STD
+
 #else
 
     #include <assert.h>
@@ -49,6 +52,8 @@ void killMessage(uint8_t errorCode, uint8_t errorParam1, uint8_t errorParam2, co
     #define simassert assert
 
     #define FWINLINE  /* */
+
+    #define STD std::
 
 #endif
 
