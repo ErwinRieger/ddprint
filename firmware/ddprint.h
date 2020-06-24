@@ -76,6 +76,8 @@ class Printer {
 
         uint8_t nGenericMessage;
 
+        bool hotEndFanOn;
+
     public:
 
         // State enum
@@ -104,6 +106,7 @@ class Printer {
         uint8_t getP0pwm() { return p0pwm; }
         uint16_t getTu() { return Tu; }
         uint8_t getIncreaseTemp(uint8_t heater) { return increaseTemp[heater]; }
+        void runHotEndFan();
 
         void cmdMove(MoveType);
         void cmdEot();
