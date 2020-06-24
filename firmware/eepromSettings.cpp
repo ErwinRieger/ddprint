@@ -69,7 +69,7 @@ void setPrinterName(char *name, uint8_t len) {
 
     memset(es.printerName, 0, sizeof(es.printerName));
 
-    strncpy(es.printerName, name, min(len, sizeof(es.printerName)));
+    strncpy(es.printerName, name, STD min(len, (uint8_t)sizeof(es.printerName)));
 
     eeprom_write_block(&es, (void*)EEPROM_OFFSET, sizeof(EepromSettings));
 
