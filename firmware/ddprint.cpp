@@ -1230,7 +1230,7 @@ void Printer::cmdGetFSReadings(uint8_t nReadings) {
 
     while (nReadings--) {
 
-        txBuffer.sendResponseValue(filsensorReadings[start].timeStamp);
+        txBuffer.sendResponseValue((uint32_t)filsensorReadings[start].timeStamp);
         txBuffer.sendResponseInt16(filsensorReadings[start].dy);
         start++;
     }
