@@ -1786,8 +1786,6 @@ def measureTempFlowrateCurve(args, parser):
     # XXX speed too high for small nozzles!?
     feedrate = (args.flowrate or 1.0) / aFilament
 
-    tWait = 0.1
-
     dt = PrinterProfile.getFilSensorInterval()
     steps_per_mm = PrinterProfile.getStepsPerMM(A_AXIS)
     pcal = PrinterProfile.get().getFilSensorCalibration()
@@ -1875,7 +1873,7 @@ def measureTempFlowrateCurve(args, parser):
                 data.append( (lastGoodFlowrate, pAvg, t1Avg) )
                 break
 
-        time.sleep(tWait)
+        time.sleep(dt)
 
     ####################################################################################################
 
@@ -2158,8 +2156,263 @@ def sizeof_fmt(num):
 
 
 
+####################################################################################################
+
+# 
+# Ablauf messung:
+# 
+# * starttemp: midrange (maxtemp+goodtemp) / 2
+# * flowrate: FR0pwm (zunächst objkt so slicen)
+#   -> für esun black petg: speed = FR0pwm / (nozzle*lh) = 11.6253 / (0.8*0.15) = 95 mm/s
+#   -> für dasfilament white pla: speed = FR0pwm / (nozzle*lh) = 9.3865 / (0.8*0.15) = 95 mm/s
+# * druck von erstem layer abwarten -> getpos()
+# * ab dem zweitem layer temperatur schrittweise absenken und grip überwachen
+# * abbruch falls avg(grip) < 95%, das ist dann neues P0temp (P0pwm wird errechnet, da wir zur veeinfachung der messung
+#   die stabilisierung der tempregelung nicht abwarten).
+
+
+def xstartPrint(args, parser, planner, printer, printerProfile, t1, gfile):
+
+        commonInit(args, printer, planner, parser)
+
+        t0 = planner.matProfile.getBedTemp()
+        t0Wait = min(t0, printerProfile.getWeakPowerBedTemp())
+
+        # Send heat up  command
+        print "\nHeating bed (t0: %d)...\n" % t0
+        printer.heatUp(HeaterBed, t0, log=True)
+
+        (f, _) = parser.preParse(gfile, args.baud)
+
+        checkTime = time.time() + 2
+
+        StateWeakPreheat = 0
+        StatePreload = 1
+        StateHeating = 2
+        StateStarting = 3
+
+        state = StateWeakPreheat
+
+        while True:
+
+            if f:
+                line = f.readline()
+                if line:
+                    parser.execute_line(line)
+                else:
+                    # Reading done
+
+                    print "Parsed all gcode lines."
+                    planner.finishMoves()
+                    printer.sendCommand(CmdEOT)
+                    f = None
+
+            if time.time() > checkTime:
+
+                status = printer.getStatus()
+                printer.ppStatus(status)
+
+                #
+                # Check temp and start print
+                #
+                if state == StateWeakPreheat:
+                    
+                    if status["t0"] >= t0Wait:
+                        # Start pre-heating of hotend, bed is still heating
+                        print "\nPre-Heating extruder %.2f (t1: %d)...\n" % (t1/2.0, t1)
+                        printer.heatUp(HeaterEx1, t1/2)
+                        state = StatePreload
+
+                elif state == StatePreload:
+
+                    if (not f) and (status["t0"] >= t0):
+                        # Heat hotend further if bed is at temp
+                        print "\nHeating extruder (t1: %d)...\n" % int(round(t1*0.9))
+                        printer.heatUp(HeaterEx1, int(round(t1*0.9)))
+                        state = StateHeating
+
+                elif state == StateHeating:
+
+                    # Preload done, bed is at temp, now heating hotend
+                    if status["t1"] >= (t1*0.9-2):
+                        print "\nHeating extruder (t1: %d)...\n" % t1
+                        printer.heatUp(HeaterEx1, t1)
+                        state = StateStarting
+
+                elif state == StateStarting:
+
+                    if status["t1"] >= (t1-2):
+
+                        print "\nStarting print...\n"
+
+                        # Send print start command
+                        printer.startPrint()
+
+                        # printStarted = True
+                        break
+
+                checkTime = time.time() + 2
+
+        """
+        print "Print finished, duration:", printer.getPrintDuration()
+
+        printer.coolDown(HeaterEx1)
+        printer.coolDown(HeaterBed)
+
+        ddhome.home(args, printer, planner, parser)
+
+        printer.sendCommand(CmdDisableSteppers)
+
+        if not args.noCoolDown:
+            printer.coolDown(HeaterEx1, wait=150, log=True)
+
+        # Stop hotend fan
+        printer.sendCommandParamV(CmdFanSpeed, [packedvalue.uint8_t(0)])
+
+        # Exit simulator for profiling
+        # printer.sendCommand(CmdExit)
+        """
+
+def measureTempFlowrateCurve2(args, parser, planner, printer, printerProfile):
+
+    # Hardcorded values
+
+    # layerheight
+    lh = 0.15
+    goodtemp = planner.matProfile.getHotendGoodTemp()
+    t1 = (goodtemp + planner.matProfile.getHotendMaxTemp()) / 2
+
+    ####################################################################################################
+    dt = PrinterProfile.getFilSensorInterval()
+    timeConstant = printerProfile.getTu() + printerProfile.getTg() 
+
+    # Averaging window, 1/4 of hotend timeconstant timeConstant
+    nAvg = int(round(timeConstant / 4))
+    print "navg:", nAvg
+
+    # Running average of hotend temperature and grip
+    tempAvg = movingavg.MovingAvg(nAvg, t1)
+    gripAvg = movingavg.MovingAvg(nAvg, 1.0)
+
+    minGrip = 0.90
+
+    ####################################################################################################
+
+
+    # Disable flowrate limit
+    printer.sendCommandParamV(CmdEnableFRLimit, [packedvalue.uint8_t(0)])
+
+    # Disable temp-flowrate limit
+    downloadDummyTempTable(printer)
+
+    #
+    # Start print:
+    #
+    xstartPrint(args, parser, planner, printer, printerProfile, t1, "/3dmodels/um/extrusion_test/fr0_goodtemp.gcode")
+
+    #
+    # Wait for second layer
+    #
+    curPosMM = getVirtualPos(parser)
+    while curPosMM.Z >= lh:
+        print "waiting for first layer, Z pos:", curPosMM.Z
+        time.sleep(1)
+        curPosMM = getVirtualPos(parser)
+
+    while curPosMM.Z < lh:
+        print "waiting for second layer, Z pos:", curPosMM.Z
+        printer.ppStatus(printer.getStatus())
+        time.sleep(1)
+        curPosMM = getVirtualPos(parser)
+
+    tempdec = float(t1 - goodtemp) / timeConstant
+
+    #
+    # Decrease temp while monitoring feeder slippage
+    #
+    t = t1
+    while True:
+
+        status = printer.getStatus()
+        printer.ppStatus(status)
+
+        actT1 = status["t1"]
+        tempAvg.add(actT1)
+
+        grip = 1.0
+        if status["slippage"]:
+          grip = 1.0 / status["slippage"]
+        gripAvg.add(grip)
+
+        t1Avg = tempAvg.mean()
+        gAvg = gripAvg.mean()
+        print "temp/grip avg:", t1Avg, gAvg, nAvg, tempAvg.index
+
+        if tempAvg.valid():
+
+            t -= tempdec
+            if int(t) != status["targetT1"]:
+                print "setting new temp:", int(t)
+                printer.heatUp(HeaterEx1, int(t))
+
+            if gAvg < minGrip:
+                print "break on mingrip...", minGrip
+                break
+
+            if t1Avg < goodtemp:
+                print "break on temp...", goodtemp
+                break
+
+        time.sleep(1)
+
+    printer.coolDown(HeaterBed)
+    printer.coolDown(HeaterEx1)
+
+    # done
+    return
+
+
+    ####################################################################################################
+
+    printer.coolDown(HeaterEx1)
+
+    # Slow down E move
+    while feedrate > 1:
+        feedrate -= 0.1
+        printer.sendCommandParamV(CmdSetContTimer, [packedvalue.uint16_t(eTimerValue(planner, feedrate))])
+        time.sleep(0.1)
+
+    # Stop continuos e-mode
+    printer.sendCommandParamV(CmdContinuousE, [packedvalue.uint16_t(0)])
+
+    # Re-enable flowrate limit
+    printer.sendCommandParamV(CmdEnableFRLimit, [packedvalue.uint8_t(1)])
+
+    ####################################################################################################
+    dfr = data[1][0] - data[0][0]
+    dpwm = data[1][1] - data[0][1]
+    dtemp = data[1][2] - data[0][2]
+
+    # todo: create template material profile with name from commandline
+    print "# Material properties:"
+    print "# a1 for pwm"
+    print '"Kpwm": %.4f,' % (dfr / dpwm)
+    print "# a1 for temp"
+    print '"Ktemp": %.4f,' % (dfr / dtemp)
+
+    print "# a0 for pwm"
+    print '"P0pwm": %.4f,' % data[0][1]
+    print "# a0 for temp"
+    print '"P0temp": %.4f,' % data[0][2]
+
+    print "# feedrate at a0"
+    print '"FR0pwm": %.4f,' % data[0][0]
+
+    printer.coolDown(HeaterEx1, wait=100, log=True)
 
 
 
 
 
+
+####################################################################################################

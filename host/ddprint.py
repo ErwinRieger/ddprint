@@ -194,6 +194,11 @@ def main():
     sp.add_argument("mat", help="Name of generic material profile to use [pla, abs...].")
     sp.add_argument("flowrate", action="store", help="Start-flowrate in mm³/s.", type=float)
 
+    sp = subparsers.add_parser("measureTempFlowrateCurve2", help=u"Determine temperature/flowrate properties of filament.")
+    sp.add_argument("nozzle", help="Name of nozzle profile to use [nozzle40, nozzle80...].")
+    sp.add_argument("mat", help="Name of generic material profile to use [pla, abs...].")
+    sp.add_argument("flowrate", action="store", help="Start-flowrate in mm³/s.", type=float)
+
     sp = subparsers.add_parser("moverel", help=u"Debug: Move axis manually, relative coords.")
     sp.add_argument("axis", help="Axis (XYZAB).", type=str)
     sp.add_argument("distance", action="store", help="Move-distance (+/-) in mm.", type=float)
@@ -312,7 +317,6 @@ def main():
         StateHeating = 2
         StateStarting = 3
         StatePrinting = 4
-        # StateDone = 5
         state = StateWeakPreheat
 
         # for line in f:
@@ -452,6 +456,11 @@ def main():
 
         (parser, _, _, _) = initParser(args, mode=args.mode)
         util.measureTempFlowrateCurve(args, parser)
+
+    elif args.mode == 'measureTempFlowrateCurve2':
+
+        (parser, planner, printer, printerProfile) = initParser(args, mode=args.mode)
+        util.measureTempFlowrateCurve2(args, parser, planner, printer, printerProfile)
 
     elif args.mode == 'moverel':
 

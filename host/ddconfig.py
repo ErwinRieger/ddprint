@@ -29,7 +29,7 @@ debugAutoTemp = True
 #
 # Enable type checks (see ddebug.py)
 #
-debugTypes = True
+debugTypes = False
 
 #
 # Enable mathplotlib plotting of planned paths
