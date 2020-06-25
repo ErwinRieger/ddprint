@@ -93,8 +93,7 @@ class ProfileBase(object):
         except IOError:
             pass
 
-        print "\nERROR: Profile ", name, " not found"
-        assert(0)
+        raise Exception("Profile %s not found." % name)
 
     def override(self, key, value):
         self.values[key] = value

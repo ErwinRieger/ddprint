@@ -27,10 +27,10 @@ import argparse
 import ddprint, stoppableThread, ddhome, movingavg
 import ddprintutil as util
 
-from serial import SerialException
+# from serial import SerialException
 from ddprintcommands import *
 from ddprintstates import *
-from ddprofile import MatProfile, PrinterProfile, NozzleProfile
+from ddprofile import PrinterProfile, NozzleProfile
 from ddprinter import FatalPrinterError
 from ddprintconstants import A_AXIS
 
@@ -116,13 +116,23 @@ class MainForm(npyscreen.FormBaseNew):
                 self.parent.printThread.stop()
                 return self.parent.prepareStopMove()
     
-    def msgBox(self, msg):
-        npyscreen.notify_confirm(msg)
+    def msgBox(self, msg, wide=False):
+        npyscreen.notify_confirm(msg, wide=wide)
 
-    def quit(self, message=None):
+    # Display message and quit on fatal error
+    def quit(self, message="", exception=None, traceback=None):
+
+        wide = False
+        if exception:
+            wide = True
+            message += "\nException: " + str(exception) 
+
+        if traceback:
+            wide = True
+            message += "\n" + traceback
 
         if message:
-            self.msgBox(message)
+            self.msgBox(message, wide=True)
 
         return self.exit_editing()
 
@@ -319,6 +329,8 @@ class MainForm(npyscreen.FormBaseNew):
 
     def printWorker(self):
 
+      try:
+
         parser = argparse.ArgumentParser(description='%s, Direct Drive USB Print.' % sys.argv[0])
         parser.add_argument("-d", dest="device", action="store", type=str, help="Device to use, default: /dev/ttyACM0.", default="/dev/ttyACM0")
         parser.add_argument("-b", dest="baud", action="store", type=int, help="Baudrate, default 500000.", default=500000)
@@ -344,13 +356,17 @@ class MainForm(npyscreen.FormBaseNew):
 
         # print "args: ", self.args
 
-        (self.parser, self.planner, self.printer, self.printerProfile) = ddprint.initParser(self.args, gui=self)
-        # util.commonInit(self.args, self.printer, self.planner, self.parser)
+        try:
+            (self.parser, self.planner, self.printer, self.printerProfile) = ddprint.initParser(self.args, gui=self)
+        except IOError, ex:
+            msg = "Can't open serial device '%s' (baudrate: %d)." % (self.args.device, self.args.baud)
+            self.guiQueue.put(SyncCall(self.quit, msg, ex))
+            return
 
-        self.mat_t0 = MatProfile.getBedTemp()
-        self.mat_t0_reduced = MatProfile.getBedTempReduced()
+        self.mat_t0 = self.planner.matProfile.getBedTemp()
+        self.mat_t0_reduced = self.planner.matProfile.getBedTempReduced()
         self.mat_t0_wait = self.printerProfile.getWeakPowerBedTemp()
-        self.mat_t1 = MatProfile.getHotendGoodTemp() + self.planner.l0TempIncrease
+        self.mat_t1 = self.planner.matProfile.getHotendGoodTemp() + self.planner.l0TempIncrease
 
         self.guiQueue.put(SyncCallUpdate(self.printerProfileName.set_value, self.printerProfile.name))
         self.guiQueue.put(SyncCallUpdate(self.nozzleProfile.set_value, self.args.nozzle))
@@ -362,12 +378,12 @@ class MainForm(npyscreen.FormBaseNew):
         self.guiQueue.put(SyncCallUpdate(self.kAdvance.set_value, self.planner.advance.getKAdv()))
         self.guiQueue.put(SyncCallUpdate(self.fn.set_value, self.args.file))
         
-        try:
-            util.commonInit(self.args, self.printer, self.planner, self.parser)
-        except SerialException:
-            msg = "Can't open serial device '%s' (baudrate: %d)!\n\nPress OK to exit." % (self.args.device, self.args.baud)
-            self.guiQueue.put(SyncCall(self.quit, msg))
-            return
+        # try:
+        util.commonInit(self.args, self.printer, self.planner, self.parser)
+        # except SerialException, ex:
+            # msg = "Can't open serial device '%s' (baudrate: %d)!" % (self.args.device, self.args.baud)
+            # self.guiQueue.put(SyncCall(self.quit, msg, ex))
+            # return
 
         while True:
 
@@ -396,6 +412,10 @@ class MainForm(npyscreen.FormBaseNew):
             except stoppableThread.StopThread:
                 self.printThread.incStopCount()
                 self.log("caught StopThread, continue....")
+
+      except Exception, ex:
+          self.guiQueue.put(SyncCall(self.quit, "", ex, traceback.format_exc()))
+          return
 
     def updateTemps(self, t0, t1, targetT1):
 
@@ -480,7 +500,7 @@ class MainForm(npyscreen.FormBaseNew):
             deltaTime = t - self.lastTime
 
             deltaEmm = float(deltaE)/e_steps_per_mm
-            matArea = MatProfile.getMatArea()
+            matArea = self.planner.matProfile.getMatArea()
 
             flowrate = (deltaEmm*matArea)/deltaTime
             self.frAvg1.add(flowrate)
@@ -619,7 +639,7 @@ class MainForm(npyscreen.FormBaseNew):
         # Update printlog with used profiles:
         self.printerProfile.logValues("Printer profile", self)
         NozzleProfile.get().logValues("Nozzle profile", self)
-        MatProfile.get().logValues("Material profile", self)
+        self.planner.matProfile.logValues("Material profile", self)
         self.logPrintLog("\n")
 
         self.cmdQueue.put(SyncCall(self.startPrintFile))
@@ -636,7 +656,7 @@ class MainForm(npyscreen.FormBaseNew):
             # self.parser.reset()
             # self.planner.reset()
 
-            util.downloadTempTable(self.printer)
+            util.downloadTempTable(self.printer, self.planner.matProfile)
 
             # Send heat up  command
             self.log( "Pre-Heating bed (t0: %d)...\n" % self.mat_t0)
@@ -649,7 +669,7 @@ class MainForm(npyscreen.FormBaseNew):
             self.log( "Pre-Heating extruder (t1: %d)...\n" % t)
             self.printer.heatUp(HeaterEx1, t)
 
-            (f, preloadLines) = self.parser.preParse(self.fn.get_value(), args.baud)
+            (f, preloadLines) = self.parser.preParse(self.fn.get_value(), self.args.baud)
             
             lineNr = 0
             printStarted = False
@@ -663,7 +683,7 @@ class MainForm(npyscreen.FormBaseNew):
                 #
                 if time.time() > (lastUpdate + 0.5):
 
-                    if lineNr > 1000 and not printStarted:
+                    if lineNr > preloadLines and not printStarted:
 
                         self.log( "Heating bed (t0: %d)...\n" % self.mat_t0 )
                         self.printer.heatUp(HeaterBed, self.mat_t0, wait=self.mat_t0)
@@ -759,8 +779,8 @@ class MainForm(npyscreen.FormBaseNew):
             # Reset line numbers in case of a printer restart.
             self.printer.resetLineNumber()
 
-        except:
-            self.log("printFile(): Caught exception: ", traceback.format_exc())
+        except Exception, ex:
+            self.guiQueue.put(SyncCall(self.quit, "", ex, traceback.format_exc()))
 
     # def stopMove(self):
         # util.stopMove(self.parser)
