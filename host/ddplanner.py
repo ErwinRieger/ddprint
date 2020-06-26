@@ -313,7 +313,7 @@ class PathData (object):
 
             self.ks = self.planner.matProfile.getKpwm(hwVersion, nozzleDiam)
             self.ktemp = self.planner.matProfile.getKtemp(hwVersion, nozzleDiam)
-            self.p0 = self.planner.matProfile._getP0pwm(hwVersion, nozzleDiam) # xxx hardcoded in firmware!
+            self.p0 = self.planner.matProfile.getP0pwm(hwVersion, nozzleDiam) # xxx hardcoded in firmware!
             self.fr0 = self.planner.matProfile.getFR0pwm(hwVersion, nozzleDiam)
 
             self.lastTemp = self.planner.matProfile.getHotendGoodTemp()
@@ -880,6 +880,9 @@ class Planner (object):
         endSpeed = lastMove.endSpeed.speed()
         endSpeed.setSpeed(min(v.feedrate5(), maxEndSpeed))
         lastMove.endSpeed.setSpeed(endSpeed, "planTravelPath() - last move")
+
+        # Mark last move as end-move, for softstop
+        lastMove.isEndMove = True
 
         """
         # Sanity check

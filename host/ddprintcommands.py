@@ -93,6 +93,7 @@ CmdGetFSReadings =   176 # Get last n filsensor readings
 CmdSetTempPWM =      177 # Set PWM value of hotend heater (for filament profile measurement)
 # CmdSetP0pwm   =      178 # Set PWM value of hotend heater (for filament profile measurement)
 # CmdSetTu =           179 # Set Tu timeconstant
+CmdSoftStop    =     180 # Stop printer softly after current path is finished.
 
 CommandNames = {
 }
@@ -164,6 +165,7 @@ for (cmd, cmdName) in [
     (CmdSetTempPWM, "CmdSetTempPWM",),
     # (CmdSetP0pwm, "CmdSetP0pwm",),
     # (CmdSetTu, "CmdSetTu",),
+    (CmdSoftStop, "CmdSoftStop",),
     ]:
 
         insertCommandName(cmd, cmdName)
@@ -172,16 +174,18 @@ for (cmd, cmdName) in [
 # Flag bits for CmdG1x commands
 #
 # Bits 0, 1, 2, 3, 4 reserved for direction bits
-DecelByteFlagBit     = (1 << 5) # 0x20
-AccelByteFlagBit     = (1 << 6) # 0x40
-DirBitsBit           = (1 << 7) # 0x80
-MoveStartBit         = (1 << 8) # 0x100
-MeasureStartBit      = (1 << 9) # 0x200
+DecelByteFlagBit     = (1 << 5)  # 0x20
+AccelByteFlagBit     = (1 << 6)  # 0x40
+DirBitsBit           = (1 << 7)  # 0x80
+MoveStartBit         = (1 << 8)  # 0x100
+MeasureStartBit      = (1 << 9)  # 0x200
+EndMoveBit           = (1 << 10) # 0x400
 # Raw moves
 MoveStartBitRaw      = (1 << 5) # 0x20
 TimerByteFlagBit     = (1 << 6) # 0x40
 DirBitsBitRaw        = (1 << 7) # 0x80
 MeasureStartBitRaw   = (1 << 8) # 0100
+EndMoveBitRaw        = (1 << 9) # 0200
 
 #
 # Response codes

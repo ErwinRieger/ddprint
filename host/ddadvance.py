@@ -307,11 +307,16 @@ class Advance (object):
         path[0].startSpeed.setSpeed(v0, "planPath - startSpeed")
 
         # Last move
+        lastMove = path[-1]
+
         # xxx use same start speed as PrintMove::sanityCheck() here!
-        v0 = path[-1].endSpeed.speed()
+        v0 = lastMove.endSpeed.speed()
 
         v0.setSpeed(0.0)
-        path[-1].endSpeed.setSpeed(v0, "planPath - endSpeed")
+        lastMove.endSpeed.setSpeed(v0, "planPath - endSpeed")
+
+        # Mark last move as end-move, for softstop
+        lastMove.isEndMove = True
 
         prevMove = path[0]
 
