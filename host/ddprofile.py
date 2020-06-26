@@ -196,9 +196,8 @@ class PrinterProfile(ProfileBase):
     def getFeederWheelCircum(cls):
         return cls.getFeederWheelDiam() * math.pi
 
-    @classmethod
-    def getFilSensorCountsPerMM(cls):
-        return cls.getValues()["filSensorCountsPerMM"]
+    def getFilSensorCountsPerMM(self):
+        return self.getValue("filSensorCountsPerMM")
 
     @classmethod
     def getFilSensorInterval(cls):
@@ -338,11 +337,7 @@ class MatProfile(ProfileBase):
         assert(flowrateData["version"] == hwVersion)
         return flowrateData["Ktemp"]
 
-    # @classmethod
-    def getP0pwm(cls, hwVersion, nozzleDiam):
-        return cls.get()._getP0pwm(hwVersion, nozzleDiam);
-
-    def _getP0pwm(self, hwVersion, nozzleDiam):
+    def getP0pwm(self, hwVersion, nozzleDiam):
 
         flowrateData = self.getValuesI()["properties_%d" % (nozzleDiam*100)]
         # Check hardware version
