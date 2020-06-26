@@ -51,8 +51,6 @@ void kill();
 // void kill(const char* msg);
 // void killPGM(const char* msg);
 
-// bool IsStopped();
-// void Stop(uint8_t reasonNr);
 extern void watchdog_reset();
 void setup();
 
@@ -107,6 +105,7 @@ class Printer {
         uint16_t getTu() { return Tu; }
         uint8_t getIncreaseTemp(uint8_t heater) { return increaseTemp[heater]; }
         void runHotEndFan();
+        // void softStop();
 
         void cmdMove(MoveType);
         void cmdEot();
@@ -172,6 +171,7 @@ class FillBufferTask : public Protothread {
         uint16_t nDwell;
 
         bool cmdSync;
+        bool stopRequested;
 
 #if defined(USEExtrusionRateTable)
         // Scaling factor for timerValues to implement temperature speed limit 
@@ -184,6 +184,7 @@ class FillBufferTask : public Protothread {
         FillBufferTask() {
             sd.dirBits = 0;
             cmdSync = false;
+            stopRequested = false;
             pulseEnd = 0;
         }
 
@@ -206,6 +207,9 @@ class FillBufferTask : public Protothread {
 
         // Flush/init swap, swapreader, fillbuffer task and stepbuffer
         void flush();
+
+        // Request a printer soft stop
+        void requestSoftStop() { stopRequested = true; }
 
         //
         // Compute stepper bits, bresenham

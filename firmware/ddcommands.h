@@ -118,6 +118,7 @@
 #define CmdGetFSReadings        176 // Get last n filsensor readings 
 #define CmdSetTempPWM           177 // Set PWM value of hotend heater (for filament profile measurement)
 // #define CmdSetP0pwm             178 // Set P0 PMW value
+#define CmdSoftStop             180 // # Stop printer softly after current path is finished.  
 
 //
 // Response types 

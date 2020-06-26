@@ -435,14 +435,11 @@ bool FillBufferTask::Run() {
             #   * accel steps: naccel*(timer value(16bits)) or 16bits + (naccel-1)*8bits
             #
             #   * decel steps: ndecel*(timer value(16bits)) or 16bits + (naccel-1)*8bits
-            #
             #endif
 
             sDReader.setBytesToRead1();
             PT_WAIT_THREAD(sDReader);
             cmd = *sDReader.readData;
-            // sd.cmd = cmd;
-            // sd.cmd = *sDReader.readData;
 
             switch (cmd) {
 
@@ -752,6 +749,17 @@ bool FillBufferTask::Run() {
                     }
                 }
 
+                if (flags & 0x0400) {
+                    // Endmove, speed is lower or equal jerk speed, so this is a good
+                    // candidate for a printer stop...
+                    if (stopRequested) {
+
+                        // printf("softstopopping... %d bytes\n", stepBuffer.byteSize());
+                        // Empty sdreader but let stepbuffer drain normally: 
+                        sDReader.flush(); // resets swapdev also
+                    }
+                }
+
                 PT_RESTART();
 
             HandleCmdG1Raw:
@@ -893,6 +901,17 @@ bool FillBufferTask::Run() {
                     }
                 }
 
+                if (flags & 0x0200) {
+                    // Endmove, speed is lower or equal jerk speed, so this is a good
+                    // candidate for a printer stop...
+                    if (stopRequested) {
+
+                        // printf("softstopopping... %d bytes\n", stepBuffer.byteSize());
+                        // Empty sdreader but let stepbuffer drain normally: 
+                        sDReader.flush(); // resets swapdev also
+                    }
+                }
+
                 PT_RESTART();
 
             HandleCmdSyncFanSpeed:
@@ -955,6 +974,7 @@ bool FillBufferTask::Run() {
 // 
                 // PT_RESTART();
 
+            // XXX unused:
             HandleCmdSyncHotendPulse:
 
 
@@ -1045,6 +1065,7 @@ void FillBufferTask::flush() {
 
     step = deltaLead;
     cmdSync = false;
+    stopRequested = false;
     Restart();
 
     sDReader.flush(); // resets swapdev also
@@ -1273,6 +1294,9 @@ void Printer::cmdContinuousE(uint16_t timerValue) {
     stepBuffer.continuosMode(timerValue);
 }
 
+/*
+ * Hard stop, without deceleration
+ */
 void Printer::cmdStopMove() {
 
     cmdSetTargetTemp(0, 0);
@@ -1292,6 +1316,26 @@ void Printer::cmdStopMove() {
 
     cmdFanSpeed(0, 0);
 }
+
+// void Printer::softStop() {
+
+    // cmdSetTargetTemp(0, 0);
+    // cmdSetTargetTemp(1, 0);
+// #if EXTRUDERS > 1
+    // cmdSetTargetTemp(2, 0);
+// #endif
+
+    // DISABLE_STEPPER_DRIVER_INTERRUPT();
+    // DISABLE_STEPPER1_DRIVER_INTERRUPT();
+
+    // printerState = StateInit;
+    // moveType = MoveTypeNone;
+
+    // Flush remaining steps
+    // fillBufferTask.flush();
+
+    // cmdFanSpeed(0, 0);
+// }
 
 void Printer::cmdGetTargetTemps() {
 
@@ -1338,6 +1382,8 @@ void Printer::checkMoveFinished() {
              (! swapDev.available()) &&
              (! sDReader.available()) &&
              stepBuffer.empty() ) {
+
+            // printf("finish ok...\n");
 
             DISABLE_STEPPER_DRIVER_INTERRUPT();
             DISABLE_STEPPER1_DRIVER_INTERRUPT();
@@ -1837,6 +1883,10 @@ class UsbCommand : public Protothread {
 #endif
                     case CmdStopMove:
                         printer.cmdStopMove();
+                        txBuffer.sendACK();
+                        break;
+                    case CmdSoftStop:
+                        fillBufferTask.requestSoftStop();
                         txBuffer.sendACK();
                         break;
                     case CmdFanSpeed:
