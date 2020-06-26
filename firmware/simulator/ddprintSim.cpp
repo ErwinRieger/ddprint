@@ -74,6 +74,7 @@ static unsigned long long lastHeater;
 //
 static time_t watchdogCalled = time(NULL);
 static bool wdEnabled = true;
+static bool fastTemps = false;
 
 extern void loop();
 extern bool randomSerialError;
@@ -127,6 +128,7 @@ int main(int argc, char** argv) {
     printf("%s -l: run normal loop(), process serial commands).\n", argv[0]);
     printf("%s -w: disable watchdog (for gdb).\n", argv[0]);
     printf("%s -r: generate random serial errors.\n", argv[0]);
+    printf("%s -t: fast heatup, no delay to reach temperatures.\n", argv[0]);
 
     char ch;
     char * filename = NULL;
@@ -135,7 +137,7 @@ int main(int argc, char** argv) {
 
 ///////////////////////////////////////////////////////////
 
-	while ((ch = getopt(argc, argv, "rlwp:")) != -1)
+	while ((ch = getopt(argc, argv, "rlwtp:")) != -1)
 	switch(ch) {
 	case 'r':
 		randomSerialError = true;
@@ -150,6 +152,13 @@ int main(int argc, char** argv) {
 	case 'w':
         // Disable watchdog for run in debugger
         wdEnabled = false;
+		break;
+	case 't':
+        // Disable watchdog for run in debugger
+        fastTemps = true;
+        printf("fasttemps on\n");
+        heaterADC = 425;
+        bedADC = 300;
 		break;
 	}
 
@@ -397,7 +406,7 @@ void *isrThread(void * data) {
                             if (headHeaterOn)
                                 heaterADC += 2;
                             else 
-                                if (heaterADC > 240)
+                                if (!fastTemps && (heaterADC > 240))
                                     heaterADC -= 1;
                             lastHeater = ts;
                         }
@@ -410,7 +419,7 @@ void *isrThread(void * data) {
                                 // bedADC += 2;
                                 bedADC += 1;
                             else 
-                                if (bedADC > 240)
+                                if (!fastTemps && (bedADC > 240))
                                     bedADC -= 1;
                             lastHeater = ts;
                         }
