@@ -2286,18 +2286,26 @@ def measureTempFlowrateCurve2(args, parser, planner, printer, printerProfile):
     dt = PrinterProfile.getFilSensorInterval()
     timeConstant = printerProfile.getTu() + printerProfile.getTg() 
 
+    hwVersion = PrinterProfile.getHwVersion()
+    nozzleDiam = NozzleProfile.getSize()
+    p0pwm = planner.matProfile.getP0pwm(hwVersion, nozzleDiam) # xxx hardcoded in firmware!
+
+    frsCountsPerMM = printerProfile.getFilSensorCountsPerMM()
+    aFilament = planner.matProfile.getMatArea()
+
     # Averaging window, 1/4 of hotend timeconstant timeConstant
     nAvg = int(round(timeConstant / 4))
     print "navg:", nAvg
 
     # Running average of hotend temperature and grip
     tempAvg = movingavg.MovingAvg(nAvg, t1)
+    pwmAvg = movingavg.MovingAvg(nAvg, p0pwm)
     gripAvg = movingavg.MovingAvg(nAvg, 1.0)
+    flowAvg = movingavg.MovingAvgReadings(nAvg)
 
     minGrip = 0.90
 
     ####################################################################################################
-
 
     # Disable flowrate limit
     printer.sendCommandParamV(CmdEnableFRLimit, [packedvalue.uint8_t(0)])
@@ -2339,14 +2347,25 @@ def measureTempFlowrateCurve2(args, parser, planner, printer, printerProfile):
         actT1 = status["t1"]
         tempAvg.add(actT1)
 
+        pwmAvg.add(status["pwmOutput"])
+
         grip = 1.0
         if status["slippage"]:
           grip = 1.0 / status["slippage"]
         gripAvg.add(grip)
 
         t1Avg = tempAvg.mean()
+        pAvg = pwmAvg.mean()
         gAvg = gripAvg.mean()
-        print "temp/grip avg:", t1Avg, gAvg, nAvg, tempAvg.index
+
+        fsreadings = printer.getFSReadings()
+        flowAvg.addReadings(fsreadings)
+
+        # Current measured flowrate
+        meanShort = flowAvg.mean()
+        frAvg = (meanShort*aFilament) / (frsCountsPerMM*dt)
+
+        print "Avg: temp: %.2f, pwm: %.2f, grip: %.2f, flowrate: %.2f mm³/s" % (t1Avg, pAvg, gAvg, frAvg)
 
         if tempAvg.valid():
 
@@ -2365,54 +2384,39 @@ def measureTempFlowrateCurve2(args, parser, planner, printer, printerProfile):
 
         time.sleep(1)
 
+    ####################################################################################################
+
+    # Stop print
+    print "soft-stop..."
+    printer.sendCommand(CmdSoftStop)
+
+    # Wait till print is cancelled
+    while printer.stateMoving(status):
+        time.sleep(2)
+        status = printer.getStatus()
+        printer.ppStatus(status)
+
     printer.coolDown(HeaterBed)
     printer.coolDown(HeaterEx1)
 
-    # done
-    return
-
+    ddhome.home(args, printer, planner, parser)
 
     ####################################################################################################
 
-    printer.coolDown(HeaterEx1)
-
-    # Slow down E move
-    while feedrate > 1:
-        feedrate -= 0.1
-        printer.sendCommandParamV(CmdSetContTimer, [packedvalue.uint16_t(eTimerValue(planner, feedrate))])
-        time.sleep(0.1)
-
-    # Stop continuos e-mode
-    printer.sendCommandParamV(CmdContinuousE, [packedvalue.uint16_t(0)])
+    print "Avg: P0temp: %.2f, P0pwm: %.2f, grip: %.2f, FR0pwm: %.2f mm³/s" % (t1Avg, pAvg, gAvg, frAvg)
 
     # Re-enable flowrate limit
     printer.sendCommandParamV(CmdEnableFRLimit, [packedvalue.uint8_t(1)])
 
-    ####################################################################################################
-    dfr = data[1][0] - data[0][0]
-    dpwm = data[1][1] - data[0][1]
-    dtemp = data[1][2] - data[0][2]
-
-    # todo: create template material profile with name from commandline
-    print "# Material properties:"
-    print "# a1 for pwm"
-    print '"Kpwm": %.4f,' % (dfr / dpwm)
-    print "# a1 for temp"
-    print '"Ktemp": %.4f,' % (dfr / dtemp)
-
-    print "# a0 for pwm"
-    print '"P0pwm": %.4f,' % data[0][1]
-    print "# a0 for temp"
-    print '"P0temp": %.4f,' % data[0][2]
-
-    print "# feedrate at a0"
-    print '"FR0pwm": %.4f,' % data[0][0]
+    printer.sendCommand(CmdDisableSteppers)
+    printer.sendCommandParamV(CmdFanSpeed, [packedvalue.uint8_t(0)])
 
     printer.coolDown(HeaterEx1, wait=100, log=True)
 
 
-
-
-
-
 ####################################################################################################
+
+
+
+
+
