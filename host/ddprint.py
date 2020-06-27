@@ -143,6 +143,7 @@ def main():
     argParser.add_argument("-t1", dest="t1", action="store", type=int, help="Temp 1 (hotend 1), default comes from mat. profile.")
 
     argParser.add_argument("-kAdvance", dest="kAdvance", action="store", type=float, help="K-Advance factor, default comes from mat. profile.")
+    argParser.add_argument("-autoTemp", dest="autoTemp", action="store", type=bool, help="Use autotemp algorithm, default is True.", default=True)
 
     argParser.add_argument("-startAdvance", dest="startAdvance", action="store", type=float, help="Gradual advance: advance startvalue.")
     argParser.add_argument("-advIncrease", dest="advIncrease", action="store", type=float, help="Gradual advance: increase kAdvance by advIncrease after each step.")
@@ -198,6 +199,7 @@ def main():
     sp.add_argument("nozzle", help="Name of nozzle profile to use [nozzle40, nozzle80...].")
     sp.add_argument("mat", help="Name of generic material profile to use [pla, abs...].")
     sp.add_argument("flowrate", action="store", help="Start-flowrate in mm³/s.", type=float)
+    sp.add_argument("gfile", help="Measurement GCode file.")
 
     sp = subparsers.add_parser("moverel", help=u"Debug: Move axis manually, relative coords.")
     sp.add_argument("axis", help="Axis (XYZAB).", type=str)
@@ -458,6 +460,11 @@ def main():
         util.measureTempFlowrateCurve(args, parser)
 
     elif args.mode == 'measureTempFlowrateCurve2':
+
+        # Disable linear advance
+        args.kAdvance = 0.0
+        # Disable autotemp
+        args.autoTemp = False
 
         (parser, planner, printer, printerProfile) = initParser(args, mode=args.mode)
         util.measureTempFlowrateCurve2(args, parser, planner, printer, printerProfile)
