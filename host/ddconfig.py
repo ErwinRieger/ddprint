@@ -45,12 +45,6 @@ debugPlotLevel = "plotLevelPlanned"
 # Debug (serial) communication between host and firmware.
 debugComm = False
 
-############################################################################
-#
-# AutoTemp algorithm
-#
-UseExtrusionAutoTemp = True
-
 #####################################################################
 #
 # Extrusion slip compensation
