@@ -308,15 +308,41 @@ class PathData (object):
 
         if not planner.travelMovesOnly:
 
+            mp = self.planner.matProfile
+
             hwVersion = PrinterProfile.getHwVersion()
             nozzleDiam = NozzleProfile.getSize()
 
-            self.ks = self.planner.matProfile.getKpwm(hwVersion, nozzleDiam)
-            self.ktemp = self.planner.matProfile.getKtemp(hwVersion, nozzleDiam)
-            self.p0 = self.planner.matProfile.getP0pwm(hwVersion, nozzleDiam) # xxx hardcoded in firmware!
-            self.fr0 = self.planner.matProfile.getFR0pwm(hwVersion, nozzleDiam)
+            self.ks = mp.getKpwm(hwVersion, nozzleDiam)
+            self.ktemp = mp.getKtemp(hwVersion, nozzleDiam)
 
-            self.lastTemp = self.planner.matProfile.getHotendGoodTemp()
+            p0TempAir = mp.getP0temp(hwVersion, nozzleDiam)
+            self.p0Air = mp.getP0pwm(hwVersion, nozzleDiam) # xxx hardcoded in firmware!
+            self.fr0Air = mp.getFR0pwm(hwVersion, nozzleDiam)
+
+            p0TempPrint = mp.getP0tempPrint(hwVersion, nozzleDiam)
+            self.p0Print = mp.getP0pwmPrint(hwVersion, nozzleDiam) # xxx hardcoded in firmware!
+            self.fr0Print = mp.getFR0pwmPrint(hwVersion, nozzleDiam)
+
+            self.goodtemp = mp.getHotendGoodTemp()
+            self.lastTemp = self.goodtemp
+
+            # xxx same as in genTempTable
+
+            # Interpolate best case flowrate (into air)
+            (sleTempBest, slePwmBest) = mp.getFrSLE(hwVersion, nozzleDiam)
+            print "best case flowrate:", sleTempBest, slePwmBest
+
+            # Interpolate worst case flowrate (100% fill with small nozzle)
+            (sleTempPrint, slePwmPrint) = mp.getFrSLEPrint(hwVersion, nozzleDiam)
+            print "worst case flowrate:", sleTempPrint, slePwmPrint
+
+            # XXX simple way, use average of best and worst flowrate:
+            self.tempSLE = util.SLE(x1=0, y1=(sleTempBest.c+sleTempPrint.c)/2, m=sleTempBest.m)
+            self.pwmSLE = util.SLE(x1=0, y1=(slePwmBest.c+slePwmPrint.c)/2, m=slePwmBest.m)
+
+            print "Temp sle:", self.tempSLE, self.tempSLE.y(self.goodtemp)
+            print "Pwm sle:", self.pwmSLE
 
     # Add move to path and update times list
     def notused_updateTimeline(self, move):
@@ -421,21 +447,21 @@ class PathData (object):
         # profile, adjust for:
         # * 10% for into-the-air measurement
         # * 10% for measurement errors and some safety bonus
-        adj = 1.0 + 0.1 #  + 0.1
+        # adj = 1.0 + 0.1 #  + 0.1
 
         # Compute new temp and suggested heater-PWM for this segment
 
-        # Amount of flowrate above floor
-        rateDiff = (avgERate * adj) - self.fr0
+        # Amount of flowrate above floor (that is the flowrate at goodtemp)
+        rateDiff = avgERate - self.tempSLE.y(self.goodtemp)
 
-        # Floor temp
-        baseTemp = self.planner.matProfile.getHotendGoodTemp() + self.planner.l0TempIncrease
         tempIncrease = 0.0
 
         if rateDiff > 0.0:
             # Needed temp increase for this flowrate delta
             tempIncrease = round((rateDiff / self.ktemp) + 0.5)
 
+        # Floor temp
+        baseTemp = self.goodtemp + self.planner.l0TempIncrease
         newTemp = min(baseTemp+tempIncrease, self.planner.matProfile.getHotendMaxTemp())
       
         rateDiff = (newTemp - baseTemp) * self.ktemp
@@ -446,7 +472,7 @@ class PathData (object):
             # Nothing to change...
             return 
 
-        suggestPwm = int(round(self.p0 + (rateDiff / self.ks) + 0.5))
+        suggestPwm = int(round(self.pwmSLE.x( self.tempSLE.y(self.goodtemp) + rateDiff ) + 0.5))
         suggestPwm = min(suggestPwm, 255)
 
         if debugAutoTemp:

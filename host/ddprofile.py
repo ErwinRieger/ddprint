@@ -344,12 +344,26 @@ class MatProfile(ProfileBase):
         assert(flowrateData["version"] == hwVersion)
         return flowrateData["P0pwm"]
 
+    def getP0pwmPrint(self, hwVersion, nozzleDiam):
+
+        flowrateData = self.getValuesI()["properties_%d" % (nozzleDiam*100)]
+        # Check hardware version
+        assert(flowrateData["version"] == hwVersion)
+        return flowrateData["P0pwmPrint"]
+
     def getFR0pwm(self, hwVersion, nozzleDiam):
 
         flowrateData = self.getValuesI()["properties_%d" % (nozzleDiam*100)]
         # Check hardware version
         assert(flowrateData["version"] == hwVersion)
         return flowrateData["FR0pwm"]
+
+    def getFR0pwmPrint(self, hwVersion, nozzleDiam):
+
+        flowrateData = self.getValuesI()["properties_%d" % (nozzleDiam*100)]
+        # Check hardware version
+        assert(flowrateData["version"] == hwVersion)
+        return flowrateData["FR0pwmPrint"]
 
     def getP0temp(self, hwVersion, nozzleDiam):
 
@@ -358,7 +372,14 @@ class MatProfile(ProfileBase):
         assert(flowrateData["version"] == hwVersion)
         return flowrateData["P0temp"]
 
-    def getFlowrateForTemp(self, temp, hwVersion, nozzleDiam):
+    def getP0tempPrint(self, hwVersion, nozzleDiam):
+
+        flowrateData = self.getValuesI()["properties_%d" % (nozzleDiam*100)]
+        # Check hardware version
+        assert(flowrateData["version"] == hwVersion)
+        return flowrateData["P0tempPrint"]
+
+    def xgetFlowrateForTemp(self, temp, hwVersion, nozzleDiam):
 
         FR0pwm= self.getFR0pwm(hwVersion, nozzleDiam)   # a0 feedrate
         Ktemp = self.getKtemp (hwVersion, nozzleDiam)   # a1
@@ -377,6 +398,22 @@ class MatProfile(ProfileBase):
         flowrateData = cls.get().getValues()["properties_%d" % (nozzleDiam*100)]
         assert(flowrateData["version"] == hwVersion)
         return flowrateData["slippage"]
+
+    def getFrSLE(self, hwVersion, nozzleDiam):
+        print "matprofile: todo, add version and nozzle to constructor!"
+        return (
+                util.SLE(x1=self.getP0temp(hwVersion, nozzleDiam), y1=self.getFR0pwm(hwVersion, nozzleDiam), m=self.getKtemp(hwVersion, nozzleDiam)),
+                util.SLE(x1=self.getP0pwm(hwVersion, nozzleDiam), y1=self.getFR0pwm(hwVersion, nozzleDiam), m=self.getKpwm(hwVersion, nozzleDiam))
+                )
+
+    def getFrSLEPrint(self, hwVersion, nozzleDiam):
+
+        return (
+                util.SLE(x1=self.getP0tempPrint(hwVersion, nozzleDiam), y1=self.getFR0pwmPrint(hwVersion, nozzleDiam), m=self.getKtemp(hwVersion, nozzleDiam)),
+                util.SLE(x1=self.getP0pwmPrint(hwVersion, nozzleDiam), y1=self.getFR0pwmPrint(hwVersion, nozzleDiam), m=self.getKpwm(hwVersion, nozzleDiam))
+                )
+
+
 
 ####################################################################################################
 #
