@@ -143,6 +143,10 @@ class Advance (object):
         if self.__kAdv == None:
             self.__kAdv = planner.matProfile.getKAdvI()
 
+        self.useAutoTemp = args.autoTemp
+
+        print "Using kAdvance: %.2f, autoTemp is %s" % (self.__kAdv, self.useAutoTemp)
+
         self.kFeederComp = 0.0
         if UseFeederCompensation:
 
@@ -356,7 +360,7 @@ class Advance (object):
         #
         # Compute auto hotend temperature
         #
-        if UseExtrusionAutoTemp:
+        if self.useAutoTemp:
             self.planner.pathData.doAutoTemp(path)
 
         # """
