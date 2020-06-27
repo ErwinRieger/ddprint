@@ -9,11 +9,17 @@
       "Kpwm": 0.1351,
       # a1 for temp
       "Ktemp": 0.1249,
-      # a0 for temp
+      # a0 for pwm
       "P0pwm": 100.9587,
       # a0 for temp
       "P0temp": 188.3692,
       # feedrate at a0
-      "FR0pwm": 9.3865
+      "FR0pwm": 9.3865,
+      # a0 for pwm while printing
+      "P0pwmPrint": 127.04,
+      # a0 for temp while printing
+      "P0tempPrint": 231.00,
+      # feedrate at a2 while printing
+      "FR0pwmPrint": 8.0
   }
 }
