@@ -198,7 +198,6 @@ def main():
     sp = subparsers.add_parser("measureTempFlowrateCurve2", help=u"Determine temperature/flowrate properties of filament.")
     sp.add_argument("nozzle", help="Name of nozzle profile to use [nozzle40, nozzle80...].")
     sp.add_argument("mat", help="Name of generic material profile to use [pla, abs...].")
-    sp.add_argument("flowrate", action="store", help="Start-flowrate in mm³/s.", type=float)
     sp.add_argument("gfile", help="Measurement GCode file.")
 
     sp = subparsers.add_parser("moverel", help=u"Debug: Move axis manually, relative coords.")
@@ -233,7 +232,7 @@ def main():
 
     sp = subparsers.add_parser("getTemps", help=u"Get current temperatures (Bed, Extruder1, [Extruder2]).")
 
-    # sp = subparsers.add_parser("getTempTable", help=u"Get temperature-speed table from printer, print it to stdout and to /tmp/temptable_printer.txt.")
+    sp = subparsers.add_parser("getTempTable", help=u"Get temperature-speed table from printer, print it to stdout and to /tmp/temptable_printer.txt.")
 
     sp = subparsers.add_parser("getStatus", help=u"Get current printer status.")
 
@@ -574,13 +573,13 @@ def main():
         temps = printer.getTemps()
         print "temperatures: ", temps
 
-    # elif args.mode == 'getTempTable':
-        #
-        # printer = Printer()
-        # printer.initSerial(args.device, args.baud)
-        # (baseTemp, tempTable) = printer.getTempTable()
-        # print "tempTable: ", pprint.pprint(tempTable)
-        # util.printTempTable(baseTemp, tempTable)
+    elif args.mode == 'getTempTable':
+
+        printer = Printer()
+        initPrinterProfile(args)
+        printer.commandInit(args, PrinterProfile.getSettings())
+        (baseTemp, tempTable) = printer.getTempTable()
+        util.printTempTable(baseTemp, tempTable)
 
     elif args.mode == 'getStatus':
 
@@ -650,10 +649,17 @@ def main():
         printer = Printer()
         initPrinterProfile(args)
         printer.commandInit(args, PrinterProfile.getSettings())
-        readings = printer.getFSReadings(10)
-        print "Readings: "
-        pprint.pprint(readings)
+        # readings = printer.getFSReadings(10)
+        # print "Readings: "
+        # pprint.pprint(readings)
         # printer.setTempPWM(HeaterEx1, 0)
+        # printer = Printer()
+        # printer.initSerial(args.device, args.baud)
+        util.downloadDummyTempTable(printer)
+        (baseTemp, tempTable) = printer.getTempTable()
+        print "tempTable: ", pprint.pprint(tempTable)
+        util.printTempTable(baseTemp, tempTable)
+
 
     else:
         print "Unknown/not implemented command: ", args.mode
