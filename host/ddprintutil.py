@@ -2314,9 +2314,8 @@ def xstartPrint(args, parser, planner, printer, printerProfile, t1):
 
 def measureTempFlowrateCurve2(args, parser, planner, printer, printerProfile):
 
-    def tempGood(t, t1, delta):
-
-	return abs(t1 - t) <= delta
+    def tempGood(t, t1, percent):
+        return abs(t1 - t) <= (t1*percent)
 
     # Hardcorded values
 
@@ -2400,7 +2399,8 @@ def measureTempFlowrateCurve2(args, parser, planner, printer, printerProfile):
         pAvg = pwmAvg.mean()
         gAvg = gripAvg.mean()
 
-        if tempGood(t1Avg, t1, 2):
+        # temp in 5% band
+        if tempGood(t1Avg, t1, 0.025):
             gripAvg.add(grip)
 
         fsreadings = printer.getFSReadings()
@@ -2418,14 +2418,15 @@ def measureTempFlowrateCurve2(args, parser, planner, printer, printerProfile):
                 print "XXX testprint ended before measurement done!"
                 break
 
-            if tempGood(t1Avg, t1, 2.5):
+            # temp in 5% band
+            if tempGood(t1Avg, t1, 0.025):
 
                 t -= tempdec
 
                 if int(t) != status["targetT1"]:
-                    print "setting new temp:", int(t)
-                    printer.heatUp(HeaterEx1, int(t))
-                    t1 = t
+                    t1 = int(t)
+                    print "setting new temp:", t1
+                    printer.heatUp(HeaterEx1, t1)
 
             if gAvg < minGrip:
                 print "break on mingrip...", minGrip
