@@ -2330,8 +2330,9 @@ def measureTempFlowrateCurve2(args, parser, planner, printer, printerProfile):
     nozzleDiam = NozzleProfile.getSize()
     p0pwm = planner.matProfile.getP0pwm(hwVersion, nozzleDiam) # xxx hardcoded in firmware!
 
-    frsCountsPerMM = printerProfile.getFilSensorCountsPerMM()
     aFilament = planner.matProfile.getMatArea()
+
+    e_steps_per_mm = printerProfile.getStepsPerMM(A_AXIS)
 
     # Averaging window, 1/4 of hotend timeconstant timeConstant
     nAvg = int(round(timeConstant / 4))
@@ -2341,7 +2342,7 @@ def measureTempFlowrateCurve2(args, parser, planner, printer, printerProfile):
     tempAvg = movingavg.MovingAvg(nAvg, t1)
     pwmAvg = movingavg.MovingAvg(nAvg, p0pwm)
     gripAvg = movingavg.MovingAvg(nAvg, 1.0)
-    flowAvg = movingavg.MovingAvgReadings(nAvg)
+    flowAvg = movingavg.MovingAvg(nAvg)
 
     minGrip = 0.90
 
@@ -2351,6 +2352,9 @@ def measureTempFlowrateCurve2(args, parser, planner, printer, printerProfile):
     # Start print:
     #
     xstartPrint(args, parser, planner, printer, printerProfile, t1)
+
+    lastEPos = 0.0
+    lastTime = 0.0
 
     #
     # Wait for second layer
@@ -2363,7 +2367,12 @@ def measureTempFlowrateCurve2(args, parser, planner, printer, printerProfile):
 
     while curPosMM.Z < lh:
         print "waiting for second layer, Z pos:", curPosMM.Z
-        printer.ppStatus(printer.getStatus())
+        status = printer.getStatus()
+        printer.ppStatus(status)
+
+        lastEPos = status["extruder_pos"]
+        lastTime = time.time()
+
         time.sleep(1)
         curPosMM = getVirtualPos(parser)
 
@@ -2395,12 +2404,22 @@ def measureTempFlowrateCurve2(args, parser, planner, printer, printerProfile):
         if tempGood(t1Avg, t1, 0.025):
             gripAvg.add(grip)
 
-        fsreadings = printer.getFSReadings()
-        flowAvg.addReadings(fsreadings)
+        # current target flowrate
+        ePos = status["extruder_pos"]
+        tim = time.time()
+
+        deltaE = ePos - lastEPos
+        deltaTime = tim - lastTime
+
+        deltaEmm = float(deltaE)/e_steps_per_mm
+        flowrate = (deltaEmm*aFilament)/deltaTime
+
+        flowAvg.add(flowrate)
 
         # Current measured flowrate
-        meanShort = flowAvg.mean()
-        frAvg = (meanShort*aFilament) / (frsCountsPerMM*dt)
+        frAvg = flowAvg.mean() * gAvg
+
+        print deltaE, deltaTime, deltaEmm, flowrate
 
         print "Avg: temp: %.2f, pwm: %.2f, grip: %.2f, flowrate: %.2f mm³/s" % (t1Avg, pAvg, gAvg, frAvg)
 
@@ -2421,12 +2440,15 @@ def measureTempFlowrateCurve2(args, parser, planner, printer, printerProfile):
                     printer.heatUp(HeaterEx1, t1)
 
             if gAvg < minGrip:
-                print "break on mingrip...", minGrip
+                print "break on mingrip...", gAvg, minGrip
                 break
 
             if t1Avg < goodtemp:
                 print "break on temp...", goodtemp
                 break
+
+        lastEPos = ePos
+        lastTime = tim
 
         time.sleep(1)
 
