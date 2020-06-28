@@ -1522,30 +1522,22 @@ def eTimerValue(planner, eSpeed):
 
 def printTempTable(temp, tempTable):
 
-    of = open("/tmp/temptable_printer.txt", "w")
-    of.write("# XXX output mat, nozzle, settings...\n")
-    of.write("# Basetemp: %d\n" % temp)
-    of.write("# Columns: temp rate steprate timer\n")
+    print "TempTable for 1.75mm filament:"
+    print "Basetemp: %d:" % temp
 
-    print "TempTable (basetemp: %d):" % temp
-
-    mmpermm3 = 1 / MatProfile.getMatArea()
+    filamentArea = math.pi*pow(1.75, 2) / 4.0
     spm = PrinterProfile.getStepsPerMM(A_AXIS)
 
     for timerValue in tempTable:
 
         steprate = fTimer / timerValue
 
-        speed = (steprate / spm) / mmpermm3
+        speed = (steprate / spm) * filamentArea
 
         print "    Temp: %d, max extrusion: %.1f mm³/s, steps/s: %d, timervalue: %d" % (temp, speed, int(steprate), timerValue)
 
-        of.write("%d %4.1f %d %d\n" % (temp, speed, int(steprate), timerValue))
-
         # temp += 2
         temp += 1
-
-    of.close()
 
 ####################################################################################################
 
@@ -2221,6 +2213,12 @@ def xstartPrint(args, parser, planner, printer, printerProfile, t1):
         print "\nHeating bed (t0: %d)...\n" % t0
         printer.heatUp(HeaterBed, t0, log=True)
 
+        # Disable flowrate limit
+        printer.sendCommandParamV(CmdEnableFRLimit, [packedvalue.uint8_t(0)])
+
+        # Disable temp-flowrate limit
+        downloadDummyTempTable(printer)
+
         (f, _) = parser.preParse(args.gfile, args.baud)
 
         checkTime = time.time() + 2
@@ -2348,12 +2346,6 @@ def measureTempFlowrateCurve2(args, parser, planner, printer, printerProfile):
     minGrip = 0.90
 
     ####################################################################################################
-
-    # Disable flowrate limit
-    printer.sendCommandParamV(CmdEnableFRLimit, [packedvalue.uint8_t(0)])
-
-    # Disable temp-flowrate limit
-    downloadDummyTempTable(printer)
 
     #
     # Start print:
