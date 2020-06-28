@@ -1517,7 +1517,9 @@ def downloadTempTable(printer, matProfile):
 def downloadDummyTempTable(printer):
 
     print "Downloading Dummy TempTable..."
-    payload = struct.pack("<HB", 100, NExtrusionLimit)
+
+    # todo: use maxtemp - NExtrusionLimit as startvalue
+    payload = struct.pack("<HB", 170, NExtrusionLimit)
 
     for i in range(NExtrusionLimit):
         payload += struct.pack("<H", 50)
@@ -3182,7 +3184,8 @@ def genTempTable(matProfile):
 
     startTemp = matProfile.getHotendBaseTemp()
 
-    # Temps lower than 170 not handled yet
+    # Temps lower than 170 not handled
+    # todo: use maxtemp - NExtrusionLimit as startvalue
     assert(startTemp >= 170)
 
     # xxx same as in PathData
@@ -4024,6 +4027,10 @@ def xstartPrint(args, parser, planner, printer, printerProfile, t1):
 
 def measureTempFlowrateCurve2(args, parser, planner, printer, printerProfile):
 
+    def tempGood(t, t1, delta):
+
+	return abs(t1 - t) <= delta
+
     # Hardcorded values
 
     # layerheight
@@ -4102,11 +4109,14 @@ def measureTempFlowrateCurve2(args, parser, planner, printer, printerProfile):
         grip = 1.0
         if status["slippage"]:
           grip = 1.0 / status["slippage"]
-        gripAvg.add(grip)
+
 
         t1Avg = tempAvg.mean()
         pAvg = pwmAvg.mean()
         gAvg = gripAvg.mean()
+
+	if tempGood(t1Avg, t1, 2):
+		gripAvg.add(grip)
 
         fsreadings = printer.getFSReadings()
         flowAvg.addReadings(fsreadings)
@@ -4119,10 +4129,14 @@ def measureTempFlowrateCurve2(args, parser, planner, printer, printerProfile):
 
         if tempAvg.valid():
 
-            t -= tempdec
-            if int(t) != status["targetT1"]:
-                print "setting new temp:", int(t)
-                printer.heatUp(HeaterEx1, int(t))
+	    if tempGood(t1Avg, t1, 2):
+
+            	t -= tempdec
+
+	    	if int(t) != status["targetT1"]:
+                	print "setting new temp:", int(t)
+                	printer.heatUp(HeaterEx1, int(t))
+			t1 = t
 
             if gAvg < minGrip:
                 print "break on mingrip...", minGrip
