@@ -6,39 +6,43 @@
 #include "stepperSim.h"
 
 #include "filsensor.h"
-#if defined(ADNSFS)
-    #include "adns9800fwa6.h"
-#endif
 
-// #define FILSTEP (25.4 / 1000.0)
 #define FILDIR -1
 
 class FilSensorSim {
 
         bool enabled;
         int  address;
+        int16_t dataWord;
 
+        /*
         float lastEPos;
         int16_t delta_y;
 
         bool spiWrite;
         int romDownLoad, spiRes;
+        */
 
     public:
         FilSensorSim() {
             enabled = false;
-            lastEPos = 0.0;
-            spiWrite = false;
-            romDownLoad = 0;
-            spiRes = -1;
-            address = -1;
-            delta_y = 0;
+            // lastEPos = 0.0;
+            // spiWrite = false;
+            // romDownLoad = 0;
+            // spiRes = -1;
+            address = 0;
+            // delta_y = 0;
+            dataWord = 0;
         }
         void enable(uint8_t v) {
             enabled = !v;
-            spiWrite = false;
-            spiRes = -1;
-            address = -1;
+
+            if (enabled) {
+                // spiWrite = false;
+                // spiRes = -1;
+                address = 0;
+                dataWord = 0;
+            }
         }
 
         bool isEnabled() { return enabled; }
@@ -63,7 +67,29 @@ todo: update
 #endif
         }
 
-        void spiSend(uint8_t b) {
+        uint8_t spiSend(uint8_t b) {
+
+            if (address == 0) {
+                // read of first byte
+                address = 1;
+
+                // Bit 0x20 is "S1 End of offset compensation algorithm."
+                // Bit  0x1 is "P1 Even parity for detecting bits 1-15 transmission error"
+                uint8_t byte1 = 0; 
+                uint8_t byte2 = 0x20; 
+                dataWord = (byte1<<8) | byte2;
+
+                if (__builtin_parity(dataWord))
+                    dataWord |= 1;
+
+                return byte1;
+            }
+            else if (address == 1) {
+                // read of second byte
+                return dataWord & 0xff;
+            }
+            
+            assert(0);
 
 #if 0
 todo: update
@@ -147,13 +173,14 @@ todo: update
 #endif
         }
 
+#if 0
         uint8_t spiRec() {
 
             uint8_t r = spiRes;
             spiRes = -1;
             return r;
         }
-
+#endif
 };
 
 extern FilSensorSim filSensorSim;

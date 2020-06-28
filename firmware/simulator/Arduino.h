@@ -31,7 +31,6 @@
 class SimRegister
 {
     public:
-        // int m_nCents;
         uint8_t value;
 
     public:
@@ -51,8 +50,7 @@ class SimRegister
         // Copy constructor
         SimRegister(const SimRegister &cSource)
         {
-            // m_nCents = cSource.m_nCents;
-            assert(0);
+            value = cSource.value;
         }
 #if 0 
         SimRegister& operator= (const uint8_t &v)
@@ -202,7 +200,7 @@ extern RegSPDR SPDR;
     // #define LCD_ALERTMESSAGEPGM(s) printf(s"\n")
 
     #define PROGMEM /**/
-    #define _BV(x) x
+    #define _BV(x) (1 << x)
 
     #define ISR(x) void ISR##x()
     #define digitalWrite(pin, value) WRITE(pin, value)

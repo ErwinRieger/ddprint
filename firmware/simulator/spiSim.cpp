@@ -32,22 +32,42 @@ static int commandBytes = 0;
 extern uint32_t sdWritePos;
 // static int spiRes = -1;
 
-RegSPDR& RegSPDR::operator= (const SimRegister &v)
-{
+RegSPDR& RegSPDR::operator= (const SimRegister &v) {
 
-    // printf("RegSPDR, cs: %d, spicommand: %d\n", sdChipSelect, sdSpiCommand);
+    if (sdChipSelect == LOW) {
 
-    if ((sdChipSelect == LOW) && (sdSpiCommand == CMD13) && (v.value == 0xFF)) {
+        // printf("RegSPDR: SDCard write, spicommand: %d, value: %d\n", sdSpiCommand, v.value);
 
-        // Implement behaviour for SdSpiCard::cardCommand(CMD13) SdSpiAltDriver::receive()
-        value = receiveValue;
-        SPSR |= (1 << SPIF);
+        if ((sdChipSelect == LOW) && (sdSpiCommand == CMD13) && (v.value == 0xFF)) {
 
-        // Cmd13 done now
-        sdSpiCommand = -1;
+            // SDcard emulation
+            // Implement behaviour for SdSpiCard::cardCommand(CMD13) SdSpiAltDriver::receive()
+            value = receiveValue;
+            SPSR |= (1 << SPIF);
+
+            // Cmd13 done now
+            sdSpiCommand = -1;
+        }
+        else {
+            assert(0);
+        }
     }
-    else
+    else if (filSensorSim.isEnabled()){
+
+        // printf("RegSPDR: FRS write, value: %d\n", v.value);
+        /*
+         * Filament sensor read, called from arduino spi class.
+         * inline static uint8_t SPIClass.transfer(uint8_t data) {
+         *   SPDR = data;
+         *   while (!(SPSR & _BV(SPIF))) ; // wait
+         *   return SPDR; }
+         */
+        value = filSensorSim.spiSend(v.value);
+        SPSR |= (1 << SPIF);
+    }
+    else {
         assert(0);
+    }
 
     return *this;
 }
