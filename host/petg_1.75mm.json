@@ -14,7 +14,10 @@
       "Ktemp": 0.2,
       "P0pwm": 90,
       "FR0pwm": 10,
-      "P0temp": 205.0
+      "P0temp": 205.0,
+      "P0pwmPrint": 110.0,
+      "P0tempPrint": 225.0,
+      "FR0pwmPrint": 7.5
   },
 
   "properties_40" : {
