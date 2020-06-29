@@ -444,15 +444,13 @@ class PathData (object):
         avgERate = vsum / tsum
 
         # Increase temp somewhat above the values in the meterial
-        # profile, adjust for:
-        # * 10% for into-the-air measurement
-        # * 10% for measurement errors and some safety bonus
-        # adj = 1.0 + 0.1 #  + 0.1
+        # profile to keep away from temperature limiter.
+        adj = 1.0 + 0.1
 
         # Compute new temp and suggested heater-PWM for this segment
 
         # Amount of flowrate above floor (that is the flowrate at goodtemp)
-        rateDiff = avgERate - self.tempSLE.y(self.goodtemp)
+        rateDiff = (avgERate*adj) - self.tempSLE.y(self.goodtemp)
 
         tempIncrease = 0.0
 
