@@ -1,4 +1,5 @@
 {
+  "version": 4,
   "material_diameter" : 1.75,
   "hotendBaseTemp"    : 200,
   "hotendGoodTemp"    : 210,
@@ -8,7 +9,6 @@
   "kAdvance"          : 0.2,
 
   "properties_80" : {
-      "version": 4,
       "slippage": 0.10,
       "Kpwm": 0.15,
       "Ktemp": 0.2,
@@ -21,7 +21,6 @@
   },
 
   "properties_40" : {
-      "version": 4,
       "slippage": 0.10,
       "Kpwm": 0.1,
       "Ktemp": 0.1,
