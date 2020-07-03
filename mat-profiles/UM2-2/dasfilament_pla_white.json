@@ -15,11 +15,13 @@
       "P0temp": 188.3692,
       # feedrate at a0
       "FR0pwm": 9.3865,
-      # a0 for pwm while printing
-      "P0pwmPrint": 127.04,
-      # a0 for temp while printing
-      "P0tempPrint": 231.00,
-      # feedrate at a2 while printing
-      "FR0pwmPrint": 8.0
+      # Avg: P0temp: 224.92, P0pwm: 132.83, grip: 0.90, FR0pwm: 8.38 mm³/s
+      # Material properties, printing:
+      # a0 for pwm
+      "P0pwmPrint": 132.8333,
+      # a0 for temp
+      "P0tempPrint": 224.9167,
+      # feedrate at a0
+      "FR0pwmPrint": 8.3834
   }
 }
