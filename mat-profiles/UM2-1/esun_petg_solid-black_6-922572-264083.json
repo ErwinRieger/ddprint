@@ -1,18 +1,28 @@
 {
   "properties_80" : {
-      "version":  4,
+      "version":  5,
       "slippage": 0.10,
-      # Pwm settled in 5% tolerance band, average flowrate: 19.79 mm³/s at pwm: 155.19, temp: 257.6 °C, break
-      # Material properties:
-      # a1 for pwm
-      "Kpwm": 0.1502,
-      # a1 for temp
-      "Ktemp": 0.1429,
-      # a0 for pwm
-      "P0pwm": 98.9085,
-      # a0 for temp
-      "P0temp": 198.4064,
-      # feedrate at a0
-      "FR0pwm": 11.3408
+
+	# t: 135.00, TempAvg: 257.6, pwm avg: 155.50, target flowrate: 22.801 mm³/s, actual flowrate: 20.01 mm³/s, current ratio: 0.88 
+	# Pwm settled in 5% tolerance band, average flowrate: 20.64 mm³/s at pwm: 155.50, temp: 257.6 °C, break
+	# Material properties:
+	# a1 for pwm
+	"Kpwm": 0.1719,
+	# a1 for temp
+	"Ktemp": 0.1727,
+	# a0 for pwm
+	"P0pwm": 95.9054,
+	# a0 for temp
+	"P0temp": 198.3419,
+	# feedrate at a0
+	"FR0pwm": 10.4016,
+	# Avg: P0temp: 227.19, P0pwm: 164.91, grip: 0.90, FR0pwm: 10.05 mm³/s
+	# Material properties, printing:
+	# a0 for pwm
+	"P0pwmPrint": 164.9062,
+	# a0 for temp
+	"P0tempPrint": 227.1875,
+	# feedrate at a0
+	"FR0pwmPrint": 10.0493
   }
 }
