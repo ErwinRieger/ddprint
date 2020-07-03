@@ -342,6 +342,8 @@ class MainForm(npyscreen.FormBaseNew):
         parser.add_argument("-autoTemp", dest="autoTemp", action="store", type=bool, help="Use autotemp algorithm, default is True.", default=True)
         parser.add_argument("-rl", dest="retractLength", action="store", type=float, help="Retraction length, default comes from printer profile.", default=0)
         parser.add_argument("-inctemp", dest="inctemp", action="store", type=int, help="Increase extruder temperature niveau (layer bonding).", default=0)
+        parser.add_argument("-wp", dest="workingPoint", action="store", type=float, help="xxx temp niveau between best/worst case SLE.", default=0.5)
+
 
         parser.add_argument("-smat", dest="smat", action="store", help="Name of specific material profile to use.")
         # parser.add_argument("-noz", dest="nozzle", action="store", help="Name of nozzle profile to use [nozzle40, nozzle80...], default is nozzle40.", default="nozzle40")

@@ -338,8 +338,18 @@ class PathData (object):
             print "worst case flowrate:", sleTempPrint, slePwmPrint
 
             # XXX simple way, use average of best and worst flowrate:
-            self.tempSLE = util.SLE(x1=0, y1=(sleTempBest.c+sleTempPrint.c)/2, m=sleTempBest.m)
-            self.pwmSLE = util.SLE(x1=0, y1=(slePwmBest.c+slePwmPrint.c)/2, m=slePwmBest.m)
+
+            assert(self.planner.args.workingPoint >= 0 and self.planner.args.workingPoint <= 1.0)
+
+            delta = sleTempBest.c-sleTempPrint.c
+            assert(delta > 0.0)
+
+            self.tempSLE = util.SLE(x1=0, y1=sleTempPrint.c + delta*self.planner.args.workingPoint, m=sleTempBest.m)
+
+            delta = slePwmBest.c-slePwmPrint.c
+            assert(delta > 0.0)
+
+            self.pwmSLE = util.SLE(x1=0, y1=slePwmPrint.c + delta*self.planner.args.workingPoint, m=slePwmBest.m)
 
             print "Temp sle:", self.tempSLE, self.tempSLE.y(self.goodtemp)
             print "Pwm sle:", self.pwmSLE
