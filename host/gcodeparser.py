@@ -293,7 +293,7 @@ class UM2GcodeParser:
 
         # Time to send one move at given baudrate:
         # * assume we send 10 bits for a byte
-        bitsPerMove = 2.0 * 45.0 * 10.0
+        bitsPerMove = 5.0 * 45.0 * 10.0
         timePerMove = bitsPerMove / baudrate
 
         self.logger.log("Pre-parsing ", fn, tmpfname)
