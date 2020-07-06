@@ -652,14 +652,36 @@ class MainForm(npyscreen.FormBaseNew):
 
     def startPrintFile(self):
 
+        try:
+
+            util.printFile(self.args, self.parser, self.planner, self.printer,
+                self.printerProfile, self,
+                self.fn.get_value(), self.mat_t0, self.mat_t0_wait, self.mat_t1)
+
+            self.printLog.close()
+
+        except stoppableThread.StopThread:
+            # Stop of current action requested
+            self.printThread.incStopCount()
+            # self.log("printFile(): Caught StopThread, bailing out.")
+            return
+
+        except FatalPrinterError, ex:
+            self.log("printFile(): Caught FatalPrinterError: ", ex.msg)
+            # Reset line numbers in case of a printer restart.
+            self.printer.resetLineNumber()
+
+        except Exception, ex:
+            self.guiQueue.put(SyncCall(self.quit, "", ex, traceback.format_exc()))
+
+        return
+
         # reset averages here...
 
         try:
 
             # self.parser.reset()
             # self.planner.reset()
-
-            util.downloadTempTable(self.printer, self.planner.matProfile)
 
             # Send heat up  command
             self.log( "Pre-Heating bed (t0: %d)...\n" % self.mat_t0)

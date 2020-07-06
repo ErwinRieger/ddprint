@@ -294,12 +294,15 @@ def main():
 
         (parser, planner, printer, printerProfile) = initParser(args, mode=args.mode)
 
-        util.commonInit(args, printer, planner, parser)
-
         t0 = planner.matProfile.getBedTemp()
         t0Wait = min(t0, printerProfile.getWeakPowerBedTemp())
-
         t1 = planner.matProfile.getHotendGoodTemp() + planner.l0TempIncrease
+
+        util.printFile(args, parser, planner, printer, printerProfile, printer.gui,
+                args.gfile, t0, t0Wait, t1, doLog=True)
+
+        return
+
 
         # Send heat up  command
         print "\nHeating bed (t0: %d)...\n" % t0

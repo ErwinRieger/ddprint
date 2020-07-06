@@ -293,6 +293,7 @@ class UM2GcodeParser:
 
         # Time to send one move at given baudrate:
         # * assume we send 10 bits for a byte
+        # * multiply by 5 to account for raw moves
         bitsPerMove = 5.0 * 45.0 * 10.0
         timePerMove = bitsPerMove / baudrate
 
