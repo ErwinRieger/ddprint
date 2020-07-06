@@ -22,6 +22,14 @@ import ddprintutil as util
 
 from ddprintconstants import dimNames, A_AXIS, B_AXIS
 
+class ProfileException(Exception):
+
+    def __init__(self, msg):
+        self.msg = msg
+
+    def __str__(self):
+        return "Profile error: " + self.msg
+
 ####################################################################################################
 #
 # Json profile base class
@@ -48,12 +56,14 @@ class ProfileBase(object):
     def getBaseName(self):
         return os.path.basename(self.name)
 
+    def hasValue(self, valueName):
+        return valueName in self.values
+
     def getValue(self, valueName):
         try:
             return self.values[valueName]
         except KeyError:
-            print "\nERROR: Profile ", self.name, " does not conain key:", valueName, "\n"
-            raise
+            raise ProfileException("Profile '%s' does has no key: '%s'!" % (self.name, valueName))
 
     def openJson(self, name):
 
@@ -323,60 +333,49 @@ class MatProfile(ProfileBase):
     def getKAdvI(self):
         return float(self.getValue("kAdvance"))
 
+    def getFlowrateData(self, hwVersion, nozzleDiam):
+        # Check hardware version
+        assert(self.getValue("version") == hwVersion)
+        return  self.getValue("properties_%d" % (nozzleDiam*100))
+
     def getKpwm(self, hwVersion, nozzleDiam):
 
-        flowrateData = self.getValuesI()["properties_%d" % (nozzleDiam*100)]
-        # Check hardware version
-        assert(flowrateData["version"] == hwVersion)
+        flowrateData = self.getFlowrateData(hwVersion, nozzleDiam)
         return flowrateData["Kpwm"]
 
     def getKtemp(self, hwVersion, nozzleDiam):
 
-        flowrateData = self.getValuesI()["properties_%d" % (nozzleDiam*100)]
-        # Check hardware version
-        assert(flowrateData["version"] == hwVersion)
+        flowrateData = self.getFlowrateData(hwVersion, nozzleDiam)
         return flowrateData["Ktemp"]
 
     def getP0pwm(self, hwVersion, nozzleDiam):
 
-        flowrateData = self.getValuesI()["properties_%d" % (nozzleDiam*100)]
-        # Check hardware version
-        assert(flowrateData["version"] == hwVersion)
+        flowrateData = self.getFlowrateData(hwVersion, nozzleDiam)
         return flowrateData["P0pwm"]
 
     def getP0pwmPrint(self, hwVersion, nozzleDiam):
 
-        flowrateData = self.getValuesI()["properties_%d" % (nozzleDiam*100)]
-        # Check hardware version
-        assert(flowrateData["version"] == hwVersion)
+        flowrateData = self.getFlowrateData(hwVersion, nozzleDiam)
         return flowrateData["P0pwmPrint"]
 
     def getFR0pwm(self, hwVersion, nozzleDiam):
 
-        flowrateData = self.getValuesI()["properties_%d" % (nozzleDiam*100)]
-        # Check hardware version
-        assert(flowrateData["version"] == hwVersion)
+        flowrateData = self.getFlowrateData(hwVersion, nozzleDiam)
         return flowrateData["FR0pwm"]
 
     def getFR0pwmPrint(self, hwVersion, nozzleDiam):
 
-        flowrateData = self.getValuesI()["properties_%d" % (nozzleDiam*100)]
-        # Check hardware version
-        assert(flowrateData["version"] == hwVersion)
+        flowrateData = self.getFlowrateData(hwVersion, nozzleDiam)
         return flowrateData["FR0pwmPrint"]
 
     def getP0temp(self, hwVersion, nozzleDiam):
 
-        flowrateData = self.getValuesI()["properties_%d" % (nozzleDiam*100)]
-        # Check hardware version
-        assert(flowrateData["version"] == hwVersion)
+        flowrateData = self.getFlowrateData(hwVersion, nozzleDiam)
         return flowrateData["P0temp"]
 
     def getP0tempPrint(self, hwVersion, nozzleDiam):
 
-        flowrateData = self.getValuesI()["properties_%d" % (nozzleDiam*100)]
-        # Check hardware version
-        assert(flowrateData["version"] == hwVersion)
+        flowrateData = self.getFlowrateData(hwVersion, nozzleDiam)
         return flowrateData["P0tempPrint"]
 
     def xgetFlowrateForTemp(self, temp, hwVersion, nozzleDiam):
@@ -395,8 +394,7 @@ class MatProfile(ProfileBase):
         return cls.get()._getSlippage(temp, hwVersion, nozzleDiam)
 
     def _getSlippage(cls, hwVersion, nozzleDiam):
-        flowrateData = cls.get().getValues()["properties_%d" % (nozzleDiam*100)]
-        assert(flowrateData["version"] == hwVersion)
+        flowrateData = self.getFlowrateData(hwVersion, nozzleDiam)
         return flowrateData["slippage"]
 
     def getFrSLE(self, hwVersion, nozzleDiam):

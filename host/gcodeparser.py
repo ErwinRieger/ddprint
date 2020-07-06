@@ -328,7 +328,7 @@ class UM2GcodeParser:
                     self.gcodeType = GCODEULTI
                     # To compute extrude length from volume (see getValues()):
                     # V = A * h, h = V / A, A = pi/4 * diameter²
-                    aFilament = self.planner.matProfile._getMatArea()
+                    aFilament = self.planner.matProfile.getMatArea()
                     self.e_to_filament_length = 1.0 / aFilament
                 elif "SIMPLIFY3D" in upperLine:
                     self.gcodeType = GCODES3D
