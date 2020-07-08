@@ -652,145 +652,16 @@ class MainForm(npyscreen.FormBaseNew):
 
     def startPrintFile(self):
 
+        # reset averages here...
+        # self.parser.reset()
+        # self.planner.reset()
+
         try:
 
             util.printFile(self.args, self.parser, self.planner, self.printer,
                 self.printerProfile, self,
                 self.fn.get_value(), self.mat_t0, self.mat_t0_wait, self.mat_t1)
 
-            self.printLog.close()
-
-        except stoppableThread.StopThread:
-            # Stop of current action requested
-            self.printThread.incStopCount()
-            # self.log("printFile(): Caught StopThread, bailing out.")
-            return
-
-        except FatalPrinterError, ex:
-            self.log("printFile(): Caught FatalPrinterError: ", ex.msg)
-            # Reset line numbers in case of a printer restart.
-            self.printer.resetLineNumber()
-
-        except Exception, ex:
-            self.guiQueue.put(SyncCall(self.quit, "", ex, traceback.format_exc()))
-
-        return
-
-        # reset averages here...
-
-        try:
-
-            # self.parser.reset()
-            # self.planner.reset()
-
-            # Send heat up  command
-            self.log( "Pre-Heating bed (t0: %d)...\n" % self.mat_t0)
-            self.printer.heatUp(HeaterBed, self.mat_t0)
-
-            # self.log( "Waiting 30 seconds... (weak power supply)\n")
-            # time.sleep(30)
-
-            t = int(round(self.mat_t1 * 0.5))
-            self.log( "Pre-Heating extruder (t1: %d)...\n" % t)
-            self.printer.heatUp(HeaterEx1, t)
-
-            (f, preloadLines) = self.parser.preParse(self.fn.get_value(), self.args.baud)
-            
-            lineNr = 0
-            printStarted = False
-            lastUpdate = time.time()
-
-            for line in f:
-                self.parser.execute_line(line)
-
-                #
-                # Check temp and start print
-                #
-                if time.time() > (lastUpdate + 0.5):
-
-                    if lineNr > preloadLines and not printStarted:
-
-                        self.log( "Heating bed (t0: %d)...\n" % self.mat_t0 )
-                        self.printer.heatUp(HeaterBed, self.mat_t0, wait=self.mat_t0)
-                    
-                        # avoid big overswing
-                        self.log( "Heating extruder (t1: %d)...\n" % (int(round(self.mat_t1*0.9))) )
-                        self.printer.heatUp(HeaterEx1, int(round(self.mat_t1*0.9)), self.mat_t1*0.9-2)
-
-                        self.log( "Heating extruder (t1: %d)...\n" % self.mat_t1 )
-                        self.printer.heatUp(HeaterEx1, self.mat_t1, self.mat_t1-2)
-
-                        # Send print start command
-                        self.printer.startPrint()
-
-                        printStarted = True
-
-                    status = self.printer.getStatus()
-                    # self.guiQueue.put(SyncCall(self.updateStatus, status))
-                    if printStarted and not self.printer.stateMoving(status):
-                        break
-               
-                    # xxxx move to own method
-                    if not self.cmdQueue.empty():
-                        obj = self.cmdQueue.get()
-                        self.log("hack call()...")
-                        obj.call()
-                        # self.log("hack ...done")
-
-                    time.sleep(0.5) # give some cpu time to main/ui thread
-
-                    lastUpdate = time.time()
-
-                lineNr += 1
-
-            print "Parsed %d gcode lines." % lineNr
-
-            # 
-            # Add a move to lift the nozzle from the print
-            # 
-            util.endOfPrintLift(self.parser)
-
-            self.planner.finishMoves()
-            self.printer.sendCommand(CmdEOT)
-
-            # Start print if less than 1000 lines or temp not yet reached:
-            if not printStarted:
-
-                self.log( "Heating bed (t0: %d)...\n" % self.mat_t0 )
-                self.printer.heatUp(HeaterBed, self.mat_t0, self.mat_t0)
-                self.log( "Heating extruder (t1: %d)...\n" % self.mat_t1 )
-                self.printer.heatUp(HeaterEx1, self.mat_t1, self.mat_t1-1)
-
-                # Send print start command
-                self.printer.startPrint()
-
-            status = self.printer.getStatus()
-            # self.guiQueue.put(SyncCall(self.updateStatus, status))
-            while status['state'] != StateInit:
-
-                # xxxx move to own method
-                if not self.cmdQueue.empty():
-                    obj = self.cmdQueue.get()
-                    self.log("hack 2 call()...")
-                    obj.call()
-                    self.log("hack 2 ...done")
-
-                time.sleep(2)
-                status = self.printer.getStatus()
-                # self.guiQueue.put(SyncCall(self.updateStatus, status))
-
-            self.printer.coolDown(HeaterEx1)
-            self.printer.coolDown(HeaterBed)
-
-            ddhome.home(self.args, self.printer, self.planner, self.parser)
-
-            self.printer.sendCommand(CmdDisableSteppers)
-
-            # Stop hotend fan
-            self.printer.sendCommandParamV(CmdFanSpeed, [packedvalue.uint8_t(0)])
-
-            # Update print log
-            self.logPrintLog("\nPrint duration: %s\n" % self.printer.getPrintDuration())
             self.printLog.close()
 
         except stoppableThread.StopThread:
