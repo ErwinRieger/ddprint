@@ -28,7 +28,7 @@ from ddvector import Vector, vectorMul, vectorAbs
 from ddprintconstants import *
 from ddconfig import *
 from ddprinter import Printer
-from ddprintcommands import CmdSyncTargetTemp, CmdSyncHotendPulse, CmdDwellMS, CmdSyncFanSpeed, CmdSuggestPwm
+from ddprintcommands import CmdSyncTargetTemp, CmdDwellMS, CmdSyncFanSpeed, CmdSuggestPwm
 from ddprintstates import HeaterEx1, HeaterBed
 from ddadvance import Advance
 
@@ -204,64 +204,6 @@ class MoveHistory (object):
 
             del self.history[:i]
 
-    # todo: improve search for insert pos, look for nearest (in time) position
-    def wayBack(self, cmd):
-
-        insertPos = 0
-
-        # if self.span > self.duration:
-            # print "hist long enough", self.span
-            # if (self.span - self.history[0].getTime()) > self.duration:
-                # assert(0)
-
-        # Insert command before this move or at the beginning:
-        if len(self.history) and not self.history[insertPos].isMove() and self.history[insertPos].isTemperatureCmd():
-
-            # already a autotemp command here, preserve the one with higher temp
-            if cmd.params[1] > self.history[insertPos].params[1]:
-                print "replacing autotem cmd at", insertPos, cmd
-                self.history[insertPos] = cmd
-            else:
-                print "keeping autotemp cmd at", insertPos
-        else:
-            # print "insert cmd at ", insertPos, cmd
-            self.history.insert(insertPos, cmd)
-
-        return
-
-        # Look, where to insert command:
-        i = len(self.history)
-        t = 0.0
-        while i > 0:
-
-            i -= 1
-
-            move = self.history[i]
-            t += move.getTime()
-            print "i:", i, "t: ", t
-
-            if t >= tBack:
-                print "hist long enough, break", tBack
-                break
-
-        # debug
-        if t < tBack:
-            assert(i == 0)
-
-        # Stream moves up to this command
-        i -= 1
-        while i>=0:
-
-            move = self.history[0]
-            print "streaming history[0]", move
-
-            self.streamMove(move)
-
-            del self.history[0]
-
-            i -= 1
-
-
     # Stream leftover moves in history
     def finishMoves(self):
 
@@ -287,24 +229,11 @@ class PathData (object):
         self.Tu = PrinterProfile.getTu()
 
         self.path = []
-        # One second resulution at first
-        # self.times = collections.defaultdict(list)
-        # Expected time into pring
-        # self.timestamp = 0.0
-
-        # History for auto temp feed forward
-        # self.ffTime = self.Tu * 2.0
 
         # History of last fftime moves
-        # self.history = []
         self.history = MoveHistory(planner, self.Tu * 2.0)
 
-        # Length of history (time)
-        # self.histDuration = 0.0
-
         self.count = -10
-
-        # self.energy = 0
 
         if not planner.travelMovesOnly:
 
@@ -354,85 +283,8 @@ class PathData (object):
             print "Temp sle:", self.tempSLE, self.tempSLE.y(self.goodtemp)
             print "Pwm sle:", self.pwmSLE
 
-    # Add move to path and update times list
-    def notused_updateTimeline(self, move):
-
-        index = int(self.timestamp)
-        self.times[index].append(move)
-        self.timestamp += move.accelData.getTime()
-
-        print "timeline index:", index, "new timestamp:", self.timestamp, len(self.times[index])
-
     def updateHistory(self, move):
-
-        #  index = int(self.timestamp)
-        #  self.times[index].append(move)
-
         self.history.append(move)
-
-        return
-
-        tmove = move.getTime()
-
-        self.histDuration += tmove
-
-        print "history len:", len(self.history), "duration:", self.histDuration
-
-        # while self.histDuration > self.ffTime:
-        if self.histDuration > self.ffTime:
-            print "TODO: stream moves in updateHistory() !!!"
-
-    # todo: improve search for insert pos, look for nearest (in time) position
-    def notused_wayBack(self, tBack, cmd):
-
-        # Look, where to insert command:
-        i = len(self.history)
-        t = 0.0
-        while i > 0:
-
-            i -= 1
-
-            move = self.history[i]
-            t += move.getTime()
-            print "i:", i, "t: ", t
-
-            if t >= tBack:
-                print "hist long enough, break", tBack
-                break
-
-        # debug
-        if t < tBack:
-            assert(i == 0)
-
-        # Insert command before this move or at the beginning:
-        if len(self.history) and not self.history[i].isMove() and self.history[i].cmd == CmdSuggestPwm:
-            # already a autotemp command here, preserve the higher temp
-            # of them
-            if cmd.params[1] > self.history[i].params[1]:
-                print "replacing autotem cmd at", i, cmd
-                self.history[i] = cmd
-            else:
-                print "keeping autotem cmd at", i
-        else:
-            print "insert cmd at ", i, cmd
-            self.history.insert(i, cmd)
-
-        # Stream moves up to this command
-        i -= 1
-        while i>=0:
-
-            move = self.history[0]
-            print "streaming history[0]", move
-
-            if move.isMove():
-                self.planner.streamMove(move)
-            else:
-                if self.planner.args.mode != "pre":
-                    move.streamCommand(self.planner.printer)
-
-            del self.history[0]
-
-            i -= 1
 
     def nextMoveNumber(self):
         return self.count + 10 # leave space for advance-submoves
@@ -492,94 +344,6 @@ class PathData (object):
              packedvalue.uint8_t(HeaterEx1),
              packedvalue.uint16_t(newTemp), 
              packedvalue.uint8_t(suggestPwm) ])
-
-        # Insert temp command into stream at fftime in the past
-        self.history.wayBack(cmd)
-
-        self.lastTemp = newTemp
-
-        return
-
-        # Schedule target temp command
-        self.planner.addSynchronizedCommand(
-            CmdSuggestPwm, 
-            p1 = packedvalue.uint8_t(HeaterEx1),
-            p2 = packedvalue.uint16_t(newTemp), 
-            p3 = packedvalue.uint8_t(suggestPwm), 
-            moveNumber = move.moveNumber)
-        
-        return
-
-        # Compute heater-PWM for this segment and add pwm-pulse command into the stream. 
-        rateDiff = (avgERate * adj) - self.fr0
-
-        pwmMaxStep = 255 - self.p0
-
-        newTemp = MatProfile.getHotendGoodTemp() + self.planner.l0TempIncrease
-
-        if rateDiff > 0.0:
-            #
-            # add energy
-            #
-            de = (rateDiff / self.ks) * tsum
-            # print "need additional energy:", de
-            self.energy += de
-
-            # temp
-            newTemp += int(round(rateDiff / self.ktemp))
-            newTemp = min(newTemp, MatProfile.getHotendMaxTemp())
-
-        if newTemp < MatProfile.getHotendMaxTemp() and (self.energy / pwmMaxStep) > 0.1: # timing heater loop
-
-            # print "need energy:", self.energy, "[pwm*sec]"
-
-            tOn = min( (self.energy*0.8) / pwmMaxStep, tsum)
-
-            self.energy -= pwmMaxStep * tOn
-
-            tPause = tsum - tOn
-            if tOn > self.Tu:
-
-                nPulse = int(math.ceil(tOn/self.Tu))
-                tPause = (tsum - tOn) / nPulse
-
-            # print "this is %.2f seconds with %.2f pwm, move time: %.2f, tPause is %.2f" % (tOn, pwmMaxStep, tsum, tPause)
-
-            # Note tOn and tPause stored as 1/10th seconds, they are stored in a uint16 datatype.
-            # assert(tOn*10 < pow(2, 16))
-            # assert(tPause*10 < pow(2, 16))
-
-            # Schedule target temp command
-            # Printer is running the hotend for time tOn at full throttlel, pulse is clipped 
-            # at Tu. If tOn is longer than Tu, a pause of tPause is inserted. If some tOn is left
-            # after tPause, further pulse(s) are done.
-            self.planner.addSynchronizedCommand(
-                CmdSyncHotendPulse, 
-                p1 = packedvalue.uint8_t(HeaterEx1),
-                p2 = packedvalue.uint16_t(tOn * 10), 
-                p3 = packedvalue.uint16_t(tPause * 10), 
-                p4 = packedvalue.uint16_t(newTemp), 
-                moveNumber = move.moveNumber)
-
-            if debugAutoTemp:
-                self.planner.gui.log( "AutoTemp: collected %d moves with %.2f s duration." % (len(moves), tsum))
-                self.planner.gui.log( "AutoTemp: avg extrusion rate: %.2f mm³/s." % avgERate)
-                self.planner.gui.log( "AutoTemp: pwm pulse: %.2f sec, new temp: %.2f" % (tOn, newTemp))
-
-        else:
-
-            # Schedule target temp command
-            self.planner.addSynchronizedCommand(
-                CmdSyncTargetTemp, 
-                p1 = packedvalue.uint8_t(HeaterEx1),
-                p2 = packedvalue.uint16_t(newTemp), 
-                moveNumber = move.moveNumber)
-            
-            if debugAutoTemp:
-                self.planner.gui.log( "AutoTemp: collected %d moves with %.2f s duration." % (len(moves), tsum))
-                self.planner.gui.log( "AutoTemp: avg extrusion rate: %.2f mm³/s." % avgERate)
-                self.planner.gui.log( "AutoTemp: new temp: %.2f" % newTemp)
-
 
 #####################################################################
 
@@ -678,8 +442,6 @@ class Planner (object):
 
         self.pathData = PathData(self)
 
-	# Todo: remove syncCommands
-        self.syncCommands = collections.defaultdict(list)
         self.partNumber = 1
 
         self.stepRounders = StepRounders()
@@ -723,20 +485,6 @@ class Planner (object):
 
         return (homePosMM, homePosStepped)
 
-    def addSynchronizedCommand(self, command, p1=None, p2=None, p3=None, p4=None, moveNumber=None):
-
-        assert(0)
-
-        if moveNumber == None:
-            # Associate command with the last move if we have one, else
-            # with the next one:
-            if self.pathData.path:
-                moveNumber = self.pathData.path[-1].moveNumber
-            else:
-                moveNumber = self.pathData.nextMoveNumber()
-
-        self.syncCommands[moveNumber].append((command, p1, p2, p3, p4))
-
     # Called from gcode parser
     def newPart(self, partNumber):
 
@@ -765,10 +513,6 @@ class Planner (object):
             # Reduce bedtemp
             bedTemp = self.matProfile.getBedTempReduced()
             self.gui.log("Layer2, reducing bedtemp to: ", bedTemp)
-            # self.addSynchronizedCommand(
-                # CmdSyncTargetTemp, 
-                # p1 = packedvalue.uint8_t(HeaterBed),
-                # p2 = packedvalue.uint16_t(bedTemp))
 
             cmd = SyncedCommand(
                 CmdSyncTargetTemp, 
@@ -812,7 +556,6 @@ class Planner (object):
     # Called from gcode parser, start fan
     def fanOn(self, fanSpeed, blipTime):
 
-        # self.addSynchronizedCommand(CmdSyncFanSpeed, p1=packedvalue.uint8_t(fanSpeed), p2=packedvalue.uint8_t(blipTime))
         cmd = SyncedCommand(CmdSyncFanSpeed, blipTime / 1000.0, [ packedvalue.uint8_t(fanSpeed), packedvalue.uint8_t(blipTime) ])
         self.pathData.updateHistory(cmd)
 
@@ -974,14 +717,6 @@ class Planner (object):
         if debugMoves:
             print "***** End planTravelPath() *****"
 
-    def sendSyncCommands(self, moveNumber):
-
-        for (cmd, p1, p2, p3, p4) in self.syncCommands[moveNumber]:
-            if self.args.mode != "pre":
-                self.printer.sendCommandParamV(cmd, [p1, p2, p3, p4])
-
-        del self.syncCommands[moveNumber]
-
     # Todo: should be called finishPath()
     def finishMoves(self):
 
@@ -1005,20 +740,7 @@ class Planner (object):
                 # print "finishMoves(): ending travel path with %d moves" % len(self.pathData.path)
                 self.planTravelPath(self.pathData.path)
 
-        else:
-
-            # debug
-            if self.syncCommands:
-                print "left synccommands: ", self.syncCommands
-                assert(0)
-                # No move, send leftofver synccommands
-                self.sendSyncCommands(0)
-
-        # debug
-        assert(not self.syncCommands)
-
         self.pathData.history.finishMoves()
-
         self.reset()
 
 
@@ -1036,12 +758,6 @@ class Planner (object):
                 self.plotfile = DebugPlot(move.moveNumber)
 
             self.plotfile.plotSteps(move)
-
-        if move.moveNumber in self.syncCommands:
-            self.sendSyncCommands(move.moveNumber)
-
-        if move.isSubMove() and move.parentMove.moveNumber in self.syncCommands:
-            self.sendSyncCommands(move.parentMove.moveNumber)
 
         for (cmd, cobsBlock) in move.commands():
             if self.args.mode != "pre":
