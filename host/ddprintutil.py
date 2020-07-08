@@ -803,125 +803,126 @@ def manualMove(parser, axis, distance, feedrate=0, absolute=False):
 
 
 def printFile(args, parser, planner, printer, printerProfile, logObj,
-        gfile, t0, t0_wait, t1, doLog=False):
+    gfile, t0, t0_wait, t1, doLog=False):
 
-        commonInit(args, printer, planner, parser)
+    commonInit(args, printer, planner, parser)
 
-        t0 = planner.matProfile.getBedTemp()
-        t0Wait = min(t0, printerProfile.getWeakPowerBedTemp())
+    t0 = planner.matProfile.getBedTemp()
+    t0Wait = min(t0, printerProfile.getWeakPowerBedTemp())
 
-        t1 = planner.matProfile.getHotendGoodTemp() + planner.l0TempIncrease
+    t1 = planner.matProfile.getHotendGoodTemp() + planner.l0TempIncrease
 
-        # Send heat up  command
-        logObj.log( "Pre-Heating bed (t0: %d)...\n" % t0)
-        printer.heatUp(HeaterBed, t0, log=doLog)
+    # Send heat up  command
+    logObj.log( "Pre-Heating bed (t0: %d)...\n" % t0)
+    printer.heatUp(HeaterBed, t0, log=doLog)
 
-        (f, preloadLines) = parser.preParse(gfile, args.baud)
+    (f, preloadLines) = parser.preParse(gfile, args.baud)
 
-        print "Nuber of lines to preload:", preloadLines
+    logObj.log( "Nuber of lines to preload: %d" % preloadLines)
 
-        lineNr = 0
-        # printStarted = False
+    lineNr = 0
+    # printStarted = False
 
-        checkTime = time.time() + 2
+    checkTime = time.time() + 2
 
-        StateWeakPreheat = 0
-        StatePreload = 1
-        StateHeating = 2
-        StateStarting = 3
-        StatePrinting = 4
-        state = StateWeakPreheat
+    StateWeakPreheat = 0
+    StatePreload = 1
+    StateHeating = 2
+    StateStarting = 3
+    StatePrinting = 4
+    state = StateWeakPreheat
 
-        # for line in f:
-        while True:
+    # for line in f:
+    while True:
 
-            if f:
-                line = f.readline()
-                if line:
-                    parser.execute_line(line)
-                    lineNr += 1
-                else:
-                    # Reading done
+        if f:
+            line = f.readline()
+            if line:
+                parser.execute_line(line)
+                lineNr += 1
+            else:
+                # Reading done
 
-                    logObj.log( "Parsed %d gcode lines." % lineNr)
+                logObj.log( "Parsed %d gcode lines." % lineNr)
 
-                    # 
-                    # Add a move to lift the nozzle at end of print
-                    # 
-                    endOfPrintLift(parser)
+                # 
+                # Add a move to lift the nozzle at end of print
+                # 
+                endOfPrintLift(parser)
 
-                    planner.finishMoves()
-                    printer.sendCommand(CmdEOT)
+                planner.finishMoves()
+                printer.sendCommand(CmdEOT)
 
-                    f = None
+                f = None
 
-            # if lineNr >= preloadLines and time.time() > checkTime:
-            if time.time() > checkTime:
+        # if lineNr >= preloadLines and time.time() > checkTime:
+        if time.time() > checkTime:
 
-                status = printer.getStatus()
-                printer.ppStatus(status)
+            status = printer.getStatus()
+            if doLog:
+              printer.ppStatus(status)
 
-                #
-                # Check temp and start print
-                #
-                if state == StateWeakPreheat:
-                    
-                    if status["t0"] >= t0Wait:
-                        # Start pre-heating of hotend, bed is still heating
-                        logObj.log( "Pre-Heating extruder %.2f (t1: %d)...\n" % (t1/2.0, t1))
-                        printer.heatUp(HeaterEx1, t1/2)
-                        state = StatePreload
+            #
+            # Check temp and start print
+            #
+            if state == StateWeakPreheat:
+                
+                if status["t0"] >= t0Wait:
+                    # Start pre-heating of hotend, bed is still heating
+                    logObj.log( "Pre-Heating extruder %.2f (t1: %d)...\n" % (t1/2.0, t1))
+                    printer.heatUp(HeaterEx1, t1/2)
+                    state = StatePreload
 
-                elif state == StatePreload:
+            elif state == StatePreload:
 
-                    if ((not f) or (lineNr >= preloadLines)) and status["t0"] >= t0:
-                        # Heat hotend further if bed is at temp, heat to 90% to avoid big overswing
-                        logObj.log( "Heating extruder (t1: %d)...\n" % int(round(t1*0.9)) )
-                        printer.heatUp(HeaterEx1, int(round(t1*0.9)))
-                        state = StateHeating
+                if ((not f) or (lineNr >= preloadLines)) and status["t0"] >= t0:
+                    # Heat hotend further if bed is at temp, heat to 90% to avoid big overswing
+                    logObj.log( "Heating extruder (t1: %d)...\n" % int(round(t1*0.9)) )
+                    printer.heatUp(HeaterEx1, int(round(t1*0.9)))
+                    state = StateHeating
 
-                elif state == StateHeating:
+            elif state == StateHeating:
 
-                    # Preload done, bed is at temp, now heating hotend
-                    if status["t1"] >= (t1*0.9-2):
-                        logObj.log( "Heating extruder (t1: %d)...\n" % t1 )
-                        printer.heatUp(HeaterEx1, t1)
-                        state = StateStarting
+                # Preload done, bed is at temp, now heating hotend
+                if status["t1"] >= (t1*0.9-2):
+                    logObj.log( "Heating extruder (t1: %d)...\n" % t1 )
+                    printer.heatUp(HeaterEx1, t1)
+                    state = StateStarting
 
-                elif state == StateStarting:
+            elif state == StateStarting:
 
-                    if status["t1"] >= (t1-2):
+                if status["t1"] >= (t1-2):
 
-                        print "\nStarting print...\n"
+                    logObj.log( "\nStarting print...\n" )
 
-                        # Send print start command
-                        printer.startPrint()
+                    # Send print start command
+                    printer.startPrint()
 
-                        # printStarted = True
-                        state = StatePrinting
+                    # printStarted = True
+                    state = StatePrinting
 
-                elif state == StatePrinting:
+            elif state == StatePrinting:
 
-                    # Stop sending moves on error of if print is done
-                    if not printer.stateMoving(status):
-                        break
+                # Stop sending moves on error of if print is done
+                if not printer.stateMoving(status):
+                    break
 
-                checkTime = time.time() + 2
+            checkTime = time.time() + 2
 
-        print "Print finished, duration:", printer.getPrintDuration()
+    logObj.log( "Print finished, duration: %s" % printer.getPrintDuration() )
 
-        printer.coolDown(HeaterEx1)
-        printer.coolDown(HeaterBed)
+    printer.coolDown(HeaterEx1)
+    printer.coolDown(HeaterBed)
 
-        ddhome.home(args, printer, planner, parser)
+    ddhome.home(args, printer, planner, parser)
 
-        printer.sendCommand(CmdDisableSteppers)
+    printer.sendCommand(CmdDisableSteppers)
 
-        if not args.noCoolDown:
-            printer.coolDown(HeaterEx1, wait=150, log=doLog)
+    if not args.noCoolDown:
+        printer.coolDown(HeaterEx1, wait=150, log=doLog)
 
-        # Stop hotend fan
-        printer.sendCommandParamV(CmdFanSpeed, [packedvalue.uint8_t(0)])
+    # Stop hotend fan
+    printer.sendCommandParamV(CmdFanSpeed, [packedvalue.uint8_t(0)])
 
 
 
