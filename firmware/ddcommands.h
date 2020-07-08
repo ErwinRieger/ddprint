@@ -54,8 +54,6 @@
 #define CmdDwellMS         0xc
 #define CmdG1Raw           0xd
 // #define CmdDirG1Raw        0xe
-// #define CmdSyncHotendPWM   0xf
-#define CmdSyncHotendPulse 0x10
 #define CmdSuggestPwm      0x11
 
 //
@@ -117,7 +115,6 @@
 #define CmdGetFreeMem           175 // Get number of free memory bytes [uint16]
 #define CmdGetFSReadings        176 // Get last n filsensor readings 
 #define CmdSetTempPWM           177 // Set PWM value of hotend heater (for filament profile measurement)
-// #define CmdSetP0pwm             178 // Set P0 PMW value
 #define CmdSoftStop             180 // # Stop printer softly after current path is finished.  
 
 //

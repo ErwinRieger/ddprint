@@ -91,12 +91,6 @@ class TempControl: public Protothread
 
     bool pwmMode;
 
-    // PWM value controlled by host firmware part. Normal PID
-    // temperature control is added to this value.
-    // Set to 0 to re-enable PID temperature control.
-    // Maxtemp is still checked even if PID is disabled.
-    uint8_t pwmValueOverride;
-
     float eSumLimit;
 
     public:
@@ -110,7 +104,6 @@ class TempControl: public Protothread
             Kp(1.0),
             Ki(0.1),
             Kd(1.0),
-            pwmValueOverride(0),
             suggestPwm(0) {};
         void init();
         virtual bool Run();
@@ -133,8 +126,7 @@ class TempControl: public Protothread
             //
             eSumLimit = 255.0 / ((ki * TIMER100MS) / 1000.0);
         }
-        uint8_t getPwmOutput() { return (uint8_t)
-                    STD min( max(pid_output, 0) + pwmValueOverride, 255 ); }
+        uint8_t getPwmOutput() { return (uint8_t) STD max(pid_output, 0); }
 };
 
 extern TempControl tempControl;

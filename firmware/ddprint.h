@@ -66,9 +66,6 @@ class Printer {
         // To adjust temperature-niveau at runtime
         uint16_t increaseTemp[N_HEATERS];
 
-        // Idle pmw value if in *pmw temperature mode*
-        uint8_t p0pwm;
-
         // Timeconstant hotend [ms]
         uint16_t Tu;
 
@@ -101,11 +98,9 @@ class Printer {
         void printerInit();
         void sendGenericMessage(const char *s, uint8_t l);
 
-        uint8_t getP0pwm() { return p0pwm; }
         uint16_t getTu() { return Tu; }
         uint8_t getIncreaseTemp(uint8_t heater) { return increaseTemp[heater]; }
         void runHotEndFan();
-        // void softStop();
 
         void cmdMove(MoveType);
         void cmdEot();
@@ -122,7 +117,6 @@ class Printer {
         void cmdGetHomed();
         void cmdGetEndstops();
         void cmdGetPos();
-        void cmdSetP0pwm(uint8_t pwm);
         void cmdSetPIDValues(float kp, float ki, float kd, uint16_t Tu);
         void cmdFanSpeed(uint8_t speed, uint8_t blipTime);
         void cmdContinuousE(uint16_t timerValue);
@@ -190,7 +184,6 @@ class FillBufferTask : public Protothread {
 
         // xxxx getter/setter
         uint8_t targetHeater;
-        uint32_t pulseTime;
         uint32_t pulsePause;
         unsigned long pulseEnd;
         uint16_t targetTemp;
@@ -242,7 +235,6 @@ extern FillBufferTask fillBufferTask;
 //
 // One-shot timer for
 // * fan blip
-// * hotend pulsing
 //
 class Timer {
 
@@ -250,18 +242,9 @@ class Timer {
     uint8_t fanSpeed;
     unsigned long fanEndTime;
 
-    // Hotend pulsing timer
-    uint8_t targetHeater;
-    uint16_t targetTemp;
-    uint32_t pulseTime;
-    uint32_t pauseTime;
-    unsigned long hotendPwmEndTime;
-    uint8_t hotendPwmState;
-
     public:
         Timer() {
             fanEndTime = 0;
-            hotendPwmEndTime = 0;
         }
 
         void run(unsigned long m);
@@ -275,43 +258,6 @@ class Timer {
         void endFanTimer() {
 
             fanEndTime = 0;
-        }
-
-        void startHotenPulseTimer(uint8_t th, uint32_t pulseT, uint32_t pauseT, uint16_t tt) {
-
-            targetHeater = th;
-            pauseTime = pauseT;
-            targetTemp = tt;
-            hotendPwmState = 1;
-
-            uint32_t thisPulse;
-            uint16_t tu = printer.getTu();
-
-            // Carefull for interger underflow
-            if (tu <= pulseT) {
-                thisPulse = tu;
-                pulseTime = pulseT - tu; 
-            }
-            else {
-                thisPulse = pulseT;
-                pulseTime = 0;
-            }
-
-            // Time when to end this pulse:
-            hotendPwmEndTime = millis() + thisPulse;
-
-#if 0
-            // Hotend full throttle, pwm value is reset with next heater run (every 100mS)
-            tempControl.hotendOn(targetHeater);
-            // TODO 260 hardcoded max hotend temp, this is the max hotend temp value
-            // from material profile
-            tempControl.setTemp(targetHeater, 260 - printer.getIncreaseTemp(targetHeater));
-#endif
-        }
-
-        void endHotenPulseTimer() {
-
-            hotendPwmEndTime = 0;
         }
 };
 
