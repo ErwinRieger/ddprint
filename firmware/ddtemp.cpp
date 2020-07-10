@@ -385,14 +385,15 @@ void TempControl::heater() {
     watchdog_reset();
 }
 
-// armtodo
-#if 0
 void TempControl::setTempPWM(uint8_t heater, uint8_t pwmValue) {
 
+// armtodo
+#if 0
     if (heater == 1) 
         analogWrite(HEATER_0_PIN, pwmValue);
     else
         analogWrite(HEATER_1_PIN, pwmValue);
+#endif
 
     if (pwmValue)
         pwmMode = true;
@@ -400,6 +401,8 @@ void TempControl::setTempPWM(uint8_t heater, uint8_t pwmValue) {
         pwmMode = false;
 }
 
+// armtodo
+#if 0
 void TempControl::hotendOn(uint8_t heater) {
 
     if (heater == 1) 

@@ -19,6 +19,8 @@
 
 #pragma once
 
+#include <Arduino.h>
+
 void mAssert(uint16_t line, const char* file);
 void killMessage(uint8_t errorCode, uint8_t errorParam, const char *msg = "");
 void killMessage(uint8_t errorCode, uint8_t errorParam1, uint8_t errorParam2, const char *msg = "");
@@ -66,7 +68,21 @@ inline uint16_t freeRam () {
     int v; 
     return (uint16_t) &v - (__brkval == 0 ? (int) &__heap_start : (int) __brkval); 
 }
+#elif defined(__arm__)
+inline uint16_t freeRam () {
+    extern char _lm_heap_start;
+    extern char _lm_heap_end;
+    return (uint16_t) STD max((&_lm_heap_end) - (&_lm_heap_start), 0xffff);
+}
 #endif
+
+
+
+
+
+
+
+
 
 
 

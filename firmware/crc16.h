@@ -3,6 +3,15 @@
 
 #pragma once
 
+//
+// Arduino has optimized version for avr:
+//
+
+#if defined(__avr__)
+    #include <util/crc16.h>
+#else
+
+#if 0
 static uint16_t _crc_xmodem_update (uint16_t crc, uint8_t data) {
 
     int i;
@@ -16,6 +25,7 @@ static uint16_t _crc_xmodem_update (uint16_t crc, uint8_t data) {
     }
     return crc;
 }
+#endif
 
 static uint16_t _crc_ccitt_update (uint16_t crc, uint8_t data) {
 
@@ -25,4 +35,7 @@ static uint16_t _crc_ccitt_update (uint16_t crc, uint8_t data) {
     return ((((uint16_t)data << 8) | (crc >> 8)) ^ (uint8_t)(data >> 4) 
             ^ ((uint16_t)data << 3));
 }
+
+#endif
+
 

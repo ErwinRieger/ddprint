@@ -19,11 +19,11 @@
 
 #if defined(AVR)
     #include <avr/interrupt.h>
-    #include <util/crc16.h>
 #endif
 
 // #include "ddprint.h"
 #include "serialport.h"
+#include "crc16.h"
 
 
 #if !defined(DDSim)
@@ -45,12 +45,8 @@ uint8_t SerialPort::peekN(uint8_t index) {
 
 void SerialPort::peekChecksum(uint16_t *checksum, uint8_t count) {
 
-    massert(0);
-// armrun
-#if 0
     for (uint8_t i=0; i<count; i++)
         *checksum = _crc_ccitt_update(*checksum, peekN(i));
-#endif
 }
 
 void SerialPort::cobsInit(uint16_t payloadLength) {
@@ -222,6 +218,8 @@ void SerialPort::begin(long baud)
 // Note, to overwrite stm32duino's irq handler i had to define __irq_usart1() as weak
 // in stm32duino/hardware/STM32F4/2019.2.28/cores/maple/libmaple/usart.c:
 // __attribute__((weak)) void __irq_usart1(void)
+//
+// See https://stm32duinoforum.com/forum/viewtopic_f_53_t_2759.html, also.
 //
 extern "C" {
   void __irq_usart1(void) {

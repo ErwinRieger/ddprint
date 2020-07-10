@@ -41,13 +41,10 @@
 
 #include <Arduino.h>
 
-#if defined(AVR)
-    #include <util/crc16.h>
-#endif
-
 #include <limits.h>
 
 #include "Protothread.h"
+#include "crc16.h"
 
 #include "ddprint.h"
 #include "serialport.h"
@@ -266,11 +263,14 @@ void setup() {
 
     serialPort.begin(BAUDRATE);
 
+// armtodo
+#if 0
     txBuffer.pushByte('A');
     txBuffer.pushByte('B');
     txBuffer.pushByte('B');
     txBuffer.pushByte('A');
     txBuffer.pushByte(' ');
+#endif
 
 // armrun
 #if 0
@@ -1037,6 +1037,8 @@ void Timer::run(unsigned long m) {
 }
 
 Timer timer;
+#endif
+
 
 Printer::Printer() {
 
@@ -1056,6 +1058,8 @@ void Printer::printerInit() {
 
     nGenericMessage = 0;
 
+// armrun
+#if 0
     //
     // Erase sd-swap to speed up block writes.
     //
@@ -1071,11 +1075,12 @@ void Printer::printerInit() {
 
     // Init buffers
     fillBufferTask.flush();
+#endif
 
     printerState = StateInit;
     eotReceived = false;
 
-    analogWrite(LED_PIN, 255);
+    // armrun analogWrite(LED_PIN, 255);
 }
 
 
@@ -1129,6 +1134,9 @@ void Printer::cmdMove(MoveType mt) {
         massert(homed);
     }
 
+// armrun
+#if 0
+
     if (mt == MoveTypeHoming) {
         // ENABLE_STEPPER1_DRIVER_INTERRUPT();
         stepBuffer.homingMode();
@@ -1141,6 +1149,7 @@ void Printer::cmdMove(MoveType mt) {
     enable_y();
     enable_z();
     enable_e0();
+#endif
 
     bufferLow = -1;
 
@@ -1205,6 +1214,8 @@ void Printer::cmdSetPIDValues(float kp, float ki, float kd, uint16_t tu) {
 
 void Printer::cmdFanSpeed(uint8_t speed, uint8_t blipTime) {
 
+// armrun
+#if 0
     // If no blip is used, start fan directly, else
     // start fan at 100% and start a timer to lower
     // pwm value after the bliptime.
@@ -1217,12 +1228,13 @@ void Printer::cmdFanSpeed(uint8_t speed, uint8_t blipTime) {
 
     timer.endFanTimer();
     analogWrite(FAN_PIN, speed);
+#endif
 }
 
 void Printer::cmdContinuousE(uint16_t timerValue) {
 
     // xxx add new printerstate for continuos mode here...
-    stepBuffer.continuosMode(timerValue);
+    // armrun stepBuffer.continuosMode(timerValue);
 }
 
 /*
@@ -1230,6 +1242,8 @@ void Printer::cmdContinuousE(uint16_t timerValue) {
  */
 void Printer::cmdStopMove() {
 
+// armrun
+#if 0
     cmdSetTargetTemp(0, 0);
     cmdSetTargetTemp(1, 0);
 #if EXTRUDERS > 1
@@ -1246,6 +1260,7 @@ void Printer::cmdStopMove() {
     fillBufferTask.flush();
 
     cmdFanSpeed(0, 0);
+#endif
 }
 
 void Printer::cmdGetTargetTemps() {
@@ -1274,6 +1289,8 @@ void Printer::cmdGetCurrentTemps() {
 
 void Printer::checkMoveFinished() {
 
+// armrun
+#if 0
     //
     // Move is finished if:
     // * eot was received (sender has sent all data)
@@ -1309,10 +1326,13 @@ void Printer::checkMoveFinished() {
             bufferLow = -1;
         }
     }
+#endif
 }
 
 void Printer::disableSteppers() {
 
+// armrun
+#if 0
     disable_x();
     disable_y();
     disable_z();
@@ -1321,6 +1341,7 @@ void Printer::disableSteppers() {
     homed = false;
 
     analogWrite(LED_PIN, 255 * 0.5);
+#endif
 }
 
 void Printer::cmdDisableSteppers() {
@@ -1346,6 +1367,8 @@ void Printer::cmdGetHomed() {
 
 void Printer::cmdGetEndstops() {
 
+// armrun
+#if 0
     txBuffer.sendResponseStart(CmdGetEndstops);
 
     txBuffer.sendResponseUint8(X_ENDSTOP_PRESSED);
@@ -1358,6 +1381,7 @@ void Printer::cmdGetEndstops() {
     txBuffer.sendResponseValue(current_pos_steps[Z_AXIS]);
 
     txBuffer.sendResponseEnd();
+#endif
 }
 
 void Printer::cmdGetPos() {
@@ -1390,12 +1414,12 @@ void Printer::cmdGetStatus() {
     txBuffer.sendResponseUint8(printerState);
     txBuffer.sendResponseValue(current_temperature_bed);
     txBuffer.sendResponseValue(current_temperature[0]);
-    txBuffer.sendResponseValue(swapDev.available());
-    txBuffer.sendResponseValue(sDReader.available());
-    txBuffer.sendResponseUint8(stepBuffer.byteSize());
+    txBuffer.sendResponseValue((uint32_t)0); // armrun txBuffer.sendResponseValue(swapDev.available());
+    txBuffer.sendResponseValue((uint16_t)0); // armrun txBuffer.sendResponseValue(sDReader.available());
+    txBuffer.sendResponseUint8(0); // armrun txBuffer.sendResponseUint8(stepBuffer.byteSize());
     txBuffer.sendResponseInt16(bufferLow);
     txBuffer.sendResponseValue(target_temperature[0]);
-    txBuffer.sendResponseUint8(tempControl.getPwmOutput());
+    txBuffer.sendResponseUint8(0); // armrun txBuffer.sendResponseUint8(tempControl.getPwmOutput());
 
     // Flowrate sensor
 #if defined(HASFILAMENTSENSOR)
@@ -1619,8 +1643,8 @@ class UsbCommand : public Protothread {
 
                 if (commandByte != CmdBlock) {
 
-                    swapDev.addByte(commandByte);
-                    PT_WAIT_WHILE( swapDev.isBusyWriting() );
+                    // armrun swapDev.addByte(commandByte);
+                    PT_WAIT_WHILE( false /* armrun swapDev.isBusyWriting() */);
                 }
 
                 // Tell RxBuffer that it's pointing to the beginning of a COBS block
@@ -1630,8 +1654,8 @@ class UsbCommand : public Protothread {
 
                     c = serialPort.readNoCheckCobs();
 
-                    swapDev.addByte(c);
-                    PT_WAIT_WHILE( swapDev.isBusyWriting() );
+                    // armrun swapDev.addByte(c);
+                    PT_WAIT_WHILE( false /* armrun swapDev.isBusyWriting() */);
                 }
 
                 // Successfully received command, increment command counter
@@ -1735,11 +1759,14 @@ class UsbCommand : public Protothread {
                         txBuffer.sendACK();
                         break;
                     case CmdEOT: // EOT
+// armrun
+#if 0
                         if (swapDev.getWritePos()) {
                             // Save last partial block
                             // xxx check busy here
                             swapDev.writeBlock();
                         }
+#endif
                         printer.cmdEot();
                         txBuffer.sendACK();
                         break;
@@ -1788,7 +1815,7 @@ class UsbCommand : public Protothread {
                         txBuffer.sendACK();
                         break;
                     case CmdSoftStop:
-                        fillBufferTask.requestSoftStop();
+                        // armrunfillBufferTask.requestSoftStop();
                         txBuffer.sendACK();
                         break;
                     case CmdFanSpeed:
@@ -1814,7 +1841,7 @@ class UsbCommand : public Protothread {
 #endif
 
                     case CmdSetContTimer:
-                        stepBuffer.setContinuosTimer(serialPort.readUInt16NoCheckCobs());
+                        // armrun stepBuffer.setContinuosTimer(serialPort.readUInt16NoCheckCobs());
                         txBuffer.sendACK();
                         break;
                     case CmdContinuousE:
@@ -1865,11 +1892,11 @@ class UsbCommand : public Protothread {
                         for (c=0; c<64 && c<len; c++) {
                             name[c] = serialPort.readNoCheckCobs();
                         }
-                        setPrinterName(name, len);
+                        // armrun setPrinterName(name, len);
                         }
                         break;
                     case CmdGetPrinterName:
-                        getPrinterName();
+                        // armrun getPrinterName();
                         break;
                     case CmdGetHomed:
                         printer.cmdGetHomed();
@@ -1994,8 +2021,6 @@ class UsbCommand : public Protothread {
 
 static UsbCommand usbCommand;
 
-#endif
-
 #if defined(AVR)
 FWINLINE
 #endif
@@ -2020,10 +2045,12 @@ if (txBuffer.empty()) {
     delay(100);
 }
 #endif
+#if 0
     // serial echo test:
     while (serialPort._available()) {
         txBuffer.pushByte(serialPort.readNoCheckNoCobs());
     }
+#endif
 
 // serial test end
 
@@ -2099,11 +2126,8 @@ if (txBuffer.empty()) {
 #endif
     }
 
-// armrun
-#if 0
     // Read usb commands
     usbCommand.Run();
-#endif
 
     // Write usb/serial output
     txBuffer.Run();
@@ -2185,4 +2209,8 @@ int main(void) {
 
 
 
+
+// armrun
+#if 0
+#endif
 

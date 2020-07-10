@@ -66,7 +66,7 @@
 
 //
 // stm32 port:
-// Note: rx/tx buffer size wasted in struct usart_dev.
+// Note: rx/tx buffer memory wasted in struct usart_dev.
 //
 class SerialPort //: public Stream
 {
@@ -120,8 +120,6 @@ class SerialPort //: public Stream
     inline void store_char(unsigned char c);
 };
 
-extern SerialPort serialPort;
-
 inline void SerialPort::store_char(unsigned char c) {
 
         if (c == 0x0) { // SOH
@@ -144,6 +142,8 @@ inline void SerialPort::store_char(unsigned char c) {
     }
 
 
+
+extern SerialPort serialPort;
 
 
 

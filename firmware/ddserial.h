@@ -24,12 +24,12 @@
 #if defined(AVR)
     #include <avr/io.h>
     #include <avr/pgmspace.h>
-    #include <util/crc16.h>
 #endif
 
 #include "hal.h"
 #include "Protothread.h"
 #include "mdebug.h"
+#include "crc16.h"
 
 // Size of tx buffer in bytes
 // Note: Using a buffer size of 256 bytes has two big advantages:
@@ -44,7 +44,7 @@
 
 //
 // stm32 port:
-// Note: rx/tx buffer size wasted in struct usart_dev.
+// Note: rx/tx buffer memory wasted in struct usart_dev.
 //
 class TxBuffer: public Protothread {
 
@@ -64,8 +64,8 @@ class TxBuffer: public Protothread {
 
         int16_t cf, csh, csl;
 
-// xxx temporary stm32 armrun
-public:
+/////////////////// xxx temporary stm32 armrun
+/////////////////public:
         FWINLINE bool pushByte(uint8_t c) {
 
 // #if defined(HEAVYDEBUG)
@@ -132,13 +132,12 @@ public:
             sendSimpleResponse(RESPUSBACK);
         }
 
-        bool Run() {
+        bool xRun() {
 
             PT_BEGIN();
 
             while (! empty()) {
         
-                // PT_WAIT_UNTIL((UCSR0A) & (1 << UDRE0));
                 PT_WAIT_UNTIL( SERIAL_TX_DR_EMPTY() );
 
                 charToSend = pop();
@@ -151,16 +150,17 @@ public:
             PT_END();
         }
 
-        bool xRun() {
+        bool Run() {
             
             PT_BEGIN();
 
-#if 0
             while (nMessages) {
 
-                PT_WAIT_UNTIL((UCSR0A) & (1 << UDRE0));
+                // PT_WAIT_UNTIL((UCSR0A) & (1 << UDRE0));
+                PT_WAIT_UNTIL( SERIAL_TX_DR_EMPTY() );
                 charToSend = pop();
-                UDR0 = charToSend;
+                // UDR0 = charToSend;
+                SERIAL_TX_DR_PUTC( charToSend );
 
                 simassert(charToSend == 0);
 
@@ -170,8 +170,10 @@ public:
                 charToSend = peek();
                 while (charToSend) {
 
-                    PT_WAIT_UNTIL((UCSR0A) & (1 << UDRE0));
-                    UDR0 = charToSend;
+                    // PT_WAIT_UNTIL((UCSR0A) & (1 << UDRE0));
+                    PT_WAIT_UNTIL( SERIAL_TX_DR_EMPTY() );
+                    // UDR0 = charToSend;
+                    SERIAL_TX_DR_PUTC( charToSend );
 
                     // printf("%02x", charToSend);
 
@@ -204,20 +206,25 @@ public:
 
                 // printf(" checksum flags: 0x%x\n", cf);
 
-                PT_WAIT_UNTIL((UCSR0A) & (1 << UDRE0));
-                UDR0 = cf;
+                // PT_WAIT_UNTIL((UCSR0A) & (1 << UDRE0));
+                PT_WAIT_UNTIL( SERIAL_TX_DR_EMPTY() );
+                // UDR0 = cf;
+                SERIAL_TX_DR_PUTC( cf );
 
-                PT_WAIT_UNTIL((UCSR0A) & (1 << UDRE0));
-                UDR0 = csl;
+                // PT_WAIT_UNTIL((UCSR0A) & (1 << UDRE0));
+                PT_WAIT_UNTIL( SERIAL_TX_DR_EMPTY() );
+                // UDR0 = csl;
+                SERIAL_TX_DR_PUTC( csl );
 
-                PT_WAIT_UNTIL((UCSR0A) & (1 << UDRE0));
-                UDR0 = csh;
+                // PT_WAIT_UNTIL((UCSR0A) & (1 << UDRE0));
+                PT_WAIT_UNTIL( SERIAL_TX_DR_EMPTY() );
+                // UDR0 = csh;
+                SERIAL_TX_DR_PUTC( csh );
 
                 nMessages--;
                 // Init cobs encoder
                 cobsStart = -1;
             }
-#endif
 
             PT_RESTART();
             PT_END();
