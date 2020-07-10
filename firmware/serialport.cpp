@@ -18,10 +18,25 @@
 */
 
 #if defined(AVR)
+    #include <avr/interrupt.h>
     #include <util/crc16.h>
 #endif
 
+// #include "ddprint.h"
 #include "serialport.h"
+
+
+#if !defined(DDSim)
+SerialPort::SerialPort()
+{
+    init();
+}
+
+void SerialPort::init()
+{
+    head = tail; //  = rxerror = 0;
+}
+#endif
 
 uint8_t SerialPort::peekN(uint8_t index) {
 
@@ -30,6 +45,7 @@ uint8_t SerialPort::peekN(uint8_t index) {
 
 void SerialPort::peekChecksum(uint16_t *checksum, uint8_t count) {
 
+    massert(0);
 // armrun
 #if 0
     for (uint8_t i=0; i<count; i++)
@@ -134,5 +150,73 @@ int32_t SerialPort::readInt32NoCheckCobs()
     return (b4<<24) + (b3<<16) + (b2<<8) + b1;
 }
 
-// armrun SerialPort serialPort;
+#if defined(AVR)
+
+void SerialPort::begin(long baud)
+{
+  uint16_t baud_setting;
+  bool useU2X = true;
+
+#if F_CPU == 16000000UL && SERIAL_PORT == 0
+  // hardcoded exception for compatibility with the bootloader shipped
+  // with the Duemilanove and previous boards and the firmware on the 8U2
+  // on the Uno and Mega 2560.
+  if (baud == 57600) {
+    useU2X = false;
+  }
+#endif
+
+  if (useU2X) {
+    M_UCSRxA = 1 << M_U2Xx;
+    baud_setting = (F_CPU / 4 / baud - 1) / 2;
+  } else {
+    M_UCSRxA = 0;
+    baud_setting = (F_CPU / 8 / baud - 1) / 2;
+  }
+
+  // assign the baud_setting, a.k.a. ubbr (USART Baud Rate Register)
+  M_UBRRxH = baud_setting >> 8;
+  M_UBRRxL = baud_setting;
+
+  sbi(M_UCSRxB, M_RXENx);
+  sbi(M_UCSRxB, M_TXENx);
+  sbi(M_UCSRxB, M_RXCIEx);
+}
+
+// #if defined(M_USARTx_RX_vect)
+// Serial interrupt
+SIGNAL(M_USARTx_RX_vect)
+{
+
+    // // Check error status bits for frame-/overrun- and parity error
+    // serialPort.rxerror |= M_UCSRxA & 0x1C;
+    unsigned char c  =  M_UDRx;
+    serialPort.store_char(c);
+}
+// #endif
+
+#endif
+
+#if defined(__arm__)
+// Note: Fixed usage of USART1
+void SerialPort::begin(long baud)
+{
+
+    gpio_set_af_mode(BOARD_USART1_TX_PIN, 7);
+    gpio_set_af_mode(BOARD_USART1_RX_PIN, 7);
+
+    gpio_set_mode(BOARD_USART1_TX_PIN, (gpio_pin_mode)(GPIO_AF_OUTPUT_PP_PU | 0x700));
+    gpio_set_mode(BOARD_USART1_RX_PIN, (gpio_pin_mode)(GPIO_AF_INPUT_PU | 0x700));
+
+    rcc_clk_enable(USART1->clk_id);
+
+    // armrun nvic_irq_enable(dev->irq_num);
+
+    usart_set_baud_rate(USART1, baud);
+
+    usart_enable(USART1);
+}
+#endif
+
+SerialPort serialPort;
 

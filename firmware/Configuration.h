@@ -7,7 +7,7 @@
 
 #pragma once
 
-#if MOTHERBOARD == 33
+#if MOTHERBOARD == 2
     #include "Configuration_ramps.h"
 #else
     #include "Configuration_um2.h"

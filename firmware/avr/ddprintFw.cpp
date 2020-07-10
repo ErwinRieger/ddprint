@@ -24,6 +24,7 @@
 /// reset watchdog. MUST be called every 1s after init or avr will reset.
 void watchdog_reset()
 {
+    nix
     wdt_reset();
 }
 

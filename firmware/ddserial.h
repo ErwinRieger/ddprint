@@ -27,6 +27,7 @@
     #include <util/crc16.h>
 #endif
 
+#include "hal.h"
 #include "Protothread.h"
 #include "mdebug.h"
 
@@ -41,7 +42,10 @@
 // Serial communication ACK
 #define RESPUSBACK 0x6
 
-
+//
+// stm32 port:
+// Note: rx/tx buffer size wasted in struct usart_dev.
+//
 class TxBuffer: public Protothread {
 
     private:
@@ -60,6 +64,8 @@ class TxBuffer: public Protothread {
 
         int16_t cf, csh, csl;
 
+// xxx temporary stm32 armrun
+public:
         FWINLINE bool pushByte(uint8_t c) {
 
 // #if defined(HEAVYDEBUG)
@@ -127,9 +133,28 @@ class TxBuffer: public Protothread {
         }
 
         bool Run() {
+
+            PT_BEGIN();
+
+            while (! empty()) {
+        
+                // PT_WAIT_UNTIL((UCSR0A) & (1 << UDRE0));
+                PT_WAIT_UNTIL( SERIAL_TX_DR_EMPTY() );
+
+                charToSend = pop();
+
+                // UDR0 = charToSend;
+                SERIAL_TX_DR_PUTC( charToSend );
+            }
+
+            PT_RESTART();
+            PT_END();
+        }
+
+        bool xRun() {
             
             PT_BEGIN();
-//armtodo
+
 #if 0
             while (nMessages) {
 

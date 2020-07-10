@@ -64,6 +64,10 @@
 // Size of tx buffer in bytes
 #define RX_BUFFER_SIZE 256
 
+//
+// stm32 port:
+// Note: rx/tx buffer size wasted in struct usart_dev.
+//
 class SerialPort //: public Stream
 {
 
@@ -78,6 +82,8 @@ class SerialPort //: public Stream
 
     // Length of current cobs code block
     int16_t cobsCodeLen;
+
+    void init();
 
     void atCobsBlock();
 

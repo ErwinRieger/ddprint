@@ -23,6 +23,7 @@
  * 0.5: turn on power relais
  * 1  : output something on serial port
  * 2  : enable ddprint usb communication
+ * 2.5: boot into booloader
  * 3  : test/determine pins
  */
 
@@ -254,7 +255,22 @@ void setup() {
     SET_OUTPUT(MOSI_PIN);
 #endif
 
+    pinMode(BOARD_USART1_TX_PIN, OUTPUT);
+    for (int i=0; i<25; i++) {
+
+        digitalWrite(BOARD_USART1_TX_PIN, 0);
+        delay(100);
+        digitalWrite(BOARD_USART1_TX_PIN, 1);
+        delay(100);
+    }
+
     serialPort.begin(BAUDRATE);
+
+    txBuffer.pushByte('A');
+    txBuffer.pushByte('B');
+    txBuffer.pushByte('B');
+    txBuffer.pushByte('A');
+    txBuffer.pushByte(' ');
 
 // armrun
 #if 0
@@ -1985,19 +2001,36 @@ FWINLINE
 #endif
 void loop() {
 
-// armrun
-#if 0
     unsigned long m = millis();
 
     // Timer for slow running tasks (temp, encoder)
     static unsigned long timer10mS = m + TIMER10MS;
     static unsigned long timer100mS = m + TIMER100MS;
 
+// serial test
+// #if 0
+if (txBuffer.empty()) {
+
+    txBuffer.pushByte('A');
+    txBuffer.pushByte('B');
+    txBuffer.pushByte('B');
+    txBuffer.pushByte('A');
+    txBuffer.pushByte('1');
+    txBuffer.pushByte(' ');
+    // txBuffer.Runnocobs();
+    delay(500);
+}
+// #endif
+
+// serial test end
+
     m = millis();
     if (m >= timer10mS) { // Every 10 mS
 
         timer10mS = m + TIMER10MS;
 
+// armrun
+#if 0
         // Check hardware and software endstops:
         if (printer.moveType == Printer::MoveTypeNormal) {
 
@@ -2039,6 +2072,7 @@ void loop() {
 
         // Run timer
         timer.run(m);
+#endif
     }
 
     m = millis();
@@ -2046,6 +2080,8 @@ void loop() {
 
         timer100mS = m + TIMER100MS;
 
+// armrun
+#if 0
         //
         // Control heater 
         //
@@ -2057,19 +2093,28 @@ void loop() {
         // Read filament sensor
         filamentSensor.run();
 #endif
+#endif
     }
 
+// armrun
+#if 0
     // Read usb commands
     usbCommand.Run();
+#endif
 
     // Write usb/serial output
     txBuffer.Run();
 
+// armrun
+#if 0
     // If printing, then read steps from the sd buffer and push it to
     // the print buffer.
     fillBufferTask.Run();
     swapDev.Run();
+#endif
 
+// armrun
+#if 0
     if (printer.printerState == Printer::StateStart) {
 
         if (printer.bufferLow == -1) {
@@ -2088,7 +2133,6 @@ void loop() {
             }
         }
     }
-
 #endif
 
 }

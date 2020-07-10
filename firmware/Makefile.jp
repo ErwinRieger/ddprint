@@ -27,10 +27,15 @@ CPPFLAGS      +=  -DMOTHERBOARD=3 -Ifw
 # End Mega
 
 compile:
-	$(ACCONFIG)/arduino-cli --config-file $(ACCONFIG) compile -v -b stm32duino:STM32F4:generic_f407v --build-properties build.extra_flags="$(CPPFLAGS)"
+	# Arduino/arduino-cli preprocesses the sources and compiles it in a temp. directory in /tmp/arduino-sketch-<some-hex-number>/sketch.
+	# To get vim quickfix working again, the outut of arduinoo-cli is filtered through sed here:
+	$(ACCONFIG)/arduino-cli --config-file $(ACCONFIG) compile -v -b stm32duino:STM32F4:generic_f407v --build-properties build.extra_flags="$(CPPFLAGS)" 2>&1 | sed "s|^/tmp/arduino-sketch-[0-9a-fA-F]\+/sketch|.|"
 
 all: compile
 
+do_upload: upload
 
+upload:
+	stm32flash  /dev/ttyUSB0 -w build/stm32duino.STM32F4.generic_f407v/firmware.ino.bin
 
 

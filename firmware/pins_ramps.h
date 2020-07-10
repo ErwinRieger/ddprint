@@ -20,15 +20,12 @@
 // #define RAMPS_V_1_3
 // #define RAMPS_V_1_0
 
-#if MOTHERBOARD == 33 
+#if MOTHERBOARD == 2
     #define REPRAP_DISCOUNT_SMART_CONTROLLER
     #define NEWPANEL
     #define ULTRA_LCD
-#endif
 
-#if MOTHERBOARD == 33 || MOTHERBOARD == 34 || MOTHERBOARD == 77
-
-  #define LARGE_FLASH true
+    #define LARGE_FLASH true
 
     #define X_STEP_PIN         54
     #define X_DIR_PIN          55
@@ -174,7 +171,7 @@
     #endif
   #endif //ULTRA_LCD
 
-#endif // MOTHERBOARD == 33 || MOTHERBOARD == 34 || MOTHERBOARD == 77
+#endif // MOTHERBOARD == 2
 
 // SPI for Max6675 Thermocouple
 
