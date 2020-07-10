@@ -2008,7 +2008,7 @@ void loop() {
     static unsigned long timer100mS = m + TIMER100MS;
 
 // serial test
-// #if 0
+#if 0
 if (txBuffer.empty()) {
 
     txBuffer.pushByte('A');
@@ -2017,10 +2017,13 @@ if (txBuffer.empty()) {
     txBuffer.pushByte('A');
     txBuffer.pushByte('1');
     txBuffer.pushByte(' ');
-    // txBuffer.Runnocobs();
-    delay(500);
+    delay(100);
 }
-// #endif
+#endif
+    // serial echo test:
+    while (serialPort._available()) {
+        txBuffer.pushByte(serialPort.readNoCheckNoCobs());
+    }
 
 // serial test end
 

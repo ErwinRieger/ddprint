@@ -31,12 +31,12 @@ SerialPort::SerialPort()
 {
     init();
 }
+#endif
 
 void SerialPort::init()
 {
     head = tail; //  = rxerror = 0;
 }
-#endif
 
 uint8_t SerialPort::peekN(uint8_t index) {
 
@@ -184,7 +184,7 @@ void SerialPort::begin(long baud)
 }
 
 // #if defined(M_USARTx_RX_vect)
-// Serial interrupt
+// Serial interrupt routine
 SIGNAL(M_USARTx_RX_vect)
 {
 
@@ -210,13 +210,38 @@ void SerialPort::begin(long baud)
 
     rcc_clk_enable(USART1->clk_id);
 
-    // armrun nvic_irq_enable(dev->irq_num);
+    nvic_irq_enable(USART1->irq_num);
 
     usart_set_baud_rate(USART1, baud);
 
     usart_enable(USART1);
 }
+
+// Serial interrupt routine
+//
+// Note, to overwrite stm32duino's irq handler i had to define __irq_usart1() as weak
+// in stm32duino/hardware/STM32F4/2019.2.28/cores/maple/libmaple/usart.c:
+// __attribute__((weak)) void __irq_usart1(void)
+//
+extern "C" {
+  void __irq_usart1(void) {
+
+	volatile int sr = USART1->regs->SR;
+	if(sr & USART_SR_RXNE) {
+		// rb_safe_insert(&dev->rbRX, (uint8)dev->regs->DR);
+        unsigned char c = USART1->regs->DR;
+        serialPort.store_char(c);
+    }
+  }
+}
+
 #endif
 
 SerialPort serialPort;
+
+
+
+
+
+
 
