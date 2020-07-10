@@ -1,0 +1,36 @@
+#
+# Build firmware for jennyprinter stm32 shuttle board ("gear p1", "engine")
+#
+ARDUINO_BASE  = $(realpath $(PWD)/../..)
+ARDUINO_DIR  = $(ARDUINO_BASE)/arduino-1.6.13
+
+ACCONFIG = $(ARDUINO_BASE)/arduino-cli_0.11.0
+PATH += $(ACCONFIG)
+
+ARDUINO_PORT = /dev/ttyACM0
+AVRDUDE_ARD_BAUDRATE = 115200
+NO_CORE_MAIN_CPP = 1
+
+# from arduino-cli_0.11.0/packages/stm32duino/hardware/STM32F4/2019.2.28/boards.txt:
+CPPFLAGS       =  -mthumb -DSTM32_HIGH_DENSITY -DSTM32F4 -DBOARD_generic_f407v
+CPPFLAGS      +=  -DMOTHERBOARD=3 -Ifw
+# CPPFLAGS      +=  -I.
+# CPPFLAGS      +=  -I$(SDFAT)/src 
+# CPPFLAGS      +=  -I$(ARDUINO_PLATFORM_LIB_PATH)
+
+# Temp. fix depreciated warning in arduino:Print.cpp
+# CPPFLAGS      +=  -D"PGM_P=const char*"
+
+# Disable colored gcc output (don't confuse vim)
+# CXXFLAGS      +=  -fno-diagnostics-color
+
+# End Mega
+
+compile:
+	$(ACCONFIG)/arduino-cli --config-file $(ACCONFIG) compile -v -b stm32duino:STM32F4:generic_f407v --build-properties build.extra_flags="$(CPPFLAGS)"
+
+all: compile
+
+
+
+
