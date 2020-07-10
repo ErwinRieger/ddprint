@@ -33,7 +33,11 @@
 #include "temperature.h"
 #include "ddtemp.h"
 #include "pins.h"
-#include "fastio.h"
+
+#if defined(AVR)
+    #include "fastio.h"
+#endif
+
 #include "serialport.h"
 
 // Redundant definitions to avoid include of ddprint.h
@@ -83,11 +87,14 @@ void tp_init()
 
 void disable_heater()
 {
+    //armrun
+#if 0
     for(int i=0;i<EXTRUDERS;i++)
         setTargetHotend(0,i);
     WRITE(HEATER_0_PIN,LOW);
 
     setTargetBed(0);
     WRITE(HEATER_BED_PIN,LOW);
+#endif
 }
 

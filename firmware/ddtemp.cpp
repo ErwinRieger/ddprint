@@ -26,7 +26,11 @@
 #include "eepromSettings.h"
 #include "ddserial.h"
 #include "ddcommands.h"
-#include "fastio.h"
+
+#if defined(AVR)
+    #include "fastio.h"
+#endif
+
 #include "ddlcd.h"
 
 //
@@ -39,6 +43,9 @@ extern void watchdog_reset();
 extern void kill();
 
 void TempControl::init() {
+
+    //armtodo
+#if 0
 
     //
     // Set analog inputs
@@ -139,9 +146,15 @@ void TempControl::init() {
     // eSummax = 255 / (Ki * pid_dt)
     //
     eSumLimit = 255.0 / ((Ki * TIMER100MS) / 1000.0);
+#endif
+
 }
 
 bool TempControl::Run() {
+
+    /* armtodo */ return true;
+
+#if 0
 
     PT_BEGIN();
 
@@ -197,6 +210,7 @@ bool TempControl::Run() {
         
     // Not reached
     PT_END();
+#endif
 }
 
 void TempControl::setTemp(uint8_t heater, uint16_t temp) {
@@ -259,6 +273,8 @@ void TempControl::setTemp(uint8_t heater, uint16_t temp) {
 }
 
 void TempControl::heater() {
+//armtodo
+#if 0
 
     // Check if temperature is within the correct range
     if(current_temperature[0] < HEATER_1_MINTEMP) {
@@ -362,12 +378,15 @@ void TempControl::heater() {
         }
     }
 
+#endif
     //
     // Reset the watchdog after we know we have a temperature measurement.
     //
     watchdog_reset();
 }
 
+// armtodo
+#if 0
 void TempControl::setTempPWM(uint8_t heater, uint8_t pwmValue) {
 
     if (heater == 1) 
@@ -388,6 +407,8 @@ void TempControl::hotendOn(uint8_t heater) {
     else
         analogWrite(HEATER_1_PIN, 255);
 }
+
+#endif
 
 TempControl tempControl;
 

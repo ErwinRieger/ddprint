@@ -24,12 +24,18 @@
 #include "Protothread.h"
 #include "Configuration.h"
 #include "pins.h"
-#include "fastio.h"
+
+#if defined(AVR)
+    #include "fastio.h"
+#endif
+
 #include "ddserial.h"
 #include "ddcommands.h"
 
-// Note: this includes OUR version of SPI.h:
-#include "SdCard/SdSpiCard.h"
+#if defined(AVR)
+    // Note: this includes OUR version of SPI.h:
+    #include "SdCard/SdSpiCard.h"
+#endif
 
 // Redefined here from ddcommands.h
 #define RespSDReadError         9  
@@ -40,6 +46,8 @@
 // #define WCMD_BUFFER_SIZE 1024
 #define WCMD_BUFFER_SIZE 512
 
+// armtodo
+#if 0
 class SDSwap: public SdSpiCard, public Protothread {
 
     uint8_t writeBuffer[WCMD_BUFFER_SIZE];
@@ -252,4 +260,6 @@ public:
 };
 
 extern SDSwap swapDev;
+#endif
+
 

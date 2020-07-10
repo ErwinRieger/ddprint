@@ -17,7 +17,10 @@
 # along with ddprint.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <util/crc16.h>
+#if defined(AVR)
+    #include <util/crc16.h>
+#endif
+
 #include "serialport.h"
 
 uint8_t SerialPort::peekN(uint8_t index) {
@@ -27,8 +30,11 @@ uint8_t SerialPort::peekN(uint8_t index) {
 
 void SerialPort::peekChecksum(uint16_t *checksum, uint8_t count) {
 
+// armrun
+#if 0
     for (uint8_t i=0; i<count; i++)
         *checksum = _crc_ccitt_update(*checksum, peekN(i));
+#endif
 }
 
 void SerialPort::cobsInit(uint16_t payloadLength) {
@@ -128,5 +134,5 @@ int32_t SerialPort::readInt32NoCheckCobs()
     return (b4<<24) + (b3<<16) + (b2<<8) + b1;
 }
 
-SerialPort serialPort;
+// armrun SerialPort serialPort;
 

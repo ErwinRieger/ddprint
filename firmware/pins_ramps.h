@@ -4,13 +4,9 @@
 * The Origin of this code is Ultimaker2Marlin (https://github.com/Ultimaker/Ultimaker2Marlin).
 ************************************************************************************************/
 
-#pragma once
 //
 // Ramps 1.4
 //
-
-#if MOTHERBOARD == 3 || MOTHERBOARD == 33 || MOTHERBOARD == 34 || MOTHERBOARD == 77
-#define KNOWN_BOARD 1
 
 //////////////////FIX THIS//////////////
 #ifndef __AVR_ATmega1280__
@@ -197,5 +193,4 @@
 #define FILSENSMOSI  51
 #define FILSENSSCLK  52
 
-#endif //MOTHERBOARD == 3 || MOTHERBOARD == 33 || MOTHERBOARD == 34 || MOTHERBOARD == 77
 

@@ -129,6 +129,8 @@ inline uint8_t st_get_dir_pin<EAxisSelector>() {
 template<typename MOVE>
 void st_write_dir_pin(uint8_t);
 
+//artmdodo
+#if 0
 template<>
 inline void st_write_dir_pin<XAxisSelector>(uint8_t v) {
     WRITE( X_DIR_PIN, v);
@@ -266,4 +268,4 @@ inline int st_get_home_dir<ZAxisSelector>() {
     return Z_HOME_DIR;
 }
 
-
+#endif

@@ -28,7 +28,19 @@ void killMessage(uint8_t errorCode, uint8_t errorParam1, uint8_t errorParam2, co
 //
 // #define HEAVYDEBUG 1
 
-#if defined(AVR)
+#if defined(__amd64__)
+
+    #include <assert.h>
+    #define massert assert
+
+    // Assertion that is only active in simulation
+    #define simassert assert
+
+    #define FWINLINE  /* */
+
+    #define STD std::
+
+#else
 
     extern void kill(const char*);
     #define  massert(expr) { \
@@ -42,18 +54,6 @@ void killMessage(uint8_t errorCode, uint8_t errorParam1, uint8_t errorParam2, co
     #define printf ERROR_PRINTF_USED
 
     #define STD
-
-#else
-
-    #include <assert.h>
-    #define massert assert
-
-    // Assertion that is only active in simulation
-    #define simassert assert
-
-    #define FWINLINE  /* */
-
-    #define STD std::
 
 #endif
 

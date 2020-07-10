@@ -19,7 +19,10 @@
 
 #include <string.h>
 #include <stddef.h>
-#include <avr/eeprom.h>
+
+#if defined(AVR)
+    #include <avr/eeprom.h>
+#endif
 
 #include "eepromSettings.h"
 #include "serialport.h"
@@ -32,6 +35,8 @@
 // #define EEPROM_VERSION "V11"
 #define DEFAULT_PRINTER_NAME "UM2-generic"
 
+//armtodo
+#if 0
 void _EEPROM_readData(uint8_t * &pos, uint8_t* value, uint8_t size)
 {
     do
@@ -156,6 +161,7 @@ uint8_t writeEepromFloat(char *valueName, uint8_t len, float value) {
     }
 }
 
+#endif
 #endif
 
 

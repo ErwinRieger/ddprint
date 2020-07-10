@@ -20,9 +20,12 @@
 #pragma once
 
 #include <Arduino.h>
-#include <avr/io.h>
-#include <avr/pgmspace.h>
-#include <util/crc16.h>
+
+#if defined(AVR)
+    #include <avr/io.h>
+    #include <avr/pgmspace.h>
+    #include <util/crc16.h>
+#endif
 
 #include "Protothread.h"
 #include "mdebug.h"
@@ -47,7 +50,7 @@ class TxBuffer: public Protothread {
 
         // Checksum for response messages
         uint16_t checksum;
-        // Number of (cobs encoded) messages in buffer
+        // Number of (cobs encoded) messages to send in buffer
         uint8_t nMessages;
 
         uint8_t charToSend;
@@ -126,7 +129,8 @@ class TxBuffer: public Protothread {
         bool Run() {
             
             PT_BEGIN();
-
+//armtodo
+#if 0
             while (nMessages) {
 
                 PT_WAIT_UNTIL((UCSR0A) & (1 << UDRE0));
@@ -188,6 +192,7 @@ class TxBuffer: public Protothread {
                 // Init cobs encoder
                 cobsStart = -1;
             }
+#endif
 
             PT_RESTART();
             PT_END();

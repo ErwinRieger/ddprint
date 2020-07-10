@@ -19,6 +19,8 @@
 
 #pragma once
 
+#include <stdint.h>
+
 struct __attribute__((packed)) EepromSettings {
 
     char printerName[64];

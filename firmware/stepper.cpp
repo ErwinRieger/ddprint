@@ -25,6 +25,8 @@
 #include "stepper.h"
 #include "mdebug.h"
 
+//armdebug
+#if 0
 
 #if MOTOR_CURRENT_PWM_XY_PIN > -1
   const int motor_current_setting[3] = DEFAULT_PWM_MOTOR_CURRENT;
@@ -194,7 +196,7 @@ ISR(TIMER1_COMPB_vect) {
     stepBuffer.runMiscSteps();
 }
 
-
+#endif
 
 
 

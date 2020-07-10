@@ -4,10 +4,6 @@
 * The Origin of this code is Ultimaker2Marlin (https://github.com/Ultimaker/Ultimaker2Marlin).
 ************************************************************************************************/
 
-#pragma once
-
-#if MOTHERBOARD == 72
-#define KNOWN_BOARD
 /*****************************************************************
 * Ultiboard v2.0 pin assignment
 ******************************************************************/
@@ -114,5 +110,4 @@
 // #define FILSENSSDIO  66
 // #define FILSENSSCLK  67
 
-#endif//MOTHERBOARD == 72
 

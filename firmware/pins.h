@@ -1,29 +1,46 @@
-/************************************************************************************************
-* Note by erwin.rieger@ibrieger.de:
-* This file is part of ddprint - a direct drive 3d printer firmware.
-* The Origin of this code is Ultimaker2Marlin (https://github.com/Ultimaker/Ultimaker2Marlin).
-************************************************************************************************/
+/*
+* This file is part of ddprint - a direct drive 3D printer firmware.
+* 
+* Copyright 2015 erwin.rieger@ibrieger.de
+* 
+* ddprint is free software: you can redistribute it and/or modify
+* it under the terms of the GNU General Public License as published by
+* the Free Software Foundation, either version 3 of the License, or
+* (at your option) any later version.
+* 
+* ddprint is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU General Public License for more details.
+* 
+* You should have received a copy of the GNU General Public License
+* along with ddprint.  If not, see <http://www.gnu.org/licenses/>.
+*/
 
-#ifndef PINS_H
-#define PINS_H
+#pragma once
 
-#define X_MS1_PIN -1
-#define MOTOR_CURRENT_PWM_XY_PIN -1
-#define MOTOR_CURRENT_PWM_Z_PIN -1
-#define MOTOR_CURRENT_PWM_E_PIN -1
+// #define X_MS1_PIN -1
+// #define MOTOR_CURRENT_PWM_XY_PIN -1
+// #define MOTOR_CURRENT_PWM_Z_PIN -1
+// #define MOTOR_CURRENT_PWM_E_PIN -1
 
-//
-// Ultimaker 2
-//
-#include "pins_um2.h"
-//
-// Ramps 1.4
-//
-#include "pins_ramps.h"
-
-#ifndef KNOWN_BOARD
-#error Unknown MOTHERBOARD value in pins.h
+#if MOTHERBOARD == 1
+    //
+    // Ultimaker 2
+    //
+    #include "pins_um2.h"
+#elif MOTHERBOARD == 2
+    //
+    // Ramps 1.4
+    //
+    #include "pins_ramps.h"
+#elif MOTHERBOARD == 3
+    //
+    // Jennyprinter arm shuttle gear board
+    //
+    #include "pins_jp.h"
+#else
+    #error Unknown MOTHERBOARD value in pins.h
 #endif
 
-#endif
 

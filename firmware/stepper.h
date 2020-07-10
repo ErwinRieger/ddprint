@@ -157,6 +157,8 @@ inline void st_dec_current_pos_steps<EAxisSelector>() {
     current_pos_steps[E_AXIS] --;
 }
 
+//armtodo
+#if 0
 template<typename MOVE>
 inline void st_set_direction(uint8_t dirbits) {
 
@@ -444,6 +446,8 @@ inline void st_step_motor_es(uint8_t stepBits, uint8_t dirbits) {
 #
 */
 
+#endif
+
 typedef struct {
     // uint8_t cmd;
     // Bit 0-4: Direction bits, F
@@ -453,6 +457,8 @@ typedef struct {
     uint16_t timer;
 } stepData;
 
+//armtodo
+#if 0
 // Size of step buffer, entries are stepData structs.
 #define StepBufferLen  256
 
@@ -650,6 +656,8 @@ class StepBuffer {
 };
 
 extern StepBuffer stepBuffer;
+
+#endif
 
 #include "simulator/stepperSim.h"
 

@@ -17,10 +17,33 @@
 * along with ddprint.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <avr/interrupt.h>
-#include <avr/wdt.h>
+/*
+ * Todo jennyprinter port:
+ * 0  : blink a led
+ * 0.5: turn on power relais
+ * 1  : output something on serial port
+ * 2  : enable ddprint usb communication
+ * 3  : test/determine pins
+ */
+
+/*
+ * Jennyprinter arm core gear notes:
+ *
+ * (USB-) serial is on USART1
+ *
+ */
+
+#if defined(AVR)
+    #include <avr/interrupt.h>
+    #include <avr/wdt.h>
+#endif
+
 #include <Arduino.h>
-#include <util/crc16.h>
+
+#if defined(AVR)
+    #include <util/crc16.h>
+#endif
+
 #include <limits.h>
 
 #include "Protothread.h"
@@ -166,6 +189,8 @@ void printDebugInfo();
 // xxx move to printer class?
 void kill() {
 
+    //armrun
+#if 0
     cli(); // Stop interrupts
     disable_heater();
     printer.disableSteppers();
@@ -180,6 +205,7 @@ void kill() {
         // Wait for (watchdog-) reset
         txBuffer.Run();
     }
+#endif
 }
 
 void mAssert(uint16_t line, const char* file) {
@@ -211,6 +237,8 @@ void killMessage(uint8_t errorCode, uint8_t errorParam1, uint8_t errorParam2, co
 
 void setup() {
 
+// armrun
+#if 0
 #if defined(HOTEND_FAN_PIN)
     SET_OUTPUT(HOTEND_FAN_PIN);
 #endif
@@ -224,9 +252,12 @@ void setup() {
 
     SET_OUTPUT(SCK_PIN);
     SET_OUTPUT(MOSI_PIN);
+#endif
 
     serialPort.begin(BAUDRATE);
 
+// armrun
+#if 0
     // loads data from EEPROM if available else uses defaults (and resets step acceleration rate)
     // Config_RetrieveSettings();
     // dumpEepromSettings("Eeprom:");
@@ -250,6 +281,8 @@ void setup() {
         kill();
     }
 
+#endif
+
 #if defined(PMWFS)
     filamentSensor.reset();
 #endif
@@ -258,6 +291,9 @@ void setup() {
     filamentSensor.init();
 #endif
 }
+
+// armrun
+#if 0
 
 // Block-buffered sd read
 class SDReader: public Protothread {
@@ -1942,8 +1978,15 @@ class UsbCommand : public Protothread {
 
 static UsbCommand usbCommand;
 
-FWINLINE void loop() {
+#endif
 
+#if defined(AVR)
+FWINLINE
+#endif
+void loop() {
+
+// armrun
+#if 0
     unsigned long m = millis();
 
     // Timer for slow running tasks (temp, encoder)
@@ -2046,8 +2089,13 @@ FWINLINE void loop() {
         }
     }
 
+#endif
+
 }
 
+
+// armtodo
+#if 0
 
 void printDebugInfo() {
 #if defined(REPRAP_DISCOUNT_SMART_CONTROLLER)
@@ -2071,8 +2119,9 @@ void printDebugInfo() {
 #endif
 }
 
+#endif
 
-#if ! defined(DDSim)
+#if defined(AVR)
 int main(void) {
 
     init();
@@ -2086,7 +2135,6 @@ int main(void) {
     return 0;
 }
 #endif
-
 
 
 

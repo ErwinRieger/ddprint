@@ -27,7 +27,8 @@
 // #define PMWFS 1
 
 // Use Bourns ems22a Rotary Encoder as a flowrate sensor
-#define BournsEMS22AFS 1
+// armtodo
+// #define BournsEMS22AFS 1
 
 #define USEExtrusionRateTable
 
