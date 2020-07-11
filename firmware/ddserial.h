@@ -132,24 +132,6 @@ class TxBuffer: public Protothread {
             sendSimpleResponse(RESPUSBACK);
         }
 
-        bool xRun() {
-
-            PT_BEGIN();
-
-            while (! empty()) {
-        
-                PT_WAIT_UNTIL( SERIAL_TX_DR_EMPTY() );
-
-                charToSend = pop();
-
-                // UDR0 = charToSend;
-                SERIAL_TX_DR_PUTC( charToSend );
-            }
-
-            PT_RESTART();
-            PT_END();
-        }
-
         bool Run() {
             
             PT_BEGIN();

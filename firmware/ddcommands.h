@@ -115,7 +115,8 @@
 #define CmdGetFreeMem           175 // Get number of free memory bytes [uint16]
 #define CmdGetFSReadings        176 // Get last n filsensor readings 
 #define CmdSetTempPWM           177 // Set PWM value of hotend heater (for filament profile measurement)
-#define CmdSoftStop             180 // # Stop printer softly after current path is finished.  
+#define CmdSoftStop             180 // Stop printer softly after current path is finished.  
+#define CmdBootBootloader       181 // Reboot into bootloader (stm32)
 
 //
 // Response types 

@@ -233,7 +233,26 @@ void killMessage(uint8_t errorCode, uint8_t errorParam1, uint8_t errorParam2, co
     kill();
 }
 
+// debug
+//
+void toggleTX() {
+    
+    pinMode(BOARD_USART1_TX_PIN, OUTPUT);
+
+    for (int i=0; i<25; i++) {
+
+        digitalWrite(BOARD_USART1_TX_PIN, 1);
+        delay(10);
+        digitalWrite(BOARD_USART1_TX_PIN, 0);
+        delay(10);
+    }
+}
+
+static rcc_reg_map resetRCC;
+
 void setup() {
+
+    resetRCC = *RCC_BASE;
 
 // armrun
 #if 0
@@ -252,14 +271,9 @@ void setup() {
     SET_OUTPUT(MOSI_PIN);
 #endif
 
-    pinMode(BOARD_USART1_TX_PIN, OUTPUT);
-    for (int i=0; i<25; i++) {
+    toggleTX();
 
-        digitalWrite(BOARD_USART1_TX_PIN, 0);
-        delay(100);
-        digitalWrite(BOARD_USART1_TX_PIN, 1);
-        delay(100);
-    }
+    JumpToBootloader(&resetRCC);
 
     serialPort.begin(BAUDRATE);
 
@@ -306,6 +320,21 @@ void setup() {
 #if defined(HASFILAMENTSENSOR)
     filamentSensor.init();
 #endif
+
+    usart_disable(USART1);
+    nvic_irq_disable(USART1->irq_num);
+    rcc_clk_disable(USART1->clk_id);
+    // rcc_reset_dev(USART1->clk_id);
+
+    gpio_set_mode(BOARD_USART1_TX_PIN, GPIO_INPUT_PD);
+    gpio_set_mode(BOARD_USART1_RX_PIN, GPIO_INPUT_PD);
+
+    delay(0.1);
+    toggleTX();
+
+    delay(0.1);
+                        JumpToBootloader(&resetRCC);
+
 }
 
 // armrun
@@ -1860,6 +1889,13 @@ class UsbCommand : public Protothread {
                         // txBuffer.sendACK();
                         // }
                         // break;
+                    case CmdBootBootloader:
+                        // Send ack before
+                        txBuffer.sendACK();
+                        // Flush txbuffer
+                        txBuffer.Run();
+                        JumpToBootloader(&resetRCC);
+                        break;
 
 
                     //
@@ -1887,12 +1923,15 @@ class UsbCommand : public Protothread {
                         // getEepromVersion();
                         // break;
                     case CmdSetPrinterName: {
+                        // armrun 
+#if 0
                         uint8_t len = serialPort.readNoCheckCobs();
                         char name[64];
                         for (c=0; c<64 && c<len; c++) {
                             name[c] = serialPort.readNoCheckCobs();
                         }
-                        // armrun setPrinterName(name, len);
+                        setPrinterName(name, len);
+#endif
                         }
                         break;
                     case CmdGetPrinterName:
