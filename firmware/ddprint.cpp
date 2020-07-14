@@ -242,17 +242,41 @@ void toggleTX() {
     for (int i=0; i<25; i++) {
 
         digitalWrite(BOARD_USART1_TX_PIN, 1);
-        delay(10);
+        delay(100);
         digitalWrite(BOARD_USART1_TX_PIN, 0);
-        delay(10);
+        delay(100);
     }
 }
 
-static rcc_reg_map resetRCC;
+extern rcc_reg_map resetRCC;
+
+extern "C" {
+extern void disaportclock();
+}
+
+
+// extern void xrcc_reset_dev(rcc_clk_id id);
+
+void gpio_deinit(const gpio_dev *dev) {
+    rcc_clk_disable(dev->clk_id);
+    // xrcc_reset_dev(dev->clk_id);
+}
+
+/**
+ * Initialize and reset all available GPIO devices.
+ */
+void gpio_deinit_all(void) {
+    gpio_deinit(&GPIOA);
+    gpio_deinit(&GPIOB);
+    gpio_deinit(&GPIOC);
+    gpio_deinit(&GPIOD);
+	gpio_deinit(&GPIOE);
+}
+
 
 void setup() {
 
-    resetRCC = *RCC_BASE;
+    // resetRCC = *RCC_BASE;
 
 // armrun
 #if 0
@@ -271,7 +295,38 @@ void setup() {
     SET_OUTPUT(MOSI_PIN);
 #endif
 
-    toggleTX();
+    /*
+     * bootloader problem:
+     * etwas aus der initialisierung in arduino:boards.cpp:init() verhindert den jump to bootloader.
+     * und zwar nur, falls wir vor JumpToBootloader eine geisse zeit aufen (z.b. durch toggleTX() mit entsprechend
+     * langer dauer (grenze zwischen 0.6 und 0.8 sekunden...
+     * bisection führt zu gpio_init_all() und darin zu gpio_init(&GPIOA); (bemerkenswert: TX/RX liegen auf auf porta
+     * Pa9 und Pa10).
+     *
+     * in gpio_init ist es der 
+     *
+     * void gpio_inita(const gpio_dev *dev) {
+     *   // rcc_clk_enable(dev->clk_id);
+     *   rcc_reset_dev(dev->clk_id);
+     * }
+
+     *
+     */
+    // toggleTX();
+
+    // rcc_clk_disable(GPIOA.clk_id);
+    // delay(1);
+    // rcc_reset_dev(GPIOA.clk_id);
+    // disaportclock();
+
+    pinMode(BOARD_USART1_TX_PIN, OUTPUT);
+    // pinMode(BOARD_USART1_TX_PIN, INPUT);
+    // pinMode(BOARD_USART1_RX_PIN, INPUT);
+    gpio_set_mode(BOARD_USART1_TX_PIN, (gpio_pin_mode)(GPIO_AF_OUTPUT_PP_PU | 0x700)); 
+    delay(1000);
+    // gpio_set_mode(BOARD_USART1_TX_PIN, (gpio_pin_mode)(GPIO_AF_OUTPUT_PP_PU | 0x700)); 
+
+    // gpio_deinit_all();
 
     JumpToBootloader(&resetRCC);
 
@@ -320,6 +375,8 @@ void setup() {
 #if defined(HASFILAMENTSENSOR)
     filamentSensor.init();
 #endif
+
+    return;
 
     usart_disable(USART1);
     nvic_irq_disable(USART1->irq_num);

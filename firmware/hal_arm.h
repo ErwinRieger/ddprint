@@ -67,7 +67,7 @@ inline void RCC_DeInit(void)
 
 inline void RCC_DeInit(rcc_reg_map *resetRCC)
 {
-
+/*
   RCC_BASE->AHB1RSTR = resetRCC->AHB1RSTR;
   RCC_BASE->AHB2RSTR = resetRCC->AHB2RSTR;
   RCC_BASE->AHB3RSTR = resetRCC->AHB3RSTR;
@@ -86,6 +86,7 @@ inline void RCC_DeInit(rcc_reg_map *resetRCC)
   RCC_BASE->BDCR = resetRCC->BDCR;
   RCC_BASE->CSR = resetRCC->CSR;
   RCC_BASE->SSCGR = resetRCC->SSCGR;
+*/
 
   /* Set HSION bit */
   RCC_BASE->CR |= (uint32_t)0x00000001;
@@ -94,7 +95,8 @@ inline void RCC_DeInit(rcc_reg_map *resetRCC)
   RCC_BASE->CFGR = 0x00000000;
 
   /* Reset HSEON, CSSON, PLLON, PLLI2S and PLLSAI(STM32F42/43xxx devices) bits */
-  RCC_BASE->CR &= (uint32_t)0xEAF6FFFF;
+  // RCC_BASE->CR &= (uint32_t)0xEAF6FFFF;
+  RCC_BASE->CR    &= (uint32_t)0xFEF6FFFF;
 
   /* Reset PLLCFGR register */
   RCC_BASE->PLLCFGR = 0x24003010;
@@ -118,7 +120,13 @@ inline void RCC_DeInit(rcc_reg_map *resetRCC)
   RCC_BASE->DCKCFGR = 0x00000000;
 #endif
 
+  RCC_BASE->AHB1ENR = resetRCC->AHB1ENR;
+  RCC_BASE->APB1ENR = resetRCC->APB1ENR;
+  RCC_BASE->APB2ENR = resetRCC->APB2ENR;
 }
+
+//for gdb:
+static void (*SysMemBootJump)(void);
 
 /**
  * Function to perform jump to system memory boot from user application
@@ -127,7 +135,7 @@ inline void RCC_DeInit(rcc_reg_map *resetRCC)
  */
 inline void JumpToBootloader(rcc_reg_map *resetRCC) {
 
-    void (*SysMemBootJump)(void);
+    // xxx relocal void (*SysMemBootJump)(void);
  
     /**
     * Step: Set system memory address. 
@@ -154,7 +162,11 @@ inline void JumpToBootloader(rcc_reg_map *resetRCC) {
     * Step: Disable all interrupts
     */
     // asm volatile ("cpsid i" : : : "memory");
- 
+
+    nvic_set_vector_table(0, 0);
+
+    asm volatile ("dsb"); 
+
     /**
     * Step: Remap system memory to address 0x0000 0000 in address space
     *       For each family registers may be different. 
@@ -175,6 +187,9 @@ inline void JumpToBootloader(rcc_reg_map *resetRCC) {
     //} ...or if you use HAL drivers
     //__HAL_SYSCFG_REMAPMEMORY_SYSTEMFLASH(); //Call HAL macro to do this for you
  
+    asm volatile ("dsb"); 
+    asm volatile ("isb"); 
+
     /**
     * Step: Set jump memory location for system memory
     *       Use address with 4 bytes offset which specifies jump location where program starts
