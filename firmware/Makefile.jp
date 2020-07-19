@@ -33,13 +33,18 @@ compile:
 	# for debug:
 	$(ACCONFIG)/arduino-cli --config-file $(ACCONFIG) compile --optimize-for-debug -v -b stm32duino:STM32F4:generic_f407v --build-properties build.extra_flags="$(CPPFLAGS)" 2>&1 | sed "s|^/tmp/arduino-sketch-[0-9a-fA-F]\+/sketch|.|"
 
+compile_nofilter:
+	$(ACCONFIG)/arduino-cli --config-file $(ACCONFIG) compile --optimize-for-debug -v -b stm32duino:STM32F4:generic_f407v --build-properties build.extra_flags="$(CPPFLAGS)"
+
 all: compile
 
 do_upload: upload
 
 upload:
-	stm32flash  /dev/ttyUSB0 -w build/stm32duino.STM32F4.generic_f407v/firmware.ino.bin
+	stm32flash -R -b 230400 -w build/stm32duino.STM32F4.generic_f407v/firmware.ino.bin /dev/ttyUSB0
 
 swdupload:
 	st-flash --reset write build/stm32duino.STM32F4.generic_f407v/firmware.ino.bin 0x08000000   
 
+build_swdupload: compile_nofilter
+	st-flash --reset write build/stm32duino.STM32F4.generic_f407v/firmware.ino.bin 0x08000000   
