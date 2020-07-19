@@ -246,9 +246,12 @@ class Timer {
     uint8_t fanSpeed;
     unsigned long fanEndTime;
 
+    bool bootBootloaderRequest;
+
     public:
         Timer() {
             fanEndTime = 0;
+            bootBootloaderRequest = false;
         }
 
         void run(unsigned long m);
@@ -263,6 +266,12 @@ class Timer {
 
             fanEndTime = 0;
         }
+
+        void startBootloaderTimer() {
+
+            bootBootloaderRequest = true;
+        }
+
 };
 
 extern Timer timer;

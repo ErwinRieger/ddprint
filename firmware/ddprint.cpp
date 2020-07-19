@@ -1020,18 +1020,33 @@ void FillBufferTask::flush() {
 }
 
 FillBufferTask fillBufferTask;
+#endif
 
 void Timer::run(unsigned long m) {
 
     if (fanEndTime && (m >= fanEndTime)) {
 
+// armrun
+#if 0
         analogWrite(FAN_PIN, fanSpeed);
+#endif
         fanEndTime = 0;
     }
+
+#if defined(__arm__)
+    if (bootBootloaderRequest) {
+
+        // Wait until we sent our acknowledge to keep
+        // usb-serial communication clean.
+        if (txBuffer.empty()) {
+            JumpToBootloader();
+            // notreached
+        }
+    }
+#endif
 }
 
 Timer timer;
-#endif
 
 
 Printer::Printer() {
@@ -1856,11 +1871,8 @@ class UsbCommand : public Protothread {
                         // break;
 #if defined(__arm__)
                     case CmdBootBootloader:
-                        // Send ack before we die
+                        timer.startBootloaderTimer();
                         txBuffer.sendACK();
-                        // Flush txbuffer
-                        txBuffer.flushLast();
-                        JumpToBootloader();
                         break;
 #endif
 
@@ -2105,9 +2117,10 @@ if (txBuffer.empty()) {
         //
         printer.runHotEndFan();
 
+#endif
+
         // Run timer
         timer.run(m);
-#endif
     }
 
     m = millis();

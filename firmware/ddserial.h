@@ -214,19 +214,6 @@ class TxBuffer: public Protothread {
             PT_END();
         }
 
-#if defined(__arm__)
-        void flushLast() {
-
-            // for (int i=0; (i<100) && !(USART1->regs->SR & USART_SR_TC); i++)
-            for (int i=0; i<100; i++)
-            {
-                Run();
-                delay(1);
-            }
-            delay(250);
-        }
-#endif
-        
         void sendResponseStart(uint8_t respCode) {
 
             // Init cobs encoder
