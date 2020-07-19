@@ -65,6 +65,8 @@ inline void RCC_DeInit(void)
 }
 #endif
 
+extern gpio_reg_map resetGPIOARegs;
+#if 0
 inline void RCC_DeInit(rcc_reg_map *resetRCC)
 {
 /*
@@ -123,10 +125,65 @@ inline void RCC_DeInit(rcc_reg_map *resetRCC)
   RCC_BASE->AHB1ENR = resetRCC->AHB1ENR;
   RCC_BASE->APB1ENR = resetRCC->APB1ENR;
   RCC_BASE->APB2ENR = resetRCC->APB2ENR;
+
+  *GPIOA.regs = resetGPIOARegs;
+}
+#endif
+
+inline void RCC_DeInit(rcc_reg_map *resetRCC)
+{
+/*
+  RCC_BASE->AHB1RSTR = resetRCC->AHB1RSTR;
+  RCC_BASE->AHB2RSTR = resetRCC->AHB2RSTR;
+  RCC_BASE->AHB3RSTR = resetRCC->AHB3RSTR;
+  RCC_BASE->APB1RSTR = resetRCC->APB1RSTR;
+  RCC_BASE->APB2RSTR = resetRCC->APB2RSTR;
+  RCC_BASE->AHB1ENR = resetRCC->AHB1ENR;
+  RCC_BASE->AHB2ENR = resetRCC->AHB2ENR;
+  RCC_BASE->AHB3ENR = resetRCC->AHB3ENR;
+  RCC_BASE->APB1ENR = resetRCC->APB1ENR;
+  RCC_BASE->APB2ENR = resetRCC->APB2ENR;
+  RCC_BASE->AHB1LPENR = resetRCC->AHB1LPENR;
+  RCC_BASE->AHB2LPENR = resetRCC->AHB2LPENR;
+  RCC_BASE->AHB3LPENR = resetRCC->AHB3LPENR;
+  RCC_BASE->APB1LPENR = resetRCC->APB1LPENR;
+  RCC_BASE->APB2LPENR = resetRCC->APB2LPENR;
+  RCC_BASE->BDCR = resetRCC->BDCR;
+  RCC_BASE->CSR = resetRCC->CSR;
+  RCC_BASE->SSCGR = resetRCC->SSCGR;
+*/
+
+  /* Reset CFGR register, switch to HSI clock */
+  RCC_BASE->CFGR = 0x0;
+
+  // Wait till switch to HSI is done
+  while (RCC_BASE->CFGR & 0xC) ;
+
+  RCC_BASE->CR = (RCC_BASE->CR & 0xFF00) | 0x83;
+
+  /* Reset PLLCFGR register */
+  RCC_BASE->PLLCFGR = 0x24003010;
+
+  // RCC_BASE->AHB1ENR = resetRCC->AHB1ENR;
+  // RCC_BASE->APB1ENR = resetRCC->APB1ENR;
+  // RCC_BASE->APB2ENR = resetRCC->APB2ENR;
+
+  // *GPIOA.regs = resetGPIOARegs;
+  delay(1);
 }
 
 //for gdb:
 static void (*SysMemBootJump)(void);
+
+// extern "C" {
+    // extern void afterdeinit();
+// }
+static __attribute__ ((__noinline__)) void afterdeinit() {
+    for (int i=(int)&afterdeinit; i<1; i++) {
+        if ((i & 0x1) == 1) delay(1);
+        delay(1);
+    }
+}
 
 /**
  * Function to perform jump to system memory boot from user application
@@ -135,8 +192,29 @@ static void (*SysMemBootJump)(void);
  */
 inline void JumpToBootloader(rcc_reg_map *resetRCC) {
 
+    // xxx move to serial.end()
+    nvic_irq_disable(USART1->irq_num);
+
+    /*
+    usart_disable(USART1);
+    nvic_irq_disable(USART1->irq_num);
+    memset(USART1->regs, 0, sizeof(USART1->regs);
+    */
+
+    // rcc_reset_dev(GPIOA.clk_id);
+    // delay(1);
+    // rcc_clk_disable(GPIOA.clk_id);
+    // delay(1);
+
     // xxx relocal void (*SysMemBootJump)(void);
  
+    /**
+    * Step: Disable systick timer and reset it to default values
+    */
+    SYSTICK_BASE->RVR = 0;
+    while (SYSTICK_BASE->CNT);
+    SYSTICK_BASE->CSR = 0;
+
     /**
     * Step: Set system memory address. 
     *       
@@ -150,19 +228,15 @@ inline void JumpToBootloader(rcc_reg_map *resetRCC) {
     *       Internal clock, no PLL, etc.
     */
     RCC_DeInit(resetRCC);
+    // afterdeinit();
  
-    /**
-    * Step: Disable systick timer and reset it to default values
-    */
-    SYSTICK_BASE->CSR = 0;
-    SYSTICK_BASE->RVR = 0;
-    SYSTICK_BASE->CNT = 0;
-
     /**
     * Step: Disable all interrupts
     */
     // asm volatile ("cpsid i" : : : "memory");
 
+    // nvic_set_vector_table(0x1fff0000, 0);
+#if 0
     nvic_set_vector_table(0, 0);
 
     asm volatile ("dsb"); 
@@ -190,6 +264,9 @@ inline void JumpToBootloader(rcc_reg_map *resetRCC) {
     asm volatile ("dsb"); 
     asm volatile ("isb"); 
 
+    memset((void*)0x20000000, 0, 0x10000);
+#endif
+
     /**
     * Step: Set jump memory location for system memory
     *       Use address with 4 bytes offset which specifies jump location where program starts
@@ -215,7 +292,7 @@ inline void JumpToBootloader(rcc_reg_map *resetRCC) {
     * Step: Connect USB<->UART converter to dedicated USART pins and test
     *       and test with bootloader works with STM32 Flash Loader Demonstrator software
     */
-    while(1);
+    while(1) {};
 }
 
 

@@ -233,50 +233,7 @@ void killMessage(uint8_t errorCode, uint8_t errorParam1, uint8_t errorParam2, co
     kill();
 }
 
-// debug
-//
-void toggleTX() {
-    
-    pinMode(BOARD_USART1_TX_PIN, OUTPUT);
-
-    for (int i=0; i<25; i++) {
-
-        digitalWrite(BOARD_USART1_TX_PIN, 1);
-        delay(100);
-        digitalWrite(BOARD_USART1_TX_PIN, 0);
-        delay(100);
-    }
-}
-
-extern rcc_reg_map resetRCC;
-
-extern "C" {
-extern void disaportclock();
-}
-
-
-// extern void xrcc_reset_dev(rcc_clk_id id);
-
-void gpio_deinit(const gpio_dev *dev) {
-    rcc_clk_disable(dev->clk_id);
-    // xrcc_reset_dev(dev->clk_id);
-}
-
-/**
- * Initialize and reset all available GPIO devices.
- */
-void gpio_deinit_all(void) {
-    gpio_deinit(&GPIOA);
-    gpio_deinit(&GPIOB);
-    gpio_deinit(&GPIOC);
-    gpio_deinit(&GPIOD);
-	gpio_deinit(&GPIOE);
-}
-
-
 void setup() {
-
-    // resetRCC = *RCC_BASE;
 
 // armrun
 #if 0
@@ -312,23 +269,6 @@ void setup() {
 
      *
      */
-    // toggleTX();
-
-    // rcc_clk_disable(GPIOA.clk_id);
-    // delay(1);
-    // rcc_reset_dev(GPIOA.clk_id);
-    // disaportclock();
-
-    pinMode(BOARD_USART1_TX_PIN, OUTPUT);
-    // pinMode(BOARD_USART1_TX_PIN, INPUT);
-    // pinMode(BOARD_USART1_RX_PIN, INPUT);
-    gpio_set_mode(BOARD_USART1_TX_PIN, (gpio_pin_mode)(GPIO_AF_OUTPUT_PP_PU | 0x700)); 
-    delay(1000);
-    // gpio_set_mode(BOARD_USART1_TX_PIN, (gpio_pin_mode)(GPIO_AF_OUTPUT_PP_PU | 0x700)); 
-
-    // gpio_deinit_all();
-
-    JumpToBootloader(&resetRCC);
 
     serialPort.begin(BAUDRATE);
 
@@ -376,22 +316,9 @@ void setup() {
     filamentSensor.init();
 #endif
 
-    return;
+    delay(10000);
 
-    usart_disable(USART1);
-    nvic_irq_disable(USART1->irq_num);
-    rcc_clk_disable(USART1->clk_id);
-    // rcc_reset_dev(USART1->clk_id);
-
-    gpio_set_mode(BOARD_USART1_TX_PIN, GPIO_INPUT_PD);
-    gpio_set_mode(BOARD_USART1_RX_PIN, GPIO_INPUT_PD);
-
-    delay(0.1);
-    toggleTX();
-
-    delay(0.1);
-                        JumpToBootloader(&resetRCC);
-
+    JumpToBootloader(NULL);
 }
 
 // armrun
@@ -1951,7 +1878,7 @@ class UsbCommand : public Protothread {
                         txBuffer.sendACK();
                         // Flush txbuffer
                         txBuffer.Run();
-                        JumpToBootloader(&resetRCC);
+                        JumpToBootloader(NULL);
                         break;
 
 
