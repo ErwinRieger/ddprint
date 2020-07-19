@@ -41,7 +41,10 @@ all: compile
 do_upload: upload
 
 upload:
-	stm32flash -R -b 230400 -w build/stm32duino.STM32F4.generic_f407v/firmware.ino.bin /dev/ttyUSB0
+	echo ""
+	echo "NOTE: firmware size must be smaller than 96kb (-e6 option)"
+	echo ""
+	stm32flash -e6 -R -b 57600 -w build/stm32duino.STM32F4.generic_f407v/firmware.ino.bin /dev/ttyUSB0
 
 swdupload:
 	st-flash --reset write build/stm32duino.STM32F4.generic_f407v/firmware.ino.bin 0x08000000   
