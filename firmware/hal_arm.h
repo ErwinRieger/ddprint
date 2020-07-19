@@ -27,6 +27,7 @@
 // Serial interface, note: fixed USART1 usage
 //
 #define SERIAL_TX_DR_EMPTY() ( USART1->regs->SR & USART_SR_TXE ) 
+#define SERIAL_TX_COMPLETE() ( USART1->regs->SR & USART_SR_TC )
 #define SERIAL_TX_DR_PUTC(c) ( USART1->regs->DR = c )
 
 inline void RCC_DeInit()

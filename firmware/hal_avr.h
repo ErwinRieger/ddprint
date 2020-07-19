@@ -22,7 +22,7 @@
 //
 
 #define SERIAL_TX_DR_EMPTY() ( (UCSR0A) & (1 << UDRE0) )
-
+#define SERIAL_TX_COMPLETE() ( true )
 #define SERIAL_TX_DR_PUTC(c) ( UDR0 = c )
 
 

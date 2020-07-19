@@ -252,24 +252,6 @@ void setup() {
     SET_OUTPUT(MOSI_PIN);
 #endif
 
-    /*
-     * bootloader problem:
-     * etwas aus der initialisierung in arduino:boards.cpp:init() verhindert den jump to bootloader.
-     * und zwar nur, falls wir vor JumpToBootloader eine geisse zeit aufen (z.b. durch toggleTX() mit entsprechend
-     * langer dauer (grenze zwischen 0.6 und 0.8 sekunden...
-     * bisection führt zu gpio_init_all() und darin zu gpio_init(&GPIOA); (bemerkenswert: TX/RX liegen auf auf porta
-     * Pa9 und Pa10).
-     *
-     * in gpio_init ist es der 
-     *
-     * void gpio_inita(const gpio_dev *dev) {
-     *   // rcc_clk_enable(dev->clk_id);
-     *   rcc_reset_dev(dev->clk_id);
-     * }
-
-     *
-     */
-
     serialPort.begin(BAUDRATE);
 
 // armtodo
@@ -316,9 +298,8 @@ void setup() {
     filamentSensor.init();
 #endif
 
-    delay(10000);
-
-    JumpToBootloader(NULL);
+    // delay(10000);
+    // JumpToBootloader();
 }
 
 // armrun
@@ -1873,14 +1854,15 @@ class UsbCommand : public Protothread {
                         // txBuffer.sendACK();
                         // }
                         // break;
+#if defined(__arm__)
                     case CmdBootBootloader:
-                        // Send ack before
+                        // Send ack before we die
                         txBuffer.sendACK();
                         // Flush txbuffer
-                        txBuffer.Run();
-                        JumpToBootloader(NULL);
+                        txBuffer.flushLast();
+                        JumpToBootloader();
                         break;
-
+#endif
 
                     //
                     // Commands with response payload
