@@ -90,6 +90,7 @@ CmdGetFreeMem   =    175 # Get number of free memory bytes
 CmdGetFSReadings =   176 # Get last n filsensor readings
 CmdSetTempPWM =      177 # Set PWM value of hotend heater (for filament profile measurement)
 CmdSoftStop    =     180 # Stop printer softly after current path is finished.
+CmdBootBootloader =  181 # Reboot into bootloader (stm32)
 
 CommandNames = {
 }
@@ -158,6 +159,7 @@ for (cmd, cmdName) in [
     (CmdGetFSReadings, "CmdGetFSReadings",),
     (CmdSetTempPWM, "CmdSetTempPWM",),
     (CmdSoftStop, "CmdSoftStop",),
+    (CmdBootBootloader, "CmdBootBootloader",),
     ]:
 
         insertCommandName(cmd, cmdName)

@@ -166,6 +166,8 @@ def main():
     sp = subparsers.add_parser("autoTune", help=u"Autotune hotend PID values (open-loop).")
     sp.add_argument("mat", help="Name of generic material profile to use [pla, abs...].")
 
+    sp = subparsers.add_parser("bootBootloader", help=u"ARM/stm32: boot into bootloader mode for firmware download.")
+
     sp = subparsers.add_parser("mon", help=u"Monitor serial printer interface.")
 
     sp = subparsers.add_parser("changenozzle", help=u"Heat hotend and change nozzle.")
@@ -261,12 +263,19 @@ def main():
     # xxx todo create objects on demand...
     # (parser, planner, printer, printerProfile) = initParser(args, mode=args.mode)
 
+    
     if args.mode == 'autoTune':
 
         printer = Printer()
         initPrinterProfile(args)
         initMatProfile(args, printer.getPrinterName())
         util.measureHotendStepResponse(args)
+
+    elif args.mode == 'bootBootloader':
+
+        printer = Printer()
+        printer.initSerial(args.device, args.baud)
+        printer.sendCommand(CmdBootBootloader)
 
     elif args.mode == 'changenozzle':
 
@@ -519,20 +528,18 @@ def main():
     elif args.mode == 'test':
 
         printer = Printer()
-        initPrinterProfile(args)
-        printer.commandInit(args, PrinterProfile.getSettings())
+        # initPrinterProfile(args)
+        # printer.commandInit(args, PrinterProfile.getSettings())
         # readings = printer.getFSReadings(10)
         # print "Readings: "
         # pprint.pprint(readings)
         # printer.setTempPWM(HeaterEx1, 0)
         # printer = Printer()
         # printer.initSerial(args.device, args.baud)
-        util.downloadDummyTempTable(printer)
-        (baseTemp, tempTable) = printer.getTempTable()
-        print "tempTable: ", pprint.pprint(tempTable)
-        util.printTempTable(baseTemp, tempTable)
-
-
+        # util.downloadDummyTempTable(printer)
+        # (baseTemp, tempTable) = printer.getTempTable()
+        # print "tempTable: ", pprint.pprint(tempTable)
+        # util.printTempTable(baseTemp, tempTable)
     else:
         print "Unknown/not implemented command: ", args.mode
         assert(0)
