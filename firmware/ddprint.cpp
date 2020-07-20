@@ -19,19 +19,9 @@
 
 /*
  * Todo jennyprinter port:
- * 0  : blink a led
- * 0.5: turn on power relais
- * 1  : output something on serial port
- * 2  : enable ddprint usb communication
- * 2.5: boot into booloader
  * 3  : test/determine pins
- */
-
-/*
- * Jennyprinter arm core gear notes:
  *
- * (USB-) serial is on USART1
- *
+ * * watchdog
  */
 
 #if defined(AVR)
@@ -1516,7 +1506,6 @@ void Printer::cmdSetTempTable() {
 }
 #endif
 
-#if defined(__arm__)
 void Printer::cmdReadGpio(uint8_t pinNumber) {
 
     massert(pinNumber < BOARD_NR_GPIO_PINS);
@@ -1531,7 +1520,17 @@ void Printer::cmdReadGpio(uint8_t pinNumber) {
     txBuffer.sendResponseValue(val);
     txBuffer.sendResponseEnd();
 }
-#endif
+
+void Printer::cmdSetGpio(uint8_t pinNumber, uint8_t value) {
+
+    massert(pinNumber < BOARD_NR_GPIO_PINS);
+
+    // Set pin to input
+    SET_OUTPUT(pinNumber);
+
+    // Set pin
+    WRITE(pinNumber, value);
+}
 
 #if defined(POWER_BUTTON)
 void Printer::checkPowerOff(unsigned long m) {
@@ -1925,12 +1924,19 @@ class UsbCommand : public Protothread {
                         timer.startBootloaderTimer();
                         txBuffer.sendACK();
                         break;
+#endif
                     case CmdReadGpio: {
                         uint8_t pinNumber = serialPort.readNoCheckCobs();
                         printer.cmdReadGpio(pinNumber);
                         }
                         break;
-#endif
+                    case CmdSetGpio: {
+                        uint8_t pinNumber = serialPort.readNoCheckCobs();
+                        uint8_t value = serialPort.readNoCheckCobs();
+                        printer.cmdSetGpio(pinNumber, value);
+                        txBuffer.sendACK();
+                        }
+                        break;
 
                     //
                     // Commands with response payload

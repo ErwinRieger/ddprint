@@ -136,9 +136,8 @@ class Printer {
         void cmdGetFilSensor();
         void cmdGetTempTable();
         void cmdSetTempTable();
-#if defined(__arm__)
         void cmdReadGpio(uint8_t pinNumber);
-#endif
+        void cmdSetGpio(uint8_t pinNumber, uint8_t value);
 #if defined(POWER_BUTTON)
         void checkPowerOff(unsigned long ms);
 #endif
