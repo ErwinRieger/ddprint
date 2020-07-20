@@ -218,6 +218,9 @@ def main():
     sp = subparsers.add_parser("removeFilament", help=u"Remove filament (heatup, retract filament).")
     sp.add_argument("mat", help="Name of generic material profile to use [pla, abs...].")
 
+    sp = subparsers.add_parser("readGpio", help=u"Debug: Set gpio pin to INPUT and read value.")
+    sp.add_argument("pin", type=int, help="Pin number to read.")
+
     sp = subparsers.add_parser("bedLeveling", help=u"Do bed leveling sequence.")
 
     sp = subparsers.add_parser("heatHotend", help=u"Heat up hotend (to clean it, etc).")
@@ -380,6 +383,12 @@ def main():
 
         (parser, _, _, _) = initParser(args, mode=args.mode, travelMovesOnly=True)
         util.removeFilament(args, parser, args.feedrate)
+
+    elif args.mode == 'readGpio':
+        printer = Printer()
+        printer.initSerial(args.device, args.baud)
+        val = printer.readGpio(args.pin)
+        print val
 
     elif args.mode == 'bedLeveling':
 

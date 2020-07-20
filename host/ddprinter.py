@@ -945,6 +945,78 @@ class Printer(Serial):
 
     ####################################################################################################
 
+    # Read a gpio port from printer
+    def readGpio(self, pin):
+
+        payload = struct.pack("<B", pin)
+        (cmd, payload) = self.query(CmdReadGpio, binPayload=payload)
+        return struct.unpack("<I", payload)[0]
+
+    ####################################################################################################
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
