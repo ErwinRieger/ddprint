@@ -133,6 +133,9 @@ class Printer {
         void cmdGetFilSensor();
         void cmdGetTempTable();
         void cmdSetTempTable();
+#if defined(__arm__)
+        void cmdReadGpio(uint8_t pinNumber);
+#endif
 };
 
 extern Printer printer;

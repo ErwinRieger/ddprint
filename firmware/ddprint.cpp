@@ -1507,6 +1507,23 @@ void Printer::cmdSetTempTable() {
 }
 #endif
 
+#if defined(__arm__)
+void Printer::cmdReadGpio(uint8_t pinNumber) {
+
+    massert(pinNumber < BOARD_NR_GPIO_PINS);
+
+    // Set pin to input
+    gpio_set_mode(pinNumber, GPIO_INPUT_PD);
+
+    // Read pin
+    uint32_t val = gpio_read_pin(pinNumber);
+
+    txBuffer.sendResponseStart(CmdReadGpio);
+    txBuffer.sendResponseValue(val);
+    txBuffer.sendResponseEnd();
+}
+#endif
+
 Printer printer;
 
 class UsbCommand : public Protothread {
@@ -1873,6 +1890,11 @@ class UsbCommand : public Protothread {
                     case CmdBootBootloader:
                         timer.startBootloaderTimer();
                         txBuffer.sendACK();
+                        break;
+                    case CmdReadGpio: {
+                        uint8_t pinNumber = serialPort.readNoCheckCobs();
+                        printer.cmdReadGpio(pinNumber);
+                        }
                         break;
 #endif
 
