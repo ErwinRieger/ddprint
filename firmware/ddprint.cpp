@@ -1065,6 +1065,8 @@ Printer::Printer() {
 
     for (int heater=0; heater<N_HEATERS; heater++)
         increaseTemp[heater] = 0;
+
+    powerOffTime = 0;
 };
 
 void Printer::printerInit() {
@@ -1528,6 +1530,31 @@ void Printer::cmdReadGpio(uint8_t pinNumber) {
     txBuffer.sendResponseStart(CmdReadGpio);
     txBuffer.sendResponseValue(val);
     txBuffer.sendResponseEnd();
+}
+#endif
+
+#if defined(POWER_BUTTON)
+void Printer::checkPowerOff(unsigned long m) {
+
+    //
+    // Check for power-off request
+    //
+    if (READ(POWER_BUTTON)) {
+        if (! powerOffTime) {
+            // Power off if power button is held for 3 seconds
+            powerOffTime = m + 3000;
+        }
+    }
+    else {
+        if (powerOffTime) {
+            if (m > powerOffTime) {
+                WRITE(POWER_SUPPLY_RELAIS, LOW);
+            }
+            else {
+                powerOffTime = 0;
+            }
+        }
+    }
 }
 #endif
 
@@ -2170,6 +2197,10 @@ if (txBuffer.empty()) {
         // Read filament sensor
         filamentSensor.run();
 #endif
+#endif
+
+#if defined(POWER_BUTTON)
+        printer.checkPowerOff(m);
 #endif
     }
 

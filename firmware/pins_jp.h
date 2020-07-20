@@ -22,6 +22,7 @@
 ******************************************************************/
 
 
+#define POWER_BUTTON        15 // ["GPIOA","D15","PA15"], # Known: Input, Power button
 #define POWER_SUPPLY_RELAIS 28 // ["GPIOB","D28","PB12"], # Known: Output, Power-Relais  
 
 #if 0

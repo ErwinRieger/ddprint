@@ -77,6 +77,9 @@ class Printer {
 
         bool hotEndFanOn;
 
+        // Timestamp power off (power button press)
+        unsigned long powerOffTime;
+
     public:
 
         // State enum
@@ -135,6 +138,9 @@ class Printer {
         void cmdSetTempTable();
 #if defined(__arm__)
         void cmdReadGpio(uint8_t pinNumber);
+#endif
+#if defined(POWER_BUTTON)
+        void checkPowerOff(unsigned long ms);
 #endif
 };
 
