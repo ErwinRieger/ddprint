@@ -30,6 +30,13 @@
 #define SERIAL_TX_COMPLETE() ( USART1->regs->SR & USART_SR_TC )
 #define SERIAL_TX_DR_PUTC(c) ( USART1->regs->DR = c )
 
+#define SET_INPUT_PD(pin) gpio_set_mode(pin, GPIO_INPUT_PD)
+#define READ(pin) gpio_read_pin(pin)
+
+#define SET_OUTPUT(pin)  gpio_set_mode(pin, GPIO_OUTPUT_PP)
+#define WRITE(pin, v)  gpio_write_pin(pin, v)
+
+
 inline void RCC_DeInit()
 {
 

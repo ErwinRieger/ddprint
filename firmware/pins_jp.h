@@ -21,6 +21,9 @@
 * Jennyprinter arm shuttle gear
 ******************************************************************/
 
+
+#define POWER_SUPPLY_RELAIS 28 // ["GPIOB","D28","PB12"], # Known: Output, Power-Relais  
+
 #if 0
 #define X_STEP_PIN 25
 #define X_DIR_PIN 23

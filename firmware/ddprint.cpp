@@ -235,6 +235,13 @@ void killMessage(uint8_t errorCode, uint8_t errorParam1, uint8_t errorParam2, co
 
 void setup() {
 
+
+#if defined(POWER_SUPPLY_RELAIS)
+    // Switch on power relais to keep power
+    SET_OUTPUT(POWER_SUPPLY_RELAIS);
+    WRITE(POWER_SUPPLY_RELAIS, HIGH);
+#endif
+
 // armrun
 #if 0
 #if defined(HOTEND_FAN_PIN)
@@ -1513,10 +1520,10 @@ void Printer::cmdReadGpio(uint8_t pinNumber) {
     massert(pinNumber < BOARD_NR_GPIO_PINS);
 
     // Set pin to input
-    gpio_set_mode(pinNumber, GPIO_INPUT_PD);
+    SET_INPUT_PD(pinNumber);
 
     // Read pin
-    uint32_t val = gpio_read_pin(pinNumber);
+    uint32_t val = READ(pinNumber);
 
     txBuffer.sendResponseStart(CmdReadGpio);
     txBuffer.sendResponseValue(val);
