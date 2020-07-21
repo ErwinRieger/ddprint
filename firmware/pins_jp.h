@@ -22,44 +22,54 @@
 ******************************************************************/
 
 
-#define POWER_BUTTON        15 // ["GPIOA","D15","PA15"], # Known: Input, Power button
-#define POWER_SUPPLY_RELAIS 28 // ["GPIOB","D28","PB12"], # Known: Output, Power-Relais  
+#define POWER_BUTTON        15  // ["GPIOA","D15","PA15"], # Known: Input, Power button
+#define POWER_SUPPLY_RELAY  28  // ["GPIOB","D28","PB12"], # Known: Output, Power-Relais  
+
+#define X_STEP_PIN 18           // ["GPIOB","D18","PB2"],  # Known: Output, X-Step
+#define X_DIR_PIN 0             // ["GPIOA","D00","PA0"],  # Known: Output, X-Dir
+#define X_STOP_PIN 11           // ["GPIOA","D11","PA11"], # Known: Input, X-Endstop, active low
+#define X_ENABLE_PIN 66         // ["GPIOE","D66","PE2"],  # Known: Output, X-Enable
+
+#define Y_STEP_PIN 46           // ["GPIOC","D46","PC14"], # Known: Output, Y-Step
+#define Y_DIR_PIN 70            // ["GPIOE","D70","PE6"],  # Known: Output, Y-Dir
+#define Y_STOP_PIN 60           // ["GPIOD","D60","PD12"], # Known: Input, Y-Endstop, active low
+#define Y_ENABLE_PIN 47         // ["GPIOC","D47","PC15"], # Known: Output, Y-Enable
+
+#define Z_STEP_PIN 69           // ["GPIOE","D69","PE5"],  # Known: Output, Z-Step
+#define Z_DIR_PIN 68            // ["GPIOE","D68","PE4"],  # Known: Output, Z-Dir
+#define Z_STOP_PIN 65           // ["GPIOE","D65","PE1"],  # Known: Input, Z-Endstop, active low
+#define Z_ENABLE_PIN 45         // ["GPIOC","D45","PC13"], # Known: Output, Z-Enable
+
+#define E0_STEP_PIN          1  // ["GPIOA","D01","PA1"],  # Known: Output, E0-Step
+#define E0_DIR_PIN          16  // ["GPIOB","D16","PB0"],  # Known: Output, E0-Dir
+#define E0_ENABLE_PIN       37  // ["GPIOC","D37","PC5"],  # Known: Output, E0-Enable
+
+#define E1_STEP_PIN         36  // ["GPIOC","D36","PC4"],  # Known: Output, E1-Step
+#define E1_DIR_PIN          67  // ["GPIOE","D67","PE3"],  # Known: Output, E1-Dir
+#define E1_ENABLE_PIN       17  // ["GPIOB","D17","PB1"],  # Known: Output, E1-Enable
+
+#define HOTEND_FAN_PIN      24  // Small fan behind hotend cooler, software switchable on newer UM2 boards.
+                                // ["GPIOB","D24","PB8"],  # Known, Output, Hotend Fan (Fan 1), active low
+#define HOTEND_FAN_ACTIVE   LOW
+
+#define LED_PIN             3   // ["GPIOA","D03","PA3"],  # Known: Output, Case LED, active low
+
+#define HEATER_BED_PIN      29  // ["GPIOB","D29","PB13"], # Known: Output, Heater Bed, active low
+#define HEATER_0_PIN        38  // ["GPIOC","D38","PC6"],  # Known: Output, Heater Head 0, active low
+#define HEATER_1_PIN        39  // ["GPIOC","D39","PC7"],  # Known: Output, Heater Head 1, active low
+
+// #define HEATER_2_PIN        -1
+
+#define FAN_PIN             22  // ["GPIOB","D22","PB6"],  # Known: Output, Fan 0, Part cooling fan, active low
 
 #if 0
-#define X_STEP_PIN 25
-#define X_DIR_PIN 23
-#define X_STOP_PIN 22
-#define X_ENABLE_PIN 27
-
-#define Y_STEP_PIN 32
-#define Y_DIR_PIN 33
-#define Y_STOP_PIN 26
-#define Y_ENABLE_PIN 31
-
-#define Z_STEP_PIN 35
-#define Z_DIR_PIN 36
-#define Z_STOP_PIN 29
-#define Z_ENABLE_PIN 34
-
-#define HEATER_BED_PIN 4
 #define TEMP_BED_PIN 10
 
-#define HEATER_0_PIN  2
 #define TEMP_0_PIN 8
 
-#define HEATER_1_PIN 3
 #define TEMP_1_PIN 9
 
-#define HEATER_2_PIN -1
 #define TEMP_2_PIN -1
-
-#define E0_STEP_PIN         42
-#define E0_DIR_PIN          43
-#define E0_ENABLE_PIN       37
-
-#define E1_STEP_PIN         49
-#define E1_DIR_PIN          47
-#define E1_ENABLE_PIN       48
 
 #define SDPOWER            -1
 
@@ -71,10 +81,6 @@
 #define MOSI_PIN           51
 
 #define MAX6675_SS         13
-#define LED_PIN            8
-#define FAN_PIN            7
-#define HOTEND_FAN_PIN     69       // Small fan behind hotend cooler, software switchable on newer UM2 boards.
-#define PS_ON_PIN          24
 #define SAFETY_TRIGGERED_PIN     28 //PIN to detect the safety circuit has triggered
 #define MAIN_VOLTAGE_MEASURE_PIN 14 //Analogue PIN to measure the main voltage, with a 100k - 4k7 resitor divider.
 
@@ -123,5 +129,66 @@
 #define FILSENSNCS   30
 // #define FILSENSSDIO  66
 // #define FILSENSSCLK  67
+#endif
+
+#if 0
+
+        ["GPIOB","D19","PB3"],  # Known: Output, E2-Step
+
+        ["GPIOA","D02","PA2"],
+        ["GPIOA","D04","PA4"],
+        ["GPIOA","D05","PA5"],
+        ["GPIOA","D06","PA6"],
+        ["GPIOA","D07","PA7"],
+        ["GPIOA","D08","PA8"],  # ???: Input, changes with power-on relais ???
+        ["GPIOA","D09","PA9"],  # Known: Output, USART1 Tx
+        ["GPIOA","D10","PA10"], # Known: Input, USART1 Rx
+        ["GPIOA","D12","PA12"],
+        ["GPIOA","D13","PA13"],
+        ["GPIOA","D14","PA14"],
+        ["GPIOA","D15","PA15"], # Known: Input, Power button
+        ["GPIOB","D20","PB4"],  # Known: Output, E2-Dir
+        ["GPIOB","D21","PB5"],  # Known: Output, E2-Enable
+        ["GPIOB","D23","PB7"],  # ???: Input, changes with power-on relais ???
+        ["GPIOB","D25","PB9"],  # Known, Output, Fan 2, not connected
+        ["GPIOB","D26","PB10"], # ???: Input, changes with power-on relais ???
+        ["GPIOB","D27","PB11"], # ???: Input, changes with power-on relais ???
+        ["GPIOB","D28","PB12"], # Known: Output, Power-Relais
+        ["GPIOB","D30","PB14"],
+        ["GPIOB","D31","PB15"],
+        ["GPIOC","D32","PC0"],  # Known: Analog Input, Temp. PT100 Sensor X
+        ["GPIOC","D33","PC1"],  # Known: Analog Input, Temp. PT100 Sensor X 
+        ["GPIOC","D34","PC2"],  # Known: Analog Input, Temp. PT100 Sensor, nothing connected
+        ["GPIOC","D35","PC3"],  # Known: Analog Input, Temp. PT100 Sensor X 
+        ["GPIOC","D40","PC8"],
+        ["GPIOC","D41","PC9"],
+        ["GPIOC","D42","PC10"],
+        ["GPIOC","D43","PC11"],
+        ["GPIOC","D44","PC12"],
+        ["GPIOD","D48","PD0"],
+        ["GPIOD","D49","PD1"],  # ???: Input, changes with power-on relais ???
+        ["GPIOD","D50","PD2"],  # ???: Input, changes with power-on relais ???
+        ["GPIOD","D51","PD3"],  # ???: Input, changes with power-on relais ???
+        ["GPIOD","D52","PD4"],
+        ["GPIOD","D53","PD5"],  # ???: Input, changes with power-on relais ???
+        ["GPIOD","D54","PD6"],  # ???: Input, changes with power-on relais ???
+        ["GPIOD","D55","PD7"],
+        ["GPIOD","D56","PD8"],
+        ["GPIOD","D57","PD9"],
+        ["GPIOD","D58","PD10"],
+        ["GPIOD","D59","PD11"],
+        ["GPIOD","D61","PD13"],
+        ["GPIOD","D62","PD14"],
+        ["GPIOD","D63","PD15"], # ???: Input, changes with power-on relais ???
+        ["GPIOE","D64","PE0"],
+        ["GPIOE","D71","PE7"],
+        ["GPIOE","D72","PE8"],
+        ["GPIOE","D73","PE9"],  # ???: Input, changes with power-on relais ???
+        ["GPIOE","D74","PE10"],
+        ["GPIOE","D75","PE11"],
+        ["GPIOE","D76","PE12"],
+        ["GPIOE","D77","PE13"],
+        ["GPIOE","D78","PE14"],
+        ["GPIOE","D79","PE15"],
 #endif
 

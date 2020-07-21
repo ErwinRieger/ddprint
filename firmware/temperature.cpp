@@ -34,9 +34,7 @@
 #include "ddtemp.h"
 #include "pins.h"
 
-#if defined(AVR)
-    #include "fastio.h"
-#endif
+#include "hal.h"
 
 #include "serialport.h"
 
@@ -59,42 +57,31 @@ float current_temperature[EXTRUDERS] = ARRAY_BY_EXTRUDERS(HEATER_1_MINTEMP, HEAT
 void tp_init()
 {
 
-  #if defined(HEATER_0_PIN) && (HEATER_0_PIN > -1)
-    SET_OUTPUT(HEATER_0_PIN);
-  #endif
-  #if defined(HEATER_1_PIN) && (HEATER_1_PIN > -1)
-    SET_OUTPUT(HEATER_1_PIN);
-  #endif
-  #if defined(HEATER_2_PIN) && (HEATER_2_PIN > -1)
-    SET_OUTPUT(HEATER_2_PIN);
-  #endif
-  #if defined(HEATER_BED_PIN) && (HEATER_BED_PIN > -1)
-    SET_OUTPUT(HEATER_BED_PIN);
-  #endif
-
-  #if defined(FAN_PIN) && (FAN_PIN > -1)
-    SET_OUTPUT(FAN_PIN);
-    #ifdef FAST_PWM_FAN
-    setPwmFrequency(FAN_PIN, 1); // No prescaling. Pwm frequency = F_CPU/256/8
-    #endif
-    #ifdef FAN_SOFT_PWM
-    soft_pwm_fan = fanSpeedSoftPwm / 2;
-    #endif
-  #endif
+#if defined(HEATER_0_PIN)
+    SET_OUTPUT_PWM(HEATER_0_PIN);
+#endif
+#if defined(HEATER_1_PIN)
+    SET_OUTPUT_PWM(HEATER_1_PIN);
+#endif
+#if defined(HEATER_2_PIN)
+    SET_OUTPUT_PWM(HEATER_2_PIN);
+#endif
+#if defined(HEATER_BED_PIN)
+    SET_OUTPUT_PWM(HEATER_BED_PIN);
+#endif
 
     tempControl.init();
 }
 
 void disable_heater()
 {
-    //armrun
-#if 0
+
     for(int i=0;i<EXTRUDERS;i++)
         setTargetHotend(0,i);
-    WRITE(HEATER_0_PIN,LOW);
-
     setTargetBed(0);
-    WRITE(HEATER_BED_PIN,LOW);
-#endif
+
+    SET_INPUT(HEATER_BED_PIN);
+    SET_INPUT(HEATER_0_PIN);
+    SET_INPUT(HEATER_1_PIN);
 }
 

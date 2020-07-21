@@ -25,4 +25,8 @@
 #define SERIAL_TX_COMPLETE() ( true )
 #define SERIAL_TX_DR_PUTC(c) ( UDR0 = c )
 
+#define SET_OUTPUT_PWM(pin)  SET_OUTPUT(pin)
 
+#define CLI()   cli()
+
+#define PWM_WRITE(p, v) analogWrite(p, v)

@@ -198,8 +198,8 @@ SIGNAL(M_USARTx_RX_vect)
 void SerialPort::begin(long baud)
 {
 
-    gpio_set_af_mode(BOARD_USART1_TX_PIN, 7);
-    gpio_set_af_mode(BOARD_USART1_RX_PIN, 7);
+    gpio_set_af_mode(BOARD_USART1_TX_PIN, GPIO_AFMODE_USART1_3);
+    gpio_set_af_mode(BOARD_USART1_RX_PIN, GPIO_AFMODE_USART1_3);
 
     gpio_set_mode(BOARD_USART1_TX_PIN, (gpio_pin_mode)(GPIO_AF_OUTPUT_PP_PU | 0x700));
     gpio_set_mode(BOARD_USART1_RX_PIN, (gpio_pin_mode)(GPIO_AF_INPUT_PU | 0x700));

@@ -55,25 +55,29 @@ void killMessage(uint8_t errorCode, uint8_t errorParam1, uint8_t errorParam2, co
 
     #define printf ERROR_PRINTF_USED
 
-    #define STD
-
 #endif
 
 #if defined(AVR)
-//
-// Get free memory, from https://playground.arduino.cc/Code/AvailableMemory/
-//
-inline uint16_t freeRam () {
-    extern int __heap_start, *__brkval; 
-    int v; 
-    return (uint16_t) &v - (__brkval == 0 ? (int) &__heap_start : (int) __brkval); 
-}
+
+    #define STD
+
+    //
+    // Get free memory, from https://playground.arduino.cc/Code/AvailableMemory/
+    //
+    inline uint16_t freeRam () {
+        extern int __heap_start, *__brkval; 
+        int v; 
+        return (uint16_t) &v - (__brkval == 0 ? (int) &__heap_start : (int) __brkval); 
+    }
 #elif defined(__arm__)
-inline uint16_t freeRam () {
-    extern char _lm_heap_start;
-    extern char _lm_heap_end;
-    return (uint16_t) STD max((&_lm_heap_end) - (&_lm_heap_start), 0xffff);
-}
+
+    #define STD std::
+
+    inline uint16_t freeRam () {
+        extern char _lm_heap_start;
+        extern char _lm_heap_end;
+        return (uint16_t) STD max((&_lm_heap_end) - (&_lm_heap_start), 0xffff);
+    }
 #endif
 
 

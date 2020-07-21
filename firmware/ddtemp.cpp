@@ -44,6 +44,12 @@ extern void kill();
 
 void TempControl::init() {
 
+#if defined(__arm__)
+    SET_OUTPUT_PWM(HEATER_BED_PIN);
+    SET_OUTPUT_PWM(HEATER_0_PIN);
+    SET_OUTPUT_PWM(HEATER_1_PIN);
+#endif
+
     //armtodo
 #if 0
 
@@ -324,7 +330,7 @@ void TempControl::heater() {
                 pid_output = suggestPwm;
             }
 
-            analogWrite( HEATER_0_PIN, max(pid_output, 0) );
+            PWM_WRITE( HEATER_0_PIN, max(pid_output, 0) );
 
 #ifdef PID_DEBUG
             static int dbgcount=0;
@@ -387,13 +393,10 @@ void TempControl::heater() {
 
 void TempControl::setTempPWM(uint8_t heater, uint8_t pwmValue) {
 
-// armtodo
-#if 0
     if (heater == 1) 
-        analogWrite(HEATER_0_PIN, pwmValue);
+        PWM_WRITE(HEATER_0_PIN, pwmValue);
     else
-        analogWrite(HEATER_1_PIN, pwmValue);
-#endif
+        PWM_WRITE(HEATER_1_PIN, pwmValue);
 
     if (pwmValue)
         pwmMode = true;
@@ -401,17 +404,13 @@ void TempControl::setTempPWM(uint8_t heater, uint8_t pwmValue) {
         pwmMode = false;
 }
 
-// armtodo
-#if 0
 void TempControl::hotendOn(uint8_t heater) {
 
     if (heater == 1) 
-        analogWrite(HEATER_0_PIN, 255);
+        PWM_WRITE(HEATER_0_PIN, 255);
     else
-        analogWrite(HEATER_1_PIN, 255);
+        PWM_WRITE(HEATER_1_PIN, 255);
 }
-
-#endif
 
 TempControl tempControl;
 

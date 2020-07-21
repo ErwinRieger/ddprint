@@ -67,7 +67,7 @@
 
     #define FAN_PIN            9 // (Sprinter config)
 
-  #define PS_ON_PIN          12
+  // #define POWER_SUPPLY_RELAY  12
 
   #if defined(REPRAP_DISCOUNT_SMART_CONTROLLER) || defined(G3D_PANEL)
     #define KILL_PIN           41

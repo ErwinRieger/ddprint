@@ -30,15 +30,23 @@
 #define SERIAL_TX_COMPLETE() ( USART1->regs->SR & USART_SR_TC )
 #define SERIAL_TX_DR_PUTC(c) ( USART1->regs->DR = c )
 
-#define SET_INPUT_PD(pin) gpio_set_mode(pin, GPIO_INPUT_PD)
-#define SET_INPUT_ANALOG(pin) gpio_set_mode(pin, GPIO_INPUT_ANALOG)
-#define READ(pin) gpio_read_pin(pin)
+#define SET_INPUT(pin) pinMode(pin, INPUT_FLOATING)
+#define SET_INPUT_PD(pin) pinMode(pin, INPUT_PULLDOWN)
+#define SET_INPUT_ANALOG(pin) pinMode(pin, INPUT_ANALOG)
+
+#define SET_OUTPUT(pin)  pinMode(pin, OUTPUT)
+#define SET_OUTPUT_PWM(pin)  pinMode(pin, PWM)
+
+#define READ(pin) digitalRead(pin)
 #define READ_ANALOG(pin) analogRead(pin)
 
-#define SET_OUTPUT(pin)  gpio_set_mode(pin, GPIO_OUTPUT_PP)
-#define WRITE(pin, v)  gpio_write_pin(pin, v)
+#define WRITE(pin, v)  digitalWrite(pin, v)
+// #define PWM_WRITE(p, v) pwmWrite(p, map(v, 0, 255, 0, 65535))
+#define PWM_WRITE(p, v) pwmWrite(p, v)
 
+#define CLI()   noInterrupts()
 
+#if 0
 inline void RCC_DeInit()
 {
 
@@ -53,6 +61,7 @@ inline void RCC_DeInit()
   /* Reset PLLCFGR register */
   RCC_BASE->PLLCFGR = 0x24003010;
 }
+#endif
 
 /**
  * Function to perform jump to system memory boot from user application
@@ -67,9 +76,14 @@ inline void JumpToBootloader() {
     /**
     * Step: Disable systick timer and reset it to default values
     */
+    /*
     SYSTICK_BASE->RVR = 0;
     while (SYSTICK_BASE->CNT);
     SYSTICK_BASE->CSR = 0;
+    */
+    SYSTICK_BASE->LOAD = 0;
+    while (SYSTICK_BASE->VAL);
+    SYSTICK_BASE->CTRL = 0;
 
     /**
     * Step: Disable RCC, set it to default (after reset) settings

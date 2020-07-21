@@ -177,23 +177,22 @@ void printDebugInfo();
 // xxx move to printer class?
 void kill() {
 
-    //armrun
-#if 0
-    cli(); // Stop interrupts
+    CLI(); // Stop interrupts
     disable_heater();
-    printer.disableSteppers();
 
-#if defined(PS_ON_PIN) && PS_ON_PIN > -1
-    pinMode(PS_ON_PIN,INPUT);
-#endif
+    printer.disableSteppers();
 
     // printDebugInfo();
 
-    while(1) {
-        // Wait for (watchdog-) reset
+    for (int i=0; i<1000; i++) {
         txBuffer.Run();
+        delay(1);
     }
+
+#if defined(POWER_SUPPLY_RELAY)
+    SET_INPUT(POWER_SUPPLY_RELAY);
 #endif
+
 }
 
 void mAssert(uint16_t line, const char* file) {
@@ -226,18 +225,24 @@ void killMessage(uint8_t errorCode, uint8_t errorParam1, uint8_t errorParam2, co
 void setup() {
 
 
-#if defined(POWER_SUPPLY_RELAIS)
+#if defined(POWER_SUPPLY_RELAY)
     // Switch on power relais to keep power
-    SET_OUTPUT(POWER_SUPPLY_RELAIS);
-    WRITE(POWER_SUPPLY_RELAIS, HIGH);
+    SET_OUTPUT(POWER_SUPPLY_RELAY);
+    WRITE(POWER_SUPPLY_RELAY, HIGH);
 #endif
+
+#if defined(HOTEND_FAN_PIN)
+    SET_OUTPUT(HOTEND_FAN_PIN);
+    WRITE(HOTEND_FAN_PIN, ~ HOTEND_FAN_ACTIVE);
+#endif
+
+    SET_OUTPUT_PWM(LED_PIN);
+
+    SET_OUTPUT_PWM(FAN_PIN);
+    PWM_WRITE(FAN_PIN, 0);
 
 // armrun
 #if 0
-#if defined(HOTEND_FAN_PIN)
-    SET_OUTPUT(HOTEND_FAN_PIN);
-#endif
-
     // Do some minimal SPI init, prevent SPI to go to spi slave mode
     WRITE(SDSS, HIGH);
     SET_OUTPUT(SDSS);
@@ -251,15 +256,6 @@ void setup() {
 
     serialPort.begin(BAUDRATE);
 
-// armtodo
-#if 0
-    txBuffer.pushByte('A');
-    txBuffer.pushByte('B');
-    txBuffer.pushByte('B');
-    txBuffer.pushByte('A');
-    txBuffer.pushByte(' ');
-#endif
-
 // armrun
 #if 0
     // loads data from EEPROM if available else uses defaults (and resets step acceleration rate)
@@ -271,14 +267,17 @@ void setup() {
     wdt_enable(WDTO_4S);
 
     st_init();    // Initialize stepper, this enables interrupts!
+#endif
 
-    analogWrite(LED_PIN, 255 * 0.5);
+    PWM_WRITE(LED_PIN, 255 * 0.5);
 
     #if defined(REPRAP_DISCOUNT_SMART_CONTROLLER)
     lcd.begin(20, 4);
     lcd.print("OK");
     #endif
     
+// armrun
+#if 0
     if (! swapDev.swapInit()) {
         LCDMSGKILL(RespSDInit, "swapInit()", "");
         txBuffer.sendSimpleResponse(RespKilled, RespSDInit);
@@ -294,9 +293,6 @@ void setup() {
 #if defined(HASFILAMENTSENSOR)
     filamentSensor.init();
 #endif
-
-    // delay(10000);
-    // JumpToBootloader();
 }
 
 // armrun
@@ -1023,10 +1019,7 @@ void Timer::run(unsigned long m) {
 
     if (fanEndTime && (m >= fanEndTime)) {
 
-// armrun
-#if 0
-        analogWrite(FAN_PIN, fanSpeed);
-#endif
+        PWM_WRITE(FAN_PIN, fanSpeed);
         fanEndTime = 0;
     }
 
@@ -1088,7 +1081,7 @@ void Printer::printerInit() {
     printerState = StateInit;
     eotReceived = false;
 
-    // armrun analogWrite(LED_PIN, 255);
+    PWM_WRITE(LED_PIN, 255);
 }
 
 
@@ -1109,13 +1102,13 @@ void Printer::runHotEndFan() {
     if ((hotEndFanOn == false) && (current_temperature[0] >= 40.0)) {
 
         // Hotend fan on
-        WRITE(HOTEND_FAN_PIN, HIGH);
+        WRITE(HOTEND_FAN_PIN, HOTEND_FAN_ACTIVE);
         hotEndFanOn = true;
     }
     else if ((hotEndFanOn == true) && (current_temperature[0] <= 35.0)) {
 
         // Hotend fan off
-        WRITE(HOTEND_FAN_PIN, LOW);
+        WRITE(HOTEND_FAN_PIN, ~ HOTEND_FAN_ACTIVE);
         hotEndFanOn = false;
     }
 #endif
@@ -1222,21 +1215,18 @@ void Printer::cmdSetPIDValues(float kp, float ki, float kd, uint16_t tu) {
 
 void Printer::cmdFanSpeed(uint8_t speed, uint8_t blipTime) {
 
-// armrun
-#if 0
     // If no blip is used, start fan directly, else
     // start fan at 100% and start a timer to lower
     // pwm value after the bliptime.
     if (blipTime) {
 
-        analogWrite(FAN_PIN, 255);
+        PWM_WRITE(FAN_PIN, 255);
         timer.startFanTimer(speed, blipTime);
         return;
     }
 
     timer.endFanTimer();
-    analogWrite(FAN_PIN, speed);
-#endif
+    PWM_WRITE(FAN_PIN, speed);
 }
 
 void Printer::cmdContinuousE(uint16_t timerValue) {
@@ -1266,9 +1256,9 @@ void Printer::cmdStopMove() {
 
     // Flush remaining steps
     fillBufferTask.flush();
+#endif
 
     cmdFanSpeed(0, 0);
-#endif
 }
 
 void Printer::cmdGetTargetTemps() {
@@ -1348,7 +1338,7 @@ void Printer::disableSteppers() {
 
     homed = false;
 
-    analogWrite(LED_PIN, 255 * 0.5);
+    PWM_WRITE(LED_PIN, 255 * 0.5);
 #endif
 }
 
@@ -1562,7 +1552,7 @@ void Printer::checkPowerOff(unsigned long m) {
     else {
         if (powerOffTime) {
             if (m > powerOffTime) {
-                WRITE(POWER_SUPPLY_RELAIS, LOW);
+                WRITE(POWER_SUPPLY_RELAY, LOW);
             }
             else {
                 powerOffTime = 0;

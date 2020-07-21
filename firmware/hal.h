@@ -22,6 +22,7 @@
 #if defined(AVR)
     // ATMega 2560
     #include "hal_avr.h"
+    #include "fastio.h"
 #endif
 
 #if defined(__arm__)
