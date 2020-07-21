@@ -177,13 +177,6 @@ def main():
     sp.add_argument("mat", help="Name of generic material profile to use [pla, abs...].")
     sp.add_argument("gfile", help="Input GCode file.")
 
-    sp = subparsers.add_parser("setPrinterName", help=u"Store printer name in eeprom.")
-    sp.add_argument("name", help="Printer name.")
-
-    sp = subparsers.add_parser("setGpio", help=u"Set GPIO pin - dangerous.")
-    sp.add_argument("pin", type=int, help="Pin number to set.")
-    sp.add_argument("value", type=int, help="Value to set.")
-
     # sp = subparsers.add_parser("reset", help=u"Try to stop/reset printer.")
 
     sp = subparsers.add_parser("pre", help=u"Preprocess gcode, for debugging purpose.")
@@ -225,6 +218,9 @@ def main():
     sp = subparsers.add_parser("readGpio", help=u"Debug: Set gpio pin to INPUT and read value.")
     sp.add_argument("pin", type=int, help="Pin number to read.")
 
+    sp = subparsers.add_parser("readAnalogGpio", help=u"Debug: Set gpio pin to INPUT_ANALOG and read value.")
+    sp.add_argument("pin", type=int, help="Pin number to read.")
+
     sp = subparsers.add_parser("bedLeveling", help=u"Do bed leveling sequence.")
 
     sp = subparsers.add_parser("heatHotend", help=u"Heat up hotend (to clean it, etc).")
@@ -249,9 +245,16 @@ def main():
 
     sp = subparsers.add_parser("zRepeatability", help=u"Debug: Move Z to 10 random positions to test repeatability.")
 
-    sp = subparsers.add_parser("stop", help=u"Stop print, cooldown, home, disable steppers.")
+    sp = subparsers.add_parser("setGpio", help=u"Set GPIO pin - dangerous.")
+    sp.add_argument("pin", type=int, help="Pin number to set.")
+    sp.add_argument("value", type=int, help="Value to set.")
+
+    sp = subparsers.add_parser("setPrinterName", help=u"Store printer name in eeprom.")
+    sp.add_argument("name", help="Printer name.")
 
     sp = subparsers.add_parser("stepResponse", help=u"Measure and plot stepResponse of hotend PID (closed-loop).")
+
+    sp = subparsers.add_parser("stop", help=u"Stop print, cooldown, home, disable steppers.")
 
     sp = subparsers.add_parser("testFeederUniformity", help=u"Debug: check smoothness/roundness of feeder measurements.")
 
@@ -392,6 +395,12 @@ def main():
         printer = Printer()
         printer.initSerial(args.device, args.baud)
         val = printer.readGpio(args.pin)
+        print val
+
+    elif args.mode == 'readAnalogGpio':
+        printer = Printer()
+        printer.initSerial(args.device, args.baud)
+        val = printer.readAnalogGpio(args.pin)
         print val
 
     elif args.mode == 'bedLeveling':
