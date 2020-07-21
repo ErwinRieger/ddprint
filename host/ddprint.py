@@ -180,6 +180,10 @@ def main():
     sp = subparsers.add_parser("setPrinterName", help=u"Store printer name in eeprom.")
     sp.add_argument("name", help="Printer name.")
 
+    sp = subparsers.add_parser("setGpio", help=u"Set GPIO pin - dangerous.")
+    sp.add_argument("pin", type=int, help="Pin number to set.")
+    sp.add_argument("value", type=int, help="Value to set.")
+
     # sp = subparsers.add_parser("reset", help=u"Try to stop/reset printer.")
 
     sp = subparsers.add_parser("pre", help=u"Preprocess gcode, for debugging purpose.")
@@ -506,6 +510,11 @@ def main():
 
         printer = Printer()
         printer.setPrinterName(args)
+
+    elif args.mode == 'setGpio':
+        printer = Printer()
+        printer.initSerial(args.device, args.baud)
+        val = printer.setGpio(args.pin, args.value)
 
     elif args.mode == 'todo testFeederUniformity':
 

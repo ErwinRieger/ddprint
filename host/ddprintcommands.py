@@ -92,6 +92,7 @@ CmdSetTempPWM =      177 # Set PWM value of hotend heater (for filament profile 
 CmdSoftStop    =     180 # Stop printer softly after current path is finished.
 CmdBootBootloader =  181 # Reboot into bootloader (stm32)
 CmdReadGpio =        182 # Read a gpio port, used to determine pinmap.
+CmdSetGpio =         183 # Set a gpio port, dangerous, used to determine pinmap.
 
 CommandNames = {
 }
@@ -162,6 +163,7 @@ for (cmd, cmdName) in [
     (CmdSoftStop, "CmdSoftStop",),
     (CmdBootBootloader, "CmdBootBootloader",),
     (CmdReadGpio, "CmdReadGpio",),
+    (CmdSetGpio, "CmdSetGpio",),
     ]:
 
         insertCommandName(cmd, cmdName)

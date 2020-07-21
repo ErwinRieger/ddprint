@@ -722,6 +722,11 @@ class Printer(Serial):
         self.sendCommandParamV(CmdSetPrinterName,
             [packedvalue.pString_t(args.name)])
 
+    # Set a gpio port on printer
+    def setGpio(self, pin, value):
+
+        self.sendCommandParamV(CmdSetGpio, [packedvalue.uint8_t(pin), packedvalue.uint8_t(value)])
+
     def waitForState(self, destState, wait=1, log=False):
 
         status = self.getStatus()
