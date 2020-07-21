@@ -7,7 +7,7 @@
 // Arduino has optimized version for avr:
 //
 
-#if defined(__avr__)
+#if defined(AVR)
     #include <util/crc16.h>
 #else
 

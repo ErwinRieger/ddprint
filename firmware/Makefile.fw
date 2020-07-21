@@ -27,7 +27,7 @@ NO_CORE_MAIN_CPP = 1
 include ../../Arduino-Makefile/Arduino.mk
 
 # Mega/Ramps board
-CPPFLAGS      +=  -DMOTHERBOARD=1 -Ifw
+CPPFLAGS      +=  -DMOTHERBOARD=1 -Iavr -I.
 CPPFLAGS      +=  -I$(SDFAT)/src 
 CPPFLAGS      +=  -I$(ARDUINO_PLATFORM_LIB_PATH)
 
