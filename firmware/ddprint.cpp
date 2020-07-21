@@ -1521,6 +1521,21 @@ void Printer::cmdReadGpio(uint8_t pinNumber) {
     txBuffer.sendResponseEnd();
 }
 
+void Printer::cmdReadAnalogGpio(uint8_t pinNumber) {
+
+    massert(pinNumber < BOARD_NR_GPIO_PINS);
+
+    // Set pin to analog input
+    SET_INPUT_ANALOG(pinNumber);
+
+    // Read pin
+    uint32_t val = READ_ANALOG(pinNumber);
+
+    txBuffer.sendResponseStart(CmdReadAnalogGpio);
+    txBuffer.sendResponseValue(val);
+    txBuffer.sendResponseEnd();
+}
+
 void Printer::cmdSetGpio(uint8_t pinNumber, uint8_t value) {
 
     massert(pinNumber < BOARD_NR_GPIO_PINS);
@@ -1928,6 +1943,11 @@ class UsbCommand : public Protothread {
                     case CmdReadGpio: {
                         uint8_t pinNumber = serialPort.readNoCheckCobs();
                         printer.cmdReadGpio(pinNumber);
+                        }
+                        break;
+                    case CmdReadAnalogGpio: {
+                        uint8_t pinNumber = serialPort.readNoCheckCobs();
+                        printer.cmdReadAnalogGpio(pinNumber);
                         }
                         break;
                     case CmdSetGpio: {

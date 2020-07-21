@@ -31,7 +31,9 @@
 #define SERIAL_TX_DR_PUTC(c) ( USART1->regs->DR = c )
 
 #define SET_INPUT_PD(pin) gpio_set_mode(pin, GPIO_INPUT_PD)
+#define SET_INPUT_ANALOG(pin) gpio_set_mode(pin, GPIO_INPUT_ANALOG)
 #define READ(pin) gpio_read_pin(pin)
+#define READ_ANALOG(pin) analogRead(pin)
 
 #define SET_OUTPUT(pin)  gpio_set_mode(pin, GPIO_OUTPUT_PP)
 #define WRITE(pin, v)  gpio_write_pin(pin, v)

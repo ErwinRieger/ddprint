@@ -137,6 +137,7 @@ class Printer {
         void cmdGetTempTable();
         void cmdSetTempTable();
         void cmdReadGpio(uint8_t pinNumber);
+        void cmdReadAnalogGpio(uint8_t pinNumber);
         void cmdSetGpio(uint8_t pinNumber, uint8_t value);
 #if defined(POWER_BUTTON)
         void checkPowerOff(unsigned long ms);

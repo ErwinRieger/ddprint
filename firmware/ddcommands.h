@@ -119,6 +119,7 @@
 #define CmdBootBootloader       181 // Reboot into bootloader (stm32)
 #define CmdReadGpio             182 // Read a gpio port, used to determine pinmap.
 #define CmdSetGpio              183 // Set a gpio port, dangerous, used to determine pinmap.
+#define CmdReadAnalogGpio       184 // Read a analog value from gpio port, used to determine pinmap.
 
 //
 // Response types 
