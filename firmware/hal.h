@@ -19,7 +19,7 @@
 
 #pragma once
 
-#if defined(__avr__)
+#if defined(AVR)
     // ATMega 2560
     #include "hal_avr.h"
 #endif
