@@ -25,8 +25,18 @@
 #define SERIAL_TX_COMPLETE() ( true )
 #define SERIAL_TX_DR_PUTC(c) ( UDR0 = c )
 
-#define SET_OUTPUT_PWM(pin)  SET_OUTPUT(pin)
-
-#define CLI()   cli()
+#define SET_OUTPUT_PWM(pin, activeLow)  SET_OUTPUT(pin)
 
 #define PWM_WRITE(p, v) analogWrite(p, v)
+
+#define CLI()   cli()
+#define SEI()   sei()
+
+#define WDT_ENABLE() wdt_enable(WDTO_4S) /* Timeout 4 seconds */
+#define WDT_RESET() wdt_reset()
+
+
+
+
+
+

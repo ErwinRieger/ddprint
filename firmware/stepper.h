@@ -51,22 +51,22 @@
 #define DISABLE_STEPPER1_DRIVER_INTERRUPT() TIMSK1 &= ~(1<<OCIE1B)
 #define STEPPER1_DRIVER_INTERRUPT_ENABLED() (TIMSK1 & (1<<OCIE1B))
 
-#define  enable_x() WRITE(X_ENABLE_PIN, X_ENABLE_ON)
-#define disable_x() WRITE(X_ENABLE_PIN,!X_ENABLE_ON)
+#define  enable_x() WRITE(X_ENABLE_PIN, X_ENABLE_ACTIVE)
+#define disable_x() WRITE(X_ENABLE_PIN, ~ X_ENABLE_ACTIVE)
 
-#define  enable_y() WRITE(Y_ENABLE_PIN, Y_ENABLE_ON)
-#define disable_y() WRITE(Y_ENABLE_PIN,!Y_ENABLE_ON)
+#define  enable_y() WRITE(Y_ENABLE_PIN, Y_ENABLE_ACTIVE)
+#define disable_y() WRITE(Y_ENABLE_PIN, ~ Y_ENABLE_ACTIVE)
 
 #ifdef Z_DUAL_STEPPER_DRIVERS
-  #define  enable_z() { WRITE(Z_ENABLE_PIN, Z_ENABLE_ON); WRITE(Z2_ENABLE_PIN, Z_ENABLE_ON); }
-  #define disable_z() { WRITE(Z_ENABLE_PIN,!Z_ENABLE_ON); WRITE(Z2_ENABLE_PIN,!Z_ENABLE_ON); }
+  #define  enable_z() { WRITE(Z_ENABLE_PIN, Z_ENABLE_ACTIVE); WRITE(Z2_ENABLE_PIN, Z_ENABLE_ACTIVE); }
+  #define disable_z() { WRITE(Z_ENABLE_PIN, ~ Z_ENABLE_ACTIVE); WRITE(Z2_ENABLE_PIN, ~ Z_ENABLE_ACTIVE); }
 #else
-  #define  enable_z() WRITE(Z_ENABLE_PIN, Z_ENABLE_ON)
-  #define disable_z() WRITE(Z_ENABLE_PIN,!Z_ENABLE_ON)
+  #define  enable_z() WRITE(Z_ENABLE_PIN, Z_ENABLE_ACTIVE)
+  #define disable_z() WRITE(Z_ENABLE_PIN, ~ Z_ENABLE_ACTIVE)
 #endif
 
-#define enable_e0() WRITE(E0_ENABLE_PIN, E_ENABLE_ON)
-#define disable_e0() WRITE(E0_ENABLE_PIN,!E_ENABLE_ON)
+#define enable_e0() WRITE(E0_ENABLE_PIN, E0_ENABLE_ACTIVE)
+#define disable_e0() WRITE(E0_ENABLE_PIN, ~ E0_ENABLE_ACTIVE)
 
 #if MOTOR_CURRENT_PWM_XY_PIN > -1
 extern const int motor_current_setting[3];

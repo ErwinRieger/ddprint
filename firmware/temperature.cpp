@@ -58,17 +58,23 @@ void tp_init()
 {
 
 #if defined(HEATER_0_PIN)
-    SET_OUTPUT_PWM(HEATER_0_PIN);
+    SET_OUTPUT_PWM(HEATER_0_PIN, H0_PIN_ACTIVE_LOW);
 #endif
+
 #if defined(HEATER_1_PIN)
-    SET_OUTPUT_PWM(HEATER_1_PIN);
+    SET_OUTPUT_PWM(HEATER_1_PIN, H1_PIN_ACTIVE_LOW);
 #endif
-#if defined(HEATER_2_PIN)
-    SET_OUTPUT_PWM(HEATER_2_PIN);
-#endif
-#if defined(HEATER_BED_PIN)
-    SET_OUTPUT_PWM(HEATER_BED_PIN);
-#endif
+
+// #if defined(HEATER_2_PIN)
+    // SET_OUTPUT_PWM(HEATER_2_PIN, false);
+// #endif
+
+// Bitbang
+// #if defined(HEATER_BED_PIN)
+//    SET_OUTPUT_PWM(HEATER_BED_PIN, HB_PIN_ACTIVE_LOW);
+//#endif
+    SET_OUTPUT(HEATER_BED_PIN);
+    WRITE(HEATER_BED_PIN, ~HEATER_BED_ACTIVE);
 
     tempControl.init();
 }

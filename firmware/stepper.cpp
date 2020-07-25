@@ -35,19 +35,20 @@ volatile int32_t current_pos_steps[NUM_AXIS] = { 0, 0, 0, 0};
 #if 0
 
 StepBuffer stepBuffer;
+#endif
 
 void digipot_current(uint8_t driver, int current)
 {
-  #if MOTOR_CURRENT_PWM_XY_PIN > -1
-  if (driver == 0) PWM_WRITE(MOTOR_CURRENT_PWM_XY_PIN, (long)current * 255L / (long)MOTOR_CURRENT_PWM_RANGE);
-  if (driver == 1) PWM_WRITE(MOTOR_CURRENT_PWM_Z_PIN, (long)current * 255L / (long)MOTOR_CURRENT_PWM_RANGE);
-  if (driver == 2) PWM_WRITE(MOTOR_CURRENT_PWM_E_PIN, (long)current * 255L / (long)MOTOR_CURRENT_PWM_RANGE);
+  #if defined( MOTOR_CURRENT_PWM_XY_PIN)
+    if (driver == 0) PWM_WRITE(MOTOR_CURRENT_PWM_XY_PIN, (long)current * 255L / (long)MOTOR_CURRENT_PWM_RANGE);
+    if (driver == 1) PWM_WRITE(MOTOR_CURRENT_PWM_Z_PIN, (long)current * 255L / (long)MOTOR_CURRENT_PWM_RANGE);
+    if (driver == 2) PWM_WRITE(MOTOR_CURRENT_PWM_E_PIN, (long)current * 255L / (long)MOTOR_CURRENT_PWM_RANGE);
   #endif
 }
 
 void digipot_init() //Initialize Digipot Motor Current
 {
-  #if MOTOR_CURRENT_PWM_XY_PIN > -1
+  #if defined(MOTOR_CURRENT_PWM_XY_PIN)
     pinMode(MOTOR_CURRENT_PWM_XY_PIN, OUTPUT);
     pinMode(MOTOR_CURRENT_PWM_Z_PIN, OUTPUT);
     pinMode(MOTOR_CURRENT_PWM_E_PIN, OUTPUT);
@@ -63,28 +64,23 @@ void st_init() {
 
   digipot_init(); //Initialize Digipot Motor Current
 
-  #if defined(X_MS1_PIN) && X_MS1_PIN > -1
-    #error enable microstep
-    // microstep_init(); //Initialize Microstepping Pins // look
-  #endif
-
   //Initialize Dir Pins
-  #if defined(X_DIR_PIN) && X_DIR_PIN > -1
+  #if defined(X_DIR_PIN)
     SET_OUTPUT(X_DIR_PIN);
   #endif
-  #if defined(Y_DIR_PIN) && Y_DIR_PIN > -1
+  #if defined(Y_DIR_PIN)
     SET_OUTPUT(Y_DIR_PIN);
   #endif
-  #if defined(Z_DIR_PIN) && Z_DIR_PIN > -1
+  #if defined(Z_DIR_PIN)
     SET_OUTPUT(Z_DIR_PIN);
   #endif
-  #if defined(E0_DIR_PIN) && E0_DIR_PIN > -1
+  #if defined(E0_DIR_PIN)
     SET_OUTPUT(E0_DIR_PIN);
   #endif
-  #if defined(E1_DIR_PIN) && (E1_DIR_PIN > -1)
+  #if defined(E1_DIR_PIN)
     SET_OUTPUT(E1_DIR_PIN);
   #endif
-  #if defined(E2_DIR_PIN) && (E2_DIR_PIN > -1)
+  #if defined(E2_DIR_PIN)
     SET_OUTPUT(E2_DIR_PIN);
   #endif
 
@@ -96,55 +92,58 @@ void st_init() {
 
   // Initialize Enable Pins - steppers default to disabled.
   SET_OUTPUT(X_ENABLE_PIN);
-  WRITE(X_ENABLE_PIN, ! X_ENABLE_ON);
+  WRITE(X_ENABLE_PIN, ~ X_ENABLE_ACTIVE);
 
   SET_OUTPUT(Y_ENABLE_PIN);
-  WRITE(Y_ENABLE_PIN, ! Y_ENABLE_ON);
+  WRITE(Y_ENABLE_PIN, ~ Y_ENABLE_ACTIVE);
 
   SET_OUTPUT(Z_ENABLE_PIN);
-  WRITE(Z_ENABLE_PIN, ! Z_ENABLE_ON);
+  WRITE(Z_ENABLE_PIN, ~ Z_ENABLE_ACTIVE);
 
   SET_OUTPUT(E0_ENABLE_PIN);
-  WRITE(E0_ENABLE_PIN, ! E_ENABLE_ON);
+  WRITE(E0_ENABLE_PIN, ~ E0_ENABLE_ACTIVE);
 
   #if defined(E1_ENABLE_PIN)
     SET_OUTPUT(E1_ENABLE_PIN);
-    WRITE(E1_ENABLE_PIN, ! E_ENABLE_ON);
+    WRITE(E1_ENABLE_PIN, ~ E1_ENABLE_ACTIVE);
   #endif
 
   //endstops and pullups
 
   SET_INPUT(X_STOP_PIN);
-  WRITE(X_STOP_PIN,HIGH);
+  // xxx armtodo pullup WRITE(X_STOP_PIN,HIGH);
 
   SET_INPUT(Y_STOP_PIN);
-  WRITE(Y_STOP_PIN,HIGH);
+  // xxx armtodo pullup // WRITE(Y_STOP_PIN,HIGH);
+  // gpio_set_mode(Y_STOP_PIN, GPIO_INPUT_PU);
 
   SET_INPUT(Z_STOP_PIN);
-  WRITE(Z_STOP_PIN,HIGH);
+  // xxx armtodo pullup WRITE(Z_STOP_PIN,HIGH);
 
   //Initialize Step Pins
-  #if defined(X_STEP_PIN) && (X_STEP_PIN > -1)
+  #if defined(X_STEP_PIN)
     SET_OUTPUT(X_STEP_PIN);
     WRITE(X_STEP_PIN, LOW);
     disable_x();
   #endif
-  #if defined(Y_STEP_PIN) && (Y_STEP_PIN > -1)
+  #if defined(Y_STEP_PIN)
     SET_OUTPUT(Y_STEP_PIN);
     WRITE(Y_STEP_PIN, LOW);
     disable_y();
   #endif
-  #if defined(Z_STEP_PIN) && (Z_STEP_PIN > -1)
+  #if defined(Z_STEP_PIN)
     SET_OUTPUT(Z_STEP_PIN);
     WRITE(Z_STEP_PIN, LOW);
     disable_z();
   #endif
-  #if defined(E0_STEP_PIN) && (E0_STEP_PIN > -1)
+  #if defined(E0_STEP_PIN)
     SET_OUTPUT(E0_STEP_PIN);
     WRITE(E0_STEP_PIN, LOW);
     disable_e0();
   #endif
 
+// armrun
+#if 0
     //
     // Setup Timer1 for stepper interrupt and 
     // homingstepper interrupt.
@@ -158,32 +157,32 @@ void st_init() {
     // Timer 5 ist digipot
     //
 
-  // waveform generation = 0100 = CTC
-  TCCR1B &= ~(1<<WGM13);
-  TCCR1B |=  (1<<WGM12);
-  TCCR1A &= ~(1<<WGM11);
-  TCCR1A &= ~(1<<WGM10);
+    // waveform generation = 0100 = CTC
+    TCCR1B &= ~(1<<WGM13);
+    TCCR1B |=  (1<<WGM12);
+    TCCR1A &= ~(1<<WGM11);
+    TCCR1A &= ~(1<<WGM10);
     
-  // output mode = 00 (disconnected)
-  // Normal port operation, OCnA/OCnB/OCnC disconnected
-  TCCR1A &= ~(3<<COM1A0);
-  TCCR1A &= ~(3<<COM1B0);
+    // output mode = 00 (disconnected)
+    // Normal port operation, OCnA/OCnB/OCnC disconnected
+    TCCR1A &= ~(3<<COM1A0);
+    TCCR1A &= ~(3<<COM1B0);
 
-  // Set the timer pre-scaler
-  // Generally we use a divider of 8, resulting in a 2MHz timer
-  // frequency on a 16MHz MCU. If you are going to change this, be
-  // sure to regenerate speed_lookuptable.h with
-  // create_speed_lookuptable.py
-  TCCR1B = (TCCR1B & ~(0x07<<CS10)) | (2<<CS10);
+    // Generally we use a divider of 8, resulting in a 2MHz timer
+    // frequency on a 16MHz MCU.
+    TCCR1B = (TCCR1B & ~(0x07<<CS10)) | (2<<CS10);
 
-  OCR1A = 0x4000;
-  OCR1B = 0x4000;
-  TCNT1 = 0;
+    OCR1A = 0x4000;
+    OCR1B = 0x4000;
+    TCNT1 = 0;
+#endif
 
   // ENABLE_STEPPER_DRIVER_INTERRUPT();
-  sei();
+  SEI();
 }
 
+//armdebug
+#if 0
 
 ISR(TIMER1_COMPA_vect) {
 

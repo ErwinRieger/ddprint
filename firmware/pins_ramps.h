@@ -64,8 +64,10 @@
     #define MOSI_PIN           51
 
     #define LED_PIN            13
+    #define LED_PIN_ACTIVE_LOW false
 
     #define FAN_PIN            9 // (Sprinter config)
+    #define FAN_PIN_ACTIVE_LOW false
 
   // #define POWER_SUPPLY_RELAY  12
 
@@ -75,16 +77,20 @@
     #define KILL_PIN           -1
   #endif
 
-  #define HEATER_0_PIN       10   // EXTRUDER 1
-    #define HEATER_1_PIN       -1
-  #define HEATER_2_PIN       -1
+  #define HEATER_0_PIN        10   // EXTRUDER 1
+  #define H0_PIN_ACTIVE_LOW   false
+  // #define HEATER_1_PIN       -1
+  // #define HEATER_2_PIN       -1
 
   #define TEMP_0_PIN         13   // ANALOG NUMBERING
   // xxx messed up wiring, T1 and T2 swapped
   // #define TEMP_1_PIN         15   // ANALOG NUMBERING
   #define TEMP_1_PIN         14   // ANALOG NUMBERING
   #define TEMP_2_PIN         -1   // ANALOG NUMBERING
+
   #define HEATER_BED_PIN     8    // BED
+  #define HEATER_BED_ACTIVE  HIGH
+
   // xxx messed up wiring, T1 and T2 swapped
   // #define TEMP_BED_PIN       14   // ANALOG NUMBERING
   #define TEMP_BED_PIN       15   // ANALOG NUMBERING

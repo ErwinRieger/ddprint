@@ -17,11 +17,16 @@
 * along with ddprint.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include "libmaple/iwdg.h"
+
+#include "mdebug.h"
+
 // #include <VCP/core_cm4.h>
 
 //
 // STM32
 //
+void pwmInit(uint8_t pwmpin, uint16_t duty, bool activeLow);
 
 //
 // Serial interface, note: fixed USART1 usage
@@ -32,19 +37,93 @@
 
 #define SET_INPUT(pin) pinMode(pin, INPUT_FLOATING)
 #define SET_INPUT_PD(pin) pinMode(pin, INPUT_PULLDOWN)
+#define SET_INPUT_PU(pin) pinMode(pin, INPUT_PULLUP)
 #define SET_INPUT_ANALOG(pin) pinMode(pin, INPUT_ANALOG)
 
 #define SET_OUTPUT(pin)  pinMode(pin, OUTPUT)
-#define SET_OUTPUT_PWM(pin)  pinMode(pin, PWM)
+// #define SET_OUTPUT_PWM(pin)  pinMode(pin, PWM)
+#define SET_OUTPUT_PWM(pin, activeLow)  pwmInit(pin, 0, activeLow)
 
 #define READ(pin) digitalRead(pin)
 #define READ_ANALOG(pin) analogRead(pin)
 
 #define WRITE(pin, v)  digitalWrite(pin, v)
-// #define PWM_WRITE(p, v) pwmWrite(p, map(v, 0, 255, 0, 65535))
-#define PWM_WRITE(p, v) pwmWrite(p, v)
+#define PWM_WRITE(p, v) pwmWrite(p, map(v, 0, 255, 0, 65535))
 
 #define CLI()   noInterrupts()
+#define SEI()   interrupts()
+
+#define WDT_ENABLE() iwdg_init(IWDG_PRE_16, 10000) /* Timeout: 40khz / (160000) -> 4 seconds */
+#define WDT_RESET() iwdg_feed()
+
+#define TIMER_INIT() timerInit()
+
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+
+//
+// Initialize the used timers
+//
+inline void timerInit() {
+
+    timer_init(&timer4);
+    timer_init(&timer5);
+    timer_init(&timer8);
+}
+
+/*
+ * Derived from (the disabled) stm32duino:timerDefaultConfig().
+ * This possibly only works if there is no timersetup in arduino:init().
+ */
+inline void pwmInit(uint8_t pwmpin, uint16_t duty=0, bool activeLow=false)
+{
+    timer_info tinfo = timer_map[pwmpin];
+
+	const timer_dev * dev = timer_devices[tinfo.index];
+	uint8_t channel = tinfo.channel;
+
+    // Note: we use the general register map for the advanced timers, too.
+    // This works because they are the same with respect to the registers we
+    // use here.
+    timer_gen_reg_map *regs = dev->regs.gen;
+
+    const uint16 full_overflow = 0xFFFF;
+
+    // Basic timer works differently
+    massert(dev->type != TIMER_BASIC);
+
+    timer_pause(dev);
+
+    regs->CR1 = TIMER_CR1_ARPE;
+
+    if (dev->type == TIMER_ADVANCED)
+        dev->regs.adv->BDTR = TIMER_BDTR_MOE;
+
+    // Note: ARR register used by all channels of this timer.
+    timer_set_reload(dev, full_overflow);
+    timer_set_compare(dev, channel, duty);
+    timer_oc_set_mode(dev, channel, TIMER_OC_MODE_PWM_1, TIMER_OC_PE);
+
+    if (activeLow)
+        regs->CCER |= 1 << (1 + 4*(channel-1));
+
+    // This is from pinMode(pin, PWM), set CCxE bit: 
+    regs->CCER |= 1 << (4 * (channel - 1));
+
+    regs->EGR = TIMER_EGR_UG;
+
+    gpio_set_mode(pwmpin, GPIO_AF_OUTPUT_PP);
+    gpio_set_af_mode(pwmpin, dev->af_mode);
+
+    timer_resume(dev);
+}
+
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #if 0
 inline void RCC_DeInit()

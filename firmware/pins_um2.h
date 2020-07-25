@@ -16,36 +16,47 @@
 #define X_DIR_PIN 23
 #define X_STOP_PIN 22
 #define X_ENABLE_PIN 27
+#define X_ENABLE_ACTIVE     LOW
 
 #define Y_STEP_PIN 32
 #define Y_DIR_PIN 33
 #define Y_STOP_PIN 26
 #define Y_ENABLE_PIN 31
+#define Y_ENABLE_ACTIVE     LOW
 
 #define Z_STEP_PIN 35
 #define Z_DIR_PIN 36
 #define Z_STOP_PIN 29
 #define Z_ENABLE_PIN 34
+#define Z_ENABLE_ACTIVE     LOW
 
 #define HEATER_BED_PIN 4
+// #define HB_PIN_ACTIVE_LOW   false
+#define HEATER_BED_ACTIVE  HIGH
+
 #define TEMP_BED_PIN 10
 
 #define HEATER_0_PIN  2
+#define H0_PIN_ACTIVE_LOW   false
 #define TEMP_0_PIN 8
 
 #define HEATER_1_PIN 3
+#define H1_PIN_ACTIVE_LOW   false
 #define TEMP_1_PIN 9
 
-#define HEATER_2_PIN -1
-#define TEMP_2_PIN -1
+// #define HEATER_2_PIN -1
+// #define TEMP_2_PIN -1
 
 #define E0_STEP_PIN         42
 #define E0_DIR_PIN          43
 #define E0_ENABLE_PIN       37
+#define E0_ENABLE_ACTIVE    LOW
 
-#define E1_STEP_PIN         49
-#define E1_DIR_PIN          47
-#define E1_ENABLE_PIN       48
+// Second extruder not used 
+//#define E1_STEP_PIN         49
+//#define E1_DIR_PIN          47
+//#define E1_ENABLE_PIN       48
+//#define E1_ENABLE_ACTIVE    LOW
 
 #define SDPOWER            -1
 
@@ -58,8 +69,14 @@
 
 #define MAX6675_SS         13
 #define LED_PIN            8
+#define LED_PIN_ACTIVE_LOW false
+
 #define FAN_PIN            7
+#define LED_PIN_ACTIVE_LOW false
+
 #define HOTEND_FAN_PIN     69       // Small fan behind hotend cooler, software switchable on newer UM2 boards.
+#define HOTEND_FAN_ACTIVE  HIGH
+
 // #define POWER_SUPPLY_RELAY 24
 #define SAFETY_TRIGGERED_PIN     28 //PIN to detect the safety circuit has triggered
 #define MAIN_VOLTAGE_MEASURE_PIN 14 //Analogue PIN to measure the main voltage, with a 100k - 4k7 resitor divider.

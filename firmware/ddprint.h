@@ -55,7 +55,6 @@ void kill();
 // void kill(const char* msg);
 // void killPGM(const char* msg);
 
-extern void watchdog_reset();
 void setup();
 
 #define N_HEATERS (EXTRUDERS + 1)

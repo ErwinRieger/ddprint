@@ -222,8 +222,11 @@ void killMessage(uint8_t errorCode, uint8_t errorParam1, uint8_t errorParam2, co
     kill();
 }
 
+HardwareTimer hwtimer(5);
+
 void setup() {
 
+    TIMER_INIT();
 
 #if defined(POWER_SUPPLY_RELAY)
     // Switch on power relais to keep power
@@ -236,10 +239,11 @@ void setup() {
     WRITE(HOTEND_FAN_PIN, ~ HOTEND_FAN_ACTIVE);
 #endif
 
-    SET_OUTPUT_PWM(LED_PIN);
+    SET_OUTPUT_PWM(LED_PIN, LED_PIN_ACTIVE_LOW);
 
-    SET_OUTPUT_PWM(FAN_PIN);
-    PWM_WRITE(FAN_PIN, 0);
+    SET_OUTPUT_PWM(FAN_PIN, FAN_PIN_ACTIVE_LOW);
+
+    PWM_WRITE(FAN_PIN, 255 * 0.5);
 
 // armrun
 #if 0
@@ -261,13 +265,13 @@ void setup() {
     // loads data from EEPROM if available else uses defaults (and resets step acceleration rate)
     // Config_RetrieveSettings();
     // dumpEepromSettings("Eeprom:");
+#endif
 
     tp_init();    // Initialize temperature loop
 
-    wdt_enable(WDTO_4S);
+    WDT_ENABLE();
 
     st_init();    // Initialize stepper, this enables interrupts!
-#endif
 
     PWM_WRITE(LED_PIN, 255 * 0.5);
 
@@ -1335,11 +1339,11 @@ void Printer::disableSteppers() {
     disable_y();
     disable_z();
     disable_e0();
+#endif
 
     homed = false;
 
     PWM_WRITE(LED_PIN, 255 * 0.5);
-#endif
 }
 
 void Printer::cmdDisableSteppers() {
@@ -1501,7 +1505,7 @@ void Printer::cmdReadGpio(uint8_t pinNumber) {
     massert(pinNumber < BOARD_NR_GPIO_PINS);
 
     // Set pin to input
-    SET_INPUT_PD(pinNumber);
+    SET_INPUT_PU(pinNumber);
 
     // Read pin
     uint32_t val = READ(pinNumber);
@@ -2200,13 +2204,13 @@ if (txBuffer.empty()) {
 
         timer100mS = m + TIMER100MS;
 
-// armrun
-#if 0
         //
         // Control heater 
         //
         tempControl.heater();
 
+// armrun
+#if 0
         printer.checkMoveFinished();
 
 #if defined(HASFILAMENTSENSOR)
@@ -2278,7 +2282,7 @@ void printDebugInfo() {
     // Wait 100 s before reboot
     for (int i=0; i<100000; i++) {
         txBuffer.Run();
-        watchdog_reset();
+        WDT_RESET();
         delay(1);
     }
 #endif

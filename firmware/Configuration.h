@@ -108,10 +108,10 @@ const bool Y_ENDSTOPS_INVERTING = true; // set to true to invert the logic of th
 const bool Z_ENDSTOPS_INVERTING = true; // set to true to invert the logic of the endstops.
 
 // Logic levels for Stepper Enable Pins (Active Low = LOW), Active High = HIGH)
-#define X_ENABLE_ON LOW
-#define Y_ENABLE_ON LOW
-#define Z_ENABLE_ON LOW
-#define E_ENABLE_ON LOW // For all extruders
+// #define X_ENABLE_ON LOW
+// #define Y_ENABLE_ON LOW
+// #define Z_ENABLE_ON LOW
+// #define E_ENABLE_ON LOW // For all extruders
 
 //
 // Stepper direction pins. Set this to the logical level for a movement into positive direction.

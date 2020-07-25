@@ -19,7 +19,6 @@
 
 #pragma once
 
-// #define X_MS1_PIN -1
 // #define MOTOR_CURRENT_PWM_XY_PIN -1
 // #define MOTOR_CURRENT_PWM_Z_PIN -1
 // #define MOTOR_CURRENT_PWM_E_PIN -1

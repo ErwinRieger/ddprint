@@ -27,10 +27,7 @@
 #include "ddserial.h"
 #include "ddcommands.h"
 
-#if defined(AVR)
-    #include "fastio.h"
-#endif
-
+#include "hal.h"
 #include "ddlcd.h"
 
 //
@@ -39,16 +36,9 @@
 //
 
 // Redundant definitions to avoid include of ddprint.h
-extern void watchdog_reset();
 extern void kill();
 
 void TempControl::init() {
-
-#if defined(__arm__)
-    SET_OUTPUT_PWM(HEATER_BED_PIN);
-    SET_OUTPUT_PWM(HEATER_0_PIN);
-    SET_OUTPUT_PWM(HEATER_1_PIN);
-#endif
 
     //armtodo
 #if 0
@@ -375,11 +365,11 @@ void TempControl::heater() {
         else {
             if(current_temperature_bed >= target_temperature_bed)
             {
-                WRITE(HEATER_BED_PIN, LOW);
+                WRITE(HEATER_BED_PIN, ~HEATER_BED_ACTIVE);
             }
             else
             {
-                WRITE(HEATER_BED_PIN, HIGH);
+                WRITE(HEATER_BED_PIN, HEATER_BED_ACTIVE);
             }
         }
     }
@@ -388,7 +378,7 @@ void TempControl::heater() {
     //
     // Reset the watchdog after we know we have a temperature measurement.
     //
-    watchdog_reset();
+    WDT_RESET();
 }
 
 void TempControl::setTempPWM(uint8_t heater, uint8_t pwmValue) {
