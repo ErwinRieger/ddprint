@@ -190,7 +190,8 @@ void kill() {
     }
 
 #if defined(POWER_SUPPLY_RELAY)
-    SET_INPUT(POWER_SUPPLY_RELAY);
+    // SET_INPUT(POWER_SUPPLY_RELAY);
+    POWER_SUPPLY_RELAY :: saveState();
 #endif
 
 }
@@ -226,24 +227,34 @@ HardwareTimer hwtimer(5);
 
 void setup() {
 
+    WDT_ENABLE();
+
+    // TESTPIN :: initActive();
+
     TIMER_INIT();
 
 #if defined(POWER_SUPPLY_RELAY)
     // Switch on power relais to keep power
-    SET_OUTPUT(POWER_SUPPLY_RELAY);
-    WRITE(POWER_SUPPLY_RELAY, HIGH);
+    // SET_OUTPUT(POWER_SUPPLY_RELAY);
+    // WRITE(POWER_SUPPLY_RELAY, HIGH);
+    POWER_SUPPLY_RELAY :: initActive();
 #endif
 
 #if defined(HOTEND_FAN_PIN)
-    SET_OUTPUT(HOTEND_FAN_PIN);
-    WRITE(HOTEND_FAN_PIN, ~ HOTEND_FAN_ACTIVE);
+    // SET_OUTPUT(HOTEND_FAN_PIN);
+    // WRITE(HOTEND_FAN_PIN, ~ HOTEND_FAN_ACTIVE);
+    HOTEND_FAN_PIN :: initDeActive();
 #endif
 
-    SET_OUTPUT_PWM(LED_PIN, LED_PIN_ACTIVE_LOW);
+#if defined(POWER_BUTTON)
+    POWER_BUTTON :: init();
+#endif
 
-    SET_OUTPUT_PWM(FAN_PIN, FAN_PIN_ACTIVE_LOW);
+    LED_PIN :: init();
 
-    PWM_WRITE(FAN_PIN, 255 * 0.5);
+    FAN_PIN :: init();
+
+    FAN_PIN :: write(255 * 0.5);
 
 // armrun
 #if 0
@@ -269,11 +280,9 @@ void setup() {
 
     tp_init();    // Initialize temperature loop
 
-    WDT_ENABLE();
-
     st_init();    // Initialize stepper, this enables interrupts!
 
-    PWM_WRITE(LED_PIN, 255 * 0.5);
+    LED_PIN :: write(255 * 0.5);
 
     #if defined(REPRAP_DISCOUNT_SMART_CONTROLLER)
     lcd.begin(20, 4);
@@ -1023,7 +1032,7 @@ void Timer::run(unsigned long m) {
 
     if (fanEndTime && (m >= fanEndTime)) {
 
-        PWM_WRITE(FAN_PIN, fanSpeed);
+        FAN_PIN :: write(fanSpeed);
         fanEndTime = 0;
     }
 
@@ -1085,7 +1094,7 @@ void Printer::printerInit() {
     printerState = StateInit;
     eotReceived = false;
 
-    PWM_WRITE(LED_PIN, 255);
+    LED_PIN :: write(255);
 }
 
 
@@ -1106,13 +1115,13 @@ void Printer::runHotEndFan() {
     if ((hotEndFanOn == false) && (current_temperature[0] >= 40.0)) {
 
         // Hotend fan on
-        WRITE(HOTEND_FAN_PIN, HOTEND_FAN_ACTIVE);
+        HOTEND_FAN_PIN :: activate();
         hotEndFanOn = true;
     }
     else if ((hotEndFanOn == true) && (current_temperature[0] <= 35.0)) {
 
         // Hotend fan off
-        WRITE(HOTEND_FAN_PIN, ~ HOTEND_FAN_ACTIVE);
+        HOTEND_FAN_PIN :: deActivate();
         hotEndFanOn = false;
     }
 #endif
@@ -1224,13 +1233,13 @@ void Printer::cmdFanSpeed(uint8_t speed, uint8_t blipTime) {
     // pwm value after the bliptime.
     if (blipTime) {
 
-        PWM_WRITE(FAN_PIN, 255);
+        FAN_PIN :: write(255);
         timer.startFanTimer(speed, blipTime);
         return;
     }
 
     timer.endFanTimer();
-    PWM_WRITE(FAN_PIN, speed);
+    FAN_PIN :: write(speed);
 }
 
 void Printer::cmdContinuousE(uint16_t timerValue) {
@@ -1343,7 +1352,7 @@ void Printer::disableSteppers() {
 
     homed = false;
 
-    PWM_WRITE(LED_PIN, 255 * 0.5);
+    LED_PIN :: write(255 * 0.5);
 }
 
 void Printer::cmdDisableSteppers() {
@@ -1369,21 +1378,18 @@ void Printer::cmdGetHomed() {
 
 void Printer::cmdGetEndstops() {
 
-// armrun
-#if 0
     txBuffer.sendResponseStart(CmdGetEndstops);
 
-    txBuffer.sendResponseUint8(X_ENDSTOP_PRESSED);
+    txBuffer.sendResponseUint8(X_STOP_PIN :: active());
     txBuffer.sendResponseValue(current_pos_steps[X_AXIS]);
 
-    txBuffer.sendResponseUint8(Y_ENDSTOP_PRESSED);
+    txBuffer.sendResponseUint8(Y_STOP_PIN :: active());
     txBuffer.sendResponseValue(current_pos_steps[Y_AXIS]);
 
-    txBuffer.sendResponseUint8(Z_ENDSTOP_PRESSED);
+    txBuffer.sendResponseUint8(Z_STOP_PIN :: active());
     txBuffer.sendResponseValue(current_pos_steps[Z_AXIS]);
 
     txBuffer.sendResponseEnd();
-#endif
 }
 
 void Printer::cmdGetPos() {
@@ -1505,10 +1511,10 @@ void Printer::cmdReadGpio(uint8_t pinNumber) {
     massert(pinNumber < BOARD_NR_GPIO_PINS);
 
     // Set pin to input
-    SET_INPUT_PU(pinNumber);
+    HAL_SET_INPUT_PU(pinNumber);
 
     // Read pin
-    uint32_t val = READ(pinNumber);
+    uint32_t val = HAL_READ(pinNumber);
 
     txBuffer.sendResponseStart(CmdReadGpio);
     txBuffer.sendResponseValue(val);
@@ -1520,10 +1526,10 @@ void Printer::cmdReadAnalogGpio(uint8_t pinNumber) {
     massert(pinNumber < BOARD_NR_GPIO_PINS);
 
     // Set pin to analog input
-    SET_INPUT_ANALOG(pinNumber);
+    HAL_SET_INPUT_ANALOG(pinNumber);
 
     // Read pin
-    uint32_t val = READ_ANALOG(pinNumber);
+    uint32_t val = HAL_READ_ANALOG(pinNumber);
 
     txBuffer.sendResponseStart(CmdReadAnalogGpio);
     txBuffer.sendResponseValue(val);
@@ -1535,10 +1541,10 @@ void Printer::cmdSetGpio(uint8_t pinNumber, uint8_t value) {
     massert(pinNumber < BOARD_NR_GPIO_PINS);
 
     // Set pin to input
-    SET_OUTPUT(pinNumber);
+    HAL_SET_OUTPUT(pinNumber);
 
     // Set pin
-    WRITE(pinNumber, value);
+    HAL_WRITE(pinNumber, value);
 }
 
 #if defined(POWER_BUTTON)
@@ -1547,7 +1553,7 @@ void Printer::checkPowerOff(unsigned long m) {
     //
     // Check for power-off request
     //
-    if (READ(POWER_BUTTON)) {
+    if (POWER_BUTTON :: active()) {
         if (! powerOffTime) {
             // Power off if power button is held for 3 seconds
             powerOffTime = m + 3000;
@@ -1556,7 +1562,8 @@ void Printer::checkPowerOff(unsigned long m) {
     else {
         if (powerOffTime) {
             if (m > powerOffTime) {
-                WRITE(POWER_SUPPLY_RELAY, LOW);
+                // WRITE(POWER_SUPPLY_RELAY, LOW);
+                POWER_SUPPLY_RELAY :: deActivate();
             }
             else {
                 powerOffTime = 0;

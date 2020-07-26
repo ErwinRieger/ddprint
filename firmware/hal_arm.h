@@ -20,13 +20,16 @@
 #include "libmaple/iwdg.h"
 
 #include "mdebug.h"
+#include "pin_states.h"
 
 // #include <VCP/core_cm4.h>
 
 //
 // STM32
 //
-void pwmInit(uint8_t pwmpin, uint16_t duty, bool activeLow);
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
 
 //
 // Serial interface, note: fixed USART1 usage
@@ -35,20 +38,20 @@ void pwmInit(uint8_t pwmpin, uint16_t duty, bool activeLow);
 #define SERIAL_TX_COMPLETE() ( USART1->regs->SR & USART_SR_TC )
 #define SERIAL_TX_DR_PUTC(c) ( USART1->regs->DR = c )
 
-#define SET_INPUT(pin) pinMode(pin, INPUT_FLOATING)
-#define SET_INPUT_PD(pin) pinMode(pin, INPUT_PULLDOWN)
-#define SET_INPUT_PU(pin) pinMode(pin, INPUT_PULLUP)
-#define SET_INPUT_ANALOG(pin) pinMode(pin, INPUT_ANALOG)
+// #define SET_INPUT(pin) pinMode(pin, INPUT_FLOATING)
+// #define SET_INPUT_PD(pin) pinMode(pin, INPUT_PULLDOWN)
+#define HAL_SET_INPUT_PU(pin) myPinMode(pin, INPUT_PULLUP)
+#define HAL_SET_INPUT_ANALOG(pin) pinMode(pin, INPUT_ANALOG)
 
-#define SET_OUTPUT(pin)  pinMode(pin, OUTPUT)
+#define HAL_SET_OUTPUT(pin)  myPinMode(pin, OUTPUT)
 // #define SET_OUTPUT_PWM(pin)  pinMode(pin, PWM)
-#define SET_OUTPUT_PWM(pin, activeLow)  pwmInit(pin, 0, activeLow)
+// #define SET_OUTPUT_PWM(pin, activeLow)  pwmInit(pin, 0, activeLow)
 
-#define READ(pin) digitalRead(pin)
-#define READ_ANALOG(pin) analogRead(pin)
+#define HAL_READ(pin) digitalRead(pin)
+#define HAL_READ_ANALOG(pin) analogRead(pin)
 
-#define WRITE(pin, v)  digitalWrite(pin, v)
-#define PWM_WRITE(p, v) pwmWrite(p, map(v, 0, 255, 0, 65535))
+#define HAL_WRITE(pin, v)  digitalWrite(pin, v)
+// #define PWM_WRITE(p, v) pwmWrite(p, map(v, 0, 255, 0, 65535))
 
 #define CLI()   noInterrupts()
 #define SEI()   interrupts()
@@ -62,7 +65,19 @@ void pwmInit(uint8_t pwmpin, uint16_t duty, bool activeLow);
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
+/*
+ * Derived from (the disabled) stm32duino:timerDefaultConfig().
+ * This possibly only works if there is no timersetup in arduino:init().
+ */
+void pwmInit(uint8_t pwmpin, uint16_t duty=0, bool activeLow=false);
 
+/*
+ *
+ * XXX re-implement pinMode() from stm32duino() since it has a problem with unintended timer-deactivation
+ */
+void myPinMode(uint8 pin, WiringPinMode mode);
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //
 // Initialize the used timers
@@ -73,55 +88,6 @@ inline void timerInit() {
     timer_init(&timer5);
     timer_init(&timer8);
 }
-
-/*
- * Derived from (the disabled) stm32duino:timerDefaultConfig().
- * This possibly only works if there is no timersetup in arduino:init().
- */
-inline void pwmInit(uint8_t pwmpin, uint16_t duty=0, bool activeLow=false)
-{
-    timer_info tinfo = timer_map[pwmpin];
-
-	const timer_dev * dev = timer_devices[tinfo.index];
-	uint8_t channel = tinfo.channel;
-
-    // Note: we use the general register map for the advanced timers, too.
-    // This works because they are the same with respect to the registers we
-    // use here.
-    timer_gen_reg_map *regs = dev->regs.gen;
-
-    const uint16 full_overflow = 0xFFFF;
-
-    // Basic timer works differently
-    massert(dev->type != TIMER_BASIC);
-
-    timer_pause(dev);
-
-    regs->CR1 = TIMER_CR1_ARPE;
-
-    if (dev->type == TIMER_ADVANCED)
-        dev->regs.adv->BDTR = TIMER_BDTR_MOE;
-
-    // Note: ARR register used by all channels of this timer.
-    timer_set_reload(dev, full_overflow);
-    timer_set_compare(dev, channel, duty);
-    timer_oc_set_mode(dev, channel, TIMER_OC_MODE_PWM_1, TIMER_OC_PE);
-
-    if (activeLow)
-        regs->CCER |= 1 << (1 + 4*(channel-1));
-
-    // This is from pinMode(pin, PWM), set CCxE bit: 
-    regs->CCER |= 1 << (4 * (channel - 1));
-
-    regs->EGR = TIMER_EGR_UG;
-
-    gpio_set_mode(pwmpin, GPIO_AF_OUTPUT_PP);
-    gpio_set_af_mode(pwmpin, dev->af_mode);
-
-    timer_resume(dev);
-}
-
-
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -202,5 +168,66 @@ inline void JumpToBootloader() {
     while(1) {};
 }
 
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+template <uint8_t PIN>
+struct DigitalOutput<PIN, ACTIVEHIGHPIN> {
+    static void initActive() { myPinMode(PIN, OUTPUT) ; activate(); }
+    static void initDeActive() { myPinMode(PIN, OUTPUT) ; deActivate(); }
+    static void activate() { digitalWrite(PIN, HIGH); };
+    static void deActivate() { digitalWrite(PIN, LOW); };
+    static void saveState() { myPinMode(PIN, INPUT_FLOATING); }
+    // static void write(uint8_t v) { digitalWrite(PIN, v); }
+};
+
+template <uint8_t PIN>
+struct DigitalOutput<PIN, ACTIVELOWPIN> {
+    static void initActive() { myPinMode(PIN, OUTPUT) ; activate(); }
+    static void initDeActive() { myPinMode(PIN, OUTPUT) ; deActivate(); }
+    static void activate() { digitalWrite(PIN, LOW); };
+    static void deActivate() { digitalWrite(PIN, HIGH); };
+    static void saveState() { myPinMode(PIN, INPUT_FLOATING); }
+    // static void write(uint8_t v) { digitalWrite(PIN, v); }
+};
+
+// note: pullup für avr durch high-write auf input: WRITE(X_STOP_PIN,HIGH); 
+// #define SET_INPUT(pin) myPinMode(pin, INPUT_FLOATING)
+// #define SET_INPUT_PD(pin) myPinMode(pin, INPUT_PULLDOWN)
+// #define SET_INPUT_PU(pin) myPinMode(pin, INPUT_PULLUP)
+template <uint8_t PIN, WiringPinMode PM>
+struct DigitalInputBase {
+    static void init() { myPinMode(PIN, PM); }
+};
+
+template <uint8_t PIN, WiringPinMode PM, typename ACTIVEHIGH>
+struct DigitalInput { };
+
+template <uint8_t PIN, WiringPinMode PM>
+struct DigitalInput<PIN, PM, ACTIVEHIGHPIN>: DigitalInputBase<PIN, PM> {
+    static bool active() { return digitalRead(PIN); }
+};
+
+template <uint8_t PIN, WiringPinMode PM>
+struct DigitalInput<PIN, PM, ACTIVELOWPIN>: DigitalInputBase<PIN, PM> {
+    static bool active() { return digitalRead(PIN) == LOW; }
+};
+
+// #define PWM_WRITE(p, v) pwmWrite(p, map(v, 0, 255, 0, 65535))
+
+template <uint8_t PIN>
+struct PWMOutput<PIN, ACTIVEHIGHPIN> {
+    static void init() { pwmInit(PIN, 0, false); }
+    static void write(uint8_t v) { pwmWrite(PIN, map(v, 0, 255, 0, 65535)); }
+    static void saveState() { myPinMode(PIN, INPUT_FLOATING); }
+};
+
+template <uint8_t PIN>
+struct PWMOutput<PIN, ACTIVELOWPIN> {
+    static void init() { pwmInit(PIN, 0, true); }
+    static void write(uint8_t v) { pwmWrite(PIN, map(v, 0, 255, 0, 65535)); }
+    static void saveState() { myPinMode(PIN, INPUT_FLOATING); }
+};
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
 
 

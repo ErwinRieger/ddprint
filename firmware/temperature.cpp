@@ -58,11 +58,11 @@ void tp_init()
 {
 
 #if defined(HEATER_0_PIN)
-    SET_OUTPUT_PWM(HEATER_0_PIN, H0_PIN_ACTIVE_LOW);
+    HEATER_0_PIN :: init();
 #endif
 
 #if defined(HEATER_1_PIN)
-    SET_OUTPUT_PWM(HEATER_1_PIN, H1_PIN_ACTIVE_LOW);
+    HEATER_1_PIN :: init();
 #endif
 
 // #if defined(HEATER_2_PIN)
@@ -73,8 +73,10 @@ void tp_init()
 // #if defined(HEATER_BED_PIN)
 //    SET_OUTPUT_PWM(HEATER_BED_PIN, HB_PIN_ACTIVE_LOW);
 //#endif
-    SET_OUTPUT(HEATER_BED_PIN);
-    WRITE(HEATER_BED_PIN, ~HEATER_BED_ACTIVE);
+
+    // SET_OUTPUT(HEATER_BED_PIN);
+    // WRITE(HEATER_BED_PIN, ~HEATER_BED_ACTIVE);
+    HEATER_BED_PIN :: initDeActive();
 
     tempControl.init();
 }
@@ -86,8 +88,8 @@ void disable_heater()
         setTargetHotend(0,i);
     setTargetBed(0);
 
-    SET_INPUT(HEATER_BED_PIN);
-    SET_INPUT(HEATER_0_PIN);
-    SET_INPUT(HEATER_1_PIN);
+    HEATER_BED_PIN :: saveState();
+    HEATER_0_PIN :: saveState();
+    HEATER_1_PIN :: saveState();
 }
 

@@ -17,28 +17,17 @@
 * along with ddprint.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-//
-// ATMega 2560
-//
+#pragma once
 
-#define SERIAL_TX_DR_EMPTY() ( (UCSR0A) & (1 << UDRE0) )
-#define SERIAL_TX_COMPLETE() ( true )
-#define SERIAL_TX_DR_PUTC(c) ( UDR0 = c )
+// #include <stdint.h>
+// #include "hal.h"
 
-// #define SET_OUTPUT_PWM(pin, activeLow)  SET_OUTPUT(pin)
+struct ACTIVEHIGHPIN { };
+struct ACTIVELOWPIN { };
 
-// #define PWM_WRITE(p, v) analogWrite(p, v)
+template <uint8_t PIN, typename ACTIVEHIGH>
+struct DigitalOutput { };
 
-#define HAL_READ_ANALOG(pin) analogRead(pin)
-
-#define CLI()   cli()
-#define SEI()   sei()
-
-#define WDT_ENABLE() wdt_enable(WDTO_4S) /* Timeout 4 seconds */
-#define WDT_RESET() wdt_reset()
-
-
-
-
-
+template <uint8_t PIN, typename ACTIVEHIGH>
+struct PWMOutput { };
 

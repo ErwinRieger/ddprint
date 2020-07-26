@@ -51,22 +51,22 @@
 #define DISABLE_STEPPER1_DRIVER_INTERRUPT() TIMSK1 &= ~(1<<OCIE1B)
 #define STEPPER1_DRIVER_INTERRUPT_ENABLED() (TIMSK1 & (1<<OCIE1B))
 
-#define  enable_x() WRITE(X_ENABLE_PIN, X_ENABLE_ACTIVE)
-#define disable_x() WRITE(X_ENABLE_PIN, ~ X_ENABLE_ACTIVE)
+#define  enable_x() X_ENABLE_PIN :: activate()
+#define disable_x() X_ENABLE_PIN :: deActivate()
 
-#define  enable_y() WRITE(Y_ENABLE_PIN, Y_ENABLE_ACTIVE)
-#define disable_y() WRITE(Y_ENABLE_PIN, ~ Y_ENABLE_ACTIVE)
+#define  enable_y() Y_ENABLE_PIN :: activate()
+#define disable_y() Y_ENABLE_PIN :: deActivate()
 
 #ifdef Z_DUAL_STEPPER_DRIVERS
-  #define  enable_z() { WRITE(Z_ENABLE_PIN, Z_ENABLE_ACTIVE); WRITE(Z2_ENABLE_PIN, Z_ENABLE_ACTIVE); }
-  #define disable_z() { WRITE(Z_ENABLE_PIN, ~ Z_ENABLE_ACTIVE); WRITE(Z2_ENABLE_PIN, ~ Z_ENABLE_ACTIVE); }
+  #define  enable_z() { Z_ENABLE_PIN :: activate(); Z2_ENABLE_PIN :: activate(); }
+  #define disable_z() { Z_ENABLE_PIN :: deActivate(); Z2_ENABLE_PIN :: deActivate(); }
 #else
-  #define  enable_z() WRITE(Z_ENABLE_PIN, Z_ENABLE_ACTIVE)
-  #define disable_z() WRITE(Z_ENABLE_PIN, ~ Z_ENABLE_ACTIVE)
+  #define  enable_z() Z_ENABLE_PIN :: activate()
+  #define disable_z() Z_ENABLE_PIN :: deActivate()
 #endif
 
-#define enable_e0() WRITE(E0_ENABLE_PIN, E0_ENABLE_ACTIVE)
-#define disable_e0() WRITE(E0_ENABLE_PIN, ~ E0_ENABLE_ACTIVE)
+#define enable_e0() E0_ENABLE_PIN :: activate()
+#define disable_e0() E0_ENABLE_PIN :: deActivate()
 
 #if MOTOR_CURRENT_PWM_XY_PIN > -1
 extern const int motor_current_setting[3];
@@ -187,15 +187,19 @@ inline uint8_t st_get_direction() {
 }
 #endif
 
-#define X_ENDSTOP_PRESSED (READ(X_STOP_PIN) != X_ENDSTOPS_INVERTING)
-#define Y_ENDSTOP_PRESSED (READ(Y_STOP_PIN) != Y_ENDSTOPS_INVERTING)
-#define Z_ENDSTOP_PRESSED (READ(Z_STOP_PIN) != Z_ENDSTOPS_INVERTING)
+#endif
+
+// #define X_ENDSTOP_PRESSED (READ(X_STOP_PIN) != X_ENDSTOPS_INVERTING)
+// #define Y_ENDSTOP_PRESSED (READ(Y_STOP_PIN) != Y_ENDSTOPS_INVERTING)
+// #define Z_ENDSTOP_PRESSED (READ(Z_STOP_PIN) != Z_ENDSTOPS_INVERTING)
 
 #define X_SW_ENDSTOP_PRESSED ((current_pos_steps[X_AXIS] < X_MIN_POS_STEPS) || (current_pos_steps[X_AXIS] > X_MAX_POS_STEPS))
 #define Y_SW_ENDSTOP_PRESSED ((current_pos_steps[Y_AXIS] < Y_MIN_POS_STEPS) || (current_pos_steps[Y_AXIS] > Y_MAX_POS_STEPS))
 // (current_pos_steps[Z_AXIS] < Z_MIN_POS_STEPS) || (current_pos_steps[Z_AXIS] > printer.z_max_pos_steps)
 #define Z_SW_ENDSTOP_PRESSED ((current_pos_steps[Z_AXIS] < Z_MIN_POS_STEPS) || (current_pos_steps[Z_AXIS] > Z_MAX_POS_STEPS))
 
+//armtodo
+#if 0
 template<typename MOVE>
 bool st_endstop_pressed(bool);
 

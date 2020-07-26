@@ -61,20 +61,20 @@
 //  why double up on these macros? see http://gcc.gnu.org/onlinedocs/cpp/Stringification.html
 
 /// Read a pin wrapper
-#define READ(IO)  _READ(IO)
+#define HAL_READ(IO)  _READ(IO)
 /// Write to a pin wrapper
 // #define WRITE(IO, v)  _WRITE(IO, v)
 /// XXX note: we always use the not-critical-section variant here, this is not
 /// interrupt save !
-#define WRITE(IO, v)  _WRITE_NC(IO, v)
+#define HAL_WRITE(IO, v)  _WRITE_NC(IO, v)
 
 /// toggle a pin wrapper
 #define TOGGLE(IO)  _TOGGLE(IO)
 
 /// set pin as input wrapper
-#define SET_INPUT(IO)  _SET_INPUT(IO)
+#define HAL_SET_INPUT(IO)  _SET_INPUT(IO)
 /// set pin as output wrapper
-#define SET_OUTPUT(IO)  _SET_OUTPUT(IO)
+#define HAL_SET_OUTPUT(IO)  _SET_OUTPUT(IO)
 
 /// check if pin is an input wrapper
 #define GET_INPUT(IO)  _GET_INPUT(IO)

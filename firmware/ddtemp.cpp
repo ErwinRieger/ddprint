@@ -320,7 +320,7 @@ void TempControl::heater() {
                 pid_output = suggestPwm;
             }
 
-            PWM_WRITE( HEATER_0_PIN, max(pid_output, 0) );
+            HEATER_0_PIN :: write( max(pid_output, 0) );
 
 #ifdef PID_DEBUG
             static int dbgcount=0;
@@ -384,9 +384,9 @@ void TempControl::heater() {
 void TempControl::setTempPWM(uint8_t heater, uint8_t pwmValue) {
 
     if (heater == 1) 
-        PWM_WRITE(HEATER_0_PIN, pwmValue);
+        HEATER_0_PIN :: write(pwmValue);
     else
-        PWM_WRITE(HEATER_1_PIN, pwmValue);
+        HEATER_1_PIN :: write(pwmValue);
 
     if (pwmValue)
         pwmMode = true;
@@ -397,9 +397,9 @@ void TempControl::setTempPWM(uint8_t heater, uint8_t pwmValue) {
 void TempControl::hotendOn(uint8_t heater) {
 
     if (heater == 1) 
-        PWM_WRITE(HEATER_0_PIN, 255);
+        HEATER_0_PIN :: write(255);
     else
-        PWM_WRITE(HEATER_1_PIN, 255);
+        HEATER_1_PIN :: write(255);
 }
 
 TempControl tempControl;
