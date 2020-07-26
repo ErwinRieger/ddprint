@@ -68,8 +68,8 @@
 #define enable_e0() E0_ENABLE_PIN :: activate()
 #define disable_e0() E0_ENABLE_PIN :: deActivate()
 
-#if MOTOR_CURRENT_PWM_XY_PIN > -1
-extern const int motor_current_setting[3];
+#if defined(MOTOR_CURRENT_PWM_XY_PIN)
+// extern const int motor_current_setting[3];
 #endif
 
 #ifdef ABORT_ON_ENDSTOP_HIT_FEATURE_ENABLED

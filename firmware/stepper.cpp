@@ -25,9 +25,9 @@
 #include "stepper.h"
 #include "mdebug.h"
 
-#if MOTOR_CURRENT_PWM_XY_PIN > -1
-  const int motor_current_setting[3] = DEFAULT_PWM_MOTOR_CURRENT;
-#endif
+// #if MOTOR_CURRENT_PWM_XY_PIN > -1
+  // const int motor_current_setting[3] = DEFAULT_PWM_MOTOR_CURRENT;
+// #endif
 
 volatile int32_t current_pos_steps[NUM_AXIS] = { 0, 0, 0, 0};
 
@@ -40,21 +40,24 @@ StepBuffer stepBuffer;
 void digipot_current(uint8_t driver, int current)
 {
   #if defined( MOTOR_CURRENT_PWM_XY_PIN)
-    if (driver == 0) PWM_WRITE(MOTOR_CURRENT_PWM_XY_PIN, (long)current * 255L / (long)MOTOR_CURRENT_PWM_RANGE);
-    if (driver == 1) PWM_WRITE(MOTOR_CURRENT_PWM_Z_PIN, (long)current * 255L / (long)MOTOR_CURRENT_PWM_RANGE);
-    if (driver == 2) PWM_WRITE(MOTOR_CURRENT_PWM_E_PIN, (long)current * 255L / (long)MOTOR_CURRENT_PWM_RANGE);
+    if (driver == 0)
+        MOTOR_CURRENT_PWM_XY_PIN :: write((long)current * 255L / (long)MOTOR_CURRENT_PWM_RANGE);
+    if (driver == 1)
+        MOTOR_CURRENT_PWM_Z_PIN :: write((long)current * 255L / (long)MOTOR_CURRENT_PWM_RANGE);
+    if (driver == 2)
+       MOTOR_CURRENT_PWM_E_PIN :: write((long)current * 255L / (long)MOTOR_CURRENT_PWM_RANGE);
   #endif
 }
 
 void digipot_init() //Initialize Digipot Motor Current
 {
   #if defined(MOTOR_CURRENT_PWM_XY_PIN)
-    pinMode(MOTOR_CURRENT_PWM_XY_PIN, OUTPUT);
-    pinMode(MOTOR_CURRENT_PWM_Z_PIN, OUTPUT);
-    pinMode(MOTOR_CURRENT_PWM_E_PIN, OUTPUT);
-    digipot_current(0, motor_current_setting[0]);
-    digipot_current(1, motor_current_setting[1]);
-    digipot_current(2, motor_current_setting[2]);
+    MOTOR_CURRENT_PWM_XY_PIN :: init();
+    MOTOR_CURRENT_PWM_Z_PIN :: init();
+    MOTOR_CURRENT_PWM_E_PIN :: init();
+    digipot_current(0, DEFAULT_PWM_MOTOR_CURRENT);
+    digipot_current(1, DEFAULT_PWM_MOTOR_CURRENT);
+    digipot_current(2, DEFAULT_PWM_MOTOR_CURRENT);
     //Set timer5 to 31khz so the PWM of the motor power is as constant as possible.
     TCCR5B = (TCCR5B & ~(_BV(CS50) | _BV(CS51) | _BV(CS52))) | _BV(CS50);
   #endif

@@ -233,8 +233,7 @@ const bool Z_ENDSTOPS_INVERTING = true; // set to true to invert the logic of th
 // #define INVERT_E_STEP_PIN false
 
 // Default motor current for XY,Z,E in mA
-// #define DEFAULT_PWM_MOTOR_CURRENT {1300, 1300, 1250}
-#define DEFAULT_PWM_MOTOR_CURRENT {1300, 1300, 1300}
+#define DEFAULT_PWM_MOTOR_CURRENT 1300
 
 #include "thermistortables.h"
 

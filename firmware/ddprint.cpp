@@ -223,8 +223,6 @@ void killMessage(uint8_t errorCode, uint8_t errorParam1, uint8_t errorParam2, co
     kill();
 }
 
-HardwareTimer hwtimer(5);
-
 void setup() {
 
     WDT_ENABLE();
@@ -1508,8 +1506,6 @@ void Printer::cmdSetTempTable() {
 
 void Printer::cmdReadGpio(uint8_t pinNumber) {
 
-    massert(pinNumber < BOARD_NR_GPIO_PINS);
-
     // Set pin to input
     HAL_SET_INPUT_PU(pinNumber);
 
@@ -1523,8 +1519,6 @@ void Printer::cmdReadGpio(uint8_t pinNumber) {
 
 void Printer::cmdReadAnalogGpio(uint8_t pinNumber) {
 
-    massert(pinNumber < BOARD_NR_GPIO_PINS);
-
     // Set pin to analog input
     HAL_SET_INPUT_ANALOG(pinNumber);
 
@@ -1537,8 +1531,6 @@ void Printer::cmdReadAnalogGpio(uint8_t pinNumber) {
 }
 
 void Printer::cmdSetGpio(uint8_t pinNumber, uint8_t value) {
-
-    massert(pinNumber < BOARD_NR_GPIO_PINS);
 
     // Set pin to input
     HAL_SET_OUTPUT(pinNumber);

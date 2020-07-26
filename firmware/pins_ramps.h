@@ -54,8 +54,6 @@
     #define E1_DIR_PIN         34
     #define E1_ENABLE_PIN      30
 
-    #define SDPOWER            -1
-
     // SPI
     // Chip select SDCard
     #define SDSS               53

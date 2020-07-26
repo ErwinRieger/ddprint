@@ -17,6 +17,8 @@
 * along with ddprint.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#if defined(__arm__)
+
 #include "hal_arm.h"
 
 /*
@@ -108,3 +110,5 @@ void myPinMode(uint8 pin, WiringPinMode mode) {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
+
+#endif

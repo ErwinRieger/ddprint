@@ -91,8 +91,6 @@
 
 #define TEMP_2_PIN -1
 
-#define SDPOWER            -1
-
 // SPI
 // Chip select SDCard
 #define SDSS               53
