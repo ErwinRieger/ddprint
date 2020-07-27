@@ -23,6 +23,31 @@
 #include "pins.h"
 #include "thermistortables.h"
 
+DefineIOPinMembers(2);
+DefineIOPinMembers(3);
+DefineIOPinMembers(4);
+DefineIOPinMembers(7);
+DefineIOPinMembers(8);
+DefineIOPinMembers(22);
+DefineIOPinMembers(23);
+DefineIOPinMembers(25);
+DefineIOPinMembers(26);
+DefineIOPinMembers(27);
+DefineIOPinMembers(29);
+DefineIOPinMembers(31);
+DefineIOPinMembers(32);
+DefineIOPinMembers(33);
+DefineIOPinMembers(34);
+DefineIOPinMembers(35);
+DefineIOPinMembers(36);
+DefineIOPinMembers(37);
+DefineIOPinMembers(42);
+DefineIOPinMembers(43);
+DefineIOPinMembers(44);
+DefineIOPinMembers(45);
+DefineIOPinMembers(46);
+DefineIOPinMembers(69);
+
 void HAL_SETUP_TEMP_ADC() {
 
     //
