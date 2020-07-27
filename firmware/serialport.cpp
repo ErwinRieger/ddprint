@@ -21,9 +21,9 @@
     #include <avr/interrupt.h>
 #endif
 
-// #include "ddprint.h"
 #include "serialport.h"
 #include "crc16.h"
+#include "hal.h"
 
 
 #if !defined(DDSim)

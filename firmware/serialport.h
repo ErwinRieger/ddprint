@@ -30,7 +30,6 @@
 
 #include <stdint.h>
 #include "mdebug.h"
-#include "ddmacro.h"
 
 #if !defined(SERIAL_PORT)
 #define SERIAL_PORT 0

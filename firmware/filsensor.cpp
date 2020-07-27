@@ -33,7 +33,6 @@
 #include "ddserial.h"
 #include "ddcommands.h"
 #include "ddlcd.h"
-#include "ddmacro.h"
 
 #define FilSensorDebug 1
 
