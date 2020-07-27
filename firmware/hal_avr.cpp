@@ -18,6 +18,8 @@
 * along with ddprint.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#if defined(AVR)
+
 #include "ddtemp.h"
 #include "temperature.h"
 #include "pins.h"
@@ -125,4 +127,6 @@ bool TempControl::Run() {
     // Not reached
     PT_END();
 }
+
+#endif
 

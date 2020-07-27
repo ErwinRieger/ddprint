@@ -170,9 +170,7 @@ inline void JumpToBootloader() {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-inline void HAL_SETUP_TEMP_ADC() {
-#error noimp
-}
+void HAL_SETUP_TEMP_ADC();
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -232,6 +230,16 @@ struct PWMOutput<PIN, ACTIVELOWPIN> {
     static void init() { pwmInit(PIN, 0, true); }
     static void write(uint8_t v) { pwmWrite(PIN, map(v, 0, 255, 0, 65535)); }
     static void saveState() { myPinMode(PIN, INPUT_FLOATING); }
+};
+
+// See stm32duino: uint16 analogReadDev(uint8 pin, const adc_dev * dev)
+// See stm32duino:uint16 adc_read(const adc_dev *dev, uint8 channel)
+template <uint8_t PIN, uint8_t CHANNEL>
+struct AnalogInput {
+    static void init() { pinMode(PIN, INPUT_ANALOG); }
+    static void startConversion() { adc_start_single_convert(ADC1, CHANNEL); }
+    static bool conversionDone() { return adc_is_end_of_convert(ADC1); }
+    static uint16_t read() { return adc_get_data(ADC1); }
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////

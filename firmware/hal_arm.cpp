@@ -19,7 +19,13 @@
 
 #if defined(__arm__)
 
-#include "hal_arm.h"
+#include "ddtemp.h"
+#include "temperature.h"
+#include "pins.h"
+#include "thermistortables.h"
+
+// extern const uint8 adc_map[];
+extern uint8 *adc_map;
 
 /*
  * Derived from (the disabled) stm32duino:timerDefaultConfig().
@@ -110,5 +116,43 @@ void myPinMode(uint8 pin, WiringPinMode mode) {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
+void HAL_SETUP_TEMP_ADC() {
 
+    TEMP_BED_PIN :: init();
+    TEMP_0_PIN :: init();
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+bool TempControl::Run() {
+
+    PT_BEGIN();
+
+    ////////////////////////////////
+    // Read bed temp
+    ////////////////////////////////
+    TEMP_BED_PIN :: startConversion();
+
+    PT_WAIT_UNTIL( TEMP_BED_PIN :: conversionDone() );
+
+    avgBedTemp.addValue( tempFromRawADC( TEMP_BED_PIN :: read() ) );
+    current_temperature_bed = avgBedTemp.value();
+
+    ////////////////////////////////
+    // Read hotend temp
+    ////////////////////////////////
+    TEMP_0_PIN :: startConversion();
+
+    PT_WAIT_UNTIL( TEMP_0_PIN :: conversionDone() );
+
+    avgHotendTemp.addValue( tempFromRawADC( TEMP_0_PIN :: read() ) );
+    current_temperature[0] = avgHotendTemp.value();
+
+    PT_RESTART();
+        
+    // Not reached
+    PT_END();
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
 #endif

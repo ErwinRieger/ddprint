@@ -173,7 +173,7 @@ void TempControl::heater() {
                 pid_output = suggestPwm;
             }
 
-            HEATER_0_PIN :: write( max(pid_output, 0) );
+            HEATER_0_PIN :: write( max(pid_output, (int32_t)0) );
 
 #ifdef PID_DEBUG
             static int dbgcount=0;

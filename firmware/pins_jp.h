@@ -82,6 +82,12 @@
 #define FAN_PIN                 PWMOutput<22, ACTIVELOWPIN>  // ["GPIOB","D22","PB6"],  # Known: Output, Fan 0, Part cooling fan, active low
 // #define FAN_PIN_ACTIVE_LOW  true
 
+#define TEMP_BED_PIN            AnalogInput<32, 10> // ["GPIOC","D32","PC0"],  # Known: Analog Input, Temp. PT100 Sensor X
+#define TEMP_0_PIN              AnalogInput<33, 11>
+// #define TEMP_0_PIN              AnalogInput<33, 11> // ["GPIOC","D33","PC1"],  # Known: Analog Input, Temp. PT100 Sensor X 
+// #define TEMP_1_PIN              AnalogInput<35, 13> // ["GPIOC","D35","PC3"],  # Known: Analog Input, Temp. PT100 Sensor X 
+// #define TEMP_2_PIN              AnalogInput<34, 12> // ["GPIOC","D34","PC2"],  # Known: Analog Input, Temp. PT100 Sensor, nothing connected
+
 #if 0
 #define TEMP_BED_PIN 10
 
@@ -173,10 +179,6 @@
         ["GPIOB","D28","PB12"], # Known: Output, Power-Relais
         ["GPIOB","D30","PB14"],
         ["GPIOB","D31","PB15"],
-        ["GPIOC","D32","PC0"],  # Known: Analog Input, Temp. PT100 Sensor X
-        ["GPIOC","D33","PC1"],  # Known: Analog Input, Temp. PT100 Sensor X 
-        ["GPIOC","D34","PC2"],  # Known: Analog Input, Temp. PT100 Sensor, nothing connected
-        ["GPIOC","D35","PC3"],  # Known: Analog Input, Temp. PT100 Sensor X 
         ["GPIOC","D40","PC8"],
         ["GPIOC","D41","PC9"],
         ["GPIOC","D42","PC10"],

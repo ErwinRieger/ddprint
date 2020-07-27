@@ -25,7 +25,10 @@ fw:
 ramps:
 	make -f Makefile.ramps 
 
-world: fw ramps
+jp:
+	make -f Makefile.jp 
+
+world: fw ramps jp
 	make -f Makefile.sim 
 
 clean: 
