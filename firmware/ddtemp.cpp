@@ -22,7 +22,6 @@
 #include "ddtemp.h"
 #include "temperature.h"
 #include "pins.h"
-#include "thermistortables.h"
 #include "eepromSettings.h"
 #include "ddserial.h"
 #include "ddcommands.h"
@@ -40,86 +39,7 @@ extern void kill();
 
 void TempControl::init() {
 
-    //armtodo
-#if 0
-
-    //
-    // Set analog inputs
-    //
-    // Disable 'digital input register' on the ADC pins TEMP_0_PIN and TEMP_BED_PIN
-    DIDR0 = 0;
-    #ifdef DIDR2
-        DIDR2 = 0;
-    #endif
-
-    #if defined(TEMP_0_PIN) && (TEMP_0_PIN > -1)
-    #if TEMP_0_PIN < 8
-       DIDR0 |= 1 << TEMP_0_PIN;
-    #else
-       DIDR2 |= 1<<(TEMP_0_PIN - 8);
-    #endif
-
-    #endif
-    #if defined(TEMP_BED_PIN) && (TEMP_BED_PIN > -1)
-    #if TEMP_BED_PIN < 8
-       DIDR0 |= 1<<TEMP_BED_PIN;
-    #else
-       DIDR2 |= 1<<(TEMP_BED_PIN - 8);
-    #endif
-    #endif
-
-    // ADEN: Enable ADC
-    // ADSC: Do initial conversion
-    // ADIF: Clear interrupt flag?
-    // 0x07: Set 16MHz/128 = 125kHz the ADC reference clock
-    // ADCSRA = 1<<ADEN | 1<<ADSC | 1<<ADIF | 0x07;
-    ADCSRA = 1<<ADEN | 1<<ADSC | 0x07;
-
-    // Wait for initial conversion
-    while (ADCSRA & (1<<ADSC));
-
-    //
-    // Start initial hotend measure
-    //
-    #if TEMP_0_PIN > 7
-      ADCSRB = 1<<MUX5;
-    #else
-      ADCSRB = 0;
-    #endif
-
-    // Set voltage reference to Avcc, set channel to temp 0
-    ADMUX = ((1 << REFS0) | (TEMP_0_PIN & 0x07));
-    ADCSRA |= 1<<ADSC; // Start conversion
-
-    // Wait for initial conversion and read value
-    while (ADCSRA & (1<<ADSC));
-    avgHotendTemp.addValue(tempFromRawADC(ADC));
-
-    //
-    // Start initial bedtemp measure
-    //
-    #if TEMP_BED_PIN > 7
-      ADCSRB = 1<<MUX5;
-    #else
-      ADCSRB = 0;
-    #endif
-
-    // Set voltage reference to Avcc, set channel to bedtemp
-    ADMUX = ((1 << REFS0) | (TEMP_BED_PIN & 0x07));
-    ADCSRA |= 1<<ADSC; // Start conversion
-
-    // Wait for initial conversion and read value
-    while (ADCSRA & (1<<ADSC));
-    avgBedTemp.addValue(tempFromRawADC(ADC));
-    
-    //
-    // Get PID values from eeprom
-    //
-    // EepromSettings es;
-    // getEepromSettings(es);
-    // Kp = es.Kp;
-    // Ki = es.Ki;
-    // Kd = es.Kd;
+    HAL_SETUP_TEMP_ADC();
 
     eSum = 0;
     eAlt = 0;
@@ -142,71 +62,6 @@ void TempControl::init() {
     // eSummax = 255 / (Ki * pid_dt)
     //
     eSumLimit = 255.0 / ((Ki * TIMER100MS) / 1000.0);
-#endif
-
-}
-
-bool TempControl::Run() {
-
-    /* armtodo */ return true;
-
-#if 0
-
-    PT_BEGIN();
-
-    ////////////////////////////////
-    // Handle hotend 
-    ////////////////////////////////
-
-    //
-    // Start hotend measure
-    //
-    #if TEMP_0_PIN > 7
-      ADCSRB = 1<<MUX5;
-    #else
-      ADCSRB = 0;
-    #endif
-
-    // Set voltage reference to Avcc, set channel to temp 0
-    ADMUX = ((1 << REFS0) | (TEMP_0_PIN & 0x07));
-    ADCSRA |= 1<<ADSC; // Start conversion
-
-    // Wait for conversion and read value
-    // printf("TempControl::Run() wait for hotend\n");
-    PT_WAIT_WHILE( ADCSRA & (1<<ADSC) );
-
-    avgHotendTemp.addValue(tempFromRawADC(ADC));
-    current_temperature[0] = avgHotendTemp.value();
-
-    ////////////////////////////////
-    // Handle heated bed 
-    ////////////////////////////////
-
-    //
-    // Start bedtemp measure
-    //
-    #if TEMP_BED_PIN > 7
-      ADCSRB = 1<<MUX5;
-    #else
-      ADCSRB = 0;
-    #endif
-
-    // Set voltage reference to Avcc, set channel to bedtemp
-    ADMUX = ((1 << REFS0) | (TEMP_BED_PIN & 0x07));
-    ADCSRA |= 1<<ADSC; // Start conversion
-
-    // Wait for conversion and read value
-    // printf("TempControl::Run() wait for bed\n");
-    PT_WAIT_WHILE( ADCSRA & (1<<ADSC) );
-
-    avgBedTemp.addValue(tempFromRawADC(ADC));
-    current_temperature_bed = avgBedTemp.value();
-
-    PT_RESTART();
-        
-    // Not reached
-    PT_END();
-#endif
 }
 
 void TempControl::setTemp(uint8_t heater, uint16_t temp) {
@@ -269,8 +124,6 @@ void TempControl::setTemp(uint8_t heater, uint16_t temp) {
 }
 
 void TempControl::heater() {
-//armtodo
-#if 0
 
     // Check if temperature is within the correct range
     if(current_temperature[0] < HEATER_1_MINTEMP) {
@@ -365,16 +218,15 @@ void TempControl::heater() {
         else {
             if(current_temperature_bed >= target_temperature_bed)
             {
-                WRITE(HEATER_BED_PIN, ~HEATER_BED_ACTIVE);
+                HEATER_BED_PIN :: deActivate();
             }
             else
             {
-                WRITE(HEATER_BED_PIN, HEATER_BED_ACTIVE);
+                HEATER_BED_PIN :: activate();
             }
         }
     }
 
-#endif
     //
     // Reset the watchdog after we know we have a temperature measurement.
     //

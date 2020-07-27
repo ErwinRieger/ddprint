@@ -2151,20 +2151,18 @@ if (txBuffer.empty()) {
 
         timer10mS = m + TIMER10MS;
 
-// armrun
-#if 0
         // Check hardware and software endstops:
         if (printer.moveType == Printer::MoveTypeNormal) {
 
-            if (X_ENDSTOP_PRESSED || Y_ENDSTOP_PRESSED || Z_ENDSTOP_PRESSED) {
+            if (X_STOP_PIN :: active() || Y_STOP_PIN :: active() || Z_STOP_PIN :: active()) {
 
                 LCDMSGKILL(RespHardwareEndstop, "", "");
                 txBuffer.sendResponseStart(RespKilled);
                 txBuffer.sendResponseUint8(RespHardwareEndstop);
                 txBuffer.sendResponseValue((uint8_t*)current_pos_steps, 3*sizeof(int32_t));
-                txBuffer.sendResponseUint8(X_ENDSTOP_PRESSED);
-                txBuffer.sendResponseUint8(Y_ENDSTOP_PRESSED);
-                txBuffer.sendResponseUint8(Z_ENDSTOP_PRESSED);
+                txBuffer.sendResponseUint8(X_STOP_PIN :: active());
+                txBuffer.sendResponseUint8(Y_STOP_PIN :: active());
+                txBuffer.sendResponseUint8(Z_STOP_PIN :: active());
                 txBuffer.sendResponseEnd();
                 kill();
             }
@@ -2191,8 +2189,6 @@ if (txBuffer.empty()) {
         // Check new temperature and turn on hotend fan
         //
         printer.runHotEndFan();
-
-#endif
 
         // Run timer
         timer.run(m);

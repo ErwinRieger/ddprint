@@ -177,14 +177,6 @@
 
 #endif // MOTHERBOARD == 2
 
-// SPI for Max6675 Thermocouple
-
-#ifndef SDSUPPORT
-  #define MAX6675_SS       53
-#else
-  #define MAX6675_SS       49
-#endif
-
 //
 // Filament sensor pins (half duplex/3wire spi)
 //

@@ -8,36 +8,23 @@
 * Ultiboard v2.0 pin assignment
 ******************************************************************/
 
-#define X_STEP_PIN              DigitalOutput<25, ACTIVEHIGHPIN>
-#define X_DIR_PIN               DigitalOutput<23, ACTIVEHIGHPIN>
-#define X_STOP_PIN              DigitalInput<22, ACTIVELOWPIN>
+#define X_STEP_PIN              DigitalOutput<25, ACTIVEHIGHPIN>  // todo: speedup
+#define X_DIR_PIN               DigitalOutput<23, ACTIVEHIGHPIN>  // todo: speedup
+#define X_STOP_PIN              DigitalInput<22, ACTIVELOWPIN>  // todo: speedup
 #define X_ENABLE_PIN            DigitalOutput<27, ACTIVELOWPIN>
 
-#define Y_STEP_PIN              DigitalOutput<32, ACTIVEHIGHPIN>
-#define Y_DIR_PIN               DigitalOutput<33, ACTIVEHIGHPIN>
-#define Y_STOP_PIN              DigitalInput<26, ACTIVELOWPIN>
+#define Y_STEP_PIN              DigitalOutput<32, ACTIVEHIGHPIN>  // todo: speedup
+#define Y_DIR_PIN               DigitalOutput<33, ACTIVEHIGHPIN>  // todo: speedup
+#define Y_STOP_PIN              DigitalInput<26, ACTIVELOWPIN>  // todo: speedup
 #define Y_ENABLE_PIN            DigitalOutput<31, ACTIVELOWPIN>
 
-#define Z_STEP_PIN              DigitalOutput<35, ACTIVEHIGHPIN>
-#define Z_DIR_PIN               DigitalOutput<36, ACTIVEHIGHPIN>
-#define Z_STOP_PIN              DigitalInput<29, ACTIVELOWPIN>
+#define Z_STEP_PIN              DigitalOutput<35, ACTIVEHIGHPIN>  // todo: speedup
+#define Z_DIR_PIN               DigitalOutput<36, ACTIVEHIGHPIN>  // todo: speedup
+#define Z_STOP_PIN              DigitalInput<29, ACTIVELOWPIN>  // todo: speedup
 #define Z_ENABLE_PIN            DigitalOutput<34, ACTIVELOWPIN>
 
-#define HEATER_BED_PIN          DigitalOutput<4, ACTIVEHIGHPIN>
-
-#define TEMP_BED_PIN 10
-
-#define HEATER_0_PIN            PWMOutput<2, ACTIVEHIGHPIN>
-#define TEMP_0_PIN 8
-
-#define HEATER_1_PIN            PWMOutput<3, ACTIVEHIGHPIN>
-#define TEMP_1_PIN 9
-
-// #define HEATER_2_PIN -1
-// #define TEMP_2_PIN -1
-
-#define E0_STEP_PIN             DigitalOutput<42, ACTIVEHIGHPIN>
-#define E0_DIR_PIN              DigitalOutput<43, ACTIVEHIGHPIN>
+#define E0_STEP_PIN             DigitalOutput<42, ACTIVEHIGHPIN>  // todo: speedup
+#define E0_DIR_PIN              DigitalOutput<43, ACTIVEHIGHPIN>  // todo: speedup
 #define E0_ENABLE_PIN           DigitalOutput<37, ACTIVELOWPIN>
 
 // Second extruder not used 
@@ -46,6 +33,17 @@
 //#define E1_ENABLE_PIN       48
 //#define E1_ENABLE_ACTIVE    LOW
 
+#define HEATER_BED_PIN          DigitalOutput<4, ACTIVEHIGHPIN>
+
+#define HEATER_0_PIN            PWMOutput<2, ACTIVEHIGHPIN>
+#define HEATER_1_PIN            PWMOutput<3, ACTIVEHIGHPIN>
+// #define TEMP_1_PIN 9
+
+
+
+#define TEMP_BED_PIN            10
+#define TEMP_0_PIN              8
+
 // SPI
 // Chip select SDCard
 #define SDSS               53
@@ -53,7 +51,6 @@
 #define MISO_PIN           50
 #define MOSI_PIN           51
 
-#define MAX6675_SS         13
 #define LED_PIN                 PWMOutput<8, ACTIVEHIGHPIN>
 
 #define FAN_PIN                 PWMOutput<7, ACTIVEHIGHPIN> 
