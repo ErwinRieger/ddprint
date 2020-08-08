@@ -19,5 +19,5 @@
 
 #include "swapdev.h"
 
-//armtodo SDSwap swapDev;
+SDSwap swapDev;
 

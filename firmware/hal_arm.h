@@ -17,10 +17,12 @@
 * along with ddprint.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "libmaple/iwdg.h"
+#include <libmaple/iwdg.h>
 
 #include "mdebug.h"
 #include "pin_states.h"
+#include "usbh_msc/dd_usbh_msc.h"
+#include "massstoragebase.h"
 
 // #include <VCP/core_cm4.h>
 
@@ -87,6 +89,18 @@ inline void timerInit() {
     timer_init(&timer4);
     timer_init(&timer5);
     timer_init(&timer8);
+
+    //
+    // Stepper timers
+    //
+    timer_init(&timer2); // Stepper interrupt
+    // timer_init(&timer11); // Homing stepper interrupt
+
+    // Prescaler to achieve 2 mhz clock like mega2560, timer 10+11 are running with
+    // APB2 clock of 84Mhz
+    // 84 / 2.0 = 42,
+    timer_set_prescaler(timer2, 42 - 1);
+    // timer_set_prescaler(timer11, 42 - 1);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -214,6 +228,7 @@ struct DigitalInput<PIN, PM, ACTIVEHIGHPIN>: DigitalInputBase<PIN, PM> {
 template <uint8_t PIN, WiringPinMode PM>
 struct DigitalInput<PIN, PM, ACTIVELOWPIN>: DigitalInputBase<PIN, PM> {
     static bool active() { return digitalRead(PIN) == LOW; }
+    static bool deActive() { return digitalRead(PIN); }
 };
 
 // #define PWM_WRITE(p, v) pwmWrite(p, map(v, 0, 255, 0, 65535))
@@ -243,5 +258,88 @@ struct AnalogInput {
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//
+// Mass storage interface, USB flash drive in this case.
+//
+class MassStorage: public MassStorageBase {
+
+  protected:
+
+    int errorCode() {
+        // Todo
+        return 0;
+    }
+
+    int errorData() {
+        // Todo
+        return 0;
+    }
+
+    bool swapInit() {
+
+        dd_USBH_Init(&USB_OTG_Core_Host, USB_OTG_HS_CORE_ID, &USB_Host);
+        while (! usbhMscInitialized()) {
+            USBH_Process(&USB_OTG_Core_Host, &USB_Host);
+        }
+        return true;
+    }
+
+    bool readBlock(uint32_t readBlockNumber, uint8_t *dst) {
+
+        if (USB_disk_read(&USB_OTG_Core_Host, &USB_Host, dst, readBlockNumber) != USBH_OK) {
+            // todo set errorcode and return it through errorCode()
+            return false;
+        }
+        return true;
+    }
+
+    bool writeBlock(uint32_t writeBlockNumber) {
+
+        USBH_Status status = USBH_MSC_Write10(
+                &USB_OTG_Core_Host, &USB_Host,
+                writeBuffer, writeBlockNumber, 512);
+
+        if (status == USBH_BUSY)
+            return true; // continue thread
+
+        // Todo: check errors
+        // if (status != USBH_OK) ...
+        
+        return false;
+    }
+
+#if 0
+    uint8_t writeBuf[512];
+    static bool written = false;
+    if (! written) {
+
+        for (int i=0; i<1024; i++) {
+
+            memset(writeBuf, i, 512);
+            assert(USB_disk_write(&USB_OTG_Core_Host, &USB_Host, writeBuf, i) == USBH_OK);
+        }
+        written = true;
+    }
+
+    for (int i=0; i<1024; i++) {
+
+        memset(writeBuf, i, 512);
+
+        uint8_t readBuf[512];
+        memset(readBuf, 0, 512);
+
+        assert(USB_disk_read(&USB_OTG_Core_Host, &USB_Host, readBuf, i) == USBH_OK);
+
+        if (memcmp(writeBuf, readBuf, 512))
+            assert(0);
+    }
+#endif
+};
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
 
 

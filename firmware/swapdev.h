@@ -32,40 +32,31 @@
 #include "ddserial.h"
 #include "ddcommands.h"
 
-#if defined(AVR)
-    // Note: this includes OUR version of SPI.h:
-    #include "SdCard/SdSpiCard.h"
-#endif
-
 // Redefined here from ddcommands.h
 #define RespSDReadError         9  
 #define RespSDWriteError       12 
 
-// The buffersizes for reading and writing to th SD card
-#define RCMD_BUFFER_SIZE 512
-// #define WCMD_BUFFER_SIZE 1024
-#define WCMD_BUFFER_SIZE 512
 
-class SDSwap: public SdSpiCard, public Protothread {
 
-    uint8_t writeBuffer[WCMD_BUFFER_SIZE];
-    // Pointer to current write position in writeBuffer
+class SDSwap: public MassStorage, public Protothread {
+
+    // Pointer to current write position (byte) in writeBuffer
     uint16_t writePos;
 
     bool busyWriting;
+
+    // Sector number on storage device
     uint32_t writeBlockNumber;
 
+    // Read position, bytes, multiple of SwapSectorSize,
+    // excluding the first eeprom sector.
     uint32_t readPos;
+
     // Number of consecutive read attempts
     uint8_t  readRetry;
 
-    // Written size in bytes, multiple of WCMD_BUFFER_SIZE
+    // Written size in bytes, multiple of SwapSectorSize
     uint32_t size;
-
-    // Number of bytes to shift the block address for non-sdhc cards
-    uint8_t blockShift;
-
-    SdSpiAltDriver m_spi;
 
 public:
 
@@ -75,28 +66,12 @@ public:
         reset();
     }
 
-    bool swapInit() {
-
-        if (! begin(&m_spi, SDSS, SPI_FULL_SPEED)) {
-
-            return false;
-        }
-
-        if (type() == SD_CARD_TYPE_SDHC) {
-            blockShift = 0;
-        } else {
-            blockShift = 9;
-        }
-
-        massert(eraseSingleBlockEnable());
-
-        return true;
-    }
+    // bool swapInit();
 
     // FWINLINE uint32_t getWriteBlockNumber() { return writeBlockNumber; }
     FWINLINE uint16_t getWritePos() { return writePos; }
 
-    FWINLINE uint32_t getReadPos() { return readPos; }
+    // FWINLINE uint32_t getReadPos() { return readPos; }
     FWINLINE uint32_t getSize() { return size; }
 
     FWINLINE uint32_t available() {
@@ -110,11 +85,15 @@ public:
         while (busyWriting)
             Run();
 
-        readPos = 0;
         readRetry = 0;
-        writeBlockNumber = 0;
-        writePos = 0;
         size = 0;
+        writePos = 0;
+
+        // writeBlockNumber = 0;
+        readPos = 0;
+
+        // First sector reserved for eeprom emulation
+        writeBlockNumber = 1;
     }
 
     FWINLINE bool isBusyWriting() { return busyWriting; }
@@ -122,12 +101,12 @@ public:
     FWINLINE void addByte(uint8_t b) {
 
         simassert(! busyWriting);
-        simassert(writePos < WCMD_BUFFER_SIZE);
+        simassert(writePos < SwapSectorSize);
 
         writeBuffer[writePos++] = b;
 
-        if (writePos == WCMD_BUFFER_SIZE)
-            writeBlock();
+        if (writePos == SwapSectorSize)
+            StartWriteBlock();
     }
 
 #if 0
@@ -139,7 +118,7 @@ public:
             simassert(! busyWriting);
             simassert(readPos < (wbn<<9));
 
-            if (! SdSpiCard::readBlock(wbn, writeBuffer)) {
+            if (! MassStorage::readBlock(wbn, writeBuffer)) {
 
                 // xxx errorhandling here
                 massert(0);
@@ -149,7 +128,7 @@ public:
             writeBlockNumber = wbn;
         }
 
-        simassert((readPos % WCMD_BUFFER_SIZE) <= writePos_);
+        simassert((readPos % SwapSectorSize) <= writePos_);
         writePos = writePos_;
 
         size = wbn << 9;
@@ -157,7 +136,8 @@ public:
 #endif
 
     //------------------------------------------------------------------------------
-    FWINLINE void writeBlock() {
+    // Start writing *writeBuffer* to storage device
+    FWINLINE void StartWriteBlock() {
 
 #if defined(HEAVYDEBUG)
         massert(! busyWriting);
@@ -165,14 +145,16 @@ public:
         busyWriting = true;
     }
 
-    FWINLINE int16_t readBlock(uint8_t* dst) {
+    // Ofs is normally one sector to skip the eeprom block.
+    // If the eeprom sector should be read, the set ofs to zero.
+    FWINLINE int16_t readBlock(uint8_t* dst, uint16_t ofs=SwapSectorSize) {
 
         // Number of bytes in this block:
-        massert(size > readPos);
+        massert(available() > 0);
         massert(! busyWriting);
-        massert((readPos % RCMD_BUFFER_SIZE) == 0); // read pos should be block-aligned
+        massert((readPos % SwapSectorSize) == 0); // read pos should be block-aligned
 
-        if (! SdSpiCard::readBlock(readPos >> 9, dst)) {
+        if (! MassStorage::readBlock((readPos+ofs) >> 9, dst)) {
 
             // Return Sd2Card error code and SPI status byte from sd card.
             // In case of SD_CARD_ERROR_CMD17 this is the return status of
@@ -188,7 +170,7 @@ public:
             // notreached
         }
 
-        uint16_t readBytes = STD min((uint32_t)(size - readPos), (uint32_t)512);
+        uint16_t readBytes = STD min(available(), (uint32_t)SwapSectorSize);
 
         // printf("size: %d, readpos: %d, read bytes: %d\n", size, readPos, readBytes);
 
@@ -207,44 +189,18 @@ public:
 
         PT_WAIT_UNTIL(busyWriting);
 
-        simassert((size % WCMD_BUFFER_SIZE) == 0); // block write after final partial block is invalid
+        simassert((size % SwapSectorSize) == 0); // block write after final partial block is invalid
 
         //////////////////////////////////////////////////////////////////////////////////          
 
-        // Wait while card is busy, no timeout check!
-        PT_WAIT_WHILE(isBusy());  // isBusy() is doing spiStart()/spiStop()
+        PT_WAIT_WHILE(writeBlock(writeBlockNumber));
 
-        if (cardCommand(CMD24, writeBlockNumber << blockShift)) { // cardCommand() is doing spiStart()
-
-            killMessage(RespSDWriteError, SD_CARD_ERROR_CMD24, errorData());
-            // notreached
-        }
-
-        if (!writeData(DATA_START_BLOCK, writeBuffer)) { // writeData() does not spiStart() but spiStop() in case of error
-
-            killMessage(RespSDWriteError, errorCode(), errorData());
-            // notreached
-        }
-
-        spiStop();
-
-        // Wait for flash programming to complete, no timeout check!
-        PT_WAIT_WHILE(isBusy()); // isBusy() is doing spiStart()/spiStop()
-
-        if (cardCommand(CMD13, 0) || m_spi.receive()) { // cardCommand() is doing spiStart()
-
-            killMessage(RespSDWriteError, SD_CARD_ERROR_CMD13, errorData());
-            // notreached
-        }
-
-        spiStop();
-            
         //////////////////////////////////////////////////////////////////////////////////          
 
         size += writePos;
 
 #if defined(HEAVYDEBUG)
-        massert(size == (writeBlockNumber*512 + writePos));
+        massert(size == (writeBlockNumber*SwapSectorSize + writePos));
 #endif
         // printf("Size: %d bytes\n", size);
 

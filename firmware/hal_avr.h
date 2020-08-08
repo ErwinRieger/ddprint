@@ -23,6 +23,9 @@
 #include "pin_states.h"
 #include "fastio.h"
 
+#include "SdCard/SdSpiCard.h"
+#include "massstoragebase.h"
+
 //
 // ATMega 2560
 //
@@ -63,6 +66,12 @@
 
 #define TIMER_INIT() /* */
 
+#define ENABLE_STEPPER_DRIVER_INTERRUPT()  TIMSK1 |= (1<<OCIE1A)
+#define DISABLE_STEPPER_DRIVER_INTERRUPT() TIMSK1 &= ~(1<<OCIE1A)
+
+#define ENABLE_STEPPER1_DRIVER_INTERRUPT()  TIMSK1 |= (1<<OCIE1B)
+#define DISABLE_STEPPER1_DRIVER_INTERRUPT() TIMSK1 &= ~(1<<OCIE1B)
+#define STEPPER1_DRIVER_INTERRUPT_ENABLED() (TIMSK1 & (1<<OCIE1B))
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -195,6 +204,85 @@ struct PWMOutput<PIN, ACTIVELOWPIN>: AvrPin<PIN> {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
+enum WriteBlockState { WBWait1, WBWait2 };
+
+//
+// Mass storage interface, sdcard connected to SPI in this case.
+//
+class MassStorage: public SdSpiCard, public MassStorageBase {
+
+protected:
+
+    // Number of bytes to shift the block address for non-sdhc cards
+    uint8_t blockShift;
+
+    SdSpiAltDriver m_spi;
+
+    bool swapInit() {
+
+        if (! begin(&m_spi, SDSS, SPI_FULL_SPEED)) {
+
+            return false;
+        }
+
+        if (type() == SD_CARD_TYPE_SDHC) {
+            blockShift = 0;
+        } else {
+            blockShift = 9;
+        }
+
+        massert(eraseSingleBlockEnable());
+
+        return true;
+    }
+
+    bool writeBlock(uint32_t writeBlockNumber) {
+
+        static wbstate = WBWait1;
+
+        switch (wbstate) {
+
+            case WBWait1:
+
+                // Wait while card is busy, no timeout check!
+                if (isBusy())  // isBusy() is doing spiStart()/spiStop()
+                    return true;
+
+                if (cardCommand(CMD24, writeBlockNumber << blockShift)) { // cardCommand() is doing spiStart()
+
+                    killMessage(RespSDWriteError, SD_CARD_ERROR_CMD24, errorData());
+                    // notreached
+                }
+
+                if (!writeData(DATA_START_BLOCK, writeBuffer)) { // writeData() does not spiStart() but spiStop() in case of error
+
+                    killMessage(RespSDWriteError, errorCode(), errorData());
+                    // notreached
+                }
+
+                spiStop();
+                wbstate = WBWait2;
+                return true; // continue sub thread
+
+            case WBWait2:
+
+                // Wait for flash programming to complete, no timeout check!
+                PT_WAIT_WHILE(isBusy()); // isBusy() is doing spiStart()/spiStop()
+
+                if (cardCommand(CMD13, 0) || m_spi.receive()) { // cardCommand() is doing spiStart()
+
+                    killMessage(RespSDWriteError, SD_CARD_ERROR_CMD13, errorData());
+                    // notreached
+                }
+
+                spiStop();
+                wbstate = WBWait1;
+                return false; // stop sub thread
+        }
+    }
+};
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
 

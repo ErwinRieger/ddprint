@@ -23,6 +23,7 @@
  *
  * * if possible, fully remove fastio.h
  * * swapdevice: test sectorsize >= 512 bytes
+ * * check, determine interrupt prio's
  */
 
 #include <Arduino.h>
@@ -283,15 +284,11 @@ void setup() {
     lcd.print("OK");
     #endif
     
-// armrun
-#if 0
     if (! swapDev.swapInit()) {
         LCDMSGKILL(RespSDInit, "swapInit()", "");
         txBuffer.sendSimpleResponse(RespKilled, RespSDInit);
         kill();
     }
-
-#endif
 
 #if defined(PMWFS)
     filamentSensor.reset();

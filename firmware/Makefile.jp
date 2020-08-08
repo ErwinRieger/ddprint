@@ -14,6 +14,17 @@ NO_CORE_MAIN_CPP = 1
 # from arduino-cli_0.11.0/packages/stm32duino/hardware/STM32F4/2019.2.28/boards.txt:
 CPPFLAGS       =  -mthumb -DSTM32_HIGH_DENSITY -DSTM32F4 -DBOARD_generic_f407v
 CPPFLAGS      +=  -DMOTHERBOARD=3 -Ifw -DCRYSTAL_FREQ=8
+
+# -O1 for debugging:
+# CPPFLAGS      +=  -O1
+#
+# For USB HS Host/MSC:
+CPPFLAGS      +=  -I{build.core.path}/libmaple/usbF4/STM32_USB_OTG_Driver/inc -DUSE_HOST_MODE -DUSE_USB_OTG_HS -DUSB_OTG_HS_CORE -DOTG_HS_IRQn=77
+CPPFLAGS      +=  -DUSE_EMBEDDED_PHY -DUSB_OTG_EMBEDDED_PHY_ENABLED
+CPPFLAGS      +=  -DTX0_FIFO_HS_SIZE=512 -DTX1_FIFO_HS_SIZE=512 -DTX2_FIFO_HS_SIZE=0 -DTX3_FIFO_HS_SIZE=0 -DTX4_FIFO_HS_SIZE=0 -DTX5_FIFO_HS_SIZE=0
+CPPFLAGS      +=  -DRX_FIFO_HS_SIZE=512 -DTXH_NP_HS_FIFOSIZ=96 -DTXH_P_HS_FIFOSIZ=96
+
+
 # CPPFLAGS      +=  -I.
 # CPPFLAGS      +=  -I$(SDFAT)/src 
 # CPPFLAGS      +=  -I$(ARDUINO_PLATFORM_LIB_PATH)
@@ -27,6 +38,9 @@ CPPFLAGS      +=  -DMOTHERBOARD=3 -Ifw -DCRYSTAL_FREQ=8
 # End Mega
 
 compile:
+	# Usb options: usb_cfg=usb_serial usb_cfg=usb_nc usb_cfg=usb_msc 
+	# Debug options: opt=ogstd
+	# Example: -b stm32duino:STM32F4:generic_f407v:usb_cfg=usb_msc,opt=ogstd
 	# Arduino/arduino-cli preprocesses the sources and compiles it in a temp. directory in /tmp/arduino-sketch-<some-hex-number>/sketch.
 	# To get vim quickfix working again, the outut of arduinoo-cli is filtered through sed here:
 	# $(ACCONFIG)/arduino-cli --config-file $(ACCONFIG) compile -v -b stm32duino:STM32F4:generic_f407v --build-properties build.extra_flags="$(CPPFLAGS)" 2>&1 | sed "s|^/tmp/arduino-sketch-[0-9a-fA-F]\+/sketch|.|"
