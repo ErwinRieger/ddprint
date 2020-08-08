@@ -127,27 +127,46 @@ inline uint8_t st_get_dir_pin<EAxisSelector>() {
 #endif
 
 template<typename MOVE>
-void st_write_dir_pin(uint8_t);
+void activate_dir_pin();
 
-//artmdodo
+template<>
+inline void activate_dir_pin<XAxisSelector>() {
+     X_DIR_PIN :: activate();
+}
+template<>
+inline void activate_dir_pin<YAxisSelector>() {
+     Y_DIR_PIN :: activate();
+}
+template<>
+inline void activate_dir_pin<ZAxisSelector>() {
+     Z_DIR_PIN :: activate();
+}
+template<>
+inline void activate_dir_pin<EAxisSelector>() {
+     E0_DIR_PIN :: activate();
+}
+
+template<typename MOVE>
+void deactivate_dir_pin();
+
+template<>
+inline void deactivate_dir_pin<XAxisSelector>() {
+     X_DIR_PIN :: deActivate();
+}
+template<>
+inline void deactivate_dir_pin<YAxisSelector>() {
+     Y_DIR_PIN :: deActivate();
+}
+template<>
+inline void deactivate_dir_pin<ZAxisSelector>() {
+     Z_DIR_PIN :: deActivate();
+}
+template<>
+inline void deactivate_dir_pin<EAxisSelector>() {
+     E0_DIR_PIN :: deActivate();
+}
+
 #if 0
-template<>
-inline void st_write_dir_pin<XAxisSelector>(uint8_t v) {
-    WRITE( X_DIR_PIN, v);
-}
-template<>
-inline void st_write_dir_pin<YAxisSelector>(uint8_t v) {
-    WRITE( Y_DIR_PIN, v);
-}
-template<>
-inline void st_write_dir_pin<ZAxisSelector>(uint8_t v) {
-    WRITE( Z_DIR_PIN, v);
-}
-template<>
-inline void st_write_dir_pin<EAxisSelector>(uint8_t v) {
-    WRITE( E0_DIR_PIN, v);
-}
-
 template<typename MOVE>
 uint8_t st_read_dir_pin();
 
@@ -167,6 +186,7 @@ template<>
 inline uint8_t st_read_dir_pin<EAxisSelector>() {
     return READ(E0_DIR_PIN);
 }
+#endif
 
 #if 0
 template<typename MOVE>
@@ -191,25 +211,46 @@ inline uint8_t st_get_step_pin<EAxisSelector>() {
 #endif
 
 template<typename MOVE>
-void st_write_step_pin(uint8_t);
+void activate_step_pin();
 
 template<>
-inline void st_write_step_pin<XAxisSelector>(uint8_t v) {
-    WRITE( X_STEP_PIN, v);
+inline void activate_step_pin<XAxisSelector>() {
+    X_STEP_PIN :: activate();
 }
 template<>
-inline void st_write_step_pin<YAxisSelector>(uint8_t v) {
-    WRITE( Y_STEP_PIN, v);
+inline void activate_step_pin<YAxisSelector>() {
+    Y_STEP_PIN :: activate();
 }
 template<>
-inline void st_write_step_pin<ZAxisSelector>(uint8_t v) {
-    WRITE( Z_STEP_PIN, v);
+inline void activate_step_pin<ZAxisSelector>() {
+    Z_STEP_PIN :: activate();
 }
 template<>
-inline void st_write_step_pin<EAxisSelector>(uint8_t v) {
-    WRITE( E0_STEP_PIN, v);
+inline void activate_step_pin<EAxisSelector>() {
+    E0_STEP_PIN :: activate();
 }
 
+template<typename MOVE>
+void deactivate_step_pin();
+
+template<>
+inline void deactivate_step_pin<XAxisSelector>() {
+    X_STEP_PIN :: deActivate();
+}
+template<>
+inline void deactivate_step_pin<YAxisSelector>() {
+    Y_STEP_PIN :: deActivate();
+}
+template<>
+inline void deactivate_step_pin<ZAxisSelector>() {
+    Z_STEP_PIN :: deActivate();
+}
+template<>
+inline void deactivate_step_pin<EAxisSelector>() {
+    E0_STEP_PIN :: deActivate();
+}
+
+#if 0
 template<typename MOVE>
 uint8_t st_get_positive_dir();
 
@@ -229,6 +270,7 @@ template<>
 inline uint8_t st_get_positive_dir<EAxisSelector>() {
     return POSITIVE_E1_DIR;
 }
+#endif
 
 /*
 template<typename MOVE>
@@ -268,4 +310,3 @@ inline int st_get_home_dir<ZAxisSelector>() {
     return Z_HOME_DIR;
 }
 
-#endif

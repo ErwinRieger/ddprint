@@ -46,8 +46,6 @@
 // #define WCMD_BUFFER_SIZE 1024
 #define WCMD_BUFFER_SIZE 512
 
-// armtodo
-#if 0
 class SDSwap: public SdSpiCard, public Protothread {
 
     uint8_t writeBuffer[WCMD_BUFFER_SIZE];
@@ -260,6 +258,5 @@ public:
 };
 
 extern SDSwap swapDev;
-#endif
 
 

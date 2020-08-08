@@ -9,26 +9,31 @@
 ******************************************************************/
 
 #define X_STEP_PIN              DigitalOutput<25, ACTIVEHIGHPIN>  // todo: speedup
+// Active state is forward direction (positive)
 #define X_DIR_PIN               DigitalOutput<23, ACTIVEHIGHPIN>  // todo: speedup
 #define X_STOP_PIN              DigitalInput<22, ACTIVELOWPIN>  // todo: speedup
 #define X_ENABLE_PIN            DigitalOutput<27, ACTIVELOWPIN>
 
 #define Y_STEP_PIN              DigitalOutput<32, ACTIVEHIGHPIN>  // todo: speedup
+// Active state is forward direction (positive)
 #define Y_DIR_PIN               DigitalOutput<33, ACTIVEHIGHPIN>  // todo: speedup
 #define Y_STOP_PIN              DigitalInput<26, ACTIVELOWPIN>  // todo: speedup
 #define Y_ENABLE_PIN            DigitalOutput<31, ACTIVELOWPIN>
 
 #define Z_STEP_PIN              DigitalOutput<35, ACTIVEHIGHPIN>  // todo: speedup
+// Active state is forward direction (positive)
 #define Z_DIR_PIN               DigitalOutput<36, ACTIVEHIGHPIN>  // todo: speedup
 #define Z_STOP_PIN              DigitalInput<29, ACTIVELOWPIN>  // todo: speedup
 #define Z_ENABLE_PIN            DigitalOutput<34, ACTIVELOWPIN>
 
 #define E0_STEP_PIN             DigitalOutput<42, ACTIVEHIGHPIN>  // todo: speedup
+// Active state is forward direction (positive)
 #define E0_DIR_PIN              DigitalOutput<43, ACTIVEHIGHPIN>  // todo: speedup
 #define E0_ENABLE_PIN           DigitalOutput<37, ACTIVELOWPIN>
 
 // Second extruder not used 
 //#define E1_STEP_PIN         49
+// Active state is forward direction (positive)
 //#define E1_DIR_PIN          47
 //#define E1_ENABLE_PIN       48
 //#define E1_ENABLE_ACTIVE    LOW

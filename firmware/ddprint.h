@@ -29,10 +29,6 @@
 #include "pins.h"
 #include "mdebug.h"
 
-#if defined(AVR)
-    #include "fastio.h"
-#endif
-
 #include "swapdev.h"
 #include "stepper.h"
 

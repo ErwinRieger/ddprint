@@ -31,30 +31,35 @@
 #define POWER_SUPPLY_RELAY      DigitalOutput<28, ACTIVEHIGHPIN>  // ["GPIOB","D28","PB12"], # Known: Output, Power-Relais  
 
 #define X_STEP_PIN              DigitalOutput<18, ACTIVEHIGHPIN>  // ["GPIOB","D18","PB2"],  # Known: Output, X-Step
+// Active state is forward direction (positive)
 #define X_DIR_PIN               DigitalOutput<0, ACTIVEHIGHPIN>  // ["GPIOA","D00","PA0"],  # Known: Output, X-Dir
 #define X_ENABLE_PIN            DigitalOutput<66, ACTIVELOWPIN>  // ["GPIOE","D66","PE2"],  # Known: Output, X-Enable, active low
 #define X_STOP_PIN              DigitalInput<11, INPUT_PULLUP, ACTIVELOWPIN>  // ["GPIOA","D11","PA11"], # Known: Input, X-Endstop, active low
 //#define X_ENABLE_ACTIVE     LOW
 
 #define Y_STEP_PIN              DigitalOutput<46, ACTIVEHIGHPIN>  // ["GPIOC","D46","PC14"], # Known: Output, Y-Step
+// Active state is forward direction (positive)
 #define Y_DIR_PIN               DigitalOutput<70, ACTIVEHIGHPIN>  // ["GPIOE","D70","PE6"],  # Known: Output, Y-Dir
 #define Y_ENABLE_PIN            DigitalOutput<47, ACTIVELOWPIN>  // ["GPIOC","D47","PC15"], # Known: Output, Y-Enable, active low
 #define Y_STOP_PIN              DigitalInput<60, INPUT_PULLUP, ACTIVELOWPIN>  // ["GPIOD","D60","PD12"], # Known: Input, Y-Endstop, active low
 // #define Y_ENABLE_ACTIVE     LOW
 
 #define Z_STEP_PIN              DigitalOutput<69, ACTIVEHIGHPIN>  // ["GPIOE","D69","PE5"],  # Known: Output, Z-Step
+// Active state is forward direction (positive)
 #define Z_DIR_PIN               DigitalOutput<68, ACTIVEHIGHPIN>  // ["GPIOE","D68","PE4"],  # Known: Output, Z-Dir
 #define Z_ENABLE_PIN            DigitalOutput<45, ACTIVELOWPIN>  // ["GPIOC","D45","PC13"], # Known: Output, Z-Enable, active low
 #define Z_STOP_PIN              DigitalInput<65, INPUT_PULLUP, ACTIVELOWPIN>  // ["GPIOE","D65","PE1"],  # Known: Input, Z-Endstop, active low
 // #define Z_ENABLE_ACTIVE     LOW
 
 #define E0_STEP_PIN             DigitalOutput<1, ACTIVEHIGHPIN>  // ["GPIOA","D01","PA1"],  # Known: Output, E0-Step
+// Active state is forward direction (positive)
 #define E0_DIR_PIN              DigitalOutput<16, ACTIVEHIGHPIN>  // ["GPIOB","D16","PB0"],  # Known: Output, E0-Dir
 #define E0_ENABLE_PIN           DigitalOutput<37, ACTIVELOWPIN>  // ["GPIOC","D37","PC5"],  # Known: Output, E0-Enable, active low
 // #define E0_ENABLE_ACTIVE    LOW
 
 // Second extruder not used 
 //#define E1_STEP_PIN         36  // ["GPIOC","D36","PC4"],  # Known: Output, E1-Step
+// Active state is forward direction (positive)
 //#define E1_DIR_PIN          67  // ["GPIOE","D67","PE3"],  # Known: Output, E1-Dir
 //#define E1_ENABLE_PIN       17  // ["GPIOB","D17","PB1"],  # Known: Output, E1-Enable, active low
 //#define E1_ENABLE_ACTIVE    LOW
@@ -87,6 +92,12 @@
 // #define TEMP_0_PIN              AnalogInput<33, 11> // ["GPIOC","D33","PC1"],  # Known: Analog Input, Temp. PT100 Sensor X 
 // #define TEMP_1_PIN              AnalogInput<35, 13> // ["GPIOC","D35","PC3"],  # Known: Analog Input, Temp. PT100 Sensor X 
 // #define TEMP_2_PIN              AnalogInput<34, 12> // ["GPIOC","D34","PC2"],  # Known: Analog Input, Temp. PT100 Sensor, nothing connected
+
+//
+// USB OTG_HS Host, hardcoded in xxxx!
+//
+// ["GPIOB","D30","PB14"], # Known: USB OTG DM
+// ["GPIOB","D31","PB15"], # Known: USB OTG DP
 
 #if 0
 #define TEMP_BED_PIN 10
@@ -177,8 +188,6 @@
         ["GPIOB","D26","PB10"], # ???: Input, changes with power-on relais ???
         ["GPIOB","D27","PB11"], # ???: Input, changes with power-on relais ???
         ["GPIOB","D28","PB12"], # Known: Output, Power-Relais
-        ["GPIOB","D30","PB14"],
-        ["GPIOB","D31","PB15"],
         ["GPIOC","D40","PC8"],
         ["GPIOC","D41","PC9"],
         ["GPIOC","D42","PC10"],

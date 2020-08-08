@@ -21,13 +21,9 @@
  * Todo jennyprinter port:
  * 3  : test/determine pins
  *
- * * watchdog
+ * * if possible, fully remove fastio.h
+ * * swapdevice: test sectorsize >= 512 bytes
  */
-
-#if defined(AVR)
-    #include <avr/interrupt.h>
-    #include <avr/wdt.h>
-#endif
 
 #include <Arduino.h>
 
@@ -306,8 +302,9 @@ void setup() {
 #endif
 }
 
-// armrun
-#if 0
+//
+// SDReader, read buffered stepdata from swapdevice
+//
 
 // Block-buffered sd read
 class SDReader: public Protothread {
@@ -1024,7 +1021,6 @@ void FillBufferTask::flush() {
 }
 
 FillBufferTask fillBufferTask;
-#endif
 
 void Timer::run(unsigned long m) {
 
