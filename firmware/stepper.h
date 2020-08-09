@@ -17,56 +17,28 @@
 * along with ddprint.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-/*
-  stepper.h - stepper motor driver: executes motion plans of planner.c using the stepper motors
-  Part of Grbl
-
-  Copyright (c) 2009-2011 Simen Svale Skogsrud
-
-  Grbl is free software: you can redistribute it and/or modify
-  it under the terms of the GNU General Public License as published by
-  the Free Software Foundation, either version 3 of the License, or
-  (at your option) any later version.
-
-  Grbl is distributed in the hope that it will be useful,
-  but WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-  GNU General Public License for more details.
-
-  You should have received a copy of the GNU General Public License
-  along with Grbl.  If not, see <http://www.gnu.org/licenses/>.
-*/
-
 #pragma once
 
 #include "pins.h"
 #include "move.h"
 #include "mdebug.h"
 
-#define  enable_x() X_ENABLE_PIN :: activate()
-#define disable_x() X_ENABLE_PIN :: deActivate()
+#define  enable_x() (X_ENABLE_PIN :: activate())
+#define disable_x() (X_ENABLE_PIN :: deActivate())
 
-#define  enable_y() Y_ENABLE_PIN :: activate()
-#define disable_y() Y_ENABLE_PIN :: deActivate()
+#define  enable_y() (Y_ENABLE_PIN :: activate())
+#define disable_y() (Y_ENABLE_PIN :: deActivate())
 
 #ifdef Z_DUAL_STEPPER_DRIVERS
   #define  enable_z() { Z_ENABLE_PIN :: activate(); Z2_ENABLE_PIN :: activate(); }
   #define disable_z() { Z_ENABLE_PIN :: deActivate(); Z2_ENABLE_PIN :: deActivate(); }
 #else
-  #define  enable_z() Z_ENABLE_PIN :: activate()
-  #define disable_z() Z_ENABLE_PIN :: deActivate()
+  #define  enable_z() (Z_ENABLE_PIN :: activate())
+  #define disable_z() (Z_ENABLE_PIN :: deActivate())
 #endif
 
-#define enable_e0() E0_ENABLE_PIN :: activate()
-#define disable_e0() E0_ENABLE_PIN :: deActivate()
-
-#if defined(MOTOR_CURRENT_PWM_XY_PIN)
-// extern const int motor_current_setting[3];
-#endif
-
-#ifdef ABORT_ON_ENDSTOP_HIT_FEATURE_ENABLED
-// extern bool abort_on_endstop_hit;
-#endif
+#define enable_e0() (E0_ENABLE_PIN :: activate())
+#define disable_e0() (E0_ENABLE_PIN :: deActivate())
 
 extern volatile int32_t current_pos_steps[NUM_AXIS];
 
@@ -179,13 +151,8 @@ inline uint8_t st_get_direction() {
 }
 #endif
 
-// #define X_ENDSTOP_PRESSED (READ(X_STOP_PIN) != X_ENDSTOPS_INVERTING)
-// #define Y_ENDSTOP_PRESSED (READ(Y_STOP_PIN) != Y_ENDSTOPS_INVERTING)
-// #define Z_ENDSTOP_PRESSED (READ(Z_STOP_PIN) != Z_ENDSTOPS_INVERTING)
-
 #define X_SW_ENDSTOP_PRESSED ((current_pos_steps[X_AXIS] < X_MIN_POS_STEPS) || (current_pos_steps[X_AXIS] > X_MAX_POS_STEPS))
 #define Y_SW_ENDSTOP_PRESSED ((current_pos_steps[Y_AXIS] < Y_MIN_POS_STEPS) || (current_pos_steps[Y_AXIS] > Y_MAX_POS_STEPS))
-// (current_pos_steps[Z_AXIS] < Z_MIN_POS_STEPS) || (current_pos_steps[Z_AXIS] > printer.z_max_pos_steps)
 #define Z_SW_ENDSTOP_PRESSED ((current_pos_steps[Z_AXIS] < Z_MIN_POS_STEPS) || (current_pos_steps[Z_AXIS] > Z_MAX_POS_STEPS))
 
 template<typename MOVE>
@@ -570,7 +537,6 @@ class StepBuffer {
                 if (empty()) {
 
                     // Empty buffer, nothing to step
-                    // OCR1A = 2000; // 1kHz.
                     HAL_SET_STEPPER_TIMER(2000); // 1kHz.
                 }
                 else {
@@ -585,7 +551,6 @@ class StepBuffer {
 
                     stepData &sd = pop();
 
-                    // OCR1A = sd.timer;
                     HAL_SET_STEPPER_TIMER(sd.timer);
 
                     if (sd.dirBits & 0x80) {
@@ -605,7 +570,6 @@ class StepBuffer {
                 }
             }
 
-        // FWINLINE void runHomingSteps() {
         FWINLINE void runMiscSteps() {
 
             if (miscStepperMode == HOMINGMODE)
@@ -619,14 +583,12 @@ class StepBuffer {
             if (empty()) {
 
                 // Empty buffer, nothing to step
-                // OCR1A = OCR1B = 2000; // 1kHz.
                 HAL_SET_HOMING_TIMER(2000); // 1kHz.
             }
             else {
 
                 stepData &sd = pop();
 
-                // OCR1A = OCR1B = sd.timer;
                 HAL_SET_HOMING_TIMER(sd.timer);
 
                 // * Set direction 
@@ -649,7 +611,6 @@ class StepBuffer {
 
         FWINLINE void runContinuosSteps() {
 
-            // OCR1A = OCR1B = continuosTimer;
             HAL_SET_HOMING_TIMER(continuosTimer);
             st_step_motor<EAxisSelector>(st_get_move_bit_mask<EAxisSelector>(), st_get_move_bit_mask<EAxisSelector>());
         }
