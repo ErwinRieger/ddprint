@@ -30,10 +30,8 @@ typedef int IRQn_Type;
 #endif
 */
 
-extern "C" {
-    extern USB_OTG_CORE_HANDLE  USB_OTG_Core_Host;
-    extern USBH_HOST            USB_Host;
-}
+extern USB_OTG_CORE_HANDLE  USB_OTG_Core_Host;
+extern USBH_HOST            USB_Host;
 
 // INQUIRY data.
 typedef struct {

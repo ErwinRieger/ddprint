@@ -128,5 +128,23 @@ bool TempControl::Run() {
     PT_END();
 }
 
+bool MassStorage::swapInit() {
+
+    if (! begin(&m_spi, SDSS, SPI_FULL_SPEED)) {
+
+        return false;
+    }
+
+    if (type() == SD_CARD_TYPE_SDHC) {
+        blockShift = 0;
+    } else {
+        blockShift = 9;
+    }
+
+    massert(eraseSingleBlockEnable());
+
+    return true;
+}
+
 #endif
 

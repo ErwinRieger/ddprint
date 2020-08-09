@@ -22,6 +22,7 @@
 
 #include "pin_states.h"
 #include "fastio.h"
+#include "ddcommands.h"
 
 #include "SdCard/SdSpiCard.h"
 #include "massstoragebase.h"
@@ -78,7 +79,9 @@ void HAL_SETUP_TEMP_ADC();
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-
+//
+// Pins
+//
 template <uint8_t PIN>
 struct AvrPin {
 
@@ -201,6 +204,9 @@ struct PWMOutput<PIN, ACTIVELOWPIN>: AvrPin<PIN> {
                                template<> volatile uint8_t * AvrPin< nr > :: ddrAddr = NULL;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
+//
+// Swap device/Mass storage
+//
 
 enum WriteBlockState { WBWait1, WBWait2 };
 
@@ -209,6 +215,10 @@ enum WriteBlockState { WBWait1, WBWait2 };
 //
 class MassStorage: public SdSpiCard, public MassStorageBase {
 
+public:
+
+    bool swapInit();
+
 protected:
 
     // Number of bytes to shift the block address for non-sdhc cards
@@ -216,27 +226,9 @@ protected:
 
     SdSpiAltDriver m_spi;
 
-    bool swapInit() {
-
-        if (! begin(&m_spi, SDSS, SPI_FULL_SPEED)) {
-
-            return false;
-        }
-
-        if (type() == SD_CARD_TYPE_SDHC) {
-            blockShift = 0;
-        } else {
-            blockShift = 9;
-        }
-
-        massert(eraseSingleBlockEnable());
-
-        return true;
-    }
-
     bool writeBlock(uint32_t writeBlockNumber) {
 
-        static wbstate = WBWait1;
+        static WriteBlockState wbstate = WBWait1;
 
         switch (wbstate) {
 
@@ -265,7 +257,8 @@ protected:
             case WBWait2:
 
                 // Wait for flash programming to complete, no timeout check!
-                PT_WAIT_WHILE(isBusy()); // isBusy() is doing spiStart()/spiStop()
+                if (isBusy()) // isBusy() is doing spiStart()/spiStop()
+                    return true;
 
                 if (cardCommand(CMD13, 0) || m_spi.receive()) { // cardCommand() is doing spiStart()
 

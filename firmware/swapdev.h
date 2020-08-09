@@ -30,13 +30,11 @@
 #endif
 
 #include "ddserial.h"
-#include "ddcommands.h"
+// #include "ddcommands.h"
 
 // Redefined here from ddcommands.h
 #define RespSDReadError         9  
-#define RespSDWriteError       12 
-
-
+// #define RespSDWriteError       12 
 
 class SDSwap: public MassStorage, public Protothread {
 

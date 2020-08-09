@@ -21,8 +21,11 @@
 
 #include "mdebug.h"
 #include "pin_states.h"
-#include "usbh_msc/dd_usbh_msc.h"
 #include "massstoragebase.h"
+
+extern "C" {
+    #include "usbh_msc/dd_usbh_msc.h"
+}
 
 // #include <VCP/core_cm4.h>
 
