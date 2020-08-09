@@ -1,3 +1,4 @@
+#if 0
 /*
 * This file is part of ddprint - a direct drive 3D printer firmware.
 * 
@@ -35,8 +36,6 @@
 // #define EEPROM_VERSION "V11"
 #define DEFAULT_PRINTER_NAME "UM2-generic"
 
-//armtodo
-#if 0
 void _EEPROM_readData(uint8_t * &pos, uint8_t* value, uint8_t size)
 {
     do
@@ -64,36 +63,6 @@ void inline eeprom_write_float(float* addr, float f)
     eeprom_write_dword((uint32_t*)addr, n.i);
 }
 #endif
-
-
-void setPrinterName(char *name, uint8_t len) {
-
-    EepromSettings es;
-
-    getEepromSettings(es);
-
-    memset(es.printerName, 0, sizeof(es.printerName));
-
-    strncpy(es.printerName, name, STD min(len, (uint8_t)sizeof(es.printerName)));
-
-    eeprom_write_block(&es, (void*)EEPROM_OFFSET, sizeof(EepromSettings));
-
-    txBuffer.sendResponseStart(CmdSetPrinterName);
-    txBuffer.sendResponseUint8(RespOK);
-    txBuffer.sendResponseEnd();
-}
-
-void getPrinterName() {
-
-    EepromSettings es;
-
-    getEepromSettings(es);
-
-    txBuffer.sendResponseStart(CmdGetPrinterName);
-    txBuffer.sendResponseUint8(RespOK);
-    txBuffer.sendResponseString(es.printerName, strnlen(es.printerName, sizeof(es.printerName)-1));
-    txBuffer.sendResponseEnd();
-}
 
 void getEepromSettings(EepromSettings &es) {
 

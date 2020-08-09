@@ -311,11 +311,11 @@ class MassStorage: public MassStorageBase {
         return true;
     }
 
-    bool writeBlock(uint32_t writeBlockNumber) {
+    bool writeBlock(uint32_t writeBlockNumber, uint8_t *src) {
 
         USBH_Status status = USBH_MSC_Write10(
                 &USB_OTG_Core_Host, &USB_Host,
-                writeBuffer, writeBlockNumber, 512);
+                src, writeBlockNumber, 512);
 
         if (status == USBH_BUSY)
             return true; // continue thread

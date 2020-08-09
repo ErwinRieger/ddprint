@@ -226,7 +226,7 @@ protected:
 
     SdSpiAltDriver m_spi;
 
-    bool writeBlock(uint32_t writeBlockNumber) {
+    bool writeBlock(uint32_t writeBlockNumber, uint8_t *src) {
 
         static WriteBlockState wbstate = WBWait1;
 
@@ -244,7 +244,7 @@ protected:
                     // notreached
                 }
 
-                if (!writeData(DATA_START_BLOCK, writeBuffer)) { // writeData() does not spiStart() but spiStop() in case of error
+                if (!writeData(DATA_START_BLOCK, src)) { // writeData() does not spiStart() but spiStop() in case of error
 
                     killMessage(RespSDWriteError, errorCode(), errorData());
                     // notreached

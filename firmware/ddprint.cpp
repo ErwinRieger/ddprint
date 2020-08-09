@@ -1289,6 +1289,40 @@ void Printer::cmdGetCurrentTemps() {
     txBuffer.sendResponseEnd();
 }
 
+// Note: we don't check if mass-storage is busy.
+// Note: we don't merge the config here, we just overwrite it.
+// This is no problem as long the config is just the printer name. 
+void Printer::cmdSetPrinterName(char *name, uint8_t len) {
+
+    union MSConfigBlock configSector;
+
+    memset(configSector.config.printerName, 0, sizeof(configSector.config.printerName));
+    strncpy(configSector.config.printerName, name, STD min(len, (uint8_t)sizeof(configSector.config.printerName)));
+
+    // No error checking
+    swapDev.writeConfig(configSector);
+
+    txBuffer.sendResponseStart(CmdSetPrinterName);
+    txBuffer.sendResponseUint8(RespOK);
+    txBuffer.sendResponseEnd();
+}
+
+// Note: we don't check if mass-storage is busy.
+void Printer::cmdGetPrinterName() {
+
+    union MSConfigBlock configSector;
+
+    // No error checking
+    swapDev.readConfig(configSector);
+
+    txBuffer.sendResponseStart(CmdGetPrinterName);
+    txBuffer.sendResponseUint8(RespOK);
+    txBuffer.sendResponseString(
+            configSector.config.printerName,
+            strnlen(configSector.config.printerName, sizeof(configSector.config.printerName)-1));
+    txBuffer.sendResponseEnd();
+}
+
 void Printer::checkMoveFinished() {
 
 // armrun
@@ -1969,19 +2003,16 @@ class UsbCommand : public Protothread {
                         // getEepromVersion();
                         // break;
                     case CmdSetPrinterName: {
-                        // armrun 
-#if 0
                         uint8_t len = serialPort.readNoCheckCobs();
                         char name[64];
                         for (c=0; c<64 && c<len; c++) {
                             name[c] = serialPort.readNoCheckCobs();
                         }
-                        setPrinterName(name, len);
-#endif
+                        printer.cmdSetPrinterName(name, len);
                         }
                         break;
                     case CmdGetPrinterName:
-                        // armrun getPrinterName();
+                        printer.cmdGetPrinterName();
                         break;
                     case CmdGetHomed:
                         printer.cmdGetHomed();

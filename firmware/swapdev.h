@@ -30,13 +30,15 @@
 #endif
 
 #include "ddserial.h"
-// #include "ddcommands.h"
+#include "ddcommands.h"
 
 // Redefined here from ddcommands.h
 #define RespSDReadError         9  
 // #define RespSDWriteError       12 
 
 class SDSwap: public MassStorage, public Protothread {
+
+    uint8_t writeBuffer[SwapSectorSize];
 
     // Pointer to current write position (byte) in writeBuffer
     uint16_t writePos;
@@ -143,16 +145,14 @@ public:
         busyWriting = true;
     }
 
-    // Ofs is normally one sector to skip the eeprom block.
-    // If the eeprom sector should be read, the set ofs to zero.
-    FWINLINE int16_t readBlock(uint8_t* dst, uint16_t ofs=SwapSectorSize) {
+    FWINLINE int16_t readBlock(uint8_t* dst) {
 
         // Number of bytes in this block:
         massert(available() > 0);
         massert(! busyWriting);
         massert((readPos % SwapSectorSize) == 0); // read pos should be block-aligned
 
-        if (! MassStorage::readBlock((readPos+ofs) >> 9, dst)) {
+        if (! MassStorage::readBlock((readPos >> 9)+1, dst)) {
 
             // Return Sd2Card error code and SPI status byte from sd card.
             // In case of SD_CARD_ERROR_CMD17 this is the return status of
@@ -191,7 +191,7 @@ public:
 
         //////////////////////////////////////////////////////////////////////////////////          
 
-        PT_WAIT_WHILE(writeBlock(writeBlockNumber));
+        PT_WAIT_WHILE(writeBlock(writeBlockNumber, writeBuffer));
 
         //////////////////////////////////////////////////////////////////////////////////          
 
@@ -209,6 +209,9 @@ public:
         PT_RESTART();
         PT_END();
     };
+
+    void writeConfig(MSConfigBlock &config) { while (writeBlock(0, config.sector)); }
+    void readConfig(MSConfigBlock &config) { MassStorage::readBlock(0, config.sector); }
 };
 
 extern SDSwap swapDev;

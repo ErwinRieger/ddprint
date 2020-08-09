@@ -134,6 +134,8 @@ class Printer {
         void cmdReadGpio(uint8_t pinNumber);
         void cmdReadAnalogGpio(uint8_t pinNumber);
         void cmdSetGpio(uint8_t pinNumber, uint8_t value);
+        void cmdSetPrinterName(char *name, uint8_t len);
+        void cmdGetPrinterName();
 #if defined(POWER_BUTTON)
         void checkPowerOff(unsigned long ms);
 #endif
