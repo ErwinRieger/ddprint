@@ -95,8 +95,8 @@ class StepData:
 
     def checkTimerValue(self, timer, limit):
 
-        if timer < 50:
-            print "timervalue %d to low, > 40kHz!" % timer
+        if timer < 40:
+            print "timervalue %d to low, > 50kHz!" % timer
             assert(0)
 
         if timer > limit:
