@@ -40,11 +40,12 @@ def homeMove(parser, dim, direction, dist, fakeHomingEndstops, feedRateFactor=1.
 
     parser.setPos(planner.zeroPos)
 
-    # print "--- homeMove(): send %s - homing move, dist: %.2f" % (dimNames[dim], dist*direction * planner.HOME_DIR[dim])
+    feedRate = planner.HOMING_FEEDRATE[dim]*60*feedRateFactor
+
+    # print "--- homeMove(): send %s - homing move, dist: %.2f, feedrate: %.2f mm/min" % (dimNames[dim], dist*direction * planner.HOME_DIR[dim], feedRate)
 
     cmd = "G0 F%f %s%f" % (
-        planner.HOMING_FEEDRATE[dim]*60*feedRateFactor,
-        dimNames[dim], dist * direction * planner.HOME_DIR[dim])
+        feedRate, dimNames[dim], dist * direction * planner.HOME_DIR[dim])
 
     # print "homeMove: ", cmd
 

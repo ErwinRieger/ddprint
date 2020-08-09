@@ -555,6 +555,10 @@ def main():
     elif args.mode == 'test':
 
         printer = Printer()
+        printer.initSerial(args.device, args.baud)
+        # printer.sendCommandParamV(CmdFanSpeed, [packedvalue.uint8_t(128)])
+        # time.sleep(5)
+
         # initPrinterProfile(args)
         # printer.commandInit(args, PrinterProfile.getSettings())
         # readings = printer.getFSReadings(10)
@@ -562,7 +566,6 @@ def main():
         # pprint.pprint(readings)
         # printer.setTempPWM(HeaterEx1, 0)
         # printer = Printer()
-        # printer.initSerial(args.device, args.baud)
         # util.downloadDummyTempTable(printer)
         # (baseTemp, tempTable) = printer.getTempTable()
         # print "tempTable: ", pprint.pprint(tempTable)
