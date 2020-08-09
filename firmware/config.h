@@ -28,7 +28,11 @@
 
 // Use Bourns ems22a Rotary Encoder as a flowrate sensor
 // armtodo
-// #define BournsEMS22AFS 1
+#if MOTHERBOARD == 1
+    #define BournsEMS22AFS 1
+#else
+    // #define BournsEMS22AFS 1
+#endif
 
 #define USEExtrusionRateTable
 

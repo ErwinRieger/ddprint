@@ -36,6 +36,7 @@ DefineIOPinMembers(25);
 DefineIOPinMembers(26);
 DefineIOPinMembers(27);
 DefineIOPinMembers(29);
+DefineIOPinMembers(30);
 DefineIOPinMembers(31);
 DefineIOPinMembers(32);
 DefineIOPinMembers(33);
@@ -48,6 +49,9 @@ DefineIOPinMembers(43);
 DefineIOPinMembers(44);
 DefineIOPinMembers(45);
 DefineIOPinMembers(46);
+DefineIOPinMembers(51);
+DefineIOPinMembers(52);
+DefineIOPinMembers(53);
 DefineIOPinMembers(69);
 
 void HAL_SETUP_TEMP_ADC() {
@@ -128,9 +132,35 @@ bool TempControl::Run() {
     PT_END();
 }
 
+////////////////////////////////////////////////////////////////////////////////////////////////////
+//
+// Initialize the spi bus
+//
+void spiInit() {
+
+    // Do some minimal SPI init, prevent SPI to go to spi slave mode
+    // WRITE(SDSS, HIGH);
+    // SET_OUTPUT(SDSS);
+    SDSS :: initDeActive();
+
+    // WRITE(FILSENSNCS, HIGH);
+    // SET_OUTPUT(FILSENSNCS);
+    FILSENSNCS :: initDeActive();
+
+    // SET_OUTPUT(SCK_PIN);
+    SCK_PIN :: initDeActive();
+
+    // SET_OUTPUT(MOSI_PIN);
+    MOSI_PIN :: initDeActive();
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+//
+// Mass storage, SDCard interface
+//
 bool MassStorage::swapInit() {
 
-    if (! begin(&m_spi, SDSS, SPI_FULL_SPEED)) {
+    if (! begin(&m_spi, SDSS :: getPin(), SPI_FULL_SPEED)) {
 
         return false;
     }

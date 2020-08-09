@@ -77,7 +77,10 @@ extern "C" {
 // Test timer3 interrupt bit in nvic interrupt enable register(s)
 #define STEPPER1_DRIVER_INTERRUPT_ENABLED() (NVIC_BASE->ISER[NVIC_TIMER3 / 32] & BIT(NVIC_TIMER3 % 32))
 
+#define HAL_SET_STEPPER_TIMER(timerval) { timer_set_reload(&timer2, timerval); }
+#define HAL_SET_HOMING_TIMER(timerval) { timer_set_reload(&timer3, timerval); }
 
+#define HAL_SPI_INIT() spiInit()
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 

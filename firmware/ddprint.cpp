@@ -251,18 +251,7 @@ void setup() {
 
     FAN_PIN :: write(255 * 0.5);
 
-// armrun
-#if 0
-    // Do some minimal SPI init, prevent SPI to go to spi slave mode
-    WRITE(SDSS, HIGH);
-    SET_OUTPUT(SDSS);
-
-    WRITE(FILSENSNCS, HIGH);
-    SET_OUTPUT(FILSENSNCS);
-
-    SET_OUTPUT(SCK_PIN);
-    SET_OUTPUT(MOSI_PIN);
-#endif
+    HAL_SPI_INIT();
 
     serialPort.begin(BAUDRATE);
 
@@ -296,6 +285,8 @@ void setup() {
 #if defined(HASFILAMENTSENSOR)
     filamentSensor.init();
 #endif
+
+    SEI();
 }
 
 //
@@ -1070,7 +1061,7 @@ void Printer::printerInit() {
         uint32_t msSizeInBlocks = swapDev.cardSize();
 
         massert(msSizeInBlocks > 0);
-        massert(swapDev.erase(0, msSizeInBlocks - 1));
+        massert(swapDev.erase(1, msSizeInBlocks - 1));
 
         swapErased = true;
     }
@@ -1118,7 +1109,6 @@ void Printer::runHotEndFan() {
 void Printer::cmdEot() {
 
     massert(printerState >= StateInit);
-
     eotReceived = true;
 }
 
@@ -1132,7 +1122,7 @@ void Printer::cmdMove(MoveType mt) {
 
     if (mt == MoveTypeNormal) {
 
-        massert(homed);
+        // armrun massert(homed);
     }
 
     if (mt == MoveTypeHoming) {

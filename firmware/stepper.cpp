@@ -117,16 +117,16 @@ void st_init() {
   //endstops and pullups
 
   // SET_INPUT(X_STOP_PIN);
-  // xxx armtodo pullup WRITE(X_STOP_PIN,HIGH);
+  // WRITE(X_STOP_PIN,HIGH);
   X_STOP_PIN :: init();
 
   // SET_INPUT(Y_STOP_PIN);
-  // xxx armtodo pullup // WRITE(Y_STOP_PIN,HIGH);
+  // WRITE(Y_STOP_PIN,HIGH);
   // gpio_set_mode(Y_STOP_PIN, GPIO_INPUT_PU);
   Y_STOP_PIN :: init();
 
   // SET_INPUT(Z_STOP_PIN);
-  // xxx armtodo pullup WRITE(Z_STOP_PIN,HIGH);
+  // WRITE(Z_STOP_PIN,HIGH);
   Z_STOP_PIN :: init();
 
   //Initialize Step Pins
@@ -154,44 +154,6 @@ void st_init() {
     E0_STEP_PIN :: initDeActive();
     disable_e0();
   #endif
-
-// armrun
-#if 0
-    //
-    // Setup Timer1 for stepper interrupt and 
-    // homingstepper interrupt.
-    //
-
-    // 
-    // Timer 0 is used by arduino (millis() ...)
-    // Timer 2 is 8bit only
-    // Timer 3 ist heater pwm
-    // Timer 4 ist LED pin und FAN pin
-    // Timer 5 ist digipot
-    //
-
-    // waveform generation = 0100 = CTC
-    TCCR1B &= ~(1<<WGM13);
-    TCCR1B |=  (1<<WGM12);
-    TCCR1A &= ~(1<<WGM11);
-    TCCR1A &= ~(1<<WGM10);
-    
-    // output mode = 00 (disconnected)
-    // Normal port operation, OCnA/OCnB/OCnC disconnected
-    TCCR1A &= ~(3<<COM1A0);
-    TCCR1A &= ~(3<<COM1B0);
-
-    // Generally we use a divider of 8, resulting in a 2MHz timer
-    // frequency on a 16MHz MCU.
-    TCCR1B = (TCCR1B & ~(0x07<<CS10)) | (2<<CS10);
-
-    OCR1A = 0x4000;
-    OCR1B = 0x4000;
-    TCNT1 = 0;
-#endif
-
-  // ENABLE_STEPPER_DRIVER_INTERRUPT();
-  SEI();
 }
 
 #if defined(__arm__)
@@ -204,12 +166,18 @@ void st_init() {
     void __irq_tim2(void)
     {
 	    stepBuffer.runMoveSteps();
+
+        timer_gen_reg_map *regs = timer2.regs.gen;
+        regs->SR &= ~TIMER_SR_CC1IF;
     }
 
     // Stepper irq routine for homing steps
     void __irq_tim3(void)
     {
 	    stepBuffer.runMiscSteps();
+
+        timer_gen_reg_map *regs = timer3.regs.gen;
+        regs->SR &= ~TIMER_SR_CC1IF;
     }
 
 #else

@@ -288,8 +288,8 @@ FilamentSensorEMS22::FilamentSensorEMS22() {
 
     // Pull high chip select of filament sensor to free the
     // SPI bus (for sdcard).
-    WRITE(FILSENSNCS, HIGH);
-    SET_OUTPUT(FILSENSNCS);
+    // WRITE(FILSENSNCS, HIGH);
+    // SET_OUTPUT(FILSENSNCS);
 
     feedrateLimiterEnabled = true;
     filSensorCalibration = 1.0;
@@ -313,13 +313,16 @@ uint16_t FilamentSensorEMS22::readEncoderPos() {
     // Read rotary encoder pos (0...1023)
     //
 
-    digitalWrite(FILSENSNCS, LOW);
+    // digitalWrite(FILSENSNCS, LOW);
+    FILSENSNCS :: activate();
+
     delayMicroseconds(1); // Tclkfe
 
     uint8_t byte1 = dDPrintSpi.transfer(0);
     uint8_t byte2 = dDPrintSpi.transfer(0);
 
-    digitalWrite(FILSENSNCS, HIGH);
+    // digitalWrite(FILSENSNCS, HIGH);
+    FILSENSNCS :: deActivate();
   
     if ((byte2 & 0x3E) != 0x20) {
         massert(0);

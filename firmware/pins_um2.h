@@ -10,7 +10,7 @@
 
 #define X_STEP_PIN              DigitalOutput<25, ACTIVEHIGHPIN>  // todo: speedup
 // Active state is forward direction (positive)
-#define X_DIR_PIN               DigitalOutput<23, ACTIVEHIGHPIN>  // todo: speedup
+#define X_DIR_PIN               DigitalOutput<23, ACTIVELOWPIN>  // todo: speedup
 #define X_STOP_PIN              DigitalInput<22, ACTIVELOWPIN>  // todo: speedup
 #define X_ENABLE_PIN            DigitalOutput<27, ACTIVELOWPIN>
 
@@ -22,13 +22,13 @@
 
 #define Z_STEP_PIN              DigitalOutput<35, ACTIVEHIGHPIN>  // todo: speedup
 // Active state is forward direction (positive)
-#define Z_DIR_PIN               DigitalOutput<36, ACTIVEHIGHPIN>  // todo: speedup
+#define Z_DIR_PIN               DigitalOutput<36, ACTIVELOWPIN>  // todo: speedup
 #define Z_STOP_PIN              DigitalInput<29, ACTIVELOWPIN>  // todo: speedup
 #define Z_ENABLE_PIN            DigitalOutput<34, ACTIVELOWPIN>
 
 #define E0_STEP_PIN             DigitalOutput<42, ACTIVEHIGHPIN>  // todo: speedup
 // Active state is forward direction (positive)
-#define E0_DIR_PIN              DigitalOutput<43, ACTIVEHIGHPIN>  // todo: speedup
+#define E0_DIR_PIN              DigitalOutput<43, ACTIVELOWPIN>  // todo: speedup
 #define E0_ENABLE_PIN           DigitalOutput<37, ACTIVELOWPIN>
 
 // Second extruder not used 
@@ -45,16 +45,16 @@
 // #define TEMP_1_PIN 9
 
 
-
 #define TEMP_BED_PIN            10
 #define TEMP_0_PIN              8
 
 // SPI
 // Chip select SDCard
-#define SDSS               53
-#define SCK_PIN            52
-#define MISO_PIN           50
-#define MOSI_PIN           51
+#define SDSS                    DigitalOutput<53, ACTIVELOWPIN> 
+
+#define SCK_PIN                 DigitalOutput<52, ACTIVEHIGHPIN> 
+// #define MISO_PIN                DigitalInput<50...
+#define MOSI_PIN                DigitalOutput<51, ACTIVEHIGHPIN> 
 
 #define LED_PIN                 PWMOutput<8, ACTIVEHIGHPIN>
 
@@ -78,7 +78,7 @@
 // A5020
 // #define FILSENSNCS   65
 // A7550
-#define FILSENSNCS   30
+#define FILSENSNCS              DigitalOutput<30, ACTIVELOWPIN> 
 // #define FILSENSSDIO  66
 // #define FILSENSSCLK  67
 

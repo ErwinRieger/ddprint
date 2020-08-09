@@ -25,9 +25,9 @@
 #include "Configuration.h"
 #include "pins.h"
 
-#if defined(AVR)
-    #include "fastio.h"
-#endif
+// #if defined(AVR)
+    // #include "fastio.h"
+// #endif
 
 #include "ddserial.h"
 #include "ddcommands.h"

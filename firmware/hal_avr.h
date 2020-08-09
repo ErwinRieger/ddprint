@@ -63,7 +63,7 @@
 #define WDT_ENABLE() wdt_enable(WDTO_4S) /* Timeout 4 seconds */
 #define WDT_RESET() wdt_reset()
 
-#define TIMER_INIT() /* */
+#define TIMER_INIT() timerInit()
 
 #define ENABLE_STEPPER_DRIVER_INTERRUPT()  TIMSK1 |= (1<<OCIE1A)
 #define DISABLE_STEPPER_DRIVER_INTERRUPT() TIMSK1 &= ~(1<<OCIE1A)
@@ -71,6 +71,11 @@
 #define ENABLE_STEPPER1_DRIVER_INTERRUPT()  TIMSK1 |= (1<<OCIE1B)
 #define DISABLE_STEPPER1_DRIVER_INTERRUPT() TIMSK1 &= ~(1<<OCIE1B)
 #define STEPPER1_DRIVER_INTERRUPT_ENABLED() (TIMSK1 & (1<<OCIE1B))
+
+#define HAL_SET_STEPPER_TIMER(timerval) { OCR1A = timerval; }
+#define HAL_SET_HOMING_TIMER(timerval) { OCR1A = OCR1B = timerval; }
+
+#define HAL_SPI_INIT() spiInit()
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -89,6 +94,8 @@ struct AvrPin {
     static volatile uint8_t * portAddr;
     static uint8_t  bitMask;
     static volatile uint8_t * ddrAddr;
+
+    static uint8_t getPin() { return PIN; }
 
     // timer for pwm: volatile uint8_t *pwmAddr;
     static void setOutput() {
@@ -148,7 +155,7 @@ struct DigitalOutput<PIN, ACTIVEHIGHPIN>: AvrPin<PIN> {
 };
 
 template <uint8_t PIN>
-struct DigitalOutput<PIN, ACTIVELOWPIN> {
+struct DigitalOutput<PIN, ACTIVELOWPIN>: AvrPin<PIN>  {
     static void initDeActive() { AvrPin<PIN>::setOutput(); deActivate(); }
     static void activate() { AvrPin<PIN>::outputLow(); };
     static void deActivate() { AvrPin<PIN>::outputHigh(); };
@@ -202,6 +209,51 @@ struct PWMOutput<PIN, ACTIVELOWPIN>: AvrPin<PIN> {
                                template<> volatile uint8_t * AvrPin< nr > :: pinAddr = NULL; \
                                template<> volatile uint8_t * AvrPin< nr > :: portAddr = NULL; \
                                template<> volatile uint8_t * AvrPin< nr > :: ddrAddr = NULL;
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+//
+// Initialize the used timers
+//
+inline void timerInit() {
+
+    //
+    // Setup Timer1 for stepper interrupt and 
+    // homingstepper interrupt.
+    //
+
+    // 
+    // Timer 0 is used by arduino (millis() ...)
+    // Timer 2 is 8bit only
+    // Timer 3 ist heater pwm
+    // Timer 4 ist LED pin und FAN pin
+    // Timer 5 ist digipot
+    //
+
+    // waveform generation = 0100 = CTC
+    TCCR1B &= ~(1<<WGM13);
+    TCCR1B |=  (1<<WGM12);
+    TCCR1A &= ~(1<<WGM11);
+    TCCR1A &= ~(1<<WGM10);
+    
+    // output mode = 00 (disconnected)
+    // Normal port operation, OCnA/OCnB/OCnC disconnected
+    TCCR1A &= ~(3<<COM1A0);
+    TCCR1A &= ~(3<<COM1B0);
+
+    // Generally we use a divider of 8, resulting in a 2MHz timer
+    // frequency on a 16MHz MCU.
+    TCCR1B = (TCCR1B & ~(0x07<<CS10)) | (2<<CS10);
+
+    OCR1A = 0x4000;
+    OCR1B = 0x4000;
+    TCNT1 = 0;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+//
+// Initialize the spi bus
+//
+void spiInit();
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 //
