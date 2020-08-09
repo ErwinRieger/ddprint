@@ -72,9 +72,10 @@ extern "C" {
 #define ENABLE_STEPPER_DRIVER_INTERRUPT()  { /* set normal stepper target */ nvic_irq_enable(NVIC_TIMER2); }
 #define DISABLE_STEPPER_DRIVER_INTERRUPT() { nvic_irq_disable(NVIC_TIMER2); }
 
-#define ENABLE_STEPPER1_DRIVER_INTERRUPT()  { /* set normal stepper target */ nvic_irq_enable(NVIC_TIMER2); }
-#define DISABLE_STEPPER1_DRIVER_INTERRUPT() { nvic_irq_disable(NVIC_TIMER2); }
-// #define STEPPER1_DRIVER_INTERRUPT_ENABLED() { /* set normal stepper target */ enable_irq(&timer2, TIMER_CC1_INTERRUPT); }
+#define ENABLE_STEPPER1_DRIVER_INTERRUPT()  { /* set normal stepper target */ nvic_irq_enable(NVIC_TIMER3); }
+#define DISABLE_STEPPER1_DRIVER_INTERRUPT() { nvic_irq_disable(NVIC_TIMER3); }
+// Test timer3 interrupt bit in nvic interrupt enable register(s)
+#define STEPPER1_DRIVER_INTERRUPT_ENABLED() (NVIC_BASE->ISER[NVIC_TIMER3 / 32] & BIT(NVIC_TIMER3 % 32))
 
 
 
@@ -105,17 +106,20 @@ inline void timerInit() {
 
     //
     // Stepper timers
+    // * timer2: general, 32 bit
+    // * timer3: general, 16 bit
     //
     timer_init(&timer2); // Stepper interrupt
-    // timer_init(&timer11); // Homing stepper interrupt
+    timer_init(&timer3); // Homing stepper interrupt
 
     // Prescaler to achieve 2 mhz clock like mega2560, timer 10+11 are running with
     // APB2 clock of 84Mhz
     // 84 / 2.0 = 42,
     timer_set_prescaler(&timer2, 42 - 1);
-    // timer_set_prescaler(timer11, 42 - 1);
+    timer_set_prescaler(&timer3, 42 - 1);
 
     timer_enable_irq(&timer2, TIMER_CC1_INTERRUPT);
+    timer_enable_irq(&timer3, TIMER_CC1_INTERRUPT);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -289,6 +293,14 @@ class MassStorage: public MassStorageBase {
         }
         return true;
     }
+
+    // Size of storage in sectors
+    uint32_t cardSize() { return usbhMscSizeInBlocks(); }
+
+    // Erase range of blocks
+    // Is there a MSC/scsi command to erase blocks and would it
+    // speed up things?
+    bool erase(uint32_t firstBlock, uint32_t lastBlock) { return true; }
 
   protected:
 

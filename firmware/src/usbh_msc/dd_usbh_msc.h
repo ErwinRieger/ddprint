@@ -78,6 +78,8 @@ uint32_t Reserved :
 
 bool usbhMscInitialized();
 
+uint32_t usbhMscSizeInBlocks();
+
 void dd_USBH_Init(USB_OTG_CORE_HANDLE *pdev,
                USB_OTG_CORE_ID_TypeDef coreID, 
                USBH_HOST *phost);

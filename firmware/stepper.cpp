@@ -31,11 +31,7 @@
 
 volatile int32_t current_pos_steps[NUM_AXIS] = { 0, 0, 0, 0};
 
-//armdebug
-#if 0
-
 StepBuffer stepBuffer;
-#endif
 
 void digipot_current(uint8_t driver, int current)
 {
@@ -198,24 +194,43 @@ void st_init() {
   SEI();
 }
 
-//armdebug
-#if 0
+#if defined(__arm__)
 
-ISR(TIMER1_COMPA_vect) {
+    //
+    // STM32
+    //
+   
+    // Stepper irq routine
+    void __irq_tim2(void)
+    {
+	    stepBuffer.runMoveSteps();
+    }
 
-    // xxx call it runPrintStep
-    stepBuffer.runMoveSteps();
-}
+    // Stepper irq routine for homing steps
+    void __irq_tim3(void)
+    {
+	    stepBuffer.runMiscSteps();
+    }
 
-ISR(TIMER1_COMPB_vect) {
+#else
 
-    // stepBuffer.runHomingSteps();
-    stepBuffer.runMiscSteps();
-}
+    //
+    // AVR
+    //
+   
+    // Stepper irq routine
+    ISR(TIMER1_COMPA_vect) {
 
+        // xxx call it runPrintStep
+        stepBuffer.runMoveSteps();
+    }
+
+    // Stepper irq routine for homing steps
+    ISR(TIMER1_COMPB_vect) {
+
+        stepBuffer.runMiscSteps();
+    }
 #endif
-
-
 
 
 

@@ -254,7 +254,7 @@ protected:
                 wbstate = WBWait2;
                 return true; // continue sub thread
 
-            case WBWait2:
+            default: // WBWait2
 
                 // Wait for flash programming to complete, no timeout check!
                 if (isBusy()) // isBusy() is doing spiStart()/spiStop()

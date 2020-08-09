@@ -64,8 +64,7 @@ class TxBuffer: public Protothread {
 
         int16_t cf, csh, csl;
 
-/////////////////// xxx temporary stm32 armrun
-/////////////////public:
+public:
         FWINLINE bool pushByte(uint8_t c) {
 
 // #if defined(HEAVYDEBUG)

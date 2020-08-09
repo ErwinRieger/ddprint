@@ -40,10 +40,14 @@ static uint32_t testUnitReadyRetry = 0;
 
 //--------------------------------------------------------------
 //
-//
-//
 bool usbhMscInitialized() {
     return usbh_msc.MSCState == USBH_MSC_DEFAULT_APPLI_STATE;
+}
+
+//--------------------------------------------------------------
+//
+uint32_t usbhMscSizeInBlocks() {
+    return USBH_MSC_Param.MSCapacity;
 }
 
 
@@ -60,8 +64,6 @@ void usbMSCHostError() {
 
 //--------------------------------------------------------------
 //
-
-// #include <usb_core.h>
 
 //--------------------------------------------------------------
 //
@@ -142,7 +144,6 @@ USBH_Status USBH_MSC_Read10(USB_OTG_CORE_HANDLE *pdev, USBH_HOST *phost,
                          USBH_MSC_CBWData.CBWArray,          // 31, entire CBW struct
                          USBH_MSC_BOT_CBW_PACKET_LENGTH_31 , // 31
                          MSC_Machine.hc_num_out);
-      
       break;
       
     case CMD_WAIT_STATUS:

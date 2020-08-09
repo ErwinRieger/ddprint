@@ -106,7 +106,7 @@ public:
         writeBuffer[writePos++] = b;
 
         if (writePos == SwapSectorSize)
-            StartWriteBlock();
+            startWriteBlock();
     }
 
 #if 0
@@ -137,7 +137,7 @@ public:
 
     //------------------------------------------------------------------------------
     // Start writing *writeBuffer* to storage device
-    FWINLINE void StartWriteBlock() {
+    FWINLINE void startWriteBlock() {
 
 #if defined(HEAVYDEBUG)
         massert(! busyWriting);
