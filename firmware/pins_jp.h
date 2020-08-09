@@ -32,28 +32,28 @@
 
 #define X_STEP_PIN              DigitalOutput<18, ACTIVEHIGHPIN>  // ["GPIOB","D18","PB2"],  # Known: Output, X-Step
 // Active state is forward direction (positive)
-#define X_DIR_PIN               DigitalOutput<0, ACTIVELOWPIN>  // ["GPIOA","D00","PA0"],  # Known: Output, X-Dir
+#define X_DIR_PIN               DigitalOutput<0, ACTIVEHIGHPIN>  // ["GPIOA","D00","PA0"],  # Known: Output, X-Dir
 #define X_ENABLE_PIN            DigitalOutput<66, ACTIVELOWPIN>  // ["GPIOE","D66","PE2"],  # Known: Output, X-Enable, active low
 #define X_STOP_PIN              DigitalInput<11, INPUT_PULLUP, ACTIVELOWPIN>  // ["GPIOA","D11","PA11"], # Known: Input, X-Endstop, active low
 //#define X_ENABLE_ACTIVE     LOW
 
 #define Y_STEP_PIN              DigitalOutput<46, ACTIVEHIGHPIN>  // ["GPIOC","D46","PC14"], # Known: Output, Y-Step
 // Active state is forward direction (positive)
-#define Y_DIR_PIN               DigitalOutput<70, ACTIVEHIGHPIN>  // ["GPIOE","D70","PE6"],  # Known: Output, Y-Dir
+#define Y_DIR_PIN               DigitalOutput<70, ACTIVELOWPIN>  // ["GPIOE","D70","PE6"],  # Known: Output, Y-Dir
 #define Y_ENABLE_PIN            DigitalOutput<47, ACTIVELOWPIN>  // ["GPIOC","D47","PC15"], # Known: Output, Y-Enable, active low
 #define Y_STOP_PIN              DigitalInput<60, INPUT_PULLUP, ACTIVELOWPIN>  // ["GPIOD","D60","PD12"], # Known: Input, Y-Endstop, active low
 // #define Y_ENABLE_ACTIVE     LOW
 
 #define Z_STEP_PIN              DigitalOutput<69, ACTIVEHIGHPIN>  // ["GPIOE","D69","PE5"],  # Known: Output, Z-Step
 // Active state is forward direction (positive)
-#define Z_DIR_PIN               DigitalOutput<68, ACTIVELOWPIN>  // ["GPIOE","D68","PE4"],  # Known: Output, Z-Dir
+#define Z_DIR_PIN               DigitalOutput<68, ACTIVEHIGHPIN>  // ["GPIOE","D68","PE4"],  # Known: Output, Z-Dir
 #define Z_ENABLE_PIN            DigitalOutput<45, ACTIVELOWPIN>  // ["GPIOC","D45","PC13"], # Known: Output, Z-Enable, active low
 #define Z_STOP_PIN              DigitalInput<65, INPUT_PULLUP, ACTIVELOWPIN>  // ["GPIOE","D65","PE1"],  # Known: Input, Z-Endstop, active low
 // #define Z_ENABLE_ACTIVE     LOW
 
 #define E0_STEP_PIN             DigitalOutput<1, ACTIVEHIGHPIN>  // ["GPIOA","D01","PA1"],  # Known: Output, E0-Step
 // Active state is forward direction (positive)
-#define E0_DIR_PIN              DigitalOutput<16, ACTIVEHIGHPIN>  // ["GPIOB","D16","PB0"],  # Known: Output, E0-Dir
+#define E0_DIR_PIN              DigitalOutput<16, ACTIVELOWPIN>  // ["GPIOB","D16","PB0"],  # Known: Output, E0-Dir
 #define E0_ENABLE_PIN           DigitalOutput<37, ACTIVELOWPIN>  // ["GPIOC","D37","PC5"],  # Known: Output, E0-Enable, active low
 // #define E0_ENABLE_ACTIVE    LOW
 

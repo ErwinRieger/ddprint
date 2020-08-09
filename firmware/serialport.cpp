@@ -213,6 +213,7 @@ void SerialPort::begin(long baud)
     usart_enable(USART1);
 }
 
+//
 // Serial interrupt routine
 //
 // Note, to overwrite stm32duino's irq handler i had to define __irq_usart1() as weak

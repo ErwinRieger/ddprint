@@ -222,7 +222,7 @@ void killMessage(uint8_t errorCode, uint8_t errorParam1, uint8_t errorParam2, co
 
 void setup() {
 
-    WDT_ENABLE();
+    // WDT_ENABLE();
 
     // TESTPIN :: initActive();
 
@@ -248,8 +248,6 @@ void setup() {
     LED_PIN :: init();
 
     FAN_PIN :: init();
-
-    FAN_PIN :: write(255 * 0.5);
 
     HAL_SPI_INIT();
 

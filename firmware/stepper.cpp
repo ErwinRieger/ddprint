@@ -161,23 +161,28 @@ void st_init() {
     //
     // STM32
     //
-   
-    // Stepper irq routine
-    void __irq_tim2(void)
-    {
-	    stepBuffer.runMoveSteps();
+    // Note, to overwrite stm32duino's irq handlers they had to be defined as weak.
+    //
+    extern "C" {
 
-        timer_gen_reg_map *regs = timer2.regs.gen;
-        regs->SR &= ~TIMER_SR_CC1IF;
-    }
+        // Stepper irq routine
+        void __irq_tim2(void)
+        {
+	        stepBuffer.runMoveSteps();
 
-    // Stepper irq routine for homing steps
-    void __irq_tim3(void)
-    {
-	    stepBuffer.runMiscSteps();
+            timer_gen_reg_map *regs = timer2.regs.gen;
+            regs->SR &= ~TIMER_SR_UIF;
+        }
 
-        timer_gen_reg_map *regs = timer3.regs.gen;
-        regs->SR &= ~TIMER_SR_CC1IF;
+        // Stepper irq routine for homing steps
+        void __irq_tim3(void)
+        {
+	        stepBuffer.runMiscSteps();
+
+            timer_gen_reg_map *regs = timer3.regs.gen;
+            regs->SR &= ~TIMER_SR_UIF;
+        }
+
     }
 
 #else
