@@ -2116,8 +2116,8 @@ void dd_USB_OTG_BSP_Init(USB_OTG_CORE_HANDLE *pdev)
   GPIO_PinAFConfig(GPIOA,GPIO_PinSource12,GPIO_AF_OTG1_FS) ;
   */
 
-  gpio_set_mode(DD_BOARD_USB_DM_PIN,GPIO_MODE_AF | GPIO_OTYPE_PP | GPIO_OSPEED_100MHZ);
-  gpio_set_mode(DD_BOARD_USB_DP_PIN,GPIO_MODE_AF | GPIO_OTYPE_PP | GPIO_OSPEED_100MHZ);
+  gpio_set_mode(DD_BOARD_USB_DM_PIN,(gpio_pin_mode)(GPIO_MODE_AF | GPIO_OTYPE_PP | GPIO_OSPEED_100MHZ));
+  gpio_set_mode(DD_BOARD_USB_DP_PIN,(gpio_pin_mode)(GPIO_MODE_AF | GPIO_OTYPE_PP | GPIO_OSPEED_100MHZ));
   gpio_set_af_mode(DD_BOARD_USB_DM_PIN, GPIO_AFMODE_OTG_HS) ;    // OTG_FS_DM
   gpio_set_af_mode(DD_BOARD_USB_DP_PIN, GPIO_AFMODE_OTG_HS) ;    // OTG_FS_DP
 
@@ -2367,7 +2367,7 @@ USBH_Status USBH_SetAddress(USB_OTG_CORE_HANDLE *pdev,
 
 //--------------------------------------------------------------
 //
-static  USBH_DescHeader_t  *USBH_GetNextDesc (uint8_t   *pbuf, uint16_t  *ptr)
+static  USBH_DescHeader_t  *USBH_GetNextDesc (USBH_DescHeader_t   *pbuf, uint16_t  *ptr)
 {
   USBH_DescHeader_t  *pnext;
  
@@ -2450,7 +2450,7 @@ static void  USBH_ParseCfgDesc (USBH_CfgDesc_TypeDef* cfg_desc,
       {
         while (if_ix < cfg_desc->bNumInterfaces) 
         {
-          pdesc = USBH_GetNextDesc((uint8_t *)pdesc, &ptr);
+          pdesc = USBH_GetNextDesc(pdesc, &ptr);
           if (pdesc->bDescriptorType   == USB_DESC_TYPE_INTERFACE) 
           {  
             pif               = &itf_desc[if_ix];
@@ -2462,7 +2462,7 @@ static void  USBH_ParseCfgDesc (USBH_CfgDesc_TypeDef* cfg_desc,
             {          
               while (ep_ix < pif->bNumEndpoints) 
               {
-                pdesc = USBH_GetNextDesc((void* )pdesc, &ptr);
+                pdesc = USBH_GetNextDesc(pdesc, &ptr);
                 if (pdesc->bDescriptorType   == USB_DESC_TYPE_ENDPOINT) 
                 {  
                   pep               = &ep_desc[ep_ix];

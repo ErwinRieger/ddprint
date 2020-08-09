@@ -82,6 +82,7 @@ uint8_t USBH_Alloc_Channel  (USB_OTG_CORE_HANDLE *pdev, uint8_t ep_addr)
   return hc_num;
 }
 
+#if 0
 //--------------------------------------------------------------
 uint8_t USBH_Free_Channel  (USB_OTG_CORE_HANDLE *pdev, uint8_t idx)
 {
@@ -104,6 +105,7 @@ uint8_t USBH_DeAllocate_AllChannel  (USB_OTG_CORE_HANDLE *pdev)
    }
    return USBH_OK;
 }
+#endif
 
 //--------------------------------------------------------------
 static uint16_t USBH_GetFreeChannel (USB_OTG_CORE_HANDLE *pdev)
@@ -119,6 +121,5 @@ static uint16_t USBH_GetFreeChannel (USB_OTG_CORE_HANDLE *pdev)
   }
   return HC_ERROR;
 }
-
 
 

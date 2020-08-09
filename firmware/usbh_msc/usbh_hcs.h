@@ -10,7 +10,8 @@
 //--------------------------------------------------------------
 #include "usbh_core.h"
 
-#define HC_MAX           8
+// #define HC_MAX           8
+#define HC_MAX           (USB_OTG_MAX_TX_FIFOS/2)
 
 #define HC_OK            0x0000
 #define HC_USED          0x8000

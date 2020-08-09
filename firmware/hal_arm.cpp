@@ -158,15 +158,8 @@ bool TempControl::Run() {
 //
 //--------------------------------------------------------------
 // Timer 2 irq handler
-void __irq_usb_hs(void)
+void __irq_tim2(void)
 {
-}
-
-//--------------------------------------------------------------
-// USB HS Host irq handler
-void __irq_usb_hs(void)
-{
-	USBD_OTG_HS_ISR_Handler (&USB_OTG_Core_Host);
 }
 
 #endif

@@ -58,10 +58,20 @@
 #define CLI()   noInterrupts()
 #define SEI()   interrupts()
 
+#define CRITICAL_SECTION_START  noInterrupts() /* uint32_t primask = __get_PRIMASK(); __disable_irq() */
+#define CRITICAL_SECTION_END    interrupts() /* if (!primask) __enable_irq() */
+
 #define WDT_ENABLE() iwdg_init(IWDG_PRE_16, 10000) /* Timeout: 40khz / (160000) -> 4 seconds */
 #define WDT_RESET() iwdg_feed()
 
 #define TIMER_INIT() timerInit()
+
+#define ENABLE_STEPPER_DRIVER_INTERRUPT()  { /* set normal stepper target */ nvic_irq_enable(NVIC_TIMER2); }
+#define DISABLE_STEPPER_DRIVER_INTERRUPT() { nvic_irq_disable(NVIC_TIMER2); }
+
+#define ENABLE_STEPPER1_DRIVER_INTERRUPT()  { /* set normal stepper target */ nvic_irq_enable(NVIC_TIMER2); }
+#define DISABLE_STEPPER1_DRIVER_INTERRUPT() { nvic_irq_disable(NVIC_TIMER2); }
+// #define STEPPER1_DRIVER_INTERRUPT_ENABLED() { /* set normal stepper target */ enable_irq(&timer2, TIMER_CC1_INTERRUPT); }
 
 
 
@@ -99,8 +109,10 @@ inline void timerInit() {
     // Prescaler to achieve 2 mhz clock like mega2560, timer 10+11 are running with
     // APB2 clock of 84Mhz
     // 84 / 2.0 = 42,
-    timer_set_prescaler(timer2, 42 - 1);
+    timer_set_prescaler(&timer2, 42 - 1);
     // timer_set_prescaler(timer11, 42 - 1);
+
+    timer_enable_irq(&timer2, TIMER_CC1_INTERRUPT);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -264,6 +276,17 @@ struct AnalogInput {
 //
 class MassStorage: public MassStorageBase {
 
+  public:
+
+    bool swapInit() {
+
+        dd_USBH_Init(&USB_OTG_Core_Host, USB_OTG_HS_CORE_ID, &USB_Host);
+        while (! usbhMscInitialized()) {
+            USBH_Process(&USB_OTG_Core_Host, &USB_Host);
+        }
+        return true;
+    }
+
   protected:
 
     int errorCode() {
@@ -274,15 +297,6 @@ class MassStorage: public MassStorageBase {
     int errorData() {
         // Todo
         return 0;
-    }
-
-    bool swapInit() {
-
-        dd_USBH_Init(&USB_OTG_Core_Host, USB_OTG_HS_CORE_ID, &USB_Host);
-        while (! usbhMscInitialized()) {
-            USBH_Process(&USB_OTG_Core_Host, &USB_Host);
-        }
-        return true;
     }
 
     bool readBlock(uint32_t readBlockNumber, uint8_t *dst) {
@@ -339,7 +353,5 @@ class MassStorage: public MassStorageBase {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-
-
 
 

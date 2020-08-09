@@ -561,8 +561,11 @@ class StepBuffer {
 
                 if (empty()) {
 
+// armrun
+#if 0
                     // Empty buffer, nothing to step
                     OCR1A = 2000; // 1kHz.
+#endif
                 }
                 else {
 
@@ -576,7 +579,10 @@ class StepBuffer {
 
                     stepData &sd = pop();
 
+// armrun
+#if 0
                     OCR1A = sd.timer;
+#endif
 
                     if (sd.dirBits & 0x80) {
 
@@ -608,14 +614,20 @@ class StepBuffer {
 
             if (empty()) {
 
+// armrun
+#if 0
                 // Empty buffer, nothing to step
                 OCR1A = OCR1B = 2000; // 1kHz.
+#endif
             }
             else {
 
                 stepData &sd = pop();
 
+// armrun
+#if 0
                 OCR1A = OCR1B = sd.timer;
+#endif
 
                 // * Set direction 
                 if (sd.dirBits & 0x80) {
@@ -637,7 +649,10 @@ class StepBuffer {
 
         FWINLINE void runContinuosSteps() {
 
+// armrun
+#if 0
             OCR1A = OCR1B = continuosTimer;
+#endif
             st_step_motor<EAxisSelector>(st_get_move_bit_mask<EAxisSelector>(), st_get_move_bit_mask<EAxisSelector>());
         }
 

@@ -24,12 +24,16 @@ typedef int IRQn_Type;
 
 #define usbMSCHostAssert(expr) { if (! (expr) ) assert(0); }
 
+/*
 #if ! defined(max)
     #define max(X,Y) ((X) > (Y) ? (X) : (Y))
 #endif
+*/
 
-extern USB_OTG_CORE_HANDLE  USB_OTG_Core_Host;
-extern USBH_HOST            USB_Host;
+extern "C" {
+    extern USB_OTG_CORE_HANDLE  USB_OTG_Core_Host;
+    extern USBH_HOST            USB_Host;
+}
 
 // INQUIRY data.
 typedef struct {
