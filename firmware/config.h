@@ -47,3 +47,20 @@
 #define TIMER10MS 10
 #define TIMER100MS 100
 
+#if MOTHERBOARD == 1
+    //
+    // Ultimaker UM2
+    //
+#elif MOTHERBOARD == 2
+    //
+    // Ramps
+    //
+#elif MOTHERBOARD == 3
+    //
+    // Jennyprinter
+    //
+    #define STEPPER_MINPULSE 1 /* µS */
+#else
+    #error Unknown MOTHERBOARD in config.h
+#endif
+

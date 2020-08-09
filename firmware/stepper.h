@@ -371,7 +371,9 @@ inline void st_step_motor(uint8_t stepBits, uint8_t dirbits) {
 
         activate_step_pin<MOVE>();
 
-        delayMicroseconds(1);
+        #if defined(STEPPER_MINPULSE)
+            delayMicroseconds(STEPPER_MINPULSE);
+        #endif
 
         if (dirbits & mask)
             st_inc_current_pos_steps<MOVE>();
@@ -410,7 +412,9 @@ inline void st_step_motor_es(uint8_t stepBits, uint8_t dirbits) {
 
         activate_step_pin<MOVE>();
 
-        delayMicroseconds(1);
+        #if defined(STEPPER_MINPULSE)
+            delayMicroseconds(STEPPER_MINPULSE);
+        #endif
 
         if (forward)
             st_inc_current_pos_steps<MOVE>();
