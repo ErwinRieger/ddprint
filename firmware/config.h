@@ -59,7 +59,7 @@
     //
     // Jennyprinter
     //
-    #define STEPPER_MINPULSE 1 /* µS */
+    #define STEPPER_MINPULSE 5 /* µS */
 #else
     #error Unknown MOTHERBOARD in config.h
 #endif

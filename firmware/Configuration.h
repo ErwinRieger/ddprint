@@ -130,24 +130,8 @@ const bool Z_ENDSTOPS_INVERTING = true; // set to true to invert the logic of th
 #define Y_MAX_LENGTH (Y_MAX_POS - Y_MIN_POS)
 #define Z_MAX_LENGTH (Z_MAX_POS - Z_MIN_POS)
 
-// #define DEFAULT_AXIS_STEPS_PER_UNIT   {80.0,80.0,200,282}  // default steps per unit for ultimaker2
-// XXX todo: steps_per_mm defined here and in printer profile
-#define AXIS_STEPS_PER_MM_X 80
-#define AXIS_STEPS_PER_MM_Y 80
-#define AXIS_STEPS_PER_MM_Z 200
-
-#define X_MIN_POS_STEPS ((long)X_MIN_POS * AXIS_STEPS_PER_MM_X)
-#define X_MAX_POS_STEPS ((long)X_MAX_POS * AXIS_STEPS_PER_MM_X)
-#define Y_MIN_POS_STEPS ((long)Y_MIN_POS * AXIS_STEPS_PER_MM_Y)
-#define Y_MAX_POS_STEPS ((long)Y_MAX_POS * AXIS_STEPS_PER_MM_Y)
-#define Z_MIN_POS_STEPS ((long)Z_MIN_POS * AXIS_STEPS_PER_MM_Z)
-#define Z_MAX_POS_STEPS ((long)Z_MAX_POS * AXIS_STEPS_PER_MM_Z)
-
 //// MOVEMENT SETTINGS
 #define NUM_AXIS 4 // The axis order in all axis related arrays is X, Y, Z, E
-// #define HOMING_FEEDRATE {100*60, 100*60, 40*60, 0}  // set the homing speeds (mm/min)
-// xxx faktor 60!!!
-// #define HOMING_FEEDRATE_STEPS {100*AXIS_STEPS_PER_MM_X, 100*AXIS_STEPS_PER_MM_Y, 40*AXIS_STEPS_PER_MM_Z, 0}  // set the homing speeds (mm/s)
 
 // default settings
 

@@ -24,6 +24,7 @@
  * * if possible, fully remove fastio.h
  * * swapdevice: test sectorsize >= 512 bytes
  * * check, determine interrupt prio's
+ * * remove eeprom stuff
  */
 
 #include <Arduino.h>
@@ -38,18 +39,18 @@
 #include "temperature.h"
 #include "ddtemp.h"
 #include "swapdev.h"
-#include "eepromSettings.h"
+// #include "eepromSettings.h"
 #include "filsensor.h"
 #include "ddserial.h"
 #include "ddcommands.h"
 #include "ddlcd.h"
+#include "stepper.h"
 
 //The ASCII buffer for recieving from SD:
 #define SD_BUFFER_SIZE 512
 
 // Macro to read scalar types from a buffer
 #define FromBuf(typ, adr) ( * ((typ *)(adr)))
-
 
 /////////////////////////////////////////////////////////////////////////////////////
 #if defined(USEExtrusionRateTable)
@@ -433,7 +434,61 @@ class SDReader: public Protothread {
 
 static SDReader sDReader;
 
-bool FillBufferTask::Run() {
+class FillBufferTask : public Protothread {
+
+        uint16_t flags;
+        uint8_t timerLoop;
+        uint16_t lastTimer;
+
+        uint16_t nAccel;
+        uint8_t leadAxis;
+        uint16_t tLin;
+        uint16_t nDecel;
+        int32_t absSteps[5];
+
+        // Bresenham factors
+        int32_t d_axis[5];
+        int32_t d1_axis[5];
+        int32_t d2_axis[5];
+
+        int32_t deltaLead, step;
+
+        // Hotend target temp for CmdSyncTargetTemp
+        // uint8_t targetHeater;
+        // uint16_t targetTemp;
+
+        // Hotend target pwm for CmdSyncHotendPWM
+        // uint8_t heaterPWM;
+        // unsigned long pulseEnd;
+
+        // Number of 25 mS nop segments for G4/dwell
+        uint16_t nDwell;
+
+        bool cmdSync;
+        bool stopRequested;
+
+#if defined(USEExtrusionRateTable)
+        // Scaling factor for timerValues to implement temperature speed limit 
+        float timerScale;
+#endif
+
+        stepData sd;
+
+    public:
+        FillBufferTask() {
+            sd.dirBits = 0;
+            cmdSync = false;
+            stopRequested = false;
+            pulseEnd = 0;
+        }
+
+        // xxxx getter/setter
+        uint8_t targetHeater;
+        uint32_t pulsePause;
+        unsigned long pulseEnd;
+        uint16_t targetTemp;
+
+        bool Run() {
 
             uint8_t i, cmd;
 
@@ -994,16 +1049,56 @@ bool FillBufferTask::Run() {
             PT_END(); // Not reached
         }
 
-void FillBufferTask::flush() {
 
-    step = deltaLead;
-    cmdSync = false;
-    stopRequested = false;
-    Restart();
+        void sync() {
+            cmdSync = false;
+        }
 
-    sDReader.flush(); // resets swapdev also
-    stepBuffer.flush();
-}
+        bool synced() {
+            return cmdSync;
+        }
+
+        // Flush/init swap, swapreader, fillbuffer task and stepbuffer
+        void flush() {
+
+            step = deltaLead;
+            cmdSync = false;
+            stopRequested = false;
+            Restart();
+
+            sDReader.flush(); // resets swapdev also
+            stepBuffer.flush();
+        }
+
+
+        // Request a printer soft stop
+        void requestSoftStop() { stopRequested = true; }
+
+        //
+        // Compute stepper bits, bresenham
+        //
+        FWINLINE void computeStepBits() {
+
+            sd.stepBits = 1 << leadAxis;
+
+            for (uint8_t i=0; i<5; i++) {
+
+                if (i == leadAxis)
+                    continue;
+
+                if (d_axis[i] < 0) {
+                    //  d_axis[a] = d + 2 * abs_displacement_vector_steps[a]
+                    d_axis[i] += d1_axis[i];
+                }
+                else {
+                    //  d_axis[a] = d + 2 * (abs_displacement_vector_steps[a] - deltaLead)
+                    d_axis[i] += d2_axis[i];
+                    sd.stepBits |= 1 << i;
+                }
+            }
+        }
+
+};
 
 FillBufferTask fillBufferTask;
 
@@ -1195,6 +1290,12 @@ void Printer::cmdSetPIDValues(float kp, float ki, float kd, uint16_t tu) {
 
     tempControl.setPIDValues(kp, ki, kd);
     Tu = tu;
+}
+
+void Printer::cmdSetStepsPerMM(uint16_t spmmX, uint16_t spmmY, uint16_t spmmZ) {
+    stepsPerMMX = spmmX;
+    stepsPerMMY = spmmY;
+    stepsPerMMZ = spmmZ;
 }
 
 void Printer::cmdFanSpeed(uint8_t speed, uint8_t blipTime) {
@@ -2029,6 +2130,15 @@ class UsbCommand : public Protothread {
                             float Kd = serialPort.readFloatNoCheckCobs();
                             uint16_t Tu = serialPort.readUInt16NoCheckCobs();
                             printer.cmdSetPIDValues(Kp, Ki, Kd, Tu);
+                            txBuffer.sendACK();
+                        }
+                        break;
+
+                    case CmdSetStepsPerMM: {
+                            uint16_t spmmX = serialPort.readUInt16NoCheckCobs();
+                            uint16_t spmmY = serialPort.readUInt16NoCheckCobs();
+                            uint16_t spmmZ = serialPort.readUInt16NoCheckCobs();
+                            printer.cmdSetStepsPerMM(spmmX, spmmY, spmmZ);
                             txBuffer.sendACK();
                         }
                         break;

@@ -19,9 +19,8 @@
 
 #pragma once
 
-#include "pins.h"
+#include "ddprint.h"
 #include "move.h"
-#include "mdebug.h"
 
 #define  enable_x() (X_ENABLE_PIN :: activate())
 #define disable_x() (X_ENABLE_PIN :: deActivate())
@@ -39,6 +38,17 @@
 
 #define enable_e0() (E0_ENABLE_PIN :: activate())
 #define disable_e0() (E0_ENABLE_PIN :: deActivate())
+
+#define X_MIN_POS_STEPS ((long)X_MIN_POS * printer.getStepsPerMMX())
+#define X_MAX_POS_STEPS ((long)X_MAX_POS * printer.getStepsPerMMX())
+#define Y_MIN_POS_STEPS ((long)Y_MIN_POS * printer.getStepsPerMMY())
+#define Y_MAX_POS_STEPS ((long)Y_MAX_POS * printer.getStepsPerMMY())
+#define Z_MIN_POS_STEPS ((long)Z_MIN_POS * printer.getStepsPerMMZ())
+#define Z_MAX_POS_STEPS ((long)Z_MAX_POS * printer.getStepsPerMMZ())
+
+#define X_SW_ENDSTOP_PRESSED ((current_pos_steps[X_AXIS] < X_MIN_POS_STEPS) || (current_pos_steps[X_AXIS] > X_MAX_POS_STEPS))
+#define Y_SW_ENDSTOP_PRESSED ((current_pos_steps[Y_AXIS] < Y_MIN_POS_STEPS) || (current_pos_steps[Y_AXIS] > Y_MAX_POS_STEPS))
+#define Z_SW_ENDSTOP_PRESSED ((current_pos_steps[Z_AXIS] < Z_MIN_POS_STEPS) || (current_pos_steps[Z_AXIS] > Z_MAX_POS_STEPS))
 
 extern volatile int32_t current_pos_steps[NUM_AXIS];
 
@@ -151,9 +161,11 @@ inline uint8_t st_get_direction() {
 }
 #endif
 
-#define X_SW_ENDSTOP_PRESSED ((current_pos_steps[X_AXIS] < X_MIN_POS_STEPS) || (current_pos_steps[X_AXIS] > X_MAX_POS_STEPS))
-#define Y_SW_ENDSTOP_PRESSED ((current_pos_steps[Y_AXIS] < Y_MIN_POS_STEPS) || (current_pos_steps[Y_AXIS] > Y_MAX_POS_STEPS))
-#define Z_SW_ENDSTOP_PRESSED ((current_pos_steps[Z_AXIS] < Z_MIN_POS_STEPS) || (current_pos_steps[Z_AXIS] > Z_MAX_POS_STEPS))
+//////////////////////////// #define DEFAULT_AXIS_STEPS_PER_UNIT   {80.0,80.0,200,282}  // default steps per unit for ultimaker2
+//////////////////////////// XXX todo: steps_per_mm defined here and in printer profile
+//////////////////////////// #define AXIS_STEPS_PER_MM_X 80
+//////////////////////////// #define AXIS_STEPS_PER_MM_Y 80
+//////////////////////////// #define AXIS_STEPS_PER_MM_Z 200
 
 template<typename MOVE>
 bool st_endstop_pressed(bool);
@@ -166,7 +178,7 @@ inline bool st_endstop_pressed<XAxisSelector>(bool forward) {
     if (forward) {
         #if X_HOME_DIR > 0
             if (X_STOP_PIN :: active()) {
-                if (nPresses++ > (AXIS_STEPS_PER_MM_X / 4))
+                if (nPresses++ > (printer.getStepsPerMMX() / 4))
                     return true;
                 return false;
             }
@@ -175,7 +187,7 @@ inline bool st_endstop_pressed<XAxisSelector>(bool forward) {
     else {
         #if X_HOME_DIR < 0
             if (X_STOP_PIN :: active()) {
-                if (nPresses++ > (AXIS_STEPS_PER_MM_X / 4))
+                if (nPresses++ > (printer.getStepsPerMMX() / 4))
                     return true;
                 return false;
             }
@@ -194,7 +206,7 @@ inline bool st_endstop_pressed<YAxisSelector>(bool forward) {
     if (forward) {
         #if Y_HOME_DIR > 0
             if (Y_STOP_PIN :: active()) {
-                if (nPresses++ > (AXIS_STEPS_PER_MM_Y / 4))
+                if (nPresses++ > (printer.getStepsPerMMY() / 4))
                     return true;
                 return false;
             }
@@ -203,7 +215,7 @@ inline bool st_endstop_pressed<YAxisSelector>(bool forward) {
     else {
         #if Y_HOME_DIR < 0
             if (Y_STOP_PIN :: active()) {
-                if (nPresses++ > (AXIS_STEPS_PER_MM_Y / 4))
+                if (nPresses++ > (printer.getStepsPerMMY() / 4))
                     return true;
                 return false;
             }
@@ -222,7 +234,7 @@ inline bool st_endstop_pressed<ZAxisSelector>(bool forward) {
     if (forward) {
         #if Z_HOME_DIR > 0
             if (Z_STOP_PIN :: active()) {
-                if (nPresses++ > (AXIS_STEPS_PER_MM_Z / 4))
+                if (nPresses++ > (printer.getStepsPerMMZ() / 4))
                     return true;
                 return false;
             }
@@ -231,7 +243,7 @@ inline bool st_endstop_pressed<ZAxisSelector>(bool forward) {
     else {
         #if Z_HOME_DIR < 0
             if (Z_STOP_PIN :: active()) {
-                if (nPresses++ > (AXIS_STEPS_PER_MM_Z / 4))
+                if (nPresses++ > (printer.getStepsPerMMZ() / 4))
                     return true;
                 return false;
             }
@@ -253,7 +265,7 @@ inline bool st_endstop_released<XAxisSelector>(bool forward) {
     if (forward) {
         #if X_HOME_DIR < 0
             if (X_STOP_PIN :: deActive()) {
-                if (nRelease++ > (AXIS_STEPS_PER_MM_X / 4))
+                if (nRelease++ > (printer.getStepsPerMMX() / 4))
                     return true;
                 return false;
             }
@@ -262,7 +274,7 @@ inline bool st_endstop_released<XAxisSelector>(bool forward) {
     else {
         #if X_HOME_DIR > 0
             if (X_STOP_PIN :: deActive()) {
-                if (nRelease++ > (AXIS_STEPS_PER_MM_X / 4))
+                if (nRelease++ > (printer.getStepsPerMMX() / 4))
                     return true;
                 return false;
             }
@@ -281,7 +293,7 @@ inline bool st_endstop_released<YAxisSelector>(bool forward) {
     if (forward) {
         #if Y_HOME_DIR < 0
             if (Y_STOP_PIN :: deActive()) {
-                if (nRelease++ > (AXIS_STEPS_PER_MM_Y / 4))
+                if (nRelease++ > (printer.getStepsPerMMY() / 4))
                     return true;
                 return false;
             }
@@ -290,7 +302,7 @@ inline bool st_endstop_released<YAxisSelector>(bool forward) {
     else {
         #if Y_HOME_DIR > 0
             if (Y_STOP_PIN :: deActive()) {
-                if (nRelease++ > (AXIS_STEPS_PER_MM_Y / 4))
+                if (nRelease++ > (printer.getStepsPerMMY() / 4))
                     return true;
                 return false;
             }
@@ -309,7 +321,7 @@ inline bool st_endstop_released<ZAxisSelector>(bool forward) {
     if (forward) {
         #if Z_HOME_DIR < 0
             if (Z_STOP_PIN :: deActive()) {
-                if (nRelease++ > (AXIS_STEPS_PER_MM_Z / 4))
+                if (nRelease++ > (printer.getStepsPerMMZ() / 4))
                     return true;
                 return false;
             }
@@ -318,7 +330,7 @@ inline bool st_endstop_released<ZAxisSelector>(bool forward) {
     else {
         #if Z_HOME_DIR > 0
             if (Z_STOP_PIN :: deActive()) {
-                if (nRelease++ > (AXIS_STEPS_PER_MM_Z / 4))
+                if (nRelease++ > (printer.getStepsPerMMZ() / 4))
                     return true;
                 return false;
             }
