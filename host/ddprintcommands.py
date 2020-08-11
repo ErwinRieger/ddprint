@@ -94,6 +94,7 @@ CmdBootBootloader =  181 # Reboot into bootloader (stm32)
 CmdReadGpio =        182 # Read a gpio port, used to determine pinmap.
 CmdSetGpio =         183 # Set a gpio port, dangerous, used to determine pinmap.
 CmdReadAnalogGpio =  184 # Read a analog value from gpio port, used to determine pinmap.
+CmdSetStepsPerMM  =  185 # Initial printer settings: steps per mm for X/Y/Z
 
 CommandNames = {
 }
@@ -166,6 +167,7 @@ for (cmd, cmdName) in [
     (CmdReadGpio, "CmdReadGpio",),
     (CmdSetGpio, "CmdSetGpio",),
     (CmdReadAnalogGpio, "CmdReadAnalogGpio",),
+    (CmdSetStepsPerMM, "CmdSetStepsPerMM",),
     ]:
 
         insertCommandName(cmd, cmdName)

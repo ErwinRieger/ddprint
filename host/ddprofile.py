@@ -20,7 +20,7 @@
 import math, os, types
 import ddprintutil as util
 
-from ddprintconstants import dimNames, A_AXIS, B_AXIS
+from ddprintconstants import dimNames, X_AXIS, Y_AXIS, Z_AXIS, A_AXIS, B_AXIS
 
 class ProfileException(Exception):
 
@@ -221,6 +221,9 @@ class PrinterProfile(ProfileBase):
             "Ki": cls.getValues()["Ki"],
             "Kd": cls.getValues()["Kd"],
             "Tu": cls.getValues()["Tu"],
+            "stepsPerMMX": int(cls.getStepsPerMM(X_AXIS)),
+            "stepsPerMMY": int(cls.getStepsPerMM(Y_AXIS)),
+            "stepsPerMMZ": int(cls.getStepsPerMM(Z_AXIS)),
             }
 
     @classmethod

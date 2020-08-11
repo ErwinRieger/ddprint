@@ -437,6 +437,12 @@ class Printer(Serial):
 
         self.sendCommandParamV(CmdSetIncTemp, [packedvalue.uint8_t(HeaterEx1), packedvalue.int16_t(args.inctemp)]);
 
+        self.sendCommandParamV(CmdSetStepsPerMM, [
+            packedvalue.uint16_t(settings["stepsPerMMX"]),
+            packedvalue.uint16_t(settings["stepsPerMMY"]),
+            packedvalue.uint16_t(settings["stepsPerMMZ"])
+            ])
+
         # xxx new
         # self.curDirBits = self.getDirBits()
         self.sendCommand(CmdPrinterInit)
