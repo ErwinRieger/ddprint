@@ -2153,7 +2153,9 @@ void dd_USBH_Init(USB_OTG_CORE_HANDLE *pdev,
   HCD_Init(pdev , coreID);
    
   /* Enable Interrupts */
-  USB_OTG_BSP_EnableInterrupt(pdev);
+  // USB_OTG_BSP_EnableInterrupt(pdev);
+  nvic_irq_set_priority(OTG_HS_IRQn, 3);
+  nvic_irq_enable(OTG_HS_IRQn);
 }
 
 //--------------------------------------------------------------

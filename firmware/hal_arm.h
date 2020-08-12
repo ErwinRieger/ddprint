@@ -84,6 +84,8 @@ extern "C" {
 
 #define HAL_SPI_INIT() /* spiInit() */
 
+#define HAL_IRQ_INIT() irqInit()
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /*
@@ -143,6 +145,26 @@ inline void timerInit() {
 
     timer_resume(&timer2);
     timer_resume(&timer3);
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+//
+// Initialize interrupt prio's
+//
+inline void irqInit() {
+
+    //
+    // Init interrupt prio's, stm32duino initialized all irq't to prio 16.
+    //
+    nvic_irq_set_priority(NVIC_TIMER2, 1);
+    nvic_irq_set_priority(NVIC_TIMER3, 1);
+
+    // XXX NVIC_SPIx ???
+
+    nvic_irq_set_priority(NVIC_USART1, 2);
+
+    // Done in dd_USBH_Init():
+    // nvic_irq_set_priority(NVIC_USB_HS, 3);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////

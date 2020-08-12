@@ -285,6 +285,8 @@ void setup() {
     filamentSensor.init();
 #endif
 
+    HAL_IRQ_INIT();
+
     SEI();
 }
 
