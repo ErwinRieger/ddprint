@@ -69,13 +69,15 @@ extern "C" {
 
 #define TIMER_INIT() timerInit()
 
-#define ENABLE_STEPPER_DRIVER_INTERRUPT()  { /* set normal stepper target */ nvic_irq_enable(NVIC_TIMER2); }
-#define DISABLE_STEPPER_DRIVER_INTERRUPT() { nvic_irq_disable(NVIC_TIMER2); }
 
-#define ENABLE_STEPPER1_DRIVER_INTERRUPT()  { /* set normal stepper target */ nvic_irq_enable(NVIC_TIMER3); }
-#define DISABLE_STEPPER1_DRIVER_INTERRUPT() { nvic_irq_disable(NVIC_TIMER3); }
-// Test timer3 interrupt bit in nvic interrupt enable register(s)
-#define STEPPER1_DRIVER_INTERRUPT_ENABLED() (NVIC_BASE->ISER[NVIC_TIMER3 / 32] & BIT(NVIC_TIMER3 % 32))
+#define ENABLE_STEPPER_DRIVER_INTERRUPT()  { timer_enable_irq(&timer2, TIMER_UPDATE_INTERRUPT);  }
+#define DISABLE_STEPPER_DRIVER_INTERRUPT() { timer_disable_irq(&timer2, TIMER_UPDATE_INTERRUPT); }
+
+#define ENABLE_STEPPER1_DRIVER_INTERRUPT()  { timer_enable_irq(&timer3, TIMER_UPDATE_INTERRUPT); }
+#define DISABLE_STEPPER1_DRIVER_INTERRUPT() { timer_disable_irq(&timer3, TIMER_UPDATE_INTERRUPT); }
+
+// Test timer3 interrupt bit in timer interrupt enable register(s)
+#define STEPPER1_DRIVER_INTERRUPT_ENABLED() ( timer3.regs.gen->DIER & TIMER_SR_UIF )
 
 #define HAL_SET_STEPPER_TIMER(timerval) { timer_set_reload(&timer2, timerval); }
 #define HAL_SET_HOMING_TIMER(timerval) { timer_set_reload(&timer3, timerval); }
@@ -118,50 +120,26 @@ inline void timerInit() {
     timer_pause(&timer2);
     timer_pause(&timer3);
 
-    /*
-    TIMER_OUTPUT_COMPARE, In this mode the timer counts from 0 to its
-        reload value repeatedly; every time the counter value reaches one of
-        the channel compare values, the corresponding interrupt is fired.
-    */
-    // timer_set_mode(&timer2, TIMER_CH1, TIMER_OUTPUT_COMPARE);
-    // timer_set_mode(&timer3, TIMER_CH1, TIMER_OUTPUT_COMPARE);
-
     // Prescaler to achieve 2 mhz clock like mega2560, timer 10+11 are running with
     // APB2 clock of 84Mhz
     // 84 / 2.0 = 42,
     timer_set_prescaler(&timer2, 42 - 1);
     timer_set_prescaler(&timer3, 42 - 1);
 
-    // timer_set_count(STEP_TIMER_DEV, 0);
-    // timer_set_reload(&timer2, 0xFFFF); // Set ARR
-    // timer_set_reload(&timer3, 0xFFFF); // Set ARR
-    timer_set_reload(&timer2, 1000); // Set ARR
-    timer_set_reload(&timer3, 1000); // Set ARR
+    timer_set_count(&timer2, 0);
+    timer_set_count(&timer3, 0);
 
-    // timer_set_compare(STEP_TIMER_DEV, STEP_TIMER_CHAN,
-    bb_peri_set_bit(&(timer2.regs.gen)->CR1, TIMER_CR1_ARPE_BIT, 1);
-    bb_peri_set_bit(&(timer3.regs.gen)->CR1, TIMER_CR1_ARPE_BIT, 1);
+    timer_set_reload(&timer2, 2000); // Set ARR
+    timer_set_reload(&timer3, 2000); // Set ARR
 
-    // nvic_irq_set_priority
-    // timer_generate_update
+    // bb_peri_set_bit(&(timer2.regs.gen)->CR1, TIMER_CR1_ARPE_BIT, 1);
+    // bb_peri_set_bit(&(timer3.regs.gen)->CR1, TIMER_CR1_ARPE_BIT, 1);
 
-            timer_gen_reg_map *regs = timer2.regs.gen;
-            regs->SR &= ~TIMER_SR_UIF;
-            regs = timer3.regs.gen;
-            regs->SR &= ~TIMER_SR_UIF;
+    // timer_enable_irq(&timer2, TIMER_UPDATE_INTERRUPT);
+    // timer_enable_irq(&timer3, TIMER_UPDATE_INTERRUPT);
 
-    timer_enable_irq(&timer2, TIMER_UPDATE_INTERRUPT);
-    timer_enable_irq(&timer3, TIMER_UPDATE_INTERRUPT);
-
-/*
-// NOTE: WE have set ARPE = 0, which means the Auto reload register is not preloaded
-// ￼    return;  ￼    // and there is no need to use any compare, as in the timer mode used, setting ARR to the compare value
-// ￼    // will result in exactly the same effect, ie trigerring an interrupt, and on top, set counter to 0
-// ￼    timer_set_reload(STEP_TIMER_DEV, compare); // We reload direct ARR as 
-*/
-
-    timer_generate_update(&timer2);
-    timer_generate_update(&timer3);
+    nvic_irq_enable(NVIC_TIMER2);
+    nvic_irq_enable(NVIC_TIMER3);
 
     timer_resume(&timer2);
     timer_resume(&timer3);
