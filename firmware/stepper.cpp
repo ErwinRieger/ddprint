@@ -61,101 +61,47 @@ void digipot_init() //Initialize Digipot Motor Current
 
 void st_init() {
 
-  digipot_init(); //Initialize Digipot Motor Current
+    digipot_init(); //Initialize Digipot Motor Current
 
-  //Initialize Dir Pins
-  #if defined(X_DIR_PIN)
-    // SET_OUTPUT(X_DIR_PIN);
+    //Initialize Dir Pins
     X_DIR_PIN :: initDeActive();
-  #endif
-  #if defined(Y_DIR_PIN)
-    // SET_OUTPUT(Y_DIR_PIN);
     Y_DIR_PIN :: initDeActive();
-  #endif
-  #if defined(Z_DIR_PIN)
-    // SET_OUTPUT(Z_DIR_PIN);
     Z_DIR_PIN :: initDeActive();
-  #endif
-  #if defined(E0_DIR_PIN)
-    // SET_OUTPUT(E0_DIR_PIN);
     E0_DIR_PIN :: initDeActive();
-  #endif
-  #if defined(E1_DIR_PIN)
-    // SET_OUTPUT(E1_DIR_PIN);
-    E1_DIR_PIN :: initDeActive();
-  #endif
 
-  // Set initial direction to 0
-  // st_set_direction<XAxisSelector>(LOW);
-  // st_set_direction<YAxisSelector>(LOW);
-  // st_set_direction<ZAxisSelector>(LOW);
-  // st_set_direction<EAxisSelector>(LOW);
+    // #if defined(E1_DIR_PIN)
+        // E1_DIR_PIN :: initDeActive();
+    // #endif
 
-  // Initialize Enable Pins - steppers default to disabled.
-  // SET_OUTPUT(X_ENABLE_PIN);
-  // WRITE(X_ENABLE_PIN, ~ X_ENABLE_ACTIVE);
-  X_ENABLE_PIN :: initDeActive();
+    // Initialize Enable Pins - steppers default to disabled.
+    X_ENABLE_PIN :: initDeActive();
+    Y_ENABLE_PIN :: initDeActive();
+    Z_ENABLE_PIN :: initDeActive();
+    E0_ENABLE_PIN :: initDeActive();
 
-  // SET_OUTPUT(Y_ENABLE_PIN);
-  // WRITE(Y_ENABLE_PIN, ~ Y_ENABLE_ACTIVE);
-  Y_ENABLE_PIN :: initDeActive();
+    // #if defined(E1_ENABLE_PIN)
+        // E1_ENABLE_PIN :: initDeActive();
+    // #endif
 
-  // SET_OUTPUT(Z_ENABLE_PIN);
-  // WRITE(Z_ENABLE_PIN, ~ Z_ENABLE_ACTIVE);
-  Z_ENABLE_PIN :: initDeActive();
+    // Endstops and pullups
+    X_STOP_PIN :: init();
+    Y_STOP_PIN :: init();
+    Z_STOP_PIN :: init();
 
-  // SET_OUTPUT(E0_ENABLE_PIN);
-  // WRITE(E0_ENABLE_PIN, ~ E0_ENABLE_ACTIVE);
-  E0_ENABLE_PIN :: initDeActive();
-
-  #if defined(E1_ENABLE_PIN)
-    // SET_OUTPUT(E1_ENABLE_PIN);
-    // WRITE(E1_ENABLE_PIN, ~ E1_ENABLE_ACTIVE);
-    E1_ENABLE_PIN :: initDeActive();
-  #endif
-
-  //endstops and pullups
-
-  // SET_INPUT(X_STOP_PIN);
-  // WRITE(X_STOP_PIN,HIGH);
-  X_STOP_PIN :: init();
-
-  // SET_INPUT(Y_STOP_PIN);
-  // WRITE(Y_STOP_PIN,HIGH);
-  // gpio_set_mode(Y_STOP_PIN, GPIO_INPUT_PU);
-  Y_STOP_PIN :: init();
-
-  // SET_INPUT(Z_STOP_PIN);
-  // WRITE(Z_STOP_PIN,HIGH);
-  Z_STOP_PIN :: init();
-
-  //Initialize Step Pins
-  #if defined(X_STEP_PIN)
-    // SET_OUTPUT(X_STEP_PIN);
-    // WRITE(X_STEP_PIN, LOW);
+    //Initialize Step Pins
     X_STEP_PIN :: initDeActive();
     disable_x();
-  #endif
-  #if defined(Y_STEP_PIN)
-    // SET_OUTPUT(Y_STEP_PIN);
-    // WRITE(Y_STEP_PIN, LOW);
     Y_STEP_PIN :: initDeActive();
     disable_y();
-  #endif
-  #if defined(Z_STEP_PIN)
-    // SET_OUTPUT(Z_STEP_PIN);
-    // WRITE(Z_STEP_PIN, LOW);
     Z_STEP_PIN :: initDeActive();
     disable_z();
-  #endif
-  #if defined(E0_STEP_PIN)
-    // SET_OUTPUT(E0_STEP_PIN);
-    // WRITE(E0_STEP_PIN, LOW);
     E0_STEP_PIN :: initDeActive();
     disable_e0();
-  #endif
 }
 
+//
+// Stepper interrupt routines
+//
 #if defined(__arm__)
 
     //
@@ -168,19 +114,27 @@ void st_init() {
         // Stepper irq routine
         void __irq_tim2(void)
         {
-	        stepBuffer.runMoveSteps();
-
             timer_gen_reg_map *regs = timer2.regs.gen;
-            regs->SR &= ~TIMER_SR_UIF;
+
+            if (regs->SR & TIMER_SR_UIF) {
+
+                regs->SR = ~TIMER_SR_UIF;
+
+	            stepBuffer.runMoveSteps();
+            }
         }
 
         // Stepper irq routine for homing steps
         void __irq_tim3(void)
         {
-	        stepBuffer.runMiscSteps();
-
             timer_gen_reg_map *regs = timer3.regs.gen;
-            regs->SR &= ~TIMER_SR_UIF;
+
+            if (regs->SR & TIMER_SR_UIF) {
+
+                regs->SR = ~TIMER_SR_UIF;
+
+	            stepBuffer.runMiscSteps();
+            }
         }
 
     }
