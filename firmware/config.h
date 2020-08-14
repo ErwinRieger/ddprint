@@ -26,14 +26,6 @@
 // Use PMW3360 as a flowrate sensor
 // #define PMWFS 1
 
-// Use Bourns ems22a Rotary Encoder as a flowrate sensor
-// armtodo
-#if MOTHERBOARD == 1
-    #define BournsEMS22AFS 1
-#else
-    // #define BournsEMS22AFS 1
-#endif
-
 #define USEExtrusionRateTable
 
 // #define PID_DEBUG // Sends hotend pid values as RespUnsolicitedMsg, type PidDebug
@@ -51,6 +43,8 @@
     //
     // Ultimaker UM2
     //
+    // Use Bourns ems22a Rotary Encoder as a flowrate sensor
+    #define BournsEMS22AFS 1
 #elif MOTHERBOARD == 2
     //
     // Ramps
@@ -59,8 +53,14 @@
     //
     // Jennyprinter
     //
+    // Use Bourns ems22a Rotary Encoder as a flowrate sensor
+    #define BournsEMS22AFS 1
     #define STEPPER_MINPULSE 5 /* µS */
 #else
     #error Unknown MOTHERBOARD in config.h
+#endif
+
+#if defined(PMWFS) || defined(BournsEMS22AFS)
+    #define HASFILAMENTSENSOR
 #endif
 
