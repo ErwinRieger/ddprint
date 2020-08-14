@@ -60,7 +60,6 @@ FilamentSensorPMW3360::FilamentSensorPMW3360() {
 
     feedrateLimiterEnabled = true;
     filSensorCalibration = 1.0;
-    // axis_steps_per_mm_e = 100;
 
     sensorCount = 0;
 
@@ -280,20 +279,14 @@ void FilamentSensorPMW3360::reset() {
 
 #if defined(BournsEMS22AFS)
 
-SPISettings spiSettingsFS(1000000, MSBFIRST, SPI_MODE1);
+HAL_FS_SPI_SETTINGS;
 
 FilamentSensorEMS22 filamentSensor;
 
 FilamentSensorEMS22::FilamentSensorEMS22() {
 
-    // Pull high chip select of filament sensor to free the
-    // SPI bus (for sdcard).
-    // WRITE(FILSENSNCS, HIGH);
-    // SET_OUTPUT(FILSENSNCS);
-
     feedrateLimiterEnabled = true;
     filSensorCalibration = 1.0;
-    // axis_steps_per_mm_e = 100;
 
     sensorCount = 0;
 
@@ -313,23 +306,26 @@ uint16_t FilamentSensorEMS22::readEncoderPos() {
     // Read rotary encoder pos (0...1023)
     //
 
-    // digitalWrite(FILSENSNCS, LOW);
     FILSENSNCS :: activate();
 
     delayMicroseconds(1); // Tclkfe
 
-    uint8_t byte1 = dDPrintSpi.transfer(0);
-    uint8_t byte2 = dDPrintSpi.transfer(0);
+    //
+    // Read two bytes from SPI/USART
+    //
 
-    // digitalWrite(FILSENSNCS, HIGH);
+    uint8_t byte1 = HAL_FILSENSOR_READ();
+    uint8_t byte2 = HAL_FILSENSOR_READ();
+
     FILSENSNCS :: deActivate();
-  
+
+    // Check status bits
     if ((byte2 & 0x3E) != 0x20) {
         massert(0);
     }
-    
     uint16_t pos = (((uint16_t)byte1) << 2) | ((byte2 & 0xC0) >> 6);
 
+    // Check parity
     uint16_t dataWord = (((uint16_t)byte1) << 8) | byte2;
     uint8_t p = __builtin_parity(dataWord);
     massert(p == 0);
@@ -379,12 +375,12 @@ float FilamentSensorEMS22::slippage() {
 
 void FilamentSensorEMS22::run() {
 
-    CRITICAL_SECTION_START
+    CRITICAL_SECTION_START;
     int32_t astep = current_pos_steps[E_AXIS];
-    CRITICAL_SECTION_END
+    CRITICAL_SECTION_END;
 
-    dDPrintSpi.beginTransaction(spiSettingsFS);
-    
+    HAL_FILSENSOR_BEGINTRANS();
+
     int16_t dy = getDY(); // read distance delta from filament sensor
 
     if (lastASteps == LONG_MAX) {
@@ -422,6 +418,4 @@ void FilamentSensorEMS22::run() {
 }
 
 #endif // #if defined(BournsEMS22AFS)
-
-
 

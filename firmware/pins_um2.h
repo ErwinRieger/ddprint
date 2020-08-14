@@ -51,7 +51,6 @@
 // SPI
 // Chip select SDCard
 #define SDSS                    DigitalOutput<53, ACTIVELOWPIN> 
-
 #define SCK_PIN                 DigitalOutput<52, ACTIVEHIGHPIN> 
 // #define MISO_PIN                DigitalInput<50...
 #define MOSI_PIN                DigitalOutput<51, ACTIVEHIGHPIN> 

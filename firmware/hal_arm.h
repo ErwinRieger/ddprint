@@ -82,10 +82,27 @@ extern "C" {
 #define HAL_SET_STEPPER_TIMER(timerval) { timer_set_reload(&timer2, timerval); }
 #define HAL_SET_HOMING_TIMER(timerval) { timer_set_reload(&timer3, timerval); }
 
-#define HAL_SPI_INIT() /* spiInit() */
+#define HAL_SPI_INIT() spiInit()
 
 #define HAL_IRQ_INIT() irqInit()
 
+#define HAL_FS_SPI_SETTINGS /* */
+
+#define HAL_FILSENSOR_BEGINTRANS() /* */
+
+#define HAL_FILSENSOR_READ() filsensorRead()
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+//
+// Bit-reverse
+//
+inline uint32_t reverseBits(uint32_t v)
+{
+    uint32_t reversed;
+
+    asm volatile ("rbit %0, %1" : "=r" (reversed) : "r" (v) );
+    return(reversed);
+}
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /*
@@ -122,8 +139,8 @@ inline void timerInit() {
     timer_pause(&timer2);
     timer_pause(&timer3);
 
-    // Prescaler to achieve 2 mhz clock like mega2560, timer 10+11 are running with
-    // APB2 clock of 84Mhz
+    // Prescaler to achieve 2 mhz clock like mega2560, timer 2+3 are
+    // running with APB2 clock of 84Mhz
     // 84 / 2.0 = 42,
     timer_set_prescaler(&timer2, 42 - 1);
     timer_set_prescaler(&timer3, 42 - 1);
@@ -165,6 +182,22 @@ inline void irqInit() {
 
     // Done in dd_USBH_Init():
     // nvic_irq_set_priority(NVIC_USB_HS, 3);
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+//
+// Read byte from *spi-like* USART2
+//
+inline uint8_t filsensorRead() {
+
+    // Clock output
+    USART2->regs->DR = 0;
+    // Wait until clocked out
+    while (! SERIAL_TX_COMPLETE() );
+    // Wait until rx byte available
+	while (! (USART2->regs->SR & USART_SR_RXNE) );
+    // Read rx byte and swap bitwise
+    return reverseBits(USART2->regs->DR) >> 24;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -320,6 +353,13 @@ struct AnalogInput {
     static bool conversionDone() { return adc_is_end_of_convert(ADC1); }
     static uint16_t read() { return adc_get_data(ADC1); }
 };
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+//
+// Initialize the spi bus (flowrate sensor)
+//
+
+void spiInit();
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 

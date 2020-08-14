@@ -99,6 +99,13 @@
 // ["GPIOB","D30","PB14"], # Known: USB OTG DM
 // ["GPIOB","D31","PB15"], # Known: USB OTG DP
 
+// SPI for flowrate sensor
+// Chip select SDCard
+#define FILSENSNCS              DigitalOutput<72, ACTIVELOWPIN> // ["GPIOE","D72","PE8"],  # Known: Chip select for flowrate sensor
+#define SCK_PIN                 PA4                             // ["GPIOA","D04","PA4"],  # Known: USART2_CK, SPI Clock flowrate sensor
+#define MISO_PIN                PD6                             // ["GPIOD","D54","PD6"],  # Known: USART2 RX, MISO flowrate sensor
+#define MOSI_PIN                PD5                             // ["GPIOD","D53","PD5"],  # Known: USART2 TX, could be MISO but not used
+
 #if 0
 #define TEMP_BED_PIN 10
 
@@ -107,13 +114,6 @@
 #define TEMP_1_PIN 9
 
 #define TEMP_2_PIN -1
-
-// SPI
-// Chip select SDCard
-#define SDSS               53
-#define SCK_PIN            52
-#define MISO_PIN           50
-#define MOSI_PIN           51
 
 #define SAFETY_TRIGGERED_PIN     28 //PIN to detect the safety circuit has triggered
 #define MAIN_VOLTAGE_MEASURE_PIN 14 //Analogue PIN to measure the main voltage, with a 100k - 4k7 resitor divider.
@@ -170,7 +170,6 @@
         ["GPIOB","D19","PB3"],  # Known: Output, E2-Step
 
         ["GPIOA","D02","PA2"],
-        ["GPIOA","D04","PA4"],
         ["GPIOA","D05","PA5"],
         ["GPIOA","D06","PA6"],
         ["GPIOA","D07","PA7"],
@@ -198,9 +197,7 @@
         ["GPIOD","D50","PD2"],  # ???: Input, changes with power-on relais ???
         ["GPIOD","D51","PD3"],  # ???: Input, changes with power-on relais ???
         ["GPIOD","D52","PD4"],
-        ["GPIOD","D53","PD5"],  # ???: Input, changes with power-on relais ???
-        ["GPIOD","D54","PD6"],  # ???: Input, changes with power-on relais ???
-        ["GPIOD","D55","PD7"],
+        ["GPIOD","D55","PD7"],  
         ["GPIOD","D56","PD8"],
         ["GPIOD","D57","PD9"],
         ["GPIOD","D58","PD10"],
@@ -210,7 +207,6 @@
         ["GPIOD","D63","PD15"], # ???: Input, changes with power-on relais ???
         ["GPIOE","D64","PE0"],
         ["GPIOE","D71","PE7"],
-        ["GPIOE","D72","PE8"],
         ["GPIOE","D73","PE9"],  # ???: Input, changes with power-on relais ???
         ["GPIOE","D74","PE10"],
         ["GPIOE","D75","PE11"],

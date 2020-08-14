@@ -139,18 +139,12 @@ bool TempControl::Run() {
 void spiInit() {
 
     // Do some minimal SPI init, prevent SPI to go to spi slave mode
-    // WRITE(SDSS, HIGH);
-    // SET_OUTPUT(SDSS);
     SDSS :: initDeActive();
 
-    // WRITE(FILSENSNCS, HIGH);
-    // SET_OUTPUT(FILSENSNCS);
     FILSENSNCS :: initDeActive();
 
-    // SET_OUTPUT(SCK_PIN);
     SCK_PIN :: initDeActive();
 
-    // SET_OUTPUT(MOSI_PIN);
     MOSI_PIN :: initDeActive();
 }
 

@@ -39,7 +39,6 @@
 #include "temperature.h"
 #include "ddtemp.h"
 #include "swapdev.h"
-// #include "eepromSettings.h"
 #include "filsensor.h"
 #include "ddserial.h"
 #include "ddcommands.h"
@@ -281,9 +280,9 @@ void setup() {
     filamentSensor.reset();
 #endif
 
-#if defined(HASFILAMENTSENSOR)
-    filamentSensor.init();
-#endif
+// #if defined(HASFILAMENTSENSOR)
+    // filamentSensor.init();
+// #endif
 
     HAL_IRQ_INIT();
 

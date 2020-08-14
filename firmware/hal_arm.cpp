@@ -116,6 +116,49 @@ void myPinMode(uint8 pin, WiringPinMode mode) {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
+void spiInit() {
+
+#if defined(HASFILAMENTSENSOR)
+    //
+    // Filamentsensor is connected to USART2 in *spi-like* mode
+    //
+    /*
+    Connection of EMS22 incremental flowrate sensor to jennyprinter *shuttle gear* board:
+
+    J404, Pin1, PD6: USART2_RX (AF7) as SPI MISO
+    J404, Pin3, PE8: GPIO as SPI CS
+    J404, Pin9     : GND
+
+    J402, Pin1, PA4: SPI Clock
+
+    J102, Pin4     : +5V VCC
+    */
+
+    // Do some minimal SPI init, prevent SPI to go to spi slave mode
+    FILSENSNCS :: initDeActive();
+
+    gpio_set_af_mode(MISO_PIN, (gpio_af_mode)7);
+    gpio_set_af_mode(SCK_PIN, (gpio_af_mode)7); 
+    // gpio_set_af_mode(MOSI_PIN, (gpio_af_mode)7);
+
+    gpio_set_mode(MISO_PIN, (gpio_pin_mode)(GPIO_AF_INPUT_PU | 0x700));         // PD6 as USART2_RX
+    gpio_set_mode(SCK_PIN, (gpio_pin_mode)(GPIO_AF_OUTPUT_PP_PU | 0x700));      // PA4 as USART2_CK
+    // gpio_set_mode(MOSI_PIN, (gpio_pin_mode)(GPIO_AF_OUTPUT_PP_PU | 0x700));  // PD5 as USART2_TX
+
+    rcc_clk_enable(USART2->clk_id);
+
+    usart_set_baud_rate(USART2, 1000000);
+
+    // Enable clock output, set SPI Mode 3 (CPOL = 0, CPHA = 1)
+    usart_reg_map *regs = USART2->regs; 
+    regs->CR2 = USART_CR2_CLKEN | USART_CR2_CPHA | USART_CR2_LBCL;
+    regs->CR1 = USART_CR1_TE | USART_CR1_RE | USART_CR1_UE;
+#endif
+
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
 void HAL_SETUP_TEMP_ADC() {
 
     TEMP_BED_PIN :: init();

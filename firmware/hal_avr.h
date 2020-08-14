@@ -79,6 +79,12 @@
 
 #define HAL_IRQ_INIT() /* */
 
+#define HAL_FS_SPI_SETTINGS SPISettings spiSettingsFS(1000000, MSBFIRST, SPI_MODE1)
+
+#define HAL_FILSENSOR_BEGINTRANS() dDPrintSpi.beginTransaction(spiSettingsFS)
+
+#define HAL_FILSENSOR_READ() dDPrintSpi.transfer(0)
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void HAL_SETUP_TEMP_ADC();
