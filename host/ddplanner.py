@@ -404,14 +404,13 @@ class Planner (object):
         self.Z_HOME_DIR = 1
         self.HOME_DIR = (self.X_HOME_DIR, self.Y_HOME_DIR, self.Z_HOME_DIR)
 
-        # XXX defined in profile !!!
         # Travel limits after homing
         self.X_MIN_POS = 0
-        self.X_MAX_POS = 225.0 # 230.0
+        self.X_MAX_POS = PrinterProfile.getPlatformLength(X_AXIS)
         # X_MIN_POS = 0
-        self.Y_MAX_POS = 225.0 # 230.0
+        self.Y_MAX_POS = PrinterProfile.getPlatformLength(Y_AXIS)
         # Y_MIN_POS = 0
-        self._Z_MAX_POS = 225.0
+        self._Z_MAX_POS = PrinterProfile.getPlatformLength(Z_AXIS)
         # Z_MIN_POS = 0
         self.MAX_POS = (self.X_MAX_POS, self.Y_MAX_POS, self._Z_MAX_POS)
 

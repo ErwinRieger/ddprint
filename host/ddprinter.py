@@ -426,6 +426,7 @@ class Printer(Serial):
 
         self.initSerial(args.device, args.baud, True)
 
+        # todo: move all settings into CmdSetHostSettings call
         self.sendCommandParamV(CmdSetFilSensorCal, [packedvalue.float_t(settings["filSensorCalibration"])])
 
         self.sendCommandParamV(CmdSetPIDValues, [
@@ -441,6 +442,12 @@ class Printer(Serial):
             packedvalue.uint16_t(settings["stepsPerMMX"]),
             packedvalue.uint16_t(settings["stepsPerMMY"]),
             packedvalue.uint16_t(settings["stepsPerMMZ"])
+            ])
+
+        self.sendCommandParamV(CmdSetHostSettings, [
+            packedvalue.uint32_t(settings["buildVolX"]),
+            packedvalue.uint32_t(settings["buildVolY"]),
+            packedvalue.uint32_t(settings["buildVolZ"])
             ])
 
         # xxx new

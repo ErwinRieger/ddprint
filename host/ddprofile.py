@@ -224,6 +224,9 @@ class PrinterProfile(ProfileBase):
             "stepsPerMMX": int(cls.getStepsPerMM(X_AXIS)),
             "stepsPerMMY": int(cls.getStepsPerMM(Y_AXIS)),
             "stepsPerMMZ": int(cls.getStepsPerMM(Z_AXIS)),
+            "buildVolX": int(cls.getPlatformLength(X_AXIS) * cls.getStepsPerMM(X_AXIS)),
+            "buildVolY": int(cls.getPlatformLength(Y_AXIS) * cls.getStepsPerMM(Y_AXIS)),
+            "buildVolZ": int(cls.getPlatformLength(Z_AXIS) * cls.getStepsPerMM(Z_AXIS)),
             }
 
     @classmethod
@@ -264,6 +267,10 @@ class PrinterProfile(ProfileBase):
 
     def getWeakPowerBedTemp(self):
         return int(self.getValues()["weakPowerBedTemp"])
+
+    @classmethod
+    def getPlatformLength(cls, axisNr):
+        return cls.get().getValue("axes")[dimNames[axisNr]]["platform_length"]
 
 
 ####################################################################################################
