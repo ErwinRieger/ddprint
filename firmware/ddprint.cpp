@@ -19,12 +19,10 @@
 
 /*
  * Todo jennyprinter port:
- * 3  : test/determine pins
- *
  * * if possible, fully remove fastio.h
- * * swapdevice: test sectorsize >= 512 bytes
- * * check, determine interrupt prio's
+ * * swapdevice: add test sectorsize != 512 bytes?
  * * remove eeprom stuff
+ * * usb: some flash sticks seem to hang at getReady cmd (add timeout / testUnitReadyRetry)
  */
 
 #include <Arduino.h>
@@ -44,12 +42,17 @@
 #include "ddcommands.h"
 #include "ddlcd.h"
 #include "stepper.h"
+#include "hostsettings.h"
 
 //The ASCII buffer for recieving from SD:
 #define SD_BUFFER_SIZE 512
 
 // Macro to read scalar types from a buffer
 #define FromBuf(typ, adr) ( * ((typ *)(adr)))
+
+#define X_SW_ENDSTOP_PRESSED ((current_pos_steps[X_AXIS] < 0) || (current_pos_steps[X_AXIS] > (int32_t)hostSettings.buildVolX))
+#define Y_SW_ENDSTOP_PRESSED ((current_pos_steps[Y_AXIS] < 0) || (current_pos_steps[Y_AXIS] > (int32_t)hostSettings.buildVolY))
+#define Z_SW_ENDSTOP_PRESSED ((current_pos_steps[Z_AXIS] < 0) || (current_pos_steps[Z_AXIS] > (int32_t)hostSettings.buildVolZ))
 
 /////////////////////////////////////////////////////////////////////////////////////
 #if defined(USEExtrusionRateTable)
@@ -1648,7 +1651,7 @@ void Printer::checkPowerOff(unsigned long m) {
     if (POWER_BUTTON :: active()) {
         if (! powerOffTime) {
             // Power off if power button is held for 3 seconds
-            powerOffTime = m + 3000;
+            powerOffTime = m + 2000;
         }
     }
     else {
@@ -2142,6 +2145,13 @@ class UsbCommand : public Protothread {
                             printer.cmdSetStepsPerMM(spmmX, spmmY, spmmZ);
                             txBuffer.sendACK();
                         }
+                        break;
+
+                    case CmdSetHostSettings:
+                            hostSettings.buildVolX = serialPort.readUInt32NoCheckCobs();
+                            hostSettings.buildVolY = serialPort.readUInt32NoCheckCobs();
+                            hostSettings.buildVolZ = serialPort.readUInt32NoCheckCobs();
+                            txBuffer.sendACK();
                         break;
 
                     case CmdSetIncTemp: {

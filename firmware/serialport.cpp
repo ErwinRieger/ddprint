@@ -146,6 +146,16 @@ int32_t SerialPort::readInt32NoCheckCobs()
     return (b4<<24) + (b3<<16) + (b2<<8) + b1;
 }
 
+uint32_t SerialPort::readUInt32NoCheckCobs()
+{
+
+    uint8_t   b1 = readNoCheckCobs();
+    uint32_t  b2 = readNoCheckCobs();
+    uint32_t  b3 = readNoCheckCobs();
+    uint32_t  b4 = readNoCheckCobs();
+    return (b4<<24) + (b3<<16) + (b2<<8) + b1;
+}
+
 #if defined(AVR)
 
 void SerialPort::begin(long baud)

@@ -121,6 +121,7 @@
 #define CmdSetGpio              183 // Set a gpio port, dangerous, used to determine pinmap.
 #define CmdReadAnalogGpio       184 // Read a analog value from gpio port, used to determine pinmap.
 #define CmdSetStepsPerMM        185 // Initial printer settings: steps per mm for X/Y/Z
+#define CmdSetHostSettings      186 // Initial printer settings
 
 //
 // Response types 

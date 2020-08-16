@@ -102,11 +102,14 @@ class SerialPort //: public Stream
     /* uint16_t readUInt16NoCheckNoCobs(); */
 
     uint8_t readNoCheckCobs(void);
+
     int16_t readInt16NoCheckCobs();
     uint16_t readUInt16NoCheckCobs();
+
     float readFloatNoCheckCobs();
 
     int32_t readInt32NoCheckCobs();
+    uint32_t readUInt32NoCheckCobs();
 
     inline void flush0(void) {
         head = tail = 0;

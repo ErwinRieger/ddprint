@@ -39,17 +39,6 @@
 #define enable_e0() (E0_ENABLE_PIN :: activate())
 #define disable_e0() (E0_ENABLE_PIN :: deActivate())
 
-#define X_MIN_POS_STEPS ((long)X_MIN_POS * printer.getStepsPerMMX())
-#define X_MAX_POS_STEPS ((long)X_MAX_POS * printer.getStepsPerMMX())
-#define Y_MIN_POS_STEPS ((long)Y_MIN_POS * printer.getStepsPerMMY())
-#define Y_MAX_POS_STEPS ((long)Y_MAX_POS * printer.getStepsPerMMY())
-#define Z_MIN_POS_STEPS ((long)Z_MIN_POS * printer.getStepsPerMMZ())
-#define Z_MAX_POS_STEPS ((long)Z_MAX_POS * printer.getStepsPerMMZ())
-
-#define X_SW_ENDSTOP_PRESSED ((current_pos_steps[X_AXIS] < X_MIN_POS_STEPS) || (current_pos_steps[X_AXIS] > X_MAX_POS_STEPS))
-#define Y_SW_ENDSTOP_PRESSED ((current_pos_steps[Y_AXIS] < Y_MIN_POS_STEPS) || (current_pos_steps[Y_AXIS] > Y_MAX_POS_STEPS))
-#define Z_SW_ENDSTOP_PRESSED ((current_pos_steps[Z_AXIS] < Z_MIN_POS_STEPS) || (current_pos_steps[Z_AXIS] > Z_MAX_POS_STEPS))
-
 extern volatile int32_t current_pos_steps[NUM_AXIS];
 
 // Initialize and start the stepper motor subsystem
