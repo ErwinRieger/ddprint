@@ -62,6 +62,12 @@ bool usbhMscInitialized() {
     return usbh_msc.MSCState == USBH_MSC_DEFAULT_APPLI_STATE;
 }
 
+//--------------------------------------------------------------
+//
+uint32_t usbhMscSizeInBlocks() {
+    return USBH_MSC_Param.MSCapacity;
+}
+ 
 
 //--------------------------------------------------------------
 //
@@ -1953,7 +1959,7 @@ void USB_StopHost(USB_OTG_CORE_HANDLE *pdev) // , USB_OTG_GlobalTypeDef *USBx)
   }
 #endif
 
-  for (i = 0; i < 15; i++)
+  for (i = 0; i < USB_OTG_MAX_TX_FIFOS; i++)
   {
     hcchar.d32 = USB_OTG_READ_REG32(&pdev->regs.HC_REGS[i]->HCCHAR);
     hcchar.b.chdis = 1;
@@ -1963,7 +1969,7 @@ void USB_StopHost(USB_OTG_CORE_HANDLE *pdev) // , USB_OTG_GlobalTypeDef *USBx)
   }
   
   /* Halt all channels to put them into a known state. */  
-  for (i = 0; i <= 15; i++)
+  for (i = 0; i <= USB_OTG_MAX_TX_FIFOS; i++)
   {   
 
     // value = USBx_HC(i)->HCCHAR ;
@@ -2017,7 +2023,9 @@ void dd_USBH_Init(USB_OTG_CORE_HANDLE *pdev,
   HCD_Init(pdev , coreID);
    
   /* Enable Interrupts */
-  USB_OTG_BSP_EnableInterrupt(pdev);
+  // USB_OTG_BSP_EnableInterrupt(pdev);
+  nvic_irq_set_priority(OTG_HS_IRQn, 3);
+  nvic_irq_enable(OTG_HS_IRQn);
 }
 
 //--------------------------------------------------------------
