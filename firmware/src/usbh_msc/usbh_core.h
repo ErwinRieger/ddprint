@@ -36,15 +36,17 @@ typedef enum {
 /* Following states are used for gState */
 typedef enum {
   HOST_IDLE =0,
-  HOST_ISSUE_CORE_RESET,
+  // HOST_ISSUE_CORE_RESET,
+  HOST_DEV_WAIT_FOR_ATTACHMENT,  
   HOST_DEV_ATTACHED,
   HOST_DEV_DISCONNECTED,  
-  HOST_ISSUE_RESET,
+  // HOST_ISSUE_RESET,
   HOST_DETECT_DEVICE_SPEED,
   HOST_ENUMERATION,
+  HOST_SET_CONFIGURATION,
   HOST_CLASS_REQUEST,  
   HOST_CLASS,
-  HOST_CTRL_XFER,
+  // HOST_CTRL_XFER,
   HOST_USR_INPUT,
   HOST_SUSPENDED,
   HOST_ERROR_STATE  
@@ -57,11 +59,6 @@ typedef enum {
   ENUM_SET_ADDR,
   ENUM_GET_CFG_DESC,
   ENUM_GET_FULL_CFG_DESC,
-  ENUM_GET_MFC_STRING_DESC,
-  ENUM_GET_PRODUCT_STRING_DESC,
-  ENUM_GET_SERIALNUM_STRING_DESC,
-  ENUM_SET_CONFIGURATION,
-  ENUM_DEV_CONFIGURED
 } ENUM_State;  
 
 
@@ -129,7 +126,6 @@ typedef struct _DeviceProp
 typedef struct _Host_TypeDef
 {
   HOST_State            gState;       /*  Host State Machine Value */
-  HOST_State            gStateBkp;    /* backup of previous State machine value */
   ENUM_State            EnumState;    /* Enumeration state Machine */
   CMD_State             RequestState;       
   USBH_Ctrl_TypeDef     Control;

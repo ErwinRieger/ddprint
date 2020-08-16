@@ -55,6 +55,10 @@ typedef enum {
   USBH_MSC_BOT_READ_INQUIRY,
   USBH_MSC_TEST_UNIT_READY,          
   USBH_MSC_READ_CAPACITY10,
+  USBH_MSC_REQUEST_SENSE,
+  USBH_MSC_STOP_UNIT,
+  USBH_MSC_START_UNIT,
+  USBH_MSC_START_STOP_UNIT,
   USBH_MSC_DEFAULT_APPLI_STATE,  // == IDLE
   USBH_MSC_UNRECOVERED_STATE
 } MSCStateType;
@@ -123,7 +127,7 @@ extern USBH_BOTXfer_TypeDef USBH_MSC_BOTXferParam;
  
 USBH_Status USBH_MSC_HandleBOTXfer(USB_OTG_CORE_HANDLE *pdev,
                             USBH_HOST *phost);
-USBH_MSC_Status_TypeDef USBH_MSC_DecodeCSW(USB_OTG_CORE_HANDLE *pdev,
+uint8_t USBH_MSC_DecodeCSW(USB_OTG_CORE_HANDLE *pdev,
                            USBH_HOST *phost);
 void USBH_MSC_Init(USB_OTG_CORE_HANDLE *pdev);
 USBH_Status USBH_MSC_BOT_Abort(USB_OTG_CORE_HANDLE *pdev, 

@@ -24,11 +24,9 @@ typedef int IRQn_Type;
 
 #define usbMSCHostAssert(expr) { if (! (expr) ) assert(0); }
 
-/*
 #if ! defined(max)
     #define max(X,Y) ((X) > (Y) ? (X) : (Y))
 #endif
-*/
 
 extern USB_OTG_CORE_HANDLE  USB_OTG_Core_Host;
 extern USBH_HOST            USB_Host;
@@ -77,8 +75,6 @@ uint32_t Reserved :
 
 
 bool usbhMscInitialized();
-
-uint32_t usbhMscSizeInBlocks();
 
 void dd_USBH_Init(USB_OTG_CORE_HANDLE *pdev,
                USB_OTG_CORE_ID_TypeDef coreID, 

@@ -43,7 +43,7 @@ typedef struct __MassStorageParameter
 #define OPCODE_REQUEST_SENSE              0x03
 
 #define DESC_REQUEST_SENSE                0X00
-#define ALLOCATION_LENGTH_REQUEST_SENSE   63 
+#define ALLOCATION_LENGTH_REQUEST_SENSE   14 
 #define XFER_LEN_READ_CAPACITY10           8
 #define XFER_LEN_MODE_SENSE6              63
 
@@ -55,11 +55,11 @@ typedef struct __MassStorageParameter
 USBH_Status USBH_MSC_TestUnitReady(USB_OTG_CORE_HANDLE *pdev, USBH_HOST *phost);
 USBH_Status USBH_MSC_ReadCapacity10(USB_OTG_CORE_HANDLE *pdev, USBH_HOST *phost);
 
-USBH_Status USBH_MSC_Write10(USB_OTG_CORE_HANDLE *pdev, USBH_HOST *phost,
+uint8_t USBH_MSC_Write10(USB_OTG_CORE_HANDLE *pdev, USBH_HOST *phost,
                          uint8_t *,
                          uint32_t ,
                          uint32_t );
-USBH_Status USBH_MSC_Read10(USB_OTG_CORE_HANDLE *pdev, USBH_HOST *phost,
+uint8_t USBH_MSC_Read10(USB_OTG_CORE_HANDLE *pdev, USBH_HOST *phost,
                         uint8_t *,
                         uint32_t ,
                         uint32_t );
