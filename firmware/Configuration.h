@@ -93,16 +93,6 @@
 //=============================Mechanical Settings===========================
 //===========================================================================
 
-const bool X_ENDSTOPS_INVERTING = true; // set to true to invert the logic of the endstops.
-const bool Y_ENDSTOPS_INVERTING = true; // set to true to invert the logic of the endstops.
-const bool Z_ENDSTOPS_INVERTING = true; // set to true to invert the logic of the endstops.
-
-// Logic levels for Stepper Enable Pins (Active Low = LOW), Active High = HIGH)
-// #define X_ENABLE_ON LOW
-// #define Y_ENABLE_ON LOW
-// #define Z_ENABLE_ON LOW
-// #define E_ENABLE_ON LOW // For all extruders
-
 //
 // Stepper direction pins. Set this to the logical level for a movement into positive direction.
 //
@@ -117,18 +107,6 @@ const bool Z_ENDSTOPS_INVERTING = true; // set to true to invert the logic of th
 #define X_HOME_DIR -1
 #define Y_HOME_DIR 1
 #define Z_HOME_DIR 1
-
-// Travel limits after homing
-#define X_MAX_POS 230
-#define X_MIN_POS 0
-#define Y_MAX_POS 230
-#define Y_MIN_POS 0
-#define Z_MAX_POS 230
-#define Z_MIN_POS 0
-
-#define X_MAX_LENGTH (X_MAX_POS - X_MIN_POS)
-#define Y_MAX_LENGTH (Y_MAX_POS - Y_MIN_POS)
-#define Z_MAX_LENGTH (Z_MAX_POS - Z_MIN_POS)
 
 //// MOVEMENT SETTINGS
 #define NUM_AXIS 4 // The axis order in all axis related arrays is X, Y, Z, E
@@ -147,64 +125,6 @@ const bool Z_ENDSTOPS_INVERTING = true; // set to true to invert the logic of th
 //===========================================================================
 //=============================Additional Features===========================
 //===========================================================================
-
-// EEPROM
-// the microcontroller can store settings in the EEPROM, e.g. max velocity...
-// M500 - stores paramters in EEPROM
-// M501 - reads parameters from EEPROM (if you need reset them after you changed them temporarily).
-// M502 - reverts to the default "factory settings".  You still need to store them in EEPROM afterwards if you want to.
-//define this to enable eeprom support
-// #define EEPROM_SETTINGS
-//to disable EEPROM Serial responses and decrease program space by ~1700 byte: comment this out:
-// please keep turned on if you can.
-// #define EEPROM_CHITCHAT
-
-// Preheat Constants
-// #define PLA_PREHEAT_HOTEND_TEMP 180
-// #define PLA_PREHEAT_HPB_TEMP 70
-// #define PLA_PREHEAT_FAN_SPEED 0     // Insert Value between 0 and 255
-
-// #define ABS_PREHEAT_HOTEND_TEMP 240
-// #define ABS_PREHEAT_HPB_TEMP 100
-// #define ABS_PREHEAT_FAN_SPEED 0     // Insert Value between 0 and 255
-
-//LCD and SD support
-#define SDSUPPORT // Enable SD Card Support in Hardware Console
-
-// #define ENABLE_ULTILCD2 //128x64 pixel display in the Ultimaker 2, with new menus. Note: For compiling with Arduino you need to remove the "SIGNAL(TWI_vect)" function from "libraries/Wire/utility/twi.c"
-
-//I2C PANELS
-
-// Incrementing this by 1 will double the software PWM frequency,
-// affecting heaters, and the fan if FAN_SOFT_PWM is enabled.
-// However, control resolution will be halved for each increment;
-// at zero value, there are 128 effective control positions.
-// #define SOFT_PWM_SCALE 0
-
-// Configuration of behaviors at the start and end of prints
-// #define END_OF_PRINT_RETRACTION 20		// number of mm to retract when printer goes idle
-// #define END_OF_PRINT_RECOVERY_SPEED 5 	// speed to recover that assumed retraction at (mm/s)
-// #define PRIMING_MM3	50					// number of mm^3 of plastic to extrude when priming
-										// (Ultimaker 2 hot end capacity is approx 80 mm^3)
-// #define PRIMING_MM3_PER_SEC 5			// Rate at which to prime head (in mm^3/s)
-										// (Ultimaker 2 upper limit is 8-10)
-// #define PRIMING_HEIGHT 20				// Height at which to perform the priming extrusions
-
-// Bed leveling wizard configuration
-// #define LEVELING_OFFSET 0.1				// Assumed thickness of feeler gauge/paper used in leveling (mm)
-
-
-// If the temperature has not increased at the end of that period, the target temperature is set to zero.
-// It can be reset with another M104/M109. This check is also only triggered if the target temperature and the current temperature
-//  differ by at least 2x WATCH_TEMP_INCREASE
-//#define WATCH_TEMP_PERIOD 40000 //40 seconds
-//#define WATCH_TEMP_INCREASE 10  //Heat up at least 10 degree in 20 seconds
-
-//By default pololu step drivers require an active high signal. However, some high power drivers require an active low signal as step.
-// #define INVERT_X_STEP_PIN false
-// #define INVERT_Y_STEP_PIN false
-// #define INVERT_Z_STEP_PIN false
-// #define INVERT_E_STEP_PIN false
 
 // Default motor current for XY,Z,E in mA
 #define DEFAULT_PWM_MOTOR_CURRENT 1300
