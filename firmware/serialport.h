@@ -30,7 +30,6 @@
 
 #include <stdint.h>
 #include "mdebug.h"
-#include "ddmacro.h"
 
 #if !defined(SERIAL_PORT)
 #define SERIAL_PORT 0
@@ -64,6 +63,10 @@
 // Size of tx buffer in bytes
 #define RX_BUFFER_SIZE 256
 
+//
+// stm32 port:
+// Note: rx/tx buffer memory wasted in struct usart_dev.
+//
 class SerialPort //: public Stream
 {
 
@@ -78,6 +81,8 @@ class SerialPort //: public Stream
 
     // Length of current cobs code block
     int16_t cobsCodeLen;
+
+    void init();
 
     void atCobsBlock();
 
@@ -97,11 +102,14 @@ class SerialPort //: public Stream
     /* uint16_t readUInt16NoCheckNoCobs(); */
 
     uint8_t readNoCheckCobs(void);
+
     int16_t readInt16NoCheckCobs();
     uint16_t readUInt16NoCheckCobs();
+
     float readFloatNoCheckCobs();
 
     int32_t readInt32NoCheckCobs();
+    uint32_t readUInt32NoCheckCobs();
 
     inline void flush0(void) {
         head = tail = 0;
@@ -113,8 +121,6 @@ class SerialPort //: public Stream
 
     inline void store_char(unsigned char c);
 };
-
-extern SerialPort serialPort;
 
 inline void SerialPort::store_char(unsigned char c) {
 
@@ -138,6 +144,8 @@ inline void SerialPort::store_char(unsigned char c) {
     }
 
 
+
+extern SerialPort serialPort;
 
 
 

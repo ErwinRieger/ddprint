@@ -1,7 +1,7 @@
 /*
 * This file is part of ddprint - a direct drive 3D printer firmware.
 * 
-* Copyright 2015 erwin.rieger@ibrieger.de
+* Copyright 2020 erwin.rieger@ibrieger.de
 * 
 * ddprint is free software: you can redistribute it and/or modify
 * it under the terms of the GNU General Public License as published by
@@ -19,25 +19,27 @@
 
 #pragma once
 
-#include "hal.h"
+// xxx baseclass not really needed?
 
-#if MOTHERBOARD == 1
-    //
-    // Ultimaker 2
-    //
-    #include "pins_um2.h"
-#elif MOTHERBOARD == 2
-    //
-    // Ramps 1.4
-    //
-    #include "pins_ramps.h"
-#elif MOTHERBOARD == 3
-    //
-    // Jennyprinter arm shuttle gear board
-    //
-    #include "pins_jp.h"
-#else
-    #error Unknown MOTHERBOARD value in pins.h
-#endif
+// Buffer and sector size reading and writing to the storage device
+#define SwapSectorSize 512
 
+//
+// First sector of mass storage is configuration/eeprom emulation
+//
+union MSConfigBlock {
+    struct {
+        char printerName[64];
+    } config;
+    uint8_t sector[SwapSectorSize];
+};
+
+//
+// Common base class for MassStorage classes
+//
+class MassStorageBase {
+
+  protected:
+    // uint8_t writeBuffer[SwapSectorSize];
+};
 

@@ -25,10 +25,6 @@
 
 #pragma once
 
-#if defined(PMWFS) || defined(BournsEMS22AFS)
-    #define HASFILAMENTSENSOR
-#endif
-
 typedef struct {
     unsigned long timeStamp;
     int16_t       dy;

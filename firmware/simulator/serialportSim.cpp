@@ -41,7 +41,7 @@ SerialPort::SerialPort() {
 
     printf("new SerialPort\n");
 
-    head = tail = 0;
+    init();
 
     ptty = open("/dev/ptmx", O_RDWR | O_NOCTTY | O_NONBLOCK);
     if (ptty == -1) {

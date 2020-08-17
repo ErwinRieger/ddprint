@@ -1,7 +1,7 @@
 /*
 * This file is part of ddprint - a direct drive 3D printer firmware.
 * 
-* Copyright 2015 erwin.rieger@ibrieger.de
+* Copyright 2020 erwin.rieger@ibrieger.de
 * 
 * ddprint is free software: you can redistribute it and/or modify
 * it under the terms of the GNU General Public License as published by
@@ -17,14 +17,19 @@
 * along with ddprint.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#pragma once
 
-#include <avr/wdt.h>
-#include "ddprint.h"
+#include <stdint.h>
 
-/// reset watchdog. MUST be called every 1s after init or avr will reset.
-void watchdog_reset()
-{
-    wdt_reset();
-}
+struct HostSettings {
 
+    //
+    // Buildvolume in steps
+    //
+    uint32_t buildVolX;
+    uint32_t buildVolY;
+    uint32_t buildVolZ;
+};
+
+extern HostSettings hostSettings;
 

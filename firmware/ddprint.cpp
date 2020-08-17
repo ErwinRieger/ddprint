@@ -17,24 +17,32 @@
 * along with ddprint.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <avr/interrupt.h>
-#include <avr/wdt.h>
+/*
+ * Todo jennyprinter port:
+ * * if possible, fully remove fastio.h
+ * * swapdevice: add test sectorsize != 512 bytes?
+ * * remove eeprom stuff
+ * * usb: some flash sticks seem to hang at getReady cmd (add timeout / testUnitReadyRetry)
+ */
+
 #include <Arduino.h>
-#include <util/crc16.h>
+
 #include <limits.h>
 
 #include "Protothread.h"
+#include "crc16.h"
 
 #include "ddprint.h"
 #include "serialport.h"
 #include "temperature.h"
 #include "ddtemp.h"
 #include "swapdev.h"
-#include "eepromSettings.h"
 #include "filsensor.h"
 #include "ddserial.h"
 #include "ddcommands.h"
 #include "ddlcd.h"
+#include "stepper.h"
+#include "hostsettings.h"
 
 //The ASCII buffer for recieving from SD:
 #define SD_BUFFER_SIZE 512
@@ -42,6 +50,9 @@
 // Macro to read scalar types from a buffer
 #define FromBuf(typ, adr) ( * ((typ *)(adr)))
 
+#define X_SW_ENDSTOP_PRESSED ((current_pos_steps[X_AXIS] < 0) || (current_pos_steps[X_AXIS] > (int32_t)hostSettings.buildVolX))
+#define Y_SW_ENDSTOP_PRESSED ((current_pos_steps[Y_AXIS] < 0) || (current_pos_steps[Y_AXIS] > (int32_t)hostSettings.buildVolY))
+#define Z_SW_ENDSTOP_PRESSED ((current_pos_steps[Z_AXIS] < 0) || (current_pos_steps[Z_AXIS] > (int32_t)hostSettings.buildVolZ))
 
 /////////////////////////////////////////////////////////////////////////////////////
 #if defined(USEExtrusionRateTable)
@@ -166,20 +177,23 @@ void printDebugInfo();
 // xxx move to printer class?
 void kill() {
 
-    cli(); // Stop interrupts
+    CLI(); // Stop interrupts
     disable_heater();
-    printer.disableSteppers();
 
-#if defined(PS_ON_PIN) && PS_ON_PIN > -1
-    pinMode(PS_ON_PIN,INPUT);
-#endif
+    printer.disableSteppers();
 
     // printDebugInfo();
 
-    while(1) {
-        // Wait for (watchdog-) reset
+    for (int i=0; i<1000; i++) {
         txBuffer.Run();
+        delay(1);
     }
+
+#if defined(POWER_SUPPLY_RELAY)
+    // SET_INPUT(POWER_SUPPLY_RELAY);
+    POWER_SUPPLY_RELAY :: saveState();
+#endif
+
 }
 
 void mAssert(uint16_t line, const char* file) {
@@ -211,33 +225,48 @@ void killMessage(uint8_t errorCode, uint8_t errorParam1, uint8_t errorParam2, co
 
 void setup() {
 
-#if defined(HOTEND_FAN_PIN)
-    SET_OUTPUT(HOTEND_FAN_PIN);
+    // WDT_ENABLE();
+
+    // TESTPIN :: initActive();
+
+    TIMER_INIT();
+
+#if defined(POWER_SUPPLY_RELAY)
+    // Switch on power relais to keep power
+    // SET_OUTPUT(POWER_SUPPLY_RELAY);
+    // WRITE(POWER_SUPPLY_RELAY, HIGH);
+    POWER_SUPPLY_RELAY :: initActive();
 #endif
 
-    // Do some minimal SPI init, prevent SPI to go to spi slave mode
-    WRITE(SDSS, HIGH);
-    SET_OUTPUT(SDSS);
+#if defined(HOTEND_FAN_PIN)
+    // SET_OUTPUT(HOTEND_FAN_PIN);
+    // WRITE(HOTEND_FAN_PIN, ~ HOTEND_FAN_ACTIVE);
+    HOTEND_FAN_PIN :: initDeActive();
+#endif
 
-    WRITE(FILSENSNCS, HIGH);
-    SET_OUTPUT(FILSENSNCS);
+#if defined(POWER_BUTTON)
+    POWER_BUTTON :: init();
+#endif
 
-    SET_OUTPUT(SCK_PIN);
-    SET_OUTPUT(MOSI_PIN);
+    LED_PIN :: init();
+
+    FAN_PIN :: init();
+
+    HAL_SPI_INIT();
 
     serialPort.begin(BAUDRATE);
 
+#if 0
     // loads data from EEPROM if available else uses defaults (and resets step acceleration rate)
     // Config_RetrieveSettings();
     // dumpEepromSettings("Eeprom:");
+#endif
 
     tp_init();    // Initialize temperature loop
 
-    wdt_enable(WDTO_4S);
-
     st_init();    // Initialize stepper, this enables interrupts!
 
-    analogWrite(LED_PIN, 255 * 0.5);
+    LED_PIN :: write(255 * 0.5);
 
     #if defined(REPRAP_DISCOUNT_SMART_CONTROLLER)
     lcd.begin(20, 4);
@@ -254,10 +283,18 @@ void setup() {
     filamentSensor.reset();
 #endif
 
-#if defined(HASFILAMENTSENSOR)
-    filamentSensor.init();
-#endif
+// #if defined(HASFILAMENTSENSOR)
+    // filamentSensor.init();
+// #endif
+
+    HAL_IRQ_INIT();
+
+    SEI();
 }
+
+//
+// SDReader, read buffered stepdata from swapdevice
+//
 
 // Block-buffered sd read
 class SDReader: public Protothread {
@@ -401,7 +438,61 @@ class SDReader: public Protothread {
 
 static SDReader sDReader;
 
-bool FillBufferTask::Run() {
+class FillBufferTask : public Protothread {
+
+        uint16_t flags;
+        uint8_t timerLoop;
+        uint16_t lastTimer;
+
+        uint16_t nAccel;
+        uint8_t leadAxis;
+        uint16_t tLin;
+        uint16_t nDecel;
+        int32_t absSteps[5];
+
+        // Bresenham factors
+        int32_t d_axis[5];
+        int32_t d1_axis[5];
+        int32_t d2_axis[5];
+
+        int32_t deltaLead, step;
+
+        // Hotend target temp for CmdSyncTargetTemp
+        // uint8_t targetHeater;
+        // uint16_t targetTemp;
+
+        // Hotend target pwm for CmdSyncHotendPWM
+        // uint8_t heaterPWM;
+        // unsigned long pulseEnd;
+
+        // Number of 25 mS nop segments for G4/dwell
+        uint16_t nDwell;
+
+        bool cmdSync;
+        bool stopRequested;
+
+#if defined(USEExtrusionRateTable)
+        // Scaling factor for timerValues to implement temperature speed limit 
+        float timerScale;
+#endif
+
+        stepData sd;
+
+    public:
+        FillBufferTask() {
+            sd.dirBits = 0;
+            cmdSync = false;
+            stopRequested = false;
+            pulseEnd = 0;
+        }
+
+        // xxxx getter/setter
+        uint8_t targetHeater;
+        uint32_t pulsePause;
+        unsigned long pulseEnd;
+        uint16_t targetTemp;
+
+        bool Run() {
 
             uint8_t i, cmd;
 
@@ -962,16 +1053,56 @@ bool FillBufferTask::Run() {
             PT_END(); // Not reached
         }
 
-void FillBufferTask::flush() {
 
-    step = deltaLead;
-    cmdSync = false;
-    stopRequested = false;
-    Restart();
+        void sync() {
+            cmdSync = false;
+        }
 
-    sDReader.flush(); // resets swapdev also
-    stepBuffer.flush();
-}
+        bool synced() {
+            return cmdSync;
+        }
+
+        // Flush/init swap, swapreader, fillbuffer task and stepbuffer
+        void flush() {
+
+            step = deltaLead;
+            cmdSync = false;
+            stopRequested = false;
+            Restart();
+
+            sDReader.flush(); // resets swapdev also
+            stepBuffer.flush();
+        }
+
+
+        // Request a printer soft stop
+        void requestSoftStop() { stopRequested = true; }
+
+        //
+        // Compute stepper bits, bresenham
+        //
+        FWINLINE void computeStepBits() {
+
+            sd.stepBits = 1 << leadAxis;
+
+            for (uint8_t i=0; i<5; i++) {
+
+                if (i == leadAxis)
+                    continue;
+
+                if (d_axis[i] < 0) {
+                    //  d_axis[a] = d + 2 * abs_displacement_vector_steps[a]
+                    d_axis[i] += d1_axis[i];
+                }
+                else {
+                    //  d_axis[a] = d + 2 * (abs_displacement_vector_steps[a] - deltaLead)
+                    d_axis[i] += d2_axis[i];
+                    sd.stepBits |= 1 << i;
+                }
+            }
+        }
+
+};
 
 FillBufferTask fillBufferTask;
 
@@ -979,12 +1110,25 @@ void Timer::run(unsigned long m) {
 
     if (fanEndTime && (m >= fanEndTime)) {
 
-        analogWrite(FAN_PIN, fanSpeed);
+        FAN_PIN :: write(fanSpeed);
         fanEndTime = 0;
     }
+
+#if defined(__arm__)
+    if (bootBootloaderRequest) {
+
+        // Wait until we sent our acknowledge to keep
+        // usb-serial communication clean.
+        if (txBuffer.empty()) {
+            JumpToBootloader();
+            // notreached
+        }
+    }
+#endif
 }
 
 Timer timer;
+
 
 Printer::Printer() {
 
@@ -995,6 +1139,8 @@ Printer::Printer() {
 
     for (int heater=0; heater<N_HEATERS; heater++)
         increaseTemp[heater] = 0;
+
+    powerOffTime = 0;
 };
 
 void Printer::printerInit() {
@@ -1009,10 +1155,10 @@ void Printer::printerInit() {
     //
     if (! swapErased) {
 
-        uint32_t sdsize = swapDev.cardSize();
+        uint32_t msSizeInBlocks = swapDev.cardSize();
 
-        massert(sdsize > 0);
-        massert(swapDev.erase(0, sdsize - 1));
+        massert(msSizeInBlocks > 0);
+        massert(swapDev.erase(1, msSizeInBlocks - 1));
 
         swapErased = true;
     }
@@ -1023,7 +1169,7 @@ void Printer::printerInit() {
     printerState = StateInit;
     eotReceived = false;
 
-    analogWrite(LED_PIN, 255);
+    LED_PIN :: write(255);
 }
 
 
@@ -1044,13 +1190,13 @@ void Printer::runHotEndFan() {
     if ((hotEndFanOn == false) && (current_temperature[0] >= 40.0)) {
 
         // Hotend fan on
-        WRITE(HOTEND_FAN_PIN, HIGH);
+        HOTEND_FAN_PIN :: activate();
         hotEndFanOn = true;
     }
     else if ((hotEndFanOn == true) && (current_temperature[0] <= 35.0)) {
 
         // Hotend fan off
-        WRITE(HOTEND_FAN_PIN, LOW);
+        HOTEND_FAN_PIN :: deActivate();
         hotEndFanOn = false;
     }
 #endif
@@ -1060,7 +1206,6 @@ void Printer::runHotEndFan() {
 void Printer::cmdEot() {
 
     massert(printerState >= StateInit);
-
     eotReceived = true;
 }
 
@@ -1074,7 +1219,7 @@ void Printer::cmdMove(MoveType mt) {
 
     if (mt == MoveTypeNormal) {
 
-        massert(homed);
+        // armrun massert(homed);
     }
 
     if (mt == MoveTypeHoming) {
@@ -1151,6 +1296,12 @@ void Printer::cmdSetPIDValues(float kp, float ki, float kd, uint16_t tu) {
     Tu = tu;
 }
 
+void Printer::cmdSetStepsPerMM(uint16_t spmmX, uint16_t spmmY, uint16_t spmmZ) {
+    stepsPerMMX = spmmX;
+    stepsPerMMY = spmmY;
+    stepsPerMMZ = spmmZ;
+}
+
 void Printer::cmdFanSpeed(uint8_t speed, uint8_t blipTime) {
 
     // If no blip is used, start fan directly, else
@@ -1158,13 +1309,13 @@ void Printer::cmdFanSpeed(uint8_t speed, uint8_t blipTime) {
     // pwm value after the bliptime.
     if (blipTime) {
 
-        analogWrite(FAN_PIN, 255);
+        FAN_PIN :: write(255);
         timer.startFanTimer(speed, blipTime);
         return;
     }
 
     timer.endFanTimer();
-    analogWrite(FAN_PIN, speed);
+    FAN_PIN :: write(speed);
 }
 
 void Printer::cmdContinuousE(uint16_t timerValue) {
@@ -1220,6 +1371,40 @@ void Printer::cmdGetCurrentTemps() {
     txBuffer.sendResponseEnd();
 }
 
+// Note: we don't check if mass-storage is busy.
+// Note: we don't merge the config here, we just overwrite it.
+// This is no problem as long the config is just the printer name. 
+void Printer::cmdSetPrinterName(char *name, uint8_t len) {
+
+    union MSConfigBlock configSector;
+
+    memset(configSector.config.printerName, 0, sizeof(configSector.config.printerName));
+    strncpy(configSector.config.printerName, name, STD min(len, (uint8_t)sizeof(configSector.config.printerName)));
+
+    // No error checking
+    swapDev.writeConfig(configSector);
+
+    txBuffer.sendResponseStart(CmdSetPrinterName);
+    txBuffer.sendResponseUint8(RespOK);
+    txBuffer.sendResponseEnd();
+}
+
+// Note: we don't check if mass-storage is busy.
+void Printer::cmdGetPrinterName() {
+
+    union MSConfigBlock configSector;
+
+    // No error checking
+    swapDev.readConfig(configSector);
+
+    txBuffer.sendResponseStart(CmdGetPrinterName);
+    txBuffer.sendResponseUint8(RespOK);
+    txBuffer.sendResponseString(
+            configSector.config.printerName,
+            strnlen(configSector.config.printerName, sizeof(configSector.config.printerName)-1));
+    txBuffer.sendResponseEnd();
+}
+
 void Printer::checkMoveFinished() {
 
     //
@@ -1268,7 +1453,7 @@ void Printer::disableSteppers() {
 
     homed = false;
 
-    analogWrite(LED_PIN, 255 * 0.5);
+    LED_PIN :: write(255 * 0.5);
 }
 
 void Printer::cmdDisableSteppers() {
@@ -1296,13 +1481,13 @@ void Printer::cmdGetEndstops() {
 
     txBuffer.sendResponseStart(CmdGetEndstops);
 
-    txBuffer.sendResponseUint8(X_ENDSTOP_PRESSED);
+    txBuffer.sendResponseUint8(X_STOP_PIN :: active());
     txBuffer.sendResponseValue(current_pos_steps[X_AXIS]);
 
-    txBuffer.sendResponseUint8(Y_ENDSTOP_PRESSED);
+    txBuffer.sendResponseUint8(Y_STOP_PIN :: active());
     txBuffer.sendResponseValue(current_pos_steps[Y_AXIS]);
 
-    txBuffer.sendResponseUint8(Z_ENDSTOP_PRESSED);
+    txBuffer.sendResponseUint8(Z_STOP_PIN :: active());
     txBuffer.sendResponseValue(current_pos_steps[Z_AXIS]);
 
     txBuffer.sendResponseEnd();
@@ -1419,6 +1604,67 @@ void Printer::cmdSetTempTable() {
     }
 
     txBuffer.sendSimpleResponse(CmdSetTempTable, RespOK);
+}
+#endif
+
+void Printer::cmdReadGpio(uint8_t pinNumber) {
+
+    // Set pin to input
+    HAL_SET_INPUT_PU(pinNumber);
+
+    // Read pin
+    uint32_t val = HAL_READ(pinNumber);
+
+    txBuffer.sendResponseStart(CmdReadGpio);
+    txBuffer.sendResponseValue(val);
+    txBuffer.sendResponseEnd();
+}
+
+void Printer::cmdReadAnalogGpio(uint8_t pinNumber) {
+
+    // Set pin to analog input
+    HAL_SET_INPUT_ANALOG(pinNumber);
+
+    // Read pin
+    uint32_t val = HAL_READ_ANALOG(pinNumber);
+
+    txBuffer.sendResponseStart(CmdReadAnalogGpio);
+    txBuffer.sendResponseValue(val);
+    txBuffer.sendResponseEnd();
+}
+
+void Printer::cmdSetGpio(uint8_t pinNumber, uint8_t value) {
+
+    // Set pin to input
+    HAL_SET_OUTPUT(pinNumber);
+
+    // Set pin
+    HAL_WRITE(pinNumber, value);
+}
+
+#if defined(POWER_BUTTON)
+void Printer::checkPowerOff(unsigned long m) {
+
+    //
+    // Check for power-off request
+    //
+    if (POWER_BUTTON :: active()) {
+        if (! powerOffTime) {
+            // Power off if power button is held for 3 seconds
+            powerOffTime = m + 2000;
+        }
+    }
+    else {
+        if (powerOffTime) {
+            if (m > powerOffTime) {
+                // WRITE(POWER_SUPPLY_RELAY, LOW);
+                POWER_SUPPLY_RELAY :: deActivate();
+            }
+            else {
+                powerOffTime = 0;
+            }
+        }
+    }
 }
 #endif
 
@@ -1686,7 +1932,7 @@ class UsbCommand : public Protothread {
                         if (swapDev.getWritePos()) {
                             // Save last partial block
                             // xxx check busy here
-                            swapDev.writeBlock();
+                            swapDev.startWriteBlock();
                         }
                         printer.cmdEot();
                         txBuffer.sendACK();
@@ -1781,7 +2027,29 @@ class UsbCommand : public Protothread {
                         // txBuffer.sendACK();
                         // }
                         // break;
-
+#if defined(__arm__)
+                    case CmdBootBootloader:
+                        timer.startBootloaderTimer();
+                        txBuffer.sendACK();
+                        break;
+#endif
+                    case CmdReadGpio: {
+                        uint8_t pinNumber = serialPort.readNoCheckCobs();
+                        printer.cmdReadGpio(pinNumber);
+                        }
+                        break;
+                    case CmdReadAnalogGpio: {
+                        uint8_t pinNumber = serialPort.readNoCheckCobs();
+                        printer.cmdReadAnalogGpio(pinNumber);
+                        }
+                        break;
+                    case CmdSetGpio: {
+                        uint8_t pinNumber = serialPort.readNoCheckCobs();
+                        uint8_t value = serialPort.readNoCheckCobs();
+                        printer.cmdSetGpio(pinNumber, value);
+                        txBuffer.sendACK();
+                        }
+                        break;
 
                     //
                     // Commands with response payload
@@ -1813,11 +2081,11 @@ class UsbCommand : public Protothread {
                         for (c=0; c<64 && c<len; c++) {
                             name[c] = serialPort.readNoCheckCobs();
                         }
-                        setPrinterName(name, len);
+                        printer.cmdSetPrinterName(name, len);
                         }
                         break;
                     case CmdGetPrinterName:
-                        getPrinterName();
+                        printer.cmdGetPrinterName();
                         break;
                     case CmdGetHomed:
                         printer.cmdGetHomed();
@@ -1868,6 +2136,22 @@ class UsbCommand : public Protothread {
                             printer.cmdSetPIDValues(Kp, Ki, Kd, Tu);
                             txBuffer.sendACK();
                         }
+                        break;
+
+                    case CmdSetStepsPerMM: {
+                            uint16_t spmmX = serialPort.readUInt16NoCheckCobs();
+                            uint16_t spmmY = serialPort.readUInt16NoCheckCobs();
+                            uint16_t spmmZ = serialPort.readUInt16NoCheckCobs();
+                            printer.cmdSetStepsPerMM(spmmX, spmmY, spmmZ);
+                            txBuffer.sendACK();
+                        }
+                        break;
+
+                    case CmdSetHostSettings:
+                            hostSettings.buildVolX = serialPort.readUInt32NoCheckCobs();
+                            hostSettings.buildVolY = serialPort.readUInt32NoCheckCobs();
+                            hostSettings.buildVolZ = serialPort.readUInt32NoCheckCobs();
+                            txBuffer.sendACK();
                         break;
 
                     case CmdSetIncTemp: {
@@ -1942,13 +2226,38 @@ class UsbCommand : public Protothread {
 
 static UsbCommand usbCommand;
 
-FWINLINE void loop() {
+#if defined(AVR)
+FWINLINE
+#endif
+void loop() {
 
     unsigned long m = millis();
 
     // Timer for slow running tasks (temp, encoder)
     static unsigned long timer10mS = m + TIMER10MS;
     static unsigned long timer100mS = m + TIMER100MS;
+
+// serial test
+#if 0
+if (txBuffer.empty()) {
+
+    txBuffer.pushByte('A');
+    txBuffer.pushByte('B');
+    txBuffer.pushByte('B');
+    txBuffer.pushByte('A');
+    txBuffer.pushByte('1');
+    txBuffer.pushByte(' ');
+    delay(100);
+}
+#endif
+#if 0
+    // serial echo test:
+    while (serialPort._available()) {
+        txBuffer.pushByte(serialPort.readNoCheckNoCobs());
+    }
+#endif
+
+// serial test end
 
     m = millis();
     if (m >= timer10mS) { // Every 10 mS
@@ -1958,15 +2267,15 @@ FWINLINE void loop() {
         // Check hardware and software endstops:
         if (printer.moveType == Printer::MoveTypeNormal) {
 
-            if (X_ENDSTOP_PRESSED || Y_ENDSTOP_PRESSED || Z_ENDSTOP_PRESSED) {
+            if (X_STOP_PIN :: active() || Y_STOP_PIN :: active() || Z_STOP_PIN :: active()) {
 
                 LCDMSGKILL(RespHardwareEndstop, "", "");
                 txBuffer.sendResponseStart(RespKilled);
                 txBuffer.sendResponseUint8(RespHardwareEndstop);
                 txBuffer.sendResponseValue((uint8_t*)current_pos_steps, 3*sizeof(int32_t));
-                txBuffer.sendResponseUint8(X_ENDSTOP_PRESSED);
-                txBuffer.sendResponseUint8(Y_ENDSTOP_PRESSED);
-                txBuffer.sendResponseUint8(Z_ENDSTOP_PRESSED);
+                txBuffer.sendResponseUint8(X_STOP_PIN :: active());
+                txBuffer.sendResponseUint8(Y_STOP_PIN :: active());
+                txBuffer.sendResponseUint8(Z_STOP_PIN :: active());
                 txBuffer.sendResponseEnd();
                 kill();
             }
@@ -2014,6 +2323,10 @@ FWINLINE void loop() {
         // Read filament sensor
         filamentSensor.run();
 #endif
+
+#if defined(POWER_BUTTON)
+        printer.checkPowerOff(m);
+#endif
     }
 
     // Read usb commands
@@ -2045,7 +2358,6 @@ FWINLINE void loop() {
             }
         }
     }
-
 }
 
 
@@ -2065,14 +2377,13 @@ void printDebugInfo() {
     // Wait 100 s before reboot
     for (int i=0; i<100000; i++) {
         txBuffer.Run();
-        watchdog_reset();
+        WDT_RESET();
         delay(1);
     }
 #endif
 }
 
-
-#if ! defined(DDSim)
+#if defined(AVR)
 int main(void) {
 
     init();
@@ -2086,7 +2397,6 @@ int main(void) {
     return 0;
 }
 #endif
-
 
 
 

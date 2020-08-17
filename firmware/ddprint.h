@@ -28,9 +28,9 @@
 #include "Configuration.h"
 #include "pins.h"
 #include "mdebug.h"
-#include "fastio.h"
+
 #include "swapdev.h"
-#include "stepper.h"
+// #include "stepper.h"
 
 #if defined(DDSim)
     #include <unistd.h>
@@ -51,7 +51,6 @@ void kill();
 // void kill(const char* msg);
 // void killPGM(const char* msg);
 
-extern void watchdog_reset();
 void setup();
 
 #define N_HEATERS (EXTRUDERS + 1)
@@ -72,6 +71,12 @@ class Printer {
         uint8_t nGenericMessage;
 
         bool hotEndFanOn;
+
+        // Timestamp power off (power button press)
+        unsigned long powerOffTime;
+
+        // Steps per mm
+        uint16_t stepsPerMMX, stepsPerMMY, stepsPerMMZ;
 
     public:
 
@@ -102,6 +107,10 @@ class Printer {
         uint8_t getIncreaseTemp(uint8_t heater) { return increaseTemp[heater]; }
         void runHotEndFan();
 
+        uint16_t getStepsPerMMX() { return stepsPerMMX; }
+        uint16_t getStepsPerMMY() { return stepsPerMMY; }
+        uint16_t getStepsPerMMZ() { return stepsPerMMZ; }
+
         void cmdMove(MoveType);
         void cmdEot();
         void setHomePos( int32_t x, int32_t y, int32_t z);
@@ -118,6 +127,7 @@ class Printer {
         void cmdGetEndstops();
         void cmdGetPos();
         void cmdSetPIDValues(float kp, float ki, float kd, uint16_t Tu);
+        void cmdSetStepsPerMM(uint16_t spmmX, uint16_t spmmY, uint16_t spmmZ);
         void cmdFanSpeed(uint8_t speed, uint8_t blipTime);
         void cmdContinuousE(uint16_t timerValue);
         void cmdSetFilSensorCal(float cal);
@@ -129,108 +139,18 @@ class Printer {
         void cmdGetFilSensor();
         void cmdGetTempTable();
         void cmdSetTempTable();
+        void cmdReadGpio(uint8_t pinNumber);
+        void cmdReadAnalogGpio(uint8_t pinNumber);
+        void cmdSetGpio(uint8_t pinNumber, uint8_t value);
+        void cmdSetPrinterName(char *name, uint8_t len);
+        void cmdGetPrinterName();
+#if defined(POWER_BUTTON)
+        void checkPowerOff(unsigned long ms);
+#endif
 };
 
 extern Printer printer;
 
-
-class FillBufferTask : public Protothread {
-
-        uint16_t flags;
-        uint8_t timerLoop;
-        uint16_t lastTimer;
-
-        uint16_t nAccel;
-        uint8_t leadAxis;
-        uint16_t tLin;
-        uint16_t nDecel;
-        int32_t absSteps[5];
-
-        // Bresenham factors
-        int32_t d_axis[5];
-        int32_t d1_axis[5];
-        int32_t d2_axis[5];
-
-        int32_t deltaLead, step;
-
-        // Hotend target temp for CmdSyncTargetTemp
-        // uint8_t targetHeater;
-        // uint16_t targetTemp;
-
-        // Hotend target pwm for CmdSyncHotendPWM
-        // uint8_t heaterPWM;
-        // unsigned long pulseEnd;
-
-        // Number of 25 mS nop segments for G4/dwell
-        uint16_t nDwell;
-
-        bool cmdSync;
-        bool stopRequested;
-
-#if defined(USEExtrusionRateTable)
-        // Scaling factor for timerValues to implement temperature speed limit 
-        float timerScale;
-#endif
-
-        stepData sd;
-
-    public:
-        FillBufferTask() {
-            sd.dirBits = 0;
-            cmdSync = false;
-            stopRequested = false;
-            pulseEnd = 0;
-        }
-
-        // xxxx getter/setter
-        uint8_t targetHeater;
-        uint32_t pulsePause;
-        unsigned long pulseEnd;
-        uint16_t targetTemp;
-
-        bool Run();
-
-        void sync() {
-            cmdSync = false;
-        }
-
-        bool synced() {
-            return cmdSync;
-        }
-
-        // Flush/init swap, swapreader, fillbuffer task and stepbuffer
-        void flush();
-
-        // Request a printer soft stop
-        void requestSoftStop() { stopRequested = true; }
-
-        //
-        // Compute stepper bits, bresenham
-        //
-        FWINLINE void computeStepBits() {
-
-            sd.stepBits = 1 << leadAxis;
-
-            for (uint8_t i=0; i<5; i++) {
-
-                if (i == leadAxis)
-                    continue;
-
-                if (d_axis[i] < 0) {
-                    //  d_axis[a] = d + 2 * abs_displacement_vector_steps[a]
-                    d_axis[i] += d1_axis[i];
-                }
-                else {
-                    //  d_axis[a] = d + 2 * (abs_displacement_vector_steps[a] - deltaLead)
-                    d_axis[i] += d2_axis[i];
-                    sd.stepBits |= 1 << i;
-                }
-            }
-        }
-
-};
-
-extern FillBufferTask fillBufferTask;
 
 //
 // One-shot timer for
@@ -242,9 +162,12 @@ class Timer {
     uint8_t fanSpeed;
     unsigned long fanEndTime;
 
+    bool bootBootloaderRequest;
+
     public:
         Timer() {
             fanEndTime = 0;
+            bootBootloaderRequest = false;
         }
 
         void run(unsigned long m);
@@ -259,6 +182,12 @@ class Timer {
 
             fanEndTime = 0;
         }
+
+        void startBootloaderTimer() {
+
+            bootBootloaderRequest = true;
+        }
+
 };
 
 extern Timer timer;

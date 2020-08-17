@@ -25,32 +25,35 @@
 #include "stepper.h"
 #include "mdebug.h"
 
-
-#if MOTOR_CURRENT_PWM_XY_PIN > -1
-  const int motor_current_setting[3] = DEFAULT_PWM_MOTOR_CURRENT;
-#endif
+// #if MOTOR_CURRENT_PWM_XY_PIN > -1
+  // const int motor_current_setting[3] = DEFAULT_PWM_MOTOR_CURRENT;
+// #endif
 
 volatile int32_t current_pos_steps[NUM_AXIS] = { 0, 0, 0, 0};
+
 StepBuffer stepBuffer;
 
 void digipot_current(uint8_t driver, int current)
 {
-  #if MOTOR_CURRENT_PWM_XY_PIN > -1
-  if (driver == 0) analogWrite(MOTOR_CURRENT_PWM_XY_PIN, (long)current * 255L / (long)MOTOR_CURRENT_PWM_RANGE);
-  if (driver == 1) analogWrite(MOTOR_CURRENT_PWM_Z_PIN, (long)current * 255L / (long)MOTOR_CURRENT_PWM_RANGE);
-  if (driver == 2) analogWrite(MOTOR_CURRENT_PWM_E_PIN, (long)current * 255L / (long)MOTOR_CURRENT_PWM_RANGE);
+  #if defined( MOTOR_CURRENT_PWM_XY_PIN)
+    if (driver == 0)
+        MOTOR_CURRENT_PWM_XY_PIN :: write((long)current * 255L / (long)MOTOR_CURRENT_PWM_RANGE);
+    if (driver == 1)
+        MOTOR_CURRENT_PWM_Z_PIN :: write((long)current * 255L / (long)MOTOR_CURRENT_PWM_RANGE);
+    if (driver == 2)
+       MOTOR_CURRENT_PWM_E_PIN :: write((long)current * 255L / (long)MOTOR_CURRENT_PWM_RANGE);
   #endif
 }
 
 void digipot_init() //Initialize Digipot Motor Current
 {
-  #if MOTOR_CURRENT_PWM_XY_PIN > -1
-    pinMode(MOTOR_CURRENT_PWM_XY_PIN, OUTPUT);
-    pinMode(MOTOR_CURRENT_PWM_Z_PIN, OUTPUT);
-    pinMode(MOTOR_CURRENT_PWM_E_PIN, OUTPUT);
-    digipot_current(0, motor_current_setting[0]);
-    digipot_current(1, motor_current_setting[1]);
-    digipot_current(2, motor_current_setting[2]);
+  #if defined(MOTOR_CURRENT_PWM_XY_PIN)
+    MOTOR_CURRENT_PWM_XY_PIN :: init();
+    MOTOR_CURRENT_PWM_Z_PIN :: init();
+    MOTOR_CURRENT_PWM_E_PIN :: init();
+    digipot_current(0, DEFAULT_PWM_MOTOR_CURRENT);
+    digipot_current(1, DEFAULT_PWM_MOTOR_CURRENT);
+    digipot_current(2, DEFAULT_PWM_MOTOR_CURRENT);
     //Set timer5 to 31khz so the PWM of the motor power is as constant as possible.
     TCCR5B = (TCCR5B & ~(_BV(CS50) | _BV(CS51) | _BV(CS52))) | _BV(CS50);
   #endif
@@ -58,151 +61,101 @@ void digipot_init() //Initialize Digipot Motor Current
 
 void st_init() {
 
-  digipot_init(); //Initialize Digipot Motor Current
+    digipot_init(); //Initialize Digipot Motor Current
 
-  #if defined(X_MS1_PIN) && X_MS1_PIN > -1
-    #error enable microstep
-    // microstep_init(); //Initialize Microstepping Pins // look
-  #endif
+    //Initialize Dir Pins
+    X_DIR_PIN :: initDeActive();
+    Y_DIR_PIN :: initDeActive();
+    Z_DIR_PIN :: initDeActive();
+    E0_DIR_PIN :: initDeActive();
 
-  //Initialize Dir Pins
-  #if defined(X_DIR_PIN) && X_DIR_PIN > -1
-    SET_OUTPUT(X_DIR_PIN);
-  #endif
-  #if defined(Y_DIR_PIN) && Y_DIR_PIN > -1
-    SET_OUTPUT(Y_DIR_PIN);
-  #endif
-  #if defined(Z_DIR_PIN) && Z_DIR_PIN > -1
-    SET_OUTPUT(Z_DIR_PIN);
-  #endif
-  #if defined(E0_DIR_PIN) && E0_DIR_PIN > -1
-    SET_OUTPUT(E0_DIR_PIN);
-  #endif
-  #if defined(E1_DIR_PIN) && (E1_DIR_PIN > -1)
-    SET_OUTPUT(E1_DIR_PIN);
-  #endif
-  #if defined(E2_DIR_PIN) && (E2_DIR_PIN > -1)
-    SET_OUTPUT(E2_DIR_PIN);
-  #endif
+    // #if defined(E1_DIR_PIN)
+        // E1_DIR_PIN :: initDeActive();
+    // #endif
 
-  // Set initial direction to 0
-  // st_set_direction<XAxisSelector>(LOW);
-  // st_set_direction<YAxisSelector>(LOW);
-  // st_set_direction<ZAxisSelector>(LOW);
-  // st_set_direction<EAxisSelector>(LOW);
+    // Initialize Enable Pins - steppers default to disabled.
+    X_ENABLE_PIN :: initDeActive();
+    Y_ENABLE_PIN :: initDeActive();
+    Z_ENABLE_PIN :: initDeActive();
+    E0_ENABLE_PIN :: initDeActive();
 
-  // Initialize Enable Pins - steppers default to disabled.
-  SET_OUTPUT(X_ENABLE_PIN);
-  WRITE(X_ENABLE_PIN, ! X_ENABLE_ON);
+    // #if defined(E1_ENABLE_PIN)
+        // E1_ENABLE_PIN :: initDeActive();
+    // #endif
 
-  SET_OUTPUT(Y_ENABLE_PIN);
-  WRITE(Y_ENABLE_PIN, ! Y_ENABLE_ON);
+    // Endstops and pullups
+    X_STOP_PIN :: init();
+    Y_STOP_PIN :: init();
+    Z_STOP_PIN :: init();
 
-  SET_OUTPUT(Z_ENABLE_PIN);
-  WRITE(Z_ENABLE_PIN, ! Z_ENABLE_ON);
-
-  SET_OUTPUT(E0_ENABLE_PIN);
-  WRITE(E0_ENABLE_PIN, ! E_ENABLE_ON);
-
-  #if defined(E1_ENABLE_PIN)
-    SET_OUTPUT(E1_ENABLE_PIN);
-    WRITE(E1_ENABLE_PIN, ! E_ENABLE_ON);
-  #endif
-
-  //endstops and pullups
-
-  SET_INPUT(X_STOP_PIN);
-  WRITE(X_STOP_PIN,HIGH);
-
-  SET_INPUT(Y_STOP_PIN);
-  WRITE(Y_STOP_PIN,HIGH);
-
-  SET_INPUT(Z_STOP_PIN);
-  WRITE(Z_STOP_PIN,HIGH);
-
-  //Initialize Step Pins
-  #if defined(X_STEP_PIN) && (X_STEP_PIN > -1)
-    SET_OUTPUT(X_STEP_PIN);
-    WRITE(X_STEP_PIN, LOW);
+    //Initialize Step Pins
+    X_STEP_PIN :: initDeActive();
     disable_x();
-  #endif
-  #if defined(Y_STEP_PIN) && (Y_STEP_PIN > -1)
-    SET_OUTPUT(Y_STEP_PIN);
-    WRITE(Y_STEP_PIN, LOW);
+    Y_STEP_PIN :: initDeActive();
     disable_y();
-  #endif
-  #if defined(Z_STEP_PIN) && (Z_STEP_PIN > -1)
-    SET_OUTPUT(Z_STEP_PIN);
-    WRITE(Z_STEP_PIN, LOW);
+    Z_STEP_PIN :: initDeActive();
     disable_z();
-  #endif
-  #if defined(E0_STEP_PIN) && (E0_STEP_PIN > -1)
-    SET_OUTPUT(E0_STEP_PIN);
-    WRITE(E0_STEP_PIN, LOW);
+    E0_STEP_PIN :: initDeActive();
     disable_e0();
-  #endif
-
-    //
-    // Setup Timer1 for stepper interrupt and 
-    // homingstepper interrupt.
-    //
-
-    // 
-    // Timer 0 is used by arduino (millis() ...)
-    // Timer 2 is 8bit only
-    // Timer 3 ist heater pwm
-    // Timer 4 ist LED pin und FAN pin
-    // Timer 5 ist digipot
-    //
-
-  // waveform generation = 0100 = CTC
-  TCCR1B &= ~(1<<WGM13);
-  TCCR1B |=  (1<<WGM12);
-  TCCR1A &= ~(1<<WGM11);
-  TCCR1A &= ~(1<<WGM10);
-    
-  // output mode = 00 (disconnected)
-  // Normal port operation, OCnA/OCnB/OCnC disconnected
-  TCCR1A &= ~(3<<COM1A0);
-  TCCR1A &= ~(3<<COM1B0);
-
-  // Set the timer pre-scaler
-  // Generally we use a divider of 8, resulting in a 2MHz timer
-  // frequency on a 16MHz MCU. If you are going to change this, be
-  // sure to regenerate speed_lookuptable.h with
-  // create_speed_lookuptable.py
-  TCCR1B = (TCCR1B & ~(0x07<<CS10)) | (2<<CS10);
-
-  OCR1A = 0x4000;
-  OCR1B = 0x4000;
-  TCNT1 = 0;
-
-  // ENABLE_STEPPER_DRIVER_INTERRUPT();
-  sei();
 }
 
+//
+// Stepper interrupt routines
+//
+#if defined(__arm__)
 
-ISR(TIMER1_COMPA_vect) {
+    //
+    // STM32
+    //
+    // Note, to overwrite stm32duino's irq handlers they had to be defined as weak.
+    //
+    extern "C" {
 
-    // xxx call it runPrintStep
-    stepBuffer.runMoveSteps();
-}
+        // Stepper irq routine
+        void __irq_tim2(void)
+        {
+            timer_gen_reg_map *regs = timer2.regs.gen;
 
-ISR(TIMER1_COMPB_vect) {
+            if (regs->SR & TIMER_SR_UIF) {
 
-    // stepBuffer.runHomingSteps();
-    stepBuffer.runMiscSteps();
-}
+                regs->SR = ~TIMER_SR_UIF;
 
+	            stepBuffer.runMoveSteps();
+            }
+        }
 
+        // Stepper irq routine for homing steps
+        void __irq_tim3(void)
+        {
+            timer_gen_reg_map *regs = timer3.regs.gen;
 
+            if (regs->SR & TIMER_SR_UIF) {
 
+                regs->SR = ~TIMER_SR_UIF;
 
+	            stepBuffer.runMiscSteps();
+            }
+        }
 
+    }
 
+#else
 
+    //
+    // AVR
+    //
+   
+    // Stepper irq routine
+    ISR(TIMER1_COMPA_vect) {
 
+        // xxx call it runPrintStep
+        stepBuffer.runMoveSteps();
+    }
 
+    // Stepper irq routine for homing steps
+    ISR(TIMER1_COMPB_vect) {
 
-
+        stepBuffer.runMiscSteps();
+    }
+#endif
 

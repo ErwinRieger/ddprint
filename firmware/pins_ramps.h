@@ -4,13 +4,9 @@
 * The Origin of this code is Ultimaker2Marlin (https://github.com/Ultimaker/Ultimaker2Marlin).
 ************************************************************************************************/
 
-#pragma once
 //
 // Ramps 1.4
 //
-
-#if MOTHERBOARD == 3 || MOTHERBOARD == 33 || MOTHERBOARD == 34 || MOTHERBOARD == 77
-#define KNOWN_BOARD 1
 
 //////////////////FIX THIS//////////////
 #ifndef __AVR_ATmega1280__
@@ -24,15 +20,12 @@
 // #define RAMPS_V_1_3
 // #define RAMPS_V_1_0
 
-#if MOTHERBOARD == 33 
+#if MOTHERBOARD == 2
     #define REPRAP_DISCOUNT_SMART_CONTROLLER
     #define NEWPANEL
     #define ULTRA_LCD
-#endif
 
-#if MOTHERBOARD == 33 || MOTHERBOARD == 34 || MOTHERBOARD == 77
-
-  #define LARGE_FLASH true
+    #define LARGE_FLASH true
 
     #define X_STEP_PIN         54
     #define X_DIR_PIN          55
@@ -61,8 +54,6 @@
     #define E1_DIR_PIN         34
     #define E1_ENABLE_PIN      30
 
-    #define SDPOWER            -1
-
     // SPI
     // Chip select SDCard
     #define SDSS               53
@@ -71,10 +62,12 @@
     #define MOSI_PIN           51
 
     #define LED_PIN            13
+    #define LED_PIN_ACTIVE_LOW false
 
     #define FAN_PIN            9 // (Sprinter config)
+    #define FAN_PIN_ACTIVE_LOW false
 
-  #define PS_ON_PIN          12
+  // #define POWER_SUPPLY_RELAY  12
 
   #if defined(REPRAP_DISCOUNT_SMART_CONTROLLER) || defined(G3D_PANEL)
     #define KILL_PIN           41
@@ -82,16 +75,20 @@
     #define KILL_PIN           -1
   #endif
 
-  #define HEATER_0_PIN       10   // EXTRUDER 1
-    #define HEATER_1_PIN       -1
-  #define HEATER_2_PIN       -1
+  #define HEATER_0_PIN        10   // EXTRUDER 1
+  #define H0_PIN_ACTIVE_LOW   false
+  // #define HEATER_1_PIN       -1
+  // #define HEATER_2_PIN       -1
 
   #define TEMP_0_PIN         13   // ANALOG NUMBERING
   // xxx messed up wiring, T1 and T2 swapped
   // #define TEMP_1_PIN         15   // ANALOG NUMBERING
   #define TEMP_1_PIN         14   // ANALOG NUMBERING
   #define TEMP_2_PIN         -1   // ANALOG NUMBERING
+
   #define HEATER_BED_PIN     8    // BED
+  #define HEATER_BED_ACTIVE  HIGH
+
   // xxx messed up wiring, T1 and T2 swapped
   // #define TEMP_BED_PIN       14   // ANALOG NUMBERING
   #define TEMP_BED_PIN       15   // ANALOG NUMBERING
@@ -178,15 +175,7 @@
     #endif
   #endif //ULTRA_LCD
 
-#endif // MOTHERBOARD == 33 || MOTHERBOARD == 34 || MOTHERBOARD == 77
-
-// SPI for Max6675 Thermocouple
-
-#ifndef SDSUPPORT
-  #define MAX6675_SS       53
-#else
-  #define MAX6675_SS       49
-#endif
+#endif // MOTHERBOARD == 2
 
 //
 // Filament sensor pins (half duplex/3wire spi)
@@ -197,5 +186,4 @@
 #define FILSENSMOSI  51
 #define FILSENSSCLK  52
 
-#endif //MOTHERBOARD == 3 || MOTHERBOARD == 33 || MOTHERBOARD == 34 || MOTHERBOARD == 77
 

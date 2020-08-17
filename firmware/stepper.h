@@ -17,64 +17,27 @@
 * along with ddprint.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-/*
-  stepper.h - stepper motor driver: executes motion plans of planner.c using the stepper motors
-  Part of Grbl
-
-  Copyright (c) 2009-2011 Simen Svale Skogsrud
-
-  Grbl is free software: you can redistribute it and/or modify
-  it under the terms of the GNU General Public License as published by
-  the Free Software Foundation, either version 3 of the License, or
-  (at your option) any later version.
-
-  Grbl is distributed in the hope that it will be useful,
-  but WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-  GNU General Public License for more details.
-
-  You should have received a copy of the GNU General Public License
-  along with Grbl.  If not, see <http://www.gnu.org/licenses/>.
-*/
-
 #pragma once
 
-#include "ddmacro.h"
-#include "pins.h"
+#include "ddprint.h"
 #include "move.h"
-#include "mdebug.h"
 
-#define ENABLE_STEPPER_DRIVER_INTERRUPT()  TIMSK1 |= (1<<OCIE1A)
-#define DISABLE_STEPPER_DRIVER_INTERRUPT() TIMSK1 &= ~(1<<OCIE1A)
+#define  enable_x() (X_ENABLE_PIN :: activate())
+#define disable_x() (X_ENABLE_PIN :: deActivate())
 
-#define ENABLE_STEPPER1_DRIVER_INTERRUPT()  TIMSK1 |= (1<<OCIE1B)
-#define DISABLE_STEPPER1_DRIVER_INTERRUPT() TIMSK1 &= ~(1<<OCIE1B)
-#define STEPPER1_DRIVER_INTERRUPT_ENABLED() (TIMSK1 & (1<<OCIE1B))
-
-#define  enable_x() WRITE(X_ENABLE_PIN, X_ENABLE_ON)
-#define disable_x() WRITE(X_ENABLE_PIN,!X_ENABLE_ON)
-
-#define  enable_y() WRITE(Y_ENABLE_PIN, Y_ENABLE_ON)
-#define disable_y() WRITE(Y_ENABLE_PIN,!Y_ENABLE_ON)
+#define  enable_y() (Y_ENABLE_PIN :: activate())
+#define disable_y() (Y_ENABLE_PIN :: deActivate())
 
 #ifdef Z_DUAL_STEPPER_DRIVERS
-  #define  enable_z() { WRITE(Z_ENABLE_PIN, Z_ENABLE_ON); WRITE(Z2_ENABLE_PIN, Z_ENABLE_ON); }
-  #define disable_z() { WRITE(Z_ENABLE_PIN,!Z_ENABLE_ON); WRITE(Z2_ENABLE_PIN,!Z_ENABLE_ON); }
+  #define  enable_z() { Z_ENABLE_PIN :: activate(); Z2_ENABLE_PIN :: activate(); }
+  #define disable_z() { Z_ENABLE_PIN :: deActivate(); Z2_ENABLE_PIN :: deActivate(); }
 #else
-  #define  enable_z() WRITE(Z_ENABLE_PIN, Z_ENABLE_ON)
-  #define disable_z() WRITE(Z_ENABLE_PIN,!Z_ENABLE_ON)
+  #define  enable_z() (Z_ENABLE_PIN :: activate())
+  #define disable_z() (Z_ENABLE_PIN :: deActivate())
 #endif
 
-#define enable_e0() WRITE(E0_ENABLE_PIN, E_ENABLE_ON)
-#define disable_e0() WRITE(E0_ENABLE_PIN,!E_ENABLE_ON)
-
-#if MOTOR_CURRENT_PWM_XY_PIN > -1
-extern const int motor_current_setting[3];
-#endif
-
-#ifdef ABORT_ON_ENDSTOP_HIT_FEATURE_ENABLED
-// extern bool abort_on_endstop_hit;
-#endif
+#define enable_e0() (E0_ENABLE_PIN :: activate())
+#define disable_e0() (E0_ENABLE_PIN :: deActivate())
 
 extern volatile int32_t current_pos_steps[NUM_AXIS];
 
@@ -93,6 +56,7 @@ void st_set_position_steps<ZAxisSelector>(long value);
 template<>
 void st_set_position_steps<EAxisSelector>(long value);
 
+#if 0
 template<typename MOVE>
 long st_get_position_steps();
 
@@ -104,6 +68,7 @@ template<>
 long st_get_position_steps<ZAxisSelector>();
 template<>
 long st_get_position_steps<EAxisSelector>();
+#endif
 
 //
 // Three different positions:
@@ -161,9 +126,9 @@ template<typename MOVE>
 inline void st_set_direction(uint8_t dirbits) {
 
     if (dirbits & st_get_move_bit_mask<MOVE>())
-        st_write_dir_pin<MOVE>(  st_get_positive_dir<MOVE>());
+        activate_dir_pin<MOVE>();
     else
-        st_write_dir_pin<MOVE>(! st_get_positive_dir<MOVE>());
+        deactivate_dir_pin<MOVE>();
 }
 
 #if 0
@@ -185,15 +150,6 @@ inline uint8_t st_get_direction() {
 }
 #endif
 
-#define X_ENDSTOP_PRESSED (READ(X_STOP_PIN) != X_ENDSTOPS_INVERTING)
-#define Y_ENDSTOP_PRESSED (READ(Y_STOP_PIN) != Y_ENDSTOPS_INVERTING)
-#define Z_ENDSTOP_PRESSED (READ(Z_STOP_PIN) != Z_ENDSTOPS_INVERTING)
-
-#define X_SW_ENDSTOP_PRESSED ((current_pos_steps[X_AXIS] < X_MIN_POS_STEPS) || (current_pos_steps[X_AXIS] > X_MAX_POS_STEPS))
-#define Y_SW_ENDSTOP_PRESSED ((current_pos_steps[Y_AXIS] < Y_MIN_POS_STEPS) || (current_pos_steps[Y_AXIS] > Y_MAX_POS_STEPS))
-// (current_pos_steps[Z_AXIS] < Z_MIN_POS_STEPS) || (current_pos_steps[Z_AXIS] > printer.z_max_pos_steps)
-#define Z_SW_ENDSTOP_PRESSED ((current_pos_steps[Z_AXIS] < Z_MIN_POS_STEPS) || (current_pos_steps[Z_AXIS] > Z_MAX_POS_STEPS))
-
 template<typename MOVE>
 bool st_endstop_pressed(bool);
 
@@ -204,8 +160,8 @@ inline bool st_endstop_pressed<XAxisSelector>(bool forward) {
 
     if (forward) {
         #if X_HOME_DIR > 0
-            if (X_ENDSTOP_PRESSED) {
-                if (nPresses++ > (AXIS_STEPS_PER_MM_X / 4))
+            if (X_STOP_PIN :: active()) {
+                if (nPresses++ > (printer.getStepsPerMMX() / 4))
                     return true;
                 return false;
             }
@@ -213,8 +169,8 @@ inline bool st_endstop_pressed<XAxisSelector>(bool forward) {
     }
     else {
         #if X_HOME_DIR < 0
-            if (X_ENDSTOP_PRESSED) {
-                if (nPresses++ > (AXIS_STEPS_PER_MM_X / 4))
+            if (X_STOP_PIN :: active()) {
+                if (nPresses++ > (printer.getStepsPerMMX() / 4))
                     return true;
                 return false;
             }
@@ -232,8 +188,8 @@ inline bool st_endstop_pressed<YAxisSelector>(bool forward) {
 
     if (forward) {
         #if Y_HOME_DIR > 0
-            if (Y_ENDSTOP_PRESSED) {
-                if (nPresses++ > (AXIS_STEPS_PER_MM_Y / 4))
+            if (Y_STOP_PIN :: active()) {
+                if (nPresses++ > (printer.getStepsPerMMY() / 4))
                     return true;
                 return false;
             }
@@ -241,8 +197,8 @@ inline bool st_endstop_pressed<YAxisSelector>(bool forward) {
     }
     else {
         #if Y_HOME_DIR < 0
-            if (Y_ENDSTOP_PRESSED) {
-                if (nPresses++ > (AXIS_STEPS_PER_MM_Y / 4))
+            if (Y_STOP_PIN :: active()) {
+                if (nPresses++ > (printer.getStepsPerMMY() / 4))
                     return true;
                 return false;
             }
@@ -260,8 +216,8 @@ inline bool st_endstop_pressed<ZAxisSelector>(bool forward) {
 
     if (forward) {
         #if Z_HOME_DIR > 0
-            if (Z_ENDSTOP_PRESSED) {
-                if (nPresses++ > (AXIS_STEPS_PER_MM_Z / 4))
+            if (Z_STOP_PIN :: active()) {
+                if (nPresses++ > (printer.getStepsPerMMZ() / 4))
                     return true;
                 return false;
             }
@@ -269,8 +225,8 @@ inline bool st_endstop_pressed<ZAxisSelector>(bool forward) {
     }
     else {
         #if Z_HOME_DIR < 0
-            if (Z_ENDSTOP_PRESSED) {
-                if (nPresses++ > (AXIS_STEPS_PER_MM_Z / 4))
+            if (Z_STOP_PIN :: active()) {
+                if (nPresses++ > (printer.getStepsPerMMZ() / 4))
                     return true;
                 return false;
             }
@@ -291,8 +247,8 @@ inline bool st_endstop_released<XAxisSelector>(bool forward) {
 
     if (forward) {
         #if X_HOME_DIR < 0
-            if (! X_ENDSTOP_PRESSED) {
-                if (nRelease++ > (AXIS_STEPS_PER_MM_X / 4))
+            if (X_STOP_PIN :: deActive()) {
+                if (nRelease++ > (printer.getStepsPerMMX() / 4))
                     return true;
                 return false;
             }
@@ -300,8 +256,8 @@ inline bool st_endstop_released<XAxisSelector>(bool forward) {
     }
     else {
         #if X_HOME_DIR > 0
-            if (! X_ENDSTOP_PRESSED) {
-                if (nRelease++ > (AXIS_STEPS_PER_MM_X / 4))
+            if (X_STOP_PIN :: deActive()) {
+                if (nRelease++ > (printer.getStepsPerMMX() / 4))
                     return true;
                 return false;
             }
@@ -319,8 +275,8 @@ inline bool st_endstop_released<YAxisSelector>(bool forward) {
 
     if (forward) {
         #if Y_HOME_DIR < 0
-            if (! Y_ENDSTOP_PRESSED) {
-                if (nRelease++ > (AXIS_STEPS_PER_MM_Y / 4))
+            if (Y_STOP_PIN :: deActive()) {
+                if (nRelease++ > (printer.getStepsPerMMY() / 4))
                     return true;
                 return false;
             }
@@ -328,8 +284,8 @@ inline bool st_endstop_released<YAxisSelector>(bool forward) {
     }
     else {
         #if Y_HOME_DIR > 0
-            if (! Y_ENDSTOP_PRESSED) {
-                if (nRelease++ > (AXIS_STEPS_PER_MM_Y / 4))
+            if (Y_STOP_PIN :: deActive()) {
+                if (nRelease++ > (printer.getStepsPerMMY() / 4))
                     return true;
                 return false;
             }
@@ -347,8 +303,8 @@ inline bool st_endstop_released<ZAxisSelector>(bool forward) {
 
     if (forward) {
         #if Z_HOME_DIR < 0
-            if (! Z_ENDSTOP_PRESSED) {
-                if (nRelease++ > (AXIS_STEPS_PER_MM_Z / 4))
+            if (Z_STOP_PIN :: deActive()) {
+                if (nRelease++ > (printer.getStepsPerMMZ() / 4))
                     return true;
                 return false;
             }
@@ -356,8 +312,8 @@ inline bool st_endstop_released<ZAxisSelector>(bool forward) {
     }
     else {
         #if Z_HOME_DIR > 0
-            if (! Z_ENDSTOP_PRESSED) {
-                if (nRelease++ > (AXIS_STEPS_PER_MM_Z / 4))
+            if (Z_STOP_PIN :: deActive()) {
+                if (nRelease++ > (printer.getStepsPerMMZ() / 4))
                     return true;
                 return false;
             }
@@ -375,14 +331,18 @@ inline void st_step_motor(uint8_t stepBits, uint8_t dirbits) {
 
     if (stepBits & mask) {
 
-        st_write_step_pin<MOVE>(HIGH);
+        activate_step_pin<MOVE>();
+
+        #if defined(STEPPER_MINPULSE)
+            delayMicroseconds(STEPPER_MINPULSE);
+        #endif
 
         if (dirbits & mask)
             st_inc_current_pos_steps<MOVE>();
         else
             st_dec_current_pos_steps<MOVE>();
-
-        st_write_step_pin<MOVE>(LOW);
+        
+        deactivate_step_pin<MOVE>();
     }
 }
 
@@ -412,14 +372,18 @@ inline void st_step_motor_es(uint8_t stepBits, uint8_t dirbits) {
             return;
         }
 
-        st_write_step_pin<MOVE>(HIGH);
+        activate_step_pin<MOVE>();
+
+        #if defined(STEPPER_MINPULSE)
+            delayMicroseconds(STEPPER_MINPULSE);
+        #endif
 
         if (forward)
             st_inc_current_pos_steps<MOVE>();
         else
             st_dec_current_pos_steps<MOVE>();
 
-        st_write_step_pin<MOVE>(LOW);
+        deactivate_step_pin<MOVE>();
     }
 }
 
@@ -543,7 +507,7 @@ class StepBuffer {
                     enable_e0();
 
                     // Direction forward
-                    st_write_dir_pin<EAxisSelector>( st_get_positive_dir<EAxisSelector>() );
+                    E0_DIR_PIN :: activate();
 
                     // Start interrupt
                     ENABLE_STEPPER1_DRIVER_INTERRUPT();
@@ -568,7 +532,7 @@ class StepBuffer {
                 if (empty()) {
 
                     // Empty buffer, nothing to step
-                    OCR1A = 2000; // 1kHz.
+                    HAL_SET_STEPPER_TIMER(2000); // 1kHz.
                 }
                 else {
 
@@ -582,7 +546,7 @@ class StepBuffer {
 
                     stepData &sd = pop();
 
-                    OCR1A = sd.timer;
+                    HAL_SET_STEPPER_TIMER(sd.timer);
 
                     if (sd.dirBits & 0x80) {
 
@@ -601,7 +565,6 @@ class StepBuffer {
                 }
             }
 
-        // FWINLINE void runHomingSteps() {
         FWINLINE void runMiscSteps() {
 
             if (miscStepperMode == HOMINGMODE)
@@ -615,13 +578,13 @@ class StepBuffer {
             if (empty()) {
 
                 // Empty buffer, nothing to step
-                OCR1A = OCR1B = 2000; // 1kHz.
+                HAL_SET_HOMING_TIMER(2000); // 1kHz.
             }
             else {
 
                 stepData &sd = pop();
 
-                OCR1A = OCR1B = sd.timer;
+                HAL_SET_HOMING_TIMER(sd.timer);
 
                 // * Set direction 
                 if (sd.dirBits & 0x80) {
@@ -643,7 +606,7 @@ class StepBuffer {
 
         FWINLINE void runContinuosSteps() {
 
-            OCR1A = OCR1B = continuosTimer;
+            HAL_SET_HOMING_TIMER(continuosTimer);
             st_step_motor<EAxisSelector>(st_get_move_bit_mask<EAxisSelector>(), st_get_move_bit_mask<EAxisSelector>());
         }
 

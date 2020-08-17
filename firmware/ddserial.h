@@ -20,12 +20,16 @@
 #pragma once
 
 #include <Arduino.h>
-#include <avr/io.h>
-#include <avr/pgmspace.h>
-#include <util/crc16.h>
 
+#if defined(AVR)
+    #include <avr/io.h>
+    #include <avr/pgmspace.h>
+#endif
+
+#include "hal.h"
 #include "Protothread.h"
 #include "mdebug.h"
+#include "crc16.h"
 
 // Size of tx buffer in bytes
 // Note: Using a buffer size of 256 bytes has two big advantages:
@@ -38,7 +42,10 @@
 // Serial communication ACK
 #define RESPUSBACK 0x6
 
-
+//
+// stm32 port:
+// Note: rx/tx buffer memory wasted in struct usart_dev.
+//
 class TxBuffer: public Protothread {
 
     private:
@@ -47,7 +54,7 @@ class TxBuffer: public Protothread {
 
         // Checksum for response messages
         uint16_t checksum;
-        // Number of (cobs encoded) messages in buffer
+        // Number of (cobs encoded) messages to send in buffer
         uint8_t nMessages;
 
         uint8_t charToSend;
@@ -57,6 +64,7 @@ class TxBuffer: public Protothread {
 
         int16_t cf, csh, csl;
 
+public:
         FWINLINE bool pushByte(uint8_t c) {
 
 // #if defined(HEAVYDEBUG)
@@ -129,9 +137,11 @@ class TxBuffer: public Protothread {
 
             while (nMessages) {
 
-                PT_WAIT_UNTIL((UCSR0A) & (1 << UDRE0));
+                // PT_WAIT_UNTIL((UCSR0A) & (1 << UDRE0));
+                PT_WAIT_UNTIL( SERIAL_TX_DR_EMPTY() );
                 charToSend = pop();
-                UDR0 = charToSend;
+                // UDR0 = charToSend;
+                SERIAL_TX_DR_PUTC( charToSend );
 
                 simassert(charToSend == 0);
 
@@ -141,8 +151,10 @@ class TxBuffer: public Protothread {
                 charToSend = peek();
                 while (charToSend) {
 
-                    PT_WAIT_UNTIL((UCSR0A) & (1 << UDRE0));
-                    UDR0 = charToSend;
+                    // PT_WAIT_UNTIL((UCSR0A) & (1 << UDRE0));
+                    PT_WAIT_UNTIL( SERIAL_TX_DR_EMPTY() );
+                    // UDR0 = charToSend;
+                    SERIAL_TX_DR_PUTC( charToSend );
 
                     // printf("%02x", charToSend);
 
@@ -175,14 +187,22 @@ class TxBuffer: public Protothread {
 
                 // printf(" checksum flags: 0x%x\n", cf);
 
-                PT_WAIT_UNTIL((UCSR0A) & (1 << UDRE0));
-                UDR0 = cf;
+                // PT_WAIT_UNTIL((UCSR0A) & (1 << UDRE0));
+                PT_WAIT_UNTIL( SERIAL_TX_DR_EMPTY() );
+                // UDR0 = cf;
+                SERIAL_TX_DR_PUTC( cf );
 
-                PT_WAIT_UNTIL((UCSR0A) & (1 << UDRE0));
-                UDR0 = csl;
+                // PT_WAIT_UNTIL((UCSR0A) & (1 << UDRE0));
+                PT_WAIT_UNTIL( SERIAL_TX_DR_EMPTY() );
+                // UDR0 = csl;
+                SERIAL_TX_DR_PUTC( csl );
 
-                PT_WAIT_UNTIL((UCSR0A) & (1 << UDRE0));
-                UDR0 = csh;
+                // PT_WAIT_UNTIL((UCSR0A) & (1 << UDRE0));
+                PT_WAIT_UNTIL( SERIAL_TX_DR_EMPTY() );
+                // UDR0 = csh;
+                SERIAL_TX_DR_PUTC( csh );
+
+                PT_WAIT_UNTIL( SERIAL_TX_COMPLETE() );
 
                 nMessages--;
                 // Init cobs encoder

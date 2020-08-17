@@ -126,7 +126,7 @@ class TempControl: public Protothread
             //
             eSumLimit = 255.0 / ((ki * TIMER100MS) / 1000.0);
         }
-        uint8_t getPwmOutput() { return (uint8_t) STD max(pid_output, 0); }
+        uint8_t getPwmOutput() { return (uint8_t) STD max(pid_output, (int32_t)0); }
 };
 
 extern TempControl tempControl;

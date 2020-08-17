@@ -14,7 +14,7 @@ AVRDUDE_ARD_PROGRAMMER = wiring
 
 SDFAT = ../../SdFat-1.0.5
 
-ARDUINO_LIBS = fw SdCard
+ARDUINO_LIBS = SdCard
 
 USER_LIB_PATH = .
 
@@ -27,7 +27,7 @@ NO_CORE_MAIN_CPP = 1
 include ../../Arduino-Makefile/Arduino.mk
 
 # Mega/Ramps board
-CPPFLAGS      +=  -DMOTHERBOARD=72 -I.
+CPPFLAGS      +=  -DMOTHERBOARD=1 -Iavr -I.
 CPPFLAGS      +=  -I$(SDFAT)/src 
 CPPFLAGS      +=  -I$(ARDUINO_PLATFORM_LIB_PATH)
 

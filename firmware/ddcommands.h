@@ -115,7 +115,13 @@
 #define CmdGetFreeMem           175 // Get number of free memory bytes [uint16]
 #define CmdGetFSReadings        176 // Get last n filsensor readings 
 #define CmdSetTempPWM           177 // Set PWM value of hotend heater (for filament profile measurement)
-#define CmdSoftStop             180 // # Stop printer softly after current path is finished.  
+#define CmdSoftStop             180 // Stop printer softly after current path is finished.  
+#define CmdBootBootloader       181 // Reboot into bootloader (stm32)
+#define CmdReadGpio             182 // Read a gpio port, used to determine pinmap.
+#define CmdSetGpio              183 // Set a gpio port, dangerous, used to determine pinmap.
+#define CmdReadAnalogGpio       184 // Read a analog value from gpio port, used to determine pinmap.
+#define CmdSetStepsPerMM        185 // Initial printer settings: steps per mm for X/Y/Z
+#define CmdSetHostSettings      186 // Initial printer settings
 
 //
 // Response types 
