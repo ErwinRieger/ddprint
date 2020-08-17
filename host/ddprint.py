@@ -263,7 +263,7 @@ def main():
     sp.add_argument("distance", action="store", help="Move-distance (+/-) in mm.", type=float)
 
     sp = subparsers.add_parser("calibrateESteps", help=u"Debug: helper to determine the e-steps value.")
-    sp.add_argument("printer", help="Name of printer profile to use.")
+    # sp.add_argument("printer", help="Name of printer profile to use.")
 
     sp = subparsers.add_parser("calibrateFilSensor", help=u"Debug: helper to determine the ratio of stepper to flowrate sensor.")
     sp.add_argument("printer", help="Name of printer profile to use.")
