@@ -181,6 +181,8 @@ def calibrateESteps(args, printer, planner):
     dFeederWheel = PrinterProfile.getFeederWheelDiam()
     writeDataSet(dFeederWheel, feedrate, crossAvg.data, "calibrateESteps_dataset")
 
+    pp = PrinterProfile.get()
+
     if crossAvg.locked:
 
         meanShort = crossAvg.locked[2]
@@ -189,7 +191,7 @@ def calibrateESteps(args, printer, planner):
         print "avg lock at t:", crossAvg.locked[1], meanLong, avg, "%.1f%%" % (((meanLong/avg)-1.0)*100)
    
         # should be speed:
-        s = (feedrate * PrinterProfile.getFilSensorCountsPerMM()) * dt
+        s = (feedrate * pp.getFilSensorCountsPerMM()) * dt
 
         print "speed should be:", s
 
