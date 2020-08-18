@@ -1041,6 +1041,8 @@ def removeFilament(args, parser, feedrate):
 
 def bedLeveling(args, parser, planner, printer):
 
+    pp = PrinterProfile.get()
+
     # Reset bedlevel offset in printer profile
     PrinterProfile.get().override("add_homeing_z", 0)
 
@@ -1048,6 +1050,28 @@ def bedLeveling(args, parser, planner, printer):
 
     zFeedrate = PrinterProfile.getMaxFeedrate(Z_AXIS)
     kbd = GetChar("Enter (u)p (d)own (U)p 1mm (D)own 1mm (2-5) Up Xmm (q)uit")
+
+    # "bedLevelMode": "Triangle3Point"
+    levelMode = pp.getBedLevelMode()
+
+    if levelMode == "Triangle3Point":
+        # Ultimaker UM2 style, 3 srews triangle shaped
+        levelPoints = [
+                (planner.X_MAX_POS/2, planner.Y_MAX_POS-15, planner.HEAD_HEIGHT, "back mid"),
+                (15, 15, planner.LEVELING_OFFSET, "front left"),
+                (planner.X_MAX_POS-15, 15, planner.LEVELING_OFFSET, "front right"),
+                ]
+    elif levelMode == "U5Point":
+        # JennyPrinter style, 5 srews in an U-shape
+        levelPoints = [
+                (15, 15, planner.HEAD_HEIGHT, "front left"),
+                (15, planner.Y_MAX_POS-15, planner.LEVELING_OFFSET, "back left"),
+                (planner.X_MAX_POS/2, planner.Y_MAX_POS-15, planner.LEVELING_OFFSET, "back mid"),
+                (planner.X_MAX_POS-15, planner.Y_MAX_POS-15, planner.LEVELING_OFFSET, "back right"),
+                (planner.X_MAX_POS-15, 15, planner.LEVELING_OFFSET, "front right"),
+                ]
+    else:
+        assert(0)
 
     def manualMoveZ():
 
@@ -1088,69 +1112,54 @@ def bedLeveling(args, parser, planner, printer):
 
     feedrate = PrinterProfile.getMaxFeedrate(X_AXIS)
 
-    #######################################################################################################
-    print "Level point 1/3"
+    pointNumber = 0
+    for (x, y, z, pointName) in levelPoints:
 
-    parser.execute_line("G0 F%d X%f Y%f Z%f" % (feedrate*60, planner.X_MAX_POS/2, planner.Y_MAX_POS - 10, planner.HEAD_HEIGHT))
+        print "Leveling point %d/%d" % (pointNumber+1, len(levelPoints))
 
-    planner.finishMoves()
-    printer.sendCommandParamV(CmdMove, [MoveTypeNormal])
-    printer.sendCommand(CmdEOT)
+        if pointNumber == 0:
+            parser.execute_line("G0 F%d X%f Y%f Z%f" % (feedrate*60, x, y, z))
+        else:
+            parser.execute_line("G0 F%d Z5" % (zFeedrate*60))
+            parser.execute_line("G0 F%d X%f Y%f" % (feedrate*60, x, y))
+            parser.execute_line("G0 F%d Z%f" % (zFeedrate*60, z))
 
-    printer.waitForState(StateInit, wait=0.1)
+        planner.finishMoves()
+        printer.sendCommandParamV(CmdMove, [MoveTypeNormal])
+        printer.sendCommand(CmdEOT)
+        printer.waitForState(StateInit, wait=0.1)
 
-    manualMoveZ()
+        if pointNumber == 0:
 
-    current_position = parser.getPos()
-    print "curz: ", current_position[Z_AXIS]
+            manualMoveZ()
 
-    add_homeing_z = (current_position[Z_AXIS] * -1) + planner.LEVELING_OFFSET
+            current_position = parser.getPos()
+            print "curz: ", current_position[Z_AXIS]
 
-    # Store into printer profile:
-    PrinterProfile.get().override("add_homeing_z", add_homeing_z)
+            add_homeing_z = (current_position[Z_AXIS] * -1) + planner.LEVELING_OFFSET
 
-    # Finally we know the zero z position
-    current_position[Z_AXIS] = planner.LEVELING_OFFSET;
+            # Store into printer profile (not persistent, just for the rest of the levelling procedure):
+            pp.override("add_homeing_z", add_homeing_z)
 
-    # Adjust the virtual position
-    parser.setPos(current_position)
+            # Finally we know the zero z position
+            current_position[Z_AXIS] = planner.LEVELING_OFFSET;
 
-    # Adjust the printer position
-    posStepped = vectorMul(current_position, parser.steps_per_mm)
-    payload = struct.pack("<iiiii", *posStepped)
-    printer.sendCommand(CmdSetHomePos, binPayload=payload)
+            # Adjust the virtual position
+            parser.setPos(current_position)
 
-    #######################################################################################################
-    print "Level point 2/3", current_position
+            # Adjust the printer position in firmware part
+            posStepped = vectorMul(current_position, parser.steps_per_mm)
+            payload = struct.pack("<iiiii", *posStepped)
+            printer.sendCommand(CmdSetHomePos, binPayload=payload)
 
-    parser.execute_line("G0 F%d Z5" % (zFeedrate*60))
-    parser.execute_line("G0 F%d X35 Y20" % (feedrate*60))
-    parser.execute_line("G0 F%d Z%f" % (zFeedrate*60, planner.LEVELING_OFFSET))
+        else:
+        
+            raw_input("\nAdjust %s buildplate screw and press <Return>\n" % pointName)
 
-    planner.finishMoves()
-    printer.sendCommandParamV(CmdMove, [MoveTypeNormal])
-    printer.sendCommand(CmdEOT)
-
-    printer.waitForState(StateInit, wait=0.1)
-
-    raw_input("\nAdjust left front buildplate screw and press <Return>\n")
-
-    #######################################################################################################
-    print "Level point 3/3", current_position
-
-    parser.execute_line("G0 F%d Z5" % (zFeedrate*60))
-    parser.execute_line("G0 F%d X%f" % (feedrate*60, planner.X_MAX_POS-10))
-    parser.execute_line("G0 F%d Z%f" % (zFeedrate*60, planner.LEVELING_OFFSET))
-
-    planner.finishMoves()
-    printer.sendCommandParamV(CmdMove, [MoveTypeNormal])
-    printer.sendCommand(CmdEOT)
-
-    printer.waitForState(StateInit, wait=0.1)
-
-    raw_input("\nAdjust right fron buildplate screw and press <Return>\n")
+        pointNumber += 1
 
     ddhome.home(args, printer, planner, parser)
+    printer.sendCommand(CmdDisableSteppers) # Force homing/reset
 
     raw_input("\n! Please update your Z-Offset (add_homeing_z) in printer profile: %.3f\n" % add_homeing_z)
 

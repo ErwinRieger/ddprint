@@ -272,6 +272,8 @@ class PrinterProfile(ProfileBase):
     def getPlatformLength(cls, axisNr):
         return cls.get().getValue("axes")[dimNames[axisNr]]["platform_length"]
 
+    def getBedLevelMode(self):
+        return self.getValue("bedLevelMode")
 
 ####################################################################################################
 #
