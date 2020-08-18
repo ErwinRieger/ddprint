@@ -139,63 +139,70 @@ void TempControl::heater() {
         }
         else {
 
-            // y = Kp*e + Ki*Ta*esum + Kd/Ta*(e – ealt);   //Reglergleichung
+            if (pwmValueOverride) {
 
-            // PID interval [s]
-            unsigned long ts = millis();
-            float pid_dt = (ts - lastPidCompute) / 1000.0;
-
-            // Regeldifferenz, grösser 0 falls temperatur zu klein
-            float e = target_temperature[0] - current_temperature[0];
-
-            eSum = constrain(
-                eSum + e,
-                -eSumLimit,
-                eSumLimit);
-
-            float pTerm = Kp * e;
-
-            float iTerm = Ki * pid_dt * eSum;
-
-            float dTerm = Kd * (e - eAlt) / pid_dt;
-
-            // int32_t pid_output = cobias + pTerm + iTerm + dTerm + 0.5;
-            pid_output = pTerm + iTerm + dTerm + 0.5;
-
-            if (pid_output > PID_MAX) {
-                pid_output = PID_MAX;
+                HEATER_0_PIN :: write(pwmValueOverride);
             }
-            else if (pid_output < -PID_MAX) {
-                pid_output = -PID_MAX;
-            }
+            else {
 
-            if ((pid_output < suggestPwm) && (e > 0.0)) {
-                pid_output = suggestPwm;
-            }
+                // y = Kp*e + Ki*Ta*esum + Kd/Ta*(e – ealt);   //Reglergleichung
 
-            HEATER_0_PIN :: write( max(pid_output, (int32_t)0) );
+                // PID interval [s]
+                unsigned long ts = millis();
+                float pid_dt = (ts - lastPidCompute) / 1000.0;
+
+                // Regeldifferenz, grösser 0 falls temperatur zu klein
+                float e = target_temperature[0] - current_temperature[0];
+
+                eSum = constrain(
+                    eSum + e,
+                    -eSumLimit,
+                    eSumLimit);
+
+                float pTerm = Kp * e;
+
+                float iTerm = Ki * pid_dt * eSum;
+
+                float dTerm = Kd * (e - eAlt) / pid_dt;
+
+                // int32_t pid_output = cobias + pTerm + iTerm + dTerm + 0.5;
+                pid_output = pTerm + iTerm + dTerm + 0.5;
+
+                if (pid_output > PID_MAX) {
+                    pid_output = PID_MAX;
+                }
+                else if (pid_output < -PID_MAX) {
+                    pid_output = -PID_MAX;
+                }
+
+                if ((pid_output < suggestPwm) && (e > 0.0)) {
+                    pid_output = suggestPwm;
+                }
+
+                HEATER_0_PIN :: write( max(pid_output, (int32_t)0) );
 
 #ifdef PID_DEBUG
-            static int dbgcount=0;
+                static int dbgcount=0;
     
-            if ((dbgcount++ % 10) == 0) {
-                txBuffer.sendResponseStart(RespUnsolicitedMsg);
-                txBuffer.sendResponseUint8(PidDebug);
-                txBuffer.sendResponseValue(pid_dt);
-                txBuffer.sendResponseValue(pTerm);
-                txBuffer.sendResponseValue(iTerm);
-                txBuffer.sendResponseValue(dTerm);
-                /* txBuffer.sendResponseValue(pwmSum); */
-                txBuffer.sendResponseValue(pid_output);
-                txBuffer.sendResponseValue(e);
-                txBuffer.sendResponseEnd();
-            }
+                if ((dbgcount++ % 10) == 0) {
+                    txBuffer.sendResponseStart(RespUnsolicitedMsg);
+                    txBuffer.sendResponseUint8(PidDebug);
+                    txBuffer.sendResponseValue(pid_dt);
+                    txBuffer.sendResponseValue(pTerm);
+                    txBuffer.sendResponseValue(iTerm);
+                    txBuffer.sendResponseValue(dTerm);
+                    /* txBuffer.sendResponseValue(pwmSum); */
+                    txBuffer.sendResponseValue(pid_output);
+                    txBuffer.sendResponseValue(e);
+                    txBuffer.sendResponseEnd();
+                }
 
 #endif //PID_DEBUG
 
-            // Kept values of last pidrun
-            eAlt = e;
-            lastPidCompute = ts;
+                // Kept values of last pidrun
+                eAlt = e;
+                lastPidCompute = ts;
+            }
         }
     }
 
@@ -244,6 +251,8 @@ void TempControl::setTempPWM(uint8_t heater, uint8_t pwmValue) {
         pwmMode = true;
     else
         pwmMode = false;
+
+    pwmValueOverride = pwmValue;
 }
 
 void TempControl::hotendOn(uint8_t heater) {
