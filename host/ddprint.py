@@ -266,7 +266,7 @@ def main():
     # sp.add_argument("printer", help="Name of printer profile to use.")
 
     sp = subparsers.add_parser("calibrateFilSensor", help=u"Debug: helper to determine the ratio of stepper to flowrate sensor.")
-    sp.add_argument("printer", help="Name of printer profile to use.")
+    # sp.add_argument("printer", help="Name of printer profile to use.")
 
     args = argParser.parse_args()
 
@@ -278,8 +278,8 @@ def main():
 
         printer = Printer()
         initPrinterProfile(args)
-        initMatProfile(args, printer.getPrinterName())
-        util.measureHotendStepResponse(args)
+        matProfile = initMatProfile(args, printer.getPrinterName())
+        util.measureHotendStepResponse(args, printer, matProfile)
 
     elif args.mode == 'bootBootloader':
 

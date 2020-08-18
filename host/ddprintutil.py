@@ -1444,25 +1444,25 @@ def stepResponse(args, parser):
     f.write("e\npause mouse close\n")
     stopHeater()
 
-def measureHotendStepResponse(args):
+def measureHotendStepResponse(args, printer, matProfile):
 
     print "*************************************************************"
     print "* Record open loop step response of hotend to determine     *"
     print "* the pid control parameters for temperature control.       *"
     print "*************************************************************"
 
-    printer = Printer.get()
-
     def stopHeater():
         printer.setTempPWM(HeaterEx1, 0)
 
     printer.commandInit(args, PrinterProfile.getSettings())
 
-    tmax = planner.matProfile.getHotendMaxTemp()
+    tmax = matProfile.getHotendMaxTemp()
 
     ## Eingangssprung, nicht die volle leistung, da sonst die temperatur am ende
     ## der sprungantwort zu stark überschwingt und zu hoch wird.
-    Xo = 100.0
+    # TODO: move to printer profile
+    Xo = 100.0 # UM2
+    Xo = 25.0  # Jennyprinter
     interval = 0.1
 
     navg = int(round(30/interval))
