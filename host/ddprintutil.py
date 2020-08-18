@@ -1066,9 +1066,9 @@ def bedLeveling(args, parser, planner, printer):
         levelPoints = [
                 (15, 15, planner.HEAD_HEIGHT, "front left"),
                 (15, planner.Y_MAX_POS-15, planner.LEVELING_OFFSET, "back left"),
-                (planner.X_MAX_POS/2, planner.Y_MAX_POS-15, planner.LEVELING_OFFSET, "back mid"),
                 (planner.X_MAX_POS-15, planner.Y_MAX_POS-15, planner.LEVELING_OFFSET, "back right"),
                 (planner.X_MAX_POS-15, 15, planner.LEVELING_OFFSET, "front right"),
+                (planner.X_MAX_POS/2, planner.Y_MAX_POS-15, planner.LEVELING_OFFSET, "back mid"),
                 ]
     else:
         assert(0)
