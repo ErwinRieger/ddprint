@@ -53,7 +53,7 @@
 
 #define E0_STEP_PIN             DigitalOutput<1, ACTIVEHIGHPIN>  // ["GPIOA","D01","PA1"],  # Known: Output, E0-Step
 // Active state is forward direction (positive)
-#define E0_DIR_PIN              DigitalOutput<16, ACTIVELOWPIN>  // ["GPIOB","D16","PB0"],  # Known: Output, E0-Dir
+#define E0_DIR_PIN              DigitalOutput<16, ACTIVEHIGHPIN>  // ["GPIOB","D16","PB0"],  # Known: Output, E0-Dir
 #define E0_ENABLE_PIN           DigitalOutput<37, ACTIVELOWPIN>  // ["GPIOC","D37","PC5"],  # Known: Output, E0-Enable, active low
 // #define E0_ENABLE_ACTIVE    LOW
 
@@ -87,9 +87,8 @@
 #define FAN_PIN                 PWMOutput<22, ACTIVELOWPIN>  // ["GPIOB","D22","PB6"],  # Known: Output, Fan 0, Part cooling fan, active low
 // #define FAN_PIN_ACTIVE_LOW  true
 
-#define TEMP_BED_PIN            AnalogInput<32, 10> // ["GPIOC","D32","PC0"],  # Known: Analog Input, Temp. PT100 Sensor X
-#define TEMP_0_PIN              AnalogInput<33, 11>
-// #define TEMP_0_PIN              AnalogInput<33, 11> // ["GPIOC","D33","PC1"],  # Known: Analog Input, Temp. PT100 Sensor X 
+#define TEMP_BED_PIN            AnalogInput<33, 11> // ["GPIOC","D33","PC1"],  # Known: Analog Input, Temp. PT100 Sensor BED
+#define TEMP_0_PIN              AnalogInput<32, 10> // ["GPIOC","D32","PC0"],  # Known: Analog Input, Temp. PT100 Sensor X
 // #define TEMP_1_PIN              AnalogInput<35, 13> // ["GPIOC","D35","PC3"],  # Known: Analog Input, Temp. PT100 Sensor X 
 // #define TEMP_2_PIN              AnalogInput<34, 12> // ["GPIOC","D34","PC2"],  # Known: Analog Input, Temp. PT100 Sensor, nothing connected
 
