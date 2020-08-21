@@ -806,8 +806,62 @@ class Printer(Serial):
 
         print "\n"
 
-   ####################################################################################################
-   # Start printing process, and record print start time
+    ####################################################################################################
+    #
+    # Slowly increase temperature (from off or a low value) to avoid big overshot,
+    # this is some sort *setpoint ramping*.
+    #
+    # Note: Without ramping, the Ziegler Nichols (0.9) pid settings on the UM2 gives about 40%
+    #       overshot when starting from room temperature, the Jennyprinter gives about 35% overshot.
+    #
+    def heatUpRamp(self, printerProfile, heater, tdest, log=False):
+
+        assert(type(tdest) == types.IntType)
+
+        # Ramp up time: tg from the autotune step response.
+        timeConstant = printerProfile.getTg() 
+
+        status = self.getStatus()
+        startTemp = status["t1"]
+        startTime = time.time()
+
+        a = tdest / timeConstant
+
+        print "Start temprapmp...", tdest, timeConstant, a
+
+        if a <= 0:
+            payload = struct.pack("<BH", heater, tdest)
+            self.sendCommand(CmdSetTargetTemp, binPayload=payload)
+            return
+
+        step = 1
+
+        while True:
+
+            status = self.getStatus()
+            temp = status["t1"]
+
+            if temp < tdest-2:
+
+                t = startTemp + (time.time() - startTime) * a
+
+                print "temp is below dest", temp, t, tdest
+
+                payload = struct.pack("<BH", heater, t)
+                self.sendCommand(CmdSetTargetTemp, binPayload=payload)
+
+                yield(temp)
+
+            else:
+
+                print "temp reached"
+                payload = struct.pack("<BH", heater, tdest)
+                self.sendCommand(CmdSetTargetTemp, binPayload=payload)
+                yield(temp)
+                break
+
+    ####################################################################################################
+    # Start printing process, and record print start time
     def startPrint(self):
 
         self.printStartedAt = time.time()

@@ -19,7 +19,7 @@
 # along with ddprint.  If not, see <http://www.gnu.org/licenses/>.
 #*/
 
-import struct, time, math, tty, termios, sys, types, json
+import struct, time, math, tty, termios, sys, types, json, fcntl, os
 import ddprintconstants, ddhome, ddadvance, pprint, movingavg
 
 from ddprintcommands import *
@@ -613,13 +613,14 @@ class MyPoint:
 
 class GetChar:
 
-    def __init__(self, msg):
+    def __init__(self, msg=""):
         self.msg = msg
         self.fd = sys.stdin.fileno()
         try:
-            self.old = termios.tcgetattr(self.fd)
+            self.prevTcattr = termios.tcgetattr(self.fd)
         except termios.error:
-            self.old = None
+            self.prevTcattr = None
+        self.prevFcntl = fcntl.fcntl(sys.stdin, fcntl.F_GETFL) 
 
     def getc(self):
 
@@ -627,10 +628,24 @@ class GetChar:
         try:
             tty.setcbreak(self.fd)
         except termios.error:
-            self.old = None
+            self.prevTcattr = None
         ch = sys.stdin.read(1)
-        if self.old:
-            termios.tcsetattr(self.fd, termios.TCSADRAIN, self.old)
+        if self.prevTcattr:
+            termios.tcsetattr(self.fd, termios.TCSADRAIN, self.prevTcattr)
+        return ch
+
+    def getcNB(self):
+
+        # print self.msg
+        fcntl.fcntl(sys.stdin, fcntl.F_SETFL, self.prevFcntl | os.O_NONBLOCK)
+
+        ch = None
+        try:
+            ch = sys.stdin.read(1)
+        except IOError:
+            pass
+
+        fcntl.fcntl(sys.stdin, fcntl.F_SETFL, self.prevFcntl)
         return ch
 
 ####################################################################################################
@@ -1208,13 +1223,24 @@ def stopMove(args, parser):
 
 def heatHotend(args, printer):
 
+    pp = PrinterProfile.get()
+
     printer.commandInit(args, PrinterProfile.getSettings())
 
     t1 = args.t1 or planner.matProfile.getHotendGoodTemp()
 
-    printer.heatUp(HeaterEx1, t1, wait=t1-5, log=True)
+    # printer.heatUp(HeaterEx1, t1, wait=t1-5, log=True)
+    iter = printer.heatUpRamp(pp, HeaterEx1, t1, log=True)
+    for temp in iter:
+        time.sleep(1)
 
-    raw_input("Press return to stop heating...")
+    kbd = GetChar()
+
+    print("Press return to stop heating...")
+    while not kbd.getcNB():
+        status = printer.getStatus()
+        printer.ppStatus(status)
+        time.sleep(1)
 
     if not args.noCoolDown:
         printer.coolDown(HeaterEx1, wait=150, log=True)
@@ -1982,8 +2008,11 @@ def measureTempFlowrateCurve(args, parser):
 
       pwmAvg = movingavg.MovingAvg(nAvg)
 
-      print "Setting target temp:", t1
-      printer.heatUp(HeaterEx1, t1, wait=t1-dTemp, log=True)
+      print "Ramping up to target temp:", t1
+      # printer.heatUp(HeaterEx1, t1, wait=t1-dTemp, log=True)
+      iter = printer.heatUpRamp(printerProfile, HeaterEx1, t1, log=True)
+      for temp in iter:
+          time.sleep(1)
 
       # Set extruder motor speed
       print "\nRunning extruder motor with %.2f mm/s" % feedrate
@@ -2499,6 +2528,8 @@ def measureTempFlowrateCurve2(args, parser, planner, printer, printerProfile):
     curPosMM = getVirtualPos(parser)
     while curPosMM.Z >= lh:
         print "waiting for first layer, Z pos:", curPosMM.Z
+        status = printer.getStatus()
+        printer.ppStatus(status)
         time.sleep(1)
         curPosMM = getVirtualPos(parser)
 
