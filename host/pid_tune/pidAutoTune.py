@@ -124,11 +124,19 @@ print "Tu from tangent:", ttu
 print "\nAverage Tg/Tu:"
 Tg = (Tg1+Tg2+ttg)/3.0
 Tu = (Tu1+Tu2+ttu)/3.0
-print "Tu, Tu:", Tu
-print "Tg, Tg:", Tg
+print "Tu:", Tu
+print "Tg:", Tg
 
-print "\nZiegler PID:"
-Kr = (0.9 / Ks) * (Tg / Tu) 
+print "\nZiegler PID 0.9:"
+Kr = (0.9 / Ks) * (Tg / Tu)
+Tn = 2.0 * Tu 
+Tv = 0.5 * Tu
+print "kr:", Kr
+print "ti:", Kr / Tn
+print "tv:", Kr / Tv
+
+print "\nZiegler PID 1.2:"
+Kr = (1.2 / Ks) * (Tg / Tu)
 Tn = 2.0 * Tu 
 Tv = 0.5 * Tu
 print "kr:", Kr
