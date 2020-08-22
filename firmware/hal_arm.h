@@ -25,6 +25,7 @@
 
 extern "C" {
     #include "usbh_msc/dd_usbh_msc.h"
+    void systemHardReset(void);
 }
 
 // #include <VCP/core_cm4.h>
@@ -67,8 +68,9 @@ extern "C" {
 #define WDT_ENABLE() iwdg_init(IWDG_PRE_16, 10000) /* Timeout: 40khz / (160000) -> 4 seconds */
 #define WDT_RESET() iwdg_feed()
 
-#define TIMER_INIT() timerInit()
+#define HAL_SYSTEM_RESET() systemHardReset();
 
+#define TIMER_INIT() timerInit()
 
 #define ENABLE_STEPPER_DRIVER_INTERRUPT()  { timer_enable_irq(&timer2, TIMER_UPDATE_INTERRUPT);  }
 #define DISABLE_STEPPER_DRIVER_INTERRUPT() { timer_disable_irq(&timer2, TIMER_UPDATE_INTERRUPT); }

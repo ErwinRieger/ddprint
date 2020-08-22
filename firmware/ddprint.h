@@ -163,11 +163,13 @@ class Timer {
     unsigned long fanEndTime;
 
     bool bootBootloaderRequest;
+    bool resetRequest;
 
     public:
         Timer() {
             fanEndTime = 0;
             bootBootloaderRequest = false;
+            resetRequest = false;
         }
 
         void run(unsigned long m);
@@ -186,6 +188,11 @@ class Timer {
         void startBootloaderTimer() {
 
             bootBootloaderRequest = true;
+        }
+
+        void startResetTimer() {
+
+            resetRequest = true;
         }
 
 };

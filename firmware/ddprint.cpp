@@ -225,7 +225,7 @@ void killMessage(uint8_t errorCode, uint8_t errorParam1, uint8_t errorParam2, co
 
 void setup() {
 
-    // WDT_ENABLE();
+    WDT_ENABLE();
 
     // TESTPIN :: initActive();
 
@@ -1125,6 +1125,16 @@ void Timer::run(unsigned long m) {
         }
     }
 #endif
+
+    if (resetRequest) {
+
+        // Wait until we sent our acknowledge to keep
+        // usb-serial communication clean.
+        if (txBuffer.empty()) {
+            HAL_SYSTEM_RESET();
+            // notreached
+        }
+    }
 }
 
 Timer timer;
@@ -2152,6 +2162,11 @@ class UsbCommand : public Protothread {
                             hostSettings.buildVolY = serialPort.readUInt32NoCheckCobs();
                             hostSettings.buildVolZ = serialPort.readUInt32NoCheckCobs();
                             txBuffer.sendACK();
+                        break;
+
+                    case CmdSystemReset:
+                        timer.startResetTimer();
+                        txBuffer.sendACK();
                         break;
 
                     case CmdSetIncTemp: {

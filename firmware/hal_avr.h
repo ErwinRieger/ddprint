@@ -63,6 +63,8 @@
 #define WDT_ENABLE() wdt_enable(WDTO_4S) /* Timeout 4 seconds */
 #define WDT_RESET() wdt_reset()
 
+#define HAL_SYSTEM_RESET() systemHardReset();
+
 #define TIMER_INIT() timerInit()
 
 #define ENABLE_STEPPER_DRIVER_INTERRUPT()  TIMSK1 |= (1<<OCIE1A)
@@ -217,6 +219,22 @@ struct PWMOutput<PIN, ACTIVELOWPIN>: AvrPin<PIN> {
                                template<> volatile uint8_t * AvrPin< nr > :: pinAddr = NULL; \
                                template<> volatile uint8_t * AvrPin< nr > :: portAddr = NULL; \
                                template<> volatile uint8_t * AvrPin< nr > :: ddrAddr = NULL;
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+//
+// Emergency hard reset/reboot
+//
+inline void systemHardReset() {
+
+    //
+    // Watchdog reset method does not work, it halts but 
+    // does not reset?
+    //
+    // wdt_enable(WDTO_1S);
+    // while (true);
+    
+    asm volatile ("jmp 0 \n");
+}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 //

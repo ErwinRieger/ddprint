@@ -122,6 +122,7 @@
 #define CmdReadAnalogGpio       184 // Read a analog value from gpio port, used to determine pinmap.
 #define CmdSetStepsPerMM        185 // Initial printer settings: steps per mm for X/Y/Z
 #define CmdSetHostSettings      186 // Initial printer settings
+#define CmdSystemReset          187 // Emergency hard reset system
 
 //
 // Response types 
