@@ -28,6 +28,7 @@ import dddumbui, cobs, ddprintutil, types
 
 from serial import Serial, SerialException, SerialTimeoutException
 from ddconfig import debugComm
+from ddprofile import PrinterProfile
 from ddprintcommands import *
 from ddprintconstants import *
 from ddprintstates import *
@@ -386,6 +387,7 @@ class Printer(Serial):
     def initSerial(self, device, br, bootloaderWait=False):
 
         if self.isOpen():
+            print "\nWARNING: initSerial() already done."
             self.resetLineNumber()
             return
 
@@ -417,7 +419,7 @@ class Printer(Serial):
         self.resetLineNumber()
 
     # Initialize serial interface and download printer settings.
-    def commandInit(self, args, settings):
+    def commandInit(self, args):
 
         # XXX check already initialized/running printer here?
 
@@ -425,6 +427,10 @@ class Printer(Serial):
         assert(self.commandInitDone == False)
 
         self.initSerial(args.device, args.baud, True)
+
+        # self.initPrinterProfile(args)
+
+        settings = self.printerProfile.getSettings()
 
         # todo: move all settings into CmdSetHostSettings call
         self.sendCommandParamV(CmdSetFilSensorCal, [packedvalue.float_t(settings["filSensorCalibration"])])
@@ -734,6 +740,20 @@ class Printer(Serial):
 
         self.sendCommandParamV(CmdSetPrinterName,
             [packedvalue.pString_t(args.name)])
+
+    #
+    # The used printer profile is normally determined by the printername
+    # read from the printer. Printername can be overridden by command
+    # line argument, for example in preprocessing mode.
+    #
+    # To read from printer, initSerial() has to be called before.
+    #
+    def initPrinterProfile(self, args):
+
+        if args.mode == "pre":
+            self.printerProfile = PrinterProfile(args.printer)
+        else:
+            self.printerProfile = PrinterProfile(self.getPrinterName())
 
     # Set a gpio port on printer
     def setGpio(self, pin, value):

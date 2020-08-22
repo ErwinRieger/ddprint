@@ -165,7 +165,7 @@ class Advance (object):
             self.kFeederComp = 1.0/feedRate - 1.0/((1.0+slippage) * feedRate)
             print "Feeder Compensation: usinge K-FeederCompensation %.3f" % self.kFeederComp
 
-        self.e_steps_per_mm = PrinterProfile.getStepsPerMM(A_AXIS)
+        self.e_steps_per_mm = planner.printer.printerProfile.getStepsPerMMI(A_AXIS)
 
         # Compute minimal e speed
         # maxStepTime = maxTimerValue16 / fTimer
@@ -1652,7 +1652,7 @@ class Advance (object):
             move.stepData.dirBits = dirBits
             self.planner.curDirBits = dirBits
 
-        steps_per_mm = PrinterProfile.getStepsPerMM(leadAxis)
+        steps_per_mm = self.printer.printerProfile.getStepsPerMMI(leadAxis)
 
         #
         # Create a list of stepper pulses
@@ -1675,28 +1675,28 @@ class Advance (object):
         nAccel = 0
         if move.accelTime():
 
-            accelClocks = util.accelRamp(
-                leadAxis,
+            accelClocks = self.planner.accelRamp(
+                steps_per_mm,
                 v0,
                 nominalSpeed,
                 abs(move.startAccel.accel(leadAxis)),
                 leadAxis_steps) # maximum number of steps
 
-            move.stepData.addAccelPulsees(accelClocks)
+            move.stepData.setAccelPulses(accelClocks)
 
             nAccel = len(accelClocks)
 
         nDecel = 0
         if move.decelTime():
 
-            decelClocks = util.decelRamp(
-                leadAxis,
+            decelClocks = self.planner.decelRamp(
+                steps_per_mm,
                 nominalSpeed,
                 v1,
                 abs(move.endAccel.accel(leadAxis)),
                 leadAxis_steps) # maximum number of steps
 
-            move.stepData.addDecelPulsees(decelClocks)
+            move.stepData.setDecelPulses(decelClocks)
 
             nDecel = len(decelClocks)
 
@@ -1709,8 +1709,8 @@ class Advance (object):
         if nLin > 0:
 
             steps_per_second_nominal = nominalSpeed * steps_per_mm
-            timerValue = fTimer / steps_per_second_nominal
-            move.stepData.setLinTimer(min(timerValue, 0xffff))
+            timerValue = self.planner.timerLimit(fTimer / steps_per_second_nominal)
+            move.stepData.setLinTimer(timerValue)
 
         else:
 
@@ -1819,8 +1819,8 @@ class Advance (object):
         # Steps for E acceleration
         #
         eStepsToMove = abs_displacement_vector_steps[A_AXIS]
-        eClocks = util.accelRamp(
-                A_AXIS,
+        eClocks = self.planner.accelRamp(
+                self.e_steps_per_mm,
                 abs( topSpeed.eSpeed ),
                 abs( endSpeed.eSpeed ),
                 abs(move.endAccel.eAccel()),
@@ -1834,8 +1834,7 @@ class Advance (object):
             #
             # Move consists of e-steps only
             #
-            for (tv, dt, tv) in eClocks:
-
+            for tv in eClocks:
                 move.stepData.addPulse(tv, [0, 0, 0, 1, 0])
 
             if debugAdvance:
@@ -1848,9 +1847,10 @@ class Advance (object):
         #
         # Create a list of XY-stepper pulses (DDA)
         #
-        xyClocks = util.decelRampXY(
+        xyClocks = self.decelRampXY(
             leadAxisxy,
-            abs( topSpeed[leadAxisxy] ),
+            self.printer.printerProfile.getStepsPerMMI(leadAxisxy),
+            abs(topSpeed[leadAxisxy]),
             abs(endSpeed[leadAxisxy]),
             abs(move.endAccel.accel(leadAxisxy)),
             abs_displacement_vector_steps)
@@ -1876,7 +1876,7 @@ class Advance (object):
 
         nMerges = 0
         tvsum = 0
-        for (_, _, tv) in eClocks:
+        for tv in eClocks:
 
             if tvsum in tvIndex:
 
@@ -2061,7 +2061,7 @@ class Advance (object):
                     startSpeed[dim],
                     topSpeed[dim], ta)
 
-            steps = sa * PrinterProfile.getStepsPerMM(dim)
+            steps = sa * self.printer.printerProfile.getStepsPerMMI(dim)
             # print "dim %d moves %.3f mm while accelerating -> %d steps" % (dim, sa, steps)
 
             displacement_vector_steps_A[dim] = steps
@@ -2181,7 +2181,7 @@ class Advance (object):
                     endSpeed[dim],
                     td)
 
-                steps = sd * PrinterProfile.getStepsPerMM(dim)
+                steps = sd * self.printer.printerProfile.getStepsPerMMI(dim)
                 # print "dim %d moves %.3f mm while decelerating -> %f steps" % (dim, sd, steps)
 
                 displacement_vector_steps_B[dim] = steps
@@ -2298,7 +2298,7 @@ class Advance (object):
                     topSpeed[dim], ta)
 
             # steps = int(round(sa * PrinterProfile.getStepsPerMM(dim)))
-            steps = sa * PrinterProfile.getStepsPerMM(dim)
+            steps = sa * self.printer.printerProfile.getStepsPerMMI(dim)
             # print "dim %d moves %.3f mm while accelerating -> %f steps" % (dim, sa, steps)
 
             displacement_vector_steps_A[dim] = steps
@@ -2318,7 +2318,7 @@ class Advance (object):
                     td)
 
             # steps = int(round(sd * PrinterProfile.getStepsPerMM(dim)))
-            steps = sd * PrinterProfile.getStepsPerMM(dim)
+            steps = sd * self.printer.printerProfile.getStepsPerMMI(dim)
             # print "dim %d moves %.3f mm while decelerating -> %f steps" % (dim, sd, steps)
 
             displacement_vector_steps_C[dim] = steps
@@ -2454,7 +2454,7 @@ class Advance (object):
                     parentMove.advanceData.tdc)
 
             # steps = int(round(sd * PrinterProfile.getStepsPerMM(dim)))
-            steps = sd * PrinterProfile.getStepsPerMM(dim)
+            steps = sd * self.printer.printerProfile.getStepsPerMMI(dim)
             # print "dim %d moves %.3f mm while decelerating -> %f steps" % (dim, sd, steps)
 
             displacement_vector_steps_B[dim] = steps
@@ -2474,7 +2474,7 @@ class Advance (object):
                     parentMove.advanceData.tdd)
 
             # steps = int(round(sd * PrinterProfile.getStepsPerMM(dim)))
-            steps = sd * PrinterProfile.getStepsPerMM(dim)
+            steps = sd * self.printer.printerProfile.getStepsPerMMI(dim)
             # print "dim %d moves %.3f mm while decelerating -> %f steps" % (dim, sd, steps)
 
             displacement_vector_steps_C[dim] = steps
@@ -2630,7 +2630,7 @@ class Advance (object):
                     topSpeed[dim], ta)
 
             # steps = int(round(sa * PrinterProfile.getStepsPerMM(dim)))
-            steps = sa * PrinterProfile.getStepsPerMM(dim)
+            steps = sa * self.printer.printerProfile.getStepsPerMMI(dim)
             # print "dim %d moves %.3f mm while accelerating -> %f steps" % (dim, sa, steps)
 
             displacement_vector_steps_A[dim] = steps
@@ -2649,7 +2649,7 @@ class Advance (object):
                     parentMove.advanceData.tdc)
 
             # steps = int(round(sd * PrinterProfile.getStepsPerMM(dim)))
-            steps = sd * PrinterProfile.getStepsPerMM(dim)
+            steps = sd * self.printer.printerProfile.getStepsPerMMI(dim)
             # print "dim %d moves %.3f mm while decelerating -> %f steps" % (dim, sd, steps)
 
             displacement_vector_steps_C[dim] = steps
@@ -2666,7 +2666,7 @@ class Advance (object):
                     parentMove.advanceData.tdd)
 
             # steps = int(round(sd * PrinterProfile.getStepsPerMM(dim)))
-            steps = sd * PrinterProfile.getStepsPerMM(dim)
+            steps = sd * self.printer.printerProfile.getStepsPerMMI(dim)
             # print "dim %d moves %.3f mm while decelerating -> %f steps" % (dim, sd, steps)
 
             displacement_vector_steps_D[dim] = steps
@@ -2786,6 +2786,137 @@ class Advance (object):
         assert(vectorLength(stepsMissing) < 0.000001)
 
         return newMoves
+
+    ####################################################################################################
+    #
+    # Create a list of stepper pulses for a deceleration ramp.
+    #
+    def decelRampXY(self, leadAxis, leadStepsPerMM, vstart, vend, a, absSteps):
+
+        assert(vstart >= vend)
+
+        pulses = [] # (tstep, dt, timerValue)
+
+        leadSteps = absSteps[leadAxis]
+
+        otherAxis = Y_AXIS if leadAxis == X_AXIS else X_AXIS
+        otherSteps = absSteps[otherAxis]
+
+        bFactor = float(otherSteps) / leadSteps
+        # print "bfactor:", bFactor
+        otherCount = 0
+
+        sPerStep = 1.0/leadStepsPerMM
+
+        tstep = 0
+
+        # Lower speed
+        maxStepTime = maxTimerValue16 / fTimer
+        vmin = sPerStep / maxStepTime
+
+        stepsToDo = 0
+        if vstart > vmin:
+
+            vend = max(vend, vmin)
+
+            # Number of lead axis steps needed
+            dv = vstart - vend
+            dt = dv / a
+            s = util.accelDist(vstart, -a, dt)
+
+            # print "vstart, vend, a", vstart, vend, a
+            # print "dv, dt, s:", dv, dt, s
+
+            stepsToDo = int(s * leadStepsPerMM)
+
+        else:
+
+            vstart = vmin
+
+        # print "doing ", stepsToDo, "of", leadSteps
+
+        # # debug
+        # prepended = False
+
+        if leadSteps > stepsToDo:
+
+            # Prepend fast steps
+            for i in range(leadSteps - stepsToDo):
+
+                # Time we need for this speed change/this step:
+                dt = sPerStep / vstart
+
+                # Timervalue for this time
+                timerValue = self.planner.timerLimit(int(dt * fTimer))
+
+                stepBits = [0, 0]
+                stepBits[leadAxis] = 1
+
+                otherCount += bFactor
+
+                if otherCount >= 0.5:
+                    stepBits[otherAxis] = 1
+                    otherSteps -= 1
+                    otherCount -= 1.0
+
+                # print "steps, otherCount:", stepBits, otherCount
+                pulses.append((tstep, dt, timerValue, stepBits))
+
+                tstep += dt
+                leadSteps -= 1
+
+            # prepended = True
+
+        v = vstart
+        s = sPerStep
+
+        # while v > vend and leadSteps > 0:
+        while leadSteps > 0:
+
+            # Speed after this step
+            # print "vstar, -a, s:", vstart, -a, s
+            vn1 = util.vAccelPerDist(vstart, -a, s)
+
+            # Time we need for this speed change/this step:
+            dv = v - vn1
+            dt = dv / a
+
+            # Timervalue for this time
+            timerValue = self.planner.timerLimit(int(dt * fTimer))
+
+            # if timerValue > maxTimerValue16:
+                # # print "break on timeroverflow, v after this step:", vn1, s, dt, timerValue
+                # break
+
+            # print "v after this step:", vn1, s, dt, timerValue
+
+            stepBits = [0, 0]
+            stepBits[leadAxis] = 1
+
+            otherCount += bFactor
+
+            # if otherCount >= 1:
+            if otherCount >= 0.5:
+                stepBits[otherAxis] = 1
+                otherSteps -= 1
+                otherCount -= 1.0
+
+            # print "steps, otherCount:", stepBits, otherCount
+            pulses.append((tstep, dt, timerValue, stepBits))
+
+            s += sPerStep
+            v = vn1
+            tstep += dt
+            leadSteps -= 1
+
+        # print "Missing steps: ", leadSteps, otherSteps
+
+        # if prepended:
+            # print "prepended steps:"
+            # pprint.pprint(pulses)
+
+        assert(leadSteps == 0 and otherSteps == 0)
+        return pulses
 
     def plotPlannedPath(self, path, plotfile=None):
 

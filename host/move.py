@@ -93,16 +93,7 @@ class StepData:
         self.leadAxis = 0
         self.abs_vector_steps = None
 
-    def checkTimerValue(self, timer, limit):
-
-        if timer < 40:
-            print "timervalue %d to low, > 50kHz!" % timer
-            assert(0)
-
-        if timer > limit:
-            print "timervalue %d to high, counter overflow!" % timer
-            assert(0)
-
+    """
     def addAccelPulse(self, timer):
 
         self.checkTimerValue(timer, maxTimerValue16)
@@ -112,11 +103,18 @@ class StepData:
 
         for (_, _, timer) in accelPulses:
             self.addAccelPulse(timer)
+    """
+
+    def setAccelPulses(self, accelPulses):
+        self.accelPulses = accelPulses
 
     def setLinTimer(self, timer):
-        self.checkTimerValue(timer, maxTimerValue16)
         self.linearTimer = timer
-    
+  
+    def setDecelPulses(self, decelPulses):
+        self.decelPulses = decelPulses
+
+    """
     def addDecelPulse(self, timer):
 
         self.checkTimerValue(timer, maxTimerValue16)
@@ -126,6 +124,7 @@ class StepData:
 
         for (_, _, timer) in decelPulses:
             self.addDecelPulse(timer)
+    """
 
     def setBresenhamParameters(self, leadAxis, abs_vector_steps):
         self.leadAxis = leadAxis

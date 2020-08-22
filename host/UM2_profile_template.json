@@ -41,6 +41,8 @@
       "jerk"          : 7.5
     }
   },
+  # Max stepper frequency
+  "maxStepperFreq": 50000,
   # 1.75 mm filament, with advance [mm/s]
   "RetractFeedrate"  : 50,
   "RetractLength"  : 2.0,

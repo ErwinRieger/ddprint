@@ -26,7 +26,6 @@ import gcodeparser
 from ddprintcommands import *
 from ddprintstates import *
 from ddprintconstants import dimNames
-from ddprofile import PrinterProfile
 from ddplanner import Planner
 
 import ddprintutil as util
@@ -114,12 +113,12 @@ def home(args, printer, planner, parser, force=False):
             if not curPosMM.equal(homePosMM, "Z"):
 
                 parser.execute_line("G0 F%d Z%f" % (
-                    PrinterProfile.getMaxFeedrate(util.Z_AXIS)*60, homePosMM.Z))
+                    printer.printerProfile.getMaxFeedrateI(util.Z_AXIS)*60, homePosMM.Z))
 
             if not curPosMM.equal(homePosMM, "XY"):
 
                 parser.execute_line("G0 F%d X%f Y%f" % (
-                    PrinterProfile.getMaxFeedrate(util.X_AXIS)*60, 
+                    printer.printerProfile.getMaxFeedrateI(util.X_AXIS)*60, 
                     homePosMM.X, homePosMM.Y))
 
             planner.finishMoves()
@@ -139,7 +138,7 @@ def home(args, printer, planner, parser, force=False):
         return
 
     # Send init command
-    printer.commandInit(args, PrinterProfile.getSettings())
+    # printer.commandInit(args)
 
     #
     # Z Achse isoliert und als erstes bewegen, um zusammenstoss mit den klammern

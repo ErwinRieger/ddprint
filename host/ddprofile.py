@@ -22,6 +22,11 @@ import ddprintutil as util
 
 from ddprintconstants import dimNames, X_AXIS, Y_AXIS, Z_AXIS, A_AXIS, B_AXIS
 
+#
+# Some methods are duplicated, one class instance (singleton) version and one 
+# instance version. This has the goal to slowly remove the singletons.
+#
+
 class ProfileException(Exception):
 
     def __init__(self, msg):
@@ -161,13 +166,22 @@ class PrinterProfile(ProfileBase):
     def getStepsPerMM(cls, axisNr):
         return cls.getValues()["axes"][dimNames[axisNr]]["steps_per_mm"]
 
+    def getStepsPerMMI(self, axisNr):
+        return self.getValue("axes")[dimNames[axisNr]]["steps_per_mm"]
+
     @classmethod
     def getStepsPerMMVector(cls):
         return map(lambda d: cls.getStepsPerMM(d), range(5))
 
+    def getStepsPerMMVectorI(self):
+        return map(lambda d: self.getStepsPerMM(d), range(5))
+
     @classmethod
     def getMaxFeedrate(cls, axisNr):
         return cls.getValues()["axes"][dimNames[axisNr]]["max_feedrate"]
+
+    def getMaxFeedrateI(self, axisNr):
+        return self.getValue("axes")[dimNames[axisNr]]["max_feedrate"]
 
     @classmethod
     def getMaxFeedrateVector(cls):
@@ -183,12 +197,17 @@ class PrinterProfile(ProfileBase):
 
     @classmethod
     def getMaxAxisAcceleration(cls):
-        accel = cls.getValues()["MaxAxisAcceleration"]
-        return accel
+        return cls.getValues()["MaxAxisAcceleration"]
+
+    def getMaxAxisAccelerationI(self):
+        return self.getValue("MaxAxisAcceleration")
 
     @classmethod
     def getHwVersion(cls):
         return cls.getValues()["hwVersion"]
+
+    def getHwVersionI(self):
+        return self.getValue("hwVersion")
 
     def getFilSensorCalibration(self):
         cal = self.getValues()["filSensorCalibration"]
@@ -197,6 +216,9 @@ class PrinterProfile(ProfileBase):
     @classmethod
     def getBedlevelOffset(cls):
         return cls.getValues()["add_homeing_z"]
+
+    def getBedlevelOffsetI(self):
+        return self.getValue("add_homeing_z")
 
     @classmethod
     def getFeederWheelDiam(cls):
@@ -233,8 +255,12 @@ class PrinterProfile(ProfileBase):
     def getTu(cls):
         return cls.get()._getTu()
 
+    # xxx replace with getTuI()
     def _getTu(self):
         return self.values["Tu"]
+
+    def getTuI(self):
+        return self.getValue("Tu")
 
     @classmethod
     def getTg(cls):
@@ -272,8 +298,17 @@ class PrinterProfile(ProfileBase):
     def getPlatformLength(cls, axisNr):
         return cls.get().getValue("axes")[dimNames[axisNr]]["platform_length"]
 
+    def getPlatformLengthI(self, axisNr):
+        return self.getValue("axes")[dimNames[axisNr]]["platform_length"]
+
     def getBedLevelMode(self):
         return self.getValue("bedLevelMode")
+
+    def getJerk(self, dim):
+        return self.getValue("axes")[dim]["jerk"]
+
+    def getMaxStepperFreq(self):
+        return float(self.getValue("maxStepperFreq"))
 
 ####################################################################################################
 #

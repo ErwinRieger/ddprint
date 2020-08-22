@@ -20,14 +20,14 @@
 #*/
 
 import struct, time, math, tty, termios, sys, types, json, fcntl, os
-import ddprintconstants, ddhome, ddadvance, pprint, movingavg
+import ddhome, ddadvance, pprint, movingavg
 
 from ddprintcommands import *
 from ddprintstates import *
 from ddprinter import Printer
 from ddprintconstants import *
 from ddconfig import *
-from ddprofile import PrinterProfile, NozzleProfile
+from ddprofile import NozzleProfile
 from ddvector import vectorMul
 
 
@@ -729,8 +729,6 @@ def directionBits(disp):
 
 def commonInit(args, printer, planner, parser):
 
-    # done by home: printer.commandInit(args, PrinterProfile.getSettings())
-
     ddhome.home(args, printer, planner, parser)
     downloadTempTable(printer, planner.matProfile)
 
@@ -763,6 +761,8 @@ def zRepeatability(parser):
 
     import random
 
+    assert(0) # todo: transition to printer.printerProfile...
+
     printer.commandInit(args, PrinterProfile.getSettings())
 
     feedrate = PrinterProfile.getMaxFeedrate(Z_AXIS)
@@ -787,7 +787,7 @@ def manualMove(parser, axis, distance, feedrate=0, absolute=False):
     planner = parser.planner
     printer = planner.printer
 
-    # printer.commandInit(args, PrinterProfile.getSettings())
+    assert(0) # todo: transition to printer.printerProfile...
 
     assert(printer.isHomed())
 
@@ -819,6 +819,8 @@ def manualMove(parser, axis, distance, feedrate=0, absolute=False):
 
 def printFile(args, parser, planner, printer, printerProfile, logObj,
     gfile, t0, t0_wait, t1, doLog=False):
+
+    assert(0) # todo: transition to printer.printerProfile...
 
     commonInit(args, printer, planner, parser)
 
@@ -948,7 +950,7 @@ def insertFilament(args, parser, feedrate):
     planner = parser.planner
     printer = planner.printer
 
-    # done by home: printer.commandInit(args, PrinterProfile.getSettings())
+    assert(0) # todo: transition to printer.printerProfile...
 
     ddhome.home(args, printer, planner, parser)
 
@@ -1026,7 +1028,7 @@ def removeFilament(args, parser, feedrate):
     planner = parser.planner
     printer = planner.printer
 
-    # printer.commandInit(args, PrinterProfile.getSettings()) xxx done by homing
+    assert(0) # todo: transition to printer.printerProfile...
 
     ddhome.home(args, printer, planner, parser)
 
@@ -1055,6 +1057,8 @@ def removeFilament(args, parser, feedrate):
 ####################################################################################################
 
 def bedLeveling(args, parser, planner, printer):
+
+    assert(0) # todo: transition to printer.printerProfile...
 
     pp = PrinterProfile.get()
 
@@ -1223,6 +1227,8 @@ def stopMove(args, parser):
 
 def heatHotend(args, printer):
 
+    assert(0) # todo: transition to printer.printerProfile...
+
     pp = PrinterProfile.get()
 
     printer.commandInit(args, PrinterProfile.getSettings())
@@ -1275,6 +1281,8 @@ def execSingleGcode(parser, gcode):
 # Cooldown
 def changeNozzle(args, parser):
 
+    assert(0) # todo: transition to printer.printerProfile...
+
     planner = parser.planner
     printer = planner.printer
 
@@ -1299,8 +1307,9 @@ def changeNozzle(args, parser):
 #
 def stepResponse(args, parser):
 
-    assert(broken_temp_curve)
+    assert(0) # todo: transition to printer.printerProfile...
 
+    assert(broken_temp_curve)
 
     planner = parser.planner
     printer = planner.printer
@@ -1489,7 +1498,7 @@ def measureHotendStepResponse(args, printer, matProfile):
     def stopHeater():
         printer.setTempPWM(HeaterEx1, 0)
 
-    printer.commandInit(args, PrinterProfile.getSettings())
+    printer.commandInit(args)
 
     tmax = matProfile.getHotendMaxTemp()
 
@@ -1625,6 +1634,8 @@ def getResponseString(s, offset):
 
 def genTempTable(matProfile):
 
+    assert(0) # todo: transition to printer.printerProfile...
+
     hwVersion = PrinterProfile.getHwVersion()
     spm = PrinterProfile.getStepsPerMM(A_AXIS)
     nozzleDiam = NozzleProfile.getSize()
@@ -1675,6 +1686,8 @@ def genTempTable(matProfile):
 
 def eTimerValue(planner, eSpeed):
 
+    assert(0) # todo: transition to printer.printerProfile...
+
     spm = PrinterProfile.getStepsPerMM(A_AXIS)
     steprate = eSpeed * spm
     timerValue = int(fTimer / steprate)
@@ -1684,6 +1697,8 @@ def eTimerValue(planner, eSpeed):
 ####################################################################################################
 
 def printTempTable(temp, tempTable):
+
+    assert(0) # todo: transition to printer.printerProfile...
 
     print "TempTable for 1.75mm filament:"
     print "Basetemp: %d:" % temp
@@ -1736,6 +1751,8 @@ def downloadDummyTempTable(printer):
 
 def getStartupTime(feedrate):
 
+    assert(0) # todo: transition to printer.printerProfile...
+
     eAccel = PrinterProfile.getMaxAxisAcceleration()[A_AXIS]
 
     # Zeit bis sich der messwert der target geschwindigkeit
@@ -1748,6 +1765,8 @@ def getStartupTime(feedrate):
 ####################################################################################################
 # 
 def measureFlowrateStepResponse(args, parser):
+
+    assert(0) # todo: transition to printer.printerProfile...
 
     nozzleSize = NozzleProfile.getSize()
 
@@ -2111,227 +2130,6 @@ def measureTempFlowrateCurve(args, parser):
     printer.coolDown(HeaterEx1, wait=100, log=True)
 
 ####################################################################################################
-#
-# Create a list of stepper pulses for a acceleration ramp.
-#
-def accelRamp(axis, vstart, vend, a, nSteps):
-
-    assert(vstart <= vend)
-
-    pulses = [] # (tstep, dt, timerValue)
-
-    steps_per_mm = PrinterProfile.getStepsPerMM(axis)
-    sPerStep = 1.0/steps_per_mm
-
-    v = vstart
-    tstep = 0
-    s = sPerStep
-
-    stepToDo = nSteps
-
-    while v < vend and stepToDo > 0:
-
-        # Speed after this step
-        vn1 = vAccelPerDist(vstart, a, s)
-
-        # Time we need for this speed change/this step:
-        dv = vn1 - v
-        dt = dv / a
-
-        # Timervalue for this time
-        timerValue = int(dt * fTimer)
-
-        timerValue = min(timerValue, ddprintconstants.maxTimerValue16)
-
-        # print "v after this step:", vn1, s, dt, timerValue
-
-        pulses.append((tstep, dt, timerValue))
-
-        s += sPerStep
-        v = vn1
-        tstep += dt
-        stepToDo -= 1
-
-    return pulses
-
-####################################################################################################
-#
-# Create a list of stepper pulses for a deceleration ramp.
-#
-def decelRamp(axis, vstart, vend, a, nSteps):
-
-    assert(vstart >= vend)
-    # assert(nSteps)
-
-    pulses = [] # (tstep, dt, timerValue)
-
-    steps_per_mm = PrinterProfile.getStepsPerMM(axis)
-    sPerStep = 1.0/steps_per_mm
-
-    v = vstart
-    tstep = 0
-    s = sPerStep
-
-    while v > vend and nSteps > 0:
-
-        # Speed after this step
-        vn1 = vAccelPerDist(vstart, -a, s)
-
-        # Time we need for this speed change/this step:
-        dv = v - vn1
-        dt = dv / a
-
-        # Timervalue for this time
-        timerValue = int(dt * fTimer)
-
-        if timerValue > ddprintconstants.maxTimerValue16:
-            # print "break on timeroverflow, v after this step:", vn1, s, dt, timerValue
-            break
-
-        # print "v after this step:", vn1, s, dt, timerValue
-
-        pulses.append((tstep, dt, timerValue))
-
-        s += sPerStep
-        v = vn1
-        tstep += dt
-        nSteps -= 1
-
-    return pulses
-
-####################################################################################################
-#
-# Create a list of stepper pulses for a deceleration ramp.
-#
-def decelRampXY(leadAxis, vstart, vend, a, absSteps):
-
-    assert(vstart >= vend)
-
-    pulses = [] # (tstep, dt, timerValue)
-
-    leadSteps = absSteps[leadAxis]
-
-    otherAxis = Y_AXIS if leadAxis == X_AXIS else X_AXIS
-    otherSteps = absSteps[otherAxis]
-
-    bFactor = float(otherSteps) / leadSteps
-    # print "bfactor:", bFactor
-    otherCount = 0
-
-    steps_per_mm = PrinterProfile.getStepsPerMM(leadAxis)
-    sPerStep = 1.0/steps_per_mm
-
-    tstep = 0
-
-    # Lower speed
-    maxStepTime = ddprintconstants.maxTimerValue16 / fTimer
-    vmin = sPerStep / maxStepTime
-
-    stepsToDo = 0
-    if vstart > vmin:
-
-        vend = max(vend, vmin)
-
-        # Number of lead axis steps needed
-        dv = vstart - vend
-        dt = dv / a
-        s = accelDist(vstart, -a, dt)
-
-        # print "vstart, vend, a", vstart, vend, a
-        # print "dv, dt, s:", dv, dt, s
-
-        stepsToDo = int(s * steps_per_mm)
-
-    else:
-
-        vstart = vmin
-
-    # print "doing ", stepsToDo, "of", leadSteps
-
-    # # debug
-    # prepended = False
-
-    if leadSteps > stepsToDo:
-
-        # Prepend fast steps
-        for i in range(leadSteps - stepsToDo):
-
-            # Time we need for this speed change/this step:
-            dt = sPerStep / vstart
-
-            # Timervalue for this time
-            timerValue = int(dt * fTimer)
-
-            stepBits = [0, 0]
-            stepBits[leadAxis] = 1
-
-            otherCount += bFactor
-
-            if otherCount >= 0.5:
-                stepBits[otherAxis] = 1
-                otherSteps -= 1
-                otherCount -= 1.0
-
-            # print "steps, otherCount:", stepBits, otherCount
-            pulses.append((tstep, dt, timerValue, stepBits))
-
-            tstep += dt
-            leadSteps -= 1
-
-        # prepended = True
-
-    v = vstart
-    s = sPerStep
-
-    # while v > vend and leadSteps > 0:
-    while leadSteps > 0:
-
-        # Speed after this step
-        # print "vstar, -a, s:", vstart, -a, s
-        vn1 = vAccelPerDist(vstart, -a, s)
-
-        # Time we need for this speed change/this step:
-        dv = v - vn1
-        dt = dv / a
-
-        # Timervalue for this time
-        timerValue = int(dt * fTimer)
-
-        if timerValue > ddprintconstants.maxTimerValue16:
-            # print "break on timeroverflow, v after this step:", vn1, s, dt, timerValue
-            break
-
-        # print "v after this step:", vn1, s, dt, timerValue
-
-        stepBits = [0, 0]
-        stepBits[leadAxis] = 1
-
-        otherCount += bFactor
-
-        # if otherCount >= 1:
-        if otherCount >= 0.5:
-            stepBits[otherAxis] = 1
-            otherSteps -= 1
-            otherCount -= 1.0
-
-        # print "steps, otherCount:", stepBits, otherCount
-        pulses.append((tstep, dt, timerValue, stepBits))
-
-        s += sPerStep
-        v = vn1
-        tstep += dt
-        leadSteps -= 1
-
-    # print "Missing steps: ", leadSteps, otherSteps
-
-    # if prepended:
-        # print "prepended steps:"
-        # pprint.pprint(pulses)
-
-    assert(leadSteps == 0 and otherSteps == 0)
-    return pulses
-
-####################################################################################################
 def pdbAssert(expr):
 
     if not expr:
@@ -2369,6 +2167,8 @@ def sizeof_fmt(num):
 
 
 def xstartPrint(args, parser, planner, printer, printerProfile, t1):
+
+        assert(0) # todo: transition to printer.printerProfile...
 
         commonInit(args, printer, planner, parser)
 
@@ -2470,6 +2270,8 @@ def xstartPrint(args, parser, planner, printer, printerProfile, t1):
         """
 
 def measureTempFlowrateCurve2(args, parser, planner, printer, printerProfile):
+
+    assert(0) # todo: transition to printer.printerProfile...
 
     def tempGood(t, t1, percent):
         return abs(t1 - t) <= (t1*percent)

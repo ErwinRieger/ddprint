@@ -108,14 +108,19 @@ def initParser(args, mode=None, gui=None, travelMovesOnly=False):
     # Create the Printer singleton instance
     printer = Printer(gui=gui)
 
-    # Create printer profile singleton instance
-    printerProfile = initPrinterProfile(args)
+    # Create printer profile
+    printer.initSerial(args.device, args.baud)
+    printer.initPrinterProfile(args)
 
     # Create material profile singleton instance
-    if args.mode == "pre":
-        mat = initMatProfile(args, args.printer)
+    if "mat" in args:
+
+        if args.mode == "pre":
+            mat = initMatProfile(args, args.printer)
+        else:
+            mat = initMatProfile(args, printer.getPrinterName())
     else:
-        mat = initMatProfile(args, printer.getPrinterName())
+        mat = None
 
     try:
         nozzle = args.nozzle
@@ -125,12 +130,12 @@ def initParser(args, mode=None, gui=None, travelMovesOnly=False):
         NozzleProfile(nozzle)
 
     # Create planner singleton instance
-    planner = Planner(args, materialProfile=mat, gui=gui, travelMovesOnly=travelMovesOnly)
+    planner = Planner(args, materialProfile=mat, printer=printer, travelMovesOnly=travelMovesOnly)
 
     # Create parser singleton instance
     parser = gcodeparser.UM2GcodeParser(planner, logger=gui, travelMovesOnly=travelMovesOnly)
 
-    return (parser, planner, printer, printerProfile)
+    return (parser, planner, printer)
 
 def main():
 
@@ -273,7 +278,7 @@ def main():
     args = argParser.parse_args()
 
     # xxx todo create objects on demand...
-    # (parser, planner, printer, printerProfile) = initParser(args, mode=args.mode)
+    # (parser, planner, printer) = initParser(args, mode=args.mode)
 
     
     if args.mode == 'autoTune':
@@ -313,18 +318,18 @@ def main():
 
     elif args.mode == 'print':
 
-        (parser, planner, printer, printerProfile) = initParser(args, mode=args.mode)
+        (parser, planner, printer) = initParser(args, mode=args.mode)
 
         t0 = planner.matProfile.getBedTemp()
         t0Wait = min(t0, printerProfile.getWeakPowerBedTemp())
         t1 = planner.matProfile.getHotendGoodTemp() + planner.l0TempIncrease
 
-        util.printFile(args, parser, planner, printer, printerProfile, printer.gui,
+        util.printFile(args, parser, planner, printer, printer.gui,
                 args.gfile, t0, t0Wait, t1, doLog=True)
 
     elif args.mode == "pre":
 
-        (parser, planner, printer, _) = initParser(args, mode=args.mode)
+        (parser, planner, printer) = initParser(args, mode=args.mode)
 
         # Virtuelle position des druckkopfes falls 'gehomed'
         homePosMM = planner.getHomePos()[0]
@@ -358,8 +363,8 @@ def main():
         # Disable autotemp
         args.autoTemp = False
 
-        (parser, planner, printer, printerProfile) = initParser(args, mode=args.mode)
-        util.measureTempFlowrateCurve2(args, parser, planner, printer, printerProfile)
+        (parser, planner, printer) = initParser(args, mode=args.mode)
+        util.measureTempFlowrateCurve2(args, parser, planner, printer)
 
     elif args.mode == 'moverel':
 
@@ -385,12 +390,12 @@ def main():
 
     elif args.mode == 'insertFilament':
 
-        (parser, _, _, _) = initParser(args, mode=args.mode, travelMovesOnly=True)
+        (parser, _, _) = initParser(args, mode=args.mode, travelMovesOnly=True)
         util.insertFilament(args, parser, args.feedrate)
 
     elif args.mode == 'removeFilament':
 
-        (parser, _, _, _) = initParser(args, mode=args.mode, travelMovesOnly=True)
+        (parser, _, _) = initParser(args, mode=args.mode, travelMovesOnly=True)
         util.removeFilament(args, parser, args.feedrate)
 
     elif args.mode == 'readGpio':
@@ -487,8 +492,7 @@ def main():
     elif args.mode == 'getTempTable':
 
         printer = Printer()
-        initPrinterProfile(args)
-        printer.commandInit(args, PrinterProfile.getSettings())
+        printer.commandInit(args)
         (baseTemp, tempTable) = printer.getTempTable()
         util.printTempTable(baseTemp, tempTable)
 
@@ -503,11 +507,7 @@ def main():
 
     elif args.mode == 'home':
 
-        printer = Printer()
-        initPrinterProfile(args)
-        planner = Planner(args, printer.gui, travelMovesOnly=True)
-        parser = gcodeparser.UM2GcodeParser(planner, logger=printer.gui, travelMovesOnly=True)
-
+        (parser, planner, printer) = initParser(args, mode=args.mode, travelMovesOnly=True)
         ddhome.home(args, printer, planner, parser)
 
     elif args.mode == 'todo zRepeatability':
@@ -520,7 +520,7 @@ def main():
 
     elif args.mode == 'todo stop':
 
-        printer.commandInit(args, PrinterProfile.getSettings())
+        printer.commandInit(args)
         util.stopMove(args, parser)
 
     elif args.mode == "setPrinterName":
@@ -541,7 +541,7 @@ def main():
 
         printer = Printer()
         initPrinterProfile(args)
-        planner = Planner(args, printer.gui, travelMovesOnly=True)
+        planner = Planner(args, printer, travelMovesOnly=True)
         parser = gcodeparser.UM2GcodeParser(planner, logger=printer.gui, travelMovesOnly=True)
 
         ddtest.testFilSensor(args, printer, parser)
@@ -550,14 +550,14 @@ def main():
 
         printer = Printer()
         initPrinterProfile(args)
-        planner = Planner(args, printer.gui, travelMovesOnly=True)
+        planner = Planner(args, printer, travelMovesOnly=True)
         ddtest.calibrateESteps(args, printer, planner)
 
     elif args.mode == 'calibrateFilSensor':
 
         printer = Printer()
         initPrinterProfile(args)
-        planner = Planner(args, printer.gui, travelMovesOnly=True)
+        planner = Planner(args, printer, travelMovesOnly=True)
         ddtest.calibrateFilSensor(args, printer, planner)
 
     elif args.mode == 'test':
@@ -568,7 +568,7 @@ def main():
         # time.sleep(5)
 
         # initPrinterProfile(args)
-        # printer.commandInit(args, PrinterProfile.getSettings())
+        # printer.commandInit(args)
         # readings = printer.getFSReadings(10)
         # print "Readings: "
         # pprint.pprint(readings)

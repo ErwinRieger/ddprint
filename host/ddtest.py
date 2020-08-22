@@ -28,7 +28,7 @@ import time, math, pprint, sys
 import numpy as np
 
 import ddhome, movingavg, ddprintutil as util
-from ddprofile import PrinterProfile, MatProfile
+from ddprofile import MatProfile
 from ddprinter import Printer
 from ddprintcommands import *
 from ddprintstates import *
@@ -96,15 +96,15 @@ def testFilSensor(args, printer, parser):
 
     feedrate = args.feedrate or 1.0
 
-    printer.commandInit(args, PrinterProfile.getSettings())
+    printer.commandInit(args)
     startPos = printer.getFilSensor()
     util.manualMove(parser, util.dimIndex['A'], args.distance, feedrate=feedrate)
     endPos = printer.getFilSensor()
     diff = endPos - startPos
 
     # diff ist in sensor-counts
-    pcal = PrinterProfile.get().getFilSensorCalibration()
-    steps_per_mm = PrinterProfile.getStepsPerMM(A_AXIS)
+    pcal = printer.printerProfile.getFilSensorCalibration()
+    steps_per_mm = printer.printerProfile.getStepsPerMMI(A_AXIS)
 
     print "steps_per_mm  E:", steps_per_mm
 
@@ -123,10 +123,12 @@ def testFilSensor(args, printer, parser):
 #
 def calibrateESteps(args, printer, planner):
 
+    assert(0) # todo: transition to printer.printerProfile...
+
     feedrate = args.feedrate or 5.0
     feedrate = min(feedrate, PrinterProfile.getValues()['axes']["A"]['jerk'])
 
-    printer.commandInit(args, PrinterProfile.getSettings())
+    printer.commandInit(args)
 
     # Disable flowrate limit
     printer.sendCommandParamV(CmdEnableFRLimit, [packedvalue.uint8_t(0)])
@@ -219,9 +221,11 @@ def calibrateESteps(args, printer, planner):
 #
 def calibrateFilSensor(args, printer, planner):
 
+    assert(0) # todo: transition to printer.printerProfile...
+
     maxFeedrate = args.feedrate or 10.0 # mm/s
 
-    printer.commandInit(args, PrinterProfile.getSettings())
+    printer.commandInit(args)
 
     # Disable flowrate limit
     printer.sendCommandParamV(CmdEnableFRLimit, [packedvalue.uint8_t(0)])
@@ -381,6 +385,8 @@ def testFeederUniformity(args, parser):
     planner = parser.planner
     printer = planner.printer
 
+    assert(0) # todo: transition to printer.printerProfile...
+
     # umfang
     dFeederWheel = PrinterProfile.getFeederWheelDiam()
     circ = dFeederWheel * math.pi
@@ -396,7 +402,7 @@ def testFeederUniformity(args, parser):
 
     print "circum:", circ, "feedrate:", feedrate
 
-    printer.commandInit(args, PrinterProfile.getSettings())
+    printer.commandInit(args)
 
     # Disable flowrate limit
     printer.sendCommandParamV(CmdEnableFRLimit, [packedvalue.uint8_t(0)])

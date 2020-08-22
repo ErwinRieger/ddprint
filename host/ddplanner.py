@@ -23,7 +23,8 @@ import math, collections, types
 from argparse import Namespace
 
 import ddprintutil as util, dddumbui, packedvalue
-from ddprofile import PrinterProfile, NozzleProfile
+# from ddprofile import PrinterProfile, NozzleProfile
+from ddprofile import NozzleProfile
 from ddvector import Vector, vectorMul, vectorAbs
 from ddprintconstants import *
 from ddconfig import *
@@ -226,7 +227,7 @@ class PathData (object):
 
         self.planner = planner
 
-        self.Tu = PrinterProfile.getTu()
+        self.Tu = planner.printer.printerProfile.getTuI()
 
         self.path = []
 
@@ -239,7 +240,7 @@ class PathData (object):
 
             mp = self.planner.matProfile
 
-            hwVersion = PrinterProfile.getHwVersion()
+            hwVersion = planner.printer.printerProfile.getHwVersionI()
             nozzleDiam = NozzleProfile.getSize()
 
             self.ks = mp.getKpwm(hwVersion, nozzleDiam)
@@ -372,17 +373,19 @@ class Planner (object):
 
     __single = None 
 
-    def __init__(self, args, materialProfile=None, gui=None, travelMovesOnly=False):
+    def __init__(self, args, printer, materialProfile=None, travelMovesOnly=False):
 
         if Planner.__single:
             raise RuntimeError('A Planner already exists')
 
         Planner.__single = self
 
-        if gui:
-            self.gui = gui
-        else:
-            self.gui = dddumbui.DumbGui()
+        # if gui:
+            # self.gui = gui
+        # else:
+            # self.gui = dddumbui.DumbGui()
+
+        self.gui = printer.gui
 
         self.args = args
         self.matProfile = materialProfile
@@ -406,11 +409,11 @@ class Planner (object):
 
         # Travel limits after homing
         self.X_MIN_POS = 0
-        self.X_MAX_POS = PrinterProfile.getPlatformLength(X_AXIS)
+        self.X_MAX_POS = printer.printerProfile.getPlatformLengthI(X_AXIS)
         # X_MIN_POS = 0
-        self.Y_MAX_POS = PrinterProfile.getPlatformLength(Y_AXIS)
+        self.Y_MAX_POS = printer.printerProfile.getPlatformLengthI(Y_AXIS)
         # Y_MIN_POS = 0
-        self._Z_MAX_POS = PrinterProfile.getPlatformLength(Z_AXIS)
+        self._Z_MAX_POS = printer.printerProfile.getPlatformLengthI(Z_AXIS)
         # Z_MIN_POS = 0
         self.MAX_POS = (self.X_MAX_POS, self.Y_MAX_POS, self._Z_MAX_POS)
 
@@ -422,6 +425,12 @@ class Planner (object):
         self.X_HOME_POS = self.X_MIN_POS
         self.Y_HOME_POS = self.Y_MAX_POS
         self._Z_HOME_POS = self._Z_MAX_POS
+
+        # 40 für avr, 50khz
+        # 20 für arm, 100khz
+        self.minTimerValue = int(fTimer / printer.printerProfile.getMaxStepperFreq())
+        self.maxTimerValue = maxTimerValue16
+
         #
         # End Constants
         #
@@ -455,14 +464,14 @@ class Planner (object):
 
         jerk = []
         for dim in dimNames:
-            jerk.append(PrinterProfile.getValues()['axes'][dim]['jerk'])
+            jerk.append(self.printer.printerProfile.getJerk(dim))
 
         return jerk
 
     def getHomePos(self):
 
         # Get additional z-offset from printer profile
-        add_homeing_z = PrinterProfile.getBedlevelOffset()
+        add_homeing_z = self.printer.printerProfile.getBedlevelOffsetI()
 
         assert((add_homeing_z <= 0) and (add_homeing_z >= -35))
 
@@ -480,7 +489,7 @@ class Planner (object):
             )
 
         # Diese stepper position wird gesetzt falls der drucker 'gehomed' ist
-        homePosStepped = vectorMul(homePosMM.vector(), PrinterProfile.getStepsPerMMVector())
+        homePosStepped = vectorMul(homePosMM.vector(), self.printer.printerProfile.getStepsPerMMVectorI())
 
         return (homePosMM, homePosStepped)
 
@@ -872,7 +881,7 @@ class Planner (object):
 
         deltaStartSpeedS = move.topSpeed.speed().feedrate - startSpeedS
 
-        maxAccel = PrinterProfile.getMaxAxisAcceleration()
+        maxAccel = self.printer.printerProfile.getMaxAxisAccelerationI()
 
         if deltaStartSpeedS:
 
@@ -1045,7 +1054,7 @@ class Planner (object):
             move.stepData.dirBits = dirBits
             self.curDirBits = dirBits
 
-        steps_per_mm = PrinterProfile.getStepsPerMM(leadAxis)
+        steps_per_mm = self.printer.printerProfile.getStepsPerMMI(leadAxis)
 
         #
         # Bresenham's variables
@@ -1068,28 +1077,28 @@ class Planner (object):
         nAccel = 0
         if move.accelTime():
 
-            accelClocks = util.accelRamp(
-                leadAxis,
+            accelClocks = self.accelRamp(
+                steps_per_mm,
                 v0,
                 nominalSpeed,
                 allowedAccel,
                 leadAxis_steps) # maximum number of steps
 
-            move.stepData.addAccelPulsees(accelClocks)
+            move.stepData.setAccelPulses(accelClocks)
 
             nAccel = len(accelClocks)
 
         nDecel = 0
         if move.decelTime():
 
-            decelClocks = util.decelRamp(
-                leadAxis,
+            decelClocks = self.decelRamp(
+                steps_per_mm,
                 nominalSpeed,
                 v1,
                 allowedAccel,
                 leadAxis_steps) # maximum number of steps
 
-            move.stepData.addDecelPulsees(decelClocks)
+            move.stepData.setDecelPulses(decelClocks)
 
             nDecel = len(decelClocks)
 
@@ -1104,7 +1113,7 @@ class Planner (object):
 
             steps_per_second_nominal = nominalSpeed * steps_per_mm
             timerValue = fTimer / steps_per_second_nominal
-            move.stepData.setLinTimer(timerValue)
+            move.stepData.setLinTimer(self.timerLimit(timerValue))
 
         else:
 
@@ -1133,9 +1142,6 @@ class Planner (object):
 
             move.stepData.setLinTimer(0xffff)
 
-        # timerValue = fTimer / steps_per_second_nominal
-        # move.stepData.setLinTimer(timerValue)
-
         if debugMoves:
             print "# of steps for move: ", leadAxis_steps
             move.pprint("move:")
@@ -1146,4 +1152,104 @@ class Planner (object):
         if debugMoves:
             print "***** End planTravelSteps() *****"
     
+    # Check if stepper frequency gets to high or to low
+    def timerLimit(self, timer):
+
+        if timer < self.minTimerValue:
+            print "Warning, timervalue %d to low (%d)!" % (timer, self.minTimerValue)
+            timer = self.minTimerValue
+        elif timer > self.maxTimerValue:
+            print "Warning, timervalue %d to high (%d)!" % (timer, self.maxTimerValue)
+            timer = self.maxTimerValue
+
+        return timer
+
+    ####################################################################################################
+    #
+    # Create a list of stepper pulses for a acceleration ramp.
+    #
+    def accelRamp(self, steps_per_mm, vstart, vend, a, nSteps):
+
+        assert(vstart <= vend)
+
+        pulses = [] # (tstep, dt, timerValue)
+
+        # steps_per_mm = PrinterProfile.getStepsPerMM(axis)
+        sPerStep = 1.0/steps_per_mm
+
+        v = vstart
+        tstep = 0
+        s = sPerStep
+
+        stepToDo = nSteps
+
+        while v < vend and stepToDo > 0:
+
+            # Speed after this step
+            vn1 = util.vAccelPerDist(vstart, a, s)
+
+            # Time we need for this speed change/this step:
+            dv = vn1 - v
+            dt = dv / a
+
+            # Timervalue for this time
+            timerValue = self.timerLimit(int(dt * fTimer))
+
+            # timerValue = min(timerValue, ddprintconstants.maxTimerValue16)
+
+            # print "v after this step:", vn1, s, dt, timerValue
+
+            pulses.append(timerValue)
+
+            s += sPerStep
+            v = vn1
+            tstep += dt
+            stepToDo -= 1
+
+        return pulses
+
+    ####################################################################################################
+    #
+    # Create a list of stepper pulses for a deceleration ramp.
+    #
+    def decelRamp(self, steps_per_mm, vstart, vend, a, nSteps):
+
+        assert(vstart >= vend)
+
+        pulses = []
+
+        # steps_per_mm = PrinterProfile.getStepsPerMM(axis)
+        sPerStep = 1.0/steps_per_mm
+
+        v = vstart
+        tstep = 0
+        s = sPerStep
+
+        while v > vend and nSteps > 0:
+
+            # Speed after this step
+            vn1 = util.vAccelPerDist(vstart, -a, s)
+
+            # Time we need for this speed change/this step:
+            dv = v - vn1
+            dt = dv / a
+
+            # Timervalue for this time
+            timerValue = self.timerLimit(int(dt * fTimer))
+
+            # if timerValue > ddprintconstants.maxTimerValue16:
+                # # print "break on timeroverflow, v after this step:", vn1, s, dt, timerValue
+                # break
+
+            # print "v after this step:", vn1, s, dt, timerValue
+
+            pulses.append(timerValue)
+
+            s += sPerStep
+            v = vn1
+            tstep += dt
+            nSteps -= 1
+
+        return pulses
+
 
