@@ -98,6 +98,8 @@ class TempControl: public Protothread
 
     float eSumLimit;
 
+    bool antiWindupMode;
+
     public:
 
         // xxx todo setter
@@ -110,7 +112,9 @@ class TempControl: public Protothread
             Ki(0.1),
             Kd(1.0),
             pwmValueOverride(0),
-            suggestPwm(0) {};
+            antiWindupMode(false),
+            suggestPwm(0)
+            {};
         void init();
         virtual bool Run();
         void setTemp(uint8_t heater, uint16_t newTarget);

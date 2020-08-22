@@ -154,10 +154,12 @@ void TempControl::heater() {
                 // Regeldifferenz, grösser 0 falls temperatur zu klein
                 float e = target_temperature[0] - current_temperature[0];
 
-                eSum = constrain(
-                    eSum + e,
-                    -eSumLimit,
-                    eSumLimit);
+                if (! antiWindupMode) {
+                    eSum = constrain(
+                        eSum + e,
+                        -eSumLimit,
+                        eSumLimit);
+                }
 
                 float pTerm = Kp * e;
 
@@ -170,16 +172,21 @@ void TempControl::heater() {
 
                 if (pid_output > PID_MAX) {
                     pid_output = PID_MAX;
+                    antiWindupMode = true;
                 }
-                else if (pid_output < -PID_MAX) {
-                    pid_output = -PID_MAX;
+                else if (pid_output < 0) {
+                    pid_output = 0;
+                    antiWindupMode = true;
+                }
+                else {
+                    antiWindupMode = false;
                 }
 
                 if ((pid_output < suggestPwm) && (e > 0.0)) {
                     pid_output = suggestPwm;
                 }
 
-                HEATER_0_PIN :: write( max(pid_output, (int32_t)0) );
+                HEATER_0_PIN :: write( pid_output );
 
 #ifdef PID_DEBUG
                 static int dbgcount=0;
