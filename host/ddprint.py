@@ -427,7 +427,7 @@ def main():
     elif args.mode == 'heatHotend':
 
         printer = Printer()
-        initPrinterProfile(args)
+        printer.commandInit(args)
         initMatProfile(args, printer.getPrinterName())
         util.heatHotend(args, printer)
 

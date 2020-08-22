@@ -1227,18 +1227,12 @@ def stopMove(args, parser):
 
 def heatHotend(args, printer):
 
-    assert(0) # todo: transition to printer.printerProfile...
-
-    pp = PrinterProfile.get()
-
-    printer.commandInit(args, PrinterProfile.getSettings())
-
     t1 = args.t1 or planner.matProfile.getHotendGoodTemp()
 
-    # printer.heatUp(HeaterEx1, t1, wait=t1-5, log=True)
-    iter = printer.heatUpRamp(pp, HeaterEx1, t1, log=True)
-    for temp in iter:
-        time.sleep(1)
+    printer.heatUp(HeaterEx1, t1, wait=t1-5, log=True)
+    # iter = printer.heatUpRamp(printer.printerProfile, HeaterEx1, t1, log=True)
+    # for temp in iter:
+        # time.sleep(1)
 
     kbd = GetChar()
 

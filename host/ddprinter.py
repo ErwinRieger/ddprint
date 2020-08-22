@@ -103,6 +103,8 @@ class Printer(Serial):
 
         # self.curDirBits = 0
 
+        self.printerProfile = None
+
         # xxx debug
         self.commandInitDone = False
 
@@ -426,9 +428,11 @@ class Printer(Serial):
         # xxx debug
         assert(self.commandInitDone == False)
 
-        self.initSerial(args.device, args.baud, True)
+        if not self.isOpen():
+            self.initSerial(args.device, args.baud, True)
 
-        # self.initPrinterProfile(args)
+        if not self.printerProfile:
+            self.initPrinterProfile(args)
 
         settings = self.printerProfile.getSettings()
 
@@ -753,6 +757,8 @@ class Printer(Serial):
         if args.mode == "pre":
             self.printerProfile = PrinterProfile(args.printer)
         else:
+            if not self.isOpen():
+                self.initSerial(args.device, args.baud, True)
             self.printerProfile = PrinterProfile(self.getPrinterName())
 
     # Set a gpio port on printer

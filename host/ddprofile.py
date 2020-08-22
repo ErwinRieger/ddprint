@@ -167,7 +167,7 @@ class PrinterProfile(ProfileBase):
         return cls.getValues()["axes"][dimNames[axisNr]]["steps_per_mm"]
 
     def getStepsPerMMI(self, axisNr):
-        return self.getValue("axes")[dimNames[axisNr]]["steps_per_mm"]
+        return int(self.getValue("axes")[dimNames[axisNr]]["steps_per_mm"])
 
     @classmethod
     def getStepsPerMMVector(cls):
@@ -210,8 +210,7 @@ class PrinterProfile(ProfileBase):
         return self.getValue("hwVersion")
 
     def getFilSensorCalibration(self):
-        cal = self.getValues()["filSensorCalibration"]
-        return cal
+        return self.getValues()["filSensorCalibration"]
 
     @classmethod
     def getBedlevelOffset(cls):
@@ -251,6 +250,21 @@ class PrinterProfile(ProfileBase):
             "buildVolZ": int(cls.getPlatformLength(Z_AXIS) * cls.getStepsPerMM(Z_AXIS)),
             }
 
+    def getSettingsI(self):
+        return {
+            "filSensorCalibration": self.getFilSensorCalibration(),
+            "Kp": self.getValue("Kp"),
+            "Ki": self.getValue("Ki"),
+            "Kd": self.getValue("Kd"),
+            "Tu": self.getTuI(),
+            "stepsPerMMX": self.getStepsPerMMI(X_AXIS),
+            "stepsPerMMY": self.getStepsPerMMI(Y_AXIS),
+            "stepsPerMMZ": self.getStepsPerMMI(Z_AXIS),
+            "buildVolX": int(self.getPlatformLengthI(X_AXIS) * self.getStepsPerMMI(X_AXIS)),
+            "buildVolY": int(self.getPlatformLengthI(Y_AXIS) * self.getStepsPerMMI(Y_AXIS)),
+            "buildVolZ": int(self.getPlatformLengthI(Z_AXIS) * self.getStepsPerMMI(Z_AXIS)),
+            }
+
     @classmethod
     def getTu(cls):
         return cls.get()._getTu()
@@ -266,7 +280,11 @@ class PrinterProfile(ProfileBase):
     def getTg(cls):
         return cls.get()._getTg()
 
+    # xxx replace with getTuI()
     def _getTg(self):
+        return self.values["Tg"]
+
+    def getTgI(self):
         return self.values["Tg"]
 
     @classmethod
