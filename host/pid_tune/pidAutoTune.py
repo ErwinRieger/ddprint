@@ -31,20 +31,27 @@ f=open(sys.argv[1])
 raw = util.jsonLoad(f)
 d = raw["data"]
 
-# Get sampling frequency
-ts = np.array(map(lambda x: x[0], d), dtype=float) # [:,0]
-times = np.diff(ts)
+# Get timestamps, sampling frequency
+rawXValues = np.array(map(lambda x: x[0], d), dtype=float) # [:,0]
+rawYValues = np.array(map(lambda x: x[1], d), dtype=float)
 
+times = np.diff(rawXValues)
+
+# Normalize by input step
 Xo = raw["Xo"]
-data = []
+normData = []
 for tim, temp in d:
-    data.append((tim, temp/Xo))
+    normData.append((tim, temp/Xo))
 
-Ks = raw["tEnd"]/Xo
+rawTMax = np.max(rawYValues)
 
-endTemp = raw["tEnd"]/Xo
-t033 = getPercentT(data, endTemp/3.0)
-t066 = getPercentT(data, endTemp*2/3.0)
+# Ks = raw["tEnd"]/Xo # Ks is also normalized endtemp
+Ks = rawTMax / Xo # Ks is also normalized endtemp
+
+print "raw endtemp, endtemp:", raw["tEnd"], rawTMax, Ks
+
+t033 = getPercentT(normData, Ks/3.0)
+t066 = getPercentT(normData, Ks*2/3.0)
 
 print "##################################################"
 print "## PID Parameter aus Sprungantwort              ##"
@@ -66,10 +73,10 @@ print "Tu:", Tu1
 
 print "\nTg/Tu nach http://controlguru.com/:"
 # "Time Constant"
-Tg2 = getPercentT(data, endTemp*0.632)
+Tg2 = getPercentT(normData, Ks*0.632)
 print "Tg:", Tg2
 # "Dead Time"
-Tu2 = getFoptdTd(data, Ks)
+Tu2 = getFoptdTd(normData, Ks)
 print "Tu:", Tu2
 
 # tangente über steigung
@@ -79,12 +86,12 @@ nAvgShortterm = int(round(((Tu1+Tu2)/20.0) * fs))
 print "nAvgShortterm:", nAvgShortterm
 tangentAvg = movingavg.MovingAvg(nAvgShortterm)
 
-last = data[0]
+last = normData[0]
 tangente = []
 i = 0
-while i < len(data)-1:
+while i < len(normData)-1:
     
-    (t, y) = data[i+1]
+    (t, y) = normData[i+1]
 
     dt = t - last[0]
     dy = y - last[1]
@@ -95,7 +102,7 @@ while i < len(data)-1:
     tangentAvg.add(s)
 
     if tangentAvg.valid():
-        tforavg = data[i+1-nAvgShortterm/2][0]
+        tforavg = normData[i+1-nAvgShortterm/2][0]
         tangente.append((tforavg, s, tangentAvg.mean()))
     else:
         if (i < nAvgShortterm/2):
@@ -110,7 +117,7 @@ ty = np.array(map(lambda x: x[2], tangente), dtype=float)
 
 smax = np.max(ty)
 idx = np.argmax(ty)
-tempidx = data[idx][1]
+tempidx = normData[idx][1]
 ttu = tts[idx] - (tempidx / smax)
 ttg = tts[idx] + ((Ks - tempidx) / smax)
 
@@ -127,35 +134,59 @@ Tu = (Tu1+Tu2+ttu)/3.0
 print "Tu:", Tu
 print "Tg:", Tg
 
-print "\nZiegler PID 0.9:"
-Kr = (0.9 / Ks) * (Tg / Tu)
-Tn = 2.0 * Tu 
-Tv = 0.5 * Tu
-print "kr:", Kr
-print "ti:", Kr / Tn
-print "tv:", Kr / Tv
-
 print "\nZiegler PID 1.2:"
 Kr = (1.2 / Ks) * (Tg / Tu)
 Tn = 2.0 * Tu 
 Tv = 0.5 * Tu
-print "kr:", Kr
-print "ti:", Kr / Tn
-print "tv:", Kr / Tv
-
+print '"Kp": %.4f,' % Kr
+print '"Ki": %.4f,' % (Kr / Tn)
+print '"Kd": %.4f,' % (Kr / Tv)
 
 print "\nChien aperiodisch PID, gute führung:"
 Kr = (0.6 / Ks) * (Tg / Tu) 
 Tn = Tg 
 Tv = 0.5 * Tu
-print "kr:", Kr
-print "ti:", Kr / Tn
-print "td:", Kr / Tv
+print '"Kp": %.4f,' % Kr
+print '"Ki": %.4f,' % (Kr / Tn)
+print '"Kd": %.4f,' % (Kr / Tv)
+
+##################################################
+
+#
+# T-sum method, search the time Tsum where area below the curve
+# before Tsum is the same as the area above behind Tsum.
+#
+areaA = 0.0
+areaB = 0.0
+
+inversY = np.array(map(lambda x: rawTMax - x[1], d), dtype=float)
+
+for i in range(len(rawXValues)-1):
+    areaA = np.trapz(y=rawYValues[:i], x=rawXValues[:i])
+    # print "areaA:", areaA
+    areaB = np.trapz(y=inversY[i:], x=rawXValues[i:])
+    # print "areaB:", areaB
+
+    if areaA >= areaB:
+        tSum = rawXValues[i]
+        break
+
+print "\nT-Sum method PID parameters (fast):"
+print "Tsum: ", tSum
+Kr = 2.0 / Ks
+Tn = 0.8 * tSum
+Tv = 0.194 * tSum
+print '"Kp": %.4f,' % Kr
+print '"Ki": %.4f,' % (Kr / Tn)
+print '"Kd": %.4f,' % (Kr / Tv)
+
+##################################################
 
 plt.subplot(3,1,1)
 plt.title('Raw temperature step response')
 plt.grid(True)
-plt.plot(map(lambda t: t[0], d), map(lambda t: t[1], d), '-')
+# plt.plot(map(lambda t: t[0], d), map(lambda t: t[1], d), '-')
+plt.plot(rawXValues, map(lambda t: t[1], d), '-')
 
 plt.subplot(3,1,2)
 plt.title('Tangente')
@@ -166,8 +197,8 @@ plt.plot((tts[idx], tts[idx]), (0, smax*1.1))
 plt.subplot(3,1,3)
 plt.title('Step response')
 plt.grid(True)
-plt.plot(map(lambda t: t[0], data), map(lambda t: t[1], data), '-')
-plt.plot([0, data[-1][0]], [Ks, Ks])
+plt.plot(map(lambda t: t[0], normData), map(lambda t: t[1], normData), '-')
+plt.plot([0, normData[-1][0]], [Ks, Ks])
 
 plt.plot([t033, t033], [0, 0.4*Ks])
 plt.annotate('1/3', xy=(t033*1.1, 0.3*Ks))
