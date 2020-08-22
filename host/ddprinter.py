@@ -1025,13 +1025,22 @@ class Printer(Serial):
         return struct.unpack("<I", payload)[0]
 
     ####################################################################################################
-
+    #
     # Read analog value from a gpio port from printer
+    #
     def readAnalogGpio(self, pin):
 
         payload = struct.pack("<B", pin)
         (cmd, payload) = self.query(CmdReadAnalogGpio, binPayload=payload)
         return struct.unpack("<I", payload)[0]
+
+    ####################################################################################################
+    #
+    # Emegency hard reset printer
+    #
+    def systemReset(self):
+
+        self.sendCommand(CmdSystemReset)
 
     ####################################################################################################
 

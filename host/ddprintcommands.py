@@ -96,6 +96,7 @@ CmdSetGpio =         183 # Set a gpio port, dangerous, used to determine pinmap.
 CmdReadAnalogGpio =  184 # Read a analog value from gpio port, used to determine pinmap.
 CmdSetStepsPerMM  =  185 # Initial printer settings: steps per mm for X/Y/Z
 CmdSetHostSettings = 186 # Initial printer settings
+CmdSystemReset     = 187 # Emergency hard reset system 
 
 CommandNames = {
 }
@@ -170,6 +171,7 @@ for (cmd, cmdName) in [
     (CmdReadAnalogGpio, "CmdReadAnalogGpio",),
     (CmdSetStepsPerMM, "CmdSetStepsPerMM",),
     (CmdSetHostSettings, "CmdSetHostSettings",),
+    (CmdSystemReset, "CmdSystemReset",),
     ]:
 
         insertCommandName(cmd, cmdName)

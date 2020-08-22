@@ -221,6 +221,8 @@ def main():
     sp = subparsers.add_parser("readAnalogGpio", help=u"Debug: Set gpio pin to INPUT_ANALOG and read value.")
     sp.add_argument("pin", type=int, help="Pin number to read.")
 
+    sp = subparsers.add_parser("reset", help=u"Emergency hard reset printer.")
+
     sp = subparsers.add_parser("bedLeveling", help=u"Do bed leveling sequence.")
 
     sp = subparsers.add_parser("heatHotend", help=u"Heat up hotend (to clean it, etc).")
@@ -402,6 +404,12 @@ def main():
         printer.initSerial(args.device, args.baud)
         val = printer.readAnalogGpio(args.pin)
         print val
+
+    elif args.mode == 'reset':
+
+        printer = Printer()
+        printer.initSerial(args.device, args.baud)
+        printer.systemReset()
 
     elif args.mode == 'bedLeveling':
 
