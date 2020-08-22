@@ -50,9 +50,9 @@ import sys, math, os
 boardName = "JennyPrinter Shuttle Gear"
 AdcRes = 4096
 # Temperature for ADC values below 220 are lower than -8 °C
-# Temperature for ADC values above 614 are greater than 500 °C
+# Temperature for ADC values above 2458 are greater than 500 °C
 lowADC = 874
-highADC = 1584
+highADC = 2458
 
 #
 # GND -*- 2.2K -*- pt100 -*- 2.2k -*- Ub 5V
