@@ -2429,23 +2429,16 @@ def xstartPrint(args, parser, planner, printer, printerProfile, t1):
                 elif state == StatePreload:
 
                     if (not f) and (status["t0"] >= t0):
-                        # Heat hotend further if bed is at temp
-                        print "\nHeating extruder (t1: %d)...\n" % int(round(t1*0.9))
-                        printer.heatUp(HeaterEx1, int(round(t1*0.9)))
-                        state = StateHeating
-
-                elif state == StateHeating:
-
-                    # Preload done, bed is at temp, now heating hotend
-                    if status["t1"] >= (t1*0.9-2):
+                        # Heat hotend if bed is at temp
                         print "\nHeating extruder (t1: %d)...\n" % t1
-                        printer.heatUp(HeaterEx1, t1)
+                        tempRamp = printer.heatUpRamp(printerProfile, HeaterEx1, t1)
                         state = StateStarting
 
                 elif state == StateStarting:
 
-                    if status["t1"] >= (t1-2):
-
+                    try:
+                        tempRamp.next()
+                    except StopIteration:
                         print "\nStarting print...\n"
 
                         # Send print start command
@@ -2654,9 +2647,8 @@ def measureTempFlowrateCurve2(args, parser, planner, printer, printerProfile):
     printer.sendCommandParamV(CmdEnableFRLimit, [packedvalue.uint8_t(1)])
 
     printer.sendCommand(CmdDisableSteppers)
-    printer.sendCommandParamV(CmdFanSpeed, [packedvalue.uint8_t(0)])
-
     printer.coolDown(HeaterEx1, wait=100, log=True)
+    printer.sendCommandParamV(CmdFanSpeed, [packedvalue.uint8_t(0)])
 
 
 ####################################################################################################
