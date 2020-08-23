@@ -1678,11 +1678,9 @@ def genTempTable(matProfile):
 
 ####################################################################################################
 
-def eTimerValue(planner, eSpeed):
+def eTimerValue(printer, eSpeed):
 
-    assert(0) # todo: transition to printer.printerProfile...
-
-    spm = PrinterProfile.getStepsPerMM(A_AXIS)
+    spm = printer.printerProfile.getStepsPerMMI(A_AXIS)
     steprate = eSpeed * spm
     timerValue = int(fTimer / steprate)
     return timerValue
