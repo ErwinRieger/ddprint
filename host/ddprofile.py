@@ -234,6 +234,9 @@ class PrinterProfile(ProfileBase):
     def getFilSensorInterval(cls):
         return cls.getValues()["filSensorInterval"]
 
+    def getFilSensorIntervalI(self):
+        return self.getValue("filSensorInterval")
+
     @classmethod
     def getSettings(cls):
         return {
@@ -250,12 +253,12 @@ class PrinterProfile(ProfileBase):
             "buildVolZ": int(cls.getPlatformLength(Z_AXIS) * cls.getStepsPerMM(Z_AXIS)),
             }
 
-    def getSettingsI(self):
+    def getSettingsI(self, pidSet):
         return {
             "filSensorCalibration": self.getFilSensorCalibration(),
-            "Kp": self.getValue("Kp"),
-            "Ki": self.getValue("Ki"),
-            "Kd": self.getValue("Kd"),
+            "Kp": self.getPidValue(pidSet, "Kp"),
+            "Ki": self.getPidValue(pidSet, "Ki"),
+            "Kd": self.getPidValue(pidSet, "Kd"),
             "Tu": self.getTuI(),
             "stepsPerMMX": self.getStepsPerMMI(X_AXIS),
             "stepsPerMMY": self.getStepsPerMMI(Y_AXIS),
@@ -282,10 +285,13 @@ class PrinterProfile(ProfileBase):
 
     # xxx replace with getTuI()
     def _getTg(self):
-        return self.values["Tg"]
+        return self.getValue("Tg")
 
     def getTgI(self):
-        return self.values["Tg"]
+        return self.getValue("Tg")
+
+    def getPidValue(self, pidSet, key):
+        return self.getValue(pidSet)[key]
 
     @classmethod
     def getNLongInterval(cls, feedrate):

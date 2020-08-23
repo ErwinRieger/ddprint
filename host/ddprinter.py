@@ -421,7 +421,7 @@ class Printer(Serial):
         self.resetLineNumber()
 
     # Initialize serial interface and download printer settings.
-    def commandInit(self, args):
+    def commandInit(self, args, pidSet="pidPrint"):
 
         # XXX check already initialized/running printer here?
 
@@ -434,7 +434,7 @@ class Printer(Serial):
         if not self.printerProfile:
             self.initPrinterProfile(args)
 
-        settings = self.printerProfile.getSettings()
+        settings = self.printerProfile.getSettingsI(pidSet)
 
         # todo: move all settings into CmdSetHostSettings call
         self.sendCommandParamV(CmdSetFilSensorCal, [packedvalue.float_t(settings["filSensorCalibration"])])
@@ -840,12 +840,12 @@ class Printer(Serial):
     # Note: Without ramping, the Ziegler Nichols (0.9) pid settings on the UM2 gives about 40%
     #       overshot when starting from room temperature, the Jennyprinter gives about 35% overshot.
     #
-    def heatUpRamp(self, printerProfile, heater, tdest, log=False):
+    def heatUpRamp(self, heater, tdest, log=False):
 
         assert(type(tdest) == types.IntType)
 
-        # Ramp up time: tg from the autotune step response.
-        timeConstant = printerProfile.getTg() 
+        # Ramp up time: tu+tg from the autotune step response.
+        timeConstant = self.printerProfile.getTuI() + self.printerProfile.getTgI() 
 
         status = self.getStatus()
         startTemp = status["t1"]

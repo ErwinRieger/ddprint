@@ -1230,7 +1230,7 @@ def heatHotend(args, printer):
     t1 = args.t1 or planner.matProfile.getHotendGoodTemp()
 
     printer.heatUp(HeaterEx1, t1, wait=t1-5, log=True)
-    # iter = printer.heatUpRamp(printer.printerProfile, HeaterEx1, t1, log=True)
+    # iter = printer.heatUpRamp(HeaterEx1, t1, log=True)
     # for temp in iter:
         # time.sleep(1)
 
@@ -1948,7 +1948,7 @@ def measureFlowrateStepResponse(args, parser):
 
 
 ####################################################################################################
-def measureTempFlowrateCurve(args, parser):
+def measureTempFlowrateCurve(args, parser, planner, printer):
 
     dTemp = 2.5 # temperature-band 
 
@@ -1960,15 +1960,10 @@ def measureTempFlowrateCurve(args, parser):
 
         return False
 
-    planner = parser.planner
-    printer = planner.printer
-
     aFilament = planner.matProfile.getMatArea()
 
-    printerProfile = PrinterProfile.get()
-
     # Override differential value for temperature PID to smooth pid pwm output
-    printerProfile.override("Kd", 0.0)
+    printer.printerProfile.override("Kd", 0.0)
 
     ddhome.home(args, printer, planner, parser)
 
@@ -1979,7 +1974,7 @@ def measureTempFlowrateCurve(args, parser):
     downloadDummyTempTable(printer)
 
     # Move to mid-position
-    feedrate = PrinterProfile.getMaxFeedrate(X_AXIS)
+    feedrate = printer.printerProfile.getMaxFeedrateI(X_AXIS)
     parser.execute_line("G0 F%d X%f Y%f" % (feedrate*60, planner.MAX_POS[X_AXIS]/2, planner.MAX_POS[Y_AXIS]/2))
 
     planner.finishMoves()
@@ -1993,14 +1988,14 @@ def measureTempFlowrateCurve(args, parser):
     # XXX speed too high for small nozzles!?
     feedrate = (args.flowrate or 1.0) / aFilament
 
-    dt = PrinterProfile.getFilSensorInterval()
-    steps_per_mm = PrinterProfile.getStepsPerMM(A_AXIS)
-    pcal = PrinterProfile.get().getFilSensorCalibration()
+    dt = printer.printerProfile.getFilSensorIntervalI()
+    steps_per_mm = printer.printerProfile.getStepsPerMMI(A_AXIS)
+    pcal = printer.printerProfile.getFilSensorCalibration()
 
     ####################################################################################################
     # * set initial pwm value and wait for min temp
     # * start measurement loop
-    timeConstant = printerProfile.getTu() + printerProfile.getTg() 
+    timeConstant = printer.printerProfile.getTuI() + printer.printerProfile.getTgI() 
 
     # Averaging window, 1/4 of hotend timeconstant timeConstant
     nAvg = int(round(timeConstant / (dt * 4)))
@@ -2022,10 +2017,10 @@ def measureTempFlowrateCurve(args, parser):
       pwmAvg = movingavg.MovingAvg(nAvg)
 
       print "Ramping up to target temp:", t1
-      # printer.heatUp(HeaterEx1, t1, wait=t1-dTemp, log=True)
-      iter = printer.heatUpRamp(printerProfile, HeaterEx1, t1, log=True)
-      for temp in iter:
-          time.sleep(1)
+      printer.heatUp(HeaterEx1, t1, wait=t1-dTemp, log=True)
+      # iter = printer.heatUpRamp(HeaterEx1, t1, log=True)
+      # for temp in iter:
+          # time.sleep(1)
 
       # Set extruder motor speed
       print "\nRunning extruder motor with %.2f mm/s" % feedrate
@@ -2160,14 +2155,12 @@ def sizeof_fmt(num):
 #   die stabilisierung der tempregelung nicht abwarten).
 
 
-def xstartPrint(args, parser, planner, printer, printerProfile, t1):
-
-        assert(0) # todo: transition to printer.printerProfile...
+def xstartPrint(args, parser, planner, printer, t1):
 
         commonInit(args, printer, planner, parser)
 
         t0 = planner.matProfile.getBedTemp()
-        t0Wait = min(t0, printerProfile.getWeakPowerBedTemp())
+        t0Wait = min(t0, printer.printerProfile.getWeakPowerBedTemp())
 
         # Send heat up  command
         print "\nHeating bed (t0: %d)...\n" % t0
@@ -2225,7 +2218,7 @@ def xstartPrint(args, parser, planner, printer, printerProfile, t1):
                     if (not f) and (status["t0"] >= t0):
                         # Heat hotend if bed is at temp
                         print "\nHeating extruder (t1: %d)...\n" % t1
-                        tempRamp = printer.heatUpRamp(printerProfile, HeaterEx1, t1)
+                        tempRamp = printer.heatUpRamp(HeaterEx1, t1)
                         state = StateStarting
 
                 elif state == StateStarting:
@@ -2306,7 +2299,7 @@ def measureTempFlowrateCurve2(args, parser, planner, printer, printerProfile):
     #
     # Start print:
     #
-    xstartPrint(args, parser, planner, printer, printerProfile, t1)
+    xstartPrint(args, parser, planner, printer, t1)
 
     lastEPos = 0.0
     lastTime = 0.0
