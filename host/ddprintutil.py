@@ -2016,7 +2016,7 @@ def measureTempFlowrateCurve(args, parser, planner, printer):
 
       pwmAvg = movingavg.MovingAvg(nAvg)
 
-      print "Ramping up to target temp:", t1
+      print "Heating up to target temp:", t1
       printer.heatUp(HeaterEx1, t1, wait=t1-dTemp, log=True)
       # iter = printer.heatUpRamp(HeaterEx1, t1, log=True)
       # for temp in iter:

@@ -110,7 +110,7 @@ def initParser(args, mode=None, gui=None, travelMovesOnly=False, pidSet="pidPrin
 
     # Create printer profile
     printer.initSerial(args.device, args.baud)
-    printer.initPrinterProfile(args, pidSet)
+    printer.initPrinterProfile(args)
 
     # Create material profile singleton instance
     if "mat" in args:
@@ -427,7 +427,6 @@ def main():
     elif args.mode == 'heatHotend':
 
         printer = Printer()
-        # printer.commandInit(args, pidSet="measure")
         printer.commandInit(args, pidSet="pidMeasure")
         initMatProfile(args, printer.getPrinterName())
         util.heatHotend(args, printer)
