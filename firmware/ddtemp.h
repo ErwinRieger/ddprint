@@ -140,7 +140,7 @@ class TempControl: public Protothread
             if (pwmMode)
                 return pwmValueOverride;
             else
-                return (uint8_t) STD max(pid_output, (int32_t)0);
+                return (uint8_t) pid_output;
         }
 };
 

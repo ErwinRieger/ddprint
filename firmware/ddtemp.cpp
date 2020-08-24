@@ -139,7 +139,7 @@ void TempControl::heater() {
         }
         else {
 
-            if (pwmValueOverride) {
+            if (pwmMode) {
 
                 HEATER_0_PIN :: write(pwmValueOverride);
             }
