@@ -103,7 +103,7 @@ def initMatProfile(args, printerName):
 
     return mat
 
-def initParser(args, mode=None, gui=None, travelMovesOnly=False, pidSet="pidPrint"):
+def initParser(args, mode=None, gui=None, travelMovesOnly=False):
 
     # Create the Printer singleton instance
     printer = Printer(gui=gui)
@@ -363,7 +363,7 @@ def main():
         # Disable autotemp
         args.autoTemp = False
 
-        (parser, planner, printer) = initParser(args, mode=args.mode, pidSet="pidMeasure")
+        (parser, planner, printer) = initParser(args, mode=args.mode)
         util.measureTempFlowrateCurve2(args, parser, planner, printer)
 
     elif args.mode == 'moverel':

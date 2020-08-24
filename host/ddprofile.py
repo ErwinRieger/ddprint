@@ -277,21 +277,21 @@ class PrinterProfile(ProfileBase):
         return self.values["Tu"]
 
     def getTuI(self):
-        return self.getValue("Tu")
+        return float(self.getValue("Tu"))
 
     @classmethod
     def getTg(cls):
         return cls.get()._getTg()
 
-    # xxx replace with getTuI()
+    # xxx replace with getTgI()
     def _getTg(self):
         return self.getValue("Tg")
 
     def getTgI(self):
-        return self.getValue("Tg")
+        return float(self.getValue("Tg"))
 
     def getPidValue(self, pidSet, key):
-        return self.getValue(pidSet)[key]
+        return float(self.getValue(pidSet)[key])
 
     @classmethod
     def getNLongInterval(cls, feedrate):

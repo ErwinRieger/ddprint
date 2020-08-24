@@ -869,7 +869,7 @@ class Printer(Serial):
 
             if temp < tdest-2:
 
-                t = startTemp + (time.time() - startTime) * a
+                t = min(startTemp + (time.time() - startTime) * a, tdest)
 
                 print "temp is below dest", temp, t, tdest
 

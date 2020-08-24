@@ -1654,12 +1654,10 @@ def getResponseString(s, offset):
 
 ####################################################################################################
 
-def genTempTable(matProfile):
+def genTempTable(printerProfile, matProfile):
 
-    assert(0) # todo: transition to printer.printerProfile...
-
-    hwVersion = PrinterProfile.getHwVersion()
-    spm = PrinterProfile.getStepsPerMM(A_AXIS)
+    hwVersion = printerProfile.getHwVersionI()
+    spm = printerProfile.getStepsPerMMI(A_AXIS)
     nozzleDiam = NozzleProfile.getSize()
     aFilament = matProfile.getMatArea()
 
@@ -2159,7 +2157,7 @@ def measureTempFlowrateCurve(args, parser, planner, printer):
 
     aFilament = planner.matProfile.getMatArea()
 
-    printer.commandInit(args, pidSet="pidMeasure")
+    printer.commandInit(args, pidSet="pidMeasure") # Use slow pid
     ddhome.home(args, printer, planner, parser)
 
     # Disable flowrate limit
@@ -2318,11 +2316,13 @@ def measureTempFlowrateCurve(args, parser, planner, printer):
     printer.sendCommandParamV(CmdFanSpeed, [packedvalue.uint8_t(0)])
 
 ####################################################################################################
+
 def pdbAssert(expr):
 
     if not expr:
         import pdb
         pdb.set_trace()
+
 ####################################################################################################
 # Print size in human readable form
 
@@ -2334,6 +2334,7 @@ def sizeof_fmt(num):
             return "%3.1f %s" % (num, unit)
         num /= 1024.0
     return "%.1f %s" % (num, 'yB')
+
 ####################################################################################################
 
 
@@ -2357,7 +2358,6 @@ def sizeof_fmt(num):
 def xstartPrint(args, parser, planner, printer, t1):
 
         ddhome.home(args, printer, planner, parser)
-        downloadTempTable(printer, planner.matProfile)
 
         t0 = planner.matProfile.getBedTemp()
         t0Wait = min(t0, printer.printerProfile.getWeakPowerBedTemp())
@@ -2436,13 +2436,9 @@ def xstartPrint(args, parser, planner, printer, t1):
 
                 checkTime = time.time() + 2
 
-def measureTempFlowrateCurve2(args, parser, planner, printer, printerProfile):
+def measureTempFlowrateCurve2(args, parser, planner, printer):
 
-    assert(0) # todo: transition to printer.printerProfile...
-
-    assert(0) # xxx make this the same as in measureTempFlowrateCurve
-    # Temperature-band, 5%, T-sum pid is mostly above the set temperature, so this is
-    # more a 2.5% window.
+    # Temperature-band
     def tempGood(t, t1, percent):
         return abs(t1 - t) <= (t1*percent)
 
@@ -2454,19 +2450,18 @@ def measureTempFlowrateCurve2(args, parser, planner, printer, printerProfile):
     t1 = (goodtemp + planner.matProfile.getHotendMaxTemp()) / 2
 
     ####################################################################################################
-    dt = PrinterProfile.getFilSensorInterval()
-    timeConstant = printerProfile.getTu() + printerProfile.getTg() 
 
-    hwVersion = PrinterProfile.getHwVersion()
+    # timeConstant = printer.printerProfile.getTuI() + printer.printerProfile.getTgI() 
+
+    hwVersion = printer.printerProfile.getHwVersion()
     nozzleDiam = NozzleProfile.getSize()
     p0pwm = planner.matProfile.getP0pwm(hwVersion, nozzleDiam) # xxx hardcoded in firmware!
 
     aFilament = planner.matProfile.getMatArea()
 
-    e_steps_per_mm = printerProfile.getStepsPerMM(A_AXIS)
+    e_steps_per_mm = printer.printerProfile.getStepsPerMM(A_AXIS)
 
-    # Averaging window, 1/4 of hotend timeconstant timeConstant
-    nAvg = int(round(timeConstant / 4))
+    nAvg = 10
     print "navg:", nAvg
 
     # Running average of hotend temperature and grip
@@ -2482,7 +2477,7 @@ def measureTempFlowrateCurve2(args, parser, planner, printer, printerProfile):
     #
     # Start print:
     #
-    printer.commandInit(args, pidSet="pidMeasure")
+    printer.commandInit(args) # Use fast pid
     xstartPrint(args, parser, planner, printer, t1)
 
     lastEPos = 0.0
@@ -2510,6 +2505,7 @@ def measureTempFlowrateCurve2(args, parser, planner, printer, printerProfile):
         time.sleep(1)
         curPosMM = getVirtualPos(parser)
 
+    timeConstant = printer.printerProfile.getTgI() 
     tempdec = float(t1 - goodtemp) / timeConstant
 
     #
@@ -2566,7 +2562,7 @@ def measureTempFlowrateCurve2(args, parser, planner, printer, printerProfile):
             # temp in 5% band
             if tempGood(t1Avg, t1, 0.025):
 
-                t -= tempdec
+                t -= 1
 
                 if int(t) != status["targetT1"]:
                     t1 = int(t)
