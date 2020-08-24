@@ -69,23 +69,17 @@
 // #define HOTEND_FAN_ACTIVE   LOW
 
 #define LED_PIN                 PWMOutput<3, ACTIVELOWPIN>   // ["GPIOA","D03","PA3"],  # Known: Output, Case LED, active low
-#define LED_PIN_ACTIVE_LOW  true
 
 // Note: PB13 has no associated timer in stm32duino -> use bitbang temp control
 #define HEATER_BED_PIN          DigitalOutput<29, ACTIVELOWPIN>  // ["GPIOB","D29","PB13"], # Known: Output, Heater Bed, active low
-// #define HB_PIN_ACTIVE_LOW   true
-#define HEATER_BED_ACTIVE   LOW
 
 #define HEATER_0_PIN            PWMOutput<38, ACTIVELOWPIN>  // ["GPIOC","D38","PC6"],  # Known: Output, Heater Head 0, active low
-// #define H0_PIN_ACTIVE_LOW   true
 
 #define HEATER_1_PIN            PWMOutput<39, ACTIVELOWPIN>  // ["GPIOC","D39","PC7"],  # Known: Output, Heater Head 1, active low
-// #define H1_PIN_ACTIVE_LOW   true
 
 // #define HEATER_2_PIN        -1
 
 #define FAN_PIN                 PWMOutput<22, ACTIVELOWPIN>  // ["GPIOB","D22","PB6"],  # Known: Output, Fan 0, Part cooling fan, active low
-// #define FAN_PIN_ACTIVE_LOW  true
 
 #define TEMP_BED_PIN            AnalogInput<33, 11> // ["GPIOC","D33","PC1"],  # Known: Analog Input, Temp. PT100 Sensor BED
 #define TEMP_0_PIN              AnalogInput<32, 10> // ["GPIOC","D32","PC0"],  # Known: Analog Input, Temp. PT100 Sensor X
