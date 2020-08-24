@@ -152,7 +152,7 @@ def calibrateESteps(args, printer, planner):
 
     printer.sendCommandParamV(CmdContinuousE, [packedvalue.uint16_t(maxTimerValue16)])
 
-    stepperVal = util.eTimerValue(planner, feedrate)
+    stepperVal = util.eTimerValue(printer, feedrate)
     printer.sendCommandParamV(CmdSetContTimer, [packedvalue.uint16_t(stepperVal)])
 
     time.sleep(tStartup)
@@ -272,7 +272,7 @@ def calibrateFilSensor(args, printer, planner):
         print "running %.2f seconds with %.2f mm/s, # of samples for long average: %d" % (tRound, feedrate, nAvgLong)
 
         # set new feedrate:
-        stepperVal = util.eTimerValue(planner, feedrate)
+        stepperVal = util.eTimerValue(printer, feedrate)
         printer.sendCommandParamV(CmdSetContTimer, [packedvalue.uint16_t(stepperVal)])
         stepperValues.append(stepperVal)
 

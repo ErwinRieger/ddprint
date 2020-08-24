@@ -727,11 +727,6 @@ def directionBits(disp):
 
 ####################################################################################################
 
-def commonInit(args, printer, planner, parser):
-
-    ddhome.home(args, printer, planner, parser)
-    downloadTempTable(printer, planner.matProfile)
-
 ####################################################################################################
 
 def getVirtualPos(parser):
@@ -767,6 +762,7 @@ def zRepeatability(parser):
 
     feedrate = PrinterProfile.getMaxFeedrate(Z_AXIS)
 
+    assert(0) # commandInit
     ddhome.home(args, printer, planner, parser)
 
     for i in range(10):
@@ -822,7 +818,11 @@ def printFile(args, parser, planner, printer, printerProfile, logObj,
 
     assert(0) # todo: transition to printer.printerProfile...
 
+    assert(0) # commandInit
     commonInit(args, printer, planner, parser)
+    ddhome.home(args, printer, planner, parser)
+    downloadTempTable(printer, planner.matProfile)
+
 
     t0 = planner.matProfile.getBedTemp()
     t0Wait = min(t0, printerProfile.getWeakPowerBedTemp())
@@ -952,6 +952,7 @@ def insertFilament(args, parser, feedrate):
 
     assert(0) # todo: transition to printer.printerProfile...
 
+    assert(0) # commandInit
     ddhome.home(args, printer, planner, parser)
 
     def manualMoveE():
@@ -1030,6 +1031,7 @@ def removeFilament(args, parser, feedrate):
 
     assert(0) # todo: transition to printer.printerProfile...
 
+    assert(0) # commandInit
     ddhome.home(args, printer, planner, parser)
 
     # Move to mid-position
@@ -1065,6 +1067,7 @@ def bedLeveling(args, parser, planner, printer):
     # Reset bedlevel offset in printer profile
     PrinterProfile.get().override("add_homeing_z", 0)
 
+    assert(0) # commandInit
     ddhome.home(args, printer, planner, parser)
 
     zFeedrate = PrinterProfile.getMaxFeedrate(Z_AXIS)
@@ -1236,6 +1239,31 @@ def heatHotend(args, printer):
 
     kbd = GetChar()
 
+    print("Press return to stop heating...")
+    while not kbd.getcNB():
+        status = printer.getStatus()
+        printer.ppStatus(status)
+        time.sleep(1)
+
+    if not args.noCoolDown:
+        printer.coolDown(HeaterEx1, wait=150, log=True)
+
+def heatHotendTest(args, printer):
+
+    t1 = args.t1
+
+    printer.heatUp(HeaterEx1, t1, wait=t1, log=True)
+
+    kbd = GetChar()
+
+    print("Press return for next step...")
+    while not kbd.getcNB():
+        status = printer.getStatus()
+        printer.ppStatus(status)
+        time.sleep(1)
+
+    printer.heatUp(HeaterEx1, t1+50, wait=t1+50, log=True)
+    
     print("Press return to stop heating...")
     while not kbd.getcNB():
         status = printer.getStatus()
@@ -1492,15 +1520,13 @@ def measureHotendStepResponse(args, printer, matProfile):
     def stopHeater():
         printer.setTempPWM(HeaterEx1, 0)
 
-    printer.commandInit(args)
-
     tmax = matProfile.getHotendMaxTemp()
 
     ## Eingangssprung, nicht die volle leistung, da sonst die temperatur am ende
     ## der sprungantwort zu stark überschwingt und zu hoch wird.
     # TODO: move to printer profile
     Xo = 100.0 # UM2
-    Xo = 25.0  # Jennyprinter
+    Xo = 65.0  # Jennyprinter
     interval = 0.1
 
     navg = int(round(30/interval))
@@ -1685,7 +1711,6 @@ def eTimerValue(printer, eSpeed):
     timerValue = int(fTimer / steprate)
     return timerValue
 
-
 ####################################################################################################
 
 def printTempTable(temp, tempTable):
@@ -1866,7 +1891,7 @@ def measureFlowrateStepResponse(args, parser):
 
     # start motor
     print "\nstarting motor with %.2f mm/s" % feedrate
-    printer.sendCommandParamV(CmdContinuousE, [packedvalue.uint16_t(eTimerValue(planner, feedrate))])
+    printer.sendCommandParamV(CmdContinuousE, [packedvalue.uint16_t(eTimerValue(printer, feedrate))])
 
     mode = "starting"
 
@@ -1903,7 +1928,7 @@ def measureFlowrateStepResponse(args, parser):
             print "\nincreased feedrate by %.3f to %.3f" % (frincrease, feedrate)
             
             # set new feedrate:
-            printer.sendCommandParamV(CmdSetContTimer, [packedvalue.uint16_t(eTimerValue(planner, feedrate))])
+            printer.sendCommandParamV(CmdSetContTimer, [packedvalue.uint16_t(eTimerValue(printer, feedrate))])
 
         fraw.write("    [%f, %f, %f, %f, %f]" % (time.time()-tStart, targetFlowRate, r, targetFlowRate*r, t1Avg))
 
@@ -1935,7 +1960,7 @@ def measureFlowrateStepResponse(args, parser):
     # Slow down E move
     while feedrate > 1:
         feedrate -= 0.1
-        printer.sendCommandParamV(CmdSetContTimer, [packedvalue.uint16_t(eTimerValue(planner, feedrate))])
+        printer.sendCommandParamV(CmdSetContTimer, [packedvalue.uint16_t(eTimerValue(printer, feedrate))])
         time.sleep(0.5)
 
     # Stop continuos e-mode
@@ -1948,9 +1973,12 @@ def measureFlowrateStepResponse(args, parser):
 ####################################################################################################
 def measureTempFlowrateCurve(args, parser, planner, printer):
 
-    dTemp = 2.5 # temperature-band 
+    # dTemp = 2.5 # temperature-band, 2.5%
+    # Temperature-band, 5%, T-sum pid is mostly above the set temperature, so this is
+    # more a 2.5% window.
+    dTemp = 5.0
 
-    def tempGood(actT1, t1):
+    def xtempGood(actT1, t1):
 
         if actT1.valid():
 
@@ -1961,8 +1989,9 @@ def measureTempFlowrateCurve(args, parser, planner, printer):
     aFilament = planner.matProfile.getMatArea()
 
     # Override differential value for temperature PID to smooth pid pwm output
-    printer.printerProfile.override("Kd", 0.0)
+    # printer.printerProfile.override("Kd", 0.0)
 
+    printer.commandInit(args, pidSet="pidMeasure")
     ddhome.home(args, printer, planner, parser)
 
     # Disable flowrate limit
@@ -1971,7 +2000,7 @@ def measureTempFlowrateCurve(args, parser, planner, printer):
     # Disable temp-flowrate limit
     downloadDummyTempTable(printer)
 
-    # Move to mid-position
+    # Move to mid-position, xxx factor out into own function
     feedrate = printer.printerProfile.getMaxFeedrateI(X_AXIS)
     parser.execute_line("G0 F%d X%f Y%f" % (feedrate*60, planner.MAX_POS[X_AXIS]/2, planner.MAX_POS[Y_AXIS]/2))
 
@@ -1991,8 +2020,9 @@ def measureTempFlowrateCurve(args, parser, planner, printer):
     pcal = printer.printerProfile.getFilSensorCalibration()
 
     ####################################################################################################
-    # * set initial pwm value and wait for min temp
+    # * set initial temp wait for min temp
     # * start measurement loop
+    ####################################################################################################
     timeConstant = printer.printerProfile.getTuI() + printer.printerProfile.getTgI() 
 
     # Averaging window, 1/4 of hotend timeconstant timeConstant
@@ -2015,14 +2045,15 @@ def measureTempFlowrateCurve(args, parser, planner, printer):
       pwmAvg = movingavg.MovingAvg(nAvg)
 
       print "Heating up to target temp:", t1
-      printer.heatUp(HeaterEx1, t1, wait=t1-dTemp, log=True)
+      # printer.heatUp(HeaterEx1, t1, wait=t1-dTemp, log=True)
       # iter = printer.heatUpRamp(HeaterEx1, t1, log=True)
       # for temp in iter:
           # time.sleep(1)
+      printer.heatUp(HeaterEx1, t1, wait=round(t1 - t1*.025), log=True)
 
       # Set extruder motor speed
       print "\nRunning extruder motor with %.2f mm/s" % feedrate
-      printer.sendCommandParamV(CmdContinuousE, [packedvalue.uint16_t(eTimerValue(planner, feedrate))])
+      printer.sendCommandParamV(CmdContinuousE, [packedvalue.uint16_t(eTimerValue(printer, feedrate))])
 
       tStart = time.time()
 
@@ -2037,15 +2068,16 @@ def measureTempFlowrateCurve(args, parser, planner, printer):
 
         t1Avg = tempAvg.mean()
 
-        if tempGood(tempAvg, t1):
-            pwmAvg.add(status["pwmOutput"])
+        # if tempGood(tempAvg, t1):
+            # pwmAvg.add(status["pwmOutput"])
+        pwmAvg.add(status["pwmOutput"])
 
         pAvg = pwmAvg.mean()
 
         meanShort = flowAvg.mean()
         targetFlowRate = feedrate * aFilament
 
-        # should be speed:
+        # should-be speed:
         stepsPerInterval = feedrate * steps_per_mm * dt
 
         r = meanShort / (stepsPerInterval * pcal)
@@ -2056,22 +2088,22 @@ def measureTempFlowrateCurve(args, parser, planner, printer):
                 (time.time()-tStart, t1Avg, pAvg, targetFlowRate, currentFlowrate, r),
         sys.stdout.flush()
 
-        if r > minGrip and tempGood(tempAvg, t1):
+        if actT1 >= t1:
 
-            # Increase speed
-            # Increase feedrate by max 5% and min 0.01% mm per second
-            frincrease = feedrate * max(0.05 * (max(r, minGrip) - minGrip), 0.0001)
-            feedrate += frincrease
-            # print "\nincreased feedrate by %.3f to %.3f" % (frincrease, feedrate)
+            if r > minGrip: #  and tempGood(tempAvg, t1):
+
+                # Increase speed
+                # Increase feedrate by max 1% and min 0.01% mm per second
+                frincrease = feedrate * max(0.01 * (max(r, minGrip) - minGrip), 0.0001)
+                feedrate += frincrease
+                # print "\nincreased feedrate by %.3f to %.3f" % (frincrease, feedrate)
             
-            # Set new feedrate:
-            printer.sendCommandParamV(CmdSetContTimer, [packedvalue.uint16_t(eTimerValue(planner, feedrate))])
+                # Set new feedrate:
+                printer.sendCommandParamV(CmdSetContTimer, [packedvalue.uint16_t(eTimerValue(printer, feedrate))])
 
-            lastGoodFlowrate = currentFlowrate
+                lastGoodFlowrate = currentFlowrate
 
-        if pwmAvg.valid():
-            # print "pwm avg valid:", pAvg
-            if pwmAvg.near(0.05):
+            if pwmAvg.valid() and r <= minGrip and pwmAvg.near(0.05):
                 print "\nPwm settled in 5%% tolerance band, average flowrate: %.2f mm³/s at pwm: %.2f, temp: %.1f °C, break" % (lastGoodFlowrate, pAvg, t1Avg)
                 data.append( (lastGoodFlowrate, pAvg, t1Avg) )
                 break
@@ -2085,7 +2117,7 @@ def measureTempFlowrateCurve(args, parser, planner, printer):
     # Slow down E move
     while feedrate > 1:
         feedrate -= 0.1
-        printer.sendCommandParamV(CmdSetContTimer, [packedvalue.uint16_t(eTimerValue(planner, feedrate))])
+        printer.sendCommandParamV(CmdSetContTimer, [packedvalue.uint16_t(eTimerValue(printer, feedrate))])
         time.sleep(0.1)
 
     # Stop continuos e-mode
@@ -2114,7 +2146,9 @@ def measureTempFlowrateCurve(args, parser, planner, printer):
     print "# feedrate at a0"
     print '"FR0pwm": %.4f,' % data[0][0]
 
+    printer.sendCommand(CmdDisableSteppers)
     printer.coolDown(HeaterEx1, wait=100, log=True)
+    printer.sendCommandParamV(CmdFanSpeed, [packedvalue.uint8_t(0)])
 
 ####################################################################################################
 def pdbAssert(expr):
@@ -2155,7 +2189,8 @@ def sizeof_fmt(num):
 
 def xstartPrint(args, parser, planner, printer, t1):
 
-        commonInit(args, printer, planner, parser)
+        ddhome.home(args, printer, planner, parser)
+        downloadTempTable(printer, planner.matProfile)
 
         t0 = planner.matProfile.getBedTemp()
         t0Wait = min(t0, printer.printerProfile.getWeakPowerBedTemp())
@@ -2234,30 +2269,13 @@ def xstartPrint(args, parser, planner, printer, t1):
 
                 checkTime = time.time() + 2
 
-        """
-        print "Print finished, duration:", printer.getPrintDuration()
-
-        printer.coolDown(HeaterEx1)
-        printer.coolDown(HeaterBed)
-
-        ddhome.home(args, printer, planner, parser)
-
-        printer.sendCommand(CmdDisableSteppers)
-
-        if not args.noCoolDown:
-            printer.coolDown(HeaterEx1, wait=150, log=True)
-
-        # Stop hotend fan
-        printer.sendCommandParamV(CmdFanSpeed, [packedvalue.uint8_t(0)])
-
-        # Exit simulator for profiling
-        # printer.sendCommand(CmdExit)
-        """
-
 def measureTempFlowrateCurve2(args, parser, planner, printer, printerProfile):
 
     assert(0) # todo: transition to printer.printerProfile...
 
+    assert(0) # xxx make this the same as in measureTempFlowrateCurve
+    # Temperature-band, 5%, T-sum pid is mostly above the set temperature, so this is
+    # more a 2.5% window.
     def tempGood(t, t1, percent):
         return abs(t1 - t) <= (t1*percent)
 
@@ -2297,6 +2315,7 @@ def measureTempFlowrateCurve2(args, parser, planner, printer, printerProfile):
     #
     # Start print:
     #
+    printer.commandInit(args, pidSet="pidMeasure")
     xstartPrint(args, parser, planner, printer, t1)
 
     lastEPos = 0.0

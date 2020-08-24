@@ -382,11 +382,13 @@ class MainForm(npyscreen.FormBaseNew):
         self.guiQueue.put(SyncCallUpdate(self.fn.set_value, self.args.file))
         
         # try:
-        util.commonInit(self.args, self.printer, self.planner, self.parser)
+        self.printer.commandInit(self.args)
         # except SerialException, ex:
             # msg = "Can't open serial device '%s' (baudrate: %d)!" % (self.args.device, self.args.baud)
             # self.guiQueue.put(SyncCall(self.quit, msg, ex))
             # return
+        ddhome.home(self.args, self.printer, self.planner, self.parser)
+        util.downloadTempTable(self.printer, self.planner.matProfile)
 
         while True:
 

@@ -284,7 +284,7 @@ def main():
     if args.mode == 'autoTune':
 
         printer = Printer()
-        initPrinterProfile(args)
+        printer.commandInit(args)
         matProfile = initMatProfile(args, printer.getPrinterName())
         util.measureHotendStepResponse(args, printer, matProfile)
 
@@ -508,6 +508,7 @@ def main():
     elif args.mode == 'home':
 
         (parser, planner, printer) = initParser(args, mode=args.mode, travelMovesOnly=True)
+        printer.commandInit(args)
         ddhome.home(args, printer, planner, parser)
 
     elif args.mode == 'todo zRepeatability':
@@ -563,21 +564,10 @@ def main():
     elif args.mode == 'test':
 
         printer = Printer()
-        printer.initSerial(args.device, args.baud)
-        # printer.sendCommandParamV(CmdFanSpeed, [packedvalue.uint8_t(128)])
-        # time.sleep(5)
+        printer.commandInit(args, pidSet="pidMeasure")
 
-        # initPrinterProfile(args)
-        # printer.commandInit(args)
-        # readings = printer.getFSReadings(10)
-        # print "Readings: "
-        # pprint.pprint(readings)
-        # printer.setTempPWM(HeaterEx1, 0)
-        # printer = Printer()
-        # util.downloadDummyTempTable(printer)
-        # (baseTemp, tempTable) = printer.getTempTable()
-        # print "tempTable: ", pprint.pprint(tempTable)
-        # util.printTempTable(baseTemp, tempTable)
+        util.heatHotendTest(args, printer)
+
     else:
         print "Unknown/not implemented command: ", args.mode
         assert(0)
