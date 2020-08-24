@@ -126,9 +126,21 @@ void myPinMode(uint8 pin, WiringPinMode mode);
 //
 inline void timerInit() {
 
+    // PWM FAN, todo: set prescaler to work around hardware problem
     timer_init(&timer4);
+
+    // PWM LED
     timer_init(&timer5);
+
+    //
+    // PWM, hotend 1 heater, default pwm is 1280Hz (with overflow 0xffff)
+    // This is too fast for the electronics of the jennyprinter (optocoupler)
+    // The pulses are up to 100uS to long so we have to use a low frequency
+    // to keep the error small. Prescaler 25 gives us 51 Hz, the error for
+    // 100uS is then 0.5%.
+    //
     timer_init(&timer8);
+    timer_set_prescaler(&timer8, 25 - 1);
 
     //
     // Stepper timers
