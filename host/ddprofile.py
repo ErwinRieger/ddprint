@@ -235,7 +235,7 @@ class PrinterProfile(ProfileBase):
         return cls.getValues()["filSensorInterval"]
 
     def getFilSensorIntervalI(self):
-        return self.getValue("filSensorInterval")
+        return float(self.getValue("filSensorInterval"))
 
     @classmethod
     def getSettings(cls):
