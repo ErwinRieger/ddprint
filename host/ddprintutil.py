@@ -813,21 +813,11 @@ def manualMove(parser, axis, distance, feedrate=0, absolute=False):
 ####################################################################################################
 
 
-def printFile(args, parser, planner, printer, printerProfile, logObj,
-    gfile, t0, t0_wait, t1, doLog=False):
+def printFile(args, parser, planner, printer, logObj, gfile, t0, t0_wait, t1, doLog=False):
 
-    assert(0) # todo: transition to printer.printerProfile...
-
-    assert(0) # commandInit
-    commonInit(args, printer, planner, parser)
+    printer.commandInit(args)
     ddhome.home(args, printer, planner, parser)
     downloadTempTable(printer, planner.matProfile)
-
-
-    t0 = planner.matProfile.getBedTemp()
-    t0Wait = min(t0, printerProfile.getWeakPowerBedTemp())
-
-    t1 = planner.matProfile.getHotendGoodTemp() + planner.l0TempIncrease
 
     # Send heat up  command
     logObj.log( "Pre-Heating bed (t0: %d)...\n" % t0)
@@ -838,13 +828,11 @@ def printFile(args, parser, planner, printer, printerProfile, logObj,
     logObj.log( "Nuber of lines to preload: %d" % preloadLines)
 
     lineNr = 0
-    # printStarted = False
 
     checkTime = time.time() + 2
 
     StateWeakPreheat = 0
     StatePreload = 1
-    StateHeating = 2
     StateStarting = 3
     StatePrinting = 4
     state = StateWeakPreheat
@@ -871,8 +859,9 @@ def printFile(args, parser, planner, printer, printerProfile, logObj,
                 printer.sendCommand(CmdEOT)
 
                 f = None
+        else:
+            time.sleep(0.5)
 
-        # if lineNr >= preloadLines and time.time() > checkTime:
         if time.time() > checkTime:
 
             status = printer.getStatus()
@@ -884,7 +873,7 @@ def printFile(args, parser, planner, printer, printerProfile, logObj,
             #
             if state == StateWeakPreheat:
                 
-                if status["t0"] >= t0Wait:
+                if status["t0"] >= t0_wait:
                     # Start pre-heating of hotend, bed is still heating
                     logObj.log( "Pre-Heating extruder %.2f (t1: %d)...\n" % (t1/2.0, t1))
                     printer.heatUp(HeaterEx1, t1/2)
@@ -892,30 +881,23 @@ def printFile(args, parser, planner, printer, printerProfile, logObj,
 
             elif state == StatePreload:
 
+                # Wait until entire stepdata or preload amout of it is sent and bed is 
+                # heated.
                 if ((not f) or (lineNr >= preloadLines)) and status["t0"] >= t0:
-                    # Heat hotend further if bed is at temp, heat to 90% to avoid big overswing
-                    logObj.log( "Heating extruder (t1: %d)...\n" % int(round(t1*0.9)) )
-                    printer.heatUp(HeaterEx1, int(round(t1*0.9)))
-                    state = StateHeating
-
-            elif state == StateHeating:
-
-                # Preload done, bed is at temp, now heating hotend
-                if status["t1"] >= (t1*0.9-2):
+                    # Heat hotend further if bed is at temp
                     logObj.log( "Heating extruder (t1: %d)...\n" % t1 )
-                    printer.heatUp(HeaterEx1, t1)
+                    tempRamp = printer.heatUpRamp(HeaterEx1, t1)
                     state = StateStarting
 
             elif state == StateStarting:
 
-                if status["t1"] >= (t1-2):
-
+                try:
+                    tempRamp.next()
+                except StopIteration:
                     logObj.log( "\nStarting print...\n" )
 
                     # Send print start command
                     printer.startPrint()
-
-                    # printStarted = True
                     state = StatePrinting
 
             elif state == StatePrinting:
@@ -924,7 +906,7 @@ def printFile(args, parser, planner, printer, printerProfile, logObj,
                 if not printer.stateMoving(status):
                     break
 
-            checkTime = time.time() + 2
+            checkTime = time.time() + 1.5
 
     logObj.log( "Print finished, duration: %s" % printer.getPrintDuration() )
 
@@ -1738,7 +1720,7 @@ def printTempTable(temp, tempTable):
 
 def downloadTempTable(printer, matProfile):
 
-    (startTemp, table) = genTempTable(matProfile)
+    (startTemp, table) = genTempTable(printer.printerProfile, matProfile)
 
     payload = struct.pack("<HB", startTemp, NExtrusionLimit)
 
@@ -1766,11 +1748,9 @@ def downloadDummyTempTable(printer):
 
 ####################################################################################################
 
-def getStartupTime(feedrate):
+def getStartupTime(printer, feedrate):
 
-    assert(0) # todo: transition to printer.printerProfile...
-
-    eAccel = PrinterProfile.getMaxAxisAcceleration()[A_AXIS]
+    eAccel = printer.printerProfile.getMaxAxisAccelerationI()[A_AXIS]
 
     # Zeit bis sich der messwert der target geschwindigkeit
     # stabilisiert hat.
@@ -2377,8 +2357,7 @@ def xstartPrint(args, parser, planner, printer, t1):
         checkTime = time.time() + 2
 
         StateWeakPreheat = 0
-        StatePreload = 1
-        StateHeating = 2
+        StateHeatBed = 1
         StateStarting = 3
 
         state = StateWeakPreheat
@@ -2391,11 +2370,12 @@ def xstartPrint(args, parser, planner, printer, t1):
                     parser.execute_line(line)
                 else:
                     # Reading done
-
                     print "Parsed all gcode lines."
                     planner.finishMoves()
                     printer.sendCommand(CmdEOT)
                     f = None
+            else:
+                time.sleep(0.5)
 
             if time.time() > checkTime:
 
@@ -2411,10 +2391,12 @@ def xstartPrint(args, parser, planner, printer, t1):
                         # Start pre-heating of hotend, bed is still heating
                         print "\nPre-Heating extruder %.2f (t1: %d)...\n" % (t1/2.0, t1)
                         printer.heatUp(HeaterEx1, t1/2)
-                        state = StatePreload
+                        state = StateHeatBed
 
-                elif state == StatePreload:
+                elif state == StateHeatBed:
 
+                    # Wait until entire stepdata is sent and bed is 
+                    # heated.
                     if (not f) and (status["t0"] >= t0):
                         # Heat hotend if bed is at temp
                         print "\nHeating extruder (t1: %d)...\n" % t1
@@ -2430,11 +2412,9 @@ def xstartPrint(args, parser, planner, printer, t1):
 
                         # Send print start command
                         printer.startPrint()
-
-                        # printStarted = True
                         break
 
-                checkTime = time.time() + 2
+                checkTime = time.time() + 1.5
 
 def measureTempFlowrateCurve2(args, parser, planner, printer):
 
@@ -2562,14 +2542,14 @@ def measureTempFlowrateCurve2(args, parser, planner, printer):
             # temp in 5% band
             if tempGood(t1Avg, t1, 0.025):
 
-                t -= 1
+                t -= tempdec
 
                 if int(t) != status["targetT1"]:
                     t1 = int(t)
                     print "setting new temp:", t1
                     printer.heatUp(HeaterEx1, t1)
 
-            if gAvg < minGrip:
+            if gAvg <= minGrip:
                 print "break on mingrip...", gAvg, minGrip
                 break
 

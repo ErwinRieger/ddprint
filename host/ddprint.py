@@ -81,7 +81,7 @@ from ddprintstates import *
 
 
 # Create printer profile singleton instance
-def initPrinterProfile(args):
+def old_initPrinterProfile(args):
 
     if args.mode == "pre":
         return PrinterProfile(args.printer)
@@ -321,7 +321,7 @@ def main():
         (parser, planner, printer) = initParser(args, mode=args.mode)
 
         t0 = planner.matProfile.getBedTemp()
-        t0Wait = min(t0, printerProfile.getWeakPowerBedTemp())
+        t0Wait = min(t0, printer.printerProfile.getWeakPowerBedTemp())
         t1 = planner.matProfile.getHotendGoodTemp() + planner.l0TempIncrease
 
         util.printFile(args, parser, planner, printer, printer.gui,
@@ -550,7 +550,7 @@ def main():
     elif args.mode == 'calibrateESteps':
 
         printer = Printer()
-        initPrinterProfile(args)
+        printer.initPrinterProfile(args)
         planner = Planner(args, printer, travelMovesOnly=True)
         ddtest.calibrateESteps(args, printer, planner)
 

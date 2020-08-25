@@ -123,10 +123,8 @@ def testFilSensor(args, printer, parser):
 #
 def calibrateESteps(args, printer, planner):
 
-    assert(0) # todo: transition to printer.printerProfile...
-
     feedrate = args.feedrate or 5.0
-    feedrate = min(feedrate, PrinterProfile.getValues()['axes']["A"]['jerk'])
+    feedrate = min(feedrate, printer.printerProfile.getJerk("A"))
 
     printer.commandInit(args)
 
@@ -139,14 +137,14 @@ def calibrateESteps(args, printer, planner):
     # Set filament sensor calibration to 1
     printer.sendCommandParamV(CmdSetFilSensorCal, [packedvalue.float_t(1.0)])
 
-    dt = PrinterProfile.getFilSensorInterval()
+    dt = printer.printerProfile.getFilSensorIntervalI()
 
     # Time for one revolution
-    tRound = PrinterProfile.getFeederWheelCircum() / feedrate
-    tStartup = util.getStartupTime(feedrate)
+    tRound = printer.printerProfile.getFeederWheelCircumI() / feedrate
+    tStartup = util.getStartupTime(printer, feedrate)
     print "tRound:", tRound, "tStartup:", tStartup
 
-    nAvgLong = PrinterProfile.getNLongInterval(feedrate)
+    nAvgLong = printer.printerProfile.getNLongIntervalI(feedrate)
 
     print "running %.2f seconds with %.2f mm/s, # of samples for long average: %d" % (tRound, feedrate, nAvgLong)
 
@@ -180,10 +178,8 @@ def calibrateESteps(args, printer, planner):
 
     print ""
 
-    dFeederWheel = PrinterProfile.getFeederWheelDiam()
+    dFeederWheel = printer.printerProfile.getFeederWheelDiamI()
     writeDataSet(dFeederWheel, feedrate, crossAvg.data, "calibrateESteps_dataset")
-
-    pp = PrinterProfile.get()
 
     if crossAvg.locked:
 
@@ -193,12 +189,12 @@ def calibrateESteps(args, printer, planner):
         print "avg lock at t:", crossAvg.locked[1], meanLong, avg, "%.1f%%" % (((meanLong/avg)-1.0)*100)
    
         # should be speed:
-        s = (feedrate * pp.getFilSensorCountsPerMM()) * dt
+        s = (feedrate * printer.printerProfile.getFilSensorCountsPerMM()) * dt
 
         print "speed should be:", s
 
         ratio = s/meanLong
-        esteps = PrinterProfile.getStepsPerMM(A_AXIS)
+        esteps = printer.printerProfile.getStepsPerMMI(A_AXIS)
         print "ratio commanded speed / measured speed: ", ratio
         print "adjusted e-steps: %d (%d)" % (esteps * ratio, esteps)
 
@@ -258,13 +254,13 @@ def calibrateFilSensor(args, printer, planner):
     feedrate = steps[0] * stepfactor
 
     dt = PrinterProfile.getFilSensorInterval()
-    dFeederWheel = PrinterProfile.getFeederWheelDiam()
+    dFeederWheel = PrinterProfile.getFeederWheelDiamI()
 
     while feedrate <= maxFeedrate:
 
         # Time for one revolution
         tRound = PrinterProfile.getFeederWheelCircum() / feedrate
-        tStartup = util.getStartupTime(feedrate)
+        tStartup = util.getStartupTime(printer, feedrate)
         print "tRound:", tRound, "tStartup:", tStartup
 
         nAvgLong = PrinterProfile.getNLongInterval(feedrate)

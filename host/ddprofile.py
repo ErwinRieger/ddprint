@@ -223,9 +223,15 @@ class PrinterProfile(ProfileBase):
     def getFeederWheelDiam(cls):
         return cls.getValues()["feederWheelDiam"]
 
+    def getFeederWheelDiamI(self):
+        return float(self.getValue("feederWheelDiam"))
+
     @classmethod
     def getFeederWheelCircum(cls):
         return cls.getFeederWheelDiam() * math.pi
+
+    def getFeederWheelCircumI(self):
+        return self.getFeederWheelDiamI() * math.pi
 
     def getFilSensorCountsPerMM(self):
         return self.getValue("filSensorCountsPerMM")
@@ -268,24 +274,8 @@ class PrinterProfile(ProfileBase):
             "buildVolZ": int(self.getPlatformLengthI(Z_AXIS) * self.getStepsPerMMI(Z_AXIS)),
             }
 
-    @classmethod
-    def getTu(cls):
-        return cls.get()._getTu()
-
-    # xxx replace with getTuI()
-    def _getTu(self):
-        return self.values["Tu"]
-
     def getTuI(self):
         return float(self.getValue("Tu"))
-
-    @classmethod
-    def getTg(cls):
-        return cls.get()._getTg()
-
-    # xxx replace with getTgI()
-    def _getTg(self):
-        return self.getValue("Tg")
 
     def getTgI(self):
         return float(self.getValue("Tg"))
@@ -299,6 +289,16 @@ class PrinterProfile(ProfileBase):
         dt = cls.getFilSensorInterval()
         # Time for one revolution
         tRound = cls.getFeederWheelCircum() / feedrate
+        nAvg = int(round(tRound / dt))
+
+        nAvg = max(nAvg, 2)
+        return nAvg
+
+    def getNLongIntervalI(self, feedrate):
+
+        dt = self.getFilSensorIntervalI()
+        # Time for one revolution
+        tRound = self.getFeederWheelCircumI() / feedrate
         nAvg = int(round(tRound / dt))
 
         nAvg = max(nAvg, 2)
