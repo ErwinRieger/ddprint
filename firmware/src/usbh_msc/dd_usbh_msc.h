@@ -2,18 +2,14 @@
 
 #pragma once
 
-#include "usbh_msc_scsi.h"
-
-#define isThisUsedAssert() assert(0)
-
-typedef enum {DISABLE = 0, ENABLE = !DISABLE} FunctionalState;
-
-#include <VCP/misc.h>
+// #include <VCP/misc.h>
 
 typedef int IRQn_Type;
 #define __NVIC_PRIO_BITS          4
 #define __Vendor_SysTickConfig    1
 #include <VCP/core_cm4.h>
+
+#include "usbh_msc_scsi.h"
 
 // Note: redefine them here to be sure the rest of libmaple
 // uses the same pins.
@@ -22,11 +18,13 @@ typedef int IRQn_Type;
 
 #define AIRCR_VECTKEY_MASK    ((uint32_t)0x05FA0000)
 
-#define usbMSCHostAssert(expr) { if (! (expr) ) assert(0); }
+#define usbMSCHostAssert(expr) massert(expr)
 
 // #if ! defined(max)
     // #define max(X,Y) ((X) > (Y) ? (X) : (Y))
 // #endif
+
+typedef enum {DISABLE = 0, ENABLE = !DISABLE} FunctionalState;
 
 extern USB_OTG_CORE_HANDLE  USB_OTG_Core_Host;
 extern USBH_HOST            USB_Host;

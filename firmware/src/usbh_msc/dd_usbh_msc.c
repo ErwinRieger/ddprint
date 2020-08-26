@@ -1,14 +1,13 @@
 
 #include <stdint.h>
-#include <assert.h>
 #include <string.h> 
 
 #include <libmaple/gpio.h>
 #include <usb_hcd_int.h>
 
 #include "usbh_usr.h"
-
 #include "dd_usbh_msc.h"
+#include "mdebug.h"
 
 //xxx
 extern void USB_OTG_BSP_mDelay (const uint32_t msec);
@@ -77,7 +76,7 @@ uint32_t usbhMscSizeInBlocks() {
 //
 void usbMSCHostError() {
 
-    assert(0);
+    massert(0);
 }
 
 //--------------------------------------------------------------
@@ -1457,11 +1456,11 @@ USBH_Status USBH_MSC_HandleBOTXfer (USB_OTG_CORE_HANDLE *pdev ,USBH_HOST *phost)
       }   
       else if (URB_Status == URB_NOTREADY)
       {
-            assert(0);
+            massert(0);
       }     
       else if(URB_Status >= URB_ERROR) // error or stall
       {
-        assert(0);
+        massert(0);
       }
       break;
 
@@ -1495,12 +1494,12 @@ USBH_Status USBH_MSC_HandleBOTXfer (USB_OTG_CORE_HANDLE *pdev ,USBH_HOST *phost)
       }
       else if(URB_Status == URB_NOTREADY)
       {
-        assert(0);
+        massert(0);
       }     
       // else if(URB_Status == URB_STALL)
       else if (URB_Status >= URB_ERROR) // error or stall
       {
-        assert(0);
+        massert(0);
         /* This is Data Stage STALL Condition */
         // error_direction = USBH_MSC_DIR_IN;
         usbh_msc.BOTState  = USBH_BOTSTATE_BOT_ERROR_IN;
@@ -1550,7 +1549,7 @@ USBH_Status USBH_MSC_HandleBOTXfer (USB_OTG_CORE_HANDLE *pdev ,USBH_HOST *phost)
       }
       else if (URB_Status == URB_STALL)
       {
-        assert(0);
+        massert(0);
         // error_direction = USBH_MSC_DIR_OUT;
         usbh_msc.BOTState  = USBH_BOTSTATE_BOT_ERROR_OUT;
         
@@ -1610,15 +1609,14 @@ USBH_Status USBH_MSC_HandleBOTXfer (USB_OTG_CORE_HANDLE *pdev ,USBH_HOST *phost)
       }
       else if(URB_Status == URB_NOTREADY)
       {
-        assert(0);
+        massert(0);
       }     
       else if(URB_Status == URB_ERROR) // error or stall
       {
-          assert(0);
+          massert(0);
           usbh_msc.BOTState  = USBH_BOTSTATE_BOT_ERROR_IN;
       }
       else if(URB_Status == URB_STALL) {
-          // assert(0);
           usbh_msc.BOTState  = USBH_BOTSTATE_BOT_ERROR_OUT;
           debugCalls.stallErrors++;
       }
@@ -1650,7 +1648,7 @@ USBH_Status USBH_MSC_HandleBOTXfer (USB_OTG_CORE_HANDLE *pdev ,USBH_HOST *phost)
       // }
       else if (status == USBH_UNRECOVERED_ERROR)
       {
-          assert(0);
+          massert(0);
       }
       else {      
           usbMSCHostAssert(status == USBH_BUSY);
@@ -1798,20 +1796,19 @@ static USBH_Status USBH_MSC_Handle(USB_OTG_CORE_HANDLE *pdev , USBH_HOST *phost)
         usbh_msc.MSCState = USBH_MSC_READ_CAPACITY10;
       }
       else if (subStatus == USBH_FAIL) {
-            // assert(0);
             /* Media not ready, so try to check again */
             usbMSCHostAssert(requestSenseCalled++ < 1000);
             usbh_msc.MSCState = USBH_MSC_REQUEST_SENSE;
       }
       else if (subStatus == USBH_UNRECOVERED_ERROR) {
-            assert(0);
+            massert(0);
       }
       else if (subStatus == USBH_ERROR_SPEED_UNKNOWN) {
-            assert(0);
+            massert(0);
             // retstart
       }
       else if (subStatus >=USBH_NOT_SUPPORTED) {
-            assert(0);
+            massert(0);
       }
       else
           usbMSCHostAssert(subStatus == USBH_BUSY);
@@ -2604,7 +2601,7 @@ USBH_Status USBH_HandleControl (USB_OTG_CORE_HANDLE *pdev, USBH_HOST *phost)
     /* manage error cases*/
     if  (URB_Status == URB_STALL) 
     { 
-      assert(0);
+      massert(0);
     }   
     else if (URB_Status == URB_ERROR)
     {
@@ -2642,7 +2639,7 @@ USBH_Status USBH_HandleControl (USB_OTG_CORE_HANDLE *pdev, USBH_HOST *phost)
     /* handle error cases */
     else if  (URB_Status == URB_STALL) 
     { 
-      assert(0);
+      massert(0);
     } 
     else if  (URB_Status == URB_NOTREADY)
     { 
@@ -2690,7 +2687,7 @@ USBH_Status USBH_HandleControl (USB_OTG_CORE_HANDLE *pdev, USBH_HOST *phost)
      else if(URB_Status == URB_STALL)
     {
       /* Control transfers completed, Exit the State Machine */
-      assert(0);
+      massert(0);
       status = USBH_NOT_SUPPORTED;
     }
     break;
@@ -2738,7 +2735,7 @@ USBH_Status USBH_HandleControl (USB_OTG_CORE_HANDLE *pdev, USBH_HOST *phost)
     }
     else
     {
-      assert(0);
+      massert(0);
       
       status = USBH_FAIL;
     }
