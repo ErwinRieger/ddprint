@@ -101,8 +101,6 @@ class Printer(Serial):
         self.printStartedAt = None
         self.printEndedAt = None
 
-        # self.curDirBits = 0
-
         self.printerProfile = None
 
         # xxx debug
@@ -423,11 +421,6 @@ class Printer(Serial):
     # Initialize serial interface and download printer settings.
     def commandInit(self, args, pidSet="pidPrint"):
 
-        # XXX check already initialized/running printer here?
-
-        # xxx debug
-        assert(self.commandInitDone == False)
-
         if not self.isOpen():
             self.initSerial(args.device, args.baud, True)
 
@@ -460,9 +453,8 @@ class Printer(Serial):
             packedvalue.uint32_t(settings["buildVolZ"])
             ])
 
-        # xxx new
-        # self.curDirBits = self.getDirBits()
-        self.sendCommand(CmdPrinterInit)
+        if not self.commandInitDone:
+            self.sendCommand(CmdPrinterInit)
 
         self.commandInitDone = True
 
@@ -1002,7 +994,7 @@ class Printer(Serial):
     def getFreeMem(self):
 
         (cmd, payload) = self.query(CmdGetFreeMem)
-        t = struct.unpack("<H", payload)
+        t = struct.unpack("<I", payload)
         return t[0]
 
     def getFSReadings(self, notused_nNeadings=None):

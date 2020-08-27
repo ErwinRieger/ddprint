@@ -729,12 +729,11 @@ def directionBits(disp):
 
 ####################################################################################################
 
-def getVirtualPos(parser):
-
-    printer = parser.planner.printer
+def getVirtualPos(printer, parser):
 
     # Get currend stepped pos
     res = printer.getPos()
+
     print "Printer home pos [steps]:", res
 
     curPosMM = MyPoint(
@@ -763,7 +762,7 @@ def zRepeatability(parser):
     feedrate = PrinterProfile.getMaxFeedrate(Z_AXIS)
 
     assert(0) # commandInit
-    ddhome.home(args, printer, planner, parser)
+    ddhome.home(args, printer, parser, planner)
 
     for i in range(10):
 
@@ -778,20 +777,17 @@ def zRepeatability(parser):
 
 ####################################################################################################
 
-def manualMove(parser, axis, distance, feedrate=0, absolute=False):
+def manualMove(args, printer, parser, planner, axis, distance, feedrate=0, absolute=False):
 
-    planner = parser.planner
-    printer = planner.printer
-
-    assert(0) # todo: transition to printer.printerProfile...
-
-    assert(printer.isHomed())
+    if not printer.isHomed():
+        raw_input("Press return to start homing...")
+        ddhome.home(args, printer, parser, planner)
 
     # Get current pos from printer and set our virtual pos
-    getVirtualPos(parser)
+    getVirtualPos(printer, parser)
 
     if not feedrate:
-        feedrate = PrinterProfile.getMaxFeedrate(axis)
+        feedrate = printer.printerProfile.getMaxFeedrateI(axis)
 
     current_position = parser.getPos()
     if absolute:
@@ -813,11 +809,15 @@ def manualMove(parser, axis, distance, feedrate=0, absolute=False):
 ####################################################################################################
 
 
-def printFile(args, parser, planner, printer, logObj, gfile, t0, t0_wait, t1, doLog=False):
+def printFile(args, printer, parser, planner, logObj, gfile, t0, t0_wait, t1, doLog=False):
 
     printer.commandInit(args)
-    ddhome.home(args, printer, planner, parser)
-    downloadTempTable(printer, planner.matProfile)
+    ddhome.home(args, printer, parser, planner)
+
+    if args.dummyTempTable:
+        downloadDummyTempTable(printer)
+    else:
+        downloadTempTable(printer, planner.matProfile)
 
     # Send heat up  command
     logObj.log( "Pre-Heating bed (t0: %d)...\n" % t0)
@@ -867,6 +867,7 @@ def printFile(args, parser, planner, printer, logObj, gfile, t0, t0_wait, t1, do
             status = printer.getStatus()
             if doLog:
               printer.ppStatus(status)
+            pprint.pprint(status)
 
             #
             # Check temp and start print
@@ -913,7 +914,7 @@ def printFile(args, parser, planner, printer, logObj, gfile, t0, t0_wait, t1, do
     printer.coolDown(HeaterEx1)
     printer.coolDown(HeaterBed)
 
-    ddhome.home(args, printer, planner, parser)
+    ddhome.home(args, printer, parser, planner)
 
     printer.sendCommand(CmdDisableSteppers)
 
@@ -935,7 +936,7 @@ def insertFilament(args, parser, feedrate):
     assert(0) # todo: transition to printer.printerProfile...
 
     assert(0) # commandInit
-    ddhome.home(args, printer, planner, parser)
+    ddhome.home(args, printer, parser, planner)
 
     def manualMoveE():
 
@@ -985,7 +986,7 @@ def insertFilament(args, parser, feedrate):
     manualMoveE()
 
     print "\nForwarding filament.\n"
-    manualMove(parser, A_AXIS, FILAMENT_REVERSAL_LENGTH * 0.85, feedrate)
+    manualMove(printer, parser, planner, A_AXIS, FILAMENT_REVERSAL_LENGTH * 0.85, feedrate)
 
     print "\nExtrude filament.\n"
     manualMoveE()
@@ -1014,7 +1015,7 @@ def removeFilament(args, parser, feedrate):
     assert(0) # todo: transition to printer.printerProfile...
 
     assert(0) # commandInit
-    ddhome.home(args, printer, planner, parser)
+    ddhome.home(args, printer, parser, planner)
 
     # Move to mid-position
     maxFeedrate = PrinterProfile.getMaxFeedrate(X_AXIS)
@@ -1031,16 +1032,16 @@ def removeFilament(args, parser, feedrate):
     printer.heatUp(HeaterEx1, t1, wait=t1, log=True)
 
     # Filament vorwärts feeden um den 'retract-pfropfen' einzuschmelzen
-    manualMove(parser, A_AXIS, PrinterProfile.getRetractLength() + 50, 5)
+    manualMove(printer, parser, planner, A_AXIS, PrinterProfile.getRetractLength() + 50, 5)
 
-    manualMove(parser, A_AXIS, -1.3*FILAMENT_REVERSAL_LENGTH, feedrate)
+    manualMove(printer, parser, planner, A_AXIS, -1.3*FILAMENT_REVERSAL_LENGTH, feedrate)
 
     if not args.noCoolDown:
         printer.coolDown(HeaterEx1,wait=150, log=True)
 
 ####################################################################################################
 
-def bedLeveling(args, parser, planner, printer):
+def bedLeveling(args, printer, parser, planner):
 
     assert(0) # todo: transition to printer.printerProfile...
 
@@ -1050,7 +1051,7 @@ def bedLeveling(args, parser, planner, printer):
     PrinterProfile.get().override("add_homeing_z", 0)
 
     assert(0) # commandInit
-    ddhome.home(args, printer, planner, parser)
+    ddhome.home(args, printer, parser, planner)
 
     zFeedrate = PrinterProfile.getMaxFeedrate(Z_AXIS)
     kbd = GetChar("Enter (u)p (d)own (U)p 1mm (D)own 1mm (2-5) Up Xmm (q)uit")
@@ -1162,7 +1163,7 @@ def bedLeveling(args, parser, planner, printer):
 
         pointNumber += 1
 
-    ddhome.home(args, printer, planner, parser)
+    ddhome.home(args, printer, parser, planner)
     printer.sendCommand(CmdDisableSteppers) # Force homing/reset
 
     raw_input("\n! Please update your Z-Offset (add_homeing_z) in printer profile: %.3f\n" % add_homeing_z)
@@ -1203,7 +1204,7 @@ def stopMove(args, parser):
     if printer.isHomed():
         parser.reset()
         planner.reset()
-        ddhome.home(args, printer, planner, parser)
+        ddhome.home(args, printer, parser, planner)
 
     printer.sendCommand(CmdStopMove)
     printer.sendCommand(CmdDisableSteppers)
@@ -1220,7 +1221,6 @@ def heatHotend(args, printer):
         # time.sleep(1)
 
     kbd = GetChar()
-
     print("Press return to stop heating...")
     while not kbd.getcNB():
         status = printer.getStatus()
@@ -1741,7 +1741,7 @@ def downloadDummyTempTable(printer):
     payload = struct.pack("<HB", 170, NExtrusionLimit)
 
     for i in range(NExtrusionLimit):
-        payload += struct.pack("<H", 50)
+        payload += struct.pack("<H", int(fTimer / printer.printerProfile.getMaxStepperFreq()))
 
     resp = printer.query(CmdSetTempTable, binPayload=payload)
     assert(handleGenericResponse(resp))
@@ -1952,7 +1952,7 @@ def measureFlowrateStepResponse(args, parser):
 
 ####################################################################################################
 
-def old_measureTempFlowrateCurve(args, parser, planner, printer):
+def old_measureTempFlowrateCurve(args, printer, parser, planner):
 
     # dTemp = 2.5 # temperature-band, 2.5%
     # Temperature-band, 5%, T-sum pid is mostly above the set temperature, so this is
@@ -1973,7 +1973,7 @@ def old_measureTempFlowrateCurve(args, parser, planner, printer):
     # printer.printerProfile.override("Kd", 0.0)
 
     printer.commandInit(args, pidSet="pidMeasure")
-    ddhome.home(args, printer, planner, parser)
+    ddhome.home(args, printer, parser, planner)
 
     # Disable flowrate limit
     printer.sendCommandParamV(CmdEnableFRLimit, [packedvalue.uint8_t(0)])
@@ -2133,12 +2133,12 @@ def old_measureTempFlowrateCurve(args, parser, planner, printer):
 
 ####################################################################################################
 
-def measureTempFlowrateCurve(args, parser, planner, printer):
+def measureTempFlowrateCurve(args, printer, parser, planner):
 
     aFilament = planner.matProfile.getMatArea()
 
     printer.commandInit(args, pidSet="pidMeasure") # Use slow pid
-    ddhome.home(args, printer, planner, parser)
+    ddhome.home(args, printer, parser, planner)
 
     # Disable flowrate limit
     printer.sendCommandParamV(CmdEnableFRLimit, [packedvalue.uint8_t(0)])
@@ -2335,9 +2335,9 @@ def sizeof_fmt(num):
 #   die stabilisierung der tempregelung nicht abwarten).
 
 
-def xstartPrint(args, parser, planner, printer, t1):
+def xstartPrint(args, printer, parser, planner, t1):
 
-        ddhome.home(args, printer, planner, parser)
+        ddhome.home(args, printer, parser, planner)
 
         t0 = planner.matProfile.getBedTemp()
         t0Wait = min(t0, printer.printerProfile.getWeakPowerBedTemp())
@@ -2416,7 +2416,7 @@ def xstartPrint(args, parser, planner, printer, t1):
 
                 checkTime = time.time() + 1.5
 
-def measureTempFlowrateCurve2(args, parser, planner, printer):
+def measureTempFlowrateCurve2(args, printer, parser, planner):
 
     # Temperature-band
     def tempGood(t, t1, percent):
@@ -2458,7 +2458,7 @@ def measureTempFlowrateCurve2(args, parser, planner, printer):
     # Start print:
     #
     printer.commandInit(args) # Use fast pid
-    xstartPrint(args, parser, planner, printer, t1)
+    xstartPrint(args, printer, parser, planner, t1)
 
     lastEPos = 0.0
     lastTime = 0.0
@@ -2466,13 +2466,13 @@ def measureTempFlowrateCurve2(args, parser, planner, printer):
     #
     # Wait for second layer
     #
-    curPosMM = getVirtualPos(parser)
+    curPosMM = getVirtualPos(printer, parser)
     while curPosMM.Z >= lh:
         print "waiting for first layer, Z pos:", curPosMM.Z
         status = printer.getStatus()
         printer.ppStatus(status)
         time.sleep(1)
-        curPosMM = getVirtualPos(parser)
+        curPosMM = getVirtualPos(printer, parser)
 
     while curPosMM.Z < lh:
         print "waiting for second layer, Z pos:", curPosMM.Z
@@ -2483,7 +2483,7 @@ def measureTempFlowrateCurve2(args, parser, planner, printer):
         lastTime = time.time()
 
         time.sleep(1)
-        curPosMM = getVirtualPos(parser)
+        curPosMM = getVirtualPos(printer, parser)
 
     timeConstant = printer.printerProfile.getTgI() 
     tempdec = float(t1 - goodtemp) / timeConstant
@@ -2578,7 +2578,7 @@ def measureTempFlowrateCurve2(args, parser, planner, printer):
     printer.coolDown(HeaterBed)
     printer.coolDown(HeaterEx1)
 
-    ddhome.home(args, printer, planner, parser)
+    ddhome.home(args, printer, parser, planner)
 
     ####################################################################################################
 

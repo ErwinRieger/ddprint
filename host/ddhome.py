@@ -88,7 +88,7 @@ def homeBounce(parser, dim, fakeHomingEndstops):
 
 ####################################################################################################
 
-def home(args, printer, planner, parser, force=False):
+def home(args, printer, parser, planner, force=False):
 
     print "*"
     print "* Start homing..."
@@ -97,7 +97,7 @@ def home(args, printer, planner, parser, force=False):
         print "Printer is homed already..."
 
         # Get current pos from printer and set our virtual pos
-        curPosMM = util.getVirtualPos(parser)
+        curPosMM = util.getVirtualPos(printer, parser)
 
         (homePosMM, homePosStepped) = planner.getHomePos()
 
@@ -136,9 +136,6 @@ def home(args, printer, planner, parser, force=False):
         print "* Done homing..."
         print "*"
         return
-
-    # Send init command
-    # printer.commandInit(args)
 
     #
     # Z Achse isoliert und als erstes bewegen, um zusammenstoss mit den klammern
