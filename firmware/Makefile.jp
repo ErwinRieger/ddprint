@@ -13,7 +13,7 @@ NO_CORE_MAIN_CPP = 1
 
 # from arduino-cli_0.11.0/packages/stm32duino/hardware/STM32F4/2019.2.28/boards.txt:
 CPPFLAGS       =  -mthumb -DSTM32_HIGH_DENSITY -DSTM32F4 -DBOARD_generic_f407v
-CPPFLAGS      +=  -DMOTHERBOARD=3 -Ifw -Isrc -DCRYSTAL_FREQ=8
+CPPFLAGS      +=  -DMOTHERBOARD=3 -Ifw -Isrc -I$(PWD) -DCRYSTAL_FREQ=8
 
 # -O1 for debugging:
 # CPPFLAGS      +=  -O1
@@ -56,9 +56,9 @@ do_upload: upload
 
 upload:
 	echo ""
-	echo "NOTE: firmware size must be smaller than 96kb (-e6 option)"
+	echo "NOTE: firmware size must be smaller than 112kb (-e7 option)"
 	echo ""
-	stm32flash -e6 -R -b 57600 -w build/stm32duino.STM32F4.generic_f407v/firmware.ino.bin /dev/ttyUSB0
+	stm32flash -e7 -R -b 57600 -w build/stm32duino.STM32F4.generic_f407v/firmware.ino.bin /dev/ttyUSB0
 
 swdupload:
 	st-flash --reset write build/stm32duino.STM32F4.generic_f407v/firmware.ino.bin 0x08000000   

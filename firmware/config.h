@@ -39,6 +39,8 @@
 #define TIMER10MS 10
 #define TIMER100MS 100
 
+#define COLDEXTRUSION 1
+
 #if MOTHERBOARD == 1
     //
     // Ultimaker UM2
@@ -54,7 +56,7 @@
     // Jennyprinter
     //
     // Use Bourns ems22a Rotary Encoder as a flowrate sensor
-    #define BournsEMS22AFS 1
+    // #define BournsEMS22AFS 1
     #define STEPPER_MINPULSE 5 /* µS */
 #else
     #error Unknown MOTHERBOARD in config.h

@@ -187,6 +187,7 @@ void kill() {
     for (int i=0; i<1000; i++) {
         txBuffer.Run();
         delay(1);
+        WDT_RESET();
     }
 
 #if defined(POWER_SUPPLY_RELAY)
@@ -225,7 +226,7 @@ void killMessage(uint8_t errorCode, uint8_t errorParam1, uint8_t errorParam2, co
 
 void setup() {
 
-    WDT_ENABLE();
+    // WDT_ENABLE();
 
     // TESTPIN :: initActive();
 
@@ -341,6 +342,7 @@ class SDReader: public Protothread {
         FWINLINE void setBytesToRead4() {
             Restart();
             bytesToRead = 4; }
+#if 0
         FWINLINE void setBytesToRead5() {
             Restart();
             bytesToRead = 5; }
@@ -350,6 +352,7 @@ class SDReader: public Protothread {
         FWINLINE void setBytesToRead9() {
             Restart();
             bytesToRead = 9; }
+#endif
 
         bool Run() {
 
@@ -1243,7 +1246,10 @@ void Printer::cmdMove(MoveType mt) {
     enable_x();
     enable_y();
     enable_z();
+
+#if ! defined(COLDEXTRUSION)
     enable_e0();
+#endif
 
     bufferLow = -1;
 
@@ -1280,7 +1286,7 @@ void Printer::cmdSetIncTemp(uint8_t heater, int16_t incTemp) {
 void Printer::cmdGetFreeMem() {
 
     txBuffer.sendResponseStart(CmdGetFreeMem);
-    txBuffer.sendResponseValue(freeRam());
+    txBuffer.sendResponseValue((uint32_t)freeRam());
     txBuffer.sendResponseEnd();
 }
 
@@ -2251,6 +2257,7 @@ void loop() {
     // Timer for slow running tasks (temp, encoder)
     static unsigned long timer10mS = m + TIMER10MS;
     static unsigned long timer100mS = m + TIMER100MS;
+    static unsigned long timerBufferLow = m;
 
 // serial test
 #if 0
@@ -2350,11 +2357,18 @@ if (txBuffer.empty()) {
     // Write usb/serial output
     txBuffer.Run();
 
+    // Write stepdata to mass storage device
+    swapDev.Run();
+
     // If printing, then read steps from the sd buffer and push it to
     // the print buffer.
     fillBufferTask.Run();
-    swapDev.Run();
+    // while ((printer.printerState == Printer::StateStart) && (stepBuffer.byteSize() < (uint8_t)(StepBufferLen*.9)) && (sDReader.available()>=4))
+        // fillBufferTask.Run();
 
+    // Check for buffer underruns. A underrun is a emtpy stepper buffer even if data
+    // is available on the swap device. In this case the system can't keep up with
+    // the rate at which the stepper data is consumed.
     if (printer.printerState == Printer::StateStart) {
 
         if (printer.bufferLow == -1) {
@@ -2364,11 +2378,12 @@ if (txBuffer.empty()) {
         }
         else {
             if ((stepBuffer.byteSize() == 0) &&
-                (printer.bufferLow < INT_MAX) &&
-                swapDev.available()) {
+                swapDev.available() &&
+                (printer.bufferLow < INT16_MAX) &&
+                (m > timerBufferLow)) {
 
                 printer.bufferLow++;
-
+                timerBufferLow = m;
                 // printDebugInfo();
             }
         }

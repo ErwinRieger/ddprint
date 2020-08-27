@@ -127,7 +127,7 @@ extern USBH_BOTXfer_TypeDef USBH_MSC_BOTXferParam;
  
 USBH_Status USBH_MSC_HandleBOTXfer(USB_OTG_CORE_HANDLE *pdev,
                             USBH_HOST *phost);
-uint8_t USBH_MSC_DecodeCSW(USB_OTG_CORE_HANDLE *pdev,
+USBH_MSC_Status_TypeDef USBH_MSC_DecodeCSW(USB_OTG_CORE_HANDLE *pdev,
                            USBH_HOST *phost);
 void USBH_MSC_Init(USB_OTG_CORE_HANDLE *pdev);
 USBH_Status USBH_MSC_BOT_Abort(USB_OTG_CORE_HANDLE *pdev, 

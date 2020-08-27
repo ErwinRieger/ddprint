@@ -5,6 +5,11 @@
 //--------------------------------------------------------------
 // Includes
 //--------------------------------------------------------------
+
+extern "C" {
+#include <usb_core.h>
+}
+
 #include "usb_hcd.h"
 #include "usb_bsp.h"
 
@@ -13,8 +18,7 @@
 
 
 //--------------------------------------------------------------
-uint32_t HCD_Init(USB_OTG_CORE_HANDLE *pdev , 
-                  USB_OTG_CORE_ID_TypeDef coreID)
+uint32_t dd_HCD_Init(USB_OTG_CORE_HANDLE *pdev , USB_OTG_CORE_ID_TypeDef coreID)
 {
   uint8_t i = 0;
   pdev->host.ConnSts = 0;
@@ -43,7 +47,7 @@ uint32_t HCD_Init(USB_OTG_CORE_HANDLE *pdev ,
 
 
 //--------------------------------------------------------------
-uint32_t HCD_GetCurrentSpeed (USB_OTG_CORE_HANDLE *pdev)
+uint32_t dd_HCD_GetCurrentSpeed (USB_OTG_CORE_HANDLE *pdev)
 {    
     USB_OTG_HPRT0_TypeDef  HPRT0;
     HPRT0.d32 = USB_OTG_READ_REG32(pdev->regs.HPRT0);
@@ -52,7 +56,7 @@ uint32_t HCD_GetCurrentSpeed (USB_OTG_CORE_HANDLE *pdev)
 }
 
 //--------------------------------------------------------------
-uint32_t HCD_ResetPort(USB_OTG_CORE_HANDLE *pdev)
+uint32_t dd_HCD_ResetPort(USB_OTG_CORE_HANDLE *pdev)
 {
   /*
   Before starting to drive a USB reset, the application waits for the OTG 
@@ -66,25 +70,25 @@ uint32_t HCD_ResetPort(USB_OTG_CORE_HANDLE *pdev)
 }
 
 //--------------------------------------------------------------
-uint32_t HCD_IsDeviceConnected(USB_OTG_CORE_HANDLE *pdev)
+uint32_t dd_HCD_IsDeviceConnected(USB_OTG_CORE_HANDLE *pdev)
 {
   return (pdev->host.ConnSts);
 }
 
 //--------------------------------------------------------------
-uint32_t HCD_GetCurrentFrame (USB_OTG_CORE_HANDLE *pdev) 
+uint32_t dd_HCD_GetCurrentFrame (USB_OTG_CORE_HANDLE *pdev) 
 {
  return (USB_OTG_READ_REG32(&pdev->regs.HREGS->HFNUM) & 0xFFFF) ;
 }
 
 //--------------------------------------------------------------
-URB_STATE HCD_GetURB_State (USB_OTG_CORE_HANDLE *pdev , uint8_t ch_num) 
+URB_STATE dd_HCD_GetURB_State (USB_OTG_CORE_HANDLE *pdev , uint8_t ch_num) 
 {
   return pdev->host.URB_State[ch_num] ;
 }
 
 //--------------------------------------------------------------
-uint32_t HCD_GetXferCnt (USB_OTG_CORE_HANDLE *pdev, uint8_t ch_num) 
+uint32_t dd_HCD_GetXferCnt (USB_OTG_CORE_HANDLE *pdev, uint8_t ch_num) 
 {
   return pdev->host.XferCnt[ch_num] ;
 }
@@ -104,7 +108,7 @@ uint32_t HCD_HC_Init (USB_OTG_CORE_HANDLE *pdev , uint8_t hc_num)
 }
 
 //--------------------------------------------------------------
-uint32_t HCD_SubmitRequest (USB_OTG_CORE_HANDLE *pdev , uint8_t hc_num) 
+uint32_t dd_HCD_SubmitRequest (USB_OTG_CORE_HANDLE *pdev , uint8_t hc_num) 
 {
   
   pdev->host.URB_State[hc_num] =   URB_IDLE;  

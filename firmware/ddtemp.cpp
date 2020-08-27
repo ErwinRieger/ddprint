@@ -22,7 +22,6 @@
 #include "ddtemp.h"
 #include "temperature.h"
 #include "pins.h"
-#include "eepromSettings.h"
 #include "ddserial.h"
 #include "ddcommands.h"
 

@@ -17,16 +17,17 @@
 * along with ddprint.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <Arduino.h>
 #include <libmaple/iwdg.h>
 
 #include "mdebug.h"
 #include "pin_states.h"
 #include "massstoragebase.h"
 
-extern "C" {
+// extern "C" {
     #include "usbh_msc/dd_usbh_msc.h"
-    void systemHardReset(void);
-}
+    // void systemHardReset(void);
+// }
 
 // #include <VCP/core_cm4.h>
 
@@ -35,6 +36,10 @@ extern "C" {
 //
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
+
+extern "C" {
+    extern void systemHardReset(void);
+}
 
 
 //
@@ -436,33 +441,6 @@ class MassStorage: public MassStorageBase {
         
         return false;
     }
-
-#if 0
-    uint8_t writeBuf[512];
-    static bool written = false;
-    if (! written) {
-
-        for (int i=0; i<1024; i++) {
-
-            memset(writeBuf, i, 512);
-            assert(USB_disk_write(&USB_OTG_Core_Host, &USB_Host, writeBuf, i) == USBH_OK);
-        }
-        written = true;
-    }
-
-    for (int i=0; i<1024; i++) {
-
-        memset(writeBuf, i, 512);
-
-        uint8_t readBuf[512];
-        memset(readBuf, 0, 512);
-
-        assert(USB_disk_read(&USB_OTG_Core_Host, &USB_Host, readBuf, i) == USBH_OK);
-
-        if (memcmp(writeBuf, readBuf, 512))
-            assert(0);
-    }
-#endif
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////

@@ -30,7 +30,6 @@
 #include "mdebug.h"
 
 #include "swapdev.h"
-// #include "stepper.h"
 
 #if defined(DDSim)
     #include <unistd.h>
@@ -48,8 +47,6 @@ extern uint16_t extrusionLimitBaseTemp;
 extern uint8_t errorFlags;
 
 void kill();
-// void kill(const char* msg);
-// void killPGM(const char* msg);
 
 void setup();
 
