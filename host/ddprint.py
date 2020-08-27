@@ -244,7 +244,7 @@ def main():
 
     sp = subparsers.add_parser("getpos", help=u"Get current printer and virtual position.")
 
-    sp = subparsers.add_parser("getPrinterName", help=u"Get printer name from eeprom.")
+    sp = subparsers.add_parser("getprintername", help=u"Get printer name from eeprom.")
 
     sp = subparsers.add_parser("getTemps", help=u"Get current temperatures (Bed, Extruder1, [Extruder2]).")
 
@@ -258,7 +258,7 @@ def main():
     sp.add_argument("pin", type=int, help="Pin number to set.")
     sp.add_argument("value", type=int, help="Value to set.")
 
-    sp = subparsers.add_parser("setPrinterName", help=u"Store printer name in eeprom.")
+    sp = subparsers.add_parser("setprintername", help=u"Store printer name in eeprom.")
     sp.add_argument("name", help="Printer name.")
 
     sp = subparsers.add_parser("stepResponse", help=u"Measure and plot stepResponse of hotend PID (closed-loop).")
@@ -465,7 +465,7 @@ def main():
         print "Printer pos [mm]:", curPosMM
         print "Virtual home pos [mm]: ", homePosMM
 
-    elif args.mode == 'getPrinterName':
+    elif args.mode == 'getprintername':
 
         printer = Printer()
         printer.initSerial(args.device, args.baud)
@@ -512,7 +512,7 @@ def main():
         printer.commandInit(args)
         util.stopMove(args, parser)
 
-    elif args.mode == "setPrinterName":
+    elif args.mode == "setprintername":
 
         printer = Printer()
         printer.setPrinterName(args)
