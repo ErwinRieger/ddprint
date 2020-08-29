@@ -21,7 +21,6 @@
  * Todo jennyprinter port:
  * * if possible, fully remove fastio.h
  * * swapdevice: add test sectorsize != 512 bytes?
- * * remove eeprom stuff
  * * usb: some flash sticks seem to hang at getReady cmd (add timeout / testUnitReadyRetry)
  */
 
@@ -191,7 +190,6 @@ void kill() {
     }
 
 #if defined(POWER_SUPPLY_RELAY)
-    // SET_INPUT(POWER_SUPPLY_RELAY);
     POWER_SUPPLY_RELAY :: saveState();
 #endif
 
@@ -228,8 +226,6 @@ void setup() {
 
     // WDT_ENABLE();
 
-    // TESTPIN :: initActive();
-
     TIMER_INIT();
 
 #if defined(POWER_SUPPLY_RELAY)
@@ -256,12 +252,6 @@ void setup() {
     HAL_SPI_INIT();
 
     serialPort.begin(BAUDRATE);
-
-#if 0
-    // loads data from EEPROM if available else uses defaults (and resets step acceleration rate)
-    // Config_RetrieveSettings();
-    // dumpEepromSettings("Eeprom:");
-#endif
 
     tp_init();    // Initialize temperature loop
 
@@ -1711,25 +1701,33 @@ class UsbCommand : public Protothread {
         // Number of characters we have to read
         uint8_t payloadLength;
 
+        unsigned long drainEnd;
+
         UsbCommand() {
             serialNumber = 1;
+            drainEnd = 0;
         }
 
+        // war blokierend für 50 ms, kehrt nun sofort zurück...
         void reset() {
 
             // Drain usbserial buffers for 50 ms
-            unsigned long drainEnd = millis() + 50;
-            while (millis() < drainEnd) {
+            // unsigned long drainEnd = millis() + 50;
+            // drainEnd = millis() + 50;
+            drainEnd = millis() + 10;
+            // while (millis() < drainEnd) {
                 serialPort.flush0();
-            }
+            // }
         }
 
+        // war blokierend für 50 ms, kehrt nun sofort zurück...
         void crcError() {
 
             txBuffer.sendSimpleResponse(RespRXCRCError, serialNumber);
             reset();
         }
 
+        // war blokierend für 50 ms, kehrt nun sofort zurück...
         void serialNumberError() {
 
             txBuffer.sendSimpleResponse(RespSerNumberError, serialNumber);
@@ -1751,6 +1749,12 @@ class UsbCommand : public Protothread {
 
             unsigned long ts = millis();
 
+            if ((drainEnd > 0) && (ts < drainEnd)) {
+                serialPort.flush0();
+                return NothinAvailable;
+            }
+            drainEnd = 0;
+
             if (serialPort._available() >= nChars) {
 
                 startTS = ts; // reset timeout 
@@ -1770,11 +1774,19 @@ class UsbCommand : public Protothread {
 
         bool Run() {
 
+
+           // TaskStart;
             PT_BEGIN();
 
             uint8_t c, flags, cs1, cs2;
 
             SerAvailableState av;
+
+            // if ((drainEnd > 0) && (millis() < drainEnd)) {
+                // serialPort.flush0();
+                // PT_RESTART();   // does a return
+            // }
+            // drainEnd = 0;
 
             // Read startbyte
             PT_WAIT_UNTIL( serialPort._available() && ( serialPort.readNoCheckNoCobs() == SOH ) );
@@ -1801,6 +1813,8 @@ class UsbCommand : public Protothread {
                 //
                 // Buffered command
                 //
+                // TaskStart(usbcommand1)
+
                 if (c != serialNumber) {
 
                     serialNumberError();
@@ -1863,19 +1877,6 @@ class UsbCommand : public Protothread {
                 // 
                 // Direct command
                 // 
-#if 0
-                if (commandByte == CmdResetLineNr) {
-                    serialNumber = 1;
-                }
-                else {
-                    if (c != serialNumber) {
-
-                        serialNumberError();
-                        PT_RESTART();   // does a return
-                    }
-                }
-#endif
-
                 if ((c != serialNumber) && (commandByte != CmdResetLineNr)) {
 
                     serialNumberError();
@@ -1926,12 +1927,6 @@ class UsbCommand : public Protothread {
                     case CmdResetLineNr:
                         txBuffer.sendACK();
                         break;
-                    // case CmdEepromFactory: {
-                        // EepromSettings es;
-                        // defaultEepromSettings(es);
-                        // txBuffer.sendACK();
-                        // }
-                        // break;
                     case CmdDisableSteppers:
                         printer.cmdDisableSteppers();
                         txBuffer.sendACK();
@@ -2078,19 +2073,6 @@ class UsbCommand : public Protothread {
                     case CmdGetStatus:
                         printer.cmdGetStatus();
                         break;
-                    // case CmdWriteEepromFloat: {
-                        // uint8_t len = serialPort.readNoCheckCobs();
-                        // char name[64];
-                        // for (c=0; c<64 && c<len; c++) {
-                            // name[c] = serialPort.readNoCheckCobs();
-                        // }
-                        // float value = serialPort.readFloatNoCheckCobs();
-                        // txBuffer.sendSimpleResponse(commandByte, writeEepromFloat(name, len, value));
-                        // }
-                        // break;
-                    // case CmdGetEepromVersion:
-                        // getEepromVersion();
-                        // break;
                     case CmdSetPrinterName: {
                         uint8_t len = serialPort.readNoCheckCobs();
                         char name[64];
@@ -2247,6 +2229,51 @@ class UsbCommand : public Protothread {
 
 static UsbCommand usbCommand;
 
+/////////////////////////////////////////////////////
+//
+
+// debug
+
+struct TaskTiming {
+    uint32_t ncalls;
+    uint32_t sumcall;
+    uint32_t longest;
+    char name[64];
+};
+
+//
+//
+// temp control run : check
+// temp heater run: check
+// filament sensor: run: check ist aber disabled
+// usbCommand.Run : check
+//txBuffer.Run : check
+//swapDev.Run : check
+//fillBufferTask.Run : check
+//
+//
+
+struct TaskTiming taskTiming[9] = { 
+    { 0, 0, 0, "tempcontrol" },
+    { 0, 0, 0, "tempheater" },
+    { 0, 0, 0, "filsensor" },
+    { 0, 0, 0, "ubscommand" },
+    { 0, 0, 0, "txbuffer" },
+    { 0, 0, 0, "swapdev" },
+    { 0, 0, 0, "fillbuffer" },
+    { 0, 0, 0, "usbcommand1" },
+    { 0, 0, 0, "usbcommand2" }
+};
+
+enum LoopTasks { tempcontrol,tempheater,filsensor,ubscommand,txbuffer,swapdev,fillbuffer,usbcommand1,usbcommand2 };
+
+#define TaskStart { taskStart = millis(); }
+#define TaskEnd(looptask) { taskDuration = millis() - taskStart; taskTiming[looptask].ncalls += 1; taskTiming[looptask].sumcall += taskDuration; if (taskDuration > taskTiming[looptask].longest) taskTiming[looptask].longest = taskDuration; }
+
+//
+////////////////////////////////////////////////////
+
+
 #if defined(AVR)
 FWINLINE
 #endif
@@ -2259,27 +2286,9 @@ void loop() {
     static unsigned long timer100mS = m + TIMER100MS;
     static unsigned long timerBufferLow = m;
 
-// serial test
-#if 0
-if (txBuffer.empty()) {
-
-    txBuffer.pushByte('A');
-    txBuffer.pushByte('B');
-    txBuffer.pushByte('B');
-    txBuffer.pushByte('A');
-    txBuffer.pushByte('1');
-    txBuffer.pushByte(' ');
-    delay(100);
-}
-#endif
-#if 0
-    // serial echo test:
-    while (serialPort._available()) {
-        txBuffer.pushByte(serialPort.readNoCheckNoCobs());
-    }
-#endif
-
-// serial test end
+    // debug
+    unsigned long taskStart;
+    unsigned long taskDuration;
 
     m = millis();
     if (m >= timer10mS) { // Every 10 mS
@@ -2318,7 +2327,18 @@ if (txBuffer.empty()) {
         //
         // Measure temperatures every 10ms
         //
+
+        // TaskStart
+        taskStart = millis(); // debug
         tempControl.Run();
+        // TaskEnd
+        taskDuration = millis() - taskStart;
+
+        taskTiming[0].ncalls += 1;
+        taskTiming[0].sumcall += taskDuration;
+        if (taskDuration > taskTiming[0].longest)
+            taskTiming[0].longest = taskDuration;
+
 
         //
         // Check new temperature and turn on hotend fan
@@ -2337,7 +2357,15 @@ if (txBuffer.empty()) {
         //
         // Control heater 
         //
+        taskStart = millis(); // debug
         tempControl.heater();
+        taskDuration = millis() - taskStart;
+
+        taskTiming[1].ncalls += 1;
+        taskTiming[1].sumcall += taskDuration;
+        if (taskDuration > taskTiming[1].longest)
+            taskTiming[1].longest = taskDuration;
+
 
         printer.checkMoveFinished();
 
@@ -2352,17 +2380,54 @@ if (txBuffer.empty()) {
     }
 
     // Read usb commands
+    taskStart = millis(); // debug
     usbCommand.Run();
 
+        taskDuration = millis() - taskStart;
+
+        taskTiming[ubscommand].ncalls += 1;
+        taskTiming[ubscommand].sumcall += taskDuration;
+        if (taskDuration > taskTiming[ubscommand].longest)
+            taskTiming[ubscommand].longest = taskDuration;
+
+
     // Write usb/serial output
+        taskStart = millis(); // debug
     txBuffer.Run();
 
+        taskDuration = millis() - taskStart;
+
+        taskTiming[4].ncalls += 1;
+        taskTiming[4].sumcall += taskDuration;
+        if (taskDuration > taskTiming[4].longest)
+            taskTiming[4].longest = taskDuration;
+
+
     // Write stepdata to mass storage device
+        taskStart = millis(); // debug
     swapDev.Run();
+
+        taskDuration = millis() - taskStart;
+
+        taskTiming[5].ncalls += 1;
+        taskTiming[5].sumcall += taskDuration;
+        if (taskDuration > taskTiming[5].longest)
+            taskTiming[5].longest = taskDuration;
+
 
     // If printing, then read steps from the sd buffer and push it to
     // the print buffer.
+        taskStart = millis(); // debug
     fillBufferTask.Run();
+
+        taskDuration = millis() - taskStart;
+
+        taskTiming[6].ncalls += 1;
+        taskTiming[6].sumcall += taskDuration;
+        if (taskDuration > taskTiming[6].longest)
+            taskTiming[6].longest = taskDuration;
+
+
     // while ((printer.printerState == Printer::StateStart) && (stepBuffer.byteSize() < (uint8_t)(StepBufferLen*.9)) && (sDReader.available()>=4))
         // fillBufferTask.Run();
 
