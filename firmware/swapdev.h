@@ -198,7 +198,7 @@ public:
         size += writePos;
 
 #if defined(HEAVYDEBUG)
-        massert(size == (writeBlockNumber*SwapSectorSize + writePos));
+        massert(size == ((writeBlockNumber-1)*SwapSectorSize + writePos));
 #endif
         // printf("Size: %d bytes\n", size);
 
