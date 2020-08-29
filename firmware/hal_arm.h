@@ -196,12 +196,12 @@ inline void irqInit() {
     nvic_irq_set_priority(NVIC_TIMER3, 1);
 
     // XXX NVIC_SPIx ???
-    // nvic_irq_set_priority(NVIC_USART1, 2);
+    nvic_irq_set_priority(NVIC_USART1, 2);
 
     // Done in dd_USBH_Init():
     // nvic_irq_set_priority(NVIC_USB_HS, 3);
     //
-    nvic_irq_set_priority(NVIC_USART1, 3);
+    // nvic_irq_set_priority(NVIC_USART1, 3);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
