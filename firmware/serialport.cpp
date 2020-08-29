@@ -241,6 +241,9 @@ extern "C" {
         unsigned char c = USART1->regs->DR;
         serialPort.store_char(c);
     }
+    else if(sr & USART_SR_ORE) {
+        USART1->regs->DR;
+    }
   }
 }
 
