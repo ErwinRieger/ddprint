@@ -333,16 +333,16 @@ inline void st_step_motor(uint8_t stepBits, uint8_t dirbits) {
 
         activate_step_pin<MOVE>();
 
-        #if defined(STEPPER_MINPULSE)
-            delayMicroseconds(STEPPER_MINPULSE);
-        #endif
+        // #if defined(STEPPER_MINPULSE)
+            // delayMicroseconds(STEPPER_MINPULSE);
+        // #endif
 
         if (dirbits & mask)
             st_inc_current_pos_steps<MOVE>();
         else
             st_dec_current_pos_steps<MOVE>();
         
-        deactivate_step_pin<MOVE>();
+        // deactivate_step_pin<MOVE>();
     }
 }
 
@@ -484,6 +484,10 @@ class StepBuffer {
                 return stepBuffer[tail++];
             }
 
+            FWINLINE stepData & peek() {
+                return stepBuffer[tail];
+            }
+
             void flush() {
                 head = tail = 0;
                 syncCount = 0;
@@ -529,39 +533,67 @@ class StepBuffer {
             // --> To relax this situation we set the new OCR1A value as fast as possible.
             FWINLINE void runMoveSteps() {
 
+                static int phase = 0;
+                static uint16_t thalbe = 0;
+
                 if (empty()) {
 
                     // Empty buffer, nothing to step
                     HAL_SET_STEPPER_TIMER(2000); // 1kHz.
+                    phase = 0;
                 }
                 else {
 
-/*
-                    switch (sd.cmd) {
-                        case CmdSyncTargetTemp:
-                            printer.cmdSetTargetTemp(targetHeater, targetTemp);
-                            break
+                    if (phase == 0) {
+
+                        stepData &sd = peek();
+
+                        // set dir and pin and short timer
+                        thalbe = sd.timer / 2;
+                        HAL_SET_STEPPER_TIMER(thalbe);
+
+                        if (sd.dirBits & 0x80) {
+
+                            // Set direction bits
+                            st_set_direction<XAxisSelector>(sd.dirBits);
+                            st_set_direction<YAxisSelector>(sd.dirBits);
+                            st_set_direction<ZAxisSelector>(sd.dirBits);
+                            st_set_direction<EAxisSelector>(sd.dirBits);
+                        }
+
+                        st_step_motor<XAxisSelector>(sd.stepBits, sd.dirBits);
+                        st_step_motor<YAxisSelector>(sd.stepBits, sd.dirBits);
+                        st_step_motor<ZAxisSelector>(sd.stepBits, sd.dirBits);
+                        st_step_motor<EAxisSelector>(sd.stepBits, sd.dirBits);
+
+                        phase = 1;
                     }
-*/
+                    else {
+                        // phase 1, don't pop
+                        //
+                        //
 
-                    stepData &sd = pop();
+                        stepData &sd = pop();
 
-                    HAL_SET_STEPPER_TIMER(sd.timer);
+                        HAL_SET_STEPPER_TIMER(sd.timer-thalbe);
 
-                    if (sd.dirBits & 0x80) {
+                        // Step the motors and update step-coordinates (current_pos_steps): st_step_motor<>()
+                        // st_step_motor<XAxisSelector>(sd.stepBits, sd.dirBits);
+                        // st_step_motor<YAxisSelector>(sd.stepBits, sd.dirBits);
+                        // st_step_motor<ZAxisSelector>(sd.stepBits, sd.dirBits);
+                        // st_step_motor<EAxisSelector>(sd.stepBits, sd.dirBits);
+                        // st_stop_motor<XAxisSelector>(sd.stepBits, sd.dirBits);
+                        // st_stop_motor<YAxisSelector>(sd.stepBits, sd.dirBits);
+                        // st_stop_motor<ZAxisSelector>(sd.stepBits, sd.dirBits);
+                        // st_stop_motor<EAxisSelector>(sd.stepBits, sd.dirBits);
+        
+                        deactivate_step_pin<XAxisSelector>();
+                        deactivate_step_pin<YAxisSelector>();
+                        deactivate_step_pin<ZAxisSelector>();
+                        deactivate_step_pin<EAxisSelector>();
 
-                        // Set direction bits
-                        st_set_direction<XAxisSelector>(sd.dirBits);
-                        st_set_direction<YAxisSelector>(sd.dirBits);
-                        st_set_direction<ZAxisSelector>(sd.dirBits);
-                        st_set_direction<EAxisSelector>(sd.dirBits);
+                        phase = 0;
                     }
-
-                    // Step the motors and update step-coordinates (current_pos_steps): st_step_motor<>()
-                    st_step_motor<XAxisSelector>(sd.stepBits, sd.dirBits);
-                    st_step_motor<YAxisSelector>(sd.stepBits, sd.dirBits);
-                    st_step_motor<ZAxisSelector>(sd.stepBits, sd.dirBits);
-                    st_step_motor<EAxisSelector>(sd.stepBits, sd.dirBits);
                 }
             }
 

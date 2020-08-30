@@ -123,6 +123,7 @@
 #define CmdSetStepsPerMM        185 // Initial printer settings: steps per mm for X/Y/Z
 #define CmdSetHostSettings      186 // Initial printer settings
 #define CmdSystemReset          187 // Emergency hard reset system
+#define CmdGetTaskStatus        188 //
 
 //
 // Response types 

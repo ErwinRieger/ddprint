@@ -1521,7 +1521,58 @@ void Printer::cmdGetDirBits() {
 }
 #endif
 
+// debug
+
+struct TaskTiming {
+    uint32_t ncalls;
+    uint32_t sumcall;
+    uint32_t longest;
+    char name[64];
+};
+
+//
+//
+// temp control run : check
+// temp heater run: check
+// filament sensor: run: check ist aber disabled
+// usbCommand.Run : check
+//txBuffer.Run : check
+//swapDev.Run : check
+//fillBufferTask.Run : check
+//
+//
+
+struct TaskTiming taskTiming[10] = { 
+    { 0, 0, 0, "tempcontrol" },
+    { 0, 0, 0, "tempheater" },
+    { 0, 0, 0, "filsensor" },
+    { 0, 0, 0, "ubscommand" },
+    { 0, 0, 0, "txbuffer" },
+    { 0, 0, 0, "swapdev" },
+    { 0, 0, 0, "fillbuffer" },
+    { 0, 0, 0, "sum" },
+    { 0, 0, 0, "usbcommand1" },
+    { 0, 0, 0, "usbcommand2" }
+};
+
+enum LoopTasks { tempcontrol,tempheater,filsensor,ubscommand,txbuffer,swapdev,fillbuffer, tasksum, usbcommand1,usbcommand2 };
+
+#define TaskStart { taskStart = millis(); }
+#define TaskEnd(looptask) { taskDuration = millis() - taskStart; taskTiming[looptask].ncalls += 1; taskTiming[looptask].sumcall += taskDuration; if (taskDuration > taskTiming[looptask].longest) taskTiming[looptask].longest = taskDuration; }
+
 // uint16_t waitCount = 0;
+void Printer::cmdGetTaskStatus() {
+
+    txBuffer.sendResponseStart(CmdGetTaskStatus);
+
+    for (int i=0; i<8; i++) {
+        txBuffer.sendResponseValue(taskTiming[i].ncalls);
+        txBuffer.sendResponseValue(taskTiming[i].sumcall);
+        txBuffer.sendResponseValue(taskTiming[i].longest);
+    }
+    txBuffer.sendResponseEnd();
+}
+
 void Printer::cmdGetStatus() {
 
     txBuffer.sendResponseStart(CmdGetStatus);
@@ -2073,6 +2124,9 @@ class UsbCommand : public Protothread {
                     case CmdGetStatus:
                         printer.cmdGetStatus();
                         break;
+                    case CmdGetTaskStatus:
+                        printer.cmdGetTaskStatus();
+                        break;
                     case CmdSetPrinterName: {
                         uint8_t len = serialPort.readNoCheckCobs();
                         char name[64];
@@ -2232,44 +2286,6 @@ static UsbCommand usbCommand;
 /////////////////////////////////////////////////////
 //
 
-// debug
-
-struct TaskTiming {
-    uint32_t ncalls;
-    uint32_t sumcall;
-    uint32_t longest;
-    char name[64];
-};
-
-//
-//
-// temp control run : check
-// temp heater run: check
-// filament sensor: run: check ist aber disabled
-// usbCommand.Run : check
-//txBuffer.Run : check
-//swapDev.Run : check
-//fillBufferTask.Run : check
-//
-//
-
-struct TaskTiming taskTiming[9] = { 
-    { 0, 0, 0, "tempcontrol" },
-    { 0, 0, 0, "tempheater" },
-    { 0, 0, 0, "filsensor" },
-    { 0, 0, 0, "ubscommand" },
-    { 0, 0, 0, "txbuffer" },
-    { 0, 0, 0, "swapdev" },
-    { 0, 0, 0, "fillbuffer" },
-    { 0, 0, 0, "usbcommand1" },
-    { 0, 0, 0, "usbcommand2" }
-};
-
-enum LoopTasks { tempcontrol,tempheater,filsensor,ubscommand,txbuffer,swapdev,fillbuffer,usbcommand1,usbcommand2 };
-
-#define TaskStart { taskStart = millis(); }
-#define TaskEnd(looptask) { taskDuration = millis() - taskStart; taskTiming[looptask].ncalls += 1; taskTiming[looptask].sumcall += taskDuration; if (taskDuration > taskTiming[looptask].longest) taskTiming[looptask].longest = taskDuration; }
-
 //
 ////////////////////////////////////////////////////
 
@@ -2287,6 +2303,7 @@ void loop() {
     static unsigned long timerBufferLow = m;
 
     // debug
+    unsigned long loopStart = m;
     unsigned long taskStart;
     unsigned long taskDuration;
 
@@ -2379,6 +2396,16 @@ void loop() {
 #endif
     }
 
+        taskStart = millis(); // debug
+    fillBufferTask.Run();
+
+        taskDuration = millis() - taskStart;
+
+        taskTiming[6].ncalls += 1;
+        taskTiming[6].sumcall += taskDuration;
+        if (taskDuration > taskTiming[6].longest)
+            taskTiming[6].longest = taskDuration;
+
     // Read usb commands
     taskStart = millis(); // debug
     usbCommand.Run();
@@ -2389,6 +2416,16 @@ void loop() {
         taskTiming[ubscommand].sumcall += taskDuration;
         if (taskDuration > taskTiming[ubscommand].longest)
             taskTiming[ubscommand].longest = taskDuration;
+
+        taskStart = millis(); // debug
+    fillBufferTask.Run();
+
+        taskDuration = millis() - taskStart;
+
+        taskTiming[6].ncalls += 1;
+        taskTiming[6].sumcall += taskDuration;
+        if (taskDuration > taskTiming[6].longest)
+            taskTiming[6].longest = taskDuration;
 
 
     // Write usb/serial output
@@ -2401,6 +2438,16 @@ void loop() {
         taskTiming[4].sumcall += taskDuration;
         if (taskDuration > taskTiming[4].longest)
             taskTiming[4].longest = taskDuration;
+
+        taskStart = millis(); // debug
+    fillBufferTask.Run();
+
+        taskDuration = millis() - taskStart;
+
+        taskTiming[6].ncalls += 1;
+        taskTiming[6].sumcall += taskDuration;
+        if (taskDuration > taskTiming[6].longest)
+            taskTiming[6].longest = taskDuration;
 
 
     // Write stepdata to mass storage device
@@ -2438,11 +2485,11 @@ void loop() {
 
         if (printer.bufferLow == -1) {
 
-            if  (stepBuffer.byteSize() > 10)
+            if  (! stepBuffer.empty() )
                 printer.bufferLow = 0;
         }
         else {
-            if ((stepBuffer.byteSize() == 0) &&
+            if (stepBuffer.empty() &&
                 swapDev.available() &&
                 (printer.bufferLow < INT16_MAX) &&
                 (m > timerBufferLow)) {
@@ -2453,6 +2500,18 @@ void loop() {
             }
         }
     }
+
+
+
+    // tasksum
+        taskDuration = millis() - loopStart;
+
+        taskTiming[tasksum].ncalls += 1;
+        taskTiming[tasksum].sumcall += taskDuration;
+        if (taskDuration > taskTiming[tasksum].longest)
+            taskTiming[tasksum].longest = taskDuration;
+
+
 }
 
 

@@ -133,6 +133,7 @@ class Printer {
         void cmdGetTargetTemps();
         void cmdGetCurrentTemps();
         void cmdGetStatus();
+        void cmdGetTaskStatus();
         void cmdGetFilSensor();
         void cmdGetTempTable();
         void cmdSetTempTable();
