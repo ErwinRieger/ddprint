@@ -712,6 +712,23 @@ class Printer(Serial):
             self.printEndedAt = time.time()
 
         self.gui.statusCb(statusDict)
+
+
+
+
+
+        ## xxxx debug taskstatus
+
+        (cmd, payload) = self.query(CmdGetTaskStatus, doLog=False)
+        tup = struct.unpack("<IIIIIIIIIIIIIIIIIIIIIIII", payload)
+
+        tasknames = ("tempcontrol", "tempheater", "filsensor", "ubscommand", "txbuffer", "swapdev", "fillbuffer", "tasksum")
+        # print "taskstaus:", tup,
+        tupindex = 0
+        for taskname in tasknames:
+            print "task %15s %10d %10d %10d" % (taskname, tup[tupindex], tup[tupindex+1], tup[tupindex+2])
+            tupindex+=3
+
         return statusDict
 
     # Prettyprint pritner status
