@@ -236,7 +236,7 @@ def main():
     # sp.add_argument("printer", help="Name of printer profile to use.")
     sp.add_argument("mat", help="Name of generic material profile to use [pla, abs...].")
 
-    sp = subparsers.add_parser("getEndstops", help=u"Get current endstop state.")
+    sp = subparsers.add_parser("getendstops", help=u"Get current endstop state.")
 
     sp = subparsers.add_parser("getFilSensor", help=u"Get current filament position.")
 
@@ -422,7 +422,7 @@ def main():
         initMatProfile(args, printer.getPrinterName())
         util.heatHotend(args, printer)
 
-    elif args.mode == 'getEndstops':
+    elif args.mode == 'getendstops':
 
         printer = Printer()
         printer.initSerial(args.device, args.baud)

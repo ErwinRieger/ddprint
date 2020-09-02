@@ -390,7 +390,7 @@ class Planner (object):
         self.args = args
         self.matProfile = materialProfile
 
-        self.printer = Printer.get()
+        self.printer = printer
 
         self.zeroPos = util.MyPoint()
 
