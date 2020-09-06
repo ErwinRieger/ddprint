@@ -43,6 +43,8 @@
 #include "stepper.h"
 #include "hostsettings.h"
 
+#include "lz.h"
+
 //The ASCII buffer for recieving from SD:
 #define SD_BUFFER_SIZE 512
 
@@ -281,6 +283,8 @@ void setup() {
     HAL_IRQ_INIT();
 
     SEI();
+
+    // tinf_init();
 }
 
 //
@@ -1825,6 +1829,10 @@ class UsbCommand : public Protothread {
 
         bool Run() {
 
+                uint8_t zipbuffer[256];
+                static uint8_t zipDest[256];
+                    int len1;
+                    static int len2, binindex;
 
            // TaskStart;
             PT_BEGIN();
@@ -1901,13 +1909,67 @@ class UsbCommand : public Protothread {
                 // Tell RxBuffer that it's pointing to the beginning of a COBS block
                 serialPort.cobsInit(payloadLength);
 
-                while (serialPort.cobsAvailable()) {
+                if ( (commandByte == CmdG1) || (commandByte == CmdG1Raw) || (commandByte == CmdBlock) ) {
 
-                    c = serialPort.readNoCheckCobs();
 
-                    swapDev.addByte(c);
-                    PT_WAIT_WHILE( swapDev.isBusyWriting() );
+                    // xxx tell zip to use serial port and swapdev directly
+                    len1 = 0;
+                    while (serialPort.cobsAvailable()) {
+                    // while (len1 < payloadLength) {
+
+                        c = serialPort.readNoCheckCobs();
+
+                        zipbuffer[len1] = c;
+                        len1 += 1;
+                    }
+
+
+                // int tinf_uncompress(void *dest,
+                //           unsigned int *destLen,
+                //           const void *source,
+                //           unsigned int sourceLen);
+                    /// tinf_uncompress(zipDest, &destLen, zipbuffer, i)
+
+    // /*************************************************************************
+    // * * LZ_Uncompress() - Uncompress a block of data using an LZ77 decoder.  
+    // * *  in      - Input (compressed) buffer.
+    // * *  out     - Output (uncompressed) buffer. This buffer must be large
+    // * *            enough to hold the uncompressed data.                        
+    // * *************************************************************************/
+
+                        // void LZ_Uncompress( unsigned char *in, unsigned char *out,             
+                                    // unsigned int insize )               
+                        // {   
+                          
+    // len2 = LZ_Uncompress(zipbuffer, zipDest, len1);
+    len2 = zlibUncompress(zipbuffer, zipDest, len1);
+
+                    for (binindex=0; binindex < len2; binindex++) {
+
+                        swapDev.addByte(zipDest[binindex]);
+                        PT_WAIT_WHILE( swapDev.isBusyWriting() );
+                    }
+
                 }
+                else {
+                    //
+                    // block not compressed
+                    //
+                    while (serialPort.cobsAvailable()) {
+
+                        c = serialPort.readNoCheckCobs();
+                        swapDev.addByte(c);
+                        PT_WAIT_WHILE( swapDev.isBusyWriting() );
+                    }
+
+                }
+
+
+
+
+
+
+
 
                 // Successfully received command, increment command counter
                 serialNumber++;
