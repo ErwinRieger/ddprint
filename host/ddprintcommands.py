@@ -27,7 +27,7 @@ CmdNull          = 0x0
 CmdSyncFanSpeed  = 0x3 # Parameters: pwm value 0 - 255, blipTime 0 - 255 mS
 CmdRaw           = 0x4 # Parameters: blob data
 CmdBlock         = 0x6 # A 512byte block of a lager command
-
+Cmd5             = 0x5
 CmdG1            = 0x7
 # CmdDirG1         = 0x8 # CmdDirBits and CmdG1 combined
 
@@ -113,6 +113,7 @@ for (cmd, cmdName) in [
     (CmdG1, "CmdG1",),
     # CmdDirBits, "CmdDirBits",
     (CmdBlock, "CmdBlock",),
+    (Cmd5, "Cmd5",),
     # CmdDirG1, "CmdDirG1",
     (CmdG1Raw, "CmdG1Raw",),
     # CmdDirG1Raw, "CmdDirG1Raw",
