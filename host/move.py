@@ -43,24 +43,6 @@ import lz4.block, zlib
 ####################################################################################################
 ####################################################################################################
 
-def mycompress(data):
-
-        # c=lz4.block.compress(data)
-        c=zlib.compress(data)
-        # print "compressed %d to %d bytes" % (len(data), len(c))
-
-        fn="/tmp/compress_%d_%d." % (len(data), len(c))
-
-        f = open(fn+"dat", "w")
-        f.write(data)
-
-        f = open(fn+"c", "w")
-        f.write(c)
-
-        f.close()
-        return c
-
-
 ## #Julian Serra: jserra17@cmc.edu
 ## #LZ77
 
@@ -680,22 +662,17 @@ class StepData:
 
         stream = cStringIO.StringIO(payLoad)
 
-        cobsBlock = cobs.encodeCobs(stream)
-
-        c = mycompress(cobsBlock)
-        print "xlen g1:", len(cobsBlock), len(c)
-        cmds = [( ddprintcommands.CmdG1, c )]
+        cobsBlock = cobs.encodeCobs_cmd_packed(stream)
+        cmds = [( ddprintcommands.CmdG1, cobsBlock )]
 
         while True:
 
-            cobsBlock = cobs.encodeCobs(stream)
+            cobsBlock = cobs.encodeCobs_cmd_packed(stream)
 
             if not cobsBlock:
                 break
 
-            c = mycompress(cobsBlock)
-            print "xlen cmdblock:", len(cobsBlock), len(c)
-            cmds.append(( ddprintcommands.CmdBlock, c ))
+            cmds.append(( ddprintcommands.CmdBlock, cobsBlock ))
 
         return cmds
 
@@ -817,22 +794,17 @@ class RawStepData:
 
         stream = cStringIO.StringIO(payLoad)
 
-        cobsBlock = cobs.encodeCobs(stream)
-
-        c = mycompress(cobsBlock)
-        print "xlen g1raw:", len(cobsBlock), len(c)
-        cmds = [( ddprintcommands.CmdG1Raw, c )]
+        cobsBlock = cobs.encodeCobs_cmd_packed(stream)
+        cmds = [( ddprintcommands.CmdG1Raw, cobsBlock )]
 
         while True:
 
-            cobsBlock = cobs.encodeCobs(stream)
+            cobsBlock = cobs.encodeCobs_cmd_packed(stream)
 
             if not cobsBlock:
                 break
 
-            c = mycompress(cobsBlock)
-            print "xlen cmdblock:", len(cobsBlock), len(c)
-            cmds.append(( ddprintcommands.CmdBlock, c ))
+            cmds.append(( ddprintcommands.CmdBlock, cobsBlock ))
 
         return cmds
 

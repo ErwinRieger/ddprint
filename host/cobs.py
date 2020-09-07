@@ -18,7 +18,7 @@
 # along with ddprint.  If not, see <http://www.gnu.org/licenses/>.
 #*/
 
-import sys, struct, crc16, cStringIO
+import sys, struct, crc16, cStringIO, zlib
 
 LenLen    = 1
 LenHeader = 1+1+1+LenLen+1+2
@@ -52,7 +52,76 @@ LenCobs   = 255 - LenHeader
 
 nullByte = chr(0)
 
-def encodeCobs(stream, blockLen=LenCobs):
+def encodeCobs_cmd_packed(stream, blockLen=LenCobs):
+
+    cobsBody = ""
+    cobsResult = ""
+
+    rawdata = stream.read(blockLen)
+    if not rawdata:
+        return None
+    data = zlib.compress(rawdata)
+    lastByte1 = data[-2]
+    lastByte2 = data[-1]
+
+    print "encodeCobs_cmd_packed compressed %d blocksize into %d bytes..." % (len(rawdata), len(data))
+    if lastByte2 == nullByte:
+
+        # print "Cobs packet ends in 0 -> no overhead"
+
+        # data includes lastbyte2 .
+        # data += lastByte2
+        for c in data:
+            if c == nullByte:
+                cobsResult += chr(len(cobsBody)+1)
+                cobsResult += cobsBody
+                cobsBody = ""
+            else:
+                cobsBody += c
+
+        assert(len(cobsResult) <= blockLen)
+        assert(len(cobsResult) == len(data))
+        return cobsResult
+
+    # short block, push back lastByte2
+    # xxxxxxxxxxxxx prezip: stream.seek(fpos)
+
+    if lastByte1 == nullByte:
+
+        # print "Cobs packet ends with 0 -> no overhead"
+        for c in data:
+            if c == nullByte:
+                cobsResult += chr(len(cobsBody)+1)
+                cobsResult += cobsBody
+                cobsBody = ""
+            else:
+                cobsBody += c
+
+        assert(len(cobsResult) <= blockLen-1)
+        assert(len(cobsResult) == len(data)-1)
+        return cobsResult
+
+    # print "Cobs packet does not end with 0 -> one byte overhead"
+
+    size = len(data)
+    for pos in range(size):
+
+        if pos==size-1:
+            cobsResult += chr(0xff)
+            cobsResult += cobsBody
+        elif data[pos] == nullByte:
+            # print "found 0 at", pos, len(cobsBody)
+            cobsResult += chr(len(cobsBody)+1)
+            cobsResult += cobsBody
+            cobsBody = ""
+        else:
+            cobsBody += data[pos]
+
+    assert(len(cobsResult) <= blockLen)
+    assert(len(cobsResult) == len(data))
+    return cobsResult
+
+def encodeCobsNoPack(stream, blockLen=LenCobs):
 
     cobsBody = ""
     cobsResult = ""
@@ -62,10 +131,9 @@ def encodeCobs(stream, blockLen=LenCobs):
         return None
 
     fpos = stream.tell()
+    lastByte2 = stream.read(1)
 
     lastByte1 = data[-1]
-
-    lastByte2 = stream.read(1)
 
     if lastByte2 == nullByte:
 
@@ -85,7 +153,7 @@ def encodeCobs(stream, blockLen=LenCobs):
         return cobsResult
 
     # short block, push back lastByte2
-    stream.seek(fpos)
+    # xxxxxxxxxxxxx prezip: stream.seek(fpos)
 
     if lastByte1 == nullByte:
 
@@ -125,7 +193,7 @@ def encodeCobs(stream, blockLen=LenCobs):
 
 def encodeCobsString(s, blockLen=LenCobs):
     s = cStringIO.StringIO(s)
-    return encodeCobs(s, blockLen)
+    return encodeCobsNoPack(s, blockLen)
 
 def decodeCobs(data):
 
