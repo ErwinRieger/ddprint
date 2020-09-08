@@ -35,8 +35,6 @@ CPPFLAGS      +=  -DRX_FIFO_HS_SIZE=512 -DTXH_NP_HS_FIFOSIZ=96 -DTXH_P_HS_FIFOSI
 # Disable colored gcc output (don't confuse vim)
 # CXXFLAGS      +=  -fno-diagnostics-color
 
-# End Mega
-
 compile:
 	# Usb options: usb_cfg=usb_serial usb_cfg=usb_nc usb_cfg=usb_msc 
 	# Debug options: opt=ogstd
@@ -58,7 +56,7 @@ upload:
 	echo ""
 	echo "NOTE: firmware size must be smaller than 112kb (-e7 option)"
 	echo ""
-	stm32flash -e7 -R -b 57600 -w build/stm32duino.STM32F4.generic_f407v/firmware.ino.bin /dev/ttyUSB0
+	filesize=$$(stat --printf '%s' ./build/stm32duino.STM32F4.generic_f407v/firmware.ino.bin); blocks=$$(echo "($$filesize+16384)/16384"|bc); stm32flash -e$$blocks -R -b 57600 -w build/stm32duino.STM32F4.generic_f407v/firmware.ino.bin /dev/ttyUSB0
 
 swdupload:
 	st-flash --reset write build/stm32duino.STM32F4.generic_f407v/firmware.ino.bin 0x08000000   
