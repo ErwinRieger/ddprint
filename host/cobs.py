@@ -64,7 +64,7 @@ def encodeCobs_cmd_packed(stream, blockLen=LenCobs):
     lastByte1 = data[-2]
     lastByte2 = data[-1]
 
-    print "encodeCobs_cmd_packed compressed %d blocksize into %d bytes..." % (len(rawdata), len(data))
+    # print "encodeCobs_cmd_packed compressed %d blocksize into %d bytes..." % (len(rawdata), len(data))
     if lastByte2 == nullByte:
 
         # print "Cobs packet ends in 0 -> no overhead"

@@ -504,10 +504,6 @@ class Printer(Serial):
 
     def buildBinaryCommand(self, binCmd, binPayload=None):
 
-        # bis hier ist das header bit *0x78* noch da...
-        if binPayload:
-            print "buildBinaryCommand: first  byte: 0x%x" % ord(binPayload[0])
-
         payloadSize = 0
         if binPayload:
             payloadSize = len(binPayload)

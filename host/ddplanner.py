@@ -769,7 +769,6 @@ class Planner (object):
 
         for (cmd, cobsBlock) in move.commands():
             if self.args.mode != "pre":
-                print "stream move, block len:", len(cobsBlock)
                 self.printer.sendCommandC(cmd, cobsBlock)
 
     #
