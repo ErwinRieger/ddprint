@@ -361,7 +361,7 @@ class MainForm(npyscreen.FormBaseNew):
         # print "args: ", self.args
 
         try:
-            (self.parser, self.planner, self.printer, self.printerProfile) = ddprint.initParser(self.args, gui=self)
+            (self.printer, self.parser, self.planner) = ddprint.initParser(self.args, gui=self)
         except IOError, ex:
             msg = "Can't open serial device '%s' (baudrate: %d)." % (self.args.device, self.args.baud)
             self.guiQueue.put(SyncCall(self.quit, msg, ex))
@@ -369,10 +369,10 @@ class MainForm(npyscreen.FormBaseNew):
 
         self.mat_t0 = self.planner.matProfile.getBedTemp()
         self.mat_t0_reduced = self.planner.matProfile.getBedTempReduced()
-        self.mat_t0_wait = self.printerProfile.getWeakPowerBedTemp()
+        self.mat_t0_wait = self.printer.printerProfile.getWeakPowerBedTemp()
         self.mat_t1 = self.planner.matProfile.getHotendGoodTemp() + self.planner.l0TempIncrease
 
-        self.guiQueue.put(SyncCallUpdate(self.printerProfileName.set_value, self.printerProfile.name))
+        self.guiQueue.put(SyncCallUpdate(self.printerProfileName.set_value, self.printer.printerProfile.name))
         self.guiQueue.put(SyncCallUpdate(self.nozzleProfile.set_value, self.args.nozzle))
         self.guiQueue.put(SyncCallUpdate(self.matProfile.set_value, self.args.mat))
         if self.args.smat:
@@ -388,7 +388,7 @@ class MainForm(npyscreen.FormBaseNew):
             # msg = "Can't open serial device '%s' (baudrate: %d)!" % (self.args.device, self.args.baud)
             # self.guiQueue.put(SyncCall(self.quit, msg, ex))
             # return
-        ddhome.home(self.args, self.printer, self.planner, self.parser)
+        ddhome.home(self.args, self.printer, self.parser, self.planner)
         util.downloadTempTable(self.printer, self.planner.matProfile)
 
         while True:
@@ -498,7 +498,7 @@ class MainForm(npyscreen.FormBaseNew):
         ePos = status["extruder_pos"]
         t = time.time()
 
-        e_steps_per_mm = self.printerProfile.getStepsPerMM(A_AXIS)
+        e_steps_per_mm = self.printer.printerProfile.getStepsPerMM(A_AXIS)
 
         if self.lastEPos != None:
 
@@ -643,7 +643,7 @@ class MainForm(npyscreen.FormBaseNew):
         self.logPrintLog("Gcode filesize: %s, %d bytes\n" % (util.sizeof_fmt(stat.st_size), stat.st_size))
 
         # Update printlog with used profiles:
-        self.printerProfile.logValues("Printer profile", self)
+        self.printer.printerProfile.logValues("Printer profile", self)
         NozzleProfile.get().logValues("Nozzle profile", self)
         self.planner.matProfile.logValues("Material profile", self)
         self.logPrintLog("\n")
@@ -661,8 +661,8 @@ class MainForm(npyscreen.FormBaseNew):
 
         try:
 
-            util.printFile(self.args, self.parser, self.planner, self.printer,
-                self.printerProfile, self,
+            util.printFile(self.args, self.printer, self.parser, self.planner,
+                self,
                 self.fn.get_value(), self.mat_t0, self.mat_t0_wait, self.mat_t1)
 
             self.printLog.close()

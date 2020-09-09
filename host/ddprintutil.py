@@ -1043,21 +1043,17 @@ def removeFilament(args, parser, feedrate):
 
 def bedLeveling(args, printer, parser, planner):
 
-    assert(0) # todo: transition to printer.printerProfile...
-
-    pp = PrinterProfile.get()
-
     # Reset bedlevel offset in printer profile
-    PrinterProfile.get().override("add_homeing_z", 0)
+    printer.printerProfile.override("add_homeing_z", 0)
 
-    assert(0) # commandInit
+    # printer.commandInit(args)
     ddhome.home(args, printer, parser, planner)
 
-    zFeedrate = PrinterProfile.getMaxFeedrate(Z_AXIS)
+    zFeedrate = printer.printerProfile.getMaxFeedrateI(Z_AXIS)
     kbd = GetChar("Enter (u)p (d)own (U)p 1mm (D)own 1mm (2-5) Up Xmm (q)uit")
 
     # "bedLevelMode": "Triangle3Point"
-    levelMode = pp.getBedLevelMode()
+    levelMode = printer.printerProfile.getBedLevelMode()
 
     if levelMode == "Triangle3Point":
         # Ultimaker UM2 style, 3 srews triangle shaped
@@ -1115,7 +1111,7 @@ def bedLeveling(args, printer, parser, planner):
             printer.waitForState(StateInit, wait=0.1)
 
 
-    feedrate = PrinterProfile.getMaxFeedrate(X_AXIS)
+    feedrate = printer.printerProfile.getMaxFeedrateI(X_AXIS)
 
     pointNumber = 0
     for (x, y, z, pointName) in levelPoints:
@@ -1144,7 +1140,7 @@ def bedLeveling(args, printer, parser, planner):
             add_homeing_z = (current_position[Z_AXIS] * -1) + planner.LEVELING_OFFSET
 
             # Store into printer profile (not persistent, just for the rest of the levelling procedure):
-            pp.override("add_homeing_z", add_homeing_z)
+            printer.printerProfile.override("add_homeing_z", add_homeing_z)
 
             # Finally we know the zero z position
             current_position[Z_AXIS] = planner.LEVELING_OFFSET;
