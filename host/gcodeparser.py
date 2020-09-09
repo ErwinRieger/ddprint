@@ -35,6 +35,9 @@ import ddprintutil as util
 
 import dddumbui
 
+#degug
+import movingavg
+
 ############################################################################
 ############################################################################
 
@@ -267,9 +270,11 @@ class UM2GcodeParser:
 
         -> 36 bytes 
 
-    Entire packet about 43 bytes -> round up to 45 bytes
+    Entire packet about 43 bytes -> round up to 50 bytes
     """
     def preParse(self, fn, baudrate):
+
+        # lenavg = movingavg.MovingAvg(100)
 
         # Copy file to prevet problems with overwritten files
         # while reading.
@@ -294,7 +299,7 @@ class UM2GcodeParser:
         # Time to send one move at given baudrate:
         # * assume we send 10 bits for a byte
         # * multiply by 5 to account for raw moves
-        bitsPerMove = 5.0 * 45.0 * 10.0
+        bitsPerMove = 5.0 * 50.0 * 10.0
         timePerMove = bitsPerMove / baudrate
 
         self.logger.log("Pre-parsing ", fn, tmpfname)
@@ -378,12 +383,25 @@ class UM2GcodeParser:
 
                     l = vectorLength(displacement_vector)
 
+                    # lenavg.add(l)
+
                     # print "move distance:", displacement_vector, l, feedrate
+                    # print "move distance:", l, lenavg.mean()
 
                     t = l / feedrate
 
                     moveTime += t
-                    downloadTime += timePerMove
+
+                    # Weight small moves
+                    d = 1.0 - l
+                    w = 1.0
+                    if d > 0:
+                        # distance smaller than 1.0
+                        # shorter moves have a higher d value, max 1.0
+                        w = 1.0 + (d*5.0)
+
+                    downloadTime += timePerMove * w
+
                     # print "t, tmove, tdownload:", t, moveTime, downloadTime
 
                     if downloadTime > moveTime:
