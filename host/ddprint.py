@@ -232,7 +232,7 @@ def main():
 
     sp = subparsers.add_parser("bedLeveling", help=u"Do bed leveling sequence.")
 
-    sp = subparsers.add_parser("heatHotend", help=u"Heat up hotend (to clean it, etc).")
+    sp = subparsers.add_parser("heathotend", help=u"Heat up hotend (to clean it, etc).")
     # sp.add_argument("printer", help="Name of printer profile to use.")
     sp.add_argument("mat", help="Name of generic material profile to use [pla, abs...].")
 
@@ -415,7 +415,7 @@ def main():
         parser = gcodeparser.UM2GcodeParser(planner, travelMovesOnly=True)
         util.bedLeveling(args, printer, parser, planner)
 
-    elif args.mode == 'heatHotend':
+    elif args.mode == 'heathotend':
 
         printer = Printer()
         printer.commandInit(args, pidSet="pidMeasure")
