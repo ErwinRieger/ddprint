@@ -39,7 +39,7 @@
 #define TIMER10MS 10
 #define TIMER100MS 100
 
-#define COLDEXTRUSION 1
+// #define COLDEXTRUSION 1
 
 #if MOTHERBOARD == 1
     //
@@ -56,7 +56,7 @@
     // Jennyprinter
     //
     // Use Bourns ems22a Rotary Encoder as a flowrate sensor
-    // #define BournsEMS22AFS 1
+    #define BournsEMS22AFS 1
     // #define STEPPER_MINPULSE 5 /* µS */
     #define STEPPER_MINPULSE 1 /* µS */
 #else
