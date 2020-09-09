@@ -230,7 +230,7 @@ def main():
 
     sp = subparsers.add_parser("reset", help=u"Emergency hard reset printer.")
 
-    sp = subparsers.add_parser("bedLeveling", help=u"Do bed leveling sequence.")
+    sp = subparsers.add_parser("bedleveling", help=u"Do bed leveling sequence.")
 
     sp = subparsers.add_parser("heathotend", help=u"Heat up hotend (to clean it, etc).")
     # sp.add_argument("printer", help="Name of printer profile to use.")
@@ -407,12 +407,9 @@ def main():
         printer.initSerial(args.device, args.baud)
         printer.systemReset()
 
-    elif args.mode == 'bedLeveling':
+    elif args.mode == 'bedleveling':
 
-        printer = Printer()
-        initPrinterProfile(args)
-        planner = Planner(args, travelMovesOnly=True)
-        parser = gcodeparser.UM2GcodeParser(planner, travelMovesOnly=True)
+        (printer, parser, planner) = initParser(args, mode=args.mode, travelMovesOnly=True)
         util.bedLeveling(args, printer, parser, planner)
 
     elif args.mode == 'heathotend':
@@ -554,7 +551,7 @@ def main():
         printer = Printer()
         printer.commandInit(args, pidSet="pidMeasure")
 
-        util.heatHotendTest(args, printer)
+        # util.heatHotendTest(args, printer)
 
     else:
         print "Unknown/not implemented command: ", args.mode
@@ -562,23 +559,8 @@ def main():
 
 if __name__ == "__main__":
 
-    # res = 0
-
-    # try:
-
     main()
     # cProfile.run("main()", "ddprintstats.prof")
-
-    # except:
-        # import traceback
-        # print "Exception: ", traceback.format_exc()
-        # res = 1
-
-    # sys.exit(res)
-
-
-
-
 
 
 
