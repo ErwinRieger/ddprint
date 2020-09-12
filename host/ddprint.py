@@ -231,6 +231,8 @@ def main():
     sp = subparsers.add_parser("reset", help=u"Emergency hard reset printer.")
 
     sp = subparsers.add_parser("bedleveling", help=u"Do bed leveling sequence.")
+    sp.add_argument("-rl", dest="relevel", action="store", type=bool, help="Releveling, don't adjust bedlevel offset, just turn screws.", default=False)
+    sp.add_argument("mat", help="Name of generic material profile to use [pla, abs...].")
 
     sp = subparsers.add_parser("heathotend", help=u"Heat up hotend (to clean it, etc).")
     # sp.add_argument("printer", help="Name of printer profile to use.")
@@ -416,8 +418,8 @@ def main():
 
         printer = Printer()
         printer.commandInit(args, pidSet="pidMeasure")
-        initMatProfile(args, printer.getPrinterName())
-        util.heatHotend(args, printer)
+        matProfile = initMatProfile(args, printer.getPrinterName())
+        util.heatHotend(args, matProfile, printer)
 
     elif args.mode == 'getendstops':
 

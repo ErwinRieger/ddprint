@@ -1043,8 +1043,17 @@ def removeFilament(args, parser, feedrate):
 
 def bedLeveling(args, printer, parser, planner):
 
+    assert(args.relevel)
+
+    t1 = args.t1 or planner.matProfile.getHotendGoodTemp()
+    printer.heatUp(HeaterEx1, t1)
+
     # Reset bedlevel offset in printer profile
-    printer.printerProfile.override("add_homeing_z", 0)
+    if args.relevel:
+        head_height = planner.LEVELING_OFFSET
+    else:
+        printer.printerProfile.override("add_homeing_z", 0)
+        head_height = planner.HEAD_HEIGHT
 
     # printer.commandInit(args)
     ddhome.home(args, printer, parser, planner)
@@ -1058,14 +1067,14 @@ def bedLeveling(args, printer, parser, planner):
     if levelMode == "Triangle3Point":
         # Ultimaker UM2 style, 3 srews triangle shaped
         levelPoints = [
-                (planner.X_MAX_POS/2, planner.Y_MAX_POS-15, planner.HEAD_HEIGHT, "back mid"),
+                (planner.X_MAX_POS/2, planner.Y_MAX_POS-15, head_height, "back mid"),
                 (15, 15, planner.LEVELING_OFFSET, "front left"),
                 (planner.X_MAX_POS-15, 15, planner.LEVELING_OFFSET, "front right"),
                 ]
     elif levelMode == "U5Point":
         # JennyPrinter style, 5 srews in an U-shape
         levelPoints = [
-                (15, 15, planner.HEAD_HEIGHT, "front left"),
+                (15, 15, head_height, "front left"),
                 (15, planner.Y_MAX_POS-15, planner.LEVELING_OFFSET, "back left"),
                 (planner.X_MAX_POS-15, planner.Y_MAX_POS-15, planner.LEVELING_OFFSET, "back right"),
                 (planner.X_MAX_POS-15, 15, planner.LEVELING_OFFSET, "front right"),
@@ -1110,6 +1119,7 @@ def bedLeveling(args, printer, parser, planner):
 
             printer.waitForState(StateInit, wait=0.1)
 
+    printer.heatUp(HeaterEx1, t1, wait=t1-5, log=True)
 
     feedrate = printer.printerProfile.getMaxFeedrateI(X_AXIS)
 
@@ -1130,7 +1140,7 @@ def bedLeveling(args, printer, parser, planner):
         printer.sendCommand(CmdEOT)
         printer.waitForState(StateInit, wait=0.1)
 
-        if pointNumber == 0:
+        if (pointNumber == 0) and (not args.relevel):
 
             manualMoveZ()
 
@@ -1143,7 +1153,7 @@ def bedLeveling(args, printer, parser, planner):
             printer.printerProfile.override("add_homeing_z", add_homeing_z)
 
             # Finally we know the zero z position
-            current_position[Z_AXIS] = planner.LEVELING_OFFSET;
+            current_position[Z_AXIS] = planner.LEVELING_OFFSET
 
             # Adjust the virtual position
             parser.setPos(current_position)
@@ -1162,7 +1172,11 @@ def bedLeveling(args, printer, parser, planner):
     ddhome.home(args, printer, parser, planner)
     printer.sendCommand(CmdDisableSteppers) # Force homing/reset
 
-    raw_input("\n! Please update your Z-Offset (add_homeing_z) in printer profile: %.3f\n" % add_homeing_z)
+    if not args.relevel:
+        raw_input("\n! Please update your Z-Offset (add_homeing_z) in printer profile: %.3f\n" % add_homeing_z)
+
+    if not args.noCoolDown:
+        printer.coolDown(HeaterEx1, wait=100, log=True)
 
 ####################################################################################################
 
@@ -1207,41 +1221,13 @@ def stopMove(args, parser):
 
 ####################################################################################################
 
-def heatHotend(args, printer):
+def heatHotend(args, matProfile, printer):
 
-    t1 = args.t1 or planner.matProfile.getHotendGoodTemp()
+    t1 = args.t1 or matProfile.getHotendGoodTemp()
 
     printer.heatUp(HeaterEx1, t1, wait=t1-5, log=True)
-    # iter = printer.heatUpRamp(HeaterEx1, t1, log=True)
-    # for temp in iter:
-        # time.sleep(1)
 
     kbd = GetChar()
-    print("Press return to stop heating...")
-    while not kbd.getcNB():
-        status = printer.getStatus()
-        printer.ppStatus(status)
-        time.sleep(1)
-
-    if not args.noCoolDown:
-        printer.coolDown(HeaterEx1, wait=150, log=True)
-
-def heatHotendTest(args, printer):
-
-    t1 = args.t1
-
-    printer.heatUp(HeaterEx1, t1, wait=t1, log=True)
-
-    kbd = GetChar()
-
-    print("Press return for next step...")
-    while not kbd.getcNB():
-        status = printer.getStatus()
-        printer.ppStatus(status)
-        time.sleep(1)
-
-    printer.heatUp(HeaterEx1, t1+50, wait=t1+50, log=True)
-    
     print("Press return to stop heating...")
     while not kbd.getcNB():
         status = printer.getStatus()
