@@ -345,6 +345,7 @@ class PathData (object):
              packedvalue.uint8_t(HeaterEx1),
              packedvalue.uint16_t(newTemp), 
              packedvalue.uint8_t(suggestPwm) ])
+        self.updateHistory(cmd)
 
 #####################################################################
 
