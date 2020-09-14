@@ -145,7 +145,7 @@ class Advance (object):
 
         self.useAutoTemp = args.autoTemp
 
-        print "Using kAdvance: %.2f, autoTemp is %s" % (self.__kAdv, self.useAutoTemp)
+        print "Using kAdvance: %.2f, autoTemp is %s" % (self.getKAdv(), self.useAutoTemp)
 
         self.kFeederComp = 0.0
         if UseFeederCompensation:
@@ -181,10 +181,10 @@ class Advance (object):
 
     def maxAxisAcceleration(self, useAdvance):
 
-        if self.__kAdv and useAdvance:
+        if self.getKAdv() and useAdvance:
 
             advJerk = self.planner.getJerk()[A_AXIS]
-            maxEAccel = advJerk / self.__kAdv
+            maxEAccel = advJerk / self.getKAdv()
 
             #
             # Limit E-acceleration by DEFAULT_ACCELERATION/DEFAULT_MAX_ACCELERATION
@@ -209,12 +209,12 @@ class Advance (object):
 
         if layer != None and self.startAdvance != None:
             self.setkAdvance(self.startAdvance + (layer / self.advStepHeight) * self.advIncrease)
-            self.planner.gui.log("Advance: layer changed: ", self.kAdv)
+            self.planner.gui.log("Advance: layer changed: ", self.getKAdv())
 
     def setkAdvance(self, kAdv):
 
         print "Advance: setting K-Advance to %.3f" % kAdv
-        self.kAdv = kAdv
+        self.__kAdv = kAdv
 
     # Called from gcode parser
     def g900(self, values):
@@ -371,7 +371,7 @@ class Advance (object):
         # assert(0)
 
         # Step 4: handle extruder advance
-        if self.__kAdv:
+        if self.getKAdv():
 
             def processAdvancedMoves(path):
 
@@ -622,12 +622,12 @@ class Advance (object):
         # print "rounding remainders:"
         # self.planner.stepRounders.pprint()
 
-        # if self.__kAdv:
+        # if self.getKAdv():
             # print "Path moveEsteps:", self.moveEsteps, len(newPath)
 
         self.planner.stepRounders.check()
 
-        if self.__kAdv:
+        if self.getKAdv():
             assert(abs(self.moveEsteps) < 0.1)
 
         # Debug, check chain
@@ -1159,11 +1159,11 @@ class Advance (object):
         for move in path:
 
             # Compute area (= amount of e-advance) of the accel- and decel-ramps:
-            startFeedrateIncrease = eJerk(self.__kAdv, move.startAccel.eAccel())
+            startFeedrateIncrease = eJerk(self.getKAdv(), move.startAccel.eAccel())
             sadv = move.startAdvSteps(startFeedrateIncrease=startFeedrateIncrease)
             move.advanceData.sAccel = sadv
 
-            endFeedrateIncrease = - eJerk(self.__kAdv, move.endAccel.eAccel())
+            endFeedrateIncrease = - eJerk(self.getKAdv(), move.endAccel.eAccel())
             sdec = move.endAdvSteps(endFeedrateIncrease=endFeedrateIncrease)
             move.advanceData.sDecel = sdec
 
@@ -1860,7 +1860,7 @@ class Advance (object):
 
         ############################################################################################
 
-        tv75khz = int(fTimer / 75000.0)
+        tv75khz = int(fTimer / 100000.0)
         # print "Timer value of a 75khz stepper: %d" % tv75khz
 
         tvsum = 0
