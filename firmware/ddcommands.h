@@ -56,6 +56,10 @@
 // #define CmdDirG1Raw        0xe
 #define CmdSuggestPwm      0x11
 
+#define CmdG1Packed        0x9
+#define CmdG1RawPacked     0xf
+#define CmdBlockPacked     0x10
+
 //
 // Direct commands:
 // ----------------------

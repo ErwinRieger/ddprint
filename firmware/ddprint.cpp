@@ -1900,22 +1900,37 @@ class UsbCommand : public Protothread {
                     PT_RESTART();   // does a return
                 }
 
-                if (commandByte != CmdBlock) {
+                // if (commandByte != CmdBlock) 
+                if ((commandByte != CmdBlock) && (commandByte != CmdBlockPacked)) {
 
-                    swapDev.addByte(commandByte);
+                   // xxx
+                    // swapDev.addByte(commandByte);
+
+                    switch (commandByte) {
+                        case CmdG1Packed:
+                            swapDev.addByte(CmdG1);
+                            break;
+                        case CmdG1RawPacked:
+                            swapDev.addByte(CmdG1Raw);
+                            break;
+                        default:
+                            swapDev.addByte(commandByte);
+                            break;
+                    }
+
                     PT_WAIT_WHILE( swapDev.isBusyWriting() );
                 }
 
                 // Tell RxBuffer that it's pointing to the beginning of a COBS block
                 serialPort.cobsInit(payloadLength);
 
-                if ( (commandByte == CmdG1) || (commandByte == CmdG1Raw) || (commandByte == CmdBlock) ) {
+                if ( (commandByte == CmdG1Packed) || (commandByte == CmdG1RawPacked) || (commandByte == CmdBlockPacked) ) {
 
 
                     // xxx tell zip to use serial port and swapdev directly
                     len1 = 0;
                     while (serialPort.cobsAvailable()) {
-                    // while (len1 < payloadLength) {
+                    // while (len1 < payloadLength) 
 
                         c = serialPort.readNoCheckCobs();
 
@@ -1939,7 +1954,7 @@ class UsbCommand : public Protothread {
 
                         // void LZ_Uncompress( unsigned char *in, unsigned char *out,             
                                     // unsigned int insize )               
-                        // {   
+                        // 
                           
     // len2 = LZ_Uncompress(zipbuffer, zipDest, len1);
     len2 = zlibUncompress(zipbuffer, zipDest, len1);
