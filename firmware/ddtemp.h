@@ -31,23 +31,27 @@
 // To smooth tempsensor readings.
 class RunningAvgF {
 
-    float values[RAVGWINDOW];
-    uint8_t i;
-    uint8_t n;
+    // float values; // [RAVGWINDOW];
+    // uint8_t i;
+    // uint8_t n;
     float avg;
 
   public:
 
     RunningAvgF(float startValue) {
-        i = n = 0;
-        avg = 0;
+        // i = n = 0;
+        // avg = 0;
 
-        for (uint8_t j=0; j<RAVGWINDOW; j++)
-            values[j] = startValue;
+        // for (uint8_t j=0; j<RAVGWINDOW; j++)
+            // values[j] = startValue;
+            avg = startValue;
     }
 
     inline void addValue(float v) {
 
+        avg = (avg * (RAVGWINDOW-1) + v) /RAVGWINDOW;
+
+#if 0
         values[i++] = v;
         if (i == RAVGWINDOW)
             i = 0;
@@ -58,6 +62,8 @@ class RunningAvgF {
         for (uint8_t j=0; j<n; j++)
             sum += values[j];
         avg = sum / n;
+#endif
+
     }
 
     inline float value() { return avg; }

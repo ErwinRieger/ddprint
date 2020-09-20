@@ -1527,6 +1527,8 @@ void Printer::cmdGetDirBits() {
 
 // debug
 
+#if defined(UseProcessStats)
+
 struct TaskTiming {
     uint32_t ncalls;
     uint32_t sumcall;
@@ -1563,6 +1565,7 @@ enum LoopTasks { tempcontrol,tempheater,filsensor,ubscommand,txbuffer,swapdev,fi
 
 #define TaskStart { taskStart = millis(); }
 #define TaskEnd(looptask) { taskDuration = millis() - taskStart; taskTiming[looptask].ncalls += 1; taskTiming[looptask].sumcall += taskDuration; if (taskDuration > taskTiming[looptask].longest) taskTiming[looptask].longest = taskDuration; }
+#endif
 
 // uint16_t waitCount = 0;
 void Printer::cmdGetTaskStatus() {
@@ -1570,9 +1573,15 @@ void Printer::cmdGetTaskStatus() {
     txBuffer.sendResponseStart(CmdGetTaskStatus);
 
     for (int i=0; i<8; i++) {
+#if defined(UseProcessStats)
         txBuffer.sendResponseValue(taskTiming[i].ncalls);
         txBuffer.sendResponseValue(taskTiming[i].sumcall);
         txBuffer.sendResponseValue(taskTiming[i].longest);
+#else
+        txBuffer.sendResponseValue((uint32_t)0);
+        txBuffer.sendResponseValue((uint32_t)0);
+        txBuffer.sendResponseValue((uint32_t)0);
+#endif
     }
     txBuffer.sendResponseEnd();
 }
@@ -1957,6 +1966,7 @@ class UsbCommand : public Protothread {
                         // 
                           
     // len2 = LZ_Uncompress(zipbuffer, zipDest, len1);
+// xxxx reenable!!!
     len2 = zlibUncompress(zipbuffer, zipDest, len1);
 
                     for (binindex=0; binindex < len2; binindex++) {
@@ -2380,9 +2390,11 @@ void loop() {
     static unsigned long timerBufferLow = m;
 
     // debug
+#if defined(UseProcessStats)
     unsigned long loopStart = m;
     unsigned long taskStart;
     unsigned long taskDuration;
+#endif
 
     m = millis();
     if (m >= timer10mS) { // Every 10 mS
@@ -2422,9 +2434,15 @@ void loop() {
         // Measure temperatures every 10ms
         //
 
+
+#if defined(UseProcessStats)
         // TaskStart
         taskStart = millis(); // debug
+#endif
         tempControl.Run();
+
+
+#if defined(UseProcessStats)
         // TaskEnd
         taskDuration = millis() - taskStart;
 
@@ -2433,6 +2451,7 @@ void loop() {
         if (taskDuration > taskTiming[0].longest)
             taskTiming[0].longest = taskDuration;
 
+#endif
 
         //
         // Check new temperature and turn on hotend fan
@@ -2451,14 +2470,20 @@ void loop() {
         //
         // Control heater 
         //
+#if defined(UseProcessStats)
         taskStart = millis(); // debug
+#endif
+
         tempControl.heater();
+
+#if defined(UseProcessStats)
         taskDuration = millis() - taskStart;
 
         taskTiming[1].ncalls += 1;
         taskTiming[1].sumcall += taskDuration;
         if (taskDuration > taskTiming[1].longest)
             taskTiming[1].longest = taskDuration;
+#endif
 
 
         printer.checkMoveFinished();
@@ -2473,83 +2498,118 @@ void loop() {
 #endif
     }
 
+#if defined(UseProcessStats)
         taskStart = millis(); // debug
+#endif
+
     fillBufferTask.Run();
 
+#if defined(UseProcessStats)
         taskDuration = millis() - taskStart;
 
         taskTiming[6].ncalls += 1;
         taskTiming[6].sumcall += taskDuration;
         if (taskDuration > taskTiming[6].longest)
             taskTiming[6].longest = taskDuration;
+#endif
 
     // Read usb commands
+#if defined(UseProcessStats)
     taskStart = millis(); // debug
+#endif
+
     usbCommand.Run();
 
+#if defined(UseProcessStats)
         taskDuration = millis() - taskStart;
 
         taskTiming[ubscommand].ncalls += 1;
         taskTiming[ubscommand].sumcall += taskDuration;
         if (taskDuration > taskTiming[ubscommand].longest)
             taskTiming[ubscommand].longest = taskDuration;
+#endif
 
+#if defined(UseProcessStats)
         taskStart = millis(); // debug
+#endif
+
     fillBufferTask.Run();
 
+#if defined(UseProcessStats)
         taskDuration = millis() - taskStart;
 
         taskTiming[6].ncalls += 1;
         taskTiming[6].sumcall += taskDuration;
         if (taskDuration > taskTiming[6].longest)
             taskTiming[6].longest = taskDuration;
+#endif
 
 
     // Write usb/serial output
+#if defined(UseProcessStats)
         taskStart = millis(); // debug
+#endif
+
     txBuffer.Run();
 
+#if defined(UseProcessStats)
         taskDuration = millis() - taskStart;
 
         taskTiming[4].ncalls += 1;
         taskTiming[4].sumcall += taskDuration;
         if (taskDuration > taskTiming[4].longest)
             taskTiming[4].longest = taskDuration;
+#endif
 
+#if defined(UseProcessStats)
         taskStart = millis(); // debug
+#endif
+
     fillBufferTask.Run();
 
+#if defined(UseProcessStats)
         taskDuration = millis() - taskStart;
 
         taskTiming[6].ncalls += 1;
         taskTiming[6].sumcall += taskDuration;
         if (taskDuration > taskTiming[6].longest)
             taskTiming[6].longest = taskDuration;
+#endif
 
 
     // Write stepdata to mass storage device
+#if defined(UseProcessStats)
         taskStart = millis(); // debug
+#endif
+
     swapDev.Run();
 
+#if defined(UseProcessStats)
         taskDuration = millis() - taskStart;
 
         taskTiming[5].ncalls += 1;
         taskTiming[5].sumcall += taskDuration;
         if (taskDuration > taskTiming[5].longest)
             taskTiming[5].longest = taskDuration;
+#endif
 
 
     // If printing, then read steps from the sd buffer and push it to
     // the print buffer.
+#if defined(UseProcessStats)
         taskStart = millis(); // debug
+#endif
+
     fillBufferTask.Run();
 
+#if defined(UseProcessStats)
         taskDuration = millis() - taskStart;
 
         taskTiming[6].ncalls += 1;
         taskTiming[6].sumcall += taskDuration;
         if (taskDuration > taskTiming[6].longest)
             taskTiming[6].longest = taskDuration;
+#endif
 
 
     // while ((printer.printerState == Printer::StateStart) && (stepBuffer.byteSize() < (uint8_t)(StepBufferLen*.9)) && (sDReader.available()>=4))
@@ -2580,6 +2640,7 @@ void loop() {
 
 
 
+#if defined(UseProcessStats)
     // tasksum
         taskDuration = millis() - loopStart;
 
@@ -2588,6 +2649,7 @@ void loop() {
         if (taskDuration > taskTiming[tasksum].longest)
             taskTiming[tasksum].longest = taskDuration;
 
+#endif
 
 }
 

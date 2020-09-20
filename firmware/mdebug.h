@@ -61,13 +61,22 @@ void killMessage(uint8_t errorCode, uint8_t errorParam1, uint8_t errorParam2, co
 
                 #define STD
 
+extern unsigned int __bss_end;
+extern unsigned int __heap_start;
+extern void *__brkval;
+
                 //
                 // Get free memory, from https://playground.arduino.cc/Code/AvailableMemory/
                 //
                 inline uint32_t freeRam () {
-                    extern int __heap_start, *__brkval; 
-                    int v; 
-                    return &v - (__brkval == 0 ? &__heap_start : __brkval); 
+                int free_memory;
+
+                    if((int)__brkval == 0)
+                        free_memory = ((int)&free_memory) - ((int)&__bss_end);
+                    else
+                        free_memory = ((int)&free_memory) - ((int)__brkval);
+
+                    return free_memory;
                 }
 
 #elif defined(__arm__)

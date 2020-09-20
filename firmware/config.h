@@ -59,6 +59,8 @@
     #define BournsEMS22AFS 1
     // #define STEPPER_MINPULSE 5 /* µS */
     #define STEPPER_MINPULSE 1 /* µS */
+
+    #define UseProcessStats 1
 #else
     #error Unknown MOTHERBOARD in config.h
 #endif
