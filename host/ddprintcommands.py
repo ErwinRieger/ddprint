@@ -30,11 +30,16 @@ CmdBlock         = 0x6 # A 512byte block of a lager command
 Cmd5             = 0x5
 CmdG1            = 0x7
 # CmdDirG1         = 0x8 # CmdDirBits and CmdG1 combined
+CmdG1Packed      = 0x9 # CmdG1, zlib compressed
 
 CmdSyncTargetTemp= 0xb # Parameters: heater, temp 
 CmdDwellMS       = 0xc # Parameters: number of 25 mS dwell NOP moves
 CmdG1Raw         = 0xd # Raw print move steps, bresenham algo already done.
 # CmdDirG1Raw      = 0xe # CmdDirBits and CmdG1Raw combined
+CmdG1RawPacked   = 0xf # CmdG1Raw, zlib compressed
+CmdBlockPacked   = 0x10 # CmdBlock, zlib compressed
+
+
 CmdSuggestPwm      = 0x11 # Parameters: heater, target temp, pwm value
 
 CmdUnknown       = 0x7f # Unknown command for debugging
@@ -121,6 +126,9 @@ for (cmd, cmdName) in [
     (CmdDwellMS, "CmdDwellMS",),
     (CmdSuggestPwm, "CmdSuggestPwm",),
     (CmdUnknown, "CmdUnknown",),
+    (CmdG1Packed, "CmdG1Packed",),
+    (CmdG1RawPacked, "CmdG1RawPacked",),
+    (CmdBlockPacked, "CmdBlockPacked",),
     #
     # Direct commands:
     # ----------------------
@@ -189,12 +197,14 @@ DirBitsBit           = (1 << 7)  # 0x80
 MoveStartBit         = (1 << 8)  # 0x100
 MeasureStartBit      = (1 << 9)  # 0x200
 EndMoveBit           = (1 << 10) # 0x400
+# CompressedBit        = (1 << 11) # 0x800
 # Raw moves
 MoveStartBitRaw      = (1 << 5) # 0x20
 TimerByteFlagBit     = (1 << 6) # 0x40
 DirBitsBitRaw        = (1 << 7) # 0x80
 MeasureStartBitRaw   = (1 << 8) # 0100
 EndMoveBitRaw        = (1 << 9) # 0200
+# CompressedBitRaw     = (1 << 10) # 0400
 
 #
 # Response codes

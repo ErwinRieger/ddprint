@@ -421,11 +421,15 @@ class Printer(Serial):
     # Initialize serial interface and download printer settings.
     def commandInit(self, args, pidSet="pidPrint"):
 
-        if not self.isOpen():
+        if not self.isOpen() and args.mode != "pre":
             self.initSerial(args.device, args.baud, True)
 
         if not self.printerProfile:
             self.initPrinterProfile(args)
+
+        if args.mode == "pre":
+            self.commandInitDone = True
+            return 
 
         settings = self.printerProfile.getSettingsI(pidSet)
 

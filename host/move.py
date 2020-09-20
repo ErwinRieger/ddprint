@@ -593,6 +593,11 @@ class StepData:
         # print "flags: 0x%x, dirbits: 0x%x" % (flags | accelByteFlag | decelByteFlag, flags)
         # print "ald:", len(self.accelPulses), self.abs_vector_steps[self.leadAxis]-(len(self.accelPulses)+len(self.decelPulses)), len(self.decelPulses)
 
+        #
+        # Payload in *LenCobs* blocksize blocks
+        #
+        payLoadBlocks = []
+
         payLoad = struct.pack("<HBiiiiiH",
                 flags | accelByteFlag | decelByteFlag | startMoveFlag | measureStartBit | endMoveBit,
                 self.leadAxis,
@@ -662,17 +667,23 @@ class StepData:
 
         stream = cStringIO.StringIO(payLoad)
 
-        cobsBlock = cobs.encodeCobs_cmd_packed(stream)
-        cmds = [( ddprintcommands.CmdG1, cobsBlock )]
+        # print "start combs"
+        # cobsBlock = cobs.encodeCobs_cmd_packed(stream)
+        # cmds = [( ddprintcommands.CmdG1, cobsBlock )]
+
+        cmds = [ cobs.encodeCobs_cmd_packed(ddprintcommands.CmdG1, ddprintcommands.CmdG1Packed, stream) ]
 
         while True:
 
-            cobsBlock = cobs.encodeCobs_cmd_packed(stream)
+            # print "follow combs"
+            # cobsBlock = cobs.encodeCobs_cmd_packed(stream)
+            cobsBlock = cobs.encodeCobs_cmd_packed(ddprintcommands.CmdBlock, ddprintcommands.CmdBlockPacked, stream)
 
             if not cobsBlock:
                 break
 
-            cmds.append(( ddprintcommands.CmdBlock, cobsBlock ))
+            # cmds.append(( ddprintcommands.CmdBlock, cobsBlock ))
+            cmds.append( cobsBlock )
 
         return cmds
 
@@ -794,17 +805,21 @@ class RawStepData:
 
         stream = cStringIO.StringIO(payLoad)
 
-        cobsBlock = cobs.encodeCobs_cmd_packed(stream)
-        cmds = [( ddprintcommands.CmdG1Raw, cobsBlock )]
+        # cobsBlock = cobs.encodeCobs_cmd_packed(stream)
+        # cmds = [( ddprintcommands.CmdG1Raw, cobsBlock )]
+
+        cmds = [ cobs.encodeCobs_cmd_packed(ddprintcommands.CmdG1Raw, ddprintcommands.CmdG1RawPacked, stream) ]
 
         while True:
 
-            cobsBlock = cobs.encodeCobs_cmd_packed(stream)
+            # cobsBlock = cobs.encodeCobs_cmd_packed(stream)
+            cobsBlock = cobs.encodeCobs_cmd_packed(ddprintcommands.CmdBlock, ddprintcommands.CmdBlockPacked, stream)
 
             if not cobsBlock:
                 break
 
-            cmds.append(( ddprintcommands.CmdBlock, cobsBlock ))
+            # cmds.append(( ddprintcommands.CmdBlock, cobsBlock ))
+            cmds.append( cobsBlock )
 
         return cmds
 

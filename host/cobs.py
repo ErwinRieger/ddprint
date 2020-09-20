@@ -52,74 +52,44 @@ LenCobs   = 255 - LenHeader
 
 nullByte = chr(0)
 
-def encodeCobs_cmd_packed(stream, blockLen=LenCobs):
+# def encodeCobs_cmd_packed(stream, blockLen=LenCobs):
+def encodeCobs_cmd_packed(cmd, packedCmd, stream, blockLen=LenCobs):
 
     cobsBody = ""
     cobsResult = ""
 
+    fpos = stream.tell()
+
     rawdata = stream.read(blockLen)
     if not rawdata:
         return None
+
     data = zlib.compress(rawdata)
-    lastByte1 = data[-2]
-    lastByte2 = data[-1]
-
     # print "encodeCobs_cmd_packed compressed %d blocksize into %d bytes..." % (len(rawdata), len(data))
-    if lastByte2 == nullByte:
+    if len(data) > len(rawdata)*0.95:
+        # xxx ugly, do this compressible test in move.py...
+        stream.seek(fpos)
+        return (cmd, encodeCobsNoPack(stream, blockLen))
 
-        # print "Cobs packet ends in 0 -> no overhead"
+    # xxx waste one byte if lastbyte is not 0x0
+    if data[-1] != nullByte:
+        data += nullByte
 
-        # data includes lastbyte2 .
-        # data += lastByte2
-        for c in data:
-            if c == nullByte:
-                cobsResult += chr(len(cobsBody)+1)
-                cobsResult += cobsBody
-                cobsBody = ""
-            else:
-                cobsBody += c
+    # lastByte1 = data[-2]
+    # lastByte2 = data[-1]
+    # print "lastbytes: 0x%x 0x%x" % (ord(lastByte1), ord(lastByte2))
 
-        assert(len(cobsResult) <= blockLen)
-        assert(len(cobsResult) == len(data))
-        return cobsResult
-
-    # short block, push back lastByte2
-    # xxxxxxxxxxxxx prezip: stream.seek(fpos)
-
-    if lastByte1 == nullByte:
-
-        # print "Cobs packet ends with 0 -> no overhead"
-        for c in data:
-            if c == nullByte:
-                cobsResult += chr(len(cobsBody)+1)
-                cobsResult += cobsBody
-                cobsBody = ""
-            else:
-                cobsBody += c
-
-        assert(len(cobsResult) <= blockLen-1)
-        assert(len(cobsResult) == len(data)-1)
-        return cobsResult
-
-    # print "Cobs packet does not end with 0 -> one byte overhead"
-
-    size = len(data)
-    for pos in range(size):
-
-        if pos==size-1:
-            cobsResult += chr(0xff)
-            cobsResult += cobsBody
-        elif data[pos] == nullByte:
-            # print "found 0 at", pos, len(cobsBody)
+    for c in data:
+        if c == nullByte:
             cobsResult += chr(len(cobsBody)+1)
             cobsResult += cobsBody
             cobsBody = ""
         else:
-            cobsBody += data[pos]
+            cobsBody += c
 
     assert(len(cobsResult) <= blockLen)
     assert(len(cobsResult) == len(data))
-    return cobsResult
+    return (packedCmd, cobsResult)
 
 def encodeCobsNoPack(stream, blockLen=LenCobs):
 
@@ -153,7 +123,7 @@ def encodeCobsNoPack(stream, blockLen=LenCobs):
         return cobsResult
 
     # short block, push back lastByte2
-    # xxxxxxxxxxxxx prezip: stream.seek(fpos)
+    stream.seek(fpos)
 
     if lastByte1 == nullByte:
 

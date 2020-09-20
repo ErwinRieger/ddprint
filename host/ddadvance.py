@@ -1860,8 +1860,9 @@ class Advance (object):
 
         ############################################################################################
 
-        tv75khz = int(fTimer / 100000.0)
+        # tv75khz = int(fTimer / 100000.0)
         # print "Timer value of a 75khz stepper: %d" % tv75khz
+        tv75khz = self.planner.minTimerValue / 2.0
 
         tvsum = 0
         tvIndex = []

@@ -56,17 +56,27 @@
   # Filamentsensor calibration data. This is the ratio of
   # filamentsensor counts to e-stepper steps.
   "filSensorCalibration": 0.7463,
-  # Hotend PID values
-  # "Kp": 3,
-  # "Ki": 0.1,
-  # "Kd": 12.5,
-  # chien aperiodisch PID, gute führung
-  "Kp": 3.708,
-  "Ki": 0.033,
-  "Kd": 0.845,
+
+  # Hotend PID value sets
+  "pidPrint" : {
+    # Ziegler PID 1.2:
+    "Kp": 5.2199,
+    "Ki": 0.2357,
+    "Kd": 0.9427
+  },
+  "pidMeasure" : {
+    # T-Sum method PID parameters (fast):
+    "Kp": 1.1233,
+    "Ki": 0.0164,
+    "Kd": 0.0675
+  },
+
+
   # From pidAutoTune.py:
   "Tu": 8.779,
   "Tg": 113.663,
+
+
   # Bedleveling Z value
   "add_homeing_z": -16.35,
   # Diameter of feeder (knurled) wheel, take some 
