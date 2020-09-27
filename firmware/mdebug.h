@@ -72,7 +72,7 @@ extern void *__brkval;
                 int free_memory;
 
                     if((int)__brkval == 0)
-                        free_memory = ((int)&free_memory) - ((int)&__bss_end);
+                        free_memory = ((int)&free_memory) - ((int)&__heap_start);
                     else
                         free_memory = ((int)&free_memory) - ((int)__brkval);
 

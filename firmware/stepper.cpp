@@ -118,10 +118,10 @@ void st_init() {
 
             if (regs->SR & TIMER_SR_UIF) {
 
-	            stepBuffer.runMoveSteps();
-
                 regs->SR = ~TIMER_SR_UIF;
-                regs->SR;
+                regs->SR; // Avoid duplicated pulses
+
+	            stepBuffer.runMoveSteps();
             }
         }
 
@@ -133,9 +133,8 @@ void st_init() {
             if (regs->SR & TIMER_SR_UIF) {
 
 	            stepBuffer.runMiscSteps();
-
                 regs->SR = ~TIMER_SR_UIF;
-                regs->SR;
+                regs->SR; // Avoid duplicated pulses
             }
         }
 

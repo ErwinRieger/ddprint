@@ -86,7 +86,8 @@ extern "C" {
 // Test timer3 interrupt bit in timer interrupt enable register(s)
 #define STEPPER1_DRIVER_INTERRUPT_ENABLED() ( timer3.regs.gen->DIER & TIMER_SR_UIF )
 
-#define HAL_SET_STEPPER_TIMER(timerval) { timer_set_reload(&timer2, timerval); }
+// xxxx min stepper time: (20 / 2) / 2 = 5              ; minsteptime / 2 wegen tv75khz / 2 wegen deactivate step in stepper irq
+#define HAL_SET_STEPPER_TIMER(timerval) { massert(timerval < 0xffff); massert(timerval >= 5); timer_set_reload(&timer2, timerval); }
 #define HAL_SET_HOMING_TIMER(timerval) { timer_set_reload(&timer3, timerval); }
 
 #define HAL_SPI_INIT() spiInit()
