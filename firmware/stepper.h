@@ -324,6 +324,57 @@ inline bool st_endstop_released<ZAxisSelector>(bool forward) {
     return false;
 }
 
+#if 0
+template<typename MOVE>
+inline void st_step_motor(uint8_t stepBits, uint8_t dirbits) {
+
+    uint8_t mask = st_get_move_bit_mask<MOVE>();
+
+    if (stepBits & mask) {
+
+        activate_step_pin<MOVE>();
+
+        // #if defined(STEPPER_MINPULSE)
+            // delayMicroseconds(STEPPER_MINPULSE);
+        // #endif
+
+        if (dirbits & mask)
+            st_inc_current_pos_steps<MOVE>();
+        else
+            st_dec_current_pos_steps<MOVE>();
+        
+        // deactivate_step_pin<MOVE>();
+    }
+}
+#endif
+
+template<typename MOVE>
+inline void st_toggle_motor(uint8_t stepBits, uint8_t dirbits) {
+
+    uint8_t mask = st_get_move_bit_mask<MOVE>();
+    static bool activ = false;
+
+    if (stepBits & mask) {
+
+        if (activ) {
+
+            // Update steps counter on falling edge
+            if (dirbits & mask)
+                st_inc_current_pos_steps<MOVE>();
+            else
+                st_dec_current_pos_steps<MOVE>();
+            
+            deactivate_step_pin<MOVE>();
+            activ = false;
+        }
+        else {
+            activate_step_pin<MOVE>();
+            activ = true;
+        }
+    }
+}
+
+#if 0
 template<typename MOVE>
 inline void st_step_motor(uint8_t stepBits, uint8_t dirbits) {
 
@@ -384,6 +435,49 @@ inline void st_step_motor_es(uint8_t stepBits, uint8_t dirbits) {
             st_dec_current_pos_steps<MOVE>();
 
         deactivate_step_pin<MOVE>();
+    }
+}
+
+#endif
+
+template<typename MOVE>
+inline void st_toggle_motor_es(uint8_t stepBits, uint8_t dirbits) {
+
+    uint8_t mask = st_get_move_bit_mask<MOVE>();
+    static bool activ = false;
+
+    if (stepBits & mask) {
+
+        if (activ) {
+
+            bool forward = dirbits & mask;
+            bool endStop = st_endstop_pressed<MOVE>(forward);
+
+            if (endStop) {
+                DISABLE_STEPPER1_DRIVER_INTERRUPT();
+                return;
+            }
+
+            endStop = st_endstop_released<MOVE>(forward);
+
+            if (endStop) {
+                DISABLE_STEPPER1_DRIVER_INTERRUPT();
+                return;
+            }
+
+            // Update steps counter on falling edge
+            if (forward)
+                st_inc_current_pos_steps<MOVE>();
+            else
+                st_dec_current_pos_steps<MOVE>();
+
+            deactivate_step_pin<MOVE>();
+            activ = false;
+        }
+        else {
+            activate_step_pin<MOVE>();
+            activ = true;
+        }
     }
 }
 
@@ -533,67 +627,32 @@ class StepBuffer {
             // --> To relax this situation we set the new OCR1A value as fast as possible.
             FWINLINE void runMoveSteps() {
 
-                static int phase = 0;
-                static uint16_t thalbe = 0;
-
                 if (empty()) {
 
                     // Empty buffer, nothing to step
                     HAL_SET_STEPPER_TIMER(2000); // 1kHz.
-                    phase = 0;
                 }
                 else {
 
-                    if (phase == 0) {
+                    stepData &sd = pop();
 
-                        stepData &sd = peek();
+                    // set dir and pin and short timer
+                    HAL_SET_STEPPER_TIMER(sd.timer);
 
-                        // set dir and pin and short timer
-                        thalbe = sd.timer / 2;
-                        HAL_SET_STEPPER_TIMER(thalbe);
+                    if (sd.dirBits & 0x80) {
 
-                        if (sd.dirBits & 0x80) {
-
-                            // Set direction bits
-                            st_set_direction<XAxisSelector>(sd.dirBits);
-                            st_set_direction<YAxisSelector>(sd.dirBits);
-                            st_set_direction<ZAxisSelector>(sd.dirBits);
-                            st_set_direction<EAxisSelector>(sd.dirBits);
-                        }
-
-                        st_step_motor<XAxisSelector>(sd.stepBits, sd.dirBits);
-                        st_step_motor<YAxisSelector>(sd.stepBits, sd.dirBits);
-                        st_step_motor<ZAxisSelector>(sd.stepBits, sd.dirBits);
-                        st_step_motor<EAxisSelector>(sd.stepBits, sd.dirBits);
-
-                        phase = 1;
+                        // Set direction bits
+                        st_set_direction<XAxisSelector>(sd.dirBits);
+                        st_set_direction<YAxisSelector>(sd.dirBits);
+                        st_set_direction<ZAxisSelector>(sd.dirBits);
+                        st_set_direction<EAxisSelector>(sd.dirBits);
                     }
-                    else {
-                        // phase 1, don't pop
-                        //
-                        //
 
-                        stepData &sd = pop();
-
-                        HAL_SET_STEPPER_TIMER(sd.timer-thalbe);
-
-                        // Step the motors and update step-coordinates (current_pos_steps): st_step_motor<>()
-                        // st_step_motor<XAxisSelector>(sd.stepBits, sd.dirBits);
-                        // st_step_motor<YAxisSelector>(sd.stepBits, sd.dirBits);
-                        // st_step_motor<ZAxisSelector>(sd.stepBits, sd.dirBits);
-                        // st_step_motor<EAxisSelector>(sd.stepBits, sd.dirBits);
-                        // st_stop_motor<XAxisSelector>(sd.stepBits, sd.dirBits);
-                        // st_stop_motor<YAxisSelector>(sd.stepBits, sd.dirBits);
-                        // st_stop_motor<ZAxisSelector>(sd.stepBits, sd.dirBits);
-                        // st_stop_motor<EAxisSelector>(sd.stepBits, sd.dirBits);
-        
-                        deactivate_step_pin<XAxisSelector>();
-                        deactivate_step_pin<YAxisSelector>();
-                        deactivate_step_pin<ZAxisSelector>();
-                        deactivate_step_pin<EAxisSelector>();
-
-                        phase = 0;
-                    }
+                    // xxx current_pos_step housekeeping in own step, so no need for dirbits parameter...
+                    st_toggle_motor<XAxisSelector>(sd.stepBits, sd.dirBits);
+                    st_toggle_motor<YAxisSelector>(sd.stepBits, sd.dirBits);
+                    st_toggle_motor<ZAxisSelector>(sd.stepBits, sd.dirBits);
+                    st_toggle_motor<EAxisSelector>(sd.stepBits, sd.dirBits);
                 }
             }
 
@@ -630,16 +689,20 @@ class StepBuffer {
                 // * Step the motors
                 // * Check endstops
                 // * Update step-coordinates (current_pos_steps)
-                st_step_motor_es<XAxisSelector>(sd.stepBits, sd.dirBits);
-                st_step_motor_es<YAxisSelector>(sd.stepBits, sd.dirBits);
-                st_step_motor_es<ZAxisSelector>(sd.stepBits, sd.dirBits);
+                // st_step_motor_es<XAxisSelector>(sd.stepBits, sd.dirBits);
+                // st_step_motor_es<YAxisSelector>(sd.stepBits, sd.dirBits);
+                // st_step_motor_es<ZAxisSelector>(sd.stepBits, sd.dirBits);
+                    st_toggle_motor_es<XAxisSelector>(sd.stepBits, sd.dirBits);
+                    st_toggle_motor_es<YAxisSelector>(sd.stepBits, sd.dirBits);
+                    st_toggle_motor_es<ZAxisSelector>(sd.stepBits, sd.dirBits);
             }
         }
 
         FWINLINE void runContinuosSteps() {
 
             HAL_SET_HOMING_TIMER(continuosTimer);
-            st_step_motor<EAxisSelector>(st_get_move_bit_mask<EAxisSelector>(), st_get_move_bit_mask<EAxisSelector>());
+            massert(0); 
+            // st_step_motor<EAxisSelector>(st_get_move_bit_mask<EAxisSelector>(), st_get_move_bit_mask<EAxisSelector>());
         }
 
 };
