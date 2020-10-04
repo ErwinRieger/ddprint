@@ -437,6 +437,7 @@ static SDReader sDReader;
 
 // Generate two entries in stepper data to realize min pulsewidth
 #define PushStepWithClearDirBits(timerExpr)  \
+massert((timerExpr) > 5); \
     sd.timer = 5;  \
     computeStepBits(); \
     PT_WAIT_WHILE(stepBuffer.full()); \
@@ -447,6 +448,7 @@ static SDReader sDReader;
 
 // Generate two entries in stepper data to realize min pulsewidth
 #define PushStep(timerExpr)  \
+massert((timerExpr) > 5); \
     sd.timer = 5;  \
     computeStepBits(); \
     PT_WAIT_WHILE(stepBuffer.full()); \
@@ -455,6 +457,7 @@ static SDReader sDReader;
 
 // Generate two entries in stepper data to realize min pulsewidth
 #define PushRawStepWithClearDirBits(timerExpr)  \
+massert((timerExpr) > 5); \
     sd.timer = 5;  \
     PT_WAIT_WHILE(stepBuffer.full()); \
     stepBuffer.push(sd); \
@@ -464,26 +467,11 @@ static SDReader sDReader;
 
 // Generate two entries in stepper data to realize min pulsewidth
 #define PushRawStep(timerExpr)  \
+massert((timerExpr) > 5); \
     sd.timer = 5;  \
     PT_WAIT_WHILE(stepBuffer.full()); \
     stepBuffer.push(sd); \
     sd.timer = (timerExpr) - 5;
-
-#if 0
-#endif
-
-#if 0
-// Generate two entries in stepper data to realize min pulsewidth
-#define PushLinStep()  \
-    sd.timer = 5;  \
-    computeStepBits(); \
-    PT_WAIT_WHILE(stepBuffer.full()); \
-    stepBuffer.push(sd); \
-    sd.timer = (timer) - 5;  \
-    PT_WAIT_WHILE(stepBuffer.full()); \
-    stepBuffer.push(sd); 
-#endif
-
 
 class FillBufferTask : public Protothread {
 
@@ -768,15 +756,13 @@ class FillBufferTask : public Protothread {
 
 
 #if 0
-                    sd.timer = STD min ( (uint16_t)(lastTimer * timerScale), (uint16_t)0xffff );
-
-                    computeStepBits();
-                    PT_WAIT_WHILE(stepBuffer.full());
-                    stepBuffer.push(sd);
-
-                    sd.dirBits &= ~0x80; // clear set-direction bit (after push)
+                    sd.timer = STD min ( (uint16_t)(lastTimer * timerScale), (uint16_t)0xffff );         // sd.timer = 5;
+                    computeStepBits();                                                                   // computeStepBits();
+                    PT_WAIT_WHILE(stepBuffer.full());                                                    // PT_WAIT_WHILE(stepBuffer.full());
+                    stepBuffer.push(sd);                                                                 // stepBuffer.push(sd);
+                    sd.dirBits &= ~0x80; // clear set-direction bit (after push)                         // sd.dirBits &= ~0x80; 
 #endif
-PushStepWithClearDirBits( STD min ( (uint16_t)(lastTimer * timerScale), (uint16_t)0xffff ) );
+PushStepWithClearDirBits( STD min ( (uint16_t)(lastTimer * timerScale), (uint16_t)0xffff ) );            // sd.timer = (timerExpr) - 5;
     PT_WAIT_WHILE(stepBuffer.full()); 
     stepBuffer.push(sd);
 
