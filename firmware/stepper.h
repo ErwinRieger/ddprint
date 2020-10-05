@@ -324,7 +324,6 @@ inline bool st_endstop_released<ZAxisSelector>(bool forward) {
     return false;
 }
 
-#if 0
 template<typename MOVE>
 inline void st_step_motor(uint8_t stepBits, uint8_t dirbits) {
 
@@ -346,8 +345,8 @@ inline void st_step_motor(uint8_t stepBits, uint8_t dirbits) {
         // deactivate_step_pin<MOVE>();
     }
 }
-#endif
 
+#if 0
 template<typename MOVE>
 inline void st_toggle_motor(uint8_t stepBits, uint8_t dirbits) {
 
@@ -373,6 +372,7 @@ inline void st_toggle_motor(uint8_t stepBits, uint8_t dirbits) {
         }
     }
 }
+#endif
 
 #if 0
 template<typename MOVE>
@@ -396,6 +396,7 @@ inline void st_step_motor(uint8_t stepBits, uint8_t dirbits) {
         // deactivate_step_pin<MOVE>();
     }
 }
+#endif
 
 //
 // Like st_step_motor, but check endstops
@@ -438,8 +439,7 @@ inline void st_step_motor_es(uint8_t stepBits, uint8_t dirbits) {
     }
 }
 
-#endif
-
+#if 0
 template<typename MOVE>
 inline void st_toggle_motor_es(uint8_t stepBits, uint8_t dirbits) {
 
@@ -481,6 +481,7 @@ inline void st_toggle_motor_es(uint8_t stepBits, uint8_t dirbits) {
     }
 }
 
+#endif
 
 
 /*
@@ -530,12 +531,15 @@ class StepBuffer {
 
             uint16_t continuosTimer;
 
+            uint8_t stepbits; // xxx for deactivate
+
         public:
 
             StepBuffer() {
                 head = tail = 0;
                 syncCount = 0;
                 miscStepperMode = HOMINGMODE;
+                stepbits = 0;
             };
 
             void setContinuosTimer(uint16_t timerValue) {
@@ -631,6 +635,7 @@ class StepBuffer {
 
                     // Empty buffer, nothing to step
                     HAL_SET_STEPPER_TIMER(2000); // 1kHz.
+                    stepbits = 0;
                 }
                 else {
 
@@ -648,13 +653,28 @@ class StepBuffer {
                         st_set_direction<EAxisSelector>(sd.dirBits);
                     }
 
+                    stepbits = sd.stepBits;
+
                     // xxx current_pos_step housekeeping in own step, so no need for dirbits parameter...
-                    st_toggle_motor<XAxisSelector>(sd.stepBits, sd.dirBits);
-                    st_toggle_motor<YAxisSelector>(sd.stepBits, sd.dirBits);
-                    st_toggle_motor<ZAxisSelector>(sd.stepBits, sd.dirBits);
-                    st_toggle_motor<EAxisSelector>(sd.stepBits, sd.dirBits);
+                    st_step_motor<XAxisSelector>(stepbits, sd.dirBits);
+                    st_step_motor<YAxisSelector>(stepbits, sd.dirBits);
+                    st_step_motor<ZAxisSelector>(stepbits, sd.dirBits);
+                    st_step_motor<EAxisSelector>(stepbits, sd.dirBits);
                 }
             }
+
+        FWINLINE void deactivateSteppers() {
+
+            if (stepbits) {
+
+                deactivate_step_pin<XAxisSelector>();
+                deactivate_step_pin<YAxisSelector>();
+                deactivate_step_pin<ZAxisSelector>();
+                deactivate_step_pin<EAxisSelector>();
+
+                stepbits = 0;
+            }
+        }
 
         FWINLINE void runMiscSteps() {
 
@@ -689,12 +709,12 @@ class StepBuffer {
                 // * Step the motors
                 // * Check endstops
                 // * Update step-coordinates (current_pos_steps)
-                // st_step_motor_es<XAxisSelector>(sd.stepBits, sd.dirBits);
-                // st_step_motor_es<YAxisSelector>(sd.stepBits, sd.dirBits);
-                // st_step_motor_es<ZAxisSelector>(sd.stepBits, sd.dirBits);
-                    st_toggle_motor_es<XAxisSelector>(sd.stepBits, sd.dirBits);
-                    st_toggle_motor_es<YAxisSelector>(sd.stepBits, sd.dirBits);
-                    st_toggle_motor_es<ZAxisSelector>(sd.stepBits, sd.dirBits);
+                st_step_motor_es<XAxisSelector>(sd.stepBits, sd.dirBits);
+                st_step_motor_es<YAxisSelector>(sd.stepBits, sd.dirBits);
+                st_step_motor_es<ZAxisSelector>(sd.stepBits, sd.dirBits);
+                //     st_toggle_motor_es<XAxisSelector>(sd.stepBits, sd.dirBits);
+                  //   st_toggle_motor_es<YAxisSelector>(sd.stepBits, sd.dirBits);
+                    // st_toggle_motor_es<ZAxisSelector>(sd.stepBits, sd.dirBits);
             }
         }
 
