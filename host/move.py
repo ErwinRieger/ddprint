@@ -562,7 +562,7 @@ class StepData:
                     break
 
                 lastTimer = tv
-        
+
         # Check if deceleration timer values can be sent as difference bytes
         decelByteFlag = DecelByteFlagBit
         if self.decelPulses:

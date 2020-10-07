@@ -39,12 +39,12 @@ def homeMove(parser, dim, direction, dist, fakeHomingEndstops, feedRateFactor=1.
 
     parser.setPos(planner.zeroPos)
 
-    feedRate = planner.HOMING_FEEDRATE[dim]*60*feedRateFactor
+    feedRate = planner.HOMING_FEEDRATE[dim]*feedRateFactor
 
-    # print "--- homeMove(): send %s - homing move, dist: %.2f, feedrate: %.2f mm/min" % (dimNames[dim], dist*direction * planner.HOME_DIR[dim], feedRate)
+    print "--- homeMove(): send %s - homing move, dist: %.2f, feedrate: %.2f mm/s" % (dimNames[dim], dist*direction * planner.HOME_DIR[dim], feedRate)
 
     cmd = "G0 F%f %s%f" % (
-        feedRate, dimNames[dim], dist * direction * planner.HOME_DIR[dim])
+        feedRate*60, dimNames[dim], dist * direction * planner.HOME_DIR[dim])
 
     # print "homeMove: ", cmd
 
@@ -106,19 +106,25 @@ def home(args, printer, parser, planner, force=False):
         # Move to home
         if not curPosMM.equal(homePosMM, "XYZ"):
 
+    
             #
             # Z Achse isoliert und als erstes bewegen, um zusammenstoss mit den klammern
             # der buildplatte oder mit objekten auf der druckplatte zu vermeiden.
             #
             if not curPosMM.equal(homePosMM, "Z"):
 
-                parser.execute_line("G0 F%d Z%f" % (
-                    printer.printerProfile.getMaxFeedrateI(util.Z_AXIS)*60, homePosMM.Z))
+                feedRate = printer.printerProfile.getMaxFeedrateI(util.Z_AXIS)
+                print "--- home(): homing z-move feedrate: %.2f mm/s" % (feedRate)
+
+                parser.execute_line("G0 F%d Z%f" % (feedRate*60, homePosMM.Z))
 
             if not curPosMM.equal(homePosMM, "XY"):
 
+                feedRate = printer.printerProfile.getMaxFeedrateI(util.X_AXIS)
+                print "--- home(): homing xy-move feedrate: %.2f mm/s" % (feedRate)
+
                 parser.execute_line("G0 F%d X%f Y%f" % (
-                    printer.printerProfile.getMaxFeedrateI(util.X_AXIS)*60, 
+                    feedRate*60, 
                     homePosMM.X, homePosMM.Y))
 
             planner.finishMoves()
@@ -152,6 +158,7 @@ def home(args, printer, parser, planner, force=False):
             if homeBounce(parser, dim, args.fakeendstop):
                 continue
 
+        """
         # Try fast home if head/bed is near the endstop
         print "Homing: doing short/fast home."
         if homeMove(parser, dim, 1, planner.MAX_POS[dim] / 10.0, args.fakeendstop): # Move towards endstop fast
@@ -159,6 +166,7 @@ def home(args, printer, parser, planner, force=False):
             print "Homing: %s - endstop is triggered, trying fast home." % dimNames[dim]
             if homeBounce(parser, dim, args.fakeendstop):
                 continue
+        """
 
         # Do the full slow homing move
         print "Homing: doing full/slow home."

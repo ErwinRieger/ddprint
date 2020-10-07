@@ -19,7 +19,7 @@
 # along with ddprint.  If not, see <http://www.gnu.org/licenses/>.
 #*/
 
-import math, collections, types
+import math, collections, types, pprint
 from argparse import Namespace
 
 import ddprintutil as util, dddumbui, packedvalue
@@ -399,6 +399,7 @@ class Planner (object):
         # Constants, xxx todo: query from printer and/or profile
         #
         self.HOMING_FEEDRATE = [100, 100, 40]  # set the homing speeds (mm/s) 
+        # self.HOMING_FEEDRATE = [50, 50, 10]  # set the homing speeds (mm/s) 
         self.HOME_RETRACT_MM = 7               # [mm]
 
         # ENDSTOP SETTINGS:
@@ -1207,6 +1208,9 @@ class Planner (object):
             tstep += dt
             stepToDo -= 1
 
+        # print "acel pulses:",
+        # pprint.pprint(pulses)
+
         return pulses
 
     ####################################################################################################
@@ -1250,6 +1254,9 @@ class Planner (object):
             v = vn1
             tstep += dt
             nSteps -= 1
+
+        # print "decel pulses:",
+        # pprint.pprint(pulses)
 
         return pulses
 
