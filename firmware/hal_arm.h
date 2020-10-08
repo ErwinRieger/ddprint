@@ -80,7 +80,7 @@ extern "C" {
 // TIMER_CC1_INTERRUPT
 // xxx combine both flags into one timer_enable_irq call?
 #define ENABLE_STEPPER_DRIVER_INTERRUPT()  { timer_enable_irq(&timer2, TIMER_UPDATE_INTERRUPT); timer_enable_irq(&timer2, TIMER_CC1_INTERRUPT); }
-#define DISABLE_STEPPER_DRIVER_INTERRUPT() { timer_disable_irq(&timer2, TIMER_UPDATE_INTERRUPT); timer_enable_irq(&timer2, TIMER_CC1_INTERRUPT);}
+#define DISABLE_STEPPER_DRIVER_INTERRUPT() { timer_disable_irq(&timer2, TIMER_UPDATE_INTERRUPT); timer_disable_irq(&timer2, TIMER_CC1_INTERRUPT);}
 
 #define ENABLE_STEPPER1_DRIVER_INTERRUPT()  { timer_enable_irq(&timer3, TIMER_UPDATE_INTERRUPT); }
 #define DISABLE_STEPPER1_DRIVER_INTERRUPT() { timer_disable_irq(&timer3, TIMER_UPDATE_INTERRUPT); }
@@ -176,14 +176,9 @@ inline void timerInit() {
     // bb_peri_set_bit(&(timer2.regs.gen)->CR1, TIMER_CR1_ARPE_BIT, 1);
     // bb_peri_set_bit(&(timer2.regs.gen)->CR1, TIMER_CR1_OPM_BIT, 1);
 
-    timer2.regs.gen->DIER = timer2.regs.gen->DIER | TIMER_DIER_CC1IE;
-
     timer_set_compare(&timer2, 1, 5);          // xxx pulse width for stepper motors
 
     // bb_peri_set_bit(&(timer3.regs.gen)->CR1, TIMER_CR1_ARPE_BIT, 1);
-
-    // timer_enable_irq(&timer2, TIMER_UPDATE_INTERRUPT);
-    // timer_enable_irq(&timer3, TIMER_UPDATE_INTERRUPT);
 
     nvic_irq_enable(NVIC_TIMER2);
     nvic_irq_enable(NVIC_TIMER3);
