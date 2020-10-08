@@ -114,18 +114,25 @@ void st_init() {
         // Stepper irq routine
         void __irq_tim2(void)
         {
+
             timer_gen_reg_map *regs = timer2.regs.gen;
 
-            if (regs->SR & TIMER_SR_CC1IF) {
+            unsigned int sr = regs->SR;
+            unsigned int bitsToClear = 0;
+
+            if (sr & TIMER_SR_CC1IF) {
 
 	            stepBuffer.deactivateSteppers();
-                regs->SR = ~TIMER_SR_CC1IF;
-                regs->SR; // Avoid duplicated pulses
+                bitsToClear = bitsToClear | TIMER_SR_CC1IF;
             }
-            if (regs->SR & TIMER_SR_UIF) {
+            if (sr & TIMER_SR_UIF) {
 
 	            stepBuffer.runMoveSteps();
-                regs->SR = ~TIMER_SR_UIF;
+                bitsToClear = bitsToClear | TIMER_SR_UIF;
+            }
+
+            if (bitsToClear) {
+                regs->SR = ~bitsToClear;
                 regs->SR; // Avoid duplicated pulses
             }
         }
