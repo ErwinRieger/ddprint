@@ -43,7 +43,7 @@
 #include "stepper.h"
 #include "hostsettings.h"
 
-#include "lz.h"
+#include "unzip/uz.h"
 
 //The ASCII buffer for recieving from SD:
 #define SD_BUFFER_SIZE 512
@@ -1958,7 +1958,7 @@ class UsbCommand : public Protothread {
                           
     // len2 = LZ_Uncompress(zipbuffer, zipDest, len1);
 // xxxx reenable!!!
-    len2 = zlibUncompress(zipbuffer, zipDest, len1);
+    len2 = zlibUncompress(zipbuffer, len1, zipDest, 256);
 
                     for (binindex=0; binindex < len2; binindex++) {
 
