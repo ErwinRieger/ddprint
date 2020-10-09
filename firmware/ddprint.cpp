@@ -2489,21 +2489,6 @@ void loop() {
 #endif
     }
 
-#if defined(UseProcessStats)
-        taskStart = millis(); // debug
-#endif
-
-    fillBufferTask.Run();
-
-#if defined(UseProcessStats)
-        taskDuration = millis() - taskStart;
-
-        taskTiming[6].ncalls += 1;
-        taskTiming[6].sumcall += taskDuration;
-        if (taskDuration > taskTiming[6].longest)
-            taskTiming[6].longest = taskDuration;
-#endif
-
     // Read usb commands
 #if defined(UseProcessStats)
     taskStart = millis(); // debug
@@ -2520,22 +2505,6 @@ void loop() {
             taskTiming[ubscommand].longest = taskDuration;
 #endif
 
-#if defined(UseProcessStats)
-        taskStart = millis(); // debug
-#endif
-
-    fillBufferTask.Run();
-
-#if defined(UseProcessStats)
-        taskDuration = millis() - taskStart;
-
-        taskTiming[6].ncalls += 1;
-        taskTiming[6].sumcall += taskDuration;
-        if (taskDuration > taskTiming[6].longest)
-            taskTiming[6].longest = taskDuration;
-#endif
-
-
     // Write usb/serial output
 #if defined(UseProcessStats)
         taskStart = millis(); // debug
@@ -2551,22 +2520,6 @@ void loop() {
         if (taskDuration > taskTiming[4].longest)
             taskTiming[4].longest = taskDuration;
 #endif
-
-#if defined(UseProcessStats)
-        taskStart = millis(); // debug
-#endif
-
-    fillBufferTask.Run();
-
-#if defined(UseProcessStats)
-        taskDuration = millis() - taskStart;
-
-        taskTiming[6].ncalls += 1;
-        taskTiming[6].sumcall += taskDuration;
-        if (taskDuration > taskTiming[6].longest)
-            taskTiming[6].longest = taskDuration;
-#endif
-
 
     // Write stepdata to mass storage device
 #if defined(UseProcessStats)
@@ -2603,9 +2556,6 @@ void loop() {
 #endif
 
 
-    // while ((printer.printerState == Printer::StateStart) && (stepBuffer.byteSize() < (uint8_t)(StepBufferLen*.9)) && (sDReader.available()>=4))
-        // fillBufferTask.Run();
-
     // Check for buffer underruns. A underrun is a emtpy stepper buffer even if data
     // is available on the swap device. In this case the system can't keep up with
     // the rate at which the stepper data is consumed.
@@ -2628,8 +2578,6 @@ void loop() {
             }
         }
     }
-
-
 
 #if defined(UseProcessStats)
     // tasksum
