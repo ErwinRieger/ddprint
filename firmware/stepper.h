@@ -333,16 +333,23 @@ inline void st_step_motor(uint8_t stepBits, uint8_t dirbits) {
 
         activate_step_pin<MOVE>();
 
-        // #if defined(STEPPER_MINPULSE)
-            // delayMicroseconds(STEPPER_MINPULSE);
-        // #endif
-
         if (dirbits & mask)
             st_inc_current_pos_steps<MOVE>();
         else
             st_dec_current_pos_steps<MOVE>();
-        
+      
+      // arm/avr  
         // deactivate_step_pin<MOVE>();
+    }
+}
+
+template<typename MOVE>
+inline void st_deactivate_pin(uint8_t stepBits) {
+
+    uint8_t mask = st_get_move_bit_mask<MOVE>();
+
+    if (stepBits & mask) {
+        deactivate_step_pin<MOVE>();
     }
 }
 
@@ -667,10 +674,10 @@ class StepBuffer {
 
             if (stepbits) {
 
-                deactivate_step_pin<XAxisSelector>();
-                deactivate_step_pin<YAxisSelector>();
-                deactivate_step_pin<ZAxisSelector>();
-                deactivate_step_pin<EAxisSelector>();
+                st_deactivate_pin<XAxisSelector>(stepbits);
+                st_deactivate_pin<YAxisSelector>(stepbits);
+                st_deactivate_pin<ZAxisSelector>(stepbits);
+                st_deactivate_pin<EAxisSelector>(stepbits);
 
                 stepbits = 0;
             }
@@ -712,9 +719,6 @@ class StepBuffer {
                 st_step_motor_es<XAxisSelector>(sd.stepBits, sd.dirBits);
                 st_step_motor_es<YAxisSelector>(sd.stepBits, sd.dirBits);
                 st_step_motor_es<ZAxisSelector>(sd.stepBits, sd.dirBits);
-                //     st_toggle_motor_es<XAxisSelector>(sd.stepBits, sd.dirBits);
-                  //   st_toggle_motor_es<YAxisSelector>(sd.stepBits, sd.dirBits);
-                    // st_toggle_motor_es<ZAxisSelector>(sd.stepBits, sd.dirBits);
             }
         }
 

@@ -58,8 +58,7 @@
     // Use Bourns ems22a Rotary Encoder as a flowrate sensor
     // coldext #define BournsEMS22AFS 1
 #define COLDEXTRUSION 1
-    #define STEPPER_MINPULSE 5 /* µS */
-    // #define STEPPER_MINPULSE 2 /* µS */
+    #define STEPPER_MINPULSE 1 /* µS */
 
     #define UseProcessStats 1
 #else
