@@ -17,6 +17,39 @@
 * along with ddprint.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-unsigned int zlibUncompress( unsigned char *in, unsigned int insize, unsigned char *out, unsigned int outsize );
+#include "uzlib.h"
+#include "mdebug.h"
+
+unsigned int zlibUncompress( unsigned char *out, unsigned int outsize ) {
+
+    struct uzlib_uncomp d;
+
+    d.eof = 0;
+    d.bitcount = 0;
+    d.bfinal = 0;
+    d.btype = -1;
+    d.dict_size = 0;
+    d.dict_ring = NULL;
+    d.dict_idx = 0;
+    d.curlen = 0;
+
+    d.source = 0;
+    d.source_limit = 0;
+    d.source_read_cb = NULL;
+
+    d.dest_start = d.dest = out;
+
+    d.dest_limit = d.dest + outsize;
+
+    int res = uzlib_uncompress(&d);
+
+    if (res != TINF_DONE) {
+        // printf("Error during decompression: %d\n", res);
+        // exit(-res);
+        massert(0);
+    }
+
+    return d.dest - out;
+}
 
 

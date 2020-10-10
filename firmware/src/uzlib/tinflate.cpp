@@ -191,8 +191,10 @@ static void tinf_build_tree(TINF_TREE *t, const unsigned char *lengths, unsigned
  * -- decode functions -- *
  * ---------------------- */
 
+#if 0
 unsigned char uzlib_get_byte(TINF_DATA *d)
 {
+
     /* If end of source buffer is not reached, return next byte from source
        buffer. */
     if (d->source < d->source_limit) {
@@ -216,6 +218,7 @@ unsigned char uzlib_get_byte(TINF_DATA *d)
 
     return 0;
 }
+#endif
 
 uint32_t tinf_get_le_uint32(TINF_DATA *d)
 {
