@@ -43,7 +43,7 @@
 #include "stepper.h"
 #include "hostsettings.h"
 
-#include "unzip/uz.h"
+#include "uzlib/uz.h"
 
 //The ASCII buffer for recieving from SD:
 #define SD_BUFFER_SIZE 512
@@ -1829,9 +1829,7 @@ class UsbCommand : public Protothread {
 
         bool Run() {
 
-                uint8_t zipbuffer[256];
                 static uint8_t zipDest[256];
-                    int len1;
                     static int len2, binindex;
 
            // TaskStart;
@@ -1926,39 +1924,11 @@ class UsbCommand : public Protothread {
 
                 if ( (commandByte == CmdG1Packed) || (commandByte == CmdG1RawPacked) || (commandByte == CmdBlockPacked) ) {
 
+                    // skip 2 header bytes, read by uzlib_zlib_parse_header() else
+                    serialPort.readNoCheckCobs();
+                    serialPort.readNoCheckCobs();
 
-                    // xxx tell zip to use serial port and swapdev directly
-                    len1 = 0;
-                    while (serialPort.cobsAvailable()) {
-                    // while (len1 < payloadLength) 
-
-                        c = serialPort.readNoCheckCobs();
-
-                        zipbuffer[len1] = c;
-                        len1 += 1;
-                    }
-
-
-                // int tinf_uncompress(void *dest,
-                //           unsigned int *destLen,
-                //           const void *source,
-                //           unsigned int sourceLen);
-                    /// tinf_uncompress(zipDest, &destLen, zipbuffer, i)
-
-    // /*************************************************************************
-    // * * LZ_Uncompress() - Uncompress a block of data using an LZ77 decoder.  
-    // * *  in      - Input (compressed) buffer.
-    // * *  out     - Output (uncompressed) buffer. This buffer must be large
-    // * *            enough to hold the uncompressed data.                        
-    // * *************************************************************************/
-
-                        // void LZ_Uncompress( unsigned char *in, unsigned char *out,             
-                                    // unsigned int insize )               
-                        // 
-                          
-    // len2 = LZ_Uncompress(zipbuffer, zipDest, len1);
-// xxxx reenable!!!
-    len2 = zlibUncompress(zipbuffer, len1, zipDest, 256);
+    len2 = zlibUncompress(zipDest, 256);
 
                     for (binindex=0; binindex < len2; binindex++) {
 
@@ -2360,6 +2330,20 @@ class UsbCommand : public Protothread {
 };
 
 static UsbCommand usbCommand;
+
+/////////////////////////////////////////////////////
+//
+// Zlib uncompressor stream interface callback
+//
+unsigned char uzlib_get_byte(struct uzlib_uncomp *d) {
+
+    if (serialPort.cobsAvailable()) {
+        return serialPort.readNoCheckCobs();
+    }
+
+    d->eof = true;
+    return 0;
+}
 
 /////////////////////////////////////////////////////
 //
