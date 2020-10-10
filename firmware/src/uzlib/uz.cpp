@@ -38,7 +38,6 @@ unsigned int zlibUncompress( unsigned char *out, unsigned int outsize ) {
     d.source_read_cb = NULL;
 
     d.dest_start = d.dest = out;
-
     d.dest_limit = d.dest + outsize;
 
     int res = uzlib_uncompress(&d);
@@ -50,6 +49,7 @@ unsigned int zlibUncompress( unsigned char *out, unsigned int outsize ) {
     }
 
     return d.dest - out;
+    return 0;
 }
 
 

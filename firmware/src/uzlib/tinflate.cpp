@@ -99,6 +99,7 @@ const unsigned char clcidx[] = {
    14, 1, 15
 };
 
+#if 0
 /* ----------------------- *
  * -- utility functions -- *
  * ----------------------- */
@@ -121,6 +122,8 @@ static void tinf_build_bits_base(unsigned char *bits, unsigned short *base, int 
       sum += 1 << bits[i];
    }
 }
+#endif
+
 #endif
 
 /* build the fixed huffman trees */
@@ -407,6 +410,7 @@ static int tinf_decode_trees(TINF_DATA *d, TINF_TREE *lt, TINF_TREE *dt)
  * -- block inflate functions -- *
  * ----------------------------- */
 
+#if 0
 /* given a stream and two trees, inflate next byte of output */
 static int tinf_inflate_block_data(TINF_DATA *d, TINF_TREE *lt, TINF_TREE *dt)
 {
@@ -489,6 +493,7 @@ static int tinf_inflate_block_data(TINF_DATA *d, TINF_TREE *lt, TINF_TREE *dt)
     d->curlen--;
     return TINF_OK;
 }
+#endif
 
 /* inflate next byte from uncompressed block of data */
 static int tinf_inflate_uncompressed_block(TINF_DATA *d)
@@ -522,6 +527,7 @@ static int tinf_inflate_uncompressed_block(TINF_DATA *d)
     return TINF_OK;
 }
 
+#if 0
 /* ---------------------- *
  * -- public functions -- *
  * ---------------------- */
@@ -553,6 +559,8 @@ void uzlib_uncompress_init(TINF_DATA *d, unsigned char *dict, unsigned int dictL
    d->dict_idx = 0;
    d->curlen = 0;
 }
+
+#endif
 
 /* inflate next output bytes from compressed stream */
 int uzlib_uncompress(TINF_DATA *d)
@@ -597,7 +605,92 @@ next_blk:
         case 2:
             /* decompress block with fixed/dynamic huffman trees */
             /* trees were decoded previously, so it's the same routine for both */
-            res = tinf_inflate_block_data(d, &d->ltree, &d->dtree);
+            // res = tinf_inflate_block_data(d, &d->ltree, &d->dtree);
+
+            //////////////////////////////////////////////////////////////
+
+            if (d->curlen == 0) {
+                unsigned int offs;
+                int dist;
+                int sym = tinf_decode_symbol(d, &d->ltree);
+                //printf("huff sym: %02x\n", sym);
+
+                if (sym < 256) {
+                    /* literal byte */
+                    TINF_PUT(d, sym);
+                    res = TINF_OK;
+                }
+                else if (sym == 256) {
+                    /* end of block */
+                    res = TINF_DONE;
+                }
+                else {
+
+                    /* substring from sliding dictionary */
+                    sym -= 257;
+
+                    /* possibly get more bits from length code */
+                    d->curlen = tinf_read_bits(d, length_bits[sym], length_base[sym]);
+
+                    dist = tinf_decode_symbol(d, &d->dtree);
+
+                    /* possibly get more bits from distance code */
+                    offs = tinf_read_bits(d, dist_bits[dist], dist_base[dist]);
+
+                    /* calculate and validate actual LZ offset to use */
+                    if (d->dict_ring) {
+                        /* Note: unlike full-dest-in-memory case below, we don't
+                        try to catch offset which points to not yet filled
+                        part of the dictionary here. Doing so would require
+                        keeping another variable to track "filled in" size
+                        of the dictionary. Appearance of such an offset cannot
+                        lead to accessing memory outside of the dictionary
+                        buffer, and clients which don't want to leak unrelated
+                        information, should explicitly initialize dictionary
+                        buffer passed to uzlib. */
+
+                        d->lzOff = d->dict_idx - offs;
+                        if (d->lzOff < 0) {
+                            d->lzOff += d->dict_size;
+                        }
+                    } else {
+                        /* catch trying to point before the start of dest buffer */
+                        d->lzOff = -offs;
+                    }
+
+                    // A
+                    /* copy next byte from dict substring */
+                    if (d->dict_ring) {
+                        TINF_PUT(d, d->dict_ring[d->lzOff]);
+                        if ((unsigned)++d->lzOff == d->dict_size) {
+                            d->lzOff = 0;
+                        }
+                    } else {
+                        d->dest[0] = d->dest[d->lzOff];
+                        d->dest++;
+                    }
+                    d->curlen--;
+                    /* */
+                    res = TINF_OK;
+                }
+            }
+            else {
+                // A
+                /* copy next byte from dict substring */
+                if (d->dict_ring) {
+                    TINF_PUT(d, d->dict_ring[d->lzOff]);
+                    if ((unsigned)++d->lzOff == d->dict_size) {
+                        d->lzOff = 0;
+                    }
+                } else {
+                    d->dest[0] = d->dest[d->lzOff];
+                    d->dest++;
+                }
+                d->curlen--;
+                /* */
+                res = TINF_OK;
+            }
+            //////////////////////////////////////////////////////////////
             break;
         default:
             return TINF_DATA_ERROR;
@@ -617,8 +710,6 @@ next_blk:
 
     return TINF_OK;
 }
-
-
 
 
 

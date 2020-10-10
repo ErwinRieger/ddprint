@@ -2345,6 +2345,11 @@ unsigned char uzlib_get_byte(struct uzlib_uncomp *d) {
     return 0;
 }
 
+unsigned char uzlib_put_byte(uint8_t c) {
+
+    return 0;
+}
+
 /////////////////////////////////////////////////////
 //
 
