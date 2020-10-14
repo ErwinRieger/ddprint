@@ -43,7 +43,7 @@
 #include "stepper.h"
 #include "hostsettings.h"
 
-#include "uzlib/uz.h"
+#include "uz.h"
 
 //The ASCII buffer for recieving from SD:
 #define SD_BUFFER_SIZE 512
@@ -1829,8 +1829,8 @@ class UsbCommand : public Protothread {
 
         bool Run() {
 
-                static uint8_t zipDest[256];
-                    static int len2, binindex;
+                /// static uint8_t zipDest[256];
+                    /// static int len2, binindex;
 
            // TaskStart;
             PT_BEGIN();
@@ -1902,11 +1902,11 @@ class UsbCommand : public Protothread {
                 if ((commandByte != CmdBlock) && (commandByte != CmdBlockPacked)) {
 
                    // xxx
-                    // swapDev.addByte(commandByte);
+                    // swapDev.addByte(commandByte); // xxx todo: use CmdG1Packed CmdG1RawPacked ...
 
                     switch (commandByte) {
                         case CmdG1Packed:
-                            swapDev.addByte(CmdG1);
+                            swapDev.addByte(CmdG1); // xxx todo: use CmdG1Packed CmdG1RawPacked ...
                             break;
                         case CmdG1RawPacked:
                             swapDev.addByte(CmdG1Raw);
@@ -1924,17 +1924,17 @@ class UsbCommand : public Protothread {
 
                 if ( (commandByte == CmdG1Packed) || (commandByte == CmdG1RawPacked) || (commandByte == CmdBlockPacked) ) {
 
-                    // skip 2 header bytes, read by uzlib_zlib_parse_header() else
-                    serialPort.readNoCheckCobs();
-                    serialPort.readNoCheckCobs();
+    // len2 = zlibUncompress(zipDest, 256);
+               
+                    // for (binindex=0; binindex < len2; binindex++) {
 
-    len2 = zlibUncompress(zipDest, 256);
+                        // swapDev.addByte(zipDest[binindex]);
+                        // PT_WAIT_WHILE( swapDev.isBusyWriting() );
+                    // }
 
-                    for (binindex=0; binindex < len2; binindex++) {
-
-                        swapDev.addByte(zipDest[binindex]);
-                        PT_WAIT_WHILE( swapDev.isBusyWriting() );
-                    }
+                    // Stream data block from serial through unzip and store
+                    // result on mass storage device.
+                    PT_WAIT_THREAD(unZipper);
 
                 }
                 else {
@@ -1949,12 +1949,6 @@ class UsbCommand : public Protothread {
                     }
 
                 }
-
-
-
-
-
-
 
 
                 // Successfully received command, increment command counter
@@ -2345,15 +2339,6 @@ unsigned char uzlib_get_byte(struct uzlib_uncomp *d) {
     return 0;
 }
 
-unsigned char uzlib_put_byte(uint8_t c) {
-
-    return 0;
-}
-
-/////////////////////////////////////////////////////
-//
-
-//
 ////////////////////////////////////////////////////
 
 

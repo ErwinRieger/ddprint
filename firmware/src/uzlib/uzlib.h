@@ -131,17 +131,20 @@ struct uzlib_uncomp {
     }
 #endif
 
-#define TINF_PUT(d, c) \
+#define xTINF_PUT(d, c) \
     { \
         *d->dest++ = c; \
         if (d->dict_ring) { d->dict_ring[d->dict_idx++] = c; if (d->dict_idx == d->dict_size) d->dict_idx = 0; } \
     }
 
-#define xTINF_PUT(d, c) \
+#define yTINF_PUT(d, c) \
     { \
         uzlib_put_byte(c); \
         if (d->dict_ring) { d->dict_ring[d->dict_idx++] = c; if (d->dict_idx == d->dict_size) d->dict_idx = 0; } \
     }
+
+#define TINF_PUT_TAIL(d, c) { \
+        if (d.dict_ring) { d.dict_ring[d.dict_idx++] = c; if (d.dict_idx == d.dict_size) d.dict_idx = 0; } }
 
 unsigned char TINFCC uzlib_get_byte(struct uzlib_uncomp *d);
 

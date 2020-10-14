@@ -17,39 +17,22 @@
 * along with ddprint.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "uzlib.h"
-#include "mdebug.h"
+#include "Protothread.h"
+#include "uzlib/uzlib.h"
 
-unsigned int zlibUncompress( unsigned char *out, unsigned int outsize ) {
+// unsigned int zlibUncompress( unsigned char *out, unsigned int outsize );
+
+
+class UnZipper: public Protothread {
 
     struct uzlib_uncomp d;
 
-    d.eof = 0;
-    d.bitcount = 0;
-    d.bfinal = 0;
-    d.btype = -1;
-    d.dict_size = 0;
-    d.dict_ring = NULL;
-    d.dict_idx = 0;
-    d.curlen = 0;
+public:
 
-    d.source = 0;
-    d.source_limit = 0;
-    d.source_read_cb = NULL;
+    // UnZipper() { }
 
-    d.dest_start = d.dest = out;
-    d.dest_limit = d.dest + outsize;
+    bool Run();
+};
 
-    int res = uzlib_uncompress(&d);
-
-    if (res != TINF_DONE) {
-        // printf("Error during decompression: %d\n", res);
-        // exit(-res);
-        massert(0);
-    }
-
-    return d.dest - out;
-    return 0;
-}
-
+extern UnZipper unZipper;
 

@@ -32,8 +32,8 @@
  *    any source distribution.
  */
 
-// #include <assert.h>
 #include "uzlib.h"
+#include "swapdev.h"
 
 #define UZLIB_DUMP_ARRAY(heading, arr, size) \
     { \
@@ -64,26 +64,26 @@ unsigned short dist_base[30];
 
 #else
 
-const unsigned char length_bits[30] = {
+unsigned char length_bits[30] = {
    0, 0, 0, 0, 0, 0, 0, 0,
    1, 1, 1, 1, 2, 2, 2, 2,
    3, 3, 3, 3, 4, 4, 4, 4,
    5, 5, 5, 5
 };
-const unsigned short length_base[30] = {
+unsigned short length_base[30] = {
    3, 4, 5, 6, 7, 8, 9, 10,
    11, 13, 15, 17, 19, 23, 27, 31,
    35, 43, 51, 59, 67, 83, 99, 115,
    131, 163, 195, 227, 258
 };
 
-const unsigned char dist_bits[30] = {
+unsigned char dist_bits[30] = {
    0, 0, 0, 0, 1, 1, 2, 2,
    3, 3, 4, 4, 5, 5, 6, 6,
    7, 7, 8, 8, 9, 9, 10, 10,
    11, 11, 12, 12, 13, 13
 };
-const unsigned short dist_base[30] = {
+unsigned short dist_base[30] = {
    1, 2, 3, 4, 5, 7, 9, 13,
    17, 25, 33, 49, 65, 97, 129, 193,
    257, 385, 513, 769, 1025, 1537, 2049, 3073,
@@ -127,7 +127,7 @@ static void tinf_build_bits_base(unsigned char *bits, unsigned short *base, int 
 #endif
 
 /* build the fixed huffman trees */
-static void tinf_build_fixed_trees(TINF_TREE *lt, TINF_TREE *dt)
+void tinf_build_fixed_trees(TINF_TREE *lt, TINF_TREE *dt)
 {
    int i;
 
@@ -244,7 +244,7 @@ uint32_t tinf_get_be_uint32(TINF_DATA *d)
 }
 
 /* get one bit from source stream */
-static int tinf_getbit(TINF_DATA *d)
+int tinf_getbit(TINF_DATA *d)
 {
    unsigned int bit;
 
@@ -264,7 +264,7 @@ static int tinf_getbit(TINF_DATA *d)
 }
 
 /* read a num bit value from a stream and add base */
-static unsigned int tinf_read_bits(TINF_DATA *d, int num, int base)
+unsigned int tinf_read_bits(TINF_DATA *d, int num, int base)
 {
    unsigned int val = 0;
 
@@ -282,7 +282,7 @@ static unsigned int tinf_read_bits(TINF_DATA *d, int num, int base)
 }
 
 /* given a data stream and a tree, decode a symbol */
-static int tinf_decode_symbol(TINF_DATA *d, TINF_TREE *t)
+int tinf_decode_symbol(TINF_DATA *d, TINF_TREE *t)
 {
    int sum = 0, cur = 0, len = 0;
 
@@ -301,6 +301,11 @@ static int tinf_decode_symbol(TINF_DATA *d, TINF_TREE *t)
    } while (cur >= 0);
 
    sum += cur;
+
+#if defined(HEAVYDEBUG)
+   massert((sum >= 0) && (sum < (int)TINF_ARRAY_SIZE(t->trans)))
+#endif
+
    #if UZLIB_CONF_PARANOID_CHECKS
    if (sum < 0 || sum >= TINF_ARRAY_SIZE(t->trans)) {
       return TINF_DATA_ERROR;
@@ -311,7 +316,7 @@ static int tinf_decode_symbol(TINF_DATA *d, TINF_TREE *t)
 }
 
 /* given a data stream, decode dynamic trees from it */
-static int tinf_decode_trees(TINF_DATA *d, TINF_TREE *lt, TINF_TREE *dt)
+int tinf_decode_trees(TINF_DATA *d, TINF_TREE *lt, TINF_TREE *dt)
 {
    /* code lengths for 288 literal/len symbols and 32 dist symbols */
    unsigned char lengths[288+32];
@@ -350,13 +355,13 @@ static int tinf_decode_trees(TINF_DATA *d, TINF_TREE *lt, TINF_TREE *dt)
       int lbits, lbase = 3;
 
       /* error decoding */
-      if (sym < 0) return sym;
+      massert(sym >= 0); // if (sym < 0) return sym;
 
       switch (sym)
       {
       case 16:
          /* copy previous code length 3-6 times (read 2 bits) */
-         if (num == 0) return TINF_DATA_ERROR;
+         massert(num != 0); //if (num == 0) return TINF_DATA_ERROR;
          fill_value = lengths[num - 1];
          lbits = 2;
          break;
@@ -378,7 +383,7 @@ static int tinf_decode_trees(TINF_DATA *d, TINF_TREE *lt, TINF_TREE *dt)
 
       /* special code length 16-18 are handled here */
       length = tinf_read_bits(d, lbits, lbase);
-      if (num + length > hlimit) return TINF_DATA_ERROR;
+      massert((num+length) <= hlimit); // if (num + length > hlimit) return TINF_DATA_ERROR;
       for (; length; --length)
       {
          lengths[num++] = fill_value;
@@ -391,6 +396,10 @@ static int tinf_decode_trees(TINF_DATA *d, TINF_TREE *lt, TINF_TREE *dt)
    printf("dist code lengths (%d):", hdist);
    UZLIB_DUMP_ARRAY("", lengths + hlit, hdist);
    #endif
+
+#if defined(HEAVYDEBUG)
+   massert(lengths[256] != 0);
+#endif
 
    #if UZLIB_CONF_PARANOID_CHECKS
    /* Check that there's "end of block" symbol */
@@ -493,7 +502,6 @@ static int tinf_inflate_block_data(TINF_DATA *d, TINF_TREE *lt, TINF_TREE *dt)
     d->curlen--;
     return TINF_OK;
 }
-#endif
 
 /* inflate next byte from uncompressed block of data */
 static int tinf_inflate_uncompressed_block(TINF_DATA *d)
@@ -527,7 +535,6 @@ static int tinf_inflate_uncompressed_block(TINF_DATA *d)
     return TINF_OK;
 }
 
-#if 0
 /* ---------------------- *
  * -- public functions -- *
  * ---------------------- */
@@ -559,8 +566,6 @@ void uzlib_uncompress_init(TINF_DATA *d, unsigned char *dict, unsigned int dictL
    d->dict_idx = 0;
    d->curlen = 0;
 }
-
-#endif
 
 /* inflate next output bytes from compressed stream */
 int uzlib_uncompress(TINF_DATA *d)
@@ -617,7 +622,14 @@ next_blk:
 
                 if (sym < 256) {
                     /* literal byte */
-                    TINF_PUT(d, sym);
+
+                    // TINF_PUT(d, sym);
+
+                    swapDev.addByte(sym);
+                    PT_WAIT_WHILE( swapDev.isBusyWriting() );
+
+                    TINF_PUT_TAIL(d, sym);
+
                     res = TINF_OK;
                 }
                 else if (sym == 256) {
@@ -661,7 +673,15 @@ next_blk:
                     // A
                     /* copy next byte from dict substring */
                     if (d->dict_ring) {
-                        TINF_PUT(d, d->dict_ring[d->lzOff]);
+
+                        // TINF_PUT(d, d->dict_ring[d->lzOff]);
+
+                        uint8_t c = d->dict_ring[d->lzOff];
+                        swapDev.addByte(c);
+                        PT_WAIT_WHILE( swapDev.isBusyWriting() );
+
+                        TINF_PUT_TAIL(d, c);
+
                         if ((unsigned)++d->lzOff == d->dict_size) {
                             d->lzOff = 0;
                         }
@@ -678,7 +698,15 @@ next_blk:
                 // A
                 /* copy next byte from dict substring */
                 if (d->dict_ring) {
-                    TINF_PUT(d, d->dict_ring[d->lzOff]);
+
+                    // TINF_PUT(d, d->dict_ring[d->lzOff]);
+
+                    uint8_t c = d->dict_ring[d->lzOff];
+                    swapDev.addByte(c);
+                    PT_WAIT_WHILE( swapDev.isBusyWriting() );
+
+                    TINF_PUT_TAIL(d, c);
+
                     if ((unsigned)++d->lzOff == d->dict_size) {
                         d->lzOff = 0;
                     }
@@ -710,6 +738,8 @@ next_blk:
 
     return TINF_OK;
 }
+
+#endif
 
 
 

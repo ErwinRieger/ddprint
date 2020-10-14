@@ -24,6 +24,11 @@
     #include "hal_avr.h"
 #endif
 
+#if defined(DDSim)
+    // X86 simulator
+    #include "hal_avr.h"
+#endif
+
 #if defined(__arm__)
     // STM32
     #include "hal_arm.h"
