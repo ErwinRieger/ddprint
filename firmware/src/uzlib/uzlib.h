@@ -39,13 +39,6 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#include "defl_static.h"
-
-#include "uzlib_conf.h"
-#if UZLIB_CONF_DEBUG_LOG
-#include <stdio.h>
-#endif
-
 /* calling convention */
 #ifndef TINFCC
  #ifdef __WATCOMC__
@@ -53,10 +46,6 @@
  #else
   #define TINFCC
  #endif
-#endif
-
-#ifdef __cplusplus
-extern "C" {
 #endif
 
 /* ok status, more data produced */
@@ -83,92 +72,35 @@ typedef struct {
 } TINF_TREE;
 
 struct uzlib_uncomp {
-    /* Pointer to the next byte in the input buffer */
-    const unsigned char *source;
-    /* Pointer to the next byte past the input buffer (source_limit = source + len) */
-    const unsigned char *source_limit;
-    /* If source_limit == NULL, or source >= source_limit, this function
-       will be used to read next byte from source stream. The function may
-       also return -1 in case of EOF (or irrecoverable error). Note that
-       besides returning the next byte, it may also update source and
-       source_limit fields, thus allowing for buffered operation. */
-    int (*source_read_cb)(struct uzlib_uncomp *not_used_uncomp);
+    uint8_t tag;
+    uint8_t bitcount;
 
-    unsigned int tag;
-    unsigned int bitcount;
+    // bool eof;
 
-    /* Destination (output) buffer start */
-    unsigned char *dest_start;
-    /* Current pointer in dest buffer */
-    unsigned char *dest;
-    /* Pointer past the end of the dest buffer, similar to source_limit */
-    unsigned char *dest_limit;
-
-    /* Accumulating checksum */
-    unsigned int checksum;
-    char checksum_type;
-    bool eof;
-
-    int btype;
-    int bfinal;
-    unsigned int curlen;
-    int lzOff;
-    unsigned char *dict_ring;
-    unsigned int dict_size;
-    unsigned int dict_idx;
+    int8_t btype;
+    // int bfinal;
+    uint8_t curlen;
+    uint8_t lzOff;
 
     TINF_TREE ltree; /* dynamic length/symbol tree */
     TINF_TREE dtree; /* dynamic distance tree */
 };
 
-#include "tinf_compat.h"
-
-#if 0
-#define TINF_PUT(d, c) \
-    { \
-        *d->dest++ = c; \
-        if (d->dict_ring) { d->dict_ring[d->dict_idx++] = c; if (d->dict_idx == d->dict_size) d->dict_idx = 0; } \
-    }
-#endif
-
-#define xTINF_PUT(d, c) \
-    { \
-        *d->dest++ = c; \
-        if (d->dict_ring) { d->dict_ring[d->dict_idx++] = c; if (d->dict_idx == d->dict_size) d->dict_idx = 0; } \
-    }
-
-#define yTINF_PUT(d, c) \
-    { \
-        uzlib_put_byte(c); \
-        if (d->dict_ring) { d->dict_ring[d->dict_idx++] = c; if (d->dict_idx == d->dict_size) d->dict_idx = 0; } \
-    }
-
-#define TINF_PUT_TAIL(d, c) { \
-        if (d.dict_ring) { d.dict_ring[d.dict_idx++] = c; if (d.dict_idx == d.dict_size) d.dict_idx = 0; } }
-
-unsigned char TINFCC uzlib_get_byte(struct uzlib_uncomp *d);
+unsigned char TINFCC uzlib_get_byte(uzlib_uncomp *d);
 
 /* Decompression API */
 
 void TINFCC uzlib_init(void);
-void TINFCC uzlib_uncompress_init(struct uzlib_uncomp *d, void *dict, unsigned int dictLen);
-int  TINFCC uzlib_uncompress(struct uzlib_uncomp *d);
-int  TINFCC uzlib_uncompress_chksum(struct uzlib_uncomp *d);
+void TINFCC uzlib_uncompress_init(uzlib_uncomp *d, void *dict, unsigned int dictLen);
+int  TINFCC uzlib_uncompress(uzlib_uncomp *d);
+int  TINFCC uzlib_uncompress_chksum(uzlib_uncomp *d);
 
-int TINFCC uzlib_zlib_parse_header(struct uzlib_uncomp *d);
-int TINFCC uzlib_gzip_parse_header(struct uzlib_uncomp *d);
+int TINFCC uzlib_zlib_parse_header(uzlib_uncomp *d);
+int TINFCC uzlib_gzip_parse_header(uzlib_uncomp *d);
 
 /* Compression API */
 
 typedef const uint8_t *uzlib_hash_entry_t;
-
-struct uzlib_comp {
-    struct Outbuf out;
-
-    uzlib_hash_entry_t *hash_table;
-    unsigned int hash_bits;
-    unsigned int dict_size;
-};
 
 void TINFCC uzlib_compress(struct uzlib_comp *c, const uint8_t *src, unsigned slen);
 
@@ -178,9 +110,5 @@ void TINFCC uzlib_compress(struct uzlib_comp *c, const uint8_t *src, unsigned sl
 uint32_t TINFCC uzlib_adler32(const void *data, unsigned int length, uint32_t prev_sum);
 /* crc is previous value for incremental computation, 0xffffffff initially */
 uint32_t TINFCC uzlib_crc32(const void *data, unsigned int length, uint32_t crc);
-
-#ifdef __cplusplus
-} /* extern "C" */
-#endif
 
 #endif /* UZLIB_H_INCLUDED */
