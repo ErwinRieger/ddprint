@@ -52,7 +52,10 @@ LenCobs   = 255 - LenHeader
 
 nullByte = chr(0)
 
-# def encodeCobs_cmd_packed(stream, blockLen=LenCobs):
+#
+# Todo: check cobs-R for more optimization:
+# https://pythonhosted.org/cobs/cobsr-intro.html, https://pypi.org/project/cobs/
+#
 def encodeCobs_cmd_packed(cmd, packedCmd, stream, blockLen=LenCobs):
 
     cobsBody = ""
@@ -64,8 +67,11 @@ def encodeCobs_cmd_packed(cmd, packedCmd, stream, blockLen=LenCobs):
     if not rawdata:
         return None
 
-    data = zlib.compress(rawdata)
-    # print "encodeCobs_cmd_packed compressed %d blocksize into %d bytes..." % (len(rawdata), len(data))
+    compressor = zlib.compressobj(9, zlib.DEFLATED, -15)
+    compressor.compress(rawdata)
+    data = compressor.flush()
+    print "encodeCobs_cmd_packed compressed %d blocksize into %d bytes..." % (len(rawdata), len(data))
+
     if len(data) > len(rawdata)*0.95:
         # xxx ugly, do this compressible test in move.py...
         stream.seek(fpos)
@@ -74,10 +80,6 @@ def encodeCobs_cmd_packed(cmd, packedCmd, stream, blockLen=LenCobs):
     # xxx waste one byte if lastbyte is not 0x0
     if data[-1] != nullByte:
         data += nullByte
-
-    # lastByte1 = data[-2]
-    # lastByte2 = data[-1]
-    # print "lastbytes: 0x%x 0x%x" % (ord(lastByte1), ord(lastByte2))
 
     for c in data:
         if c == nullByte:
