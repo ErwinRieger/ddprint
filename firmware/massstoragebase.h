@@ -19,10 +19,10 @@
 
 #pragma once
 
-// xxx baseclass not really needed?
-
 // Buffer and sector size reading and writing to the storage device
 #define SwapSectorSize 512
+// Mask to implement ring-buffer
+#define SwapSectorMask (SwapSectorSize - 1) 
 
 //
 // First sector of mass storage is configuration/eeprom emulation
@@ -37,9 +37,5 @@ union MSConfigBlock {
 //
 // Common base class for MassStorage classes
 //
-class MassStorageBase {
-
-  protected:
-    // uint8_t writeBuffer[SwapSectorSize];
-};
+class MassStorageBase { };
 
