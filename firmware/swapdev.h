@@ -37,7 +37,7 @@ class SDSwap: public MassStorage, public Protothread {
     uint8_t writeBuffer[SwapSectorSize];
 
     // Pointer to current write position (byte) in writeBuffer
-    uint8_t writePos;
+    uint16_t writePos;
 
     bool busyWriting;
 
@@ -62,10 +62,8 @@ public:
         reset();
     }
 
-    // bool swapInit();
-
     // FWINLINE uint32_t getWriteBlockNumber() { return writeBlockNumber; }
-    FWINLINE uint16_t getWritePos() { return writePos; }
+    FWINLINE uint16_t getWritePos() { return writePos & SwapSectorMask; }
 
     // FWINLINE uint32_t getReadPos() { return readPos; }
     FWINLINE uint32_t getSize() { return size; }
@@ -96,12 +94,17 @@ public:
 
     FWINLINE void addByte(uint8_t b) {
 
+        uint16_t wp = getWritePos();
+
         simassert(! busyWriting);
-        // simassert(writePos < SwapSectorSize); xxx always smaller...
+        simassert(wp < SwapSectorSize);
 
-        writeBuffer[writePos++] = b;
+        writeBuffer[wp] = b;
+        writePos++;
 
-        if (writePos == 0)
+        // Block is full if write index
+        // overflowed to zero.
+        if (getWritePos() == 0)
             startWriteBlock();
     }
 
@@ -116,18 +119,19 @@ public:
     // 
     FWINLINE void addBackRefByte(uint8_t offs) {
 
+        uint16_t wp = getWritePos();
+
         simassert(! busyWriting);
-        // simassert(writePos < SwapSectorSize);xxx always smaller...
+        simassert(wp < SwapSectorSize);
 
-        uint8_t b = writeBuffer[writePos - offs]; // Overflow expected
-        writeBuffer[writePos++] = b;
+        uint8_t b = writeBuffer[(writePos - offs) & SwapSectorMask]; // Overflow expected
+        writeBuffer[wp] = b;
+        writePos++;
 
-        if (writePos == 0)
+        // Block is full if write index
+        // overflowed to zero.
+        if (getWritePos() == 0)
             startWriteBlock();
-    }
-
-    FWINLINE uint8_t getByte(uint8_t pos) {
-        return writeBuffer[pos];
     }
 
     //------------------------------------------------------------------------------
@@ -178,6 +182,8 @@ public:
     // Async block write.
     bool Run() {
 
+        uint16_t wp;
+
         PT_BEGIN();
 
         PT_WAIT_UNTIL(busyWriting);
@@ -190,10 +196,12 @@ public:
 
         //////////////////////////////////////////////////////////////////////////////////          
 
-        if (writePos) { // Last block
-            size += writePos;
+        wp = getWritePos();
+        if (wp) { // Last block
+            size += wp;
+            writePos = 0;
             #if defined(HEAVYDEBUG)
-                massert(size == ((writeBlockNumber-1)*SwapSectorSize + writePos));
+                massert(size == ((writeBlockNumber-1)*SwapSectorSize + wp));
             #endif
         }
         else {
@@ -206,7 +214,6 @@ public:
         // printf("Size: %d bytes\n", size);
 
         writeBlockNumber++;
-        writePos = 0; // Last block
         busyWriting = false;
 
         PT_RESTART();
