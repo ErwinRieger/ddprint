@@ -18,57 +18,99 @@
 */
 
 #include "uz.h"
-#include "uzlib/uzlib.h"
+
 #include "serialport.h"
 #include "swapdev.h"
-#include "mdebug.h"
 
-extern unsigned char length_bits[30];
-extern unsigned char length_base[30];
-extern unsigned char dist_bits[30];
-extern unsigned char dist_bases[30];
+// #define UZ_MODULE_TEST 1
 
-extern unsigned short dist_base[30];
+#if defined(UZ_MODULE_TEST)
+class SerialPort {
 
-extern int tinf_getbit(TINF_DATA *d);
-extern unsigned int tinf_read_bits(TINF_DATA *d, int num, int base);
-extern void tinf_build_fixed_trees(TINF_TREE *lt, TINF_TREE *dt);
-extern int tinf_decode_trees(TINF_DATA *d, TINF_TREE *lt, TINF_TREE *dt);
-extern int tinf_decode_symbol(TINF_DATA *d, TINF_TREE *t);
+    public:
 
-/* inflate next output bytes from compressed stream */
+        int inputpos;
+        unsigned char inputbuffer[256];
+
+        SerialPort() {
+            init();
+        }
+
+        void init() {
+            inputpos = 0;
+        }
+
+        unsigned char readNoCheckCobs() {
+            assert(inputpos < 256);
+            return inputbuffer[inputpos++];
+        }
+};
+
+class SwapDev {
+
+    public:
+
+        uint8_t outputpos;
+        unsigned char outputbuffer[256];
+
+        void init() { 
+            outputpos = 233; // test overflow
+        }
+        void addByte(unsigned char c) {
+            // printf("addbyte %d: %c\n", outputpos, c);
+            outputbuffer[outputpos++] = c;
+        }
+        void addBackRefByte(uint8_t offs) {
+            uint8_t c = outputbuffer[outputpos - offs];
+            printf("addbackref %d - %d = %d %c\n", outputpos, offs, (outputpos - offs), c);
+            outputbuffer[outputpos++] = c;
+        }
+        bool isBusyWriting() {
+            static bool wait = false;
+            // printf("isbuxy...\n");
+            wait = !wait;
+            return wait;
+        }
+};
+
+SerialPort serialPort;
+SwapDev swapDev;
+#endif
+
+/* get one bit from source stream */
+int tinf_getbit(uzlib_uncomp *d)
+{
+   unsigned int bit;
+
+   /* check if tag is empty */
+   if (!d->bitcount--)
+   {
+      /* load next tag */
+      d->tag = serialPort.readNoCheckCobs();
+      d->bitcount = 7;
+   }
+
+   /* shift bit out of tag */
+   bit = d->tag & 0x01;
+   d->tag >>= 1;
+
+   return bit;
+}
+
+/* Inflate next output bytes from compressed stream */
 bool UnZipper::Run() {
 
     int sym;
+    int dist;
+    int res;
 
     PT_BEGIN();
 
-    // PT_WAIT_UNTIL(busyWriting);
-    // PT_WAIT_WHILE(writeBlock(writeBlockNumber, writeBuffer));
-
-    // Skip 2 header bytes, read by uzlib_zlib_parse_header() else
-    serialPort.readNoCheckCobs();
-    serialPort.readNoCheckCobs();
-
-    d.eof = 0;
     d.bitcount = 0;
-    d.bfinal = 0;
-    d.btype = -1;
-    d.dict_size = 0;
-    d.dict_ring = NULL;
-    d.dict_idx = 0;
     d.curlen = 0;
+    d.btype = -1;
 
-    d.source = 0;
-    d.source_limit = 0;
-    d.source_read_cb = NULL;
-
-    // d.dest_start = d.dest = out;
-    // d.dest_limit = d.dest + outsize;
-
-    while (1) {
-
-        sym = 0;
+    while (true) {
 
         /* start a new block */
         if (d.btype == -1) {
@@ -76,195 +118,179 @@ bool UnZipper::Run() {
 
             old_btype = d.btype;
             /* read final block flag */
-            d.bfinal = tinf_getbit(&d);
+            /* d.bfinal = */ tinf_getbit(&d);
             /* read block type (2 bits) */
             d.btype = tinf_read_bits(&d, 2, 0);
 
             #if UZLIB_CONF_DEBUG_LOG >= 1
-            printf("Started new block: type=%d final=%d\n", d.btype, d.bfinal);
+            printf("Started new block: type=%d final=%d\n", d.btype);
             #endif
-
+// xxx build tables ony once?
             if (d.btype == 1 && old_btype != 1) {
                 /* build fixed huffman trees */
                 tinf_build_fixed_trees(&d.ltree, &d.dtree);
             } else if (d.btype == 2) {
                 /* decode trees from stream */
-                massert( tinf_decode_trees(&d, &d.ltree, &d.dtree) == TINF_OK );
+                // xxxx trees contained in d...
+                massert(tinf_decode_trees(&d, &d.ltree, &d.dtree) == TINF_OK);
             }
         }
 
+        // printf("V: btype: %d, res: %d, curlen: %d, pos: %d\n", d.btype, res, d.curlen, serialPort.inputpos);
+
         /* process current block */
-        if (d.btype == 0) {
-
-            /* decompress uncompressed block */
-            // res = tinf_inflate_uncompressed_block(&d);
-
-            //////////////////////////////////////////////////////////////
-            /* inflate next byte from uncompressed block of data */
-            // static int tinf_inflate_uncompressed_block(TINF_DATA *d)
-            // {
-                if (d.curlen == 0) {
-                    unsigned int length, invlength;
-
-                    /* get length */
-                    length = uzlib_get_byte(&d);
-                    length += 256 * uzlib_get_byte(&d);
-                    /* get one's complement of length */
-                    invlength = uzlib_get_byte(&d);
-                    invlength += 256 * uzlib_get_byte(&d);
-                    /* check length */
-                    if (length != (~invlength & 0x0000ffff)) return TINF_DATA_ERROR;
-
-                    /* increment length to properly return TINF_DONE below, without
-                    producing data at the same time */
-                    d.curlen = length + 1;
-
-                    /* make sure we start next block on a byte boundary */
-                    d.bitcount = 0;
-                }
-
-                if (--d.curlen == 0) {
-                    // return TINF_DONE;
-                    break;
-                }
-
-                // unsigned char c = uzlib_get_byte(d);
-                // TINF_PUT(d, c);
-                // return TINF_OK;
-
-                sym = uzlib_get_byte(&d);
-                TINF_PUT_TAIL(d, sym);
-            // }
-            //////////////////////////////////////////////////////////////
-        }
-        else if ((d.btype == 1) || (d.btype == 2)) {
+        if ((d.btype == 1) || (d.btype == 2)) {
 
             /* decompress block with fixed/dynamic huffman trees */
             /* trees were decoded previously, so it's the same routine for both */
-            // res = tinf_inflate_block_data(&d, &d.ltree, &d.dtree);
-
-            //////////////////////////////////////////////////////////////
-
+            // res = tinf_inflate_block_data(d, &d.ltree, &d.dtree);
+            // int tinf_inflate_block_data(uzlib_uncomp *d, TINF_TREE *lt, TINF_TREE *dt)
+            // res = my_tinf_inflate_block_data(&d, &d.ltree, &d.dtree);
             if (d.curlen == 0) {
-
                 sym = tinf_decode_symbol(&d, &d.ltree);
-                if (sym < 256) {
-                    /* literal byte */
+                //printf("huff sym: %02x\n", sym);
 
-                    // TINF_PUT(&d, sym);
-
-                    // swapDev.addByte(sym);
-                    // PT_WAIT_WHILE( swapDev.isBusyWriting() );
-
-                    TINF_PUT_TAIL(d, sym);
-                    // continue;
+                /* end of block */
+                if (sym == 256) {
+                    res = TINF_DONE;
                 }
-                else if (sym == 256) {
-                    /* end of block */
-                    break;
+                else if (sym < 256) {
+                    /* literal byte */
+                    swapDev.addByte(sym);
+                    PT_WAIT_WHILE( swapDev.isBusyWriting() );
+                    res = TINF_OK;
                 }
                 else {
 
                     /* substring from sliding dictionary */
                     sym -= 257;
+                    #if defined(HEAVYDEBUG)
+                        massert(sym < 29);
+                    #endif
 
                     /* possibly get more bits from length code */
                     d.curlen = tinf_read_bits(&d, length_bits[sym], length_base[sym]);
 
-                    int dist = tinf_decode_symbol(&d, &d.dtree);
+                    dist = tinf_decode_symbol(&d, &d.dtree);
+                    #if defined(HEAVYDEBUG)
+                        massert(dist < 30);
+                    #endif
 
                     /* possibly get more bits from distance code */
-                    unsigned int offs = tinf_read_bits(&d, dist_bits[dist], dist_base[dist]);
-
                     /* calculate and validate actual LZ offset to use */
-                    if (d.dict_ring) {
-                        /* Note: unlike full-dest-in-memory case below, we don't
-                        try to catch offset which points to not yet filled
-                        part of the dictionary here. Doing so would require
-                        keeping another variable to track "filled in" size
-                        of the dictionary. Appearance of such an offset cannot
-                        lead to accessing memory outside of the dictionary
-                        buffer, and clients which don't want to leak unrelated
-                        information, should explicitly initialize dictionary
-                        buffer passed to uzlib. */
+                    d.lzOff = tinf_read_bits(&d, dist_bits[dist], dist_base[dist]);;
 
-                        d.lzOff = d.dict_idx - offs;
-                        if (d.lzOff < 0) {
-                            d.lzOff += d.dict_size;
-                        }
-                    } else {
-                        /* catch trying to point before the start of dest buffer */
-                        d.lzOff = -offs;
-                    }
-
-                    // A
                     /* copy next byte from dict substring */
-                    if (d.dict_ring) {
+                    swapDev.addBackRefByte(d.lzOff);
+                    PT_WAIT_WHILE( swapDev.isBusyWriting() );
 
-                        // TINF_PUT(&d, d.dict_ring[d.lzOff]);
-
-                        sym = d.dict_ring[d.lzOff];
-
-                        // swapDev.addByte(sym);
-                        // PT_WAIT_WHILE( swapDev.isBusyWriting() );
-
-                        TINF_PUT_TAIL(d, sym);
-
-                        if ((unsigned)++d.lzOff == d.dict_size) {
-                            d.lzOff = 0;
-                        }
-                    } else {
-                        d.dest[0] = d.dest[d.lzOff];
-                        d.dest++;
-                        d.curlen--;
-                        continue; // dont add byte
-                    }
                     d.curlen--;
-                    /* */
+                    res = TINF_OK;
                 }
             }
             else {
-                // A
                 /* copy next byte from dict substring */
-                if (d.dict_ring) {
-
-                    // TINF_PUT(&d, d.dict_ring[d.lzOff]);
-
-                    sym = d.dict_ring[d.lzOff];
-
-                    // swapDev.addByte(sym);
-                    // PT_WAIT_WHILE( swapDev.isBusyWriting() );
-
-                    TINF_PUT_TAIL(d, sym);
-
-                    if ((unsigned)++d.lzOff == d.dict_size) {
-                        d.lzOff = 0;
-                    }
-                } else {
-                    d.dest[0] = d.dest[d.lzOff];
-                    d.dest++;
-                    d.curlen--;
-                    continue; // dont add byte
-                }
+                swapDev.addBackRefByte(d.lzOff);
+                PT_WAIT_WHILE( swapDev.isBusyWriting() );
                 d.curlen--;
-                /* */
+                res = TINF_OK;
             }
-            //////////////////////////////////////////////////////////////
         }
         else {
-            // Unknown btype
-            massert(0);
+            UZUNSUPPORTED_ERR;
         }
 
-        swapDev.addByte(sym);
-        PT_WAIT_WHILE( swapDev.isBusyWriting() );
+        // printf("N: res: %d, curlen: %d, pos: %d %d\n", res, d.curlen, serialPort.inputpos);
+        //
+        if (res == TINF_DONE) {
+            // assert(d.bfinal);
+            break;
+        }
+        else {
+            #if defined(HEAVYDEBUG)
+                massert(res == TINF_OK);
+            #endif
+        }
     }
 
-    PT_RESTART();
+    // PT_RESTART();
     PT_END();
 }
 
 UnZipper unZipper;
+
+
+#if defined(UZ_MODULE_TEST)
+#include <string.h>
+
+int main(int argc, char** argv) {
+
+    uint8_t orig[256];
+
+    for (int filenr=0; filenr<102; filenr++) {
+
+        char fn[64];
+
+        sprintf(fn, "/tmp/ddprint_block_%d.zip", filenr);
+
+        FILE *f = fopen(fn, "r");
+        assert(f);
+
+        int inputsize;
+        inputsize = fread(serialPort.inputbuffer, 1, 256, f);
+        printf("\n\ntesting %s, %d bytes read...\n", fn, inputsize);
+        assert(inputsize > 0);
+
+        serialPort.init();
+        swapDev.init();
+
+        unZipper.Restart();
+        while (unZipper.Run());
+
+        printf("block done after %d of %d chars...\n", serialPort.inputpos, inputsize);
+
+        assert((inputsize == serialPort.inputpos) or 
+                ((inputsize == serialPort.inputpos+1) and (serialPort.inputbuffer[serialPort.inputpos] == 0)));
+
+        int len = (uint8_t)(swapDev.outputpos-233);
+
+        printf("decompressed %u bytes\n", len);
+
+        sprintf(fn, "/tmp/ddprint_block_%d", filenr);
+        f = fopen(fn, "r");
+        assert(f);
+
+        assert(fread(orig, 1, 256, f) == len);
+        printf("len OK\n");
+
+        assert(memcmp(orig, swapDev.outputbuffer, len));
+        printf("compared %d bytes - file %d OK\n", len, filenr);
+    }
+
+    return 0;
+}
+
+#endif
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

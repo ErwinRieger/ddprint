@@ -25,10 +25,6 @@
 #include "Configuration.h"
 #include "pins.h"
 
-// #if defined(AVR)
-    // #include "fastio.h"
-// #endif
-
 #include "ddserial.h"
 #include "ddcommands.h"
 
@@ -41,7 +37,7 @@ class SDSwap: public MassStorage, public Protothread {
     uint8_t writeBuffer[SwapSectorSize];
 
     // Pointer to current write position (byte) in writeBuffer
-    uint16_t writePos;
+    uint8_t writePos;
 
     bool busyWriting;
 
@@ -101,39 +97,38 @@ public:
     FWINLINE void addByte(uint8_t b) {
 
         simassert(! busyWriting);
-        simassert(writePos < SwapSectorSize);
+        // simassert(writePos < SwapSectorSize); xxx always smaller...
 
         writeBuffer[writePos++] = b;
 
-        if (writePos == SwapSectorSize)
+        if (writePos == 0)
             startWriteBlock();
     }
 
-#if 0
-    void setWritePos(uint32_t wbn, uint16_t writePos_) {
+    //
+    // Add a byte to our writebuffer, just like addByte(),
+    // but does the *back-reference* handling of the inflate
+    // algorithm. This works hand-in-hand with the UnZipper
+    // tread.
+    //
+    // Note: buffer is written asynchronous to storage device. We use data
+    // partly new and partly flushed to mass storage.
+    // 
+    FWINLINE void addBackRefByte(uint8_t offs) {
 
-        if (wbn != writeBlockNumber) {
-            // read back block
+        simassert(! busyWriting);
+        // simassert(writePos < SwapSectorSize);xxx always smaller...
 
-            simassert(! busyWriting);
-            simassert(readPos < (wbn<<9));
+        uint8_t b = writeBuffer[writePos - offs]; // Overflow expected
+        writeBuffer[writePos++] = b;
 
-            if (! MassStorage::readBlock(wbn, writeBuffer)) {
-
-                // xxx errorhandling here
-                massert(0);
-                return;
-            }
-
-            writeBlockNumber = wbn;
-        }
-
-        simassert((readPos % SwapSectorSize) <= writePos_);
-        writePos = writePos_;
-
-        size = wbn << 9;
+        if (writePos == 0)
+            startWriteBlock();
     }
-#endif
+
+    FWINLINE uint8_t getByte(uint8_t pos) {
+        return writeBuffer[pos];
+    }
 
     //------------------------------------------------------------------------------
     // Start writing *writeBuffer* to storage device
@@ -195,15 +190,23 @@ public:
 
         //////////////////////////////////////////////////////////////////////////////////          
 
-        size += writePos;
+        if (writePos) { // Last block
+            size += writePos;
+            #if defined(HEAVYDEBUG)
+                massert(size == ((writeBlockNumber-1)*SwapSectorSize + writePos));
+            #endif
+        }
+        else {
+            size += SwapSectorSize;
+            #if defined(HEAVYDEBUG)
+                massert(size == (writeBlockNumber*SwapSectorSize));
+            #endif
+        }
 
-#if defined(HEAVYDEBUG)
-        massert(size == ((writeBlockNumber-1)*SwapSectorSize + writePos));
-#endif
         // printf("Size: %d bytes\n", size);
 
         writeBlockNumber++;
-        writePos = 0;
+        writePos = 0; // Last block
         busyWriting = false;
 
         PT_RESTART();

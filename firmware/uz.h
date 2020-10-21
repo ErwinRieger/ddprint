@@ -19,9 +19,19 @@
 
 #include "Protothread.h"
 #include "uzlib/uzlib.h"
+#include "mdebug.h"
 
-// unsigned int zlibUncompress( unsigned char *out, unsigned int outsize );
+#define UZUNSUPPORTED_ERR massert(0)
 
+extern unsigned int tinf_read_bits(uzlib_uncomp *d, int num, int base);
+extern void tinf_build_fixed_trees(TINF_TREE *lt, TINF_TREE *dt);
+extern int tinf_decode_trees(uzlib_uncomp *d, TINF_TREE *lt, TINF_TREE *dt);
+extern int tinf_decode_symbol(uzlib_uncomp *d, TINF_TREE *t);
+
+extern unsigned char length_bits[];
+extern unsigned short length_base[];
+extern unsigned char dist_bits[];
+extern unsigned short dist_base[];
 
 class UnZipper: public Protothread {
 
@@ -33,6 +43,14 @@ public:
 
     bool Run();
 };
-
 extern UnZipper unZipper;
 
+// //////// xxx adater code
+// #include <assert.h>
+// #include <stdio.h>
+// #include <stdlib.h>
+// #define massert assert
+
+///////////////////////////////
+//
+//

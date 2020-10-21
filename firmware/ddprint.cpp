@@ -1829,10 +1829,7 @@ class UsbCommand : public Protothread {
 
         bool Run() {
 
-                /// static uint8_t zipDest[256];
-                    /// static int len2, binindex;
-
-           // TaskStart;
+            // TaskStart;
             PT_BEGIN();
 
             uint8_t c, flags, cs1, cs2;
@@ -1934,8 +1931,7 @@ class UsbCommand : public Protothread {
 
                     // Stream data block from serial through unzip and store
                     // result on mass storage device.
-                    PT_WAIT_THREAD(unZipper);
-
+                    PT_SPAWN(unZipper);
                 }
                 else {
                     //
@@ -1947,9 +1943,7 @@ class UsbCommand : public Protothread {
                         swapDev.addByte(c);
                         PT_WAIT_WHILE( swapDev.isBusyWriting() );
                     }
-
                 }
-
 
                 // Successfully received command, increment command counter
                 serialNumber++;
@@ -2324,23 +2318,6 @@ class UsbCommand : public Protothread {
 };
 
 static UsbCommand usbCommand;
-
-/////////////////////////////////////////////////////
-//
-// Zlib uncompressor stream interface callback
-//
-unsigned char uzlib_get_byte(struct uzlib_uncomp *d) {
-
-    if (serialPort.cobsAvailable()) {
-        return serialPort.readNoCheckCobs();
-    }
-
-    d->eof = true;
-    return 0;
-}
-
-////////////////////////////////////////////////////
-
 
 #if defined(AVR)
 FWINLINE
