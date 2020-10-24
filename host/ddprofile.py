@@ -187,6 +187,9 @@ class PrinterProfile(ProfileBase):
     def getMaxFeedrateVector(cls):
         return map(lambda d: cls.getMaxFeedrate(d), range(5))
 
+    def getMaxFeedrateVectorI(self):
+        return map(lambda d: self.getMaxFeedrateI(d), range(5))
+
     @classmethod
     def getRetractFeedrate(cls):
         return cls.getValues()["RetractFeedrate"]
@@ -491,24 +494,21 @@ class MatProfile(ProfileBase):
 ####################################################################################################
 class NozzleProfile(ProfileBase):
 
-    _single = None 
+    # _single = None 
 
     def __init__(self, name):
 
-        if NozzleProfile._single:
-            raise RuntimeError('Error: a NozzleProfile instance already exists')
-
-        NozzleProfile._single = self
+        # if NozzleProfile._single:
+            # raise RuntimeError('Error: a NozzleProfile instance already exists')
+        # NozzleProfile._single = self
 
         super(NozzleProfile, self).__init__(name)
 
-    @classmethod
-    def get(cls):
-
-        if not cls._single:
-            raise RuntimeError('NozzleProfile instance not created, yet')
-
-        return cls._single
+    # @classmethod
+    # def get(cls):
+        # if not cls._single:
+            # raise RuntimeError('NozzleProfile instance not created, yet')
+        # return cls._single
 
     @classmethod
     def getValues(cls):
@@ -518,6 +518,9 @@ class NozzleProfile(ProfileBase):
     def getSize(cls):
         return float(cls.getValues()["size"])
 
+    def getSizeI(self):
+        return float(self.getValues("size"))
+
     @classmethod
     def getMaxExtrusionRate(cls):
         return float(cls.getValues()["maxExtrusionRate"])
@@ -525,6 +528,19 @@ class NozzleProfile(ProfileBase):
     @classmethod
     def getArea(cls):
         return (math.pi/4) * pow(cls.getSize(), 2)
+
+
+    # def getValuesI(self):
+        # return cls.get().values
+
+    def getSizeI(self):
+        return float(self.getValue("size"))
+
+    def getMaxExtrusionRateI(self):
+        return float(self.getValue("maxExtrusionRate"))
+
+    def getAreaI(self):
+        return (math.pi/4) * pow(self.getSize(), 2)
 
 
 

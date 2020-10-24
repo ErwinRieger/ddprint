@@ -20,14 +20,15 @@
 #*/
 
 import struct, time, math, tty, termios, sys, types, json, fcntl, os
-import ddhome, ddadvance, pprint, movingavg
+import ddhome, ddadvance, pprint, movingavg, gcodeparser
 
 from ddprintcommands import *
 from ddprintstates import *
 from ddprinter import Printer
+from ddplanner import Planner
 from ddprintconstants import *
 from ddconfig import *
-from ddprofile import NozzleProfile
+from ddprofile import NozzleProfile, MatProfile
 from ddvector import vectorMul
 
 
@@ -817,7 +818,7 @@ def printFile(args, printer, parser, planner, logObj, gfile, t0, t0_wait, t1, do
     if args.dummyTempTable:
         downloadDummyTempTable(printer)
     else:
-        downloadTempTable(printer, planner.matProfile)
+        downloadTempTable(printer, planner.nozzleProfile, planner.matProfile)
 
     # Send heat up  command
     logObj.log( "Pre-Heating bed (t0: %d)...\n" % t0)
@@ -1042,8 +1043,6 @@ def removeFilament(args, parser, feedrate):
 ####################################################################################################
 
 def bedLeveling(args, printer, parser, planner):
-
-    assert(args.relevel)
 
     t1 = args.t1 or planner.matProfile.getHotendGoodTemp()
     printer.heatUp(HeaterEx1, t1)
@@ -1618,11 +1617,11 @@ def getResponseString(s, offset):
 
 ####################################################################################################
 
-def genTempTable(printerProfile, matProfile):
+def genTempTable(printerProfile, nozzleProfile, matProfile):
 
     hwVersion = printerProfile.getHwVersionI()
     spm = printerProfile.getStepsPerMMI(A_AXIS)
-    nozzleDiam = NozzleProfile.getSize()
+    nozzleDiam = nozzleProfile.getSizeI()
     aFilament = matProfile.getMatArea()
 
     startTemp = matProfile.getHotendBaseTemp()
@@ -1700,9 +1699,9 @@ def printTempTable(temp, tempTable):
 
 ####################################################################################################
 
-def downloadTempTable(printer, matProfile):
+def downloadTempTable(printer, nozzleProfile, matProfile):
 
-    (startTemp, table) = genTempTable(printer.printerProfile, matProfile)
+    (startTemp, table) = genTempTable(printer.printerProfile, nozzleProfile, matProfile)
 
     payload = struct.pack("<HB", startTemp, NExtrusionLimit)
 
@@ -1747,10 +1746,10 @@ def measureFlowrateStepResponse(args, parser):
 
     assert(0) # todo: transition to printer.printerProfile...
 
-    nozzleSize = NozzleProfile.getSize()
-
     planner = parser.planner
     printer = planner.printer
+
+    nozzleSize = printer.nozzleProfile.getSizeI()
 
     aFilament = planner.matProfile.getMatArea()
 
@@ -2416,7 +2415,7 @@ def measureTempFlowrateCurve2(args, printer, parser, planner):
     # timeConstant = printer.printerProfile.getTuI() + printer.printerProfile.getTgI() 
 
     hwVersion = printer.printerProfile.getHwVersion()
-    nozzleDiam = NozzleProfile.getSize()
+    nozzleDiam = printer.nozzleProfile.getSizeI()
     p0pwm = planner.matProfile.getP0pwm(hwVersion, nozzleDiam) # xxx hardcoded in firmware!
 
     aFilament = planner.matProfile.getMatArea()
@@ -2581,9 +2580,55 @@ def measureTempFlowrateCurve2(args, printer, parser, planner):
     printer.coolDown(HeaterEx1, wait=100, log=True)
     printer.sendCommandParamV(CmdFanSpeed, [packedvalue.uint8_t(0)])
 
+####################################################################################################
+# Create material profile singleton instance
+def initMatProfile(args, printerName):
+
+    mat = MatProfile(args.mat, args.smat, printerName)
+
+    # Overwrite settings from material profile with command line arguments:
+    if args.t0:
+        mat.override("bedTemp", args.t0)
+        mat.override("bedTempReduced", args.t0)
+    if args.t1:
+        mat.override("hotendGoodTemp", args.t1)
+        mat.override("hotendStartTemp", args.t1)
+
+    return mat
 
 ####################################################################################################
 
+def initParser(args, mode=None, gui=None, travelMovesOnly=False):
+
+    # Create the Printer singleton instance
+    printer = Printer(gui=gui)
+
+    # Create printer profile
+    printer.commandInit(args)
+
+    # Create material profile singleton instance
+    if "mat" in args:
+        if args.mode == "pre":
+            mat = initMatProfile(args, args.printer)
+        else:
+            mat = initMatProfile(args, printer.getPrinterName())
+    else:
+        mat = None
+
+    if "nozzle" in args:
+        nozzle = NozzleProfile(args.nozzle)
+    else:
+        nozzle = None
+
+    # Create planner singleton instance
+    planner = Planner(args, nozzleProfile=nozzle, materialProfile=mat, printer=printer, travelMovesOnly=travelMovesOnly)
+
+    # Create parser singleton instance
+    parser = gcodeparser.UM2GcodeParser(planner, logger=gui, travelMovesOnly=travelMovesOnly)
+
+    return (printer, parser, planner)
+
+####################################################################################################
 
 
 

@@ -70,7 +70,7 @@ def encodeCobs_cmd_packed(cmd, packedCmd, stream, blockLen=LenCobs):
     compressor = zlib.compressobj(9, zlib.DEFLATED, -15)
     compressor.compress(rawdata)
     data = compressor.flush()
-    print "encodeCobs_cmd_packed compressed %d blocksize into %d bytes..." % (len(rawdata), len(data))
+    # print "encodeCobs_cmd_packed compressed %d blocksize into %d bytes..." % (len(rawdata), len(data))
 
     if len(data) > len(rawdata)*0.95:
         # xxx ugly, do this compressible test in move.py...

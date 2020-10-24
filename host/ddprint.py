@@ -27,7 +27,6 @@ logging.basicConfig(level=logging.DEBUG)
 import ddprintutil as util, gcodeparser, packedvalue, ddhome
 import ddtest
 
-from ddprofile import PrinterProfile, MatProfile, NozzleProfile
 from ddplanner import Planner
 from ddprinter import Printer, RxTimeout
 
@@ -78,65 +77,6 @@ from ddprintcommands import *
 # Printer states:
 #
 from ddprintstates import *
-
-
-# Create printer profile singleton instance
-def old_initPrinterProfile(args):
-
-    if args.mode == "pre":
-        return PrinterProfile(args.printer)
-    else:
-        printer = Printer.get()
-        printer.initSerial(args.device, args.baud)
-        return PrinterProfile(printer.getPrinterName())
-
-# Create material profile singleton instance
-def initMatProfile(args, printerName):
-
-    mat = MatProfile(args.mat, args.smat, printerName)
-
-    # Overwrite settings from material profile with command line arguments:
-    if args.t0:
-        mat.override("bedTemp", args.t0)
-        mat.override("bedTempReduced", args.t0)
-    if args.t1:
-        mat.override("hotendGoodTemp", args.t1)
-        mat.override("hotendStartTemp", args.t1)
-
-    return mat
-
-def initParser(args, mode=None, gui=None, travelMovesOnly=False):
-
-    # Create the Printer singleton instance
-    printer = Printer(gui=gui)
-
-    # Create printer profile
-    printer.commandInit(args)
-
-    # Create material profile singleton instance
-    if "mat" in args:
-
-        if args.mode == "pre":
-            mat = initMatProfile(args, args.printer)
-        else:
-            mat = initMatProfile(args, printer.getPrinterName())
-    else:
-        mat = None
-
-    try:
-        nozzle = args.nozzle
-    except AttributeError:
-        pass
-    else:
-        NozzleProfile(nozzle)
-
-    # Create planner singleton instance
-    planner = Planner(args, materialProfile=mat, printer=printer, travelMovesOnly=travelMovesOnly)
-
-    # Create parser singleton instance
-    parser = gcodeparser.UM2GcodeParser(planner, logger=gui, travelMovesOnly=travelMovesOnly)
-
-    return (printer, parser, planner)
 
 def main():
 
@@ -216,6 +156,11 @@ def main():
     sp.add_argument("axis", help="Axis (XYZAB).", type=str)
     sp.add_argument("distance", action="store", help="Move-distance (+/-) in mm.", type=float)
 
+    sp = subparsers.add_parser("exec", help=u"Debug: exec gcode.")
+    sp.add_argument("nozzle", help="Name of nozzle profile to use [nozzle40, nozzle80...].")
+    sp.add_argument("mat", help="Name of generic material profile to use [pla, abs...].")
+    sp.add_argument("gcode", action="store", help="G-Code string.", type=str)
+
     sp = subparsers.add_parser("insertFilament", help=u"Insert filament (heatup, forward filament).")
     sp.add_argument("mat", help="Name of generic material profile to use [pla, abs...].")
 
@@ -286,7 +231,7 @@ def main():
 
         printer = Printer()
         printer.commandInit(args)
-        matProfile = initMatProfile(args, printer.getPrinterName())
+        matProfile = util.initMatProfile(args, printer.getPrinterName())
         util.measureHotendStepResponse(args, printer, matProfile)
 
     elif args.mode == 'bootBootloader':
@@ -317,9 +262,9 @@ def main():
                 print "Response payload:", payload.encode("hex")
                 printer.checkErrorResponse(cmd, payload, False)
 
-    elif args.mode == 'print':
+    elif args.mode == "print":
 
-        (printer, parser, planner) = initParser(args, mode=args.mode)
+        (printer, parser, planner) = util.initParser(args, mode=args.mode)
 
         t0 = planner.matProfile.getBedTemp()
         t0Wait = min(t0, printer.printerProfile.getWeakPowerBedTemp())
@@ -330,7 +275,7 @@ def main():
 
     elif args.mode == "pre":
 
-        (printer, parser, planner) = initParser(args, mode=args.mode)
+        (printer, parser, planner) = util.initParser(args, mode=args.mode)
 
         # Virtuelle position des druckkopfes falls 'gehomed'
         homePosMM = planner.getHomePos()[0]
@@ -354,7 +299,7 @@ def main():
 
     elif args.mode == 'measureTempFlowrateCurve':
 
-        (printer, parser, planner) = initParser(args, mode=args.mode, pidSet="pidMeasure")
+        (printer, parser, planner) = util.initParser(args, mode=args.mode, pidSet="pidMeasure")
         util.measureTempFlowrateCurve(args, printer, parser, planner)
 
     elif args.mode == 'measureTempFlowrateCurve2':
@@ -364,31 +309,31 @@ def main():
         # Disable autotemp
         args.autoTemp = False
 
-        (printer, parser, planner) = initParser(args, mode=args.mode)
+        (printer, parser, planner) = util.initParser(args, mode=args.mode)
         util.measureTempFlowrateCurve2(args, printer, parser, planner)
 
     elif args.mode == 'moverel':
 
         assert(args.axis.upper() in "XYZAB")
 
-        (printer, parser, planner) = initParser(args, mode=args.mode, travelMovesOnly=True)
+        (printer, parser, planner) = util.initParser(args, mode=args.mode, travelMovesOnly=True)
         util.manualMove(args, printer, parser, planner, util.dimIndex[args.axis.upper()], args.distance, args.feedrate)
 
     elif args.mode == 'moveabs':
 
         assert(args.axis.upper() in "XYZAB")
 
-        (printer, parser, planner) = initParser(args, mode=args.mode, travelMovesOnly=True)
+        (printer, parser, planner) = util.initParser(args, mode=args.mode, travelMovesOnly=True)
         util.manualMove(args, printer, parser, planner, util.dimIndex[args.axis.upper()], args.distance, args.feedrate, True)
 
     elif args.mode == 'insertFilament':
 
-        (parser, _, _) = initParser(args, mode=args.mode, travelMovesOnly=True)
+        (parser, _, _) = util.initParser(args, mode=args.mode, travelMovesOnly=True)
         util.insertFilament(args, parser, args.feedrate)
 
     elif args.mode == 'removeFilament':
 
-        (parser, _, _) = initParser(args, mode=args.mode, travelMovesOnly=True)
+        (parser, _, _) = util.initParser(args, mode=args.mode, travelMovesOnly=True)
         util.removeFilament(args, parser, args.feedrate)
 
     elif args.mode == 'readGpio':
@@ -411,14 +356,14 @@ def main():
 
     elif args.mode == 'bedleveling':
 
-        (printer, parser, planner) = initParser(args, mode=args.mode, travelMovesOnly=True)
+        (printer, parser, planner) = util.initParser(args, mode=args.mode, travelMovesOnly=True)
         util.bedLeveling(args, printer, parser, planner)
 
     elif args.mode == 'heathotend':
 
         printer = Printer()
         printer.commandInit(args, pidSet="pidMeasure")
-        matProfile = initMatProfile(args, printer.getPrinterName())
+        matProfile = util.initMatProfile(args, printer.getPrinterName())
         util.heatHotend(args, matProfile, printer)
 
     elif args.mode == 'getendstops':
@@ -444,7 +389,7 @@ def main():
 
     elif args.mode == 'getpos':
 
-        (printer, parser, planner) = initParser(args, mode=args.mode, travelMovesOnly=True)
+        (printer, parser, planner) = util.initParser(args, mode=args.mode, travelMovesOnly=True)
 
         res = printer.getPos()
 
@@ -495,7 +440,7 @@ def main():
 
     elif args.mode == 'home':
 
-        (printer, parser, planner) = initParser(args, mode=args.mode, travelMovesOnly=True)
+        (printer, parser, planner) = util.initParser(args, mode=args.mode, travelMovesOnly=True)
         ddhome.home(args, printer, parser, planner)
 
     elif args.mode == 'todo zRepeatability':
@@ -548,12 +493,17 @@ def main():
         planner = Planner(args, printer, travelMovesOnly=True)
         ddtest.calibrateFilSensor(args, printer, planner)
 
+    elif args.mode == "exec":
+
+        ddtest.execGcode(args)
+
     elif args.mode == 'test':
 
         printer = Printer()
         printer.commandInit(args, pidSet="pidMeasure")
 
-        # util.heatHotendTest(args, printer)
+        printer.heatUp(HeaterBed, 100)
+        printer.heatUp(HeaterEx1, 150)
 
     else:
         print "Unknown/not implemented command: ", args.mode

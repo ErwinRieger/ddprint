@@ -23,8 +23,6 @@ import math, collections, types, pprint
 from argparse import Namespace
 
 import ddprintutil as util, dddumbui, packedvalue
-# from ddprofile import PrinterProfile, NozzleProfile
-from ddprofile import NozzleProfile
 from ddvector import Vector, vectorMul, vectorAbs
 from ddprintconstants import *
 from ddconfig import *
@@ -241,7 +239,7 @@ class PathData (object):
             mp = self.planner.matProfile
 
             hwVersion = planner.printer.printerProfile.getHwVersionI()
-            nozzleDiam = NozzleProfile.getSize()
+            nozzleDiam = planner.nozzleProfile.getSizeI()
 
             self.ks = mp.getKpwm(hwVersion, nozzleDiam)
             self.ktemp = mp.getKtemp(hwVersion, nozzleDiam)
@@ -374,7 +372,7 @@ class Planner (object):
 
     __single = None 
 
-    def __init__(self, args, printer, materialProfile=None, travelMovesOnly=False):
+    def __init__(self, args, printer, nozzleProfile=None, materialProfile=None, travelMovesOnly=False):
 
         if Planner.__single:
             raise RuntimeError('A Planner already exists')
@@ -389,6 +387,7 @@ class Planner (object):
         self.gui = printer.gui
 
         self.args = args
+        self.nozzleProfile = nozzleProfile
         self.matProfile = materialProfile
 
         self.printer = printer
@@ -1176,7 +1175,6 @@ class Planner (object):
 
         pulses = [] # (tstep, dt, timerValue)
 
-        # steps_per_mm = PrinterProfile.getStepsPerMM(axis)
         sPerStep = 1.0/steps_per_mm
 
         v = vstart
@@ -1223,7 +1221,6 @@ class Planner (object):
 
         pulses = []
 
-        # steps_per_mm = PrinterProfile.getStepsPerMM(axis)
         sPerStep = 1.0/steps_per_mm
 
         v = vstart

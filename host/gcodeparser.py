@@ -22,8 +22,6 @@ import math
 import packedvalue
 import shutil, os, re
 
-from ddprofile import MatProfile, PrinterProfile
-from ddplanner import Planner
 from ddprintcommands import CmdUnknown
 # , CmdDwellMS
 from ddprintconstants import dimNames, GCODEUNKNOWN, GCODEULTI, GCODES3D, X_AXIS, Y_AXIS, Z_AXIS, A_AXIS, B_AXIS, Uint8Max
@@ -189,9 +187,9 @@ class UM2GcodeParser:
 
         self.e_to_filament_length = 1.0
 
-        self.steps_per_mm = PrinterProfile.getStepsPerMMVector()
+        self.steps_per_mm = planner.printer.printerProfile.getStepsPerMMVectorI()
         self.mm_per_step = map(lambda dim: 1.0 / self.steps_per_mm[dim], range(5))
-        self.maxFeedrateVector = PrinterProfile.getMaxFeedrateVector()
+        self.maxFeedrateVector = planner.printer.printerProfile.getMaxFeedrateVectorI()
 
         self.planner = planner
 
@@ -639,7 +637,7 @@ class UM2GcodeParser:
 
         current_position = self.getPos()
 
-        rl = - PrinterProfile.getRetractLength()
+        rl = - self.planner.printer.printerProfile.getRetractLengthI()
 
         current_position[A_AXIS] += rl
 
@@ -647,7 +645,7 @@ class UM2GcodeParser:
             line,
             displacement_vector=Vector([0.0, 0.0, 0.0, rl, 0.0]),
             displacement_vector_steps=[0.0, 0.0, 0.0, rl * self.steps_per_mm[A_AXIS], 0.0],
-            feedrate=min(PrinterProfile.getRetractFeedrate(), PrinterProfile.getMaxFeedrate(3)),
+            feedrate=min(self.planner.printer.printerProfile.getRetractFeedrateI(), self.planner.printer.printerProfile.getMaxFeedrateI(3)),
             layerPart=self.layerPart,
             ))
 
@@ -659,7 +657,7 @@ class UM2GcodeParser:
 
         current_position = self.getPos()
 
-        rl = PrinterProfile.getRetractLength()
+        rl = self.planner.printer.printerProfile.getRetractLengthI()
 
         current_position[A_AXIS] += rl
 
@@ -667,7 +665,7 @@ class UM2GcodeParser:
             line,
             displacement_vector=Vector([0.0, 0.0, 0.0, rl, 0.0]),
             displacement_vector_steps=[0.0, 0.0, 0.0, rl * self.steps_per_mm[A_AXIS], 0.0],
-            feedrate=min(PrinterProfile.getRetractFeedrate(), PrinterProfile.getMaxFeedrate(3)),
+            feedrate=min(self.planner.printer.printerProfile.getRetractFeedrateI(), self.planner.printer.printerProfile.getMaxFeedrateI(3)),
             layerPart=self.layerPart,
             ))
 

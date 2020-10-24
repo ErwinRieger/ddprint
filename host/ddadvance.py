@@ -24,7 +24,6 @@ from argparse import Namespace
 
 from ddprintconstants import *
 from ddconfig import *
-from ddprofile import PrinterProfile, NozzleProfile
 from ddvector import VelocityVector32, vectorAdd, vectorSub, vectorLength, vectorAbs
 
 import ddprintutil as util
@@ -150,8 +149,8 @@ class Advance (object):
         self.kFeederComp = 0.0
         if UseFeederCompensation:
 
-            hwVersion = PrinterProfile.getHwVersion()
-            nozzleDiam = NozzleProfile.getSize()
+            hwVersion = self.printer.printerProfile.getHwVersionI()
+            nozzleDiam = planner.nozzleProfile.getSizeI()
 
             slippage = planner.matProfile._getSlippage(hwVersion, nozzleDiam)
 
@@ -173,8 +172,8 @@ class Advance (object):
         # self.minESpeed = v * 1.1 # savety margin for rounding errors
         # print "min e-speed", self.minESpeed
 
-        self.maxEFeedrate = PrinterProfile.getMaxFeedrate(A_AXIS)
-        self.maxFeedrateVector = PrinterProfile.getMaxFeedrateVector()
+        self.maxEFeedrate = self.printer.printerProfile.getMaxFeedrateI(A_AXIS)
+        self.maxFeedrateVector = self.printer.printerProfile.getMaxFeedrateVectorI()
 
     def getKAdv(self):
         return self.__kAdv
@@ -189,7 +188,7 @@ class Advance (object):
             #
             # Limit E-acceleration by DEFAULT_ACCELERATION/DEFAULT_MAX_ACCELERATION
             #
-            max_axis_acceleration_noadv = PrinterProfile.getMaxAxisAcceleration()
+            max_axis_acceleration_noadv = self.printer.printerProfile.getMaxAxisAccelerationI()
             # print "ADV: max E-acceleration:", maxEAccel, ", unlimited accel vector: ", max_axis_acceleration_noadv, " [mm/s²]"
             maxEAccel = min(maxEAccel, max_axis_acceleration_noadv[A_AXIS])
 
@@ -200,7 +199,7 @@ class Advance (object):
 
         else:
 
-            return PrinterProfile.getMaxAxisAcceleration()
+            return self.printer.printerProfile.getMaxAxisAccelerationI()
 
     # Implement gradual advance on layer change
     def layerChange(self, layer):
@@ -2298,7 +2297,6 @@ class Advance (object):
                     startSpeed[dim],
                     topSpeed[dim], ta)
 
-            # steps = int(round(sa * PrinterProfile.getStepsPerMM(dim)))
             steps = sa * self.printer.printerProfile.getStepsPerMMI(dim)
             # print "dim %d moves %.3f mm while accelerating -> %f steps" % (dim, sa, steps)
 
@@ -2318,7 +2316,6 @@ class Advance (object):
                     endSpeed[dim],
                     td)
 
-            # steps = int(round(sd * PrinterProfile.getStepsPerMM(dim)))
             steps = sd * self.printer.printerProfile.getStepsPerMMI(dim)
             # print "dim %d moves %.3f mm while decelerating -> %f steps" % (dim, sd, steps)
 
@@ -2454,7 +2451,6 @@ class Advance (object):
                     parentMove.advanceData.crossingSpeed[dim],
                     parentMove.advanceData.tdc)
 
-            # steps = int(round(sd * PrinterProfile.getStepsPerMM(dim)))
             steps = sd * self.printer.printerProfile.getStepsPerMMI(dim)
             # print "dim %d moves %.3f mm while decelerating -> %f steps" % (dim, sd, steps)
 
@@ -2474,7 +2470,6 @@ class Advance (object):
                     endSpeed[dim],
                     parentMove.advanceData.tdd)
 
-            # steps = int(round(sd * PrinterProfile.getStepsPerMM(dim)))
             steps = sd * self.printer.printerProfile.getStepsPerMMI(dim)
             # print "dim %d moves %.3f mm while decelerating -> %f steps" % (dim, sd, steps)
 
@@ -2630,7 +2625,6 @@ class Advance (object):
                     startSpeed[dim],
                     topSpeed[dim], ta)
 
-            # steps = int(round(sa * PrinterProfile.getStepsPerMM(dim)))
             steps = sa * self.printer.printerProfile.getStepsPerMMI(dim)
             # print "dim %d moves %.3f mm while accelerating -> %f steps" % (dim, sa, steps)
 
@@ -2649,7 +2643,6 @@ class Advance (object):
                     parentMove.advanceData.crossingSpeed[dim],
                     parentMove.advanceData.tdc)
 
-            # steps = int(round(sd * PrinterProfile.getStepsPerMM(dim)))
             steps = sd * self.printer.printerProfile.getStepsPerMMI(dim)
             # print "dim %d moves %.3f mm while decelerating -> %f steps" % (dim, sd, steps)
 
@@ -2666,7 +2659,6 @@ class Advance (object):
                     endSpeed[dim],
                     parentMove.advanceData.tdd)
 
-            # steps = int(round(sd * PrinterProfile.getStepsPerMM(dim)))
             steps = sd * self.printer.printerProfile.getStepsPerMMI(dim)
             # print "dim %d moves %.3f mm while decelerating -> %f steps" % (dim, sd, steps)
 

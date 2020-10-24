@@ -27,9 +27,10 @@ import time, math, pprint, sys
 
 import numpy as np
 
-import ddhome, movingavg, ddprintutil as util
+import ddhome, movingavg, gcodeparser, ddprintutil as util
 from ddprofile import MatProfile
 from ddprinter import Printer
+from ddplanner import Planner
 from ddprintcommands import *
 from ddprintstates import *
 from ddprintconstants import A_AXIS, maxTimerValue16
@@ -234,12 +235,12 @@ def calibrateFilSensor(args, printer, planner):
 
     # xxx check jerk
     print "todo: jerk"
-    eJerk = PrinterProfile.getValues()['axes']["A"]['jerk']
+    eJerk = printer.printerProfile.getValue(['axes'])["A"]['jerk']
 
     calValues = []
     valueSum = 0
 
-    steps_per_mm = PrinterProfile.getStepsPerMM(A_AXIS)
+    steps_per_mm = printer.printerProfile.getStepsPerMMI(A_AXIS)
 
     # Start feeder 
     printer.sendCommandParamV(CmdContinuousE, [packedvalue.uint16_t(maxTimerValue16)])
@@ -253,17 +254,17 @@ def calibrateFilSensor(args, printer, planner):
     # Start feedrate
     feedrate = steps[0] * stepfactor
 
-    dt = PrinterProfile.getFilSensorInterval()
-    dFeederWheel = PrinterProfile.getFeederWheelDiamI()
+    dt = printer.printerProfile.getFilSensorIntervalI()
+    dFeederWheel = printer.printerProfile.getFeederWheelDiamI()
 
     while feedrate <= maxFeedrate:
 
         # Time for one revolution
-        tRound = PrinterProfile.getFeederWheelCircum() / feedrate
+        tRound = printer.printerProfile.getFeederWheelCircumI() / feedrate
         tStartup = util.getStartupTime(printer, feedrate)
         print "tRound:", tRound, "tStartup:", tStartup
 
-        nAvgLong = PrinterProfile.getNLongInterval(feedrate)
+        nAvgLong = printer.printerProfile.getNLongIntervalI(feedrate)
 
         print "running %.2f seconds with %.2f mm/s, # of samples for long average: %d" % (tRound, feedrate, nAvgLong)
 
@@ -384,7 +385,7 @@ def testFeederUniformity(args, parser):
     assert(0) # todo: transition to printer.printerProfile...
 
     # umfang
-    dFeederWheel = PrinterProfile.getFeederWheelDiam()
+    dFeederWheel = printer.printerProfile.getFeederWheelDiamI()
     circ = dFeederWheel * math.pi
 
     nRound = 2
@@ -506,19 +507,29 @@ plot '-' using 1:2 with linespoints title 'sensor counts', \\
 
     printer.waitForState(StateInit)
 
-    # Rewind
-    # print "Rewinding..."
-    # parser.execute_line("G0 F%d %s%f" % (PrinterProfile.getMaxFeedrate(A_AXIS)*60, util.dimNames[A_AXIS], startPos))
-    # planner.finishMoves()
-    # printer.sendCommand(CmdEOT)
-    # printer.sendCommandParamV(CmdMove, [MoveTypeNormal])
-    # printer.waitForState(StateInit)
-
     # Re-enable flowrate limit
     printer.sendCommandParamV(CmdEnableFRLimit, [packedvalue.uint8_t(1)])
 
 
 
+def execGcode(args):
+
+    (printer, parser, planner) = util.initParser(args, mode=args.mode)
+
+    ddhome.home(args, printer, parser, planner)
+
+    for gcode in args.gcode.split("\n"):
+        for g in gcode.split(";"):
+            print "Exec gcode: '%s'" % g
+            parser.execute_line(g)
+
+    planner.finishMoves()
+
+    printer.sendCommand(CmdEOT)
+
+    printer.sendCommandParamV(CmdMove, [MoveTypeNormal])
+
+    printer.waitForState(StateInit)
 
 
 

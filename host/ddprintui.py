@@ -24,13 +24,12 @@ logging.basicConfig(filename=datetime.datetime.now().strftime("/tmp/ddprint_%y.%
 
 import npyscreen, time, curses, sys, threading, Queue
 import argparse
-import ddprint, stoppableThread, ddhome, movingavg
+import stoppableThread, ddhome, movingavg
 import ddprintutil as util
 
 # from serial import SerialException
 from ddprintcommands import *
 from ddprintstates import *
-from ddprofile import PrinterProfile, NozzleProfile
 from ddprinter import FatalPrinterError
 from ddprintconstants import A_AXIS
 
@@ -361,7 +360,7 @@ class MainForm(npyscreen.FormBaseNew):
         # print "args: ", self.args
 
         try:
-            (self.printer, self.parser, self.planner) = ddprint.initParser(self.args, gui=self)
+            (self.printer, self.parser, self.planner) = util.initParser(self.args, gui=self)
         except IOError, ex:
             msg = "Can't open serial device '%s' (baudrate: %d)." % (self.args.device, self.args.baud)
             self.guiQueue.put(SyncCall(self.quit, msg, ex))
@@ -389,7 +388,7 @@ class MainForm(npyscreen.FormBaseNew):
             # self.guiQueue.put(SyncCall(self.quit, msg, ex))
             # return
         ddhome.home(self.args, self.printer, self.parser, self.planner)
-        util.downloadTempTable(self.printer, self.planner.matProfile)
+        util.downloadTempTable(self.printer, self.planner.nozzleProfile, self.planner.matProfile)
 
         while True:
 
@@ -644,7 +643,7 @@ class MainForm(npyscreen.FormBaseNew):
 
         # Update printlog with used profiles:
         self.printer.printerProfile.logValues("Printer profile", self)
-        NozzleProfile.get().logValues("Nozzle profile", self)
+        self.planner.nozzleProfile.logValues("Nozzle profile", self)
         self.planner.matProfile.logValues("Material profile", self)
         self.logPrintLog("\n")
 
