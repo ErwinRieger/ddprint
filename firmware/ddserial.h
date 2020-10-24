@@ -115,6 +115,7 @@ public:
             cobsStart = -1;
         };
 
+        // Todo: rename to size()
         FWINLINE uint8_t byteSize() {
             return (uint16_t)(TxBufferLen + head) - tail;
         }

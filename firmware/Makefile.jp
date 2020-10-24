@@ -7,7 +7,8 @@ ARDUINO_DIR  = $(ARDUINO_BASE)/arduino-1.6.13
 ACCONFIG = $(ARDUINO_BASE)/arduino-cli_0.11.0
 PATH += $(ACCONFIG)
 
-ARDUINO_PORT = /dev/ttyACM0
+# XXX fixed device name
+ARDUINO_PORT = /dev/ttyUSB1
 AVRDUDE_ARD_BAUDRATE = 115200
 NO_CORE_MAIN_CPP = 1
 
@@ -53,10 +54,7 @@ all: compile
 do_upload: upload
 
 upload:
-	echo ""
-	echo "NOTE: firmware size must be smaller than 112kb (-e7 option)"
-	echo ""
-	filesize=$$(stat --printf '%s' ./build/stm32duino.STM32F4.generic_f407v/firmware.ino.bin); blocks=$$(echo "($$filesize+16384)/16384"|bc); stm32flash -e$$blocks -R -b 57600 -w build/stm32duino.STM32F4.generic_f407v/firmware.ino.bin /dev/ttyUSB0
+	filesize=$$(stat --printf '%s' ./build/stm32duino.STM32F4.generic_f407v/firmware.ino.bin); blocks=$$(echo "($$filesize+16384)/16384"|bc); stm32flash -e$$blocks -R -b 57600 -w build/stm32duino.STM32F4.generic_f407v/firmware.ino.bin $(ARDUINO_PORT)
 
 swdupload:
 	st-flash --reset write build/stm32duino.STM32F4.generic_f407v/firmware.ino.bin 0x08000000   

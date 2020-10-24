@@ -151,6 +151,8 @@ public:
         massert(! busyWriting);
         massert((readPos % SwapSectorSize) == 0); // read pos should be block-aligned
 
+        // uint32_t tread;
+        // tread = millis();
         if (! MassStorage::readBlock((readPos >> 9)+1, dst)) {
 
             // Return Sd2Card error code and SPI status byte from sd card.
@@ -166,6 +168,7 @@ public:
             killMessage(RespSDReadError, errorCode(), errorData());
             // notreached
         }
+        // massert((millis() - tread) < 2);
 
         uint16_t readBytes = STD min(available(), (uint32_t)SwapSectorSize);
 
@@ -183,6 +186,7 @@ public:
     bool Run() {
 
         uint16_t wp;
+        // static uint32_t twrite;
 
         PT_BEGIN();
 
@@ -191,11 +195,13 @@ public:
         simassert((size % SwapSectorSize) == 0); // block write after final partial block is invalid
 
         //////////////////////////////////////////////////////////////////////////////////          
-
+        // twrite = millis();
         PT_WAIT_WHILE(writeBlock(writeBlockNumber, writeBuffer));
+        // massert((millis() - twrite) < 3);
 
         //////////////////////////////////////////////////////////////////////////////////          
 
+        // Update size 
         wp = getWritePos();
         if (wp) { // Last block
             size += wp;

@@ -556,6 +556,7 @@ class StepBuffer {
                 CRITICAL_SECTION_END;
             }
 
+            // Todo: rename to size()
             FWINLINE uint8_t byteSize() {
                 return (uint16_t)(StepBufferLen + head) - tail;
             }
@@ -643,6 +644,11 @@ class StepBuffer {
                     // Empty buffer, nothing to step
                     HAL_SET_STEPPER_TIMER(2000); // 1kHz.
                     stepbits = 0;
+// xxx check for underruns
+                    if (printer.printerState == Printer::StateStart) {
+                        if (printer.bufferLow < INT16_MAX)
+                            printer.bufferLow++;
+                    }
                 }
                 else {
 

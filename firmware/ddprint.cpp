@@ -19,9 +19,10 @@
 
 /*
  * Todo jennyprinter port:
- * * if possible, fully remove fastio.h
- * * swapdevice: add test sectorsize != 512 bytes?
+ * * fully remove fastio.h
+ * * swapdevice: add sanity test sectorsize != 512 bytes?
  * * usb: some flash sticks seem to hang at getReady cmd (add timeout / testUnitReadyRetry)
+ * * cleanup task info stuff
  */
 
 #include <Arduino.h>
@@ -307,9 +308,9 @@ class SDReader: public Protothread {
         uint16_t bytesToRead;
 
         // Temporary buffer if we cross a block boundary,
-        // the size is 5 bytes - the length of the longest
+        // the size is 4 bytes - the length of the longest
         // datablock to read (setBytesToReadX())
-        uint8_t tempBuffer[9]; 
+        uint8_t tempBuffer[4]; 
 
         uint16_t haveBytes;
 
@@ -326,16 +327,16 @@ class SDReader: public Protothread {
 
         FWINLINE void setBytesToRead1() {
             Restart();
-            bytesToRead = 1; }
+            bytesToRead = 1; } // Note: tempBuffer must be big enought to hold this number of bytes.
         FWINLINE void setBytesToRead2() {
             Restart();
-            bytesToRead = 2; }
+            bytesToRead = 2; } // Note: tempBuffer must be big enought to hold this number of bytes.
         FWINLINE void setBytesToRead3() {
             Restart();
-            bytesToRead = 3; }
+            bytesToRead = 3; } // Note: tempBuffer must be big enought to hold this number of bytes.
         FWINLINE void setBytesToRead4() {
             Restart();
-            bytesToRead = 4; }
+            bytesToRead = 4; } // Note: tempBuffer must be big enought to hold this number of bytes.
 #if 0
         FWINLINE void setBytesToRead5() {
             Restart();
@@ -349,7 +350,7 @@ class SDReader: public Protothread {
 #endif
 
         bool Run() {
-
+// static bool readRequest=false;
             uint8_t i;
 
             PT_BEGIN();
@@ -376,6 +377,12 @@ class SDReader: public Protothread {
                     //
                     // Get new block from swapmem
                     //
+#if 0
+if ((printerState == StateStart) && swapDev.isBusyWriting()) {
+    assert(!readRequest);
+    readRequest = true;
+}
+#endif
                     PT_WAIT_WHILE(swapDev.isBusyWriting());
                     PT_WAIT_UNTIL(swapDev.available());
 
@@ -393,6 +400,12 @@ class SDReader: public Protothread {
                     //
                     // Buffer empty, get new block from swapmem
                     //
+#if 0
+if ((printerState == StateStart) && swapDev.isBusyWriting()) {
+    assert(!readRequest);
+    readRequest = true;
+}
+#endif
                     PT_WAIT_WHILE(swapDev.isBusyWriting());
                     PT_WAIT_UNTIL(swapDev.available());
 
@@ -1220,6 +1233,8 @@ void Printer::cmdMove(MoveType mt) {
         // armrun massert(homed);
     }
 
+bufferLow = 0;
+
     if (mt == MoveTypeHoming) {
         // ENABLE_STEPPER1_DRIVER_INTERRUPT();
         stepBuffer.homingMode();
@@ -1236,7 +1251,7 @@ void Printer::cmdMove(MoveType mt) {
     enable_e0();
 #endif
 
-    bufferLow = -1;
+    // xxx bufferLow = -1;
 
 #if defined(HASFILAMENTSENSOR)
     filamentSensor.init();
@@ -1440,7 +1455,7 @@ void Printer::checkMoveFinished() {
             fillBufferTask.flush();
 
             eotReceived = false;
-            bufferLow = -1;
+            // bufferLow = -1;
         }
     }
 }
@@ -2329,7 +2344,7 @@ void loop() {
     // Timer for slow running tasks (temp, encoder)
     static unsigned long timer10mS = m + TIMER10MS;
     static unsigned long timer100mS = m + TIMER100MS;
-    static unsigned long timerBufferLow = m;
+    // static unsigned long timerBufferLow = m;
 
     // debug
 #if defined(UseProcessStats)
@@ -2440,6 +2455,23 @@ void loop() {
 #endif
     }
 
+    // If printing, then read steps from the sd buffer and push it to
+    // the print buffer.
+#if defined(UseProcessStats)
+        taskStart = millis(); // debug
+#endif
+
+    fillBufferTask.Run();
+
+#if defined(UseProcessStats)
+        taskDuration = millis() - taskStart;
+
+        taskTiming[6].ncalls += 1;
+        taskTiming[6].sumcall += taskDuration;
+        if (taskDuration > taskTiming[6].longest)
+            taskTiming[6].longest = taskDuration;
+#endif
+
     // Read usb commands
 #if defined(UseProcessStats)
     taskStart = millis(); // debug
@@ -2456,6 +2488,8 @@ void loop() {
             taskTiming[ubscommand].longest = taskDuration;
 #endif
 
+    fillBufferTask.Run();
+
     // Write usb/serial output
 #if defined(UseProcessStats)
         taskStart = millis(); // debug
@@ -2471,6 +2505,8 @@ void loop() {
         if (taskDuration > taskTiming[4].longest)
             taskTiming[4].longest = taskDuration;
 #endif
+
+    fillBufferTask.Run();
 
     // Write stepdata to mass storage device
 #if defined(UseProcessStats)
@@ -2489,27 +2525,13 @@ void loop() {
 #endif
 
 
-    // If printing, then read steps from the sd buffer and push it to
-    // the print buffer.
-#if defined(UseProcessStats)
-        taskStart = millis(); // debug
-#endif
-
     fillBufferTask.Run();
-
-#if defined(UseProcessStats)
-        taskDuration = millis() - taskStart;
-
-        taskTiming[6].ncalls += 1;
-        taskTiming[6].sumcall += taskDuration;
-        if (taskDuration > taskTiming[6].longest)
-            taskTiming[6].longest = taskDuration;
-#endif
 
 
     // Check for buffer underruns. A underrun is a emtpy stepper buffer even if data
     // is available on the swap device. In this case the system can't keep up with
     // the rate at which the stepper data is consumed.
+#if 0
     if (printer.printerState == Printer::StateStart) {
 
         if (printer.bufferLow == -1) {
@@ -2529,7 +2551,8 @@ void loop() {
             }
         }
     }
-
+#endif
+    
 #if defined(UseProcessStats)
     // tasksum
         taskDuration = millis() - loopStart;
