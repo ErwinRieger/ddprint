@@ -29,6 +29,13 @@ void killMessage(uint8_t errorCode, uint8_t errorParam1, uint8_t errorParam2, co
 // Add heavy and time consuming debugging
 //
 #define HEAVYDEBUG 1
+// Process stats
+// #define DEBUGPROCSTAT 1
+// Mass storage timing
+#define DEBUGREADWRITE 1
+
+    #define UseProcessStats 1
+
 
 #if defined(__amd64__)
 
@@ -81,6 +88,7 @@ extern void *__brkval;
 
 #elif defined(__arm__)
 
+                #define DEBUGPROCSTAT 1
                 #define STD std::
 
                 //
@@ -92,4 +100,27 @@ extern void *__brkval;
                     return (&_lm_heap_end) - (&_lm_heap_start);
                 }
 #endif
+
+#if defined(DEBUGPROCSTAT) || defined(DEBUGREADWRITE)
+    struct TaskTiming {
+        uint32_t taskStart;
+        uint32_t ncalls;
+        uint32_t sumcall;
+        uint32_t longest;
+    };
+    #define TaskStart(timings, looptask) { timings[looptask].taskStart = millis(); }
+    #define TaskEnd(timings, looptask) { uint32_t taskDuration = millis() - timings[looptask].taskStart; timings[looptask].ncalls += 1; timings[looptask].sumcall += taskDuration; if (taskDuration > timings[looptask].longest) timings[looptask].longest = taskDuration; }
+
+#else
+#error mist
+    #define TaskStart(timings, looptask)
+    #define TaskEnd(timings, looptask) 
+#endif
+
+
+
+
+
+
+
 

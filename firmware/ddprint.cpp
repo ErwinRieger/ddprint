@@ -1533,56 +1533,46 @@ void Printer::cmdGetDirBits() {
 
 // debug
 
-#if defined(UseProcessStats)
-
-struct TaskTiming {
-    uint32_t ncalls;
-    uint32_t sumcall;
-    uint32_t longest;
-    char name[64];
+static struct TaskTiming taskTiming[8] = { 
+    { 0, 0, 0, 0 },         // Temperature measurement
+    { 0, 0, 0, 0 },         // Heater temperature control
+    { 0, 0, 0, 0 },         // Filament sensor readings (flowrate measurement)
+    { 0, 0, 0, 0 },         // USB input
+    { 0, 0, 0, 0 },         // USB output
+    { 0, 0, 0, 0 },         // Mass storage IO 
+    { 0, 0, 0, 0 },         // Read *swapdev* and fill *stepbuffer*
+    { 0, 0, 0, 0 },         // Summary of all these tasks
 };
+enum LoopTasks { TaskTempControl, TaskHeater, TaskFilSensor, TaskUsbInput, TaskUsbOutput, TaskSwapDev, TaskFillBuffer, TaskSum};
 
-//
-//
-// temp control run : check
-// temp heater run: check
-// filament sensor: run: check ist aber disabled
-// usbCommand.Run : check
-//txBuffer.Run : check
-//swapDev.Run : check
-//fillBufferTask.Run : check
-//
-//
-
-struct TaskTiming taskTiming[10] = { 
-    { 0, 0, 0, "tempcontrol" },
-    { 0, 0, 0, "tempheater" },
-    { 0, 0, 0, "filsensor" },
-    { 0, 0, 0, "ubscommand" },
-    { 0, 0, 0, "txbuffer" },
-    { 0, 0, 0, "swapdev" },
-    { 0, 0, 0, "fillbuffer" },
-    { 0, 0, 0, "sum" },
-    { 0, 0, 0, "usbcommand1" },
-    { 0, 0, 0, "usbcommand2" }
-};
-
-enum LoopTasks { tempcontrol,tempheater,filsensor,ubscommand,txbuffer,swapdev,fillbuffer, tasksum, usbcommand1,usbcommand2 };
-
-#define TaskStart { taskStart = millis(); }
-#define TaskEnd(looptask) { taskDuration = millis() - taskStart; taskTiming[looptask].ncalls += 1; taskTiming[looptask].sumcall += taskDuration; if (taskDuration > taskTiming[looptask].longest) taskTiming[looptask].longest = taskDuration; }
-#endif
-
-// uint16_t waitCount = 0;
 void Printer::cmdGetTaskStatus() {
+txBuffer.sendResponseStart(CmdGetTaskStatus);
 
-    txBuffer.sendResponseStart(CmdGetTaskStatus);
-
-    for (int i=0; i<8; i++) {
-#if defined(UseProcessStats)
+    for (uint8_t i=0; i<(sizeof(taskTiming) / sizeof(taskTiming[0])); i++) {
+#if defined(DEBUGPROCSTAT)
         txBuffer.sendResponseValue(taskTiming[i].ncalls);
         txBuffer.sendResponseValue(taskTiming[i].sumcall);
         txBuffer.sendResponseValue(taskTiming[i].longest);
+#else
+#error mist
+        txBuffer.sendResponseValue((uint32_t)0);
+        txBuffer.sendResponseValue((uint32_t)0);
+        txBuffer.sendResponseValue((uint32_t)0);
+#endif
+    }
+    txBuffer.sendResponseEnd();
+} 
+
+void Printer::cmdGetIOStats() {
+
+    txBuffer.sendResponseStart(CmdGetIOStats);
+
+    // for (uint8_t i=0; i<(sizeof(ioStats) / sizeof(ioStats[0])); i++) {
+    for (uint8_t i=0; i<2; i++) { // XXX
+#if defined(DEBUGREADWRITE)
+        txBuffer.sendResponseValue(swapDev.ioStats[i].ncalls);
+        txBuffer.sendResponseValue(swapDev.ioStats[i].sumcall);
+        txBuffer.sendResponseValue(swapDev.ioStats[i].longest);
 #else
         txBuffer.sendResponseValue((uint32_t)0);
         txBuffer.sendResponseValue((uint32_t)0);
@@ -1844,7 +1834,6 @@ class UsbCommand : public Protothread {
 
         bool Run() {
 
-            // TaskStart;
             PT_BEGIN();
 
             uint8_t c, flags, cs1, cs2;
@@ -1882,8 +1871,6 @@ class UsbCommand : public Protothread {
                 //
                 // Buffered command
                 //
-                // TaskStart(usbcommand1)
-
                 if (c != serialNumber) {
 
                     serialNumberError();
@@ -2178,6 +2165,9 @@ class UsbCommand : public Protothread {
                     case CmdGetTaskStatus:
                         printer.cmdGetTaskStatus();
                         break;
+                    case CmdGetIOStats:
+                        printer.cmdGetIOStats();
+                        break;
                     case CmdSetPrinterName: {
                         uint8_t len = serialPort.readNoCheckCobs();
                         char name[64];
@@ -2346,12 +2336,7 @@ void loop() {
     static unsigned long timer100mS = m + TIMER100MS;
     // static unsigned long timerBufferLow = m;
 
-    // debug
-#if defined(UseProcessStats)
-    unsigned long loopStart = m;
-    unsigned long taskStart;
-    unsigned long taskDuration;
-#endif
+    TaskStart(taskTiming, TaskSum);
 
     m = millis();
     if (m >= timer10mS) { // Every 10 mS
@@ -2390,25 +2375,9 @@ void loop() {
         //
         // Measure temperatures every 10ms
         //
-
-
-#if defined(UseProcessStats)
-        // TaskStart
-        taskStart = millis(); // debug
-#endif
+        TaskStart(taskTiming, TaskTempControl);
         tempControl.Run();
-
-
-#if defined(UseProcessStats)
-        // TaskEnd
-        taskDuration = millis() - taskStart;
-
-        taskTiming[0].ncalls += 1;
-        taskTiming[0].sumcall += taskDuration;
-        if (taskDuration > taskTiming[0].longest)
-            taskTiming[0].longest = taskDuration;
-
-#endif
+        TaskEnd(taskTiming, TaskTempControl);
 
         //
         // Check new temperature and turn on hotend fan
@@ -2427,27 +2396,18 @@ void loop() {
         //
         // Control heater 
         //
-#if defined(UseProcessStats)
-        taskStart = millis(); // debug
-#endif
-
+        TaskStart(taskTiming,  TaskHeater);
         tempControl.heater();
-
-#if defined(UseProcessStats)
-        taskDuration = millis() - taskStart;
-
-        taskTiming[1].ncalls += 1;
-        taskTiming[1].sumcall += taskDuration;
-        if (taskDuration > taskTiming[1].longest)
-            taskTiming[1].longest = taskDuration;
-#endif
+        TaskEnd(taskTiming,  TaskHeater);
 
 
         printer.checkMoveFinished();
 
 #if defined(HASFILAMENTSENSOR)
         // Read filament sensor
+        TaskStart(taskTiming, TaskFilSensor);
         filamentSensor.run();
+        TaskEnd(taskTiming, TaskFilSensor);
 #endif
 
 #if defined(POWER_BUTTON)
@@ -2455,83 +2415,31 @@ void loop() {
 #endif
     }
 
-    // If printing, then read steps from the sd buffer and push it to
-    // the print buffer.
-#if defined(UseProcessStats)
-        taskStart = millis(); // debug
-#endif
-
-    fillBufferTask.Run();
-
-#if defined(UseProcessStats)
-        taskDuration = millis() - taskStart;
-
-        taskTiming[6].ncalls += 1;
-        taskTiming[6].sumcall += taskDuration;
-        if (taskDuration > taskTiming[6].longest)
-            taskTiming[6].longest = taskDuration;
-#endif
-
-    // Read usb commands
-#if defined(UseProcessStats)
-    taskStart = millis(); // debug
-#endif
-
+    // Handle USB input
+    TaskStart(taskTiming, TaskUsbInput);
     usbCommand.Run();
+    TaskEnd(taskTiming, TaskUsbInput);
 
-#if defined(UseProcessStats)
-        taskDuration = millis() - taskStart;
-
-        taskTiming[ubscommand].ncalls += 1;
-        taskTiming[ubscommand].sumcall += taskDuration;
-        if (taskDuration > taskTiming[ubscommand].longest)
-            taskTiming[ubscommand].longest = taskDuration;
-#endif
-
-    fillBufferTask.Run();
-
-    // Write usb/serial output
-#if defined(UseProcessStats)
-        taskStart = millis(); // debug
-#endif
-
+    // Handle USB output
+    TaskStart(taskTiming, TaskUsbOutput);
     txBuffer.Run();
+    TaskEnd(taskTiming, TaskUsbOutput);
 
-#if defined(UseProcessStats)
-        taskDuration = millis() - taskStart;
-
-        taskTiming[4].ncalls += 1;
-        taskTiming[4].sumcall += taskDuration;
-        if (taskDuration > taskTiming[4].longest)
-            taskTiming[4].longest = taskDuration;
-#endif
-
-    fillBufferTask.Run();
-
-    // Write stepdata to mass storage device
-#if defined(UseProcessStats)
-        taskStart = millis(); // debug
-#endif
-
+    // Write stepper data to mass storage
+    TaskStart(taskTiming, TaskSwapDev);
     swapDev.Run();
+    TaskEnd(taskTiming, TaskSwapDev);
 
-#if defined(UseProcessStats)
-        taskDuration = millis() - taskStart;
-
-        taskTiming[5].ncalls += 1;
-        taskTiming[5].sumcall += taskDuration;
-        if (taskDuration > taskTiming[5].longest)
-            taskTiming[5].longest = taskDuration;
-#endif
-
-
+    // If printing, then read stepper data from mass storage and push it to
+    // the stepper buffer.
+    TaskStart(taskTiming, TaskFillBuffer);
     fillBufferTask.Run();
+    TaskEnd(taskTiming, TaskFillBuffer);
 
-
+#if 0
     // Check for buffer underruns. A underrun is a emtpy stepper buffer even if data
     // is available on the swap device. In this case the system can't keep up with
     // the rate at which the stepper data is consumed.
-#if 0
     if (printer.printerState == Printer::StateStart) {
 
         if (printer.bufferLow == -1) {
@@ -2553,17 +2461,7 @@ void loop() {
     }
 #endif
     
-#if defined(UseProcessStats)
-    // tasksum
-        taskDuration = millis() - loopStart;
-
-        taskTiming[tasksum].ncalls += 1;
-        taskTiming[tasksum].sumcall += taskDuration;
-        if (taskDuration > taskTiming[tasksum].longest)
-            taskTiming[tasksum].longest = taskDuration;
-
-#endif
-
+    TaskEnd(taskTiming, TaskSum);
 }
 
 

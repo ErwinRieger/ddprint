@@ -337,9 +337,10 @@ inline void st_step_motor(uint8_t stepBits, uint8_t dirbits) {
             st_inc_current_pos_steps<MOVE>();
         else
             st_dec_current_pos_steps<MOVE>();
-      
-      // arm/avr  
-        // deactivate_step_pin<MOVE>();
+        
+        #if defined(AVR)
+            deactivate_step_pin<MOVE>();
+        #endif
     }
 }
 
@@ -352,58 +353,6 @@ inline void st_deactivate_pin(uint8_t stepBits) {
         deactivate_step_pin<MOVE>();
     }
 }
-
-#if 0
-template<typename MOVE>
-inline void st_toggle_motor(uint8_t stepBits, uint8_t dirbits) {
-
-    uint8_t mask = st_get_move_bit_mask<MOVE>();
-    static bool activ = false;
-
-    if (stepBits & mask) {
-
-        if (activ) {
-
-            // Update steps counter on falling edge
-            if (dirbits & mask)
-                st_inc_current_pos_steps<MOVE>();
-            else
-                st_dec_current_pos_steps<MOVE>();
-            
-            deactivate_step_pin<MOVE>();
-            activ = false;
-        }
-        else {
-            activate_step_pin<MOVE>();
-            activ = true;
-        }
-    }
-}
-#endif
-
-#if 0
-template<typename MOVE>
-inline void st_step_motor(uint8_t stepBits, uint8_t dirbits) {
-
-    uint8_t mask = st_get_move_bit_mask<MOVE>();
-
-    if (stepBits & mask) {
-
-        activate_step_pin<MOVE>();
-
-        // #if defined(STEPPER_MINPULSE)
-            // delayMicroseconds(STEPPER_MINPULSE);
-        // #endif
-
-        if (dirbits & mask)
-            st_inc_current_pos_steps<MOVE>();
-        else
-            st_dec_current_pos_steps<MOVE>();
-        
-        // deactivate_step_pin<MOVE>();
-    }
-}
-#endif
 
 //
 // Like st_step_motor, but check endstops
@@ -668,7 +617,6 @@ class StepBuffer {
 
                     stepbits = sd.stepBits;
 
-                    // xxx current_pos_step housekeeping in own step, so no need for dirbits parameter...
                     st_step_motor<XAxisSelector>(stepbits, sd.dirBits);
                     st_step_motor<YAxisSelector>(stepbits, sd.dirBits);
                     st_step_motor<ZAxisSelector>(stepbits, sd.dirBits);

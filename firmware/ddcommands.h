@@ -128,6 +128,7 @@
 #define CmdSetHostSettings      186 // Initial printer settings
 #define CmdSystemReset          187 // Emergency hard reset system
 #define CmdGetTaskStatus        188 //
+#define CmdGetIOStats           189 //
 
 //
 // Response types 

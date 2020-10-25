@@ -32,6 +32,26 @@
 #define RespSDReadError         9  
 // #define RespSDWriteError       12 
 
+
+// 
+// About read/write times
+//
+// Max time allowed to write and read sector:
+//
+// UM2:
+//  * Fastest axis is X/Y with 250*80 = 20000 steps/s = 50 us pulse width
+//  * Step buffer drained in 255*50 = 12.75 ms
+//
+// JP:
+//  * Fastest axis is X/Y with 250*160 = 40000 steps/s = 25 us pulse width
+//  * Step buffer drained in 255*25 = 6.4 ms
+//
+//
+
+
+
+enum SwapTasks { TaskRead, TaskWrite };
+
 class SDSwap: public MassStorage, public Protothread {
 
     uint8_t writeBuffer[SwapSectorSize];
@@ -61,6 +81,8 @@ public:
         busyWriting = false;
         reset();
     }
+
+    struct TaskTiming ioStats[2];
 
     // FWINLINE uint32_t getWriteBlockNumber() { return writeBlockNumber; }
     FWINLINE uint16_t getWritePos() { return writePos & SwapSectorMask; }
@@ -151,8 +173,7 @@ public:
         massert(! busyWriting);
         massert((readPos % SwapSectorSize) == 0); // read pos should be block-aligned
 
-        // uint32_t tread;
-        // tread = millis();
+        TaskStart(ioStats, TaskRead);
         if (! MassStorage::readBlock((readPos >> 9)+1, dst)) {
 
             // Return Sd2Card error code and SPI status byte from sd card.
@@ -168,7 +189,7 @@ public:
             killMessage(RespSDReadError, errorCode(), errorData());
             // notreached
         }
-        // massert((millis() - tread) < 2);
+        TaskEnd(ioStats, TaskRead);
 
         uint16_t readBytes = STD min(available(), (uint32_t)SwapSectorSize);
 
@@ -186,7 +207,6 @@ public:
     bool Run() {
 
         uint16_t wp;
-        // static uint32_t twrite;
 
         PT_BEGIN();
 
@@ -195,9 +215,9 @@ public:
         simassert((size % SwapSectorSize) == 0); // block write after final partial block is invalid
 
         //////////////////////////////////////////////////////////////////////////////////          
-        // twrite = millis();
+        TaskStart(ioStats, TaskWrite);
         PT_WAIT_WHILE(writeBlock(writeBlockNumber, writeBuffer));
-        // massert((millis() - twrite) < 3);
+        TaskEnd(ioStats, TaskWrite);
 
         //////////////////////////////////////////////////////////////////////////////////          
 
