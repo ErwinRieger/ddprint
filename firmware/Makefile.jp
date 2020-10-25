@@ -7,8 +7,7 @@ ARDUINO_DIR  = $(ARDUINO_BASE)/arduino-1.6.13
 ACCONFIG = $(ARDUINO_BASE)/arduino-cli_0.11.0
 PATH += $(ACCONFIG)
 
-# XXX fixed device name
-ARDUINO_PORT = /dev/ttyUSB1
+ARDUINO_PORT = $$dev
 AVRDUDE_ARD_BAUDRATE = 115200
 NO_CORE_MAIN_CPP = 1
 

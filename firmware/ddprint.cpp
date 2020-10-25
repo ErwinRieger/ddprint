@@ -605,7 +605,6 @@ class FillBufferTask : public Protothread {
                 PT_WAIT_THREAD(sDReader);
                 absSteps[4] = FromBuf(int32_t, sDReader.readData);
 
-                // nAccel = sDReader.readPayloadUInt16();
                 sDReader.setBytesToRead2();
                 PT_WAIT_THREAD(sDReader);
                 nAccel = FromBuf(uint16_t, sDReader.readData);
@@ -1152,6 +1151,8 @@ Printer::Printer() {
         increaseTemp[heater] = 0;
 
     powerOffTime = 0;
+
+    bufferLow = 0;
 };
 
 void Printer::printerInit() {
@@ -1232,8 +1233,6 @@ void Printer::cmdMove(MoveType mt) {
 
         // armrun massert(homed);
     }
-
-bufferLow = 0;
 
     if (mt == MoveTypeHoming) {
         // ENABLE_STEPPER1_DRIVER_INTERRUPT();
@@ -1448,6 +1447,10 @@ void Printer::checkMoveFinished() {
             DISABLE_STEPPER_DRIVER_INTERRUPT();
             DISABLE_STEPPER1_DRIVER_INTERRUPT();
 
+            // hack, stepbuffer adds an invalid bufferunderrun at the end of the move...
+            if (moveType == MoveTypeNormal)
+                bufferLow -= 1;
+
             printerState = StateInit;
             moveType = MoveTypeNone;
 
@@ -1554,7 +1557,6 @@ txBuffer.sendResponseStart(CmdGetTaskStatus);
         txBuffer.sendResponseValue(taskTiming[i].sumcall);
         txBuffer.sendResponseValue(taskTiming[i].longest);
 #else
-#error mist
         txBuffer.sendResponseValue((uint32_t)0);
         txBuffer.sendResponseValue((uint32_t)0);
         txBuffer.sendResponseValue((uint32_t)0);
@@ -1741,7 +1743,7 @@ class UsbCommand : public Protothread {
 
         // Result of waitForSerial()
         typedef enum {
-            NothinAvailable,       // 
+            NothingAvailable,       // 
             CharsAvailable,       // 
             SerTimeout
             } SerAvailableState;
@@ -1811,7 +1813,7 @@ class UsbCommand : public Protothread {
 
             if ((drainEnd > 0) && (ts < drainEnd)) {
                 serialPort.flush0();
-                return NothinAvailable;
+                return NothingAvailable;
             }
             drainEnd = 0;
 
@@ -1823,12 +1825,12 @@ class UsbCommand : public Protothread {
 
             if ((ts - startTS) > 2500) {
 
-                txBuffer.sendSimpleResponse(RespRXTimeoutError, serialNumber);
+                // XXXXXXXXXXXXX undo: txBuffer.sendSimpleResponse(RespRXTimeoutError, serialNumber);
                 reset();
                 return SerTimeout;
             }
 
-            return NothinAvailable;
+            return NothingAvailable;
         }
 
 
@@ -1854,7 +1856,7 @@ class UsbCommand : public Protothread {
             checksum = 0xffff;
 
             // Read packet number, command and payload length
-            PT_WAIT_WHILE( (av = waitForSerial(3)) == NothinAvailable );
+            PT_WAIT_WHILE( (av = waitForSerial(3)) == NothingAvailable );
             if (av == SerTimeout)
                 PT_RESTART();
 
@@ -1883,7 +1885,7 @@ class UsbCommand : public Protothread {
                 payloadLength--;
 
                 // Wait for payload, checksum flags and two checksum bytes
-                PT_WAIT_WHILE( (av = waitForSerial(payloadLength+3)) == NothinAvailable );
+                PT_WAIT_WHILE( (av = waitForSerial(payloadLength+3)) == NothingAvailable );
                 if (av == SerTimeout)
                     PT_RESTART();
 
@@ -1923,24 +1925,18 @@ class UsbCommand : public Protothread {
 
                 if ( (commandByte == CmdG1Packed) || (commandByte == CmdG1RawPacked) || (commandByte == CmdBlockPacked) ) {
 
-    // len2 = zlibUncompress(zipDest, 256);
-               
-                    // for (binindex=0; binindex < len2; binindex++) {
-
-                        // swapDev.addByte(zipDest[binindex]);
-                        // PT_WAIT_WHILE( swapDev.isBusyWriting() );
-                    // }
-
+                    //
+                    // Compressed block
+                    //
                     // Stream data block from serial through unzip and store
                     // result on mass storage device.
                     PT_SPAWN(unZipper);
                 }
                 else {
                     //
-                    // block not compressed
+                    // Block not compressed
                     //
                     while (serialPort.cobsAvailable()) {
-
                         c = serialPort.readNoCheckCobs();
                         swapDev.addByte(c);
                         PT_WAIT_WHILE( swapDev.isBusyWriting() );
@@ -1978,7 +1974,7 @@ class UsbCommand : public Protothread {
                 payloadLength--;
 
                 // Wait for payload, checksum flags and two checksum bytes
-                PT_WAIT_WHILE( (av = waitForSerial(payloadLength+3)) == NothinAvailable );
+                PT_WAIT_WHILE( (av = waitForSerial(payloadLength+3)) == NothingAvailable );
                 if (av == SerTimeout)
                     PT_RESTART();
 

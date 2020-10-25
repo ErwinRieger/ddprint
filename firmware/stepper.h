@@ -21,6 +21,7 @@
 
 #include "ddprint.h"
 #include "move.h"
+#include "ringbuffer.h"
 
 #define  enable_x() (X_ENABLE_PIN :: activate())
 #define disable_x() (X_ENABLE_PIN :: deActivate())
@@ -474,9 +475,11 @@ typedef struct {
 class StepBuffer {
 
         private:
+#if 0
             stepData stepBuffer[StepBufferLen];
-
             uint8_t head, tail;
+#endif
+            CircularBuffer<stepData, uint32_t, StepBufferLen> stepBuffer;
             uint8_t syncCount;
 
             // Mode of misc stepper timer:
@@ -492,7 +495,7 @@ class StepBuffer {
         public:
 
             StepBuffer() {
-                head = tail = 0;
+                stepBuffer.init(); // head = tail = 0;
                 syncCount = 0;
                 miscStepperMode = HOMINGMODE;
                 stepbits = 0;
@@ -505,17 +508,12 @@ class StepBuffer {
                 CRITICAL_SECTION_END;
             }
 
-            // Todo: rename to size()
-            FWINLINE uint8_t byteSize() {
-                return (uint16_t)(StepBufferLen + head) - tail;
-            }
-
             FWINLINE bool empty() {
-                return head == tail;
+                return stepBuffer.empty(); // return head == tail;
             }
 
             FWINLINE bool full() {
-                return byteSize() >= (StepBufferLen-1);
+                return stepBuffer.full(); // byteSize() >= (StepBufferLen-1);
             }
 
             FWINLINE void sync() {
@@ -524,6 +522,12 @@ class StepBuffer {
 
             FWINLINE bool synced() {
                 return syncCount == 0;
+            }
+
+#if defined(AVR)
+            // Todo: rename to size()
+            FWINLINE uint8_t byteSize() {
+                return (StepBufferLen + head) - tail;
             }
 
             FWINLINE void push(stepData &sd) {
@@ -538,13 +542,52 @@ class StepBuffer {
                     syncCount--;
                 return stepBuffer[tail++];
             }
+#else
+            // Todo: rename to size()
+            FWINLINE uint8_t byteSize() {
+
+                return stepBuffer.size();
+#if 0
+                CRITICAL_SECTION_START;
+                uint8_t s = (StepBufferLen + head) - tail;
+                CRITICAL_SECTION_END;
+                return s;
+#endif
+            }
+
+            FWINLINE void push(stepData &sd) {
+                simassert(! full());
+                stepBuffer.push(sd);
+
+#if 0
+
+                CRITICAL_SECTION_START;
+                stepBuffer[head++] = sd;
+                CRITICAL_SECTION_END;
+#endif
+            }
+
+            FWINLINE stepData & pop() {
+                if (syncCount > 0)
+                    syncCount--;
+
+                return stepBuffer.pop();
+#if 0
+                CRITICAL_SECTION_START;
+                stepData &sd = stepBuffer[tail++];
+                CRITICAL_SECTION_END;
+
+                return sd;
+#endif
+            }
+#endif
 
             FWINLINE stepData & peek() {
-                return stepBuffer[tail];
+                return stepBuffer.peek(); // return stepBuffer[tail];
             }
 
             void flush() {
-                head = tail = 0;
+                stepBuffer.init(); // head = tail = 0;
                 syncCount = 0;
             }
 
@@ -588,15 +631,18 @@ class StepBuffer {
             // --> To relax this situation we set the new OCR1A value as fast as possible.
             FWINLINE void runMoveSteps() {
 
+                static bool wasnotempty = false;
+
                 if (empty()) {
 
                     // Empty buffer, nothing to step
                     HAL_SET_STEPPER_TIMER(2000); // 1kHz.
                     stepbits = 0;
 // xxx check for underruns
-                    if (printer.printerState == Printer::StateStart) {
+                    if (wasnotempty && printer.printerState == Printer::StateStart) {
                         if (printer.bufferLow < INT16_MAX)
                             printer.bufferLow++;
+                        wasnotempty = false;
                     }
                 }
                 else {
@@ -621,6 +667,8 @@ class StepBuffer {
                     st_step_motor<YAxisSelector>(stepbits, sd.dirBits);
                     st_step_motor<ZAxisSelector>(stepbits, sd.dirBits);
                     st_step_motor<EAxisSelector>(stepbits, sd.dirBits);
+                
+                    wasnotempty = true;
                 }
             }
 

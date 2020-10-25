@@ -30,7 +30,7 @@ void killMessage(uint8_t errorCode, uint8_t errorParam1, uint8_t errorParam2, co
 //
 #define HEAVYDEBUG 1
 // Process stats
-// #define DEBUGPROCSTAT 1
+#define DEBUGPROCSTAT 1
 // Mass storage timing
 #define DEBUGREADWRITE 1
 
@@ -88,7 +88,6 @@ extern void *__brkval;
 
 #elif defined(__arm__)
 
-                #define DEBUGPROCSTAT 1
                 #define STD std::
 
                 //
