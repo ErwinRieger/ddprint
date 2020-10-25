@@ -805,7 +805,7 @@ def manualMove(args, printer, parser, planner, axis, distance, feedrate=0, absol
 
     printer.sendCommandParamV(CmdMove, [MoveTypeNormal])
 
-    printer.waitForState(StateInit)
+    printer.waitForState(StateInit, log=True)
 
 ####################################################################################################
 

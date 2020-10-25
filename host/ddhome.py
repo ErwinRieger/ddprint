@@ -56,7 +56,7 @@ def homeMove(parser, dim, direction, dist, fakeHomingEndstops, feedRateFactor=1.
     printer.sendCommandParamV(CmdMove, [MoveTypeHoming])
     printer.sendCommand(CmdEOT)
 
-    printer.waitForState(StateInit, wait=0.05)
+    printer.waitForState(StateInit, wait=0.25, log=True)
 
     if direction > 0:
         # Move towards endstop
@@ -131,7 +131,7 @@ def home(args, printer, parser, planner, force=False):
             printer.sendCommandParamV(CmdMove, [MoveTypeNormal])
             printer.sendCommand(CmdEOT)
 
-            printer.waitForState(StateInit, wait=0.05)
+            printer.waitForState(StateInit, wait=0.25, log=True)
 
         #
         # Set Virtual E-pos 0:

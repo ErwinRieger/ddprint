@@ -60,7 +60,6 @@ def encodeCobs_cmd_packed(cmd, packedCmd, stream, blockLen=LenCobs):
 
     return (cmd, encodeCobsNoPack(stream, blockLen))
 
-
     cobsBody = ""
     cobsResult = ""
 
@@ -68,7 +67,7 @@ def encodeCobs_cmd_packed(cmd, packedCmd, stream, blockLen=LenCobs):
 
     rawdata = stream.read(blockLen)
     if not rawdata:
-        return None
+        return (cmd, None)
 
     compressor = zlib.compressobj(9, zlib.DEFLATED, -15)
     compressor.compress(rawdata)

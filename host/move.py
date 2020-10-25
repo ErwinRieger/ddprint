@@ -667,23 +667,17 @@ class StepData:
 
         stream = cStringIO.StringIO(payLoad)
 
-        # print "start combs"
-        # cobsBlock = cobs.encodeCobs_cmd_packed(stream)
-        # cmds = [( ddprintcommands.CmdG1, cobsBlock )]
-
         cmds = [ cobs.encodeCobs_cmd_packed(ddprintcommands.CmdG1, ddprintcommands.CmdG1Packed, stream) ]
 
         while True:
 
-            # print "follow combs"
-            # cobsBlock = cobs.encodeCobs_cmd_packed(stream)
-            cobsBlock = cobs.encodeCobs_cmd_packed(ddprintcommands.CmdBlock, ddprintcommands.CmdBlockPacked, stream)
+            (cmd, cobsBlock) = cobs.encodeCobs_cmd_packed(ddprintcommands.CmdBlock, ddprintcommands.CmdBlockPacked, stream)
 
             if not cobsBlock:
                 break
 
             # cmds.append(( ddprintcommands.CmdBlock, cobsBlock ))
-            cmds.append( cobsBlock )
+            cmds.append( (cmd, cobsBlock) )
 
         return cmds
 
@@ -813,13 +807,13 @@ class RawStepData:
         while True:
 
             # cobsBlock = cobs.encodeCobs_cmd_packed(stream)
-            cobsBlock = cobs.encodeCobs_cmd_packed(ddprintcommands.CmdBlock, ddprintcommands.CmdBlockPacked, stream)
+            (cmd, cobsBlock) = cobs.encodeCobs_cmd_packed(ddprintcommands.CmdBlock, ddprintcommands.CmdBlockPacked, stream)
 
             if not cobsBlock:
                 break
 
             # cmds.append(( ddprintcommands.CmdBlock, cobsBlock ))
-            cmds.append( cobsBlock )
+            cmds.append( (cmd, cobsBlock) )
 
         return cmds
 
