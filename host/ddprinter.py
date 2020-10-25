@@ -700,7 +700,7 @@ class Printer(Serial):
 
         (cmd, payload) = self.query(CmdGetStatus, doLog=False)
 
-        tup = struct.unpack("<BffIHBhHBfi", payload)
+        tup = struct.unpack("<BffIHIhHBfi", payload)
 
         statusDict = {}
         for i in range(len(valueNames)):

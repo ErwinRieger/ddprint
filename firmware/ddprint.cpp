@@ -1593,7 +1593,8 @@ void Printer::cmdGetStatus() {
     txBuffer.sendResponseValue(current_temperature[0]);
     txBuffer.sendResponseValue(swapDev.available());
     txBuffer.sendResponseValue(sDReader.available());
-    txBuffer.sendResponseUint8(stepBuffer.byteSize());
+    // xxx undo txBuffer.sendResponseUint8(stepBuffer.byteSize());
+    txBuffer.sendResponseValue(stepBuffer.byteSize());
     txBuffer.sendResponseInt16(bufferLow);
     txBuffer.sendResponseValue(target_temperature[0]);
     txBuffer.sendResponseUint8(tempControl.getPwmOutput());

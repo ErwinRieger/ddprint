@@ -470,7 +470,7 @@ typedef struct {
 } stepData;
 
 // Size of step buffer, entries are stepData structs.
-#define StepBufferLen  256
+#define StepBufferLen  512
 
 class StepBuffer {
 
@@ -480,7 +480,7 @@ class StepBuffer {
             uint8_t head, tail;
 #endif
             CircularBuffer<stepData, uint32_t, StepBufferLen> stepBuffer;
-            uint8_t syncCount;
+            // undo uint8_t syncCount;
 
             // Mode of misc stepper timer:
             enum {
@@ -496,7 +496,7 @@ class StepBuffer {
 
             StepBuffer() {
                 stepBuffer.init(); // head = tail = 0;
-                syncCount = 0;
+                // undo syncCount = 0;
                 miscStepperMode = HOMINGMODE;
                 stepbits = 0;
             };
@@ -517,12 +517,12 @@ class StepBuffer {
             }
 
             FWINLINE void sync() {
-                syncCount = byteSize();
+                // undo syncCount = byteSize();
             }
 
-            FWINLINE bool synced() {
-                return syncCount == 0;
-            }
+            // undo FWINLINE bool synced() {
+                // undo return syncCount == 0;
+            // undo }
 
 #if defined(AVR)
             // Todo: rename to size()
@@ -538,13 +538,13 @@ class StepBuffer {
             }
 
             FWINLINE stepData & pop() {
-                if (syncCount > 0)
-                    syncCount--;
+                // undo if (syncCount > 0)
+                    // undo syncCount--;
                 return stepBuffer[tail++];
             }
 #else
             // Todo: rename to size()
-            FWINLINE uint8_t byteSize() {
+            FWINLINE uint32_t byteSize() {
 
                 return stepBuffer.size();
 #if 0
@@ -568,8 +568,8 @@ class StepBuffer {
             }
 
             FWINLINE stepData & pop() {
-                if (syncCount > 0)
-                    syncCount--;
+                // undo if (syncCount > 0)
+                    // undo syncCount--;
 
                 return stepBuffer.pop();
 #if 0
@@ -588,7 +588,7 @@ class StepBuffer {
 
             void flush() {
                 stepBuffer.init(); // head = tail = 0;
-                syncCount = 0;
+                // undo syncCount = 0;
             }
 
             void homingMode() {
