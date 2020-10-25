@@ -102,7 +102,8 @@ CmdReadAnalogGpio =  184 # Read a analog value from gpio port, used to determine
 CmdSetStepsPerMM  =  185 # Initial printer settings: steps per mm for X/Y/Z
 CmdSetHostSettings = 186 # Initial printer settings
 CmdSystemReset     = 187 # Emergency hard reset system 
-CmdGetTaskStatus     = 188 # 
+CmdGetTaskStatus   = 188 # 
+CmdGetIOStats      = 189 # 
 
 CommandNames = {
 }
@@ -183,6 +184,7 @@ for (cmd, cmdName) in [
     (CmdSetHostSettings, "CmdSetHostSettings",),
     (CmdSystemReset, "CmdSystemReset",),
     (CmdGetTaskStatus, "CmdGetTaskStatus",),
+    (CmdGetIOStats, "CmdGetIOStats",),
     ]:
 
         insertCommandName(cmd, cmdName)

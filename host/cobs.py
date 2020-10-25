@@ -58,6 +58,9 @@ nullByte = chr(0)
 #
 def encodeCobs_cmd_packed(cmd, packedCmd, stream, blockLen=LenCobs):
 
+    return (cmd, encodeCobsNoPack(stream, blockLen))
+
+
     cobsBody = ""
     cobsResult = ""
 

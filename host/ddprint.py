@@ -387,9 +387,13 @@ def main():
         freeMem = printer.getFreeMem()
         print "Free memory: %d bytes" % freeMem
 
-    elif args.mode == 'getpos':
+    elif args.mode == "getpos":
 
-        (printer, parser, planner) = util.initParser(args, mode=args.mode, travelMovesOnly=True)
+        # (printer, _, planner) = util.initParser(args, mode=args.mode, travelMovesOnly=True)
+
+        printer = Printer()
+        printer.initPrinterProfile(args)
+        planner = Planner(args, printer, travelMovesOnly=True)
 
         res = printer.getPos()
 
@@ -429,7 +433,7 @@ def main():
         (baseTemp, tempTable) = printer.getTempTable()
         util.printTempTable(baseTemp, tempTable)
 
-    elif args.mode == 'getstatus':
+    elif args.mode == "getstatus":
 
         printer = Printer()
         printer.initSerial(args.device, args.baud)

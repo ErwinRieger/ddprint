@@ -717,21 +717,23 @@ class Printer(Serial):
 
         self.gui.statusCb(statusDict)
 
+        for (statusCmd, tasknames) in [(CmdGetTaskStatus, ("tempcontrol", "tempheater", "filsensor", "ubscommand", "txbuffer", "swapdev", "fillbuffer", "tasksum")), (CmdGetIOStats, ("read", "write"))]:
 
+            ## XXX debug iotimings
+            (cmd, payload) = self.query(statusCmd, doLog=True)
 
+            print "cmd, len payload:", cmd, len(payload)
 
+            structFmt = "<" + "I" * (len(payload) / 4)
+            tup = struct.unpack(structFmt, payload)
 
-        ## xxxx debug taskstatus
-
-        (cmd, payload) = self.query(CmdGetTaskStatus, doLog=False)
-        tup = struct.unpack("<IIIIIIIIIIIIIIIIIIIIIIII", payload)
-
-        tasknames = ("tempcontrol", "tempheater", "filsensor", "ubscommand", "txbuffer", "swapdev", "fillbuffer", "tasksum")
-        # print "taskstaus:", tup,
-        tupindex = 0
-        for taskname in tasknames:
-            print "task %15s %10d %10d %10d" % (taskname, tup[tupindex], tup[tupindex+1], tup[tupindex+2])
-            tupindex+=3
+            tupindex = 0
+            print "%15s %10s %10s %10s" % ("Task", "#Calls", "TSum", "TLongest")
+            for taskname in tasknames:
+                nCalls = tup[tupindex]
+                tSum = tup[tupindex+1]
+                print "%15s %10d %10d %10d" % (taskname, nCalls, tSum, tup[tupindex+2])
+                tupindex+=3
 
         return statusDict
 
