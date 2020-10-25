@@ -117,22 +117,10 @@ void st_init() {
 
             timer_gen_reg_map *regs = timer2.regs.gen;
 
-            unsigned int sr = regs->SR;
-            unsigned int bitsToClear = 0;
-
-            if (sr & TIMER_SR_CC1IF) {
-
-	            stepBuffer.deactivateSteppers();
-                bitsToClear = bitsToClear | TIMER_SR_CC1IF;
-            }
-            if (sr & TIMER_SR_UIF) {
+            if (regs->SR & TIMER_SR_UIF) {
 
 	            stepBuffer.runMoveSteps();
-                bitsToClear = bitsToClear | TIMER_SR_UIF;
-            }
-
-            if (bitsToClear) {
-                regs->SR = ~bitsToClear;
+                regs->SR = ~TIMER_SR_UIF;
                 regs->SR; // Avoid duplicated pulses
             }
         }

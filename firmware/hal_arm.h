@@ -79,8 +79,10 @@ extern "C" {
 
 // TIMER_CC1_INTERRUPT
 // xxx combine both flags into one timer_enable_irq call?
-#define ENABLE_STEPPER_DRIVER_INTERRUPT()  { timer_enable_irq(&timer2, TIMER_UPDATE_INTERRUPT); timer_enable_irq(&timer2, TIMER_CC1_INTERRUPT); }
-#define DISABLE_STEPPER_DRIVER_INTERRUPT() { timer_disable_irq(&timer2, TIMER_UPDATE_INTERRUPT); timer_disable_irq(&timer2, TIMER_CC1_INTERRUPT);}
+// #define ENABLE_STEPPER_DRIVER_INTERRUPT()  { timer_enable_irq(&timer2, TIMER_UPDATE_INTERRUPT); timer_enable_irq(&timer2, TIMER_CC1_INTERRUPT); }
+// #define DISABLE_STEPPER_DRIVER_INTERRUPT() { timer_disable_irq(&timer2, TIMER_UPDATE_INTERRUPT); timer_disable_irq(&timer2, TIMER_CC1_INTERRUPT);}
+#define ENABLE_STEPPER_DRIVER_INTERRUPT()  { timer_enable_irq(&timer2, TIMER_UPDATE_INTERRUPT); }
+#define DISABLE_STEPPER_DRIVER_INTERRUPT() { timer_disable_irq(&timer2, TIMER_UPDATE_INTERRUPT); }
 
 #define ENABLE_STEPPER1_DRIVER_INTERRUPT()  { timer_enable_irq(&timer3, TIMER_UPDATE_INTERRUPT); }
 #define DISABLE_STEPPER1_DRIVER_INTERRUPT() { timer_disable_irq(&timer3, TIMER_UPDATE_INTERRUPT); }

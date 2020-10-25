@@ -67,6 +67,7 @@ RespSDReadError     =   9
 RespMinTemp         =  10
 RespMaxTemp         =  11
 RespSDWriteError    =  12
+RespUnderrun        =  13
 
 RespCodeNames = {
         RespOK: "RespOK",
@@ -81,6 +82,7 @@ RespCodeNames = {
         RespSDWriteError: "RespSDWriteError",
         RespMinTemp: "RespMinTemp",
         RespMaxTemp: "RespMaxTemp",
+        RespUnderrun: "RespUnderrun",
 }
 
 ############################################################################

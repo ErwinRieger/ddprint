@@ -339,9 +339,12 @@ inline void st_step_motor(uint8_t stepBits, uint8_t dirbits) {
         else
             st_dec_current_pos_steps<MOVE>();
         
-        #if defined(AVR)
-            deactivate_step_pin<MOVE>();
+        // #if defined(AVR)
+        #if defined(STEPPER_MINPULSE)
+            delayMicroseconds(STEPPER_MINPULSE);
         #endif
+            deactivate_step_pin<MOVE>();
+        // #endif
     }
 }
 
@@ -470,7 +473,7 @@ typedef struct {
 } stepData;
 
 // Size of step buffer, entries are stepData structs.
-#define StepBufferLen  512
+#define StepBufferLen  256
 
 class StepBuffer {
 
@@ -631,7 +634,8 @@ class StepBuffer {
             // --> To relax this situation we set the new OCR1A value as fast as possible.
             FWINLINE void runMoveSteps() {
 
-                static bool wasnotempty = false;
+                static bool wasnotempty = true;
+                static uint32_t minTimer = 0xffff;
 
                 if (empty()) {
 
@@ -642,6 +646,12 @@ class StepBuffer {
                     if (wasnotempty && printer.printerState == Printer::StateStart) {
                         if (printer.bufferLow < INT16_MAX)
                             printer.bufferLow++;
+
+                        txBuffer.sendResponseStart(RespUnderrun);
+                        txBuffer.sendResponseValue((uint32_t)byteSize());
+                        txBuffer.sendResponseValue(minTimer);
+                        txBuffer.sendResponseEnd();
+
                         wasnotempty = false;
                     }
                 }
@@ -650,7 +660,14 @@ class StepBuffer {
                     stepData &sd = pop();
 
                     // set dir and pin and short timer
-                    HAL_SET_STEPPER_TIMER(sd.timer);
+                    uint16_t t = sd.timer;
+
+                    massert(t > 20);
+
+                    if (t < minTimer)
+                        minTimer = t;
+
+                    HAL_SET_STEPPER_TIMER(t);
 
                     if (sd.dirBits & 0x80) {
 

@@ -223,6 +223,13 @@ class Printer(Serial):
             if handleError:
                 return self.commandResend(lastLine)
 
+        elif respCode == RespUnderrun:
+
+            (p1, p2) = struct.unpack("<II", payload)
+            self.gui.logError("ERROR: Underrun size: %d minTimer: %d" % (p1, p1))
+            if handleError:
+                raise FatalPrinterError(ResponseNames[respCode])
+
         elif respCode < 128: # Range of errorcodes
 
             self.gui.logError("ERROR: unknown response code '0x%x'" % respCode)
