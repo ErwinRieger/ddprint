@@ -707,6 +707,11 @@ class RawStepData:
     def addPulse(self, timerValue, pulse):
 
         assert(timerValue <= maxTimerValue16)
+
+        if timerValue < 25:
+            print "timervalue:", timerValue, pulse
+
+        assert(timerValue >= 25) # xxx hardcoded 100khz avr
         self.pulses.append((timerValue, pulse))
 
     def empty(self):
@@ -794,8 +799,9 @@ class RawStepData:
 
         else:
 
-            for (timer, stepBits) in self.pulses:
-                payLoad += struct.pack("<HB", timer, self.stepBits(stepBits))
+            for (etimer, stepBits) in self.pulses:
+                assert(etimer >= 25)
+                payLoad += struct.pack("<HB", etimer, self.stepBits(stepBits))
 
         stream = cStringIO.StringIO(payLoad)
 

@@ -972,6 +972,8 @@ class FillBufferTask : public Protothread {
                         PT_WAIT_THREAD(sDReader);
                         sd.timer = STD min ( (uint16_t)(FromBuf(uint16_t, sDReader.readData) * timerScale), (uint16_t)0xffff );
 
+                        massert(sd.timer >= 25); // xxxx  hardcoded...
+
                         sDReader.setBytesToRead1();
                         PT_WAIT_THREAD(sDReader);
                         sd.stepBits = *sDReader.readData;

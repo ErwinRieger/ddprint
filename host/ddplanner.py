@@ -1158,10 +1158,16 @@ class Planner (object):
 
         if timer < self.minTimerValue:
             print "Warning, timervalue %d to low (%d)!" % (timer, self.minTimerValue)
+            assert(0)
             timer = self.minTimerValue
         elif timer > self.maxTimerValue:
             print "Warning, timervalue %d to high (%d)!" % (timer, self.maxTimerValue)
+            assert(0)
             timer = self.maxTimerValue
+
+        if timer <= 14:
+            print "xxx, timervalue %d to low (%d)!" % (timer, self.minTimerValue)
+            assert(0)
 
         return timer
 

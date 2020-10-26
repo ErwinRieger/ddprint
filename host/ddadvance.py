@@ -1862,6 +1862,10 @@ class Advance (object):
         # tv75khz = int(fTimer / 100000.0)
         # print "Timer value of a 75khz stepper: %d" % tv75khz
         tv75khz = self.planner.minTimerValue / 2.0
+        tv75khz = 25 # xxx hardcoded
+
+        # print "tv75khz: ", tv75khz, self.planner.minTimerValue 
+        # assert(tv75khz >= 25)
 
         tvsum = 0
         tvIndex = []
@@ -1954,6 +1958,7 @@ class Advance (object):
                             newStepDesc = Namespace(t=None, ttv=tvsum, dt=None, tv=newTv2, steps=stepBits)
                             tvIndex.insert(bestIndex+1, tvsum)
 
+                        # assert(newTv1 > 14)
                         prevStepDesc.tv = newTv1
                         prevStepDesc.dt = None
 
@@ -1981,6 +1986,7 @@ class Advance (object):
                         prevStepDesc.dt = None
                         prevStepDesc.tv = newTv1
 
+                        # assert(minDist > 14)
                         newStepDesc = Namespace(t=None, ttv=tvsum, dt=None, tv=minDist, steps=stepBits)
                         tvIndex.insert(bestIndex, tvsum)
                         tMap[tvsum] = newStepDesc
@@ -2014,7 +2020,6 @@ class Advance (object):
         for ttv in tvIndex:
 
             stepDesc = tMap[ttv]
-            
             move.stepData.addPulse(stepDesc.tv, stepDesc.steps)
 
         assert(len(tvIndex) == len(move.stepData.pulses))

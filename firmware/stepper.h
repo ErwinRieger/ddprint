@@ -635,47 +635,23 @@ class StepBuffer {
             // --> To relax this situation we set the new OCR1A value as fast as possible.
             FWINLINE void runMoveSteps() {
 
-                static bool wasnotempty = true;
-                static uint32_t minTimer = 0xffff;
-                static uint32_t lastSize = 0;
-                static uint32_t lastSize2 = 0;
-
                 if (empty()) {
 
                     // Empty buffer, nothing to step
                     HAL_SET_STEPPER_TIMER(2000); // 1kHz.
                     stepbits = 0;
-// xxx check for underruns
-                    if (wasnotempty && (printer.printerState == Printer::StateStart)) {
-
-                        if (! (printer.eotWasReceived() && (swapDev.available()==0))) {
-
-                            if (printer.bufferLow < INT16_MAX)
-                                printer.bufferLow++;
-
-                            printer.underrunError(lastSize, lastSize2, minTimer);
-                            // notreached
-                        }
-                    }
-                    wasnotempty = false;
                 }
                 else {
 
-                    lastSize2 = lastSize;
-                    lastSize = byteSize();
-
                     stepData &sd = pop();
 
-                    // set dir and pin and short timer
-                    uint16_t t = sd.timer;
+                    // Set new timer value
+#if defined(HEAVYDEBUG)
+                    massert(sd.timer >= 25);
+#endif
+                    HAL_SET_STEPPER_TIMER(sd.timer);
 
-                    massert(t >= 20);
-
-                    if (t < minTimer)
-                        minTimer = t;
-
-                    HAL_SET_STEPPER_TIMER(t);
-
+                    // Set dir bits
                     if (sd.dirBits & 0x80) {
 
                         // Set direction bits
@@ -691,8 +667,6 @@ class StepBuffer {
                     st_step_motor<YAxisSelector>(stepbits, sd.dirBits);
                     st_step_motor<ZAxisSelector>(stepbits, sd.dirBits);
                     st_step_motor<EAxisSelector>(stepbits, sd.dirBits);
-                
-                    wasnotempty = true;
                 }
             }
 
