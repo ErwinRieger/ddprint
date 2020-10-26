@@ -142,9 +142,9 @@ class Advance (object):
         if self.__kAdv == None:
             self.__kAdv = planner.matProfile.getKAdvI()
 
-        self.useAutoTemp = args.autoTemp
+        self.useAutoTemp = args.autotemp
 
-        print "Using kAdvance: %.2f, autoTemp is %s" % (self.getKAdv(), self.useAutoTemp)
+        print "Using kAdvance: %.2f, autotemp is %s" % (self.getKAdv(), self.useAutoTemp)
 
         self.kFeederComp = 0.0
         if UseFeederCompensation:
