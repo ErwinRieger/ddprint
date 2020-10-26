@@ -110,6 +110,9 @@ class Printer {
 
         void cmdMove(MoveType);
         void cmdEot();
+        bool eotWasReceived() { return eotReceived; }
+        void underrunError(uint32_t lastSize, uint32_t lastSize2, uint32_t minTimer);
+
         void setHomePos( int32_t x, int32_t y, int32_t z);
         void cmdSetTargetTemp(uint8_t heater, uint16_t temp);
         void cmdSetIncTemp(uint8_t heater, int16_t incTemp);

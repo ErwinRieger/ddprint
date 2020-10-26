@@ -621,6 +621,9 @@ class UM2GcodeParser:
         self.logger.log("ignoring t0 (tool select)")
 
     def g4_dwell(self, line, values):
+        self.logger.log("UNDO: ignoring dwell")
+        return
+
         if "P" in values:
             self.logger.log("dwell, ", values["P"], " ms")
             self.planner.dwellMS(values["P"])

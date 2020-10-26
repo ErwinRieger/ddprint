@@ -99,6 +99,14 @@ void st_init() {
     disable_e0();
 }
 
+void st_disableSteppers() {
+
+    disable_x();
+    disable_y();
+    disable_z();
+    disable_e0();
+}
+
 //
 // Stepper interrupt routines
 //

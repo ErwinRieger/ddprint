@@ -1218,7 +1218,27 @@ void Printer::runHotEndFan() {
 void Printer::cmdEot() {
 
     massert(printerState >= StateInit);
+
     eotReceived = true;
+
+    if (swapDev.getWritePos()) {
+        // Save last partial block
+        // xxx check busy here
+        swapDev.startWriteBlock();
+    }
+}
+
+void Printer::underrunError(uint32_t lastSize, uint32_t lastSize2, uint32_t minTimer) {
+
+    txBuffer.flush();
+    txBuffer.sendResponseStart(RespUnderrun);
+    txBuffer.sendResponseValue(lastSize);
+    txBuffer.sendResponseValue(lastSize2);
+    txBuffer.sendResponseValue(minTimer);
+    txBuffer.sendResponseValue(swapDev.available());
+    txBuffer.sendResponseValue((uint32_t)sDReader.available());
+    txBuffer.sendResponseEnd();
+    kill();
 }
 
 void Printer::cmdMove(MoveType mt) {
@@ -1229,10 +1249,9 @@ void Printer::cmdMove(MoveType mt) {
     printerState = StateStart;
     moveType = mt;
 
-    if (mt == MoveTypeNormal) {
-
+    // if (mt == MoveTypeNormal) {
         // armrun massert(homed);
-    }
+    // }
 
     if (mt == MoveTypeHoming) {
         // ENABLE_STEPPER1_DRIVER_INTERRUPT();
@@ -1448,8 +1467,8 @@ void Printer::checkMoveFinished() {
             DISABLE_STEPPER1_DRIVER_INTERRUPT();
 
             // hack, stepbuffer adds an invalid bufferunderrun at the end of the move...
-            if (moveType == MoveTypeNormal)
-                bufferLow -= 1;
+            // if (moveType == MoveTypeNormal)
+                // bufferLow -= 1;
 
             printerState = StateInit;
             moveType = MoveTypeNone;
@@ -1465,13 +1484,9 @@ void Printer::checkMoveFinished() {
 
 void Printer::disableSteppers() {
 
-    disable_x();
-    disable_y();
-    disable_z();
-    disable_e0();
+    st_disableSteppers();
 
     homed = false;
-
     LED_PIN :: write(255 * 0.5);
 }
 
@@ -2026,11 +2041,6 @@ class UsbCommand : public Protothread {
                         txBuffer.sendACK();
                         break;
                     case CmdEOT: // EOT
-                        if (swapDev.getWritePos()) {
-                            // Save last partial block
-                            // xxx check busy here
-                            swapDev.startWriteBlock();
-                        }
                         printer.cmdEot();
                         txBuffer.sendACK();
                         break;

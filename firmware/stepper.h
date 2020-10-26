@@ -44,6 +44,7 @@ extern volatile int32_t current_pos_steps[NUM_AXIS];
 
 // Initialize and start the stepper motor subsystem
 void st_init();
+void st_disableSteppers();
 
 template<typename MOVE>
 void st_set_position_steps(long value);
@@ -473,7 +474,7 @@ typedef struct {
 } stepData;
 
 // Size of step buffer, entries are stepData structs.
-#define StepBufferLen  256
+#define StepBufferLen  1024
 
 class StepBuffer {
 
@@ -636,6 +637,8 @@ class StepBuffer {
 
                 static bool wasnotempty = true;
                 static uint32_t minTimer = 0xffff;
+                static uint32_t lastSize = 0;
+                static uint32_t lastSize2 = 0;
 
                 if (empty()) {
 
@@ -643,26 +646,30 @@ class StepBuffer {
                     HAL_SET_STEPPER_TIMER(2000); // 1kHz.
                     stepbits = 0;
 // xxx check for underruns
-                    if (wasnotempty && printer.printerState == Printer::StateStart) {
-                        if (printer.bufferLow < INT16_MAX)
-                            printer.bufferLow++;
+                    if (wasnotempty && (printer.printerState == Printer::StateStart)) {
 
-                        txBuffer.sendResponseStart(RespUnderrun);
-                        txBuffer.sendResponseValue((uint32_t)byteSize());
-                        txBuffer.sendResponseValue(minTimer);
-                        txBuffer.sendResponseEnd();
+                        if (! (printer.eotWasReceived() && (swapDev.available()==0))) {
 
-                        wasnotempty = false;
+                            if (printer.bufferLow < INT16_MAX)
+                                printer.bufferLow++;
+
+                            printer.underrunError(lastSize, lastSize2, minTimer);
+                            // notreached
+                        }
                     }
+                    wasnotempty = false;
                 }
                 else {
+
+                    lastSize2 = lastSize;
+                    lastSize = byteSize();
 
                     stepData &sd = pop();
 
                     // set dir and pin and short timer
                     uint16_t t = sd.timer;
 
-                    massert(t > 20);
+                    massert(t >= 20);
 
                     if (t < minTimer)
                         minTimer = t;

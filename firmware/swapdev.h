@@ -218,12 +218,12 @@ public:
         TaskStart(ioStats, TaskWrite);
         PT_WAIT_WHILE(writeBlock(writeBlockNumber, writeBuffer));
         TaskEnd(ioStats, TaskWrite);
-
         //////////////////////////////////////////////////////////////////////////////////          
 
         // Update size 
         wp = getWritePos();
         if (wp) { // Last block
+
             size += wp;
             writePos = 0;
             #if defined(HEAVYDEBUG)

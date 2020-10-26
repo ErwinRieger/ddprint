@@ -225,8 +225,8 @@ class Printer(Serial):
 
         elif respCode == RespUnderrun:
 
-            (p1, p2) = struct.unpack("<II", payload)
-            self.gui.logError("ERROR: Underrun size: %d minTimer: %d" % (p1, p1))
+            (p1, p2, p3, p4, p5) = struct.unpack("<IIIII", payload)
+            self.gui.logError("ERROR: lastsize: %d, lastsize2: %d, minTimer: %d, swap: %d, sdreader: %d" % (p1, p2, p3, p4, p5))
             if handleError:
                 raise FatalPrinterError(ResponseNames[respCode])
 
