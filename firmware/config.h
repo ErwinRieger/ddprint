@@ -54,7 +54,7 @@
     //
     // Use Bourns ems22a Rotary Encoder as a flowrate sensor
     #define BournsEMS22AFS 1
-    #define STEPPER_MINPULSE 1 /* µS */
+    #define STEPPER_MINPULSE 2 /* µS */
     // #define COLDEXTRUSION 1
 #else
     #error Unknown MOTHERBOARD in config.h
