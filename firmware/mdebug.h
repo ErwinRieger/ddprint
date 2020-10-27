@@ -110,6 +110,8 @@ extern void *__brkval;
         uint32_t longest;
     };
     #define TaskStart(timings, looptask) { timings[looptask].taskStart = millis(); }
+    #define GetTaskStart(timings, looptask) (timings[looptask].taskStart) 
+    #define GetTaskDuration(timings, looptask) (millis() - timings[looptask].taskStart)
     #define TaskEnd(timings, looptask) { uint32_t taskDuration = millis() - timings[looptask].taskStart; timings[looptask].ncalls += 1; timings[looptask].sumcall += taskDuration; if (taskDuration > timings[looptask].longest) timings[looptask].longest = taskDuration; }
 
 #else

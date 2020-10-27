@@ -191,6 +191,9 @@ public:
         }
         TaskEnd(ioStats, TaskRead);
 
+        // xxx hack
+        massert(GetTaskDuration(ioStats, TaskRead) <= 5);
+
         uint16_t readBytes = STD min(available(), (uint32_t)SwapSectorSize);
 
         // printf("size: %d, readpos: %d, read bytes: %d\n", size, readPos, readBytes);
@@ -213,6 +216,11 @@ public:
         PT_WAIT_UNTIL(busyWriting);
 
         simassert((size % SwapSectorSize) == 0); // block write after final partial block is invalid
+
+
+
+        // xxx hack
+   // uint32_t t = GetTaskDuration(ioStats, TaskWrite);
 
         //////////////////////////////////////////////////////////////////////////////////          
         TaskStart(ioStats, TaskWrite);
