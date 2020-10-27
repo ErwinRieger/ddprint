@@ -445,6 +445,7 @@ inline void st_toggle_motor_es(uint8_t stepBits, uint8_t dirbits) {
 #endif
 
 
+
 /*
 #
 # Konkurrierender zugriff auf den stepbuffer:
@@ -474,15 +475,16 @@ typedef struct {
 } stepData;
 
 // Size of step buffer, entries are stepData structs.
-#define StepBufferLen  1024
+#if defined(AVR)
+#define StepBufferLen  256
+#else
+// #define StepBufferLen  512
+#define StepBufferLen  2048
+#endif
 
 class StepBuffer {
 
         private:
-#if 0
-            stepData stepBuffer[StepBufferLen];
-            uint8_t head, tail;
-#endif
             CircularBuffer<stepData, uint32_t, StepBufferLen> stepBuffer;
             // undo uint8_t syncCount;
 
@@ -499,7 +501,7 @@ class StepBuffer {
         public:
 
             StepBuffer() {
-                stepBuffer.init(); // head = tail = 0;
+                stepBuffer.init();
                 // undo syncCount = 0;
                 miscStepperMode = HOMINGMODE;
                 stepbits = 0;
@@ -513,11 +515,11 @@ class StepBuffer {
             }
 
             FWINLINE bool empty() {
-                return stepBuffer.empty(); // return head == tail;
+                return stepBuffer.empty();
             }
 
             FWINLINE bool full() {
-                return stepBuffer.full(); // byteSize() >= (StepBufferLen-1);
+                return stepBuffer.full();
             }
 
             FWINLINE void sync() {
@@ -528,47 +530,14 @@ class StepBuffer {
                 // undo return syncCount == 0;
             // undo }
 
-#if defined(AVR)
-            // Todo: rename to size()
-            FWINLINE uint8_t byteSize() {
-                return (StepBufferLen + head) - tail;
-            }
-
-            FWINLINE void push(stepData &sd) {
-
-                simassert(! full());
-
-                stepBuffer[head++] = sd;
-            }
-
-            FWINLINE stepData & pop() {
-                // undo if (syncCount > 0)
-                    // undo syncCount--;
-                return stepBuffer[tail++];
-            }
-#else
             // Todo: rename to size()
             FWINLINE uint32_t byteSize() {
-
                 return stepBuffer.size();
-#if 0
-                CRITICAL_SECTION_START;
-                uint8_t s = (StepBufferLen + head) - tail;
-                CRITICAL_SECTION_END;
-                return s;
-#endif
             }
 
             FWINLINE void push(stepData &sd) {
                 simassert(! full());
                 stepBuffer.push(sd);
-
-#if 0
-
-                CRITICAL_SECTION_START;
-                stepBuffer[head++] = sd;
-                CRITICAL_SECTION_END;
-#endif
             }
 
             FWINLINE stepData & pop() {
@@ -576,18 +545,10 @@ class StepBuffer {
                     // undo syncCount--;
 
                 return stepBuffer.pop();
-#if 0
-                CRITICAL_SECTION_START;
-                stepData &sd = stepBuffer[tail++];
-                CRITICAL_SECTION_END;
-
-                return sd;
-#endif
             }
-#endif
 
             FWINLINE stepData & peek() {
-                return stepBuffer.peek(); // return stepBuffer[tail];
+                return stepBuffer.peek();
             }
 
             void flush() {
@@ -635,21 +596,47 @@ class StepBuffer {
             // --> To relax this situation we set the new OCR1A value as fast as possible.
             FWINLINE void runMoveSteps() {
 
+                static bool wasnotempty = true;
+static uint32_t minTimer = 0xffff;
+static uint32_t lastSize = 0;
+static uint32_t lastSize2 = 0;
+
                 if (empty()) {
 
                     // Empty buffer, nothing to step
                     HAL_SET_STEPPER_TIMER(2000); // 1kHz.
                     stepbits = 0;
+
+                    // xxx check for underruns
+                    if (wasnotempty && (printer.printerState == Printer::StateStart)) {
+                        if (! (printer.eotWasReceived() && (swapDev.available()==0))) {
+                            if (printer.bufferLow < 1)
+                                printer.bufferLow++;
+                            // else
+                            printer.underrunError(lastSize, lastSize2, minTimer);
+                            // notreached
+                      }
+                    }
+                 wasnotempty = false;
                 }
                 else {
 
+                    lastSize2 = lastSize;
+                    lastSize = byteSize();
+                     
                     stepData &sd = pop();
+
+                    uint16_t t = sd.timer;
 
                     // Set new timer value
 #if defined(HEAVYDEBUG)
-                    massert(sd.timer >= 25);
+                    massert(t >= 25);
 #endif
-                    HAL_SET_STEPPER_TIMER(sd.timer);
+
+
+if (t < minTimer)
+      minTimer = t;
+                    HAL_SET_STEPPER_TIMER(t);
 
                     // Set dir bits
                     if (sd.dirBits & 0x80) {
@@ -667,6 +654,8 @@ class StepBuffer {
                     st_step_motor<YAxisSelector>(stepbits, sd.dirBits);
                     st_step_motor<ZAxisSelector>(stepbits, sd.dirBits);
                     st_step_motor<EAxisSelector>(stepbits, sd.dirBits);
+
+                    wasnotempty = true;
                 }
             }
 

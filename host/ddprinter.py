@@ -703,11 +703,11 @@ class Printer(Serial):
 
     def getStatus(self):
 
-        valueNames = ["state", "t0", "t1", "Swap", "SDReader", "StepBuffer", "StepBufUnderRuns", "targetT1", "pwmOutput", "slippage", "extruder_pos"]
+        valueNames = ["state", "t0", "t1", "Swap", "SDReader", "StepBuffer", "StepBufUnderRuns", "targetT1", "pwmOutput", "slippage", "extruder_pos", "minBuffer"]
 
         (cmd, payload) = self.query(CmdGetStatus, doLog=False)
 
-        tup = struct.unpack("<BffIHIhHBfi", payload)
+        tup = struct.unpack("<BffIHIhHBfiI", payload)
 
         statusDict = {}
         for i in range(len(valueNames)):

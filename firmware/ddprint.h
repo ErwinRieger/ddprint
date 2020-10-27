@@ -77,6 +77,8 @@ class Printer {
 
     public:
 
+        uint32_t minBuffer;
+
         // State enum
         enum {
             StateIdle,       // The state when printer is turned on.

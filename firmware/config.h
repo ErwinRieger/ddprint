@@ -23,9 +23,6 @@
 // Compile firmware in the PID autoTune version:
 // #define PIDAutoTune 1
 
-// Use PMW3360 as a flowrate sensor
-// #define PMWFS 1
-
 #define USEExtrusionRateTable
 
 // #define PID_DEBUG // Sends hotend pid values as RespUnsolicitedMsg, type PidDebug
@@ -56,10 +53,9 @@
     // Jennyprinter
     //
     // Use Bourns ems22a Rotary Encoder as a flowrate sensor
-    // coldext #define BournsEMS22AFS 1
+    #define BournsEMS22AFS 1
     #define STEPPER_MINPULSE 1 /* µS */
-#define COLDEXTRUSION 1
-
+    // #define COLDEXTRUSION 1
 #else
     #error Unknown MOTHERBOARD in config.h
 #endif

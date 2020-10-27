@@ -1251,6 +1251,8 @@ void Printer::cmdMove(MoveType mt) {
     printerState = StateStart;
     moveType = mt;
 
+    minBuffer = 0xffff;
+
     // if (mt == MoveTypeNormal) {
         // armrun massert(homed);
     // }
@@ -1261,6 +1263,7 @@ void Printer::cmdMove(MoveType mt) {
     }
     else {
         ENABLE_STEPPER_DRIVER_INTERRUPT();
+        // minBuffer = stepBuffer.byteSize();
     }
 
     enable_x();
@@ -1631,6 +1634,7 @@ void Printer::cmdGetStatus() {
 #endif
 
     txBuffer.sendResponseValue(current_pos_steps[E_AXIS]);
+    txBuffer.sendResponseValue(minBuffer);
 
     txBuffer.sendResponseEnd();
 }
@@ -2424,15 +2428,29 @@ void loop() {
 #endif
     }
 
-    // Handle USB input
-    TaskStart(taskTiming, TaskUsbInput);
-    usbCommand.Run();
-    TaskEnd(taskTiming, TaskUsbInput);
-
     // Handle USB output
     TaskStart(taskTiming, TaskUsbOutput);
     txBuffer.Run();
     TaskEnd(taskTiming, TaskUsbOutput);
+
+    if (printer.printerState == Printer::StateStart)
+        if (! (printer.eotWasReceived() && (swapDev.available()==0))) {
+            if (stepBuffer.byteSize())
+                printer.minBuffer = min(stepBuffer.byteSize(), printer.minBuffer);
+        }
+
+    // If printing, then read stepper data from mass storage and push it to
+    // the stepper buffer.
+    TaskStart(taskTiming, TaskFillBuffer);
+    fillBufferTask.Run();
+    TaskEnd(taskTiming, TaskFillBuffer);
+
+    // massert(! fbread);
+
+    // Handle USB input
+    TaskStart(taskTiming, TaskUsbInput);
+    usbCommand.Run();
+    TaskEnd(taskTiming, TaskUsbInput);
 
     // Write stepper data to mass storage
     TaskStart(taskTiming, TaskSwapDev);
