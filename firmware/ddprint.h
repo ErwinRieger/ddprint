@@ -151,6 +151,7 @@ class Printer {
 #if defined(POWER_BUTTON)
         void checkPowerOff(unsigned long ms);
 #endif
+        bool stepsAvailable();
 };
 
 extern Printer printer;

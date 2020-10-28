@@ -812,7 +812,8 @@ def manualMove(args, printer, parser, planner, axis, distance, feedrate=0, absol
 
 def printFile(args, printer, parser, planner, logObj, gfile, t0, t0_wait, t1, doLog=False):
 
-    printer.commandInit(args)
+    printer.commandInit(args, pidSet="pidMeasure")
+    # printer.commandInit(args)
     ddhome.home(args, printer, parser, planner)
 
     if args.dummyTempTable:
@@ -2600,13 +2601,13 @@ def initMatProfile(args, printerName):
 
 ####################################################################################################
 
-def initParser(args, mode=None, gui=None, travelMovesOnly=False):
+def initParser(args, mode=None, gui=None, travelMovesOnly=False, pidSet="pidPrint"):
 
     # Create the Printer singleton instance
     printer = Printer(gui=gui)
 
     # Create printer profile
-    printer.commandInit(args)
+    printer.commandInit(args, pidSet)
 
     # Create material profile singleton instance
     if "mat" in args:

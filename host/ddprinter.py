@@ -438,6 +438,8 @@ class Printer(Serial):
             self.commandInitDone = True
             return 
 
+        assert(pidSet=="pidMeasure")
+
         settings = self.printerProfile.getSettingsI(pidSet)
 
         # todo: move all settings into CmdSetHostSettings call

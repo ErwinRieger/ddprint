@@ -600,14 +600,19 @@ class StepBuffer {
 static uint32_t minTimer = 0xffff;
 static uint32_t lastSize = 0;
 static uint32_t lastSize2 = 0;
-
                 if (empty()) {
 
                     // Empty buffer, nothing to step
                     HAL_SET_STEPPER_TIMER(2000); // 1kHz.
                     stepbits = 0;
 
+                    // massert(! printer.stepsAvailable() ); 
+
                     // xxx check for underruns
+                    if (wasnotempty && printer.stepsAvailable())
+                            printer.underrunError(lastSize, lastSize2, minTimer);
+
+#if 0
                     if (wasnotempty && (printer.printerState == Printer::StateStart)) {
                         if (! (printer.eotWasReceived() && (swapDev.available()==0))) {
                             if (printer.bufferLow < 1)
@@ -617,6 +622,7 @@ static uint32_t lastSize2 = 0;
                             // notreached
                       }
                     }
+#endif
                  wasnotempty = false;
                 }
                 else {

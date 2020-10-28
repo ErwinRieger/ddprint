@@ -1758,6 +1758,11 @@ void Printer::checkPowerOff(unsigned long m) {
 }
 #endif
 
+bool Printer::stepsAvailable() {
+
+    return sDReader.available();
+}
+
 Printer printer;
 
 class UsbCommand : public Protothread {

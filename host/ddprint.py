@@ -264,7 +264,7 @@ def main():
 
     elif args.mode == "print":
 
-        (printer, parser, planner) = util.initParser(args, mode=args.mode)
+        (printer, parser, planner) = util.initParser(args, mode=args.mode, pidSet="pidMeasure")
 
         t0 = planner.matProfile.getBedTemp()
         t0Wait = min(t0, printer.printerProfile.getWeakPowerBedTemp())
@@ -275,7 +275,7 @@ def main():
 
     elif args.mode == "pre":
 
-        (printer, parser, planner) = util.initParser(args, mode=args.mode)
+        (printer, parser, planner) = util.initParser(args, mode=args.mode, pidSet="pidMeasure")
 
         # Virtuelle position des druckkopfes falls 'gehomed'
         homePosMM = planner.getHomePos()[0]
