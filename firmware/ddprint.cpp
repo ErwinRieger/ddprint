@@ -1631,7 +1631,7 @@ void Printer::cmdGetStatus() {
     txBuffer.sendResponseValue(swapDev.available());
     txBuffer.sendResponseValue(sDReader.available());
     // xxx undo txBuffer.sendResponseUint8(stepBuffer.byteSize());
-    txBuffer.sendResponseValue(stepBuffer.byteSize());
+    txBuffer.sendResponseValue(stepBuffer.size());
     txBuffer.sendResponseInt16(bufferLow);
     txBuffer.sendResponseValue(target_temperature[0]);
     txBuffer.sendResponseUint8(tempControl.getPwmOutput());
@@ -1822,7 +1822,7 @@ class UsbCommand : public Protothread {
             // drainEnd = millis() + 50;
             drainEnd = millis() + 10;
             // while (millis() < drainEnd) {
-                serialPort.flush0();
+                serialPort.stepBufferInit();
             // }
         }
 
@@ -1856,12 +1856,12 @@ class UsbCommand : public Protothread {
             unsigned long ts = millis();
 
             if ((drainEnd > 0) && (ts < drainEnd)) {
-                serialPort.flush0();
+                serialPort.stepBufferInit();
                 return NothingAvailable;
             }
             drainEnd = 0;
 
-            if (serialPort._available() >= nChars) {
+            if (serialPort.size() >= nChars) {
 
                 startTS = ts; // reset timeout 
                 return CharsAvailable;
@@ -1893,7 +1893,7 @@ class UsbCommand : public Protothread {
             // drainEnd = 0;
 
             // Read startbyte
-            PT_WAIT_UNTIL( serialPort._available() && ( serialPort.readNoCheckNoCobs() == SOH ) );
+            PT_WAIT_UNTIL( serialPort.size() && ( serialPort.readNoCheckNoCobs() == SOH ) );
             
             startTS = millis();
 
@@ -1978,10 +1978,10 @@ class UsbCommand : public Protothread {
                     serialNumber = 1;
 
 #if defined(HEAVYDEBUG)
-                massert(serialPort._available() == 3);
+                massert(serialPort.size() == 3);
 #endif
 
-                serialPort.flush0(); // clear rx buffer
+                serialPort.stepBufferInit(); // clear rx buffer
 
                 // USBACK;
                 txBuffer.sendACK();
@@ -2294,15 +2294,15 @@ class UsbCommand : public Protothread {
                     default:
                         txBuffer.sendSimpleResponse(RespUnknownCommand, commandByte);
                         #if defined(HEAVYDEBUG)
-                        bytesLeft = serialPort._available();
+                        bytesLeft = serialPort.size();
                         #endif
                 }
 
                 #if defined(HEAVYDEBUG)
-                massert(serialPort._available() == bytesLeft);
+                massert(serialPort.size() == bytesLeft);
                 #endif
 
-                serialPort.flush0(); // clear rx buffer
+                serialPort.stepBufferInit(); // clear rx buffer
             }
 
             PT_RESTART();
@@ -2442,8 +2442,8 @@ void loop() {
 
     if (printer.printerState == Printer::StateStart)
         if (! (printer.eotWasReceived() && (swapDev.available()==0))) {
-            if (stepBuffer.byteSize())
-                printer.minBuffer = min(stepBuffer.byteSize(), printer.minBuffer);
+            if (stepBuffer.size())
+                printer.minBuffer = min(stepBuffer.size(), printer.minBuffer);
         }
 
     // If printing, then read stepper data from mass storage and push it to

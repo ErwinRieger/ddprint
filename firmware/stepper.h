@@ -482,10 +482,11 @@ typedef struct {
 #define StepBufferLen  2048
 #endif
 
-class StepBuffer {
+typedef CircularBuffer<stepData, uint32_t, StepBufferLen> StepBufferBase;
+
+class StepBuffer: public StepBufferBase {
 
         private:
-            CircularBuffer<stepData, uint32_t, StepBufferLen> stepBuffer;
             // undo uint8_t syncCount;
 
             // Mode of misc stepper timer:
@@ -501,7 +502,9 @@ class StepBuffer {
         public:
 
             StepBuffer() {
-                stepBuffer.init();
+
+                stepBufferInit();
+
                 // undo syncCount = 0;
                 miscStepperMode = HOMINGMODE;
                 stepbits = 0;
@@ -514,14 +517,6 @@ class StepBuffer {
                 CRITICAL_SECTION_END;
             }
 
-            FWINLINE bool empty() {
-                return stepBuffer.empty();
-            }
-
-            FWINLINE bool full() {
-                return stepBuffer.full();
-            }
-
             FWINLINE void sync() {
                 // undo syncCount = byteSize();
             }
@@ -530,30 +525,8 @@ class StepBuffer {
                 // undo return syncCount == 0;
             // undo }
 
-            // Todo: rename to size()
-            FWINLINE uint32_t byteSize() {
-                return stepBuffer.size();
-            }
-
-            FWINLINE void push(stepData &sd) {
-                simassert(! full());
-                stepBuffer.push(sd);
-            }
-
-            FWINLINE stepData & pop() {
-                // undo if (syncCount > 0)
-                    // undo syncCount--;
-
-                return stepBuffer.pop();
-            }
-
-            FWINLINE stepData & peek() {
-                return stepBuffer.peek();
-            }
-
             void flush() {
-                stepBuffer.init(); // head = tail = 0;
-                // undo syncCount = 0;
+                stepBufferInit();
             }
 
             void homingMode() {
@@ -597,52 +570,31 @@ class StepBuffer {
             FWINLINE void runMoveSteps() {
 
                 static bool wasnotempty = true;
-// static uint32_t minTimer = 0xffff;
-// static uint32_t lastSize = 0;
-// static uint32_t lastSize2 = 0;
+
                 if (empty()) {
 
                     // Empty buffer, nothing to step
                     HAL_SET_STEPPER_TIMER(2000); // 1kHz.
                     stepbits = 0;
 
-                    // massert(! printer.stepsAvailable() ); 
-
-                    // xxx check for underruns
+                    // Check for step buffer underruns
                     if (wasnotempty && printer.stepsAvailable())
                             printer.underrunError();
 
-#if 0
-                    if (wasnotempty && (printer.printerState == Printer::StateStart)) {
-                        if (! (printer.eotWasReceived() && (swapDev.available()==0))) {
-                            if (printer.bufferLow < 1)
-                                printer.bufferLow++;
-                            // else
-                            printer.underrunError(lastSize, lastSize2, minTimer);
-                            // notreached
-                      }
-                    }
-#endif
-                 wasnotempty = false;
+                    wasnotempty = false;
                 }
                 else {
 
-                    // lastSize2 = lastSize;
-                    // lastSize = byteSize();
-                     
                     stepData &sd = pop();
 
-                    uint16_t t = sd.timer; //  - (2*STEPPER_MINPULSE); // correction: min step width z.b. 2uS -> 4 timer takte
+                    uint16_t t = sd.timer;
 
                     // Set new timer value
 #if defined(HEAVYDEBUG)
                     massert(t >= 25);
 #endif
 
-
-// if (t < minTimer)
-      // minTimer = t;
-                    HAL_SET_STEPPER_TIMER(t - (2*STEPPER_MINPULSE));
+                    HAL_SET_STEPPER_TIMER(t - (2*STEPPER_MINPULSE)); // correction: min step width z.b. 2uS -> 4 timer takte
 
                     // Set dir bits
                     if (sd.dirBits & 0x80) {

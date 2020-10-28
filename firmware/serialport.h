@@ -29,6 +29,7 @@
 #pragma once
 
 #include <stdint.h>
+#include "ringbuffer.h"
 #include "mdebug.h"
 
 #if !defined(SERIAL_PORT)
@@ -63,18 +64,20 @@
 // Size of tx buffer in bytes
 #define RX_BUFFER_SIZE 256
 
+typedef CircularBuffer<uint8_t, uint8_t, RX_BUFFER_SIZE> SerialPortBase;
+
 //
 // stm32 port:
 // Note: rx/tx buffer memory wasted in struct usart_dev.
 //
-class SerialPort //: public Stream
+class SerialPort: public SerialPortBase
 {
 
   private:
 
-    unsigned char buffer[RX_BUFFER_SIZE];
-    uint8_t head;
-    uint8_t tail;
+    // unsigned char buffer[RX_BUFFER_SIZE];
+    // uint8_t head;
+    // uint8_t tail;
 
     // Length of cobs block payload
     uint8_t cobsLen;
@@ -90,7 +93,7 @@ class SerialPort //: public Stream
     SerialPort();
 
     void begin(long);
-    uint8_t peekN(uint8_t index);
+    // uint8_t peekN(uint8_t index);
     void  peekChecksum(uint16_t *checksum, uint8_t count);
 
     void cobsInit(uint16_t payloadLength);
@@ -111,27 +114,20 @@ class SerialPort //: public Stream
     int32_t readInt32NoCheckCobs();
     uint32_t readUInt32NoCheckCobs();
 
-    inline void flush0(void) {
-        head = tail = 0;
-    }
-
-    inline uint8_t _available(void) {
-      return head - tail;
-    }
-
     inline void store_char(unsigned char c);
 };
 
 inline void SerialPort::store_char(unsigned char c) {
 
         if (c == 0x0) { // SOH
-            flush0();
+            stepBufferInit();
         }
         else {
             if (head == 0) {
                 // Lost SOH
-                flush0();
-                buffer[head++] = 0x0;
+                stepBufferInit();
+                // buffer[head++] = 0x0;
+                pushVar(0x0);
             }
 #if defined(HEAVYDEBUG)
             else {
@@ -140,7 +136,8 @@ inline void SerialPort::store_char(unsigned char c) {
 #endif
         }
 
-        buffer[head++] = c;
+        // buffer[head++] = c;
+        push(c);
     }
 
 

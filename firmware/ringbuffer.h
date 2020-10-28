@@ -8,7 +8,7 @@ struct CircularBuffer {
     volatile IndexType head;
     volatile IndexType tail;
 
-    void init() { head = tail = 0; }
+    void stepBufferInit() { head = tail = 0; }
 
     IndexType mask(IndexType val)  { return val & (BufferSize - 1); }
 
@@ -16,17 +16,20 @@ struct CircularBuffer {
     bool full()     { return size() == BufferSize; }
     IndexType size()     { return head - tail; }
 
-    // Called from application
     void push(ElementType& val)  {
         
         IndexType h = head;
-                // CRITICAL_SECTION_START;
         array[mask(h)] = val;
-                // CRITICAL_SECTION_END;
         head = h+1;
     }
 
-    // Called from stepper ISR
+    void pushVar(ElementType val)  {
+        
+        IndexType h = head;
+        array[mask(h)] = val;
+        head = h+1;
+    }
+
     ElementType &pop() {
 
         IndexType t = tail;
@@ -35,5 +38,6 @@ struct CircularBuffer {
         return val;
     }
     ElementType &peek() { return array[mask(tail)]; }
+    ElementType &peekN(IndexType index) { return array[mask(tail+index)]; }
 };
 
