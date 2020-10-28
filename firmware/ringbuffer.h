@@ -8,7 +8,7 @@ struct CircularBuffer {
     volatile IndexType head;
     volatile IndexType tail;
 
-    void stepBufferInit() { head = tail = 0; }
+    void ringBufferInit() { head = tail = 0; }
 
     IndexType mask(IndexType val)  { return val & (BufferSize - 1); }
 

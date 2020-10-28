@@ -503,7 +503,7 @@ class StepBuffer: public StepBufferBase {
 
             StepBuffer() {
 
-                stepBufferInit();
+                ringBufferInit();
 
                 // undo syncCount = 0;
                 miscStepperMode = HOMINGMODE;
@@ -526,7 +526,7 @@ class StepBuffer: public StepBufferBase {
             // undo }
 
             void flush() {
-                stepBufferInit();
+                ringBufferInit();
             }
 
             void homingMode() {

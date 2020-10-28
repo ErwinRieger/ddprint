@@ -35,12 +35,8 @@ SerialPort::SerialPort()
 
 void SerialPort::init()
 {
-    stepBufferInit();
+    ringBufferInit();
 }
-
-// uint8_t SerialPort::peekN(uint8_t index) {
-    // return buffer[tail+index];
-// }
 
 void SerialPort::peekChecksum(uint16_t *checksum, uint8_t count) {
 
@@ -89,7 +85,7 @@ uint8_t SerialPort::readNoCheckCobs(void)
 
 uint8_t SerialPort::readNoCheckNoCobs(void)
 {
-    return pop(); // buffer[tail++];
+    return pop();
 }
 
 float SerialPort::readFloatNoCheckCobs()

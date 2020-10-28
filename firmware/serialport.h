@@ -75,10 +75,6 @@ class SerialPort: public SerialPortBase
 
   private:
 
-    // unsigned char buffer[RX_BUFFER_SIZE];
-    // uint8_t head;
-    // uint8_t tail;
-
     // Length of cobs block payload
     uint8_t cobsLen;
 
@@ -93,7 +89,6 @@ class SerialPort: public SerialPortBase
     SerialPort();
 
     void begin(long);
-    // uint8_t peekN(uint8_t index);
     void  peekChecksum(uint16_t *checksum, uint8_t count);
 
     void cobsInit(uint16_t payloadLength);
@@ -120,13 +115,12 @@ class SerialPort: public SerialPortBase
 inline void SerialPort::store_char(unsigned char c) {
 
         if (c == 0x0) { // SOH
-            stepBufferInit();
+            ringBufferInit();
         }
         else {
             if (head == 0) {
                 // Lost SOH
-                stepBufferInit();
-                // buffer[head++] = 0x0;
+                ringBufferInit();
                 pushVar(0x0);
             }
 #if defined(HEAVYDEBUG)
@@ -136,7 +130,6 @@ inline void SerialPort::store_char(unsigned char c) {
 #endif
         }
 
-        // buffer[head++] = c;
         push(c);
     }
 

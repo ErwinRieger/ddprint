@@ -30,6 +30,7 @@
 #include "Protothread.h"
 #include "mdebug.h"
 #include "crc16.h"
+#include "ringbuffer.h"
 
 // Size of tx buffer in bytes
 // Note: Using a buffer size of 256 bytes has two big advantages:
@@ -39,6 +40,8 @@
 //     are needed.
 #define TxBufferLen  256
 
+typedef CircularBuffer<uint8_t, uint8_t, TxBufferLen> TxBufferBase;
+
 // Serial communication ACK
 #define RESPUSBACK 0x6
 
@@ -46,11 +49,9 @@
 // stm32 port:
 // Note: rx/tx buffer memory wasted in struct usart_dev.
 //
-class TxBuffer: public Protothread {
+class TxBuffer: public Protothread, public TxBufferBase {
 
     private:
-        uint8_t txBuffer[TxBufferLen];
-        uint8_t head, tail;
 
         // Checksum for response messages
         uint16_t checksum;
@@ -72,7 +73,7 @@ public:
 // #endif
 
             if (! full()) {
-                txBuffer[head++] = c;
+                push(c);
                 return true;
             }
             return false;
@@ -84,7 +85,7 @@ public:
                 // printf("start cobs at %d\n", head);
                 cobsStart = head;
                 pushByte(0x1);
-                txBuffer[lenIndex] += 1;
+                array[lenIndex] += 1;
             }
 
             if (c == 0) {
@@ -94,39 +95,17 @@ public:
             }
 
             // printf("add '0x%x' at %d\n", c, head);
-            txBuffer[cobsStart] += 1;
+            array[cobsStart] += 1;
             pushByte(c);
-            txBuffer[lenIndex] += 1;
+            array[lenIndex] += 1;
         }
-
-        FWINLINE uint8_t pop() {
-            return txBuffer[tail++];
-        }
-
-        FWINLINE uint8_t peek() {
-            return txBuffer[tail];
-        }
-
 
     public:
         TxBuffer() {
-            head = tail = 0;
+            ringBufferInit();
             nMessages = 0;
             cobsStart = -1;
         };
-
-        // Todo: rename to size()
-        FWINLINE uint8_t byteSize() {
-            return (uint16_t)(TxBufferLen + head) - tail;
-        }
-
-        FWINLINE bool empty() {
-            return head == tail;
-        }
-
-        FWINLINE bool full() {
-            return byteSize() >= (TxBufferLen-1);
-        }
 
         FWINLINE void sendACK() {
             sendSimpleResponse(RESPUSBACK);
@@ -236,10 +215,10 @@ public:
             if (cobsStart != -1) {
                 // Cobs block does not end with 0x0, mark block as a
                 // 'maximum length code block'.
-                txBuffer[cobsStart] = 0xff;
+                array[cobsStart] = 0xff;
             }
 
-            txBuffer[head] = 0x0; // Terminate loop in Run() if last response in buffer
+            array[head] = 0x0; // Terminate loop in Run() if last response in buffer
             nMessages++;
         }
 

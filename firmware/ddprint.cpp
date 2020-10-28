@@ -1822,7 +1822,7 @@ class UsbCommand : public Protothread {
             // drainEnd = millis() + 50;
             drainEnd = millis() + 10;
             // while (millis() < drainEnd) {
-                serialPort.stepBufferInit();
+                serialPort.ringBufferInit();
             // }
         }
 
@@ -1856,7 +1856,7 @@ class UsbCommand : public Protothread {
             unsigned long ts = millis();
 
             if ((drainEnd > 0) && (ts < drainEnd)) {
-                serialPort.stepBufferInit();
+                serialPort.ringBufferInit();
                 return NothingAvailable;
             }
             drainEnd = 0;
@@ -1981,7 +1981,7 @@ class UsbCommand : public Protothread {
                 massert(serialPort.size() == 3);
 #endif
 
-                serialPort.stepBufferInit(); // clear rx buffer
+                serialPort.ringBufferInit(); // clear rx buffer
 
                 // USBACK;
                 txBuffer.sendACK();
@@ -2302,7 +2302,7 @@ class UsbCommand : public Protothread {
                 massert(serialPort.size() == bytesLeft);
                 #endif
 
-                serialPort.stepBufferInit(); // clear rx buffer
+                serialPort.ringBufferInit(); // clear rx buffer
             }
 
             PT_RESTART();
