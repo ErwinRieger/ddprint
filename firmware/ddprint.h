@@ -113,6 +113,7 @@ class Printer {
         void cmdMove(MoveType);
         void cmdEot();
         bool eotWasReceived() { return eotReceived; }
+        void underrunError();
         void underrunError(uint32_t lastSize, uint32_t lastSize2, uint32_t minTimer);
 
         void setHomePos( int32_t x, int32_t y, int32_t z);

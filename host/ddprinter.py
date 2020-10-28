@@ -426,7 +426,7 @@ class Printer(Serial):
         self.resetLineNumber()
 
     # Initialize serial interface and download printer settings.
-    def commandInit(self, args, pidSet="pidPrint"):
+    def commandInit(self, args, pidSet="pidMeasure"):
 
         if not self.isOpen() and args.mode != "pre":
             self.initSerial(args.device, args.baud, True)

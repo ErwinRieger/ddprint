@@ -597,9 +597,9 @@ class StepBuffer {
             FWINLINE void runMoveSteps() {
 
                 static bool wasnotempty = true;
-static uint32_t minTimer = 0xffff;
-static uint32_t lastSize = 0;
-static uint32_t lastSize2 = 0;
+// static uint32_t minTimer = 0xffff;
+// static uint32_t lastSize = 0;
+// static uint32_t lastSize2 = 0;
                 if (empty()) {
 
                     // Empty buffer, nothing to step
@@ -610,7 +610,7 @@ static uint32_t lastSize2 = 0;
 
                     // xxx check for underruns
                     if (wasnotempty && printer.stepsAvailable())
-                            printer.underrunError(lastSize, lastSize2, minTimer);
+                            printer.underrunError();
 
 #if 0
                     if (wasnotempty && (printer.printerState == Printer::StateStart)) {
@@ -627,8 +627,8 @@ static uint32_t lastSize2 = 0;
                 }
                 else {
 
-                    lastSize2 = lastSize;
-                    lastSize = byteSize();
+                    // lastSize2 = lastSize;
+                    // lastSize = byteSize();
                      
                     stepData &sd = pop();
 
@@ -640,8 +640,8 @@ static uint32_t lastSize2 = 0;
 #endif
 
 
-if (t < minTimer)
-      minTimer = t;
+// if (t < minTimer)
+      // minTimer = t;
                     HAL_SET_STEPPER_TIMER(t - (2*STEPPER_MINPULSE));
 
                     // Set dir bits

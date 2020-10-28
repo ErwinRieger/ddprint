@@ -138,7 +138,7 @@ class Advance (object):
             self.advIncrease = args.advIncrease
             self.advStepHeight = args.advStepHeight
 
-        self.__kAdv = args.kAdvance
+        self.__kAdv = args.kadvance
         if self.__kAdv == None:
             self.__kAdv = planner.matProfile.getKAdvI()
 
@@ -1673,6 +1673,8 @@ class Advance (object):
 
         nAccel = 0
         if move.accelTime():
+
+            # print "v0, nominalSpeed:", v0, nominalSpeed
 
             accelClocks = self.planner.accelRamp(
                 steps_per_mm,

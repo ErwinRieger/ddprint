@@ -540,9 +540,11 @@ class FillBufferTask : public Protothread {
             switch (cmd) {
 
                 case CmdG1:
+                case CmdG1Packed:
                     goto HandleCmdG1;
 
                 case CmdG1Raw:
+                case CmdG1RawPacked:
                     goto HandleCmdG1Raw;
 
                 case CmdSyncFanSpeed:
@@ -1228,6 +1230,21 @@ void Printer::cmdEot() {
         // xxx check busy here
         swapDev.startWriteBlock();
     }
+}
+
+void Printer::underrunError() {
+
+    printer.bufferLow = min((uint32_t)printer.bufferLow+1, (uint32_t)0xffff);
+
+    txBuffer.flush();
+    txBuffer.sendResponseStart(RespUnderrun);
+    txBuffer.sendResponseValue((uint32_t)0);
+    txBuffer.sendResponseValue((uint32_t)0);
+    txBuffer.sendResponseValue((uint32_t)0);
+    txBuffer.sendResponseValue(swapDev.available());
+    txBuffer.sendResponseValue((uint32_t)sDReader.available());
+    txBuffer.sendResponseEnd();
+    kill();
 }
 
 void Printer::underrunError(uint32_t lastSize, uint32_t lastSize2, uint32_t minTimer) {
@@ -1926,24 +1943,9 @@ class UsbCommand : public Protothread {
                     PT_RESTART();   // does a return
                 }
 
-                // if (commandByte != CmdBlock) 
                 if ((commandByte != CmdBlock) && (commandByte != CmdBlockPacked)) {
 
-                   // xxx
-                    // swapDev.addByte(commandByte); // xxx todo: use CmdG1Packed CmdG1RawPacked ...
-
-                    switch (commandByte) {
-                        case CmdG1Packed:
-                            swapDev.addByte(CmdG1); // xxx todo: use CmdG1Packed CmdG1RawPacked ...
-                            break;
-                        case CmdG1RawPacked:
-                            swapDev.addByte(CmdG1Raw);
-                            break;
-                        default:
-                            swapDev.addByte(commandByte);
-                            break;
-                    }
-
+                    swapDev.addByte(commandByte);
                     PT_WAIT_WHILE( swapDev.isBusyWriting() );
                 }
 

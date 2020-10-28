@@ -20,10 +20,10 @@ struct CircularBuffer {
     void push(ElementType& val)  {
         
         IndexType h = head;
-        head = h+1;
-                CRITICAL_SECTION_START;
+                // CRITICAL_SECTION_START;
         array[mask(h)] = val;
-                CRITICAL_SECTION_END;
+                // CRITICAL_SECTION_END;
+        head = h+1;
     }
 
     // Called from stepper ISR

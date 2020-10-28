@@ -827,8 +827,6 @@ def printFile(args, printer, parser, planner, logObj, gfile, t0, t0_wait, t1, do
 
     (f, preloadLines) = parser.preParse(gfile, args.baud)
 
-    preloadLines=100 # xxx
-
     logObj.log( "Nuber of lines to preload: %d" % preloadLines)
 
     lineNr = 0
@@ -2601,7 +2599,7 @@ def initMatProfile(args, printerName):
 
 ####################################################################################################
 
-def initParser(args, mode=None, gui=None, travelMovesOnly=False, pidSet="pidPrint"):
+def initParser(args, mode=None, gui=None, travelMovesOnly=False, pidSet="pidMeasure"):
 
     # Create the Printer singleton instance
     printer = Printer(gui=gui)
