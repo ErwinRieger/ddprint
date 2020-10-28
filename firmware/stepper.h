@@ -626,7 +626,7 @@ static uint32_t lastSize2 = 0;
                      
                     stepData &sd = pop();
 
-                    uint16_t t = sd.timer;
+                    uint16_t t = sd.timer; //  - (2*STEPPER_MINPULSE); // correction: min step width z.b. 2uS -> 4 timer takte
 
                     // Set new timer value
 #if defined(HEAVYDEBUG)
@@ -636,7 +636,7 @@ static uint32_t lastSize2 = 0;
 
 if (t < minTimer)
       minTimer = t;
-                    HAL_SET_STEPPER_TIMER(t);
+                    HAL_SET_STEPPER_TIMER(t - (2*STEPPER_MINPULSE));
 
                     // Set dir bits
                     if (sd.dirBits & 0x80) {
