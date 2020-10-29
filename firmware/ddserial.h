@@ -40,7 +40,7 @@
 //     are needed.
 #define TxBufferLen  256
 
-typedef oldCircularBuffer<uint8_t, uint8_t, TxBufferLen> TxBufferBase;
+typedef oldCircularBuffer<uint8_t, uint16_t, TxBufferLen> TxBufferBase;
 
 // Serial communication ACK
 #define RESPUSBACK 0x6
@@ -60,8 +60,8 @@ class TxBuffer: public Protothread, public TxBufferBase {
 
         uint8_t charToSend;
         // Start pos of cobs block, -1 if no cobs block started yet
-        int16_t cobsStart;
-        uint8_t lenIndex;
+        uint16_t cobsStart;
+        uint16_t lenIndex;
 
         int16_t cf, csh, csl;
 
@@ -81,30 +81,30 @@ public:
 
         FWINLINE void pushCharCobs(uint8_t c) {
 
-            if (cobsStart == -1) {
+            if (cobsStart == 0xffff) {
                 // printf("start cobs at %d\n", head);
-                cobsStart = head;
+                cobsStart = x_head;
                 pushByte(0x1);
-                array[lenIndex] += 1;
+                x_array[mask(lenIndex)] += 1;
             }
 
             if (c == 0) {
                 // printf("end 0 at %d\n", head);
-                cobsStart = -1;
+                cobsStart = 0xffff;
                 return;
             }
 
             // printf("add '0x%x' at %d\n", c, head);
-            array[cobsStart] += 1;
+            x_array[mask(cobsStart)] += 1;
             pushByte(c);
-            array[lenIndex] += 1;
+            x_array[mask(lenIndex)] += 1;
         }
 
     public:
         TxBuffer() {
             ringBufferInit();
             nMessages = 0;
-            cobsStart = -1;
+            cobsStart = 0xffff;
         };
 
         FWINLINE void sendACK() {
@@ -138,7 +138,7 @@ public:
 
                     // printf("%02x", charToSend);
 
-                    tail++;
+                    x_tail++;
 
                     checksum = _crc_ccitt_update(checksum, charToSend);
 
@@ -186,7 +186,7 @@ public:
 
                 nMessages--;
                 // Init cobs encoder
-                cobsStart = -1;
+                cobsStart = 0xffff;
             }
 
             PT_RESTART();
@@ -196,11 +196,11 @@ public:
         void sendResponseStart(uint8_t respCode) {
 
             // Init cobs encoder
-            cobsStart = -1;
+            cobsStart = 0xffff;
 
             if (! pushByte(0x0)) return; // SOH
             if (! pushByte(respCode)) return;
-            lenIndex = head;
+            lenIndex = x_head;
             pushByte(1);
         }
 
@@ -208,17 +208,17 @@ public:
 
             if (full()) {
                 // Rollback
-                head = lenIndex - 2;
+                x_head = lenIndex - 2;
                 return;
             }
 
-            if (cobsStart != -1) {
+            if (cobsStart != 0xffff) {
                 // Cobs block does not end with 0x0, mark block as a
                 // 'maximum length code block'.
-                array[cobsStart] = 0xff;
+                x_array[mask(cobsStart)] = 0xff;
             }
 
-            array[head] = 0x0; // Terminate loop in Run() if last response in buffer
+            x_array[mask(x_head)] = 0x0; // Terminate loop in Run() if last response in buffer
             nMessages++;
         }
 
@@ -302,7 +302,7 @@ public:
 
         void flush() {
             nMessages = 0;
-            head = tail;
+            ringBufferInit();
         }
 };
 

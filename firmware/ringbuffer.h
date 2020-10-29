@@ -49,40 +49,40 @@ struct oldCircularBuffer {
 
     typedef IndexType _IndexType;
 
-    ElementType array[BufferSize];
-    volatile IndexType head;
-    volatile IndexType tail;
+    ElementType x_array[BufferSize];
+    volatile IndexType x_head;
+    volatile IndexType x_tail;
 
-    void ringBufferInit() { head = tail = 0; }
+    void ringBufferInit() { x_head = x_tail = 0; }
 
     IndexType mask(IndexType val)  { return val & (BufferSize - 1); }
 
-    bool empty()    { return head == tail; }
+    bool empty()    { return x_head == x_tail; }
     bool full()     { return size() == BufferSize; }
-    IndexType size()     { return head - tail; }
+    IndexType size()     { return x_head - x_tail; }
 
     void push(ElementType& val)  {
         
-        IndexType h = head;
-        array[mask(h)] = val;
-        head = h+1;
+        IndexType h = x_head;
+        x_array[mask(h)] = val;
+        x_head = h+1;
     }
 
     void pushVar(ElementType val)  {
         
-        IndexType h = head;
-        array[mask(h)] = val;
-        head = h+1;
+        IndexType h = x_head;
+        x_array[mask(h)] = val;
+        x_head = h+1;
     }
 
     ElementType &pop() {
 
-        IndexType t = tail;
-        ElementType &val = array[mask(t)];
-        tail = t + 1;
+        IndexType t = x_tail;
+        ElementType &val = x_array[mask(t)];
+        x_tail = t + 1;
         return val;
     }
-    ElementType &peek() { return array[mask(tail)]; }
-    ElementType &peekN(IndexType index) { return array[mask(tail+index)]; }
+    ElementType &peek() { return x_array[mask(x_tail)]; }
+    ElementType &peekN(IndexType index) { return x_array[mask(x_tail+index)]; }
 };
 
