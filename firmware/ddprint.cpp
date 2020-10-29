@@ -309,7 +309,7 @@ class SDReader: public Protothread {
 
         // Temporary buffer if we cross a block boundary,
         // the size is 4 bytes - the length of the longest
-        // datablock to read (setBytesToReadX())
+        // datablock to read (see setBytesToReadX())
         uint8_t tempBuffer[4]; 
 
         uint16_t haveBytes;
@@ -337,17 +337,6 @@ class SDReader: public Protothread {
         FWINLINE void setBytesToRead4() {
             Restart();
             bytesToRead = 4; } // Note: tempBuffer must be big enought to hold this number of bytes.
-#if 0
-        FWINLINE void setBytesToRead5() {
-            Restart();
-            bytesToRead = 5; }
-        FWINLINE void setBytesToRead7() {
-            Restart();
-            bytesToRead = 7; }
-        FWINLINE void setBytesToRead9() {
-            Restart();
-            bytesToRead = 9; }
-#endif
 
         bool Run() {
 // static bool readRequest=false;
@@ -1631,7 +1620,7 @@ void Printer::cmdGetStatus() {
     txBuffer.sendResponseValue(swapDev.available());
     txBuffer.sendResponseValue(sDReader.available());
     // xxx undo txBuffer.sendResponseUint8(stepBuffer.byteSize());
-    txBuffer.sendResponseValue(stepBuffer.size());
+    txBuffer.sendResponseValue((uint32_t)stepBuffer.size());
     txBuffer.sendResponseInt16(bufferLow);
     txBuffer.sendResponseValue(target_temperature[0]);
     txBuffer.sendResponseUint8(tempControl.getPwmOutput());
@@ -2443,7 +2432,7 @@ void loop() {
     if (printer.printerState == Printer::StateStart)
         if (! (printer.eotWasReceived() && (swapDev.available()==0))) {
             if (stepBuffer.size())
-                printer.minBuffer = min(stepBuffer.size(), printer.minBuffer);
+                printer.minBuffer = min((uint32_t)stepBuffer.size(), printer.minBuffer);
         }
 
     // If printing, then read stepper data from mass storage and push it to

@@ -64,7 +64,7 @@
 // Size of tx buffer in bytes
 #define RX_BUFFER_SIZE 256
 
-typedef CircularBuffer<uint8_t, uint8_t, RX_BUFFER_SIZE> SerialPortBase;
+typedef CircularBuffer<uint8_t, uint16_t, RX_BUFFER_SIZE> SerialPortBase;
 
 //
 // stm32 port:
@@ -118,16 +118,11 @@ inline void SerialPort::store_char(unsigned char c) {
             ringBufferInit();
         }
         else {
-            if (head == 0) {
+            if (_ringbuffer_head == 0) {
                 // Lost SOH
                 ringBufferInit();
                 pushVar(0x0);
             }
-#if defined(HEAVYDEBUG)
-            else {
-                massert(head < 255);
-            }
-#endif
         }
 
         push(c);

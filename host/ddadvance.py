@@ -1674,8 +1674,6 @@ class Advance (object):
         nAccel = 0
         if move.accelTime():
 
-            # print "v0, nominalSpeed:", v0, nominalSpeed
-
             accelClocks = self.planner.accelRamp(
                 steps_per_mm,
                 v0,

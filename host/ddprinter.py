@@ -709,6 +709,7 @@ class Printer(Serial):
 
         (cmd, payload) = self.query(CmdGetStatus, doLog=False)
 
+        print "len payload:", len(payload)
         tup = struct.unpack("<BffIHIhHBfiI", payload)
 
         statusDict = {}

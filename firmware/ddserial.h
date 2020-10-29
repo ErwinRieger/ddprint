@@ -40,7 +40,7 @@
 //     are needed.
 #define TxBufferLen  256
 
-typedef CircularBuffer<uint8_t, uint8_t, TxBufferLen> TxBufferBase;
+typedef oldCircularBuffer<uint8_t, uint8_t, TxBufferLen> TxBufferBase;
 
 // Serial communication ACK
 #define RESPUSBACK 0x6
