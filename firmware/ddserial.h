@@ -40,7 +40,7 @@
 //     are needed.
 #define TxBufferLen  256
 
-typedef oldCircularBuffer<uint8_t, uint16_t, TxBufferLen> TxBufferBase;
+typedef CircularBuffer<uint8_t, uint16_t, TxBufferLen> TxBufferBase;
 
 // Serial communication ACK
 #define RESPUSBACK 0x6
@@ -83,9 +83,10 @@ public:
 
             if (cobsStart == 0xffff) {
                 // printf("start cobs at %d\n", head);
-                cobsStart = x_head;
+                cobsStart = _ringbuffer_head;
                 pushByte(0x1);
-                x_array[mask(lenIndex)] += 1;
+                // _ringbuffer_array[mask(lenIndex)] += 1;
+                inc(lenIndex);
             }
 
             if (c == 0) {
@@ -95,9 +96,11 @@ public:
             }
 
             // printf("add '0x%x' at %d\n", c, head);
-            x_array[mask(cobsStart)] += 1;
+            // _ringbuffer_array[mask(cobsStart)] += 1;
+            inc(cobsStart);
             pushByte(c);
-            x_array[mask(lenIndex)] += 1;
+            // _ringbuffer_array[mask(lenIndex)] += 1;
+            inc(lenIndex);
         }
 
     public:
@@ -138,7 +141,7 @@ public:
 
                     // printf("%02x", charToSend);
 
-                    x_tail++;
+                    _ringbuffer_tail++;
 
                     checksum = _crc_ccitt_update(checksum, charToSend);
 
@@ -200,7 +203,7 @@ public:
 
             if (! pushByte(0x0)) return; // SOH
             if (! pushByte(respCode)) return;
-            lenIndex = x_head;
+            lenIndex = _ringbuffer_head;
             pushByte(1);
         }
 
@@ -208,17 +211,19 @@ public:
 
             if (full()) {
                 // Rollback
-                x_head = lenIndex - 2;
+                _ringbuffer_head = lenIndex - 2;
                 return;
             }
 
             if (cobsStart != 0xffff) {
                 // Cobs block does not end with 0x0, mark block as a
                 // 'maximum length code block'.
-                x_array[mask(cobsStart)] = 0xff;
+                // _ringbuffer_array[mask(cobsStart)] = 0xff;
+                setVar(cobsStart, 0xff);
             }
 
-            x_array[mask(x_head)] = 0x0; // Terminate loop in Run() if last response in buffer
+            // _ringbuffer_array[mask(_ringbuffer_head)] = 0x0; // Terminate loop in Run() if last response in buffer
+            setVar(_ringbuffer_head, 0x0);
             nMessages++;
         }
 
