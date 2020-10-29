@@ -67,6 +67,7 @@ extern USBH_Status USBH_MSC_Read10(USB_OTG_CORE_HANDLE *pdev, USBH_HOST *phost,
                         uint8_t *,
                         uint32_t ,
                         uint32_t );
+extern USBH_Status USBH_MSC_BlockReset(USB_OTG_CORE_HANDLE *pdev, USBH_HOST *phost);
 // */
 
 void USBH_MSC_StateMachine(USB_OTG_CORE_HANDLE *pdev);

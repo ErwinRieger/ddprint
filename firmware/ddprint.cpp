@@ -372,7 +372,7 @@ if ((printerState == StateStart) && swapDev.isBusyWriting()) {
     readRequest = true;
 }
 #endif
-                    PT_WAIT_WHILE(swapDev.isBusyWriting());
+                    PT_WAIT_WHILE(swapDev.isBusyWritingForRead());
                     PT_WAIT_UNTIL(swapDev.available());
 
                     PT_WAIT_UNTIL((bufferLength = swapDev.readBlock(buffer)) > 0);
@@ -395,7 +395,7 @@ if ((printerState == StateStart) && swapDev.isBusyWriting()) {
     readRequest = true;
 }
 #endif
-                    PT_WAIT_WHILE(swapDev.isBusyWriting());
+                    PT_WAIT_WHILE(swapDev.isBusyWritingForRead());
                     PT_WAIT_UNTIL(swapDev.available());
 
                     PT_WAIT_UNTIL((bufferLength = swapDev.readBlock(buffer)) > 0);
@@ -1467,7 +1467,7 @@ void Printer::checkMoveFinished() {
         }
 
         if ( eotReceived &&
-             (! swapDev.isBusyWriting()) &&
+             (! swapDev.isBusyWritingForWrite()) &&
              (! swapDev.available()) &&
              (! sDReader.available()) &&
              stepBuffer.empty() ) {
@@ -1935,7 +1935,7 @@ class UsbCommand : public Protothread {
                 if ((commandByte != CmdBlock) && (commandByte != CmdBlockPacked)) {
 
                     swapDev.addByte(commandByte);
-                    PT_WAIT_WHILE( swapDev.isBusyWriting() );
+                    PT_WAIT_WHILE( swapDev.isBusyWritingForWrite() );
                 }
 
                 // Tell RxBuffer that it's pointing to the beginning of a COBS block
@@ -1957,7 +1957,7 @@ class UsbCommand : public Protothread {
                     while (serialPort.cobsAvailable()) {
                         c = serialPort.readNoCheckCobs();
                         swapDev.addByte(c);
-                        PT_WAIT_WHILE( swapDev.isBusyWriting() );
+                        PT_WAIT_WHILE( swapDev.isBusyWritingForWrite() );
                     }
                 }
 
@@ -2491,7 +2491,7 @@ void loop() {
 void printDebugInfo() {
 #if defined(REPRAP_DISCOUNT_SMART_CONTROLLER)
     lcd.setCursor(0, 0); lcd.print("ser:"); lcd.print(serialPort._available());
-    lcd.print("B:"); lcd.print(swapDev.isBusyWriting());
+    lcd.print("B:"); lcd.print(swapDev.isBusyWritingForWrite());
     lcd.print("WP:"); lcd.print(swapDev.getWritePos());
 
     lcd.setCursor(0, 1); lcd.print("swd:"); lcd.print(swapDev.available());

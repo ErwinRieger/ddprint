@@ -157,7 +157,7 @@ bool UnZipper::Run() {
                 else if (sym < 256) {
                     /* literal byte */
                     swapDev.addByte(sym);
-                    PT_WAIT_WHILE( swapDev.isBusyWriting() );
+                    PT_WAIT_WHILE( swapDev.isBusyWritingForWrite() );
                     res = TINF_OK;
                 }
                 else {
@@ -182,7 +182,7 @@ bool UnZipper::Run() {
 
                     /* copy next byte from dict substring */
                     swapDev.addBackRefByte(d.lzOff);
-                    PT_WAIT_WHILE( swapDev.isBusyWriting() );
+                    PT_WAIT_WHILE( swapDev.isBusyWritingForWrite() );
 
                     d.curlen--;
                     res = TINF_OK;
@@ -191,7 +191,7 @@ bool UnZipper::Run() {
             else {
                 /* copy next byte from dict substring */
                 swapDev.addBackRefByte(d.lzOff);
-                PT_WAIT_WHILE( swapDev.isBusyWriting() );
+                PT_WAIT_WHILE( swapDev.isBusyWritingForWrite() );
                 d.curlen--;
                 res = TINF_OK;
             }

@@ -32,12 +32,7 @@
 #include "crc16.h"
 #include "ringbuffer.h"
 
-// Size of tx buffer in bytes
-// Note: Using a buffer size of 256 bytes has two big advantages:
-//  * The head and tail pointers simply wrap around, no bitmasks or
-//     modulo operations are needed.
-//  * The head and tail operations are atomic, so no critical sections
-//     are needed.
+// Size of tx buffer in bytes.
 #define TxBufferLen  256
 
 typedef CircularBuffer<uint8_t, uint16_t, TxBufferLen> TxBufferBase;
@@ -46,7 +41,7 @@ typedef CircularBuffer<uint8_t, uint16_t, TxBufferLen> TxBufferBase;
 #define RESPUSBACK 0x6
 
 //
-// stm32 port:
+// Stm32 port:
 // Note: rx/tx buffer memory wasted in struct usart_dev.
 //
 class TxBuffer: public Protothread, public TxBufferBase {

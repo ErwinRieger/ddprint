@@ -59,7 +59,8 @@ class SDSwap: public MassStorage, public Protothread {
     // Pointer to current write position (byte) in writeBuffer
     uint16_t writePos;
 
-    bool busyWriting;
+    // bool busyWriting;
+    int busyWriting;
 
     // Sector number on storage device
     uint32_t writeBlockNumber;
@@ -78,7 +79,7 @@ public:
 
     SDSwap() {
 
-        busyWriting = false;
+        busyWriting = 0;
         reset();
     }
 
@@ -97,7 +98,9 @@ public:
     }
 
     void reset() {
-        
+      
+       massert(busyWriting != 2);
+
         while (busyWriting)
             Run();
 
@@ -112,7 +115,9 @@ public:
         writeBlockNumber = 1;
     }
 
-    FWINLINE bool isBusyWriting() { return busyWriting; }
+    // FWINLINE bool isBusyWriting() { return busyWriting; }
+    FWINLINE bool isBusyWritingForRead() { return busyWriting; /* == 1; */ }
+    FWINLINE bool isBusyWritingForWrite() { return busyWriting; }
 
     FWINLINE void addByte(uint8_t b) {
 
@@ -163,14 +168,14 @@ public:
 #if defined(HEAVYDEBUG)
         massert(! busyWriting);
 #endif
-        busyWriting = true;
+        busyWriting = 1;
     }
 
     FWINLINE int16_t readBlock(uint8_t* dst) {
 
         // Number of bytes in this block:
         massert(available() > 0);
-        massert(! busyWriting);
+        massert(busyWriting != 1);
         massert((readPos % SwapSectorSize) == 0); // read pos should be block-aligned
 
         TaskStart(ioStats, TaskRead);
@@ -203,6 +208,9 @@ public:
         // Read was successful, reset retry count
         readRetry = 0;
 
+        if (busyWriting == 2)
+            busyWriting = 1;  // Retry
+
         return readBytes;
     }
 
@@ -210,22 +218,38 @@ public:
     bool Run() {
 
         uint16_t wp;
+        static int res;
 
         PT_BEGIN();
 
-        PT_WAIT_UNTIL(busyWriting);
+        PT_WAIT_UNTIL(busyWriting == 1);
 
         simassert((size % SwapSectorSize) == 0); // block write after final partial block is invalid
-
-
 
         // xxx hack
    // uint32_t t = GetTaskDuration(ioStats, TaskWrite);
 
         //////////////////////////////////////////////////////////////////////////////////          
         TaskStart(ioStats, TaskWrite);
-        PT_WAIT_WHILE(writeBlock(writeBlockNumber, writeBuffer));
+
+        PT_WAIT_WHILE((res = writeBlock(writeBlockNumber, writeBuffer, GetTaskDuration(ioStats, TaskWrite))) == 1);
+
         TaskEnd(ioStats, TaskWrite);
+
+        if (res == -1) {
+
+            massert(0); // xxxx should not be called
+
+            PT_WAIT_WHILE(abortCmd());
+
+
+            // Don't update size 
+            // Don't change write buffer
+            busyWriting = 2;
+
+            massert(0); // PT_RESTART();
+        }
+
         //////////////////////////////////////////////////////////////////////////////////          
 
         // Update size 
@@ -248,13 +272,13 @@ public:
         // printf("Size: %d bytes\n", size);
 
         writeBlockNumber++;
-        busyWriting = false;
+        busyWriting = 0;
 
         PT_RESTART();
         PT_END();
     };
 
-    void writeConfig(MSConfigBlock &config) { while (writeBlock(0, config.sector)); }
+    void writeConfig(MSConfigBlock &config) { while (writeBlock(0, config.sector, 0)); }
     void readConfig(MSConfigBlock &config) { MassStorage::readBlock(0, config.sector); }
 };
 

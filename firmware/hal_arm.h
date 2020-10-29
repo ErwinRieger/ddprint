@@ -429,30 +429,48 @@ class MassStorage: public MassStorageBase {
 
     bool readBlock(uint32_t readBlockNumber, uint8_t *dst) {
 
-        if (USB_disk_read(&USB_OTG_Core_Host, &USB_Host, dst, readBlockNumber) != USBH_OK) {
-            // todo set errorcode and return it through errorCode()
-            return false;
-        }
-        return true;
+        USBH_Status status = USB_disk_read(&USB_OTG_Core_Host, &USB_Host,
+                dst, readBlockNumber);
+
+        return status == USBH_OK;
     }
 
     // xxx darf nicht blockieren:
     //
     //
     //
-    bool writeBlock(uint32_t writeBlockNumber, uint8_t *src) {
+    int writeBlock(uint32_t writeBlockNumber, uint8_t *src, uint32_t timeout) {
 
+        // if (timeout >= 3) {
+            // return -1;
+        // } 
         USBH_Status status = USBH_MSC_Write10(
                 &USB_OTG_Core_Host, &USB_Host,
                 src, writeBlockNumber, 512);
 
         if (status == USBH_BUSY)
-            return true; // continue thread
+            return 1; // continue thread
 
         // Todo: check errors
         // if (status != USBH_OK) ...
+        massert(status == USBH_OK);
         
-        return false;
+        return 0; // OK, write done
+    }
+
+    bool abortCmd() {
+
+        massert(0); // xxxx should not be called
+
+        USBH_Status status = USBH_MSC_BlockReset(&USB_OTG_Core_Host, &USB_Host);
+
+        if (status == USBH_BUSY)
+            return true; // Continue thread
+
+        // Todo: check errors
+        massert(status == USBH_OK);
+        
+        return false; // Thread done
     }
 };
 

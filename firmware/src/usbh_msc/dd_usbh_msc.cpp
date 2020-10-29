@@ -610,6 +610,56 @@ USBH_Status USBH_MSC_Write10(USB_OTG_CORE_HANDLE *pdev, USBH_HOST *phost,
 
 //--------------------------------------------------------------
 //
+USBH_Status USBH_MSC_BlockReset(USB_OTG_CORE_HANDLE *pdev, USBH_HOST *phost)
+{
+
+
+  USBH_Status bot_status;
+
+  switch(usbh_msc.CmdStateMachine) {
+
+    case CMD_SEND_STATE:   
+
+      USBH_MSC_CBWData.field.CBWTransferLength = 0; // xxx not needed?
+      USBH_MSC_CBWData.field.CBWFlags = USB_EP_DIR_OUT;
+      USBH_MSC_CBWData.field.CBWLength = CBW_LENGTH; // 10
+
+      // Rest set to 0x00 or 0xff ?
+      memset(USBH_MSC_CBWData.field.CBWCB, 0xff, CBW_LENGTH);
+      USBH_MSC_CBWData.field.CBWCB[0]  = 0x1D; 
+      USBH_MSC_CBWData.field.CBWCB[1]  = 0x04; // special reset block mode
+
+      // Handle state machines:
+      // Leave upper level states unchanged,
+      // Switch our level states to 'wait'.
+      usbh_msc.CmdStateMachine = CMD_WAIT_STATUS;
+      // Initialize lower level transfer state to 'cbw sent'
+      usbh_msc.BOTState = USBH_BOTSTATE_SENT_CBW;
+
+      dd_USBH_BulkSendData (pdev,
+                         USBH_MSC_CBWData.CBWArray,          // 31, entire CBW struct
+                         USBH_MSC_BOT_CBW_PACKET_LENGTH_31 , // 31
+                         MSC_Machine.hc_num_out);
+      return USBH_BUSY;
+      
+    case CMD_WAIT_STATUS:
+
+      /* Process the BOT state machine */
+      bot_status = dd_USBH_MSC_HandleBOTXfer(pdev, phost);
+
+      if (bot_status != USBH_BUSY) {
+          usbh_msc.CmdStateMachine = CMD_SEND_STATE;
+      }
+
+      return bot_status;
+      
+    default:
+      return USBH_NOT_SUPPORTED;
+  }
+}
+
+//--------------------------------------------------------------
+//
 
 void USB_OTG_BSP_ConfigVBUS(USB_OTG_CORE_HANDLE *pdev) {};
 void USB_OTG_BSP_DriveVBUS(USB_OTG_CORE_HANDLE *pdev,uint8_t state) {};
