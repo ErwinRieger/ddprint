@@ -1,6 +1,12 @@
 
-Origin:
 
-https://github.com/pfalcon/uzlib
+This directory contains a stripped down and customized version of
+uzlib deflat library.
+
+
+Origin: https://github.com/pfalcon/uzlib
+
+
+See also: original LICENSE and README.md in this directory.
 
 
