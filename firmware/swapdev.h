@@ -49,6 +49,7 @@
 //
 
 
+void incbufferlow();
 
 enum SwapTasks { TaskRead, TaskWrite };
 
@@ -81,6 +82,8 @@ public:
 
         busyWriting = 0;
         reset();
+
+        // incbufferlow();
     }
 
     struct TaskTiming ioStats[2];
@@ -99,7 +102,8 @@ public:
 
     void reset() {
       
-       massert(busyWriting != 2);
+        if (busyWriting == 2)
+            busyWriting = 1;
 
         while (busyWriting)
             Run();
@@ -115,9 +119,11 @@ public:
         writeBlockNumber = 1;
     }
 
-    // FWINLINE bool isBusyWriting() { return busyWriting; }
-    FWINLINE bool isBusyWritingForRead() { return busyWriting; /* == 1; */ }
-    FWINLINE bool isBusyWritingForWrite() { return busyWriting; }
+    FWINLINE bool isBusyWritingForRead() { return busyWriting == 1; }
+    FWINLINE bool isBusyWritingForWrite() { return busyWriting >= 1; }
+
+    int getBusyWriting() { return busyWriting; }
+    void setBusyWriting(int b) { busyWriting = b; }
 
     FWINLINE void addByte(uint8_t b) {
 
@@ -208,8 +214,9 @@ public:
         // Read was successful, reset retry count
         readRetry = 0;
 
-        if (busyWriting == 2)
+        if (busyWriting == 2) {
             busyWriting = 1;  // Retry
+        }
 
         return readBytes;
     }
@@ -226,9 +233,6 @@ public:
 
         simassert((size % SwapSectorSize) == 0); // block write after final partial block is invalid
 
-        // xxx hack
-   // uint32_t t = GetTaskDuration(ioStats, TaskWrite);
-
         //////////////////////////////////////////////////////////////////////////////////          
         TaskStart(ioStats, TaskWrite);
 
@@ -238,41 +242,38 @@ public:
 
         if (res == -1) {
 
-            massert(0); // xxxx should not be called
-
-            PT_WAIT_WHILE(abortCmd());
-
-
             // Don't update size 
             // Don't change write buffer
             busyWriting = 2;
 
-            massert(0); // PT_RESTART();
-        }
-
-        //////////////////////////////////////////////////////////////////////////////////          
-
-        // Update size 
-        wp = getWritePos();
-        if (wp) { // Last block
-
-            size += wp;
-            writePos = 0;
-            #if defined(HEAVYDEBUG)
-                massert(size == ((writeBlockNumber-1)*SwapSectorSize + wp));
-            #endif
+            // incbufferlow();
         }
         else {
-            size += SwapSectorSize;
-            #if defined(HEAVYDEBUG)
-                massert(size == (writeBlockNumber*SwapSectorSize));
-            #endif
+
+            //////////////////////////////////////////////////////////////////////////////////          
+
+            // Update size 
+            wp = getWritePos();
+            if (wp) { // Last block
+
+                size += wp;
+                writePos = 0;
+                #if defined(HEAVYDEBUG)
+                    massert(size == ((writeBlockNumber-1)*SwapSectorSize + wp));
+                #endif
+            }
+            else {
+                size += SwapSectorSize;
+                #if defined(HEAVYDEBUG)
+                    massert(size == (writeBlockNumber*SwapSectorSize));
+                #endif
+            }
+
+            // printf("Size: %d bytes\n", size);
+
+            writeBlockNumber++;
+            busyWriting = 0;
         }
-
-        // printf("Size: %d bytes\n", size);
-
-        writeBlockNumber++;
-        busyWriting = 0;
 
         PT_RESTART();
         PT_END();

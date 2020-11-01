@@ -1148,6 +1148,8 @@ Printer::Printer() {
     bufferLow = 0;
 };
 
+void incbufferlow() { printer.bufferLow++; }
+
 void Printer::printerInit() {
 
     // XXX handle already running state
@@ -2422,13 +2424,13 @@ void loop() {
 #if defined(POWER_BUTTON)
         printer.checkPowerOff(m);
 #endif
+
+        if (swapDev.getBusyWriting() == 2) {
+            swapDev.setBusyWriting(1);
+        }
     }
 
-    // Handle USB output
-    TaskStart(taskTiming, TaskUsbOutput);
-    txBuffer.Run();
-    TaskEnd(taskTiming, TaskUsbOutput);
-
+    // Statistics: minimal step buffer watermark
     if (printer.printerState == Printer::StateStart)
         if (! (printer.eotWasReceived() && (swapDev.available()==0))) {
             if (stepBuffer.size())
@@ -2441,7 +2443,10 @@ void loop() {
     fillBufferTask.Run();
     TaskEnd(taskTiming, TaskFillBuffer);
 
-    // massert(! fbread);
+    // Handle USB output
+    TaskStart(taskTiming, TaskUsbOutput);
+    txBuffer.Run();
+    TaskEnd(taskTiming, TaskUsbOutput);
 
     // Handle USB input
     TaskStart(taskTiming, TaskUsbInput);
@@ -2452,12 +2457,6 @@ void loop() {
     TaskStart(taskTiming, TaskSwapDev);
     swapDev.Run();
     TaskEnd(taskTiming, TaskSwapDev);
-
-    // If printing, then read stepper data from mass storage and push it to
-    // the stepper buffer.
-    TaskStart(taskTiming, TaskFillBuffer);
-    fillBufferTask.Run();
-    TaskEnd(taskTiming, TaskFillBuffer);
 
 #if 0
     // Check for buffer underruns. A underrun is a emtpy stepper buffer even if data

@@ -42,6 +42,8 @@ extern "C" {
 }
 
 
+void incbufferlow();
+
 //
 // Serial interface, note: fixed USART1 usage
 //
@@ -441,9 +443,11 @@ class MassStorage: public MassStorageBase {
     //
     int writeBlock(uint32_t writeBlockNumber, uint8_t *src, uint32_t timeout) {
 
-        // if (timeout >= 3) {
-            // return -1;
-        // } 
+        if (timeout >= 3) {
+            incbufferlow();
+            // return -1;         // xxx reenable
+        } 
+
         USBH_Status status = USBH_MSC_Write10(
                 &USB_OTG_Core_Host, &USB_Host,
                 src, writeBlockNumber, 512);
@@ -456,21 +460,6 @@ class MassStorage: public MassStorageBase {
         massert(status == USBH_OK);
         
         return 0; // OK, write done
-    }
-
-    bool abortCmd() {
-
-        massert(0); // xxxx should not be called
-
-        USBH_Status status = USBH_MSC_BlockReset(&USB_OTG_Core_Host, &USB_Host);
-
-        if (status == USBH_BUSY)
-            return true; // Continue thread
-
-        // Todo: check errors
-        massert(status == USBH_OK);
-        
-        return false; // Thread done
     }
 };
 
