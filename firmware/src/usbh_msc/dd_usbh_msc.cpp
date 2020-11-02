@@ -103,7 +103,7 @@ USBH_Status USB_disk_write(
     USBH_Status status;
     
     while (true) {
-        status = USBH_MSC_Write10(pdev, phost, buff, sector, 512);
+        status = USBH_MSC_Write10(pdev, phost, buff, sector, 512, 0);
         if (status != USBH_BUSY)
             break;
     }
@@ -545,12 +545,29 @@ USBH_Status USBH_MSC_Read10(USB_OTG_CORE_HANDLE *pdev, USBH_HOST *phost,
 }
 
 //--------------------------------------------------------------
+static USBH_Status USBH_MSC_BOTReset_Mass_Storage_Reset(USB_OTG_CORE_HANDLE *pdev, USBH_HOST *phost) {
+  
+  phost->Control.setup.b.bmRequestType = USB_H2D | USB_REQ_TYPE_CLASS | USB_REQ_RECIPIENT_INTERFACE;
+ 
+  massert(USB_REQ_BOT_RESET == 0xff);
+
+  phost->Control.setup.b.bRequest = USB_REQ_BOT_RESET;
+  phost->Control.setup.b.wValue.w = 0;
+  phost->Control.setup.b.wIndex.w = 0;
+  phost->Control.setup.b.wLength.w = 0;           
+  
+  return USBH_CtlReq(pdev, phost, NULL, 0 ); 
+}
+
+//--------------------------------------------------------------
 //
 USBH_Status USBH_MSC_Write10(USB_OTG_CORE_HANDLE *pdev, USBH_HOST *phost,
                          uint8_t *dataBuffer,
                          uint32_t address,
-                         uint32_t nbOfbytes)
+                         uint32_t nbOfbytes, uint32_t timeout)
 {
+
+
   USBH_Status bot_status;
   uint16_t nbOfPages;
   
@@ -594,14 +611,68 @@ USBH_Status USBH_MSC_Write10(USB_OTG_CORE_HANDLE *pdev, USBH_HOST *phost,
       
     case CMD_WAIT_STATUS:
 
-      /* Process the BOT state machine */
-      bot_status = dd_USBH_MSC_HandleBOTXfer(pdev, phost);
+        // if entire duration of one write is above some threshold: 
+        /*
+        if (timeout >= 3) {
+            usbh_msc.CmdStateMachine = CMD_STORAGE_RESET;
+            return USBH_BUSY;
+        } 
+        */
 
-      if (bot_status != USBH_BUSY) {
-          usbh_msc.CmdStateMachine = CMD_SEND_STATE;
-      }
+        /* Process the BOT state machine */
+        bot_status = dd_USBH_MSC_HandleBOTXfer(pdev, phost);
 
-      return bot_status;
+        if (bot_status != USBH_BUSY) {
+            usbh_msc.CmdStateMachine = CMD_SEND_STATE;
+        }
+        return bot_status;
+      
+    case CMD_STORAGE_RESET:
+        // Run but statemachine with mass storage reset control request
+        // When this is done, the current (writ-)command is will be canceled
+        // and the usb stack will be ready to receive the next command CBW
+        // from host.
+        bot_status = USBH_MSC_BOTReset_Mass_Storage_Reset(pdev, phost);
+        if (bot_status == USBH_OK)
+        {
+            usbh_msc.CmdStateMachine = CMD_CLEAR_FEATURE_OUT;
+            massert(phost->RequestState == CMD_SEND);
+            return USBH_BUSY;
+        }
+
+        massert(bot_status == USBH_BUSY);
+        return bot_status;
+
+    case CMD_CLEAR_FEATURE_OUT: 
+
+        bot_status = USBH_MSC_BOT_Abort(pdev, phost, USBH_MSC_DIR_OUT);
+        if (bot_status == USBH_OK)
+        {
+
+        // uint8_t toggle = USBH_LL_GetToggle(pdev, MSC_Machine.hc_num_out);
+        // USBH_LL_SetToggle(pdev, MSC_Machine.hc_num_out, 1 - toggle);
+        // USBH_LL_SetToggle(pdev, MSC_Machine.hc_num_in, 0);
+
+            usbh_msc.CmdStateMachine = CMD_CLEAR_FEATURE_IN;
+            massert(phost->RequestState == CMD_SEND);
+            return USBH_BUSY;
+        }
+
+        massert(bot_status == USBH_BUSY);
+        return bot_status;
+
+    case CMD_CLEAR_FEATURE_IN: 
+
+        bot_status = USBH_MSC_BOT_Abort(pdev, phost, USBH_MSC_DIR_IN);
+        if (bot_status == USBH_OK)
+        {
+            usbh_msc.CmdStateMachine = CMD_SEND_STATE;
+            massert(phost->RequestState == CMD_SEND);
+            return USBH_TIMEOUT;
+        }
+
+        massert(bot_status == USBH_BUSY);
+        return bot_status;
       
     default:
       return USBH_NOT_SUPPORTED;
@@ -1961,33 +2032,32 @@ USBH_Status USBH_ClrFeature(USB_OTG_CORE_HANDLE *pdev,
 //--------------------------------------------------------------
 USBH_Status USBH_MSC_BOT_Abort(USB_OTG_CORE_HANDLE *pdev, 
                                USBH_HOST *phost,
-                               uint8_t direction)
-{
-  USBH_Status status;
+                               uint8_t direction) {
+
+  USBH_Status status = USBH_BUSY;
   
-  status = USBH_BUSY;
-  
-  switch (direction)
-  {
-  case USBH_MSC_DIR_IN :
-    /* send ClrFeture on Bulk IN endpoint */
-    status = USBH_ClrFeature(pdev,
+  switch (direction) {
+
+    case USBH_MSC_DIR_IN :
+        /* send ClrFeture on Bulk IN endpoint */
+        status = USBH_ClrFeature(pdev,
                              phost,
                              MSC_Machine.MSBulkInEp,
                              MSC_Machine.hc_num_in);
     
-    break;
+        break;
     
-  case USBH_MSC_DIR_OUT :
-    /*send ClrFeature on Bulk OUT endpoint */
-    status = USBH_ClrFeature(pdev, 
+    case USBH_MSC_DIR_OUT :
+        /*send ClrFeature on Bulk OUT endpoint */
+        status = USBH_ClrFeature(pdev, 
                              phost,
                              MSC_Machine.MSBulkOutEp,
                              MSC_Machine.hc_num_out);
-    break;
+        break;
     
-  default:
-    break;
+    default:
+        massert(0);
+        break;
   }
   
   return status;
@@ -2434,7 +2504,27 @@ void USBH_Process(USB_OTG_CORE_HANDLE *pdev , USBH_HOST *phost)
         phost->gState  = HOST_CLASS;     
     }
     break;
+   
+#if 0 
+  case HOST_CLASS: {
+    /* process class state machine */
     
+    // USBH_Status status = USBH_MSC_Handle(pdev, phost);
+    // usbMSCHostAssert((status == USBH_OK) || (status == USBH_BUSY));
+    /* set configuration  (default config) */
+    USBH_Status status = USBH_MSC_BOTReset_Mass_Storage_Reset(pdev, phost);
+    if (status == USB_OK)
+    {
+        // USBH_MSC_InterfaceInit(pdev, phost);
+        phost->gState  = HOST_CLASS;     
+    }
+    else {
+        assert(staus == USB_BUSY);
+    }
+    }
+    break;       
+#endif
+
   case HOST_CLASS: {
     /* process class state machine */
     

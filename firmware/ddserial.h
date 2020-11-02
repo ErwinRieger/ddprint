@@ -260,29 +260,29 @@ public:
             pushCharCobs(v);
         }
 
-        void sendResponseValue(uint16_t v) {
+        void sendResponseUInt16(uint16_t v) {
 
-            sendResponseValue((uint8_t*)&v, 2);
+            sendResponseBlob((uint8_t*)&v, 2);
         }
 
         void sendResponseInt16(int16_t v) {
 
-            sendResponseValue((uint8_t*)&v, 2);
+            sendResponseBlob((uint8_t*)&v, 2);
         }
 
-        void sendResponseValue(uint32_t v) {
+        void sendResponseUInt32(uint32_t v) {
 
-            sendResponseValue((uint8_t*)&v, 4);
+            sendResponseBlob((uint8_t*)&v, 4);
         }
 
-        void sendResponseValue(int32_t v) {
+        void sendResponseInt32(int32_t v) {
 
-            sendResponseValue((uint8_t*)&v, 4);
+            sendResponseBlob((uint8_t*)&v, 4);
         }
 
-        void sendResponseValue(float v) {
+        void sendResponseFloat(float v) {
 
-            sendResponseValue((uint8_t*)&v, 4);
+            sendResponseBlob((uint8_t*)&v, 4);
         }
 
         // Send string, one byte length, then the string
@@ -294,7 +294,7 @@ public:
         }
 
         // Send fixed size blob
-        void sendResponseValue(uint8_t *b, uint8_t l) {
+        void sendResponseBlob(uint8_t *b, uint8_t l) {
 
             for (uint8_t i=0; i<l; i++)
                 sendResponseUint8(b[i]);

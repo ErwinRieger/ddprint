@@ -17,6 +17,15 @@
 * along with ddprint.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+/*
+ *
+ *  dd_USBH_MSC_HandleBOTXfer():  usbh_msc.BOTState (USBH_BOTSTATE_SENT_CBW)
+ *  USBH_MSC_TestUnitReady():     usbh_msc.CmdStateMachine CMD_SEND_STATE
+ *
+ */
+
+
+
 #include <Arduino.h>
 #include <libmaple/iwdg.h>
 
@@ -26,6 +35,7 @@
 
 // extern "C" {
     #include "usbh_msc/dd_usbh_msc.h"
+    #include "usbh_msc/usbh_msc_bot.h"
     // void systemHardReset(void);
 // }
 
@@ -443,17 +453,19 @@ class MassStorage: public MassStorageBase {
     //
     int writeBlock(uint32_t writeBlockNumber, uint8_t *src, uint32_t timeout) {
 
-        if (timeout >= 3) {
-            incbufferlow();
-            // return -1;         // xxx reenable
-        } 
-
         USBH_Status status = USBH_MSC_Write10(
                 &USB_OTG_Core_Host, &USB_Host,
-                src, writeBlockNumber, 512);
+                src, writeBlockNumber, 512, timeout);
 
-        if (status == USBH_BUSY)
+        if (status == USBH_BUSY) {
             return 1; // continue thread
+        }
+        else if (status == USBH_TIMEOUT) {
+
+            // return -1 for write-retry
+            incbufferlow();
+            return -1;
+        }
 
         // Todo: check errors
         // if (status != USBH_OK) ...

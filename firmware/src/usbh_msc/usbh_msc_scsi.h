@@ -20,7 +20,10 @@ typedef enum {
 typedef enum {
   CMD_UNINITIALIZED_STATE =0,
   CMD_SEND_STATE,
-  CMD_WAIT_STATUS
+  CMD_WAIT_STATUS,
+  CMD_STORAGE_RESET,
+  CMD_CLEAR_FEATURE_IN,
+  CMD_CLEAR_FEATURE_OUT
 } CMD_STATES_TypeDef;  
 
 typedef struct __MassStorageParameter
@@ -62,7 +65,7 @@ USBH_Status USBH_MSC_ReadCapacity10(USB_OTG_CORE_HANDLE *pdev, USBH_HOST *phost)
 extern USBH_Status USBH_MSC_Write10(USB_OTG_CORE_HANDLE *pdev, USBH_HOST *phost,
                          uint8_t *,
                          uint32_t ,
-                         uint32_t );
+                         uint32_t , uint32_t timeout);
 extern USBH_Status USBH_MSC_Read10(USB_OTG_CORE_HANDLE *pdev, USBH_HOST *phost,
                         uint8_t *,
                         uint32_t ,

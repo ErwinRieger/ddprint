@@ -205,7 +205,7 @@ void mAssert(uint16_t line, const char* file) {
     txBuffer.flush();
     txBuffer.sendResponseStart(RespKilled);
     txBuffer.sendResponseUint8(RespAssertion);
-    txBuffer.sendResponseValue(line);
+    txBuffer.sendResponseUInt16(line);
     txBuffer.sendResponseString(file, strlen(file));
     txBuffer.sendResponseEnd();
     kill();
@@ -1229,11 +1229,11 @@ void Printer::underrunError() {
 
     txBuffer.flush();
     txBuffer.sendResponseStart(RespUnderrun);
-    txBuffer.sendResponseValue((uint32_t)0);
-    txBuffer.sendResponseValue((uint32_t)0);
-    txBuffer.sendResponseValue((uint32_t)0);
-    txBuffer.sendResponseValue(swapDev.available());
-    txBuffer.sendResponseValue((uint32_t)sDReader.available());
+    txBuffer.sendResponseUInt32((uint32_t)0);
+    txBuffer.sendResponseUInt32((uint32_t)0);
+    txBuffer.sendResponseUInt32((uint32_t)0);
+    txBuffer.sendResponseUInt32(swapDev.available());
+    txBuffer.sendResponseUInt32((uint32_t)sDReader.available());
     txBuffer.sendResponseEnd();
     kill();
 }
@@ -1242,11 +1242,11 @@ void Printer::underrunError(uint32_t lastSize, uint32_t lastSize2, uint32_t minT
 
     txBuffer.flush();
     txBuffer.sendResponseStart(RespUnderrun);
-    txBuffer.sendResponseValue(lastSize);
-    txBuffer.sendResponseValue(lastSize2);
-    txBuffer.sendResponseValue(minTimer);
-    txBuffer.sendResponseValue(swapDev.available());
-    txBuffer.sendResponseValue((uint32_t)sDReader.available());
+    txBuffer.sendResponseUInt32(lastSize);
+    txBuffer.sendResponseUInt32(lastSize2);
+    txBuffer.sendResponseUInt32(minTimer);
+    txBuffer.sendResponseUInt32(swapDev.available());
+    txBuffer.sendResponseUInt32((uint32_t)sDReader.available());
     txBuffer.sendResponseEnd();
     kill();
 }
@@ -1317,7 +1317,7 @@ void Printer::cmdSetIncTemp(uint8_t heater, int16_t incTemp) {
 void Printer::cmdGetFreeMem() {
 
     txBuffer.sendResponseStart(CmdGetFreeMem);
-    txBuffer.sendResponseValue((uint32_t)freeRam());
+    txBuffer.sendResponseUInt32((uint32_t)freeRam());
     txBuffer.sendResponseEnd();
 }
 
@@ -1329,7 +1329,7 @@ void Printer::cmdGetFSReadings(uint8_t nReadings) {
 
     while (nReadings--) {
 
-        txBuffer.sendResponseValue((uint32_t)filsensorReadings[start].timeStamp);
+        txBuffer.sendResponseUInt32((uint32_t)filsensorReadings[start].timeStamp);
         txBuffer.sendResponseInt16(filsensorReadings[start].dy);
         start++;
     }
@@ -1399,9 +1399,9 @@ void Printer::cmdGetTargetTemps() {
     txBuffer.sendResponseStart(CmdGetTargetTemps);
 
     txBuffer.sendResponseUint8(target_temperature_bed);
-    txBuffer.sendResponseValue(target_temperature[0]);
+    txBuffer.sendResponseUInt16(target_temperature[0]);
 #if EXTRUDERS > 1
-    txBuffer.sendResponseValue(target_temperature[1]);
+    txBuffer.sendResponseUInt16(target_temperature[1]);
 #endif
     txBuffer.sendResponseEnd();
 }
@@ -1410,10 +1410,10 @@ void Printer::cmdGetCurrentTemps() {
 
     txBuffer.sendResponseStart(CmdGetCurrentTemps);
 
-    txBuffer.sendResponseValue(current_temperature_bed);
-    txBuffer.sendResponseValue(current_temperature[0]);
+    txBuffer.sendResponseFloat(current_temperature_bed);
+    txBuffer.sendResponseFloat(current_temperature[0]);
 #if EXTRUDERS > 1
-    txBuffer.sendResponseValue(current_temperature[1]);
+    txBuffer.sendResponseFloat(current_temperature[1]);
 #endif
     txBuffer.sendResponseEnd();
 }
@@ -1529,13 +1529,13 @@ void Printer::cmdGetEndstops() {
     txBuffer.sendResponseStart(CmdGetEndstops);
 
     txBuffer.sendResponseUint8(X_STOP_PIN :: active());
-    txBuffer.sendResponseValue(current_pos_steps[X_AXIS]);
+    txBuffer.sendResponseInt32(current_pos_steps[X_AXIS]);
 
     txBuffer.sendResponseUint8(Y_STOP_PIN :: active());
-    txBuffer.sendResponseValue(current_pos_steps[Y_AXIS]);
+    txBuffer.sendResponseInt32(current_pos_steps[Y_AXIS]);
 
     txBuffer.sendResponseUint8(Z_STOP_PIN :: active());
-    txBuffer.sendResponseValue(current_pos_steps[Z_AXIS]);
+    txBuffer.sendResponseInt32(current_pos_steps[Z_AXIS]);
 
     txBuffer.sendResponseEnd();
 }
@@ -1543,7 +1543,7 @@ void Printer::cmdGetEndstops() {
 void Printer::cmdGetPos() {
 
     txBuffer.sendResponseStart(CmdGetPos);
-    txBuffer.sendResponseValue((uint8_t*)current_pos_steps, sizeof(current_pos_steps));
+    txBuffer.sendResponseBlob((uint8_t*)current_pos_steps, sizeof(current_pos_steps));
     txBuffer.sendResponseEnd();
 }
 
@@ -1581,13 +1581,13 @@ txBuffer.sendResponseStart(CmdGetTaskStatus);
 
     for (uint8_t i=0; i<(sizeof(taskTiming) / sizeof(taskTiming[0])); i++) {
 #if defined(DEBUGPROCSTAT)
-        txBuffer.sendResponseValue(taskTiming[i].ncalls);
-        txBuffer.sendResponseValue(taskTiming[i].sumcall);
-        txBuffer.sendResponseValue(taskTiming[i].longest);
+        txBuffer.sendResponseUInt32(taskTiming[i].ncalls);
+        txBuffer.sendResponseUInt32(taskTiming[i].sumcall);
+        txBuffer.sendResponseUInt32(taskTiming[i].longest);
 #else
-        txBuffer.sendResponseValue((uint32_t)0);
-        txBuffer.sendResponseValue((uint32_t)0);
-        txBuffer.sendResponseValue((uint32_t)0);
+        txBuffer.sendResponseUInt32(0);
+        txBuffer.sendResponseUInt32(0);
+        txBuffer.sendResponseUInt32(0);
 #endif
     }
     txBuffer.sendResponseEnd();
@@ -1600,31 +1600,37 @@ void Printer::cmdGetIOStats() {
     // for (uint8_t i=0; i<(sizeof(ioStats) / sizeof(ioStats[0])); i++) {
     for (uint8_t i=0; i<2; i++) { // XXX
 #if defined(DEBUGREADWRITE)
-        txBuffer.sendResponseValue(swapDev.ioStats[i].ncalls);
-        txBuffer.sendResponseValue(swapDev.ioStats[i].sumcall);
-        txBuffer.sendResponseValue(swapDev.ioStats[i].longest);
+        txBuffer.sendResponseUInt32(swapDev.ioStats[i].ncalls);
+        txBuffer.sendResponseUInt32(swapDev.ioStats[i].sumcall);
+        txBuffer.sendResponseUInt32(swapDev.ioStats[i].longest);
 #else
-        txBuffer.sendResponseValue((uint32_t)0);
-        txBuffer.sendResponseValue((uint32_t)0);
-        txBuffer.sendResponseValue((uint32_t)0);
+        txBuffer.sendResponseUInt32(0);
+        txBuffer.sendResponseUInt32(0);
+        txBuffer.sendResponseUInt32(0);
 #endif
     }
     txBuffer.sendResponseEnd();
 }
 
 void Printer::cmdGetStatus() {
-
+//0
     txBuffer.sendResponseStart(CmdGetStatus);
 
+//1
     txBuffer.sendResponseUint8(printerState);
-    txBuffer.sendResponseValue(current_temperature_bed);
-    txBuffer.sendResponseValue(current_temperature[0]);
-    txBuffer.sendResponseValue(swapDev.available());
-    txBuffer.sendResponseValue(sDReader.available());
+//2
+    txBuffer.sendResponseFloat(current_temperature_bed);
+//6
+    txBuffer.sendResponseFloat(current_temperature[0]);
+//10
+    txBuffer.sendResponseUInt32(swapDev.available());
+//14
+    txBuffer.sendResponseUInt16(sDReader.available());
+//12
     // xxx undo txBuffer.sendResponseUint8(stepBuffer.byteSize());
-    txBuffer.sendResponseValue((uint32_t)stepBuffer.size());
+    txBuffer.sendResponseUInt32(stepBuffer.size());
     txBuffer.sendResponseInt16(bufferLow);
-    txBuffer.sendResponseValue(target_temperature[0]);
+    txBuffer.sendResponseUInt16(target_temperature[0]);
     txBuffer.sendResponseUint8(tempControl.getPwmOutput());
 
     // Flowrate sensor
@@ -1637,12 +1643,12 @@ void Printer::cmdGetStatus() {
     txBuffer.sendResponseValue(filamentSensor.slippage());
     // txBuffer.sendResponseValue(filamentSensor.grip);
 #else
-    txBuffer.sendResponseValue((float)0.0);
+    txBuffer.sendResponseFloat(0.0);
     // txBuffer.sendResponseInt16(0);
 #endif
 
-    txBuffer.sendResponseValue(current_pos_steps[E_AXIS]);
-    txBuffer.sendResponseValue(minBuffer);
+    txBuffer.sendResponseInt32(current_pos_steps[E_AXIS]);
+    txBuffer.sendResponseUInt32(minBuffer);
 
     txBuffer.sendResponseEnd();
 }
@@ -1675,12 +1681,12 @@ void Printer::cmdGetTempTable() {
 
     txBuffer.sendResponseStart(CmdGetTempTable);
 
-    txBuffer.sendResponseValue(extrusionLimitBaseTemp);
+    txBuffer.sendResponseUInt16(extrusionLimitBaseTemp);
 
     txBuffer.sendResponseUint8(NExtrusionLimit);
 
     for (uint8_t i=0; i<NExtrusionLimit; i++) {
-        txBuffer.sendResponseValue(tempExtrusionRateTable[i]);
+        txBuffer.sendResponseUInt16(tempExtrusionRateTable[i]);
     }
 
     txBuffer.sendResponseEnd();
@@ -1714,7 +1720,7 @@ void Printer::cmdReadGpio(uint8_t pinNumber) {
     uint32_t val = HAL_READ(pinNumber);
 
     txBuffer.sendResponseStart(CmdReadGpio);
-    txBuffer.sendResponseValue(val);
+    txBuffer.sendResponseUInt32(val);
     txBuffer.sendResponseEnd();
 }
 
@@ -1727,7 +1733,7 @@ void Printer::cmdReadAnalogGpio(uint8_t pinNumber) {
     uint32_t val = HAL_READ_ANALOG(pinNumber);
 
     txBuffer.sendResponseStart(CmdReadAnalogGpio);
-    txBuffer.sendResponseValue(val);
+    txBuffer.sendResponseUInt32(val);
     txBuffer.sendResponseEnd();
 }
 
@@ -2362,7 +2368,7 @@ void loop() {
                 LCDMSGKILL(RespHardwareEndstop, "", "");
                 txBuffer.sendResponseStart(RespKilled);
                 txBuffer.sendResponseUint8(RespHardwareEndstop);
-                txBuffer.sendResponseValue((uint8_t*)current_pos_steps, 3*sizeof(int32_t));
+                txBuffer.sendResponseBlob((uint8_t*)current_pos_steps, 3*sizeof(int32_t));
                 txBuffer.sendResponseUint8(X_STOP_PIN :: active());
                 txBuffer.sendResponseUint8(Y_STOP_PIN :: active());
                 txBuffer.sendResponseUint8(Z_STOP_PIN :: active());
@@ -2374,7 +2380,7 @@ void loop() {
                 LCDMSGKILL(RespSoftwareEndstop, "", "");
                 txBuffer.sendResponseStart(RespKilled);
                 txBuffer.sendResponseUint8(RespSoftwareEndstop);
-                txBuffer.sendResponseValue((uint8_t*)current_pos_steps, 3*sizeof(int32_t));
+                txBuffer.sendResponseBlob((uint8_t*)current_pos_steps, 3*sizeof(int32_t));
                 txBuffer.sendResponseUint8(X_SW_ENDSTOP_PRESSED);
                 txBuffer.sendResponseUint8(Y_SW_ENDSTOP_PRESSED);
                 txBuffer.sendResponseUint8(Z_SW_ENDSTOP_PRESSED);
