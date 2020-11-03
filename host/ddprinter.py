@@ -710,6 +710,13 @@ class Printer(Serial):
         (cmd, payload) = self.query(CmdGetStatus, doLog=False)
 
         print "len payload:", len(payload)
+
+
+        # XXXXXX debug workaround, payload 37, needed: 36
+        if len(payload) > 36:
+            print "WARNING: payload to long, stripping bytes #", len(payload)-36
+            payload = payload[:36]
+
         tup = struct.unpack("<BffIHIhHBfiI", payload)
 
         statusDict = {}
@@ -733,6 +740,13 @@ class Printer(Serial):
             (cmd, payload) = self.query(statusCmd, doLog=True)
 
             print "cmd, len payload:", cmd, len(payload)
+
+            lenp =(len(payload) / 4) * 4;
+
+            # XXXXXX debug workaround,
+            if len(payload) > lenp:
+                print "WARNING: payload to long, stripping bytes #", len(payload)-lenp
+                payload = payload[:lenp]
 
             structFmt = "<" + "I" * (len(payload) / 4)
             tup = struct.unpack(structFmt, payload)

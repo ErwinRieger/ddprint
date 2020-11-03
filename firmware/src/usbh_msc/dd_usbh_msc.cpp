@@ -545,6 +545,24 @@ USBH_Status USBH_MSC_Read10(USB_OTG_CORE_HANDLE *pdev, USBH_HOST *phost,
 }
 
 //--------------------------------------------------------------
+//
+//
+// For Reset Recovery the host shall issue in the following order: :
+// (a) a Bulk-Only Mass Storage Reset
+// (b) a Clear Feature HALT to the Bulk-In endpoint
+// (c) a Clear Feature HALT to the Bulk-Out endpoint
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
 static USBH_Status USBH_MSC_BOTReset_Mass_Storage_Reset(USB_OTG_CORE_HANDLE *pdev, USBH_HOST *phost) {
   
   phost->Control.setup.b.bmRequestType = USB_H2D | USB_REQ_TYPE_CLASS | USB_REQ_RECIPIENT_INTERFACE;
@@ -611,13 +629,11 @@ USBH_Status USBH_MSC_Write10(USB_OTG_CORE_HANDLE *pdev, USBH_HOST *phost,
       
     case CMD_WAIT_STATUS:
 
-        // if entire duration of one write is above some threshold: 
-        /*
+        // if entire duration of write is above some threshold: 
         if (timeout >= 3) {
             usbh_msc.CmdStateMachine = CMD_STORAGE_RESET;
             return USBH_BUSY;
         } 
-        */
 
         /* Process the BOT state machine */
         bot_status = dd_USBH_MSC_HandleBOTXfer(pdev, phost);
@@ -635,15 +651,40 @@ USBH_Status USBH_MSC_Write10(USB_OTG_CORE_HANDLE *pdev, USBH_HOST *phost,
         bot_status = USBH_MSC_BOTReset_Mass_Storage_Reset(pdev, phost);
         if (bot_status == USBH_OK)
         {
-            usbh_msc.CmdStateMachine = CMD_CLEAR_FEATURE_OUT;
+
+// xxx skip clear feature ( halt???)
+            // usbh_msc.CmdStateMachine = CMD_CLEAR_FEATURE_IN;
+            usbh_msc.CmdStateMachine = CMD_SEND_STATE;
+
+
+
             massert(phost->RequestState == CMD_SEND);
-            return USBH_BUSY;
+// xxx skip clear feature ( halt???)
+            // return USBH_BUSY;
+            return USBH_TIMEOUT;  // left over stall or error condition???
         }
 
         massert(bot_status == USBH_BUSY);
         return bot_status;
 
+    case CMD_CLEAR_FEATURE_IN: 
+// xxx skipped
+massert(0);
+
+        bot_status = USBH_MSC_BOT_Abort(pdev, phost, USBH_MSC_DIR_IN);
+        if (bot_status == USBH_OK)
+        {
+            usbh_msc.CmdStateMachine = CMD_CLEAR_FEATURE_OUT;
+            massert(phost->RequestState == CMD_SEND);
+            return USBH_TIMEOUT;
+        }
+
+        massert(bot_status == USBH_BUSY);
+        return bot_status;
+      
     case CMD_CLEAR_FEATURE_OUT: 
+// xxx skipped
+massert(0);
 
         bot_status = USBH_MSC_BOT_Abort(pdev, phost, USBH_MSC_DIR_OUT);
         if (bot_status == USBH_OK)
@@ -653,7 +694,7 @@ USBH_Status USBH_MSC_Write10(USB_OTG_CORE_HANDLE *pdev, USBH_HOST *phost,
         // USBH_LL_SetToggle(pdev, MSC_Machine.hc_num_out, 1 - toggle);
         // USBH_LL_SetToggle(pdev, MSC_Machine.hc_num_in, 0);
 
-            usbh_msc.CmdStateMachine = CMD_CLEAR_FEATURE_IN;
+            usbh_msc.CmdStateMachine = CMD_SEND_STATE;
             massert(phost->RequestState == CMD_SEND);
             return USBH_BUSY;
         }
@@ -661,19 +702,6 @@ USBH_Status USBH_MSC_Write10(USB_OTG_CORE_HANDLE *pdev, USBH_HOST *phost,
         massert(bot_status == USBH_BUSY);
         return bot_status;
 
-    case CMD_CLEAR_FEATURE_IN: 
-
-        bot_status = USBH_MSC_BOT_Abort(pdev, phost, USBH_MSC_DIR_IN);
-        if (bot_status == USBH_OK)
-        {
-            usbh_msc.CmdStateMachine = CMD_SEND_STATE;
-            massert(phost->RequestState == CMD_SEND);
-            return USBH_TIMEOUT;
-        }
-
-        massert(bot_status == USBH_BUSY);
-        return bot_status;
-      
     default:
       return USBH_NOT_SUPPORTED;
   }
