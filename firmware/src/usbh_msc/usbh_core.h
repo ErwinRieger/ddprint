@@ -31,7 +31,8 @@ typedef enum {
   USBH_UNRECOVERED_ERROR,
   USBH_ERROR_SPEED_UNKNOWN,
   USBH_APPLY_DEINIT,
-  USBH_TIMEOUT
+  USBH_TIMEOUT,
+  USBH_NOTREADY
 }USBH_Status;
 
 /* Following states are used for gState */
