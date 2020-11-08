@@ -49,8 +49,6 @@
 //
 
 
-void incbufferlow();
-
 enum SwapTasks { TaskRead, TaskWrite };
 
 class SDSwap: public MassStorage, public Protothread {
@@ -82,8 +80,6 @@ public:
 
         busyWriting = 0;
         reset();
-
-        // incbufferlow();
     }
 
     struct TaskTiming ioStats[2];
@@ -244,7 +240,6 @@ public:
         if (res == -1) {
 
             // Clean up and retry fresh write command later
-
             PT_WAIT_WHILE((usbstatus = USBH_MSC_BlockReset(&USB_OTG_Core_Host, &USB_Host)) == USBH_BUSY);
             massert(usbstatus == USBH_OK);
 
@@ -257,8 +252,6 @@ public:
             // Don't update size 
             // Don't change write buffer
             busyWriting = 2;
-
-            // incbufferlow();
         }
         else {
 

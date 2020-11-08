@@ -624,11 +624,6 @@ USBH_Status USBH_MSC_Read10(USB_OTG_CORE_HANDLE *pdev, USBH_HOST *phost,
           usbh_msc.CmdStateMachine = CMD_SEND_STATE;
       }
 
-      if (bot_status == USBH_NOTREADY) {
-            massert(0);
-          return USBH_BUSY; // Retry
-      }
-
       return bot_status;
       
     default:
@@ -1070,6 +1065,8 @@ massert(0);
   }
 }
 
+void incbufferlow(); // XXX debug
+
 //--------------------------------------------------------------
 //
 USBH_Status USBH_MSC_BlockReset(USB_OTG_CORE_HANDLE *pdev, USBH_HOST *phost)
@@ -1115,6 +1112,7 @@ USBH_Status USBH_MSC_BlockReset(USB_OTG_CORE_HANDLE *pdev, USBH_HOST *phost)
       }
 
       if (bot_status == USBH_NOTREADY) {
+          incbufferlow(); // XXX debug
           return USBH_BUSY; // restart command
       }
 

@@ -62,8 +62,6 @@ extern "C" {
 }
 
 
-void incbufferlow();
-
 //
 // Serial interface, note: fixed USART1 usage
 //
@@ -473,7 +471,6 @@ class MassStorage: public MassStorageBase {
         else if (status == USBH_TIMEOUT) {
 
             // return -1 for write-retry
-            incbufferlow();
             return -1;
         }
 
