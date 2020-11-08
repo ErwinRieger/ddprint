@@ -23,7 +23,8 @@ typedef enum {
   CMD_WAIT_STATUS,
   CMD_STORAGE_RESET,
   CMD_CLEAR_FEATURE_IN,
-  CMD_CLEAR_FEATURE_OUT
+  CMD_CLEAR_FEATURE_OUT,
+  CMD_TEST_CLEAR_FEATURE_OUT,
 } CMD_STATES_TypeDef;  
 
 typedef struct __MassStorageParameter

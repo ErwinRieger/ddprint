@@ -48,13 +48,8 @@
 #include "pin_states.h"
 #include "massstoragebase.h"
 
-// extern "C" {
     #include "usbh_msc/dd_usbh_msc.h"
     #include "usbh_msc/usbh_msc_bot.h"
-    // void systemHardReset(void);
-// }
-
-// #include <VCP/core_cm4.h>
 
 //
 // STM32

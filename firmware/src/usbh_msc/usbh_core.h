@@ -8,8 +8,13 @@
 //--------------------------------------------------------------
 // Includes
 //-------------------------------------------------------------- 
-#include "usb_hcd.h"
-#include "usbh_def.h"
+// #include<Arduino.h>
+extern "C" {
+    #define xxxfuck 1
+    #include "usbh_def.h"
+    #include "usb_core.h"
+}
+// #include "mdebug.h"
 
 #define MSC_CLASS                         0x08
 #define HID_CLASS                         0x03
@@ -24,7 +29,7 @@
 #define USBH_MAX_NUM_INTERFACES               2
 
 typedef enum {
-  USBH_OK   = 0,
+  USBH_OK  ,
   USBH_BUSY,
   USBH_FAIL,
   USBH_NOT_SUPPORTED,
@@ -37,7 +42,7 @@ typedef enum {
 
 /* Following states are used for gState */
 typedef enum {
-  HOST_IDLE =0,
+  HOST_IDLE,
   // HOST_ISSUE_CORE_RESET,
   HOST_DEV_WAIT_FOR_ATTACHMENT,  
   HOST_DEV_ATTACHED,
@@ -56,7 +61,7 @@ typedef enum {
 
 /* Following states are used for EnumerationState */
 typedef enum {
-  ENUM_IDLE = 0,
+  ENUM_IDLE,
   ENUM_GET_FULL_DEV_DESC,
   ENUM_SET_ADDR,
   ENUM_GET_CFG_DESC,
@@ -67,7 +72,7 @@ typedef enum {
 
 /* Following states are used for CtrlXferStateMachine */
 typedef enum {
-  CTRL_IDLE =0,
+  // CTRL_IDLE,
   CTRL_SETUP,
   CTRL_SETUP_WAIT,
   CTRL_DATA_IN,
@@ -78,24 +83,64 @@ typedef enum {
   CTRL_STATUS_IN_WAIT,
   CTRL_STATUS_OUT,
   CTRL_STATUS_OUT_WAIT,
-  CTRL_ERROR
+  CTRL_ERROR,
+  Count
 }
 CTRL_State;  
 
 typedef enum {
-  USBH_USR_NO_RESP   = 0,
-  USBH_USR_RESP_OK = 1,
+  USBH_USR_NO_RESP  ,
+  USBH_USR_RESP_OK,
 }
 USBH_USR_Status;
 
 /* Following states are used for RequestState */
 typedef enum {
-  CMD_IDLE =0,
+  CMD_IDLE,
   CMD_SEND,
   CMD_WAIT
 } CMD_State;  
 
 
+// class USBH_StateMachineTimeout() 
+
+// template <typename StateEnumType, const char* name>
+template <typename StateEnumType>
+class USBH_StateMachine {
+
+        StateEnumType state;
+        unsigned long timeout;
+
+    public:
+        USBH_StateMachine() { 
+            state = (StateEnumType)0;
+            timeout = 0;
+            } // assume first state is 0
+
+        StateEnumType getState() {
+
+            _checkTimeout();
+            return state; }
+
+        void setState(StateEnumType s) { 
+
+            _checkTimeout();
+            state = s;
+            timeout = millis();
+        }
+
+        void start() { setState((StateEnumType)0); }
+
+        void nextState() { 
+            StateEnumType s = (StateEnumType)(state + 1);
+            massert(s < StateEnumType::Count);
+            setState(s);
+        }
+
+        void _checkTimeout() { 
+            if (state > (StateEnumType)0)
+                massert(millis() < (timeout + 1000)); } // one second should be enough for a max. runtime of about 5mS
+};
 
 typedef struct _Ctrl
 {
@@ -108,7 +153,8 @@ typedef struct _Ctrl
   uint16_t              timer;  
   CTRL_STATUS           status;
   USB_Setup_TypeDef     setup;
-  CTRL_State            state;  
+  // CTRL_State            state;  
+  USBH_StateMachine<CTRL_State> state;  
 
 } USBH_Ctrl_TypeDef;
 
@@ -129,7 +175,7 @@ typedef struct _Host_TypeDef
 {
   HOST_State            gState;       /*  Host State Machine Value */
   ENUM_State            EnumState;    /* Enumeration state Machine */
-  CMD_State             RequestState;       
+  // CMD_State             RequestState;       
   USBH_Ctrl_TypeDef     Control;
   
   USBH_Device_TypeDef   device_prop; 
@@ -145,6 +191,7 @@ void USBH_Process(USB_OTG_CORE_HANDLE *pdev ,
 void USBH_ErrorHandle(USBH_HOST *phost, 
                       USBH_Status errType);
 
+USB_OTG_STS  USB_OTG_HC_Halt         (USB_OTG_CORE_HANDLE *pdev, uint8_t hc_num);
 
 #endif /* __USBH_CORE_H */
 

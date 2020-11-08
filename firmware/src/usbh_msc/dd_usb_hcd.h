@@ -11,7 +11,7 @@
 #include <stdint.h>
 
 extern "C" {
-    #include <usb_core.h>
+    // #include <usb_core.h>
 }
 
 uint32_t  HCD_Init                 (USB_OTG_CORE_HANDLE *pdev ,

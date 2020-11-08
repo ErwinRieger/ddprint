@@ -5,18 +5,36 @@
 #include <libmaple/gpio.h>
 
 extern "C" {
-#include <usb_hcd_int.h>
-// usbF4/STM32_USB_OTG_Driver/inc/usb_bsp.h
-#include <usb_bsp.h>
+    // Maple include
+#define xxxfuck 1
+    #include <usb_hcd_int.h>
+
+    // usbF4/STM32_USB_OTG_Driver/inc/usb_bsp.h
+    #include <usb_bsp.h>
 }
 
-#include "usb_hcd.h"
-#include "usbh_usr.h"
-#include "dd_usbh_msc.h"
+
+extern "C" {
+    // Maple include
+    // #include <usb_core.h>
+}
+
+// }
+
 #include "mdebug.h"
 
-//xxx
+extern "C" {
+    // Maple include
+    // 
+#define xxxfuck 1
+    #include "usb_hcd.h"
 extern void USB_OTG_BSP_mDelay (const uint32_t msec);
+}
+
+#include "usbh_usr.h"
+#include "dd_usbh_msc.h"
+
+//xxx
 uint32_t dd_HCD_SubmitRequest (USB_OTG_CORE_HANDLE *pdev , uint8_t hc_num);
 uint32_t dd_HCD_IsDeviceConnected    (USB_OTG_CORE_HANDLE *pdev); 
 uint32_t dd_HCD_GetXferCnt (USB_OTG_CORE_HANDLE *pdev, uint8_t ch_num);
@@ -25,7 +43,6 @@ URB_STATE dd_HCD_GetURB_State (USB_OTG_CORE_HANDLE *pdev , uint8_t ch_num);
 uint32_t dd_HCD_GetCurrentFrame (USB_OTG_CORE_HANDLE *pdev) ;
 uint32_t dd_HCD_GetCurrentSpeed (USB_OTG_CORE_HANDLE *pdev);
 uint32_t dd_HCD_Init(USB_OTG_CORE_HANDLE *pdev , USB_OTG_CORE_ID_TypeDef coreID);
-uint32_t dd_HCD_ResetPort(USB_OTG_CORE_HANDLE *pdev);
 
 //
 // Todo:
@@ -64,11 +81,11 @@ static SCSI_SenseTypeDef sensKey;
 struct DebugCalls {
     int unitReadyCalls;
     int reqSenseCalls;
-    USBH_Status USBH_MSC_HandleBOTXferStatus;
     int stallErrors;
 };
 
 static struct DebugCalls debugCalls;
+// end debug
 
 //--------------------------------------------------------------
 //
@@ -110,6 +127,50 @@ USBH_Status USB_disk_write(
     return status;
 }
 
+void checkDataInEndpointClean(USB_OTG_CORE_HANDLE *pdev) {
+
+    URB_STATE URB_Status = dd_HCD_GetURB_State(pdev , MSC_Machine.hc_num_in);
+
+    switch (URB_Status) {
+
+        case URB_NOTREADY:
+            massert(0);
+        case URB_STALL:
+            massert(0);
+        case URB_ERROR:
+            massert(0);
+
+        case URB_IDLE:
+        case URB_DONE:
+            break;
+
+    }
+}
+
+void checkDataOutEndpointClean(USB_OTG_CORE_HANDLE *pdev) {
+
+    URB_STATE URB_Status = dd_HCD_GetURB_State(pdev, MSC_Machine.hc_num_out);
+
+    switch (URB_Status) {
+
+        case URB_NOTREADY:
+            massert(0);
+        case URB_STALL:
+            massert(0);
+        case URB_ERROR:
+            massert(0);
+
+        case URB_IDLE:
+        case URB_DONE:
+            break;
+    }
+}
+
+void checkDataEndpointsClean(USB_OTG_CORE_HANDLE *pdev) {
+    checkDataOutEndpointClean(pdev);
+    checkDataInEndpointClean(pdev);
+}
+
 //--------------------------------------------------------------
 //
 USBH_Status USB_disk_read(
@@ -117,15 +178,6 @@ USBH_Status USB_disk_read(
         uint8_t *buff, uint32_t sector) {
 
     USBH_Status status;
-
-    URB_STATE URB_Status = URB_IDLE;
-
-    URB_Status = dd_HCD_GetURB_State(pdev , MSC_Machine.hc_num_in);
-    massert((URB_Status == URB_IDLE) || (URB_Status == URB_DONE));
-
-    URB_Status = dd_HCD_GetURB_State(pdev, MSC_Machine.hc_num_out);
-    massert((URB_Status == URB_IDLE) || (URB_Status == URB_DONE));
-
     while (true) {
         status = USBH_MSC_Read10(pdev, phost, buff, sector, 512);
         if (status != USBH_BUSY)
@@ -217,6 +269,7 @@ USBH_Status dd_USBH_MSC_HandleBOTXfer (USB_OTG_CORE_HANDLE *pdev ,USBH_HOST *pho
   USBH_Status status = USBH_BUSY;
   
   URB_STATE URB_Status = URB_IDLE;
+  static uint16_t timeout = 0;
   
   switch (usbh_msc.BOTState)
   {
@@ -245,12 +298,12 @@ USBH_Status dd_USBH_MSC_HandleBOTXfer (USB_OTG_CORE_HANDLE *pdev ,USBH_HOST *pho
             usbh_msc.BOTState = USBH_BOTSTATE_BOT_DATAOUT_STATE;
           } 
 
-          // firstBlock = true; 
+          timeout = dd_HCD_GetCurrentFrame(pdev) + DATA_STAGE_TIMEOUT;
         }
-        
         else
         {/* If there is NO Data Transfer Stage */
           usbh_msc.BOTState = USBH_BOTSTATE_RECEIVE_CSW_STATE;
+          timeout = dd_HCD_GetCurrentFrame(pdev) + NODATA_STAGE_TIMEOUT;
         }
       }   
       else if (URB_Status == URB_NOTREADY)
@@ -313,6 +366,11 @@ USBH_Status dd_USBH_MSC_HandleBOTXfer (USB_OTG_CORE_HANDLE *pdev ,USBH_HOST *pho
         4. The host shall attempt to receive a CSW.
         */
       }     
+      else if (dd_HCD_GetCurrentFrame(pdev) > timeout)
+      {
+        /* timeout for IN transfer */
+        massert(0);
+      }   
       break;   
       
     case USBH_BOTSTATE_BOT_DATAOUT_STATE: {
@@ -367,6 +425,11 @@ USBH_Status dd_USBH_MSC_HandleBOTXfer (USB_OTG_CORE_HANDLE *pdev ,USBH_HOST *pho
         The Below statement will help in Getting the CSW.  
         */
       }
+      else if (dd_HCD_GetCurrentFrame(pdev) > timeout)
+      {
+        /* timeout for IN transfer */
+        massert(0);
+      }   
       break;
 
     case USBH_BOTSTATE_RECEIVE_CSW_STATE:
@@ -424,6 +487,11 @@ USBH_Status dd_USBH_MSC_HandleBOTXfer (USB_OTG_CORE_HANDLE *pdev ,USBH_HOST *pho
           usbh_msc.BOTState  = USBH_BOTSTATE_BOT_ERROR_OUT;
           debugCalls.stallErrors++;
       }
+      else if (dd_HCD_GetCurrentFrame(pdev) > timeout)
+      {
+        /* timeout for IN transfer */
+        massert(0);
+      }   
       break;
 
     case USBH_BOTSTATE_BOT_ERROR_IN: 
@@ -490,7 +558,7 @@ USBH_Status dd_USBH_MSC_HandleBOTXfer (USB_OTG_CORE_HANDLE *pdev ,USBH_HOST *pho
       break;
   }
 
-  debugCalls.USBH_MSC_HandleBOTXferStatus = status;
+  // debugCalls.USBH_MSC_HandleBOTXferStatus = status;
 
   return status;
 }
@@ -508,6 +576,9 @@ USBH_Status USBH_MSC_Read10(USB_OTG_CORE_HANDLE *pdev, USBH_HOST *phost,
     switch(usbh_msc.CmdStateMachine) {
 
     case CMD_SEND_STATE:
+
+    checkDataEndpointsClean(pdev); // xxx debug
+
       USBH_MSC_CBWData.field.CBWTransferLength = nbOfbytes;
       USBH_MSC_CBWData.field.CBWFlags = USB_EP_DIR_IN;
       USBH_MSC_CBWData.field.CBWLength = CBW_LENGTH; // 10
@@ -567,6 +638,246 @@ USBH_Status USBH_MSC_Read10(USB_OTG_CORE_HANDLE *pdev, USBH_HOST *phost,
 }
 
 //--------------------------------------------------------------
+USBH_Status dd_USBH_HandleControl (USB_OTG_CORE_HANDLE *pdev, USBH_HOST *phost, uint8_t *buff, uint16_t length)
+{
+  uint8_t direction;  
+  static uint16_t timeout = 0;
+  USBH_Status status = USBH_BUSY;
+  URB_STATE URB_Status = URB_IDLE;
+  
+  switch (phost->Control.state.getState())
+  {
+  case CTRL_SETUP:
+
+    phost->Control.buff = buff; 
+    phost->Control.length = length;
+
+    /* send a SETUP packet */
+    USBH_CtlSendSetup (pdev, 
+	                   phost->Control.setup.d8 , 
+	                   phost->Control.hc_num_out);  
+    phost->Control.state.nextState();
+    break; 
+    
+  case CTRL_SETUP_WAIT:
+    
+    URB_Status = dd_HCD_GetURB_State(pdev , phost->Control.hc_num_out); 
+    /* case SETUP packet sent successfully */
+    if(URB_Status == URB_DONE)
+    { 
+      direction = (phost->Control.setup.b.bmRequestType & USB_REQ_DIR_MASK);
+      
+      /* check if there is a data stage */
+      if (phost->Control.setup.b.wLength.w != 0 )
+      {        
+        timeout = DATA_STAGE_TIMEOUT;
+        if (direction == USB_D2H)
+        {
+          /* Data Direction is IN */
+          phost->Control.state.setState(CTRL_DATA_IN);
+        }
+        else
+        {
+          /* Data Direction is OUT */
+          phost->Control.state.setState(CTRL_DATA_OUT);
+        } 
+      }
+      /* No DATA stage */
+      else
+      {
+        timeout = NODATA_STAGE_TIMEOUT;
+        
+        /* If there is No Data Transfer Stage */
+        if (direction == USB_D2H)
+        {
+          /* Data Direction is IN */
+          phost->Control.state.setState(CTRL_STATUS_OUT);
+        }
+        else
+        {
+          /* Data Direction is OUT */
+          phost->Control.state.setState(CTRL_STATUS_IN);
+        } 
+      }          
+      /* Set the delay timer to enable timeout for data stage completion */
+      phost->Control.timer = dd_HCD_GetCurrentFrame(pdev);
+    }
+    else if(URB_Status == URB_ERROR)
+    {
+      massert(0); // phost->Control.state = CTRL_ERROR;     
+    }    
+    break;
+    
+  case CTRL_DATA_IN:  
+    /* Issue an IN token */ 
+    USBH_CtlReceiveData(pdev,
+                        phost->Control.buff, 
+                        phost->Control.length,
+                        phost->Control.hc_num_in);
+ 
+    phost->Control.state.setState(CTRL_DATA_IN_WAIT);
+    break;    
+    
+  case CTRL_DATA_IN_WAIT:
+    
+    URB_Status = dd_HCD_GetURB_State(pdev , phost->Control.hc_num_in); 
+    
+    /* check is DATA packet transfered successfully */
+    if  (URB_Status == URB_DONE)
+    { 
+      phost->Control.state.setState(CTRL_STATUS_OUT);
+    }
+   
+    /* manage error cases*/
+    if  (URB_Status == URB_STALL) 
+    { 
+      massert(0);
+    }   
+    else if (URB_Status == URB_ERROR)
+    {
+      /* Device error */
+      massert(0); // phost->Control.state = CTRL_ERROR;    
+    }
+    else if ((dd_HCD_GetCurrentFrame(pdev)- phost->Control.timer) > timeout)
+    {
+      /* timeout for IN transfer */
+      massert(0); // phost->Control.state = CTRL_ERROR; 
+    }   
+    break;
+    
+  case CTRL_DATA_OUT:
+    /* Start DATA out transfer (only one DATA packet)*/
+    
+    pdev->host.hc[phost->Control.hc_num_out].toggle_out ^= 1; 
+    
+    USBH_CtlSendData (pdev,
+                      phost->Control.buff, 
+                      phost->Control.length , 
+                      phost->Control.hc_num_out);
+    
+    phost->Control.state.setState(CTRL_DATA_OUT_WAIT);
+    break;
+    
+  case CTRL_DATA_OUT_WAIT:
+    
+    URB_Status = dd_HCD_GetURB_State(pdev , phost->Control.hc_num_out);     
+    if  (URB_Status == URB_DONE)
+    { /* If the Setup Pkt is sent successful, then change the state */
+      phost->Control.state.setState(CTRL_STATUS_IN);
+    }
+    
+    /* handle error cases */
+    else if  (URB_Status == URB_STALL) 
+    { 
+      massert(0);
+    } 
+    else if  (URB_Status == URB_NOTREADY)
+    { 
+      /* Nack received from device */
+      phost->Control.state.setState(CTRL_DATA_OUT);
+    }    
+    else if (URB_Status == URB_ERROR)
+    {
+      /* device error */
+      massert(0); // phost->Control.state = CTRL_ERROR;      
+    } 
+    break;
+    
+    
+  case CTRL_STATUS_IN:
+    /* Send 0 bytes out packet */
+    USBH_CtlReceiveData (pdev,
+                         0,
+                         0,
+                         phost->Control.hc_num_in);
+    
+    phost->Control.state.setState(CTRL_STATUS_IN_WAIT);
+    break;
+    
+  case CTRL_STATUS_IN_WAIT:
+    
+    URB_Status = dd_HCD_GetURB_State(pdev , phost->Control.hc_num_in); 
+    
+    if  ( URB_Status == URB_DONE)
+    { /* Control transfers completed, Exit the State Machine */
+      status = USBH_OK;
+    }
+    
+    else if (URB_Status == URB_ERROR)
+    {
+      massert(0); // phost->Control.state = CTRL_ERROR;  
+    }
+    else if((dd_HCD_GetCurrentFrame(pdev) - phost->Control.timer) > timeout)
+    {
+      massert(0); // phost->Control.state = CTRL_ERROR; 
+    }
+     else if(URB_Status == URB_STALL)
+    {
+      /* Control transfers completed, Exit the State Machine */
+      massert(0);
+      status = USBH_NOT_SUPPORTED;
+    }
+    break;
+    
+  case CTRL_STATUS_OUT:
+    pdev->host.hc[phost->Control.hc_num_out].toggle_out ^= 1; 
+    USBH_CtlSendData (pdev,
+                      0,
+                      0,
+                      phost->Control.hc_num_out);
+    
+    phost->Control.state.setState(CTRL_STATUS_OUT_WAIT);
+    break;
+    
+  case CTRL_STATUS_OUT_WAIT: 
+    
+    URB_Status = dd_HCD_GetURB_State(pdev , phost->Control.hc_num_out);  
+    if  (URB_Status == URB_DONE)
+    { 
+      status = USBH_OK;      
+    }
+    else if  (URB_Status == URB_NOTREADY)
+    { 
+      phost->Control.state.setState(CTRL_STATUS_OUT);
+    }      
+    else if (URB_Status == URB_ERROR)
+    {
+      massert(0); // phost->Control.state = CTRL_ERROR;      
+    }
+    break;
+    
+  case CTRL_ERROR:
+    /* 
+    After a halt condition is encountered or an error is detected by the 
+    host, a control endpoint is allowed to recover by accepting the next Setup 
+    PID; i.e., recovery actions via some other pipe are not required for control
+    endpoints. For the Default Control Pipe, a device reset will ultimately be 
+    required to clear the halt or error condition if the next Setup PID is not 
+    accepted.
+    */
+    if (++ phost->Control.errorcount <= USBH_MAX_ERROR_COUNT)
+    {
+      /* Do the transmission again, starting from SETUP Packet */
+      massert(0); // phost->Control.state = CTRL_SETUP; 
+    }
+    else
+    {
+      massert(0);
+      status = USBH_FAIL;
+    }
+    break;
+    
+  default:
+    break;
+  }
+
+  if (status != USBH_BUSY)
+      phost->Control.state.start();
+      
+  return status;
+}
+
+//--------------------------------------------------------------
 //
 //
 // For Reset Recovery the host shall issue in the following order: :
@@ -596,7 +907,7 @@ static USBH_Status USBH_MSC_BOTReset_Mass_Storage_Reset(USB_OTG_CORE_HANDLE *pde
   phost->Control.setup.b.wIndex.w = 0;
   phost->Control.setup.b.wLength.w = 0;           
   
-  return USBH_CtlReq(pdev, phost, NULL, 0 ); 
+  return dd_USBH_HandleControl(pdev, phost, NULL, 0 ); 
 }
 
 //--------------------------------------------------------------
@@ -614,6 +925,9 @@ USBH_Status USBH_MSC_Write10(USB_OTG_CORE_HANDLE *pdev, USBH_HOST *phost,
   switch(usbh_msc.CmdStateMachine) {
 
     case CMD_SEND_STATE:   
+
+    checkDataEndpointsClean(pdev); // xxx debug
+
       USBH_MSC_CBWData.field.CBWTransferLength = nbOfbytes;
       USBH_MSC_CBWData.field.CBWFlags = USB_EP_DIR_OUT;
       USBH_MSC_CBWData.field.CBWLength = CBW_LENGTH; // 10
@@ -653,12 +967,12 @@ USBH_Status USBH_MSC_Write10(USB_OTG_CORE_HANDLE *pdev, USBH_HOST *phost,
     case CMD_WAIT_STATUS:
 
         // if entire duration of write is above some threshold: 
-#if 0
-        if (timeout >= 3) {
-            usbh_msc.CmdStateMachine = CMD_STORAGE_RESET;
+// #if 0
+        if (timeout >= 5) {
+            massert(0); // usbh_msc.CmdStateMachine = CMD_STORAGE_RESET;
             return USBH_BUSY;
         } 
-#endif
+// #endif
 
         /* Process the BOT state machine */
         bot_status = dd_USBH_MSC_HandleBOTXfer(pdev, phost);
@@ -669,8 +983,7 @@ USBH_Status USBH_MSC_Write10(USB_OTG_CORE_HANDLE *pdev, USBH_HOST *phost,
         return bot_status;
       
     case CMD_STORAGE_RESET:
-// xxx skipped
-massert(0);
+
         // Run but statemachine with mass storage reset control request
         // When this is done, the current (writ-)command is will be canceled
         // and the usb stack will be ready to receive the next command CBW
@@ -680,15 +993,16 @@ massert(0);
         {
 
 // xxx skip clear feature ( halt???)
-            // usbh_msc.CmdStateMachine = CMD_CLEAR_FEATURE_IN;
-            usbh_msc.CmdStateMachine = CMD_SEND_STATE;
+            // usbh_msc.CmdStateMachine = CMD_TEST_CLEAR_FEATURE_OUT;
+            usbh_msc.CmdStateMachine = CMD_CLEAR_FEATURE_OUT;
+            // usbh_msc.CmdStateMachine = CMD_SEND_STATE;
 
 
 
-            massert(phost->RequestState == CMD_SEND);
+            // massert(phost->RequestState == CMD_SEND);
 // xxx skip clear feature ( halt???)
-            // return USBH_BUSY;
-            return USBH_TIMEOUT;  // left over stall or error condition???
+            return USBH_BUSY;
+            // return USBH_TIMEOUT;  // left over stall or error condition???
         }
 
         massert(bot_status == USBH_BUSY);
@@ -702,16 +1016,33 @@ massert(0);
         if (bot_status == USBH_OK)
         {
             usbh_msc.CmdStateMachine = CMD_CLEAR_FEATURE_OUT;
-            massert(phost->RequestState == CMD_SEND);
+            // massert(phost->RequestState == CMD_SEND);
             return USBH_TIMEOUT;
         }
 
         massert(bot_status == USBH_BUSY);
         return bot_status;
       
+    case CMD_TEST_CLEAR_FEATURE_OUT: 
+
+        bot_status = USBH_MSC_BOT_Abort(pdev, phost, USBH_MSC_DIR_OUT);
+        if (bot_status == USBH_OK)
+        {
+
+            // uint8_t toggle = USBH_LL_GetToggle(pdev, MSC_Machine.hc_num_out);
+            // USBH_LL_SetToggle(pdev, MSC_Machine.hc_num_out, 1 - toggle);
+            // USBH_LL_SetToggle(pdev, MSC_Machine.hc_num_in, 0);
+
+            usbh_msc.CmdStateMachine = CMD_SEND_STATE;
+            // massert(phost->RequestState == CMD_SEND);
+            // return USBH_BUSY;
+            return USBH_TIMEOUT;
+        }
+
+        massert(bot_status == USBH_BUSY);
+        return bot_status;
+
     case CMD_CLEAR_FEATURE_OUT: 
-// xxx skipped
-massert(0);
 
         bot_status = USBH_MSC_BOT_Abort(pdev, phost, USBH_MSC_DIR_OUT);
         if (bot_status == USBH_OK)
@@ -722,7 +1053,7 @@ massert(0);
         // USBH_LL_SetToggle(pdev, MSC_Machine.hc_num_in, 0);
 
             usbh_msc.CmdStateMachine = CMD_SEND_STATE;
-            massert(phost->RequestState == CMD_SEND);
+            // massert(phost->RequestState == CMD_SEND);
             return USBH_BUSY;
         }
 
@@ -1284,11 +1615,6 @@ uint32_t USBD_OTG_HS_ISR_Handler (USB_OTG_CORE_HANDLE *pdev)
       usbMSCHostAssert(0); // retval |= USB_OTG_USBH_handle_sof_ISR (pdev);
     }
     
-    if (gintr_status.b.rxstsqlvl)
-    {
-      retval |= USB_OTG_USBH_handle_rx_qlvl_ISR (pdev);
-    }
-    
     if (gintr_status.b.nptxfempty)
     {
       usbMSCHostAssert(0); // retval |= USB_OTG_USBH_handle_nptxfempty_ISR (pdev);
@@ -1298,12 +1624,6 @@ uint32_t USBD_OTG_HS_ISR_Handler (USB_OTG_CORE_HANDLE *pdev)
     {
       usbMSCHostAssert(0); // retval |= USB_OTG_USBH_handle_ptxfempty_ISR (pdev);
     }    
-    
-    if (gintr_status.b.hcintr)
-      retval |= USB_OTG_USBH_handle_hc_ISR (pdev);
-    
-    if (gintr_status.b.portintr)
-      retval |= USB_OTG_USBH_handle_port_ISR (pdev);
     
     if (gintr_status.b.disconnect)
     {
@@ -1336,6 +1656,22 @@ uint32_t USBD_OTG_HS_ISR_Handler (USB_OTG_CORE_HANDLE *pdev)
       usbMSCHostAssert(0); // retval |= DCD_IsoOUTIncomplete_ISR(pdev);
     }    
 
+    if (gintr_status.b.rxstsqlvl)
+    {
+      retval |= USB_OTG_USBH_handle_rx_qlvl_ISR (pdev);
+    }
+    
+    if (gintr_status.b.hcintr) 
+    {
+      retval |= USB_OTG_USBH_handle_hc_ISR (pdev);
+    }
+    
+    if (gintr_status.b.portintr) 
+    {
+      retval |= USB_OTG_USBH_handle_port_ISR (pdev);
+    }
+    
+
   return retval;
 }
 
@@ -1348,288 +1684,6 @@ extern "C" {
   }
 }
 
-//--------------------------------------------------------------
-//
-static USBH_Status USBH_SubmitSetupRequest(USBH_HOST *phost,
-                                           uint8_t* buff, 
-                                           uint16_t length)
-{
-  
-  /* Prepare the Transactions */
-  phost->Control.buff = buff; 
-  phost->Control.length = length;
-  phost->Control.state = CTRL_SETUP;  
-
-  return USBH_OK;  
-}
-
-//--------------------------------------------------------------
-USBH_Status dd_USBH_HandleControl (USB_OTG_CORE_HANDLE *pdev, USBH_HOST *phost)
-{
-  uint8_t direction;  
-  static uint16_t timeout = 0;
-  USBH_Status status = USBH_BUSY;
-  URB_STATE URB_Status = URB_IDLE;
-  
-  switch (phost->Control.state)
-  {
-  case CTRL_SETUP:
-    /* send a SETUP packet */
-    USBH_CtlSendSetup     (pdev, 
-	                   phost->Control.setup.d8 , 
-	                   phost->Control.hc_num_out);  
-    phost->Control.state = CTRL_SETUP_WAIT;  
-    break; 
-    
-  case CTRL_SETUP_WAIT:
-    
-    URB_Status = dd_HCD_GetURB_State(pdev , phost->Control.hc_num_out); 
-    /* case SETUP packet sent successfully */
-    if(URB_Status == URB_DONE)
-    { 
-      direction = (phost->Control.setup.b.bmRequestType & USB_REQ_DIR_MASK);
-      
-      /* check if there is a data stage */
-      if (phost->Control.setup.b.wLength.w != 0 )
-      {        
-        timeout = DATA_STAGE_TIMEOUT;
-        if (direction == USB_D2H)
-        {
-          /* Data Direction is IN */
-          phost->Control.state = CTRL_DATA_IN;
-        }
-        else
-        {
-          /* Data Direction is OUT */
-          phost->Control.state = CTRL_DATA_OUT;
-        } 
-      }
-      /* No DATA stage */
-      else
-      {
-        timeout = NODATA_STAGE_TIMEOUT;
-        
-        /* If there is No Data Transfer Stage */
-        if (direction == USB_D2H)
-        {
-          /* Data Direction is IN */
-          phost->Control.state = CTRL_STATUS_OUT;
-        }
-        else
-        {
-          /* Data Direction is OUT */
-          phost->Control.state = CTRL_STATUS_IN;
-        } 
-      }          
-      /* Set the delay timer to enable timeout for data stage completion */
-      phost->Control.timer = dd_HCD_GetCurrentFrame(pdev);
-    }
-    else if(URB_Status == URB_ERROR)
-    {
-      phost->Control.state = CTRL_ERROR;     
-    }    
-    break;
-    
-  case CTRL_DATA_IN:  
-    /* Issue an IN token */ 
-    USBH_CtlReceiveData(pdev,
-                        phost->Control.buff, 
-                        phost->Control.length,
-                        phost->Control.hc_num_in);
- 
-    phost->Control.state = CTRL_DATA_IN_WAIT;
-    break;    
-    
-  case CTRL_DATA_IN_WAIT:
-    
-    URB_Status = dd_HCD_GetURB_State(pdev , phost->Control.hc_num_in); 
-    
-    /* check is DATA packet transfered successfully */
-    if  (URB_Status == URB_DONE)
-    { 
-      phost->Control.state = CTRL_STATUS_OUT;
-    }
-   
-    /* manage error cases*/
-    if  (URB_Status == URB_STALL) 
-    { 
-      massert(0);
-    }   
-    else if (URB_Status == URB_ERROR)
-    {
-      /* Device error */
-      phost->Control.state = CTRL_ERROR;    
-    }
-    else if ((dd_HCD_GetCurrentFrame(pdev)- phost->Control.timer) > timeout)
-    {
-      /* timeout for IN transfer */
-      phost->Control.state = CTRL_ERROR; 
-    }   
-    break;
-    
-  case CTRL_DATA_OUT:
-    /* Start DATA out transfer (only one DATA packet)*/
-    
-    pdev->host.hc[phost->Control.hc_num_out].toggle_out ^= 1; 
-    
-    USBH_CtlSendData (pdev,
-                      phost->Control.buff, 
-                      phost->Control.length , 
-                      phost->Control.hc_num_out);
-    
-    phost->Control.state = CTRL_DATA_OUT_WAIT;
-    break;
-    
-  case CTRL_DATA_OUT_WAIT:
-    
-    URB_Status = dd_HCD_GetURB_State(pdev , phost->Control.hc_num_out);     
-    if  (URB_Status == URB_DONE)
-    { /* If the Setup Pkt is sent successful, then change the state */
-      phost->Control.state = CTRL_STATUS_IN;
-    }
-    
-    /* handle error cases */
-    else if  (URB_Status == URB_STALL) 
-    { 
-      massert(0);
-    } 
-    else if  (URB_Status == URB_NOTREADY)
-    { 
-      /* Nack received from device */
-      phost->Control.state = CTRL_DATA_OUT;
-    }    
-    else if (URB_Status == URB_ERROR)
-    {
-      /* device error */
-      phost->Control.state = CTRL_ERROR;      
-    } 
-    break;
-    
-    
-  case CTRL_STATUS_IN:
-    /* Send 0 bytes out packet */
-    USBH_CtlReceiveData (pdev,
-                         0,
-                         0,
-                         phost->Control.hc_num_in);
-    
-    phost->Control.state = CTRL_STATUS_IN_WAIT;
-    
-    break;
-    
-  case CTRL_STATUS_IN_WAIT:
-    
-    URB_Status = dd_HCD_GetURB_State(pdev , phost->Control.hc_num_in); 
-    
-    if  ( URB_Status == URB_DONE)
-    { /* Control transfers completed, Exit the State Machine */
-      status = USBH_OK;
-    }
-    
-    else if (URB_Status == URB_ERROR)
-    {
-      phost->Control.state = CTRL_ERROR;  
-    }
-#if 0    
-    else if((dd_HCD_GetCurrentFrame(pdev) - phost->Control.timer) > timeout)
-    {
-      phost->Control.state = CTRL_ERROR; 
-    }
-#endif
-     else if(URB_Status == URB_STALL)
-    {
-      /* Control transfers completed, Exit the State Machine */
-      massert(0);
-      status = USBH_NOT_SUPPORTED;
-    }
-    break;
-    
-  case CTRL_STATUS_OUT:
-    pdev->host.hc[phost->Control.hc_num_out].toggle_out ^= 1; 
-    USBH_CtlSendData (pdev,
-                      0,
-                      0,
-                      phost->Control.hc_num_out);
-    
-    phost->Control.state = CTRL_STATUS_OUT_WAIT;
-    break;
-    
-  case CTRL_STATUS_OUT_WAIT: 
-    
-    URB_Status = dd_HCD_GetURB_State(pdev , phost->Control.hc_num_out);  
-    if  (URB_Status == URB_DONE)
-    { 
-      status = USBH_OK;      
-    }
-    else if  (URB_Status == URB_NOTREADY)
-    { 
-      phost->Control.state = CTRL_STATUS_OUT;
-    }      
-    else if (URB_Status == URB_ERROR)
-    {
-      phost->Control.state = CTRL_ERROR;      
-    }
-    break;
-    
-  case CTRL_ERROR:
-    /* 
-    After a halt condition is encountered or an error is detected by the 
-    host, a control endpoint is allowed to recover by accepting the next Setup 
-    PID; i.e., recovery actions via some other pipe are not required for control
-    endpoints. For the Default Control Pipe, a device reset will ultimately be 
-    required to clear the halt or error condition if the next Setup PID is not 
-    accepted.
-    */
-    if (++ phost->Control.errorcount <= USBH_MAX_ERROR_COUNT)
-    {
-      /* Do the transmission again, starting from SETUP Packet */
-      phost->Control.state = CTRL_SETUP; 
-    }
-    else
-    {
-      massert(0);
-      
-      status = USBH_FAIL;
-    }
-    break;
-    
-  default:
-    break;
-  }
-  return status;
-}
-
-
-//--------------------------------------------------------------
-//
-USBH_Status USBH_CtlReq     (USB_OTG_CORE_HANDLE *pdev, 
-                             USBH_HOST           *phost, 
-                             uint8_t             *buff,
-                             uint16_t            length)
-{
-  USBH_Status status;
-  
-  switch (phost->RequestState) {
-
-  case CMD_SEND:
-    /* Start a SETUP transfer */
-    USBH_SubmitSetupRequest(phost, buff, length);
-    phost->RequestState = CMD_WAIT;
-    return USBH_BUSY;
-    
-  case CMD_WAIT:
-
-    status = dd_USBH_HandleControl(pdev, phost);
-
-    if (status != USBH_BUSY) {
-        phost->RequestState = CMD_SEND;
-    }
-    return status;
-    
-  default:
-      return USBH_NOT_SUPPORTED;
-  }
-}
 
 //--------------------------------------------------------------
 //
@@ -2086,7 +2140,7 @@ USBH_Status USBH_ClrFeature(USB_OTG_CORE_HANDLE *pdev,
     pdev->host.hc[hc_num].toggle_out = 0; 
   }
   
-  return USBH_CtlReq(pdev, phost, 0 , 0 );   
+  return dd_USBH_HandleControl(pdev, phost, 0 , 0 );   
 }
 
 //--------------------------------------------------------------
@@ -2465,9 +2519,9 @@ USBH_Status USBH_DeInit(USB_OTG_CORE_HANDLE *pdev, USBH_HOST *phost)
   
   phost->gState = HOST_IDLE;
   phost->EnumState = ENUM_IDLE;
-  phost->RequestState = CMD_SEND;  
+  // phost->RequestState = CMD_SEND;  
   
-  phost->Control.state = CTRL_SETUP;
+  // phost->Control.state = CTRL_SETUP;
   phost->Control.ep0size = USB_OTG_MAX_EP0_SIZE;  
   
   phost->device_prop.address = USBH_DEVICE_ADDRESS_DEFAULT;
@@ -2495,8 +2549,7 @@ void USBH_Process(USB_OTG_CORE_HANDLE *pdev , USBH_HOST *phost)
       phost->gState = HOST_DEV_WAIT_FOR_ATTACHMENT;
 
       USB_OTG_BSP_mDelay(200); 
-
-      dd_HCD_ResetPort(pdev);
+      USB_OTG_ResetPort(pdev);
     }
     break;
  
@@ -2622,7 +2675,7 @@ USBH_Status USBH_GetDescriptor(USB_OTG_CORE_HANDLE *pdev,
     phost->Control.setup.b.wIndex.w = 0;
   }
   phost->Control.setup.b.wLength.w = length;           
-  return USBH_CtlReq(pdev, phost, buff , length );     
+  return dd_USBH_HandleControl(pdev, phost, buff , length );     
 }
 
 //--------------------------------------------------------------
@@ -2640,7 +2693,7 @@ USBH_Status USBH_SetAddress(USB_OTG_CORE_HANDLE *pdev,
   phost->Control.setup.b.wIndex.w = 0;
   phost->Control.setup.b.wLength.w = 0;
   
-  return USBH_CtlReq(pdev, phost, 0 , 0 );
+  return dd_USBH_HandleControl(pdev, phost, 0 , 0 );
 }
 
 //--------------------------------------------------------------
@@ -2806,7 +2859,7 @@ USBH_Status USBH_SetCfg(USB_OTG_CORE_HANDLE *pdev,
   phost->Control.setup.b.wIndex.w = 0;
   phost->Control.setup.b.wLength.w = 0;           
   
-  return USBH_CtlReq(pdev, phost, 0 , 0 );      
+  return dd_USBH_HandleControl(pdev, phost, 0 , 0 );      
 }
 
 //--------------------------------------------------------------

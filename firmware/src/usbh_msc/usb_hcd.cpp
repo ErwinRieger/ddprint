@@ -7,11 +7,12 @@
 //--------------------------------------------------------------
 
 extern "C" {
-#include <usb_core.h>
+    #define xxxfuck 1
+    #include <usb_core.h>
+    #include <usb_bsp.h>
 }
 
 #include "usb_hcd.h"
-#include "usb_bsp.h"
 
 
 

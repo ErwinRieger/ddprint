@@ -9,7 +9,12 @@
 //--------------------------------------------------------------
 // Includes
 //-------------------------------------------------------------- 
-#include "usb_hcd.h"
+extern "C" {
+    // Maple include
+#define xxxfuck 1
+    #include "usb_hcd.h"
+}
+
 #include "usbh_core.h"
 #include "usbh_def.h"
 
