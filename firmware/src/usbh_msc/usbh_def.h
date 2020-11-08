@@ -109,8 +109,8 @@
    Standard request with no data stage timeout : 50ms */
 // #define DATA_STAGE_TIMEOUT                              5000 
 // #define NODATA_STAGE_TIMEOUT                            50
-#define DATA_STAGE_TIMEOUT                              3
-#define NODATA_STAGE_TIMEOUT                            3
+#define DATA_STAGE_TIMEOUT                              5
+#define NODATA_STAGE_TIMEOUT                            5
 
  
 

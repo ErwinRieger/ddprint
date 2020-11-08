@@ -226,6 +226,7 @@ public:
 
         uint16_t wp;
         static int res;
+        USBH_Status usbstatus;
 
         PT_BEGIN();
 
@@ -242,6 +243,17 @@ public:
 
         if (res == -1) {
 
+            // Clean up and retry fresh write command later
+
+            PT_WAIT_WHILE((usbstatus = USBH_MSC_BlockReset(&USB_OTG_Core_Host, &USB_Host)) == USBH_BUSY);
+            massert(usbstatus == USBH_OK);
+
+            PT_WAIT_WHILE((usbstatus = USBH_MSC_BOT_Abort(&USB_OTG_Core_Host, &USB_Host, USBH_MSC_DIR_IN)) == USBH_BUSY);
+            massert(usbstatus == USBH_OK);
+
+            PT_WAIT_WHILE((usbstatus = USBH_MSC_BOT_Abort(&USB_OTG_Core_Host, &USB_Host, USBH_MSC_DIR_OUT)) == USBH_BUSY);
+            massert(usbstatus == USBH_OK);
+    
             // Don't update size 
             // Don't change write buffer
             busyWriting = 2;

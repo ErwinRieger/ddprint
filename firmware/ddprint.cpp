@@ -372,10 +372,10 @@ if ((printerState == StateStart) && swapDev.isBusyWriting()) {
     readRequest = true;
 }
 #endif
-                    PT_WAIT_WHILE(swapDev.isBusyWritingForRead());
                     PT_WAIT_UNTIL(swapDev.available());
-
-                    PT_WAIT_UNTIL((bufferLength = swapDev.readBlock(buffer)) > 0);
+                    // PT_WAIT_WHILE(swapDev.isBusyWritingForRead());
+                    // PT_WAIT_UNTIL((bufferLength = swapDev.readBlock(buffer)) > 0);
+                    PT_WAIT_UNTIL(!swapDev.isBusyWritingForRead() && (bufferLength = swapDev.readBlock(buffer)) > 0);
 
                     for (i=0; i<bytesToRead; i++) {
                         tempBuffer[haveBytes+i] = buffer[i]; 
@@ -395,10 +395,10 @@ if ((printerState == StateStart) && swapDev.isBusyWriting()) {
     readRequest = true;
 }
 #endif
-                    PT_WAIT_WHILE(swapDev.isBusyWritingForRead());
                     PT_WAIT_UNTIL(swapDev.available());
-
-                    PT_WAIT_UNTIL((bufferLength = swapDev.readBlock(buffer)) > 0);
+                    // PT_WAIT_WHILE(swapDev.isBusyWritingForRead());
+                    // PT_WAIT_UNTIL((bufferLength = swapDev.readBlock(buffer)) > 0);
+                    PT_WAIT_UNTIL(!swapDev.isBusyWritingForRead() && (bufferLength = swapDev.readBlock(buffer)) > 0);
 
                     readData = buffer;
                     bufferPtr = bytesToRead;

@@ -309,7 +309,6 @@ USBH_Status dd_USBH_MSC_HandleBOTXfer (USB_OTG_CORE_HANDLE *pdev ,USBH_HOST *pho
       else if (URB_Status == URB_NOTREADY)
       {
             ///* Re-send CBW */
-            massert(0);
             status = USBH_NOTREADY;
       }     
       else if(URB_Status >= URB_ERROR) // error or stall
@@ -366,11 +365,11 @@ USBH_Status dd_USBH_MSC_HandleBOTXfer (USB_OTG_CORE_HANDLE *pdev ,USBH_HOST *pho
         4. The host shall attempt to receive a CSW.
         */
       }     
-      else if (dd_HCD_GetCurrentFrame(pdev) > timeout)
-      {
-        /* timeout for IN transfer */
-        massert(0);
-      }   
+      // else if (dd_HCD_GetCurrentFrame(pdev) > timeout)
+      // {
+        // /* timeout for IN transfer */
+        // massert(0);
+      // }   
       break;   
       
     case USBH_BOTSTATE_BOT_DATAOUT_STATE: {
@@ -425,11 +424,11 @@ USBH_Status dd_USBH_MSC_HandleBOTXfer (USB_OTG_CORE_HANDLE *pdev ,USBH_HOST *pho
         The Below statement will help in Getting the CSW.  
         */
       }
-      else if (dd_HCD_GetCurrentFrame(pdev) > timeout)
-      {
-        /* timeout for IN transfer */
-        massert(0);
-      }   
+      // else if (dd_HCD_GetCurrentFrame(pdev) > timeout)
+      // {
+        // /* timeout for IN transfer */
+        // massert(0);
+      // }   
       break;
 
     case USBH_BOTSTATE_RECEIVE_CSW_STATE:
@@ -490,7 +489,7 @@ USBH_Status dd_USBH_MSC_HandleBOTXfer (USB_OTG_CORE_HANDLE *pdev ,USBH_HOST *pho
       else if (dd_HCD_GetCurrentFrame(pdev) > timeout)
       {
         /* timeout for IN transfer */
-        massert(0);
+        status = USBH_TIMEOUT;
       }   
       break;
 
@@ -896,6 +895,7 @@ USBH_Status dd_USBH_HandleControl (USB_OTG_CORE_HANDLE *pdev, USBH_HOST *phost, 
 //
 //
 //
+#if 0
 static USBH_Status USBH_MSC_BOTReset_Mass_Storage_Reset(USB_OTG_CORE_HANDLE *pdev, USBH_HOST *phost) {
   
   phost->Control.setup.b.bmRequestType = USB_H2D | USB_REQ_TYPE_CLASS | USB_REQ_RECIPIENT_INTERFACE;
@@ -909,6 +909,7 @@ static USBH_Status USBH_MSC_BOTReset_Mass_Storage_Reset(USB_OTG_CORE_HANDLE *pde
   
   return dd_USBH_HandleControl(pdev, phost, NULL, 0 ); 
 }
+#endif
 
 //--------------------------------------------------------------
 //
@@ -969,8 +970,10 @@ USBH_Status USBH_MSC_Write10(USB_OTG_CORE_HANDLE *pdev, USBH_HOST *phost,
         // if entire duration of write is above some threshold: 
 // #if 0
         if (timeout >= 5) {
-            massert(0); // usbh_msc.CmdStateMachine = CMD_STORAGE_RESET;
-            return USBH_BUSY;
+            // usbh_msc.CmdStateMachine = CMD_STORAGE_RESET;
+            // return USBH_BUSY;
+            usbh_msc.CmdStateMachine = CMD_SEND_STATE;
+            return USBH_TIMEOUT;
         } 
 // #endif
 
@@ -982,6 +985,7 @@ USBH_Status USBH_MSC_Write10(USB_OTG_CORE_HANDLE *pdev, USBH_HOST *phost,
         }
         return bot_status;
       
+#if 0      
     case CMD_STORAGE_RESET:
 
         // Run but statemachine with mass storage reset control request
@@ -1059,6 +1063,7 @@ massert(0);
 
         massert(bot_status == USBH_BUSY);
         return bot_status;
+#endif
 
     default:
       return USBH_NOT_SUPPORTED;
@@ -1107,6 +1112,10 @@ USBH_Status USBH_MSC_BlockReset(USB_OTG_CORE_HANDLE *pdev, USBH_HOST *phost)
 
       if (bot_status != USBH_BUSY) {
           usbh_msc.CmdStateMachine = CMD_SEND_STATE;
+      }
+
+      if (bot_status == USBH_NOTREADY) {
+          return USBH_BUSY; // restart command
       }
 
       return bot_status;
