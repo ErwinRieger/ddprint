@@ -111,5 +111,5 @@ extern USB_MSC_HOST_STATUS_t USB_MSC_HOST_STATUS;
 void UB_USB_MSC_HOST_Init(void);
 USB_MSC_HOST_STATUS_t UB_USB_MSC_HOST_Do(void);
 
-
+void debugUSBHStatus(USBH_Status status);
 

@@ -340,12 +340,22 @@ inline void st_step_motor(uint8_t stepBits, uint8_t dirbits) {
         else
             st_dec_current_pos_steps<MOVE>();
         
-        // #if defined(AVR)
-        #if defined(STEPPER_MINPULSE)
-            delayMicroseconds(STEPPER_MINPULSE);
-        #endif
-            deactivate_step_pin<MOVE>();
+        ////////////////////////////////////////// // #if defined(AVR)
+        ////////////////////////////////////////// #if defined(STEPPER_MINPULSE)
+            ////////////////////////////////////////// delayMicroseconds(STEPPER_MINPULSE);
+        ////////////////////////////////////////// #endif
+            ////////////////////////////////////////// deactivate_step_pin<MOVE>();
         // #endif
+    }
+}
+
+template<typename MOVE>
+inline void st_activate_pin(uint8_t stepBits) {
+
+    uint8_t mask = st_get_move_bit_mask<MOVE>();
+
+    if (stepBits & mask) {
+        activate_step_pin<MOVE>();
     }
 }
 
@@ -608,10 +618,28 @@ class StepBuffer: public StepBufferBase {
 
                     stepbits = sd.stepBits;
 
-                    st_step_motor<XAxisSelector>(stepbits, sd.dirBits);
-                    st_step_motor<YAxisSelector>(stepbits, sd.dirBits);
-                    st_step_motor<ZAxisSelector>(stepbits, sd.dirBits);
-                    st_step_motor<EAxisSelector>(stepbits, sd.dirBits);
+                    if (stepbits) {
+
+                        st_step_motor<XAxisSelector>(stepbits, sd.dirBits);
+                        st_step_motor<YAxisSelector>(stepbits, sd.dirBits);
+                        st_step_motor<ZAxisSelector>(stepbits, sd.dirBits);
+                        st_step_motor<EAxisSelector>(stepbits, sd.dirBits);
+
+                        // st_activate_pin<XAxisSelector>(stepbits, sd.dirBits);
+                        // st_activate_pin<YAxisSelector>(stepbits, sd.dirBits);
+                        // st_activate_pin<ZAxisSelector>(stepbits, sd.dirBits);
+                        // st_activate_pin<EAxisSelector>(stepbits, sd.dirBits);
+
+                        // Common delay
+                        #if defined(STEPPER_MINPULSE)
+                            delayMicroseconds(STEPPER_MINPULSE);
+                        #endif
+
+                        st_deactivate_pin<XAxisSelector>(stepbits);
+                        st_deactivate_pin<YAxisSelector>(stepbits);
+                        st_deactivate_pin<ZAxisSelector>(stepbits);
+                        st_deactivate_pin<EAxisSelector>(stepbits);
+                    }
 
                     wasnotempty = true;
                 }

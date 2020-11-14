@@ -6,43 +6,23 @@
 
 extern "C" {
     // Maple include
-#define xxxfuck 1
     #include <usb_hcd_int.h>
-
-    // usbF4/STM32_USB_OTG_Driver/inc/usb_bsp.h
     #include <usb_bsp.h>
-}
-
-
-extern "C" {
-    // Maple include
-    // #include <usb_core.h>
-}
-
-// }
-
-#include "mdebug.h"
-
-extern "C" {
-    // Maple include
-    // 
-#define xxxfuck 1
     #include "usb_hcd.h"
-extern void USB_OTG_BSP_mDelay (const uint32_t msec);
 }
 
 #include "usbh_usr.h"
 #include "dd_usbh_msc.h"
+#include "mdebug.h"
 
 //xxx
-uint32_t dd_HCD_SubmitRequest (USB_OTG_CORE_HANDLE *pdev , uint8_t hc_num);
+USB_OTG_STS dd_HCD_SubmitRequest (USB_OTG_CORE_HANDLE *pdev , uint8_t hc_num);
 uint32_t dd_HCD_IsDeviceConnected    (USB_OTG_CORE_HANDLE *pdev); 
 uint32_t dd_HCD_GetXferCnt (USB_OTG_CORE_HANDLE *pdev, uint8_t ch_num);
 uint32_t dd_HCD_Init(USB_OTG_CORE_HANDLE *pdev , USB_OTG_CORE_ID_TypeDef coreID);
 URB_STATE dd_HCD_GetURB_State (USB_OTG_CORE_HANDLE *pdev , uint8_t ch_num);
 uint32_t dd_HCD_GetCurrentFrame (USB_OTG_CORE_HANDLE *pdev) ;
 uint32_t dd_HCD_GetCurrentSpeed (USB_OTG_CORE_HANDLE *pdev);
-uint32_t dd_HCD_Init(USB_OTG_CORE_HANDLE *pdev , USB_OTG_CORE_ID_TypeDef coreID);
 
 //
 // Todo:
@@ -85,6 +65,37 @@ struct DebugCalls {
 };
 
 static struct DebugCalls debugCalls;
+
+void debugUSBHStatus(USBH_Status status) {
+
+    switch(status) {
+        case USBH_OK:
+        case USBH_BUSY:
+            break;
+        case USBH_FAIL:
+            massert(0);
+            break;
+        case USBH_NOT_SUPPORTED:
+            massert(0);
+            break;
+        case USBH_UNRECOVERED_ERROR:
+            massert(0);
+            break;
+        case USBH_ERROR_SPEED_UNKNOWN:
+            massert(0);
+            break;
+        case USBH_APPLY_DEINIT:
+            massert(0);
+            break;
+        case USBH_TIMEOUT:
+            massert(0);
+            break;
+        case USBH_NOTREADY:
+            massert(0);
+            break;
+    }
+}
+
 // end debug
 
 //--------------------------------------------------------------
@@ -189,7 +200,7 @@ USBH_Status USB_disk_read(
 
 //--------------------------------------------------------------
 //
-USBH_Status dd_USBH_BulkSendData ( USB_OTG_CORE_HANDLE *pdev, 
+void dd_USBH_BulkSendData ( USB_OTG_CORE_HANDLE *pdev, 
                                 uint8_t *buff, 
                                 uint16_t length,
                                 uint8_t hc_num)
@@ -208,9 +219,7 @@ USBH_Status dd_USBH_BulkSendData ( USB_OTG_CORE_HANDLE *pdev,
       pdev->host.hc[hc_num].data_pid = HC_PID_DATA1 ;
   }
 
-  return (USBH_Status)dd_HCD_SubmitRequest (pdev , hc_num);   
-  // dd_HCD_SubmitRequest (pdev , hc_num);   
-  // return USBH_OK;
+  usbMSCHostAssert( dd_HCD_SubmitRequest (pdev , hc_num) == USB_OTG_OK );
 }
 
 //--------------------------------------------------------------
@@ -365,23 +374,15 @@ USBH_Status dd_USBH_MSC_HandleBOTXfer (USB_OTG_CORE_HANDLE *pdev ,USBH_HOST *pho
         4. The host shall attempt to receive a CSW.
         */
       }     
-      // else if (dd_HCD_GetCurrentFrame(pdev) > timeout)
-      // {
-        // /* timeout for IN transfer */
-        // massert(0);
-      // }   
       break;   
       
-    case USBH_BOTSTATE_BOT_DATAOUT_STATE: {
+    case USBH_BOTSTATE_BOT_DATAOUT_STATE: 
 
-       // return value
-       USBH_Status s =  dd_USBH_BulkSendData (pdev, 
+        dd_USBH_BulkSendData (pdev, 
                            usbh_msc.pRxTxBuff, 
                            USBH_MSC_MPS_SIZE, MSC_Machine.hc_num_out);
 
-        massert(s == USBH_OK);
         usbh_msc.BOTState = USBH_BOTSTATE_BOT_DATAOUT_WAIT_STATE;
-        }
         break;
 
     case USBH_BOTSTATE_BOT_DATAOUT_WAIT_STATE:
@@ -424,11 +425,6 @@ USBH_Status dd_USBH_MSC_HandleBOTXfer (USB_OTG_CORE_HANDLE *pdev ,USBH_HOST *pho
         The Below statement will help in Getting the CSW.  
         */
       }
-      // else if (dd_HCD_GetCurrentFrame(pdev) > timeout)
-      // {
-        // /* timeout for IN transfer */
-        // massert(0);
-      // }   
       break;
 
     case USBH_BOTSTATE_RECEIVE_CSW_STATE:
@@ -532,8 +528,6 @@ USBH_Status dd_USBH_MSC_HandleBOTXfer (USB_OTG_CORE_HANDLE *pdev ,USBH_HOST *pho
 
       if ( status == USBH_OK)
       { /* Switch Back to the Original State */
-        // status = USBH_FAIL; // restart upper level command
-        // status = USBH_ERROR_SPEED_UNKNOWN; // xxxx restart
 
         uint8_t toggle = USBH_LL_GetToggle(pdev, MSC_Machine.hc_num_out);
         USBH_LL_SetToggle(pdev, MSC_Machine.hc_num_out, 1 - toggle);
@@ -557,8 +551,6 @@ USBH_Status dd_USBH_MSC_HandleBOTXfer (USB_OTG_CORE_HANDLE *pdev ,USBH_HOST *pho
       break;
   }
 
-  // debugCalls.USBH_MSC_HandleBOTXferStatus = status;
-
   return status;
 }
 
@@ -575,9 +567,6 @@ USBH_Status USBH_MSC_Read10(USB_OTG_CORE_HANDLE *pdev, USBH_HOST *phost,
     switch(usbh_msc.CmdStateMachine) {
 
     case CMD_SEND_STATE:
-
-    checkDataEndpointsClean(pdev); // xxx debug
-
       USBH_MSC_CBWData.field.CBWTransferLength = nbOfbytes;
       USBH_MSC_CBWData.field.CBWFlags = USB_EP_DIR_IN;
       USBH_MSC_CBWData.field.CBWLength = CBW_LENGTH; // 10
@@ -607,12 +596,10 @@ USBH_Status USBH_MSC_Read10(USB_OTG_CORE_HANDLE *pdev, USBH_HOST *phost,
 
       usbh_msc.pRxTxBuff = dataBuffer;
 
-      bot_status = dd_USBH_BulkSendData (pdev,
+      dd_USBH_BulkSendData (pdev,
                          USBH_MSC_CBWData.CBWArray,          // 31, entire CBW struct
                          USBH_MSC_BOT_CBW_PACKET_LENGTH_31 , // 31
                          MSC_Machine.hc_num_out);
-        massert(bot_status == USBH_OK);
-      
       return USBH_BUSY;
       
     case CMD_WAIT_STATUS:
@@ -664,7 +651,7 @@ USBH_Status dd_USBH_HandleControl (USB_OTG_CORE_HANDLE *pdev, USBH_HOST *phost, 
       /* check if there is a data stage */
       if (phost->Control.setup.b.wLength.w != 0 )
       {        
-        timeout = DATA_STAGE_TIMEOUT;
+        timeout = dd_HCD_GetCurrentFrame(pdev) + DATA_STAGE_TIMEOUT;
         if (direction == USB_D2H)
         {
           /* Data Direction is IN */
@@ -679,7 +666,7 @@ USBH_Status dd_USBH_HandleControl (USB_OTG_CORE_HANDLE *pdev, USBH_HOST *phost, 
       /* No DATA stage */
       else
       {
-        timeout = NODATA_STAGE_TIMEOUT;
+        timeout = dd_HCD_GetCurrentFrame(pdev) + NODATA_STAGE_TIMEOUT;
         
         /* If there is No Data Transfer Stage */
         if (direction == USB_D2H)
@@ -693,8 +680,6 @@ USBH_Status dd_USBH_HandleControl (USB_OTG_CORE_HANDLE *pdev, USBH_HOST *phost, 
           phost->Control.state.setState(CTRL_STATUS_IN);
         } 
       }          
-      /* Set the delay timer to enable timeout for data stage completion */
-      phost->Control.timer = dd_HCD_GetCurrentFrame(pdev);
     }
     else if(URB_Status == URB_ERROR)
     {
@@ -732,7 +717,7 @@ USBH_Status dd_USBH_HandleControl (USB_OTG_CORE_HANDLE *pdev, USBH_HOST *phost, 
       /* Device error */
       massert(0); // phost->Control.state = CTRL_ERROR;    
     }
-    else if ((dd_HCD_GetCurrentFrame(pdev)- phost->Control.timer) > timeout)
+    else if (dd_HCD_GetCurrentFrame(pdev) > timeout)
     {
       /* timeout for IN transfer */
       massert(0); // phost->Control.state = CTRL_ERROR; 
@@ -801,7 +786,7 @@ USBH_Status dd_USBH_HandleControl (USB_OTG_CORE_HANDLE *pdev, USBH_HOST *phost, 
     {
       massert(0); // phost->Control.state = CTRL_ERROR;  
     }
-    else if((dd_HCD_GetCurrentFrame(pdev) - phost->Control.timer) > timeout)
+    else if(dd_HCD_GetCurrentFrame(pdev) > timeout)
     {
       massert(0); // phost->Control.state = CTRL_ERROR; 
     }
@@ -914,16 +899,12 @@ USBH_Status USBH_MSC_Write10(USB_OTG_CORE_HANDLE *pdev, USBH_HOST *phost,
                          uint32_t nbOfbytes, uint32_t timeout)
 {
 
-
   USBH_Status bot_status;
   uint16_t nbOfPages;
   
   switch(usbh_msc.CmdStateMachine) {
 
     case CMD_SEND_STATE:   
-
-    checkDataEndpointsClean(pdev); // xxx debug
-
       USBH_MSC_CBWData.field.CBWTransferLength = nbOfbytes;
       USBH_MSC_CBWData.field.CBWFlags = USB_EP_DIR_OUT;
       USBH_MSC_CBWData.field.CBWLength = CBW_LENGTH; // 10
@@ -953,24 +934,21 @@ USBH_Status USBH_MSC_Write10(USB_OTG_CORE_HANDLE *pdev, USBH_HOST *phost,
 
       usbh_msc.pRxTxBuff = dataBuffer;
 
-      bot_status = dd_USBH_BulkSendData (pdev,
+      dd_USBH_BulkSendData (pdev,
                          USBH_MSC_CBWData.CBWArray,          // 31, entire CBW struct
                          USBH_MSC_BOT_CBW_PACKET_LENGTH_31 , // 31
                          MSC_Machine.hc_num_out);
-        massert(bot_status == USBH_OK);
       return USBH_BUSY;
       
     case CMD_WAIT_STATUS:
 
         // if entire duration of write is above some threshold: 
-// #if 0
-        if (timeout >= 5) {
+        if (timeout >= WRITE10_CMD_TIMEOUT) {
             // usbh_msc.CmdStateMachine = CMD_STORAGE_RESET;
             // return USBH_BUSY;
             usbh_msc.CmdStateMachine = CMD_SEND_STATE;
             return USBH_TIMEOUT;
         } 
-// #endif
 
         /* Process the BOT state machine */
         bot_status = dd_USBH_MSC_HandleBOTXfer(pdev, phost);
@@ -991,7 +969,6 @@ USBH_Status USBH_MSC_Write10(USB_OTG_CORE_HANDLE *pdev, USBH_HOST *phost,
         if (bot_status == USBH_OK)
         {
 
-// xxx skip clear feature ( halt???)
             // usbh_msc.CmdStateMachine = CMD_TEST_CLEAR_FEATURE_OUT;
             usbh_msc.CmdStateMachine = CMD_CLEAR_FEATURE_OUT;
             // usbh_msc.CmdStateMachine = CMD_SEND_STATE;
@@ -999,7 +976,6 @@ USBH_Status USBH_MSC_Write10(USB_OTG_CORE_HANDLE *pdev, USBH_HOST *phost,
 
 
             // massert(phost->RequestState == CMD_SEND);
-// xxx skip clear feature ( halt???)
             return USBH_BUSY;
             // return USBH_TIMEOUT;  // left over stall or error condition???
         }
@@ -1008,8 +984,6 @@ USBH_Status USBH_MSC_Write10(USB_OTG_CORE_HANDLE *pdev, USBH_HOST *phost,
         return bot_status;
 
     case CMD_CLEAR_FEATURE_IN: 
-// xxx skipped
-massert(0);
 
         bot_status = USBH_MSC_BOT_Abort(pdev, phost, USBH_MSC_DIR_IN);
         if (bot_status == USBH_OK)
@@ -1069,9 +1043,10 @@ void incbufferlow(); // XXX debug
 
 //--------------------------------------------------------------
 //
+// "Bulk-Only Mass Storage reset"
+//
 USBH_Status USBH_MSC_BlockReset(USB_OTG_CORE_HANDLE *pdev, USBH_HOST *phost)
 {
-
 
   USBH_Status bot_status;
 
@@ -1079,11 +1054,10 @@ USBH_Status USBH_MSC_BlockReset(USB_OTG_CORE_HANDLE *pdev, USBH_HOST *phost)
 
     case CMD_SEND_STATE:   
 
-      USBH_MSC_CBWData.field.CBWTransferLength = 0; // xxx not needed?
+      USBH_MSC_CBWData.field.CBWTransferLength = 0;
       USBH_MSC_CBWData.field.CBWFlags = USB_EP_DIR_OUT;
-      USBH_MSC_CBWData.field.CBWLength = CBW_LENGTH; // 10
+      USBH_MSC_CBWData.field.CBWLength = CBW_LENGTH;
 
-      // Rest set to 0x00 or 0xff ?
       memset(USBH_MSC_CBWData.field.CBWCB, 0xff, CBW_LENGTH);
       USBH_MSC_CBWData.field.CBWCB[0]  = 0x1D; 
       USBH_MSC_CBWData.field.CBWCB[1]  = 0x04; // special reset block mode
@@ -1095,11 +1069,10 @@ USBH_Status USBH_MSC_BlockReset(USB_OTG_CORE_HANDLE *pdev, USBH_HOST *phost)
       // Initialize lower level transfer state to 'cbw sent'
       usbh_msc.BOTState = USBH_BOTSTATE_SENT_CBW;
 
-      bot_status = dd_USBH_BulkSendData (pdev,
+      dd_USBH_BulkSendData (pdev,
                          USBH_MSC_CBWData.CBWArray,          // 31, entire CBW struct
                          USBH_MSC_BOT_CBW_PACKET_LENGTH_31 , // 31
                          MSC_Machine.hc_num_out);
-        massert(bot_status == USBH_OK);
       return USBH_BUSY;
       
     case CMD_WAIT_STATUS:
@@ -1757,8 +1730,6 @@ USBH_Status USBH_MSC_TestUnitReady(USB_OTG_CORE_HANDLE *pdev, USBH_HOST *phost) 
  
     USBH_Status bot_status;
   
-    usbMSCHostAssert(dd_HCD_IsDeviceConnected(pdev));
-
     switch(usbh_msc.CmdStateMachine) {
 
     case CMD_SEND_STATE:  
@@ -1777,12 +1748,10 @@ USBH_Status USBH_MSC_TestUnitReady(USB_OTG_CORE_HANDLE *pdev, USBH_HOST *phost) 
       // Initialize lower level transfer state to 'cbw sent'
       usbh_msc.BOTState = USBH_BOTSTATE_SENT_CBW;
       
-      bot_status = dd_USBH_BulkSendData (pdev,
+      dd_USBH_BulkSendData (pdev,
                          USBH_MSC_CBWData.CBWArray,          // 31, entire CBW struct
                          USBH_MSC_BOT_CBW_PACKET_LENGTH_31 , // 31
                          MSC_Machine.hc_num_out);
-        massert(bot_status == USBH_OK);
-    
       debugCalls.unitReadyCalls++;
 
       return USBH_BUSY;
@@ -1809,8 +1778,6 @@ USBH_Status USBH_MSC_ReadCapacity10(USB_OTG_CORE_HANDLE *pdev, USBH_HOST *phost)
 
     USBH_Status bot_status;
 
-    usbMSCHostAssert(dd_HCD_IsDeviceConnected(pdev));
-
     switch(usbh_msc.CmdStateMachine) {
 
     case CMD_SEND_STATE:
@@ -1831,12 +1798,10 @@ USBH_Status USBH_MSC_ReadCapacity10(USB_OTG_CORE_HANDLE *pdev, USBH_HOST *phost)
 
       usbh_msc.pRxTxBuff = usbh_msc.packetBuffer;
       
-      bot_status = dd_USBH_BulkSendData (pdev,
+      dd_USBH_BulkSendData (pdev,
                          USBH_MSC_CBWData.CBWArray,          // 31, entire CBW struct
                          USBH_MSC_BOT_CBW_PACKET_LENGTH_31 , // 31
                          MSC_Machine.hc_num_out);
-        massert(bot_status == USBH_OK);
-
       return USBH_BUSY;
       
     case CMD_WAIT_STATUS:
@@ -1875,8 +1840,6 @@ USBH_Status USBH_MSC_RequestSense(USB_OTG_CORE_HANDLE *pdev, USBH_HOST *phost) {
 
     USBH_Status bot_status;
 
-    usbMSCHostAssert(dd_HCD_IsDeviceConnected(pdev));
-
     switch(usbh_msc.CmdStateMachine)
     {
     case CMD_SEND_STATE:
@@ -1898,12 +1861,10 @@ USBH_Status USBH_MSC_RequestSense(USB_OTG_CORE_HANDLE *pdev, USBH_HOST *phost) {
 
       usbh_msc.pRxTxBuff = usbh_msc.packetBuffer;
       
-      bot_status = dd_USBH_BulkSendData (pdev,
+      dd_USBH_BulkSendData (pdev,
                          USBH_MSC_CBWData.CBWArray,          // 31, entire CBW struct
                          USBH_MSC_BOT_CBW_PACKET_LENGTH_31 , // 31
                          MSC_Machine.hc_num_out);
-
-        massert(bot_status == USBH_OK);
       debugCalls.reqSenseCalls++;
 
       return USBH_BUSY;
@@ -1943,8 +1904,6 @@ USBH_Status USBH_MSC_StartStopUnit(USB_OTG_CORE_HANDLE *pdev, USBH_HOST *phost, 
 
     USBH_Status bot_status;
 
-    usbMSCHostAssert(dd_HCD_IsDeviceConnected(pdev));
-
     switch(usbh_msc.CmdStateMachine)
     {
     case CMD_SEND_STATE:
@@ -1967,12 +1926,10 @@ USBH_Status USBH_MSC_StartStopUnit(USB_OTG_CORE_HANDLE *pdev, USBH_HOST *phost, 
 
       // usbh_msc.pRxTxBuff = usbh_msc.packetBuffer;
       
-      URB_Status = dd_USBH_BulkSendData (pdev,
+      dd_USBH_BulkSendData (pdev,
                          USBH_MSC_CBWData.CBWArray,          // 31, entire CBW struct
                          USBH_MSC_BOT_CBW_PACKET_LENGTH_31 , // 31
                          MSC_Machine.hc_num_out);
-
-        massert(URB_Status == URB_DONE);
       debugCalls.reqSenseCalls++;
 
       return USBH_BUSY;
@@ -2028,8 +1985,6 @@ USBH_MSC_Status_TypeDef USBH_MSC_DecodeCSW(USB_OTG_CORE_HANDLE *pdev , USBH_HOST
 {
     uint32_t dataXferCount = 0;
     USBH_MSC_Status_TypeDef status = USBH_MSC_FAIL;
-  
-    usbMSCHostAssert(dd_HCD_IsDeviceConnected(pdev));
   
     /*Checking if the transfer length is diffrent than 13*/
     dataXferCount = dd_HCD_GetXferCnt(pdev, MSC_Machine.hc_num_in); 
@@ -2190,8 +2145,6 @@ USBH_Status USBH_MSC_ReadInquiry(USB_OTG_CORE_HANDLE *pdev, USBH_HOST *phost) {
 
   USBH_Status bot_status;
   
-  usbMSCHostAssert(dd_HCD_IsDeviceConnected(pdev));
-
   switch(usbh_msc.CmdStateMachine)
   {
     case CMD_SEND_STATE:
@@ -2213,12 +2166,10 @@ USBH_Status USBH_MSC_ReadInquiry(USB_OTG_CORE_HANDLE *pdev, USBH_HOST *phost) {
       
       usbh_msc.pRxTxBuff = usbh_msc.packetBuffer;
 
-      bot_status = dd_USBH_BulkSendData (pdev,
+      dd_USBH_BulkSendData (pdev,
                          USBH_MSC_CBWData.CBWArray,          // 31, entire CBW struct
                          USBH_MSC_BOT_CBW_PACKET_LENGTH_31 , // 31
                          MSC_Machine.hc_num_out);
-        massert(bot_status == USBH_OK);
-
       return USBH_BUSY;
       
     case CMD_WAIT_STATUS:
@@ -2526,9 +2477,6 @@ USBH_Status USBH_DeInit(USB_OTG_CORE_HANDLE *pdev, USBH_HOST *phost)
   
   phost->gState = HOST_IDLE;
   phost->EnumState = ENUM_IDLE;
-  // phost->RequestState = CMD_SEND;  
-  
-  // phost->Control.state = CTRL_SETUP;
   phost->Control.ep0size = USB_OTG_MAX_EP0_SIZE;  
   
   phost->device_prop.address = USBH_DEVICE_ADDRESS_DEFAULT;
@@ -2626,26 +2574,6 @@ void USBH_Process(USB_OTG_CORE_HANDLE *pdev , USBH_HOST *phost)
     }
     break;
    
-#if 0 
-  case HOST_CLASS: {
-    /* process class state machine */
-    
-    // USBH_Status status = USBH_MSC_Handle(pdev, phost);
-    // usbMSCHostAssert((status == USBH_OK) || (status == USBH_BUSY));
-    /* set configuration  (default config) */
-    USBH_Status status = USBH_MSC_BOTReset_Mass_Storage_Reset(pdev, phost);
-    if (status == USB_OK)
-    {
-        // USBH_MSC_InterfaceInit(pdev, phost);
-        phost->gState  = HOST_CLASS;     
-    }
-    else {
-        assert(staus == USB_BUSY);
-    }
-    }
-    break;       
-#endif
-
   case HOST_CLASS: {
     /* process class state machine */
     

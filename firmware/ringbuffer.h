@@ -33,6 +33,14 @@ struct CircularBuffer {
         _ringbuffer_head = h+1;
     }
 
+    // 
+    void pushWrap(ElementType& val)  {
+        
+        if (full())
+            pop();
+        push(val);
+    }
+
     ElementType &pop() {
 
         IndexType t = _ringbuffer_tail;

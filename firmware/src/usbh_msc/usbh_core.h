@@ -150,7 +150,7 @@ typedef struct _Ctrl
   uint8_t               *buff;
   uint16_t              length;
   uint8_t               errorcount;
-  uint16_t              timer;  
+  // uint16_t              timer;  
   CTRL_STATUS           status;
   USB_Setup_TypeDef     setup;
   // CTRL_State            state;  

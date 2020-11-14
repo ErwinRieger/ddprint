@@ -109,7 +109,7 @@ uint32_t HCD_HC_Init (USB_OTG_CORE_HANDLE *pdev , uint8_t hc_num)
 }
 
 //--------------------------------------------------------------
-uint32_t dd_HCD_SubmitRequest (USB_OTG_CORE_HANDLE *pdev , uint8_t hc_num) 
+USB_OTG_STS dd_HCD_SubmitRequest (USB_OTG_CORE_HANDLE *pdev , uint8_t hc_num) 
 {
   
   pdev->host.URB_State[hc_num] =   URB_IDLE;  

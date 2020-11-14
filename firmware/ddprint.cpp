@@ -1576,6 +1576,21 @@ static struct TaskTiming taskTiming[8] = {
 };
 enum LoopTasks { TaskTempControl, TaskHeater, TaskFilSensor, TaskUsbInput, TaskUsbOutput, TaskSwapDev, TaskFillBuffer, TaskSum};
 
+
+
+// log of stepbuffer fill state
+typedef struct {
+    uint32_t timestamp;
+    uint16_t sdsize;
+} filltrace;
+
+typedef CircularBuffer<filltrace, uint16_t, 256> StepBufferLog;
+
+StepBufferLog stepBufferLog;
+
+
+
+
 void Printer::cmdGetTaskStatus() {
 txBuffer.sendResponseStart(CmdGetTaskStatus);
 
@@ -1592,6 +1607,16 @@ txBuffer.sendResponseStart(CmdGetTaskStatus);
     }
     txBuffer.sendResponseEnd();
 } 
+
+
+
+
+
+
+
+
+
+
 
 void Printer::cmdGetIOStats() {
 
@@ -1640,7 +1665,7 @@ void Printer::cmdGetStatus() {
     // txBuffer.sendResponseInt16(filamentSensor.actualSpeed.value());
     // txBuffer.sendResponseValue(filamentSensor.slippage.value());
     // xxx move to filsensor class
-    txBuffer.sendResponseValue(filamentSensor.slippage());
+    txBuffer.sendResponseFloat(filamentSensor.slippage());
     // txBuffer.sendResponseValue(filamentSensor.grip);
 #else
     txBuffer.sendResponseFloat(0.0);
@@ -1657,7 +1682,7 @@ void Printer::cmdGetStatus() {
 void Printer::cmdGetFilSensor() {
 
     txBuffer.sendResponseStart(CmdGetFilSensor);
-    txBuffer.sendResponseValue(filamentSensor.getSensorCount());
+    txBuffer.sendResponseInt32(filamentSensor.getSensorCount());
     txBuffer.sendResponseEnd();
 }
 #endif
@@ -2356,6 +2381,16 @@ void loop() {
     TaskStart(taskTiming, TaskSum);
 
     m = millis();
+
+// debug
+  filltrace ft;
+  ft.timestamp = m;
+  ft.sdsize = stepBuffer.size();
+
+    stepBufferLog .pushWrap(ft);
+
+// end debug
+
     if (m >= timer10mS) { // Every 10 mS
 
         timer10mS = m + TIMER10MS;

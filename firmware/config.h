@@ -53,7 +53,7 @@
     // Jennyprinter
     //
     // Use Bourns ems22a Rotary Encoder as a flowrate sensor
-    // #define BournsEMS22AFS 1
+    #define BournsEMS22AFS 1
     #define STEPPER_MINPULSE 2 /* µS */
     #define COLDEXTRUSION 1
 #else
@@ -61,6 +61,8 @@
 #endif
 
 #if defined(PMWFS) || defined(BournsEMS22AFS)
-    #define HASFILAMENTSENSOR
+    #if ! defined(COLDEXTRUSION)
+        #define HASFILAMENTSENSOR
+    #endif
 #endif
 

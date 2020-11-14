@@ -222,7 +222,7 @@ public:
 
         uint16_t wp;
         static int res;
-        USBH_Status usbstatus;
+        static USBH_Status usbstatus;
 
         PT_BEGIN();
 
@@ -235,19 +235,17 @@ public:
 
         PT_WAIT_WHILE((res = writeBlock(writeBlockNumber, writeBuffer, GetTaskDuration(ioStats, TaskWrite))) == 1);
 
-        TaskEnd(ioStats, TaskWrite);
-
         if (res == -1) {
 
             // Clean up and retry fresh write command later
             PT_WAIT_WHILE((usbstatus = USBH_MSC_BlockReset(&USB_OTG_Core_Host, &USB_Host)) == USBH_BUSY);
-            massert(usbstatus == USBH_OK);
+            debugUSBHStatus(usbstatus);
 
             PT_WAIT_WHILE((usbstatus = USBH_MSC_BOT_Abort(&USB_OTG_Core_Host, &USB_Host, USBH_MSC_DIR_IN)) == USBH_BUSY);
-            massert(usbstatus == USBH_OK);
+            debugUSBHStatus(usbstatus);
 
             PT_WAIT_WHILE((usbstatus = USBH_MSC_BOT_Abort(&USB_OTG_Core_Host, &USB_Host, USBH_MSC_DIR_OUT)) == USBH_BUSY);
-            massert(usbstatus == USBH_OK);
+            debugUSBHStatus(usbstatus);
     
             // Don't update size 
             // Don't change write buffer
@@ -279,6 +277,8 @@ public:
             writeBlockNumber++;
             busyWriting = 0;
         }
+
+        TaskEnd(ioStats, TaskWrite);
 
         PT_RESTART();
         PT_END();

@@ -109,9 +109,14 @@
    Standard request with no data stage timeout : 50ms */
 // #define DATA_STAGE_TIMEOUT                              5000 
 // #define NODATA_STAGE_TIMEOUT                            50
-#define DATA_STAGE_TIMEOUT                              5
-#define NODATA_STAGE_TIMEOUT                            5
+//
+// Max value of all requests.
+//
+#define DATA_STAGE_TIMEOUT                              5 // [mS]
+#define NODATA_STAGE_TIMEOUT                            5 // [mS]
 
+// Abort long running writes and retry lagter
+#define WRITE10_CMD_TIMEOUT                             2 // [mS]
  
 
 
