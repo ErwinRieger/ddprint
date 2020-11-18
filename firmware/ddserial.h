@@ -140,7 +140,10 @@ public:
 
                     checksum = _crc_ccitt_update(checksum, charToSend);
 
-                    charToSend = peek();
+                    if (empty())
+                        charToSend = 0;
+                    else
+                        charToSend = peek();
                 }
 
                 // printf(" checksum fw: 0x%x\n", checksum);

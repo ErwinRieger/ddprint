@@ -1,5 +1,7 @@
 // xxx header
 
+#include "mdebug.h"
+
 #pragma once
 
 template <class ElementType, class IndexType, int BufferSize>
@@ -20,7 +22,9 @@ struct CircularBuffer {
     IndexType size()     { return _ringbuffer_head - _ringbuffer_tail; }
 
     void push(ElementType& val)  {
-        
+       
+       massert(!full());
+
         IndexType h = _ringbuffer_head;
         _ringbuffer_array[mask(h)] = val;
         _ringbuffer_head = h+1;
@@ -28,6 +32,8 @@ struct CircularBuffer {
 
     void pushVar(ElementType val)  {
         
+       massert(!full());
+
         IndexType h = _ringbuffer_head;
         _ringbuffer_array[mask(h)] = val;
         _ringbuffer_head = h+1;
@@ -43,12 +49,14 @@ struct CircularBuffer {
 
     ElementType &pop() {
 
+       massert(!empty());
+
         IndexType t = _ringbuffer_tail;
         ElementType &val = _ringbuffer_array[mask(t)];
         _ringbuffer_tail = t + 1;
         return val;
     }
-    ElementType &peek() { return _ringbuffer_array[mask(_ringbuffer_tail)]; }
+    ElementType &peek() { massert(!empty()); return _ringbuffer_array[mask(_ringbuffer_tail)]; }
     ElementType &peekN(IndexType index) { return _ringbuffer_array[mask(_ringbuffer_tail+index)]; }
 
     void set(IndexType i, ElementType &val) {

@@ -218,8 +218,8 @@ inline void irqInit() {
     //
     // Init interrupt prio's, stm32duino initialized all irq't to prio 16.
     //
-    nvic_irq_set_priority(NVIC_TIMER2, 1);
-    nvic_irq_set_priority(NVIC_TIMER3, 1);
+    // nvic_irq_set_priority(NVIC_TIMER2, 1);
+    // nvic_irq_set_priority(NVIC_TIMER3, 1);
 
     // XXX NVIC_SPIx ???
     // nvic_irq_set_priority(NVIC_USART1, 2);
@@ -230,6 +230,11 @@ inline void irqInit() {
     nvic_irq_set_priority(NVIC_USART1, 3);
 
     // nvic_irq_set_priority(NVIC_SYSTICK, 3);
+    //
+
+// reuse cpu cycles of busy wait in stepper routine, lower prio for stepper than serial and usb:
+    nvic_irq_set_priority(NVIC_TIMER2, 4);
+    nvic_irq_set_priority(NVIC_TIMER3, 4);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////

@@ -167,6 +167,7 @@
 #define PidDebug                0x1
 // #define FilSensorDebugMsg       0x2
 #define GenericMessage       0x3
+#define BufDebug       0x4
 
 
 

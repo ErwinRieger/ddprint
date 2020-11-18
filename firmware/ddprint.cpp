@@ -1223,10 +1223,11 @@ void Printer::cmdEot() {
     }
 }
 
-void Printer::underrunError() {
+void Printer::underrunError(uint32_t utype, uint32_t t) {
 
     printer.bufferLow = min((uint32_t)printer.bufferLow+1, (uint32_t)0xffff);
 
+#if 0
     txBuffer.flush();
     txBuffer.sendResponseStart(RespUnderrun);
     txBuffer.sendResponseUInt32((uint32_t)0);
@@ -1236,8 +1237,19 @@ void Printer::underrunError() {
     txBuffer.sendResponseUInt32((uint32_t)sDReader.available());
     txBuffer.sendResponseEnd();
     kill();
+#endif
+                    txBuffer.sendResponseStart(RespUnsolicitedMsg);
+                    txBuffer.sendResponseUint8(BufDebug);
+    txBuffer.sendResponseUInt32(utype);
+    txBuffer.sendResponseUInt32(t);
+    txBuffer.sendResponseUInt32((uint32_t)0);
+    txBuffer.sendResponseUInt32(swapDev.available());
+    txBuffer.sendResponseUInt32((uint32_t)sDReader.available());
+                    txBuffer.sendResponseEnd();
 }
 
+
+#if 0
 void Printer::underrunError(uint32_t lastSize, uint32_t lastSize2, uint32_t minTimer) {
 
     txBuffer.flush();
@@ -1250,6 +1262,7 @@ void Printer::underrunError(uint32_t lastSize, uint32_t lastSize2, uint32_t minT
     txBuffer.sendResponseEnd();
     kill();
 }
+#endif
 
 void Printer::cmdMove(MoveType mt) {
 
@@ -1259,7 +1272,8 @@ void Printer::cmdMove(MoveType mt) {
     printerState = StateStart;
     moveType = mt;
 
-    minBuffer = 0xffff;
+    minBufferMax = 0;
+    minBuffer = 0;
 
     // if (mt == MoveTypeNormal) {
         // armrun massert(homed);
@@ -1282,7 +1296,7 @@ void Printer::cmdMove(MoveType mt) {
     enable_e0();
 #endif
 
-    // xxx bufferLow = -1;
+    bufferLow = 0;
 
 #if defined(HASFILAMENTSENSOR)
     filamentSensor.init();
@@ -2382,15 +2396,6 @@ void loop() {
 
     m = millis();
 
-// debug
-  filltrace ft;
-  ft.timestamp = m;
-  ft.sdsize = stepBuffer.size();
-
-    stepBufferLog .pushWrap(ft);
-
-// end debug
-
     if (m >= timer10mS) { // Every 10 mS
 
         timer10mS = m + TIMER10MS;
@@ -2474,15 +2479,36 @@ void loop() {
     // Statistics: minimal step buffer watermark
     if (printer.printerState == Printer::StateStart)
         if (! (printer.eotWasReceived() && (swapDev.available()==0))) {
-            if (stepBuffer.size())
-                printer.minBuffer = min((uint32_t)stepBuffer.size(), printer.minBuffer);
+
+            uint16_t s = stepBuffer.size();
+
+            if (s > printer.minBufferMax) {
+                printer.minBuffer = s;
+                printer.minBufferMax = s;
+            }
+            else {
+                printer.minBuffer = min((uint32_t)s, printer.minBuffer);
+            }
         }
+
+    
+
+
 
     // If printing, then read stepper data from mass storage and push it to
     // the stepper buffer.
     TaskStart(taskTiming, TaskFillBuffer);
     fillBufferTask.Run();
     TaskEnd(taskTiming, TaskFillBuffer);
+
+// debug
+  filltrace ft;
+  ft.timestamp = m;
+  ft.sdsize = stepBuffer.size();
+
+    stepBufferLog .pushWrap(ft);
+
+// end debug
 
     // Handle USB output
     TaskStart(taskTiming, TaskUsbOutput);

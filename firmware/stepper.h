@@ -489,7 +489,8 @@ typedef struct {
 #define StepBufferLen  256
 #else
 // #define StepBufferLen  512
-#define StepBufferLen  2048
+// #define StepBufferLen  2048
+#define StepBufferLen  1024
 #endif
 
 typedef CircularBuffer<stepData, uint32_t, StepBufferLen> StepBufferBase;
@@ -580,16 +581,24 @@ class StepBuffer: public StepBufferBase {
             FWINLINE void runMoveSteps() {
 
                 static bool wasnotempty = true;
+                static uint32_t lastgood = 0;
 
                 if (empty()) {
 
                     // Empty buffer, nothing to step
-                    HAL_SET_STEPPER_TIMER(2000); // 1kHz.
+                    // HAL_SET_STEPPER_TIMER(2000); // 1kHz.
                     stepbits = 0;
 
                     // Check for step buffer underruns
-                    if (wasnotempty && printer.stepsAvailable())
-                            printer.underrunError();
+                    if (wasnotempty && printer.stepsAvailable()) {
+
+                        HAL_SET_STEPPER_TIMER(25);
+                        printer.underrunError(1, millis() - lastgood);
+                        // printer.bufferLow++;
+                    }
+                    else {
+                        HAL_SET_STEPPER_TIMER(2000); // 1kHz.
+                    }
 
                     wasnotempty = false;
                 }
@@ -597,6 +606,12 @@ class StepBuffer: public StepBufferBase {
 
                     stepData &sd = pop();
 
+// debug
+                    if (size() == StepBufferLen/2)
+                        lastgood = millis();
+
+// enddebug
+//
                     uint16_t t = sd.timer;
 
                     // Set new timer value
