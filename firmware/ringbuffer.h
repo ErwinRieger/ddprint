@@ -1,11 +1,18 @@
 // xxx header
 
 #include "mdebug.h"
+#include "mdebug.h"
 
 #pragma once
 
+// static uint32_t stepin = 0;
+// static uint32_t stepout = 0;
+
 template <class ElementType, class IndexType, int BufferSize>
 struct CircularBuffer {
+
+int32_t stepbal;
+bool docheck;
 
     typedef IndexType _IndexType;
 
@@ -13,7 +20,9 @@ struct CircularBuffer {
     volatile IndexType _ringbuffer_head;
     volatile IndexType _ringbuffer_tail;
 
-    void ringBufferInit() { _ringbuffer_head = _ringbuffer_tail = 0; }
+    void ringBufferInit() { _ringbuffer_head = _ringbuffer_tail = 0;
+stepbal=0; docheck=false;
+    }
 
     IndexType mask(IndexType val)  { return val & (BufferSize - 1); }
 
@@ -28,6 +37,8 @@ struct CircularBuffer {
         IndexType h = _ringbuffer_head;
         _ringbuffer_array[mask(h)] = val;
         _ringbuffer_head = h+1;
+stepbal++;
+if (docheck) massert(stepbal == size());
     }
 
     void pushVar(ElementType val)  {
@@ -37,6 +48,8 @@ struct CircularBuffer {
         IndexType h = _ringbuffer_head;
         _ringbuffer_array[mask(h)] = val;
         _ringbuffer_head = h+1;
+stepbal++;
+if (docheck) massert(stepbal == size());
     }
 
     // 
@@ -54,6 +67,11 @@ struct CircularBuffer {
         IndexType t = _ringbuffer_tail;
         ElementType &val = _ringbuffer_array[mask(t)];
         _ringbuffer_tail = t + 1;
+
+stepbal--;
+massert(stepbal >= 0);
+if (docheck) massert(stepbal == size());
+
         return val;
     }
     ElementType &peek() { massert(!empty()); return _ringbuffer_array[mask(_ringbuffer_tail)]; }

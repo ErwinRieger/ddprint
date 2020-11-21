@@ -263,6 +263,9 @@ class Printer(Serial):
                 (slen,) = struct.unpack("<B", payload[1:2])
                 message = payload[2:2+slen]
                 self.gui.logComm("GenericMessage: '%s'" % message)
+            elif msgType == BufDebug:
+                (p0, p1, p2, swapdev, sdreader) = struct.unpack("<IIiII", payload[1:])
+                self.gui.logComm("BufDebug: swapdev: %d, sdreader: %d (p0: %d, p1: %d, p2: %d)" % (swapdev, sdreader, p0, p1, p2))
             return True # consume message
 
         return False # continue message processing
@@ -734,7 +737,7 @@ class Printer(Serial):
 
         self.gui.statusCb(statusDict)
 
-        for (statusCmd, tasknames) in [(CmdGetTaskStatus, ("tempcontrol", "tempheater", "filsensor", "ubscommand", "txbuffer", "swapdev", "fillbuffer", "tasksum")), (CmdGetIOStats, ("read", "write"))]:
+        for (statusCmd, tasknames) in [(CmdGetTaskStatus, ("idle", "tempcontrol", "tempheater", "filsensor", "ubscommand", "txbuffer", "swapdev", "fillbuffer", "tasksum")), (CmdGetIOStats, ("read", "write"))]:
 
             ## XXX debug iotimings
             (cmd, payload) = self.query(statusCmd, doLog=True)

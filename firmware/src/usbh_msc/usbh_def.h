@@ -116,7 +116,7 @@
 #define NODATA_STAGE_TIMEOUT                            5 // [mS]
 
 // Abort long running writes and retry lagter
-#define WRITE10_CMD_TIMEOUT                             2 // [mS]
+#define WRITE10_CMD_TIMEOUT                             4 // [mS]
  
 
 

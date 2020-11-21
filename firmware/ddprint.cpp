@@ -56,6 +56,24 @@
 #define Y_SW_ENDSTOP_PRESSED ((current_pos_steps[Y_AXIS] < 0) || (current_pos_steps[Y_AXIS] > (int32_t)hostSettings.buildVolY))
 #define Z_SW_ENDSTOP_PRESSED ((current_pos_steps[Z_AXIS] < 0) || (current_pos_steps[Z_AXIS] > (int32_t)hostSettings.buildVolZ))
 
+// debug
+
+enum LoopTasks { TaskIdle, TaskTempControl, TaskHeater, TaskFilSensor, TaskUsbInput, TaskUsbOutput, TaskSwapDev, TaskFillBuffer, TaskSum};
+
+static struct TaskTiming taskTiming[9] = { 
+    { 0, 0, 0, 0 },         // Idle time between loop() calles
+    { 0, 0, 0, 0 },         // Temperature measurement
+    { 0, 0, 0, 0 },         // Heater temperature control
+    { 0, 0, 0, 0 },         // Filament sensor readings (flowrate measurement)
+    { 0, 0, 0, 0 },         // USB input
+    { 0, 0, 0, 0 },         // USB output
+    { 0, 0, 0, 0 },         // Mass storage IO 
+    { 0, 0, 0, 0 },         // Read *swapdev* and fill *stepbuffer*
+    { 0, 0, 0, 0 },         // Summary of all these tasks
+};
+
+
+
 /////////////////////////////////////////////////////////////////////////////////////
 #if defined(USEExtrusionRateTable)
 
@@ -286,6 +304,7 @@ void setup() {
     SEI();
 
     // tinf_init();
+    TaskStart(taskTiming, TaskIdle);
 }
 
 //
@@ -718,7 +737,9 @@ class FillBufferTask : public Protothread {
                     sd.timer = STD min ( (uint16_t)(lastTimer * timerScale), (uint16_t)0xffff );
                     computeStepBits();
                     PT_WAIT_WHILE(stepBuffer.full());
+                CRITICAL_SECTION_START;
                     stepBuffer.push(sd);
+                CRITICAL_SECTION_END;
                     sd.dirBits &= ~0x80; // clear set-direction bit (after push)
 
                     if (flags & AccelByteFlag) {
@@ -733,7 +754,9 @@ class FillBufferTask : public Protothread {
                             sd.timer = STD min ( (uint16_t)(lastTimer * timerScale),  (uint16_t)0xffff );
                             computeStepBits();
                             PT_WAIT_WHILE(stepBuffer.full());
+                CRITICAL_SECTION_START;
                             stepBuffer.push(sd);
+                CRITICAL_SECTION_END;
                         }
                     }
                     else {
@@ -747,7 +770,9 @@ class FillBufferTask : public Protothread {
 
                             computeStepBits();
                             PT_WAIT_WHILE(stepBuffer.full());
+                CRITICAL_SECTION_START;
                             stepBuffer.push(sd);
+                CRITICAL_SECTION_END;
                         }
                     }
                 }
@@ -762,7 +787,9 @@ class FillBufferTask : public Protothread {
 
                     computeStepBits();
                     PT_WAIT_WHILE(stepBuffer.full());
+                CRITICAL_SECTION_START;
                     stepBuffer.push(sd);
+                CRITICAL_SECTION_END;
 
                     sd.dirBits &= ~0x80; // clear set-direction bit (after push)
 
@@ -770,7 +797,9 @@ class FillBufferTask : public Protothread {
 
                         computeStepBits();
                         PT_WAIT_WHILE(stepBuffer.full());
+                CRITICAL_SECTION_START;
                         stepBuffer.push(sd);
+                CRITICAL_SECTION_END;
                     }
                 }
 
@@ -787,7 +816,9 @@ class FillBufferTask : public Protothread {
 
                     computeStepBits();
                     PT_WAIT_WHILE(stepBuffer.full());
+                CRITICAL_SECTION_START;
                     stepBuffer.push(sd);
+                CRITICAL_SECTION_END;
 
                     sd.dirBits &= ~0x80; // clear set-direction bit (after push)
 
@@ -804,7 +835,9 @@ class FillBufferTask : public Protothread {
 
                             computeStepBits();
                             PT_WAIT_WHILE(stepBuffer.full());
+                CRITICAL_SECTION_START;
                             stepBuffer.push(sd);
+                CRITICAL_SECTION_END;
                         }
                     }
                     else {
@@ -818,7 +851,9 @@ class FillBufferTask : public Protothread {
 
                             computeStepBits();
                             PT_WAIT_WHILE(stepBuffer.full());
+                CRITICAL_SECTION_START;
                             stepBuffer.push(sd);
+                CRITICAL_SECTION_END;
                         }
                     }
                 }
@@ -1223,7 +1258,7 @@ void Printer::cmdEot() {
     }
 }
 
-void Printer::underrunError(uint32_t utype, uint32_t t) {
+void Printer::underrunError(uint32_t utype, uint32_t t, int32_t wasempty) {
 
     printer.bufferLow = min((uint32_t)printer.bufferLow+1, (uint32_t)0xffff);
 
@@ -1242,7 +1277,8 @@ void Printer::underrunError(uint32_t utype, uint32_t t) {
                     txBuffer.sendResponseUint8(BufDebug);
     txBuffer.sendResponseUInt32(utype);
     txBuffer.sendResponseUInt32(t);
-    txBuffer.sendResponseUInt32((uint32_t)0);
+    // txBuffer.sendResponseInt32(stepBuffer.stepbal);
+    txBuffer.sendResponseInt32(wasempty);
     txBuffer.sendResponseUInt32(swapDev.available());
     txBuffer.sendResponseUInt32((uint32_t)sDReader.available());
                     txBuffer.sendResponseEnd();
@@ -1577,18 +1613,6 @@ void Printer::cmdGetDirBits() {
 #endif
 
 // debug
-
-static struct TaskTiming taskTiming[8] = { 
-    { 0, 0, 0, 0 },         // Temperature measurement
-    { 0, 0, 0, 0 },         // Heater temperature control
-    { 0, 0, 0, 0 },         // Filament sensor readings (flowrate measurement)
-    { 0, 0, 0, 0 },         // USB input
-    { 0, 0, 0, 0 },         // USB output
-    { 0, 0, 0, 0 },         // Mass storage IO 
-    { 0, 0, 0, 0 },         // Read *swapdev* and fill *stepbuffer*
-    { 0, 0, 0, 0 },         // Summary of all these tasks
-};
-enum LoopTasks { TaskTempControl, TaskHeater, TaskFilSensor, TaskUsbInput, TaskUsbOutput, TaskSwapDev, TaskFillBuffer, TaskSum};
 
 
 
@@ -2385,6 +2409,8 @@ FWINLINE
 #endif
 void loop() {
 
+    TaskEnd(taskTiming, TaskIdle);
+
     unsigned long m = millis();
 
     // Timer for slow running tasks (temp, encoder)
@@ -2551,6 +2577,8 @@ void loop() {
 #endif
     
     TaskEnd(taskTiming, TaskSum);
+
+    TaskStart(taskTiming, TaskIdle);
 }
 
 

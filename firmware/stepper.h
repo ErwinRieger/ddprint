@@ -515,10 +515,12 @@ class StepBuffer: public StepBufferBase {
             StepBuffer() {
 
                 ringBufferInit();
+docheck=true;
 
                 // undo syncCount = 0;
                 miscStepperMode = HOMINGMODE;
                 stepbits = 0;
+
             };
 
             void setContinuosTimer(uint16_t timerValue) {
@@ -538,6 +540,7 @@ class StepBuffer: public StepBufferBase {
 
             void flush() {
                 ringBufferInit();
+docheck=true;
             }
 
             void homingMode() {
@@ -580,8 +583,9 @@ class StepBuffer: public StepBufferBase {
             // --> To relax this situation we set the new OCR1A value as fast as possible.
             FWINLINE void runMoveSteps() {
 
-                static bool wasnotempty = true;
-                static uint32_t lastgood = 0;
+                static int32_t wasempty = 0;
+                static uint32_t lastgood = 0, m = 0;
+
 
                 if (empty()) {
 
@@ -590,19 +594,26 @@ class StepBuffer: public StepBufferBase {
                     stepbits = 0;
 
                     // Check for step buffer underruns
-                    if (wasnotempty && printer.stepsAvailable()) {
-
-                        HAL_SET_STEPPER_TIMER(25);
-                        printer.underrunError(1, millis() - lastgood);
-                        // printer.bufferLow++;
+                    if (printer.stepsAvailable()) {
+                        if (!wasempty) {
+                            m = millis() - lastgood;
+                            // printer.underrunError(1, millis() - lastgood);
+                        }
+                        // HAL_SET_STEPPER_TIMER(25);
+                    // }
+                    // else {
+                        // HAL_SET_STEPPER_TIMER(2000); // 1kHz.
+                    
+                        wasempty++;
                     }
-                    else {
-                        HAL_SET_STEPPER_TIMER(2000); // 1kHz.
-                    }
-
-                    wasnotempty = false;
+                    HAL_SET_STEPPER_TIMER(25);
                 }
                 else {
+
+
+                    if (wasempty) {
+                        printer.underrunError(millis() - lastgood, m, wasempty);
+                    }
 
                     stepData &sd = pop();
 
@@ -656,7 +667,7 @@ class StepBuffer: public StepBufferBase {
                         st_deactivate_pin<EAxisSelector>(stepbits);
                     }
 
-                    wasnotempty = true;
+                    wasempty = 0;
                 }
             }
 

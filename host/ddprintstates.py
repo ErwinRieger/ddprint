@@ -93,6 +93,7 @@ ExtrusionLimitDbg = 0x0
 PidDebug          = 0x1
 FilSensorDebug    = 0x2
 GenericMessage    = 0x3
+BufDebug          = 0x4
 
 
 

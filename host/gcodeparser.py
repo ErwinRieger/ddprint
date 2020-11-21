@@ -482,6 +482,8 @@ class UM2GcodeParser:
                 elif upperLine.endswith("SINGLE EXTRUSION"):
                     # print "gcodeparser: Starting single extrusion..."
                     self.layerPart = "single extrusion"
+                elif upperLine.endswith("SUMMARY"):
+                    self.layerPart = "unknown"
                 elif len(tokens) > 1 and tokens[1].upper() in [ "PURGING:", "PROCESS", "FEATURE" ]:
                     pass
                 else:
@@ -495,6 +497,7 @@ class UM2GcodeParser:
                             self.logger.logPrintLog(rawLine)
 
                         if self.layerPart == "infill":
+                            print "unhandled comment type while infill active, gcodeparser comment:", line
                             assert(0)
 
                 # print "skipping comment: ", line

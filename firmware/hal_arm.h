@@ -227,14 +227,16 @@ inline void irqInit() {
     // Done in dd_USBH_Init():
     // nvic_irq_set_priority(NVIC_USB_HS, 3);
     //
-    nvic_irq_set_priority(NVIC_USART1, 3);
+    // nvic_irq_set_priority(NVIC_USART1, 3);
 
     // nvic_irq_set_priority(NVIC_SYSTICK, 3);
     //
 
 // reuse cpu cycles of busy wait in stepper routine, lower prio for stepper than serial and usb:
+    nvic_irq_set_priority(NVIC_SYSTICK, 2);
     nvic_irq_set_priority(NVIC_TIMER2, 4);
     nvic_irq_set_priority(NVIC_TIMER3, 4);
+    nvic_irq_set_priority(NVIC_USART1, 5);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
