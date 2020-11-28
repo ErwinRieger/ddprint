@@ -21,7 +21,7 @@ uint32_t dd_HCD_IsDeviceConnected    (USB_OTG_CORE_HANDLE *pdev);
 uint32_t dd_HCD_GetXferCnt (USB_OTG_CORE_HANDLE *pdev, uint8_t ch_num);
 uint32_t dd_HCD_Init(USB_OTG_CORE_HANDLE *pdev , USB_OTG_CORE_ID_TypeDef coreID);
 URB_STATE dd_HCD_GetURB_State (USB_OTG_CORE_HANDLE *pdev , uint8_t ch_num);
-uint32_t dd_HCD_GetCurrentFrame (USB_OTG_CORE_HANDLE *pdev) ;
+// uint32_t dd_HCD_GetCurrentFrame (USB_OTG_CORE_HANDLE *pdev) ;
 uint32_t dd_HCD_GetCurrentSpeed (USB_OTG_CORE_HANDLE *pdev);
 
 //
@@ -65,6 +65,36 @@ struct DebugCalls {
 };
 
 static struct DebugCalls debugCalls;
+
+// debug
+struct DebugUsbIrq {
+    uint32_t rxstsqlvl;
+    uint32_t hcintr;
+    uint32_t portintr;
+
+    uint32_t ahberr;
+    uint32_t ack;
+    uint32_t xfercompl;
+    uint32_t stall;
+    uint32_t nak;
+    uint32_t xacterr;
+    uint32_t nyet;
+    uint32_t datatglerr;
+    uint32_t chhltd;
+
+    uint32_t ahberr_in;
+    uint32_t ack_in;
+    uint32_t xfercompl_in;
+    uint32_t stall_in;
+    uint32_t nak_in;
+    uint32_t xacterr_in;
+    // uint32_t nyet;
+    uint32_t datatglerr_in;
+    uint32_t chhltd_in;
+    uint32_t frmovrun_in;
+};
+
+static struct DebugUsbIrq debugUsbIrq = { 0, 0, 0 };
 
 void debugUSBHStatus(USBH_Status status) {
 
@@ -124,7 +154,7 @@ void usbMSCHostError() {
 
 //--------------------------------------------------------------
 //
-USBH_Status USB_disk_write(
+USBH_Status nu_USB_disk_write(
         USB_OTG_CORE_HANDLE *pdev, USBH_HOST *phost,
         uint8_t *buff, uint32_t sector) {
 
@@ -268,6 +298,19 @@ void USBH_LL_SetToggle(USB_OTG_CORE_HANDLE *pdev, uint8_t pipe, uint8_t toggle)
     }
 }
 
+//xxx debug
+//
+uint32_t start_time_1=0;
+uint32_t start_time_2=0;
+uint32_t start_time_3=0;
+uint32_t start_time_4=0;
+uint32_t start_time_5=0;
+uint32_t end_time_1;
+uint32_t end_time_2;
+uint32_t end_time_3;
+uint32_t end_time_4;
+uint32_t end_time_5;
+
 //--------------------------------------------------------------
 //
 // Data Transfer handler
@@ -278,8 +321,11 @@ USBH_Status dd_USBH_MSC_HandleBOTXfer (USB_OTG_CORE_HANDLE *pdev ,USBH_HOST *pho
   USBH_Status status = USBH_BUSY;
   
   URB_STATE URB_Status = URB_IDLE;
-  static uint16_t timeout = 0;
-  
+  static uint32_t timeout = 0;
+ 
+// debug
+ uint32_t to = millis() + 10;
+
   switch (usbh_msc.BOTState)
   {
     case USBH_BOTSTATE_SENT_CBW:
@@ -307,12 +353,12 @@ USBH_Status dd_USBH_MSC_HandleBOTXfer (USB_OTG_CORE_HANDLE *pdev ,USBH_HOST *pho
             usbh_msc.BOTState = USBH_BOTSTATE_BOT_DATAOUT_STATE;
           } 
 
-          timeout = dd_HCD_GetCurrentFrame(pdev) + DATA_STAGE_TIMEOUT;
+          timeout = millis() + DATA_STAGE_TIMEOUT;
         }
         else
         {/* If there is NO Data Transfer Stage */
           usbh_msc.BOTState = USBH_BOTSTATE_RECEIVE_CSW_STATE;
-          timeout = dd_HCD_GetCurrentFrame(pdev) + NODATA_STAGE_TIMEOUT;
+          timeout = millis() + NODATA_STAGE_TIMEOUT;
         }
       }   
       else if (URB_Status == URB_NOTREADY)
@@ -331,6 +377,8 @@ USBH_Status dd_USBH_MSC_HandleBOTXfer (USB_OTG_CORE_HANDLE *pdev ,USBH_HOST *pho
         USBH_BulkReceiveData (
                 pdev, usbh_msc.pRxTxBuff, 
                 USBH_MSC_MPS_SIZE, MSC_Machine.hc_num_in);
+
+massert(millis() < timeout);
 
         usbh_msc.BOTState = USBH_BOTSTATE_BOT_DATAIN_WAIT_STATE;
         break;   
@@ -382,12 +430,16 @@ USBH_Status dd_USBH_MSC_HandleBOTXfer (USB_OTG_CORE_HANDLE *pdev ,USBH_HOST *pho
                            usbh_msc.pRxTxBuff, 
                            USBH_MSC_MPS_SIZE, MSC_Machine.hc_num_out);
 
+massert(millis() < timeout);
+
         usbh_msc.BOTState = USBH_BOTSTATE_BOT_DATAOUT_WAIT_STATE;
         break;
 
     case USBH_BOTSTATE_BOT_DATAOUT_WAIT_STATE:
 
       URB_Status = dd_HCD_GetURB_State(pdev , MSC_Machine.hc_num_out);       
+
+massert(millis() < timeout);
 
       /* BOT DATA OUT stage */
       if(URB_Status == URB_DONE)
@@ -446,19 +498,28 @@ USBH_Status dd_USBH_MSC_HandleBOTXfer (USB_OTG_CORE_HANDLE *pdev ,USBH_HOST *pho
                 USBH_MSC_CSW_LENGTH_13, MSC_Machine.hc_num_in);
 
         usbh_msc.BOTState = USBH_BOTSTATE_DECODE_CSW;    
-
       break;
       
     case USBH_BOTSTATE_DECODE_CSW:
 
+start_time_4 = millis();
       URB_Status = dd_HCD_GetURB_State(pdev , MSC_Machine.hc_num_in);
+end_time_4 = millis();
+massert((end_time_4-start_time_4) < 10 );
+
+// massert(millis() < to);
 
       /* Decode CSW */
       if(URB_Status == URB_DONE)
       {
         // usbh_msc.MSCState = usbh_msc.MSCStateCurrent ;
         
+start_time_5 = millis();
         USBH_MSC_Status_TypeDef decodeState = USBH_MSC_DecodeCSW(pdev , phost);
+end_time_5 = millis();
+massert((end_time_5-start_time_5) < 10 );
+
+massert(millis() < to);
 
         // Note: USBH_MSC_BUSY never returned by USBH_MSC_DecodeCSW
         if (decodeState == USBH_MSC_OK) {
@@ -482,7 +543,7 @@ USBH_Status dd_USBH_MSC_HandleBOTXfer (USB_OTG_CORE_HANDLE *pdev ,USBH_HOST *pho
           usbh_msc.BOTState  = USBH_BOTSTATE_BOT_ERROR_OUT;
           debugCalls.stallErrors++;
       }
-      else if (dd_HCD_GetCurrentFrame(pdev) > timeout)
+      else if (millis() > timeout)
       {
         /* timeout for IN transfer */
         status = USBH_TIMEOUT;
@@ -492,6 +553,9 @@ USBH_Status dd_USBH_MSC_HandleBOTXfer (USB_OTG_CORE_HANDLE *pdev ,USBH_HOST *pho
     case USBH_BOTSTATE_BOT_ERROR_IN: 
 
       status = USBH_MSC_BOT_Abort(pdev, phost, USBH_MSC_DIR_IN);
+
+massert(millis() < timeout);
+
       if (status == USBH_OK)
       {
         // /* Check if the error was due in Both the directions */
@@ -526,6 +590,8 @@ USBH_Status dd_USBH_MSC_HandleBOTXfer (USB_OTG_CORE_HANDLE *pdev ,USBH_HOST *pho
 
       status = USBH_MSC_BOT_Abort(pdev, phost, USBH_MSC_DIR_OUT);
 
+massert(millis() < timeout);
+
       if ( status == USBH_OK)
       { /* Switch Back to the Original State */
 
@@ -550,6 +616,9 @@ USBH_Status dd_USBH_MSC_HandleBOTXfer (USB_OTG_CORE_HANDLE *pdev ,USBH_HOST *pho
       usbMSCHostAssert(0);
       break;
   }
+
+// if (usbh_msc.BOTState != USBH_BOTSTATE_DECODE_CSW)
+    massert(millis() < to);
 
   return status;
 }
@@ -622,7 +691,7 @@ USBH_Status USBH_MSC_Read10(USB_OTG_CORE_HANDLE *pdev, USBH_HOST *phost,
 USBH_Status dd_USBH_HandleControl (USB_OTG_CORE_HANDLE *pdev, USBH_HOST *phost, uint8_t *buff, uint16_t length)
 {
   uint8_t direction;  
-  static uint16_t timeout = 0;
+  static uint32_t timeout = 0;
   USBH_Status status = USBH_BUSY;
   URB_STATE URB_Status = URB_IDLE;
   
@@ -651,7 +720,7 @@ USBH_Status dd_USBH_HandleControl (USB_OTG_CORE_HANDLE *pdev, USBH_HOST *phost, 
       /* check if there is a data stage */
       if (phost->Control.setup.b.wLength.w != 0 )
       {        
-        timeout = dd_HCD_GetCurrentFrame(pdev) + DATA_STAGE_TIMEOUT;
+        timeout = millis() + DATA_STAGE_TIMEOUT;
         if (direction == USB_D2H)
         {
           /* Data Direction is IN */
@@ -666,7 +735,7 @@ USBH_Status dd_USBH_HandleControl (USB_OTG_CORE_HANDLE *pdev, USBH_HOST *phost, 
       /* No DATA stage */
       else
       {
-        timeout = dd_HCD_GetCurrentFrame(pdev) + NODATA_STAGE_TIMEOUT;
+        timeout = millis() + NODATA_STAGE_TIMEOUT;
         
         /* If there is No Data Transfer Stage */
         if (direction == USB_D2H)
@@ -717,7 +786,7 @@ USBH_Status dd_USBH_HandleControl (USB_OTG_CORE_HANDLE *pdev, USBH_HOST *phost, 
       /* Device error */
       massert(0); // phost->Control.state = CTRL_ERROR;    
     }
-    else if (dd_HCD_GetCurrentFrame(pdev) > timeout)
+    else if (millis() > timeout)
     {
       /* timeout for IN transfer */
       massert(0); // phost->Control.state = CTRL_ERROR; 
@@ -786,7 +855,7 @@ USBH_Status dd_USBH_HandleControl (USB_OTG_CORE_HANDLE *pdev, USBH_HOST *phost, 
     {
       massert(0); // phost->Control.state = CTRL_ERROR;  
     }
-    else if(dd_HCD_GetCurrentFrame(pdev) > timeout)
+    else if(millis() > timeout)
     {
       massert(0); // phost->Control.state = CTRL_ERROR; 
     }
@@ -901,7 +970,7 @@ USBH_Status USBH_MSC_Write10(USB_OTG_CORE_HANDLE *pdev, USBH_HOST *phost,
 
   USBH_Status bot_status;
   uint16_t nbOfPages;
-  
+
   switch(usbh_msc.CmdStateMachine) {
 
     case CMD_SEND_STATE:   
@@ -934,10 +1003,38 @@ USBH_Status USBH_MSC_Write10(USB_OTG_CORE_HANDLE *pdev, USBH_HOST *phost,
 
       usbh_msc.pRxTxBuff = dataBuffer;
 
+debugUsbIrq.rxstsqlvl = 0;
+debugUsbIrq.hcintr = 0;
+debugUsbIrq.portintr = 0;
+
+    debugUsbIrq.ahberr=0;
+debugUsbIrq.    ack=0;
+debugUsbIrq.    xfercompl=0;
+debugUsbIrq.    stall=0;
+debugUsbIrq.    nak=0;
+debugUsbIrq.    xacterr=0;
+debugUsbIrq.    nyet=0;
+debugUsbIrq.    datatglerr=0;
+debugUsbIrq.    chhltd=0;
+
+    debugUsbIrq. ahberr_in=0;
+    debugUsbIrq. ack_in=0;
+    debugUsbIrq. xfercompl_in=0;
+    debugUsbIrq. stall_in=0;
+    debugUsbIrq. nak_in=0;
+    debugUsbIrq. xacterr_in=0;
+    debugUsbIrq. datatglerr_in=0;
+    debugUsbIrq. chhltd_in=0;
+    debugUsbIrq. frmovrun_in=0;
+
+
+start_time_2 = millis();
       dd_USBH_BulkSendData (pdev,
                          USBH_MSC_CBWData.CBWArray,          // 31, entire CBW struct
                          USBH_MSC_BOT_CBW_PACKET_LENGTH_31 , // 31
                          MSC_Machine.hc_num_out);
+end_time_2 = millis(); // 36493
+massert((end_time_2-start_time_2) < 13 );
       return USBH_BUSY;
       
     case CMD_WAIT_STATUS:
@@ -951,7 +1048,12 @@ USBH_Status USBH_MSC_Write10(USB_OTG_CORE_HANDLE *pdev, USBH_HOST *phost,
         } 
 
         /* Process the BOT state machine */
+start_time_3 = millis(); // 36523 , dh.h. start_time_3+30!!!
+massert((start_time_3 - start_time_1) <= 2);
+
         bot_status = dd_USBH_MSC_HandleBOTXfer(pdev, phost);
+end_time_3 = millis();
+massert((end_time_3-start_time_3) < 13 );
 
         if (bot_status != USBH_BUSY) {
             usbh_msc.CmdStateMachine = CMD_SEND_STATE;
@@ -977,7 +1079,7 @@ USBH_Status USBH_MSC_Write10(USB_OTG_CORE_HANDLE *pdev, USBH_HOST *phost,
 
             // massert(phost->RequestState == CMD_SEND);
             return USBH_BUSY;
-            // return USBH_TIMEOUT;  // left over stall or error condition???
+            // return xSBH_TIMEOUT;  // left over stall or error condition???
         }
 
         massert(bot_status == USBH_BUSY);
@@ -990,7 +1092,7 @@ USBH_Status USBH_MSC_Write10(USB_OTG_CORE_HANDLE *pdev, USBH_HOST *phost,
         {
             usbh_msc.CmdStateMachine = CMD_CLEAR_FEATURE_OUT;
             // massert(phost->RequestState == CMD_SEND);
-            return USBH_TIMEOUT;
+            return xSBH_TIMEOUT;
         }
 
         massert(bot_status == USBH_BUSY);
@@ -1009,7 +1111,7 @@ USBH_Status USBH_MSC_Write10(USB_OTG_CORE_HANDLE *pdev, USBH_HOST *phost,
             usbh_msc.CmdStateMachine = CMD_SEND_STATE;
             // massert(phost->RequestState == CMD_SEND);
             // return USBH_BUSY;
-            return USBH_TIMEOUT;
+            return xSBH_TIMEOUT;
         }
 
         massert(bot_status == USBH_BUSY);
@@ -1249,16 +1351,19 @@ uint32_t USB_OTG_USBH_handle_hc_n_Out_ISR (USB_OTG_CORE_HANDLE *pdev , uint32_t 
   
   if (hcint.b.ahberr)
   {
+      debugUsbIrq.ahberr++;
     CLEAR_HC_INT(hcreg ,ahberr);
     UNMASK_HOST_INT_CHH (num);
   } 
   else if (hcint.b.ack)
   {
+      debugUsbIrq.ack++;
     CLEAR_HC_INT(hcreg , ack);
   }
   
   else if (hcint.b.xfercompl)
   {
+      debugUsbIrq.xfercompl++;
     pdev->host.ErrCnt[num] = 0;
     UNMASK_HOST_INT_CHH (num);
     USB_OTG_HC_Halt(pdev, num);
@@ -1268,6 +1373,7 @@ uint32_t USB_OTG_USBH_handle_hc_n_Out_ISR (USB_OTG_CORE_HANDLE *pdev , uint32_t 
   
   else if (hcint.b.stall)
   {
+      debugUsbIrq.stall++;
     CLEAR_HC_INT(hcreg , stall);
     UNMASK_HOST_INT_CHH (num);
     USB_OTG_HC_Halt(pdev, num);
@@ -1276,6 +1382,7 @@ uint32_t USB_OTG_USBH_handle_hc_n_Out_ISR (USB_OTG_CORE_HANDLE *pdev , uint32_t 
   
   else if (hcint.b.nak)
   {
+      debugUsbIrq.nak++;
     pdev->host.ErrCnt[num] = 0;
     UNMASK_HOST_INT_CHH (num);
     USB_OTG_HC_Halt(pdev, num);
@@ -1285,6 +1392,7 @@ uint32_t USB_OTG_USBH_handle_hc_n_Out_ISR (USB_OTG_CORE_HANDLE *pdev , uint32_t 
   
   else if (hcint.b.xacterr)
   {
+      debugUsbIrq.xacterr++;
     UNMASK_HOST_INT_CHH (num);
     USB_OTG_HC_Halt(pdev, num);
     pdev->host.ErrCnt[num] ++;
@@ -1293,6 +1401,7 @@ uint32_t USB_OTG_USBH_handle_hc_n_Out_ISR (USB_OTG_CORE_HANDLE *pdev , uint32_t 
   }
   else if (hcint.b.nyet)
   {
+      debugUsbIrq.nyet++;
     pdev->host.ErrCnt[num] = 0;
     UNMASK_HOST_INT_CHH (num);
     USB_OTG_HC_Halt(pdev, num);
@@ -1301,6 +1410,7 @@ uint32_t USB_OTG_USBH_handle_hc_n_Out_ISR (USB_OTG_CORE_HANDLE *pdev , uint32_t 
   }
   else if (hcint.b.datatglerr)
   {
+      debugUsbIrq.datatglerr++;
    
     UNMASK_HOST_INT_CHH (num);
     USB_OTG_HC_Halt(pdev, num);
@@ -1311,6 +1421,8 @@ uint32_t USB_OTG_USBH_handle_hc_n_Out_ISR (USB_OTG_CORE_HANDLE *pdev , uint32_t 
   }  
   else if (hcint.b.chhltd)
   {
+      debugUsbIrq.chhltd++;
+
     MASK_HOST_INT_CHH (num);
     
     if(pdev->host.HC_Status[num] == HC_XFRC)
@@ -1348,7 +1460,13 @@ uint32_t USB_OTG_USBH_handle_hc_n_Out_ISR (USB_OTG_CORE_HANDLE *pdev , uint32_t 
     }
     CLEAR_HC_INT(hcreg , chhltd);    
   }
+  else {
+      usbMSCHostAssert(0);
+  }
   
+// xxxx  
+USB_OTG_READ_REG32(&hcreg->HCINT);
+
 
   return 1;
 }
@@ -1375,16 +1493,19 @@ uint32_t USB_OTG_USBH_handle_hc_n_In_ISR (USB_OTG_CORE_HANDLE *pdev , uint32_t n
   
   if (hcint.b.ahberr)
   {
+      debugUsbIrq.ahberr_in++;
     CLEAR_HC_INT(hcreg ,ahberr);
     UNMASK_HOST_INT_CHH (num);
   }  
   else if (hcint.b.ack)
   {
+      debugUsbIrq.ack_in++;
     CLEAR_HC_INT(hcreg ,ack);
   }
   
   else if (hcint.b.stall)  
   {
+      debugUsbIrq.stall_in++;
     UNMASK_HOST_INT_CHH (num);
     pdev->host.HC_Status[num] = HC_STALL; 
     CLEAR_HC_INT(hcreg , nak);   /* Clear the NAK Condition */
@@ -1396,6 +1517,7 @@ uint32_t USB_OTG_USBH_handle_hc_n_In_ISR (USB_OTG_CORE_HANDLE *pdev , uint32_t n
   }
   else if (hcint.b.datatglerr)
   {
+      debugUsbIrq.datatglerr_in++;
 
       UNMASK_HOST_INT_CHH (num);
       USB_OTG_HC_Halt(pdev, num);
@@ -1406,6 +1528,7 @@ uint32_t USB_OTG_USBH_handle_hc_n_In_ISR (USB_OTG_CORE_HANDLE *pdev , uint32_t n
   
   if (hcint.b.frmovrun)
   {
+      debugUsbIrq.frmovrun_in++;
     UNMASK_HOST_INT_CHH (num);
     USB_OTG_HC_Halt(pdev, num);
     CLEAR_HC_INT(hcreg ,frmovrun);
@@ -1414,6 +1537,7 @@ uint32_t USB_OTG_USBH_handle_hc_n_In_ISR (USB_OTG_CORE_HANDLE *pdev , uint32_t n
   else if (hcint.b.xfercompl)
   {
     
+      debugUsbIrq.xfercompl_in++;
     if (pdev->cfg.dma_enable == 1)
     {
       hctsiz.d32 = USB_OTG_READ_REG32(&pdev->regs.HC_REGS[num]->HCTSIZ);
@@ -1443,6 +1567,7 @@ uint32_t USB_OTG_USBH_handle_hc_n_In_ISR (USB_OTG_CORE_HANDLE *pdev , uint32_t n
   }
   else if (hcint.b.chhltd)
   {
+      debugUsbIrq.chhltd_in++;
     MASK_HOST_INT_CHH (num);
     
     if(pdev->host.HC_Status[num] == HC_XFRC)
@@ -1472,6 +1597,7 @@ uint32_t USB_OTG_USBH_handle_hc_n_In_ISR (USB_OTG_CORE_HANDLE *pdev , uint32_t n
   }    
   else if (hcint.b.xacterr)
   {
+      debugUsbIrq.xacterr_in++;
     UNMASK_HOST_INT_CHH (num);
     pdev->host.ErrCnt[num] ++;
     pdev->host.HC_Status[num] = HC_XACTERR;
@@ -1481,6 +1607,7 @@ uint32_t USB_OTG_USBH_handle_hc_n_In_ISR (USB_OTG_CORE_HANDLE *pdev , uint32_t n
   }
   else if (hcint.b.nak)  
   {  
+      debugUsbIrq.nak_in++;
     if(hcchar.b.eptype == EP_TYPE_INTR)
     {
       UNMASK_HOST_INT_CHH (num);
@@ -1494,11 +1621,20 @@ uint32_t USB_OTG_USBH_handle_hc_n_In_ISR (USB_OTG_CORE_HANDLE *pdev , uint32_t n
       hcchar.b.chen = 1;
       hcchar.b.chdis = 0;
       USB_OTG_WRITE_REG32(&pdev->regs.HC_REGS[num]->HCCHAR, hcchar.d32); 
+// xxxx no clear interrupt here?
+CLEAR_HC_INT(hcreg , nak);   
     }
+    else {
+        massert(0);
+    }
+
     pdev->host.HC_Status[num] = HC_NAK;
   }
 
-  
+
+// xxxx  
+USB_OTG_READ_REG32(&hcreg->HCINT);
+
   return 1;
   
 }
@@ -1544,7 +1680,7 @@ static uint32_t USB_OTG_USBH_handle_hc_ISR (USB_OTG_CORE_HANDLE *pdev)
 * @param  pdev: device instance
 * @retval status
 */
-
+// XXX retval is not used in __irq_usb_hs().
 uint32_t USBD_OTG_HS_ISR_Handler (USB_OTG_CORE_HANDLE *pdev)
 {
 
@@ -1638,16 +1774,20 @@ uint32_t USBD_OTG_HS_ISR_Handler (USB_OTG_CORE_HANDLE *pdev)
 
     if (gintr_status.b.rxstsqlvl)
     {
+        debugUsbIrq.rxstsqlvl++;
+
       retval |= USB_OTG_USBH_handle_rx_qlvl_ISR (pdev);
     }
     
     if (gintr_status.b.hcintr) 
     {
+        debugUsbIrq.hcintr++;
       retval |= USB_OTG_USBH_handle_hc_ISR (pdev);
     }
     
     if (gintr_status.b.portintr) 
     {
+        debugUsbIrq.portintr++;
       retval |= USB_OTG_USBH_handle_port_ISR (pdev);
     }
     

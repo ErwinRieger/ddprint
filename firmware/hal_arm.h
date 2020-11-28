@@ -234,6 +234,7 @@ inline void irqInit() {
 
 // reuse cpu cycles of busy wait in stepper routine, lower prio for stepper than serial and usb:
     nvic_irq_set_priority(NVIC_SYSTICK, 2);
+ // nvic_irq_set_priority(NVIC_USB_HS, 3);
     nvic_irq_set_priority(NVIC_TIMER2, 4);
     nvic_irq_set_priority(NVIC_TIMER3, 4);
     nvic_irq_set_priority(NVIC_USART1, 5);
@@ -417,6 +418,14 @@ struct AnalogInput {
 void spiInit();
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
+//xxx debug
+//
+extern uint32_t start_time_1;
+extern uint32_t start_time_2;
+extern uint32_t start_time_3;
+extern uint32_t end_time_1;
+extern uint32_t end_time_2;
+extern uint32_t end_time_3;
 
 //
 // Mass storage interface, USB flash drive in this case.
@@ -468,9 +477,12 @@ class MassStorage: public MassStorageBase {
     //
     int writeBlock(uint32_t writeBlockNumber, uint8_t *src, uint32_t timeout) {
 
+        start_time_1 = millis();
         USBH_Status status = USBH_MSC_Write10(
                 &USB_OTG_Core_Host, &USB_Host,
                 src, writeBlockNumber, 512, timeout);
+end_time_1 = millis();
+massert((end_time_1-start_time_1) < 15 );
 
         if (status == USBH_BUSY) {
             return 1; // continue thread

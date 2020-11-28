@@ -116,6 +116,7 @@ class Printer {
         bool eotWasReceived() { return eotReceived; }
         void underrunError(uint32_t utype, uint32_t t, int32_t wasempty);
         // void underrunError(uint32_t lastSize, uint32_t lastSize2, uint32_t minTimer);
+        void runFillBuffer();
 
         void setHomePos( int32_t x, int32_t y, int32_t z);
         void cmdSetTargetTemp(uint8_t heater, uint16_t temp);

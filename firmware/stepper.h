@@ -607,6 +607,8 @@ docheck=true;
                         wasempty++;
                     }
                     HAL_SET_STEPPER_TIMER(25);
+
+                            // printer.runFillBuffer();
                 }
                 else {
 
@@ -660,6 +662,7 @@ docheck=true;
                         #if defined(STEPPER_MINPULSE)
                             delayMicroseconds(STEPPER_MINPULSE);
                         #endif
+                            //printer.runFillBuffer();
 
                         st_deactivate_pin<XAxisSelector>(stepbits);
                         st_deactivate_pin<YAxisSelector>(stepbits);
@@ -721,6 +724,8 @@ docheck=true;
                 st_step_motor_es<YAxisSelector>(sd.stepBits, sd.dirBits);
                 st_step_motor_es<ZAxisSelector>(sd.stepBits, sd.dirBits);
             }
+
+            // printer.runFillBuffer();
         }
 
         FWINLINE void runContinuosSteps() {

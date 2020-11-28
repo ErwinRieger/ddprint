@@ -737,7 +737,7 @@ class Printer(Serial):
 
         self.gui.statusCb(statusDict)
 
-        for (statusCmd, tasknames) in [(CmdGetTaskStatus, ("idle", "tempcontrol", "tempheater", "filsensor", "ubscommand", "txbuffer", "swapdev", "fillbuffer", "tasksum")), (CmdGetIOStats, ("read", "write"))]:
+        for (statusCmd, tasknames) in [(CmdGetTaskStatus, ("idle", "tempcontrol", "tempheater", "filsensor", "ubscommand", "txbuffer", "swapdev", "fillbuffer", "tasksum")), (CmdGetIOStats, ("read", "write", "writeSum"))]:
 
             ## XXX debug iotimings
             (cmd, payload) = self.query(statusCmd, doLog=True)

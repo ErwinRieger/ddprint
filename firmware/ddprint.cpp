@@ -1258,6 +1258,10 @@ void Printer::cmdEot() {
     }
 }
 
+void Printer::runFillBuffer() {
+    fillBufferTask.Run();
+}
+
 void Printer::underrunError(uint32_t utype, uint32_t t, int32_t wasempty) {
 
     printer.bufferLow = min((uint32_t)printer.bufferLow+1, (uint32_t)0xffff);
@@ -1661,7 +1665,7 @@ void Printer::cmdGetIOStats() {
     txBuffer.sendResponseStart(CmdGetIOStats);
 
     // for (uint8_t i=0; i<(sizeof(ioStats) / sizeof(ioStats[0])); i++) {
-    for (uint8_t i=0; i<2; i++) { // XXX
+    for (uint8_t i=0; i<3; i++) { // XXX
 #if defined(DEBUGREADWRITE)
         txBuffer.sendResponseUInt32(swapDev.ioStats[i].ncalls);
         txBuffer.sendResponseUInt32(swapDev.ioStats[i].sumcall);
@@ -2019,7 +2023,26 @@ class UsbCommand : public Protothread {
                     //
                     // Stream data block from serial through unzip and store
                     // result on mass storage device.
+/*
+    #define PT_SPAWN(child) \
+        do { (child).Restart(); PT_WAIT_THREAD(child); } while (0)
+    PT_WAIT_THREAD(child) PT_WAIT_WHILE((child).Run())
+    PT_WAIT_WHILE(condition) PT_WAIT_UNTIL(!(condition))
+    
+    #define PT_WAIT_UNTIL(condition) \
+        do { _ptLine = __LINE__; case __LINE__: \
+        if (!(condition)) return true; } while (0)
+*/
                     PT_SPAWN(unZipper);
+
+                    /*
+unzipper.Restart()
+...
+    if unzipper.Run() return true;
+
+
+*/
+
                 }
                 else {
                     //
@@ -2547,9 +2570,11 @@ void loop() {
     TaskEnd(taskTiming, TaskUsbInput);
 
     // Write stepper data to mass storage
-    TaskStart(taskTiming, TaskSwapDev);
-    swapDev.Run();
-    TaskEnd(taskTiming, TaskSwapDev);
+    if (GetTaskDuration(taskTiming, TaskIdle) <= 2) {
+        TaskStart(taskTiming, TaskSwapDev);
+        swapDev.Run();
+        TaskEnd(taskTiming, TaskSwapDev);
+    }
 
 #if 0
     // Check for buffer underruns. A underrun is a emtpy stepper buffer even if data

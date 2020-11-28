@@ -158,6 +158,14 @@ bool UnZipper::Run() {
                     /* literal byte */
                     swapDev.addByte(sym);
                     PT_WAIT_WHILE( swapDev.isBusyWritingForWrite() );
+
+/*
+    PT_WAIT_WHILE(condition) PT_WAIT_UNTIL(!(condition))
+    
+    #define PT_WAIT_UNTIL(condition) \
+        do { _ptLine = __LINE__; case __LINE__: \
+        if (!(condition)) return true; } while (0)
+*/
                     res = TINF_OK;
                 }
                 else {

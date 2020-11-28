@@ -49,7 +49,7 @@
 //
 
 
-enum SwapTasks { TaskRead, TaskWrite };
+enum SwapTasks { TaskRead, TaskWrite, TaskWriteSum };
 
 class SDSwap: public MassStorage, public Protothread {
 
@@ -82,7 +82,7 @@ public:
         reset();
     }
 
-    struct TaskTiming ioStats[2];
+    struct TaskTiming ioStats[3];
 
     // FWINLINE uint32_t getWriteBlockNumber() { return writeBlockNumber; }
     FWINLINE uint16_t getWritePos() { return writePos & SwapSectorMask; }
@@ -232,11 +232,17 @@ public:
 
         //////////////////////////////////////////////////////////////////////////////////          
         TaskStart(ioStats, TaskWrite);
+        TaskStart(ioStats, TaskWriteSum);
 
-        PT_WAIT_WHILE((res = writeBlock(writeBlockNumber, writeBuffer, GetTaskDuration(ioStats, TaskWrite))) == 1);
+        // PT_WAIT_WHILE((res = writeBlock(writeBlockNumber, writeBuffer, GetTaskDuration(ioStats, TaskWriteSum))) == 1);
+        while ((res = writeBlock(writeBlockNumber, writeBuffer, GetTaskDuration(ioStats, TaskWriteSum))) == 1) {
+            TaskEnd(ioStats, TaskWrite);
+        }
+        TaskEnd(ioStats, TaskWrite);
 
         if (res == -1) {
 
+                massert(0);
             // Clean up and retry fresh write command later
             PT_WAIT_WHILE((usbstatus = USBH_MSC_BlockReset(&USB_OTG_Core_Host, &USB_Host)) == USBH_BUSY);
             debugUSBHStatus(usbstatus);
@@ -278,16 +284,137 @@ public:
             busyWriting = 0;
         }
 
-        TaskEnd(ioStats, TaskWrite);
+        TaskEnd(ioStats, TaskWriteSum);
 
         PT_RESTART();
         PT_END();
     };
 
-    void writeConfig(MSConfigBlock &config) { while (writeBlock(0, config.sector, 0)); }
-    void readConfig(MSConfigBlock &config) { MassStorage::readBlock(0, config.sector); }
+    void writeConfig(MSConfigBlock &config) { 
+
+        enum WriteState { WriteBlock, blockReset, blockAbortIn, blockAbortOut };
+
+        int res;  
+        static USBH_Status usbstatus;
+
+        TaskStart(ioStats, TaskWriteSum);
+
+        WriteState writeState = WriteBlock;
+
+        while (true) {
+           
+           switch (writeState) {
+                case WriteBlock:
+                    TaskStart(ioStats, TaskWrite);
+                    res = writeBlock(0, config.sector, GetTaskDuration(ioStats, TaskWriteSum));
+
+//
+// xxx timout mit 30 ms hier in TaskEnd:
+//
+//
+// usbh_msc.BOTState: USBH_BOTSTATE_DECODE_CSW
+//
+// here: taskStart = 36493
+// readBlock.start_time_1: 36493
+// readBlock.start_time_2: 36493
+//
+// XXX dazwischen return von USBH_MSC_Write10() ->
+//  readBlock() -> hierher
+//  und dann 30 ms später wieder aufruf von 
+//  readBlock()/USBH_MSC_Write10() ?
+//
+// readBlock.start_time_3: 36523 30 ms später !
+//
+//
+//normal:
+//  {tsqlvl = 41, hcintr = 804, portintr = 0}
+//  {tsqlvl = 13, hcintr = 602, portintr = 0}
+//
+//aber auch:
+//  {tsqlvl = 53, hcintr = 15860, portintr = 0}
+//
+                    TaskEndX(ioStats, TaskWrite);
+
+                    if (res == -1) { // Timeout error
+                        writeState = blockReset;
+                    }
+                    else if (res == 0) { // Done, USBH_OK from USBH_MSC_Write10/USBH_OK from dd_USBH_MSC_HandleBOTXfer
+                        TaskEnd(ioStats, TaskWriteSum);
+                        return;
+                    }
+                    break;
+                case blockReset:
+                    TaskStart(ioStats, TaskWrite);
+                    usbstatus = USBH_MSC_BlockReset(&USB_OTG_Core_Host, &USB_Host);
+                    TaskEndX(ioStats, TaskWrite);
+
+                    if (usbstatus != USBH_BUSY) {
+                        debugUSBHStatus(usbstatus);
+                        writeState = blockAbortIn;
+                    }
+                    break;
+                case blockAbortIn:
+                    TaskStart(ioStats, TaskWrite);
+                    usbstatus = USBH_MSC_BOT_Abort(&USB_OTG_Core_Host, &USB_Host, USBH_MSC_DIR_IN);
+                    TaskEndX(ioStats, TaskWrite);
+
+                    if (usbstatus != USBH_BUSY) {
+                        debugUSBHStatus(usbstatus);
+                        writeState = blockAbortOut;
+                    }
+                    break;
+                case blockAbortOut:
+                    TaskStart(ioStats, TaskWrite);
+                    usbstatus = USBH_MSC_BOT_Abort(&USB_OTG_Core_Host, &USB_Host, USBH_MSC_DIR_OUT);
+                    TaskEndX(ioStats, TaskWrite);
+
+                    if (usbstatus != USBH_BUSY) {
+                        debugUSBHStatus(usbstatus);
+                        TaskEnd(ioStats, TaskWriteSum);
+                        return;
+                    }
+                    break;
+            }
+        }
+        TaskEnd(ioStats, TaskWriteSum);
+    }
+    void readConfig(MSConfigBlock &config) {
+        TaskStart(ioStats, TaskRead);
+        MassStorage::readBlock(0, config.sector);
+        TaskEnd(ioStats, TaskRead);
+    }
 };
 
 extern SDSwap swapDev;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
