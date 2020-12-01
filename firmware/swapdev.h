@@ -49,7 +49,7 @@
 //
 
 
-enum SwapTasks { TaskRead, TaskWrite, TaskWriteSum };
+enum SwapTasks { TaskRead, TaskWrite, TaskReset, TaskWriteSum };
 
 class SDSwap: public MassStorage, public Protothread {
 
@@ -82,7 +82,7 @@ public:
         reset();
     }
 
-    struct TaskTiming ioStats[3];
+    struct TaskTiming ioStats[4];
 
     // FWINLINE uint32_t getWriteBlockNumber() { return writeBlockNumber; }
     FWINLINE uint16_t getWritePos() { return writePos & SwapSectorMask; }
@@ -231,31 +231,72 @@ public:
         simassert((size % SwapSectorSize) == 0); // block write after final partial block is invalid
 
         //////////////////////////////////////////////////////////////////////////////////          
-        TaskStart(ioStats, TaskWrite);
         TaskStart(ioStats, TaskWriteSum);
 
         // PT_WAIT_WHILE((res = writeBlock(writeBlockNumber, writeBuffer, GetTaskDuration(ioStats, TaskWriteSum))) == 1);
-        while ((res = writeBlock(writeBlockNumber, writeBuffer, GetTaskDuration(ioStats, TaskWriteSum))) == 1) {
+        do { _ptLine = __LINE__; case __LINE__: {
+            TaskStart(ioStats, TaskWrite);
+            res = writeBlock(writeBlockNumber, writeBuffer, GetTaskDuration(ioStats, TaskWriteSum));
             TaskEnd(ioStats, TaskWrite);
-        }
-        TaskEnd(ioStats, TaskWrite);
+            if (res == 1) return true; // continue thread
+          }
+        } while (0);
+
+        TaskEnd(ioStats, TaskWriteSum);
 
         if (res == -1) {
 
-                massert(0);
+            TaskStart(ioStats, TaskReset);
+
             // Clean up and retry fresh write command later
-            PT_WAIT_WHILE((usbstatus = USBH_MSC_BlockReset(&USB_OTG_Core_Host, &USB_Host)) == USBH_BUSY);
+            // PT_WAIT_WHILE((usbstatus = USBH_MSC_BlockReset(&USB_OTG_Core_Host, &USB_Host)) == USBH_BUSY);
+            // debugUSBHStatus(usbstatus);
+
+            // PT_WAIT_WHILE()
+            do { _ptLine = __LINE__; case __LINE__: {
+                TaskStart(ioStats, TaskWrite);
+                usbstatus = USBH_MSC_BlockReset(&USB_OTG_Core_Host, &USB_Host);
+                TaskEndX(ioStats, TaskWrite);
+                if (usbstatus == USBH_BUSY) return true; // continue thread
+            }
+            } while (0);
+
+            // PT_WAIT_WHILE(usbstatus == USBH_BUSY);
             debugUSBHStatus(usbstatus);
 
-            PT_WAIT_WHILE((usbstatus = USBH_MSC_BOT_Abort(&USB_OTG_Core_Host, &USB_Host, USBH_MSC_DIR_IN)) == USBH_BUSY);
+            // PT_WAIT_WHILE((usbstatus = USBH_MSC_BOT_Abort(&USB_OTG_Core_Host, &USB_Host, USBH_MSC_DIR_IN)) == USBH_BUSY);
+            // debugUSBHStatus(usbstatus);
+
+            do { _ptLine = __LINE__; case __LINE__: {
+                TaskStart(ioStats, TaskWrite);
+                usbstatus = USBH_MSC_BOT_Abort(&USB_OTG_Core_Host, &USB_Host, USBH_MSC_DIR_IN);
+                TaskEndX(ioStats, TaskWrite);
+                if (usbstatus == USBH_BUSY) return true; // continue thread
+            }
+            } while (0);
+
+            // PT_WAIT_WHILE(usbstatus == USBH_BUSY);
             debugUSBHStatus(usbstatus);
 
-            PT_WAIT_WHILE((usbstatus = USBH_MSC_BOT_Abort(&USB_OTG_Core_Host, &USB_Host, USBH_MSC_DIR_OUT)) == USBH_BUSY);
-            debugUSBHStatus(usbstatus);
+            // PT_WAIT_WHILE((usbstatus = USBH_MSC_BOT_Abort(&USB_OTG_Core_Host, &USB_Host, USBH_MSC_DIR_OUT)) == USBH_BUSY);
+            // debugUSBHStatus(usbstatus);
     
+            do { _ptLine = __LINE__; case __LINE__: {
+                TaskStart(ioStats, TaskWrite);
+                usbstatus = USBH_MSC_BOT_Abort(&USB_OTG_Core_Host, &USB_Host, USBH_MSC_DIR_OUT);
+                TaskEndX(ioStats, TaskWrite);
+                if (usbstatus == USBH_BUSY) return true; // continue thread
+            }
+            } while (0);
+
+            // PT_WAIT_WHILE(usbstatus == USBH_BUSY);
+            debugUSBHStatus(usbstatus);
+
             // Don't update size 
             // Don't change write buffer
             busyWriting = 2;
+
+            TaskEnd(ioStats, TaskReset);
         }
         else {
 
@@ -283,8 +324,6 @@ public:
             writeBlockNumber++;
             busyWriting = 0;
         }
-
-        TaskEnd(ioStats, TaskWriteSum);
 
         PT_RESTART();
         PT_END();
@@ -350,7 +389,7 @@ public:
 
                     if (usbstatus != USBH_BUSY) {
                         debugUSBHStatus(usbstatus);
-                        writeState = blockAbortIn;
+                        writeState = blockAbortIn; // USBH_OK
                     }
                     break;
                 case blockAbortIn:
@@ -360,7 +399,7 @@ public:
 
                     if (usbstatus != USBH_BUSY) {
                         debugUSBHStatus(usbstatus);
-                        writeState = blockAbortOut;
+                        writeState = blockAbortOut; // USBH_OK
                     }
                     break;
                 case blockAbortOut:
@@ -370,7 +409,7 @@ public:
 
                     if (usbstatus != USBH_BUSY) {
                         debugUSBHStatus(usbstatus);
-                        TaskEnd(ioStats, TaskWriteSum);
+                        TaskEnd(ioStats, TaskWriteSum); // USBH_OK
                         return;
                     }
                     break;

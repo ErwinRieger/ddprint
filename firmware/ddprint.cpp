@@ -736,10 +736,8 @@ class FillBufferTask : public Protothread {
 
                     sd.timer = STD min ( (uint16_t)(lastTimer * timerScale), (uint16_t)0xffff );
                     computeStepBits();
-                    PT_WAIT_WHILE(stepBuffer.full());
-                CRITICAL_SECTION_START;
+                    PT_WAIT_WHILE(stepBuffer.full2());
                     stepBuffer.push(sd);
-                CRITICAL_SECTION_END;
                     sd.dirBits &= ~0x80; // clear set-direction bit (after push)
 
                     if (flags & AccelByteFlag) {
@@ -753,10 +751,8 @@ class FillBufferTask : public Protothread {
 
                             sd.timer = STD min ( (uint16_t)(lastTimer * timerScale),  (uint16_t)0xffff );
                             computeStepBits();
-                            PT_WAIT_WHILE(stepBuffer.full());
-                CRITICAL_SECTION_START;
+                            PT_WAIT_WHILE(stepBuffer.full2());
                             stepBuffer.push(sd);
-                CRITICAL_SECTION_END;
                         }
                     }
                     else {
@@ -769,10 +765,8 @@ class FillBufferTask : public Protothread {
                             sd.timer = STD min ( (uint16_t)(FromBuf(uint16_t, sDReader.readData) * timerScale), (uint16_t)0xffff );
 
                             computeStepBits();
-                            PT_WAIT_WHILE(stepBuffer.full());
-                CRITICAL_SECTION_START;
+                            PT_WAIT_WHILE(stepBuffer.full2());
                             stepBuffer.push(sd);
-                CRITICAL_SECTION_END;
                         }
                     }
                 }
@@ -786,20 +780,16 @@ class FillBufferTask : public Protothread {
                     sd.timer = tLin;
 
                     computeStepBits();
-                    PT_WAIT_WHILE(stepBuffer.full());
-                CRITICAL_SECTION_START;
+                    PT_WAIT_WHILE(stepBuffer.full2());
                     stepBuffer.push(sd);
-                CRITICAL_SECTION_END;
 
                     sd.dirBits &= ~0x80; // clear set-direction bit (after push)
 
                     for (; step > 1; step--) {
 
                         computeStepBits();
-                        PT_WAIT_WHILE(stepBuffer.full());
-                CRITICAL_SECTION_START;
+                        PT_WAIT_WHILE(stepBuffer.full2());
                         stepBuffer.push(sd);
-                CRITICAL_SECTION_END;
                     }
                 }
 
@@ -815,10 +805,8 @@ class FillBufferTask : public Protothread {
                     sd.timer = STD min ( (uint16_t)(lastTimer * timerScale), (uint16_t)0xffff );
 
                     computeStepBits();
-                    PT_WAIT_WHILE(stepBuffer.full());
-                CRITICAL_SECTION_START;
+                    PT_WAIT_WHILE(stepBuffer.full2());
                     stepBuffer.push(sd);
-                CRITICAL_SECTION_END;
 
                     sd.dirBits &= ~0x80; // clear set-direction bit (after push)
 
@@ -834,10 +822,8 @@ class FillBufferTask : public Protothread {
                             sd.timer = STD min ( (uint16_t)(lastTimer * timerScale),  (uint16_t)0xffff );
 
                             computeStepBits();
-                            PT_WAIT_WHILE(stepBuffer.full());
-                CRITICAL_SECTION_START;
+                            PT_WAIT_WHILE(stepBuffer.full2());
                             stepBuffer.push(sd);
-                CRITICAL_SECTION_END;
                         }
                     }
                     else {
@@ -850,10 +836,8 @@ class FillBufferTask : public Protothread {
                             sd.timer = STD min ( (uint16_t)(FromBuf(uint16_t, sDReader.readData) * timerScale), (uint16_t)0xffff );
 
                             computeStepBits();
-                            PT_WAIT_WHILE(stepBuffer.full());
-                CRITICAL_SECTION_START;
+                            PT_WAIT_WHILE(stepBuffer.full2());
                             stepBuffer.push(sd);
-                CRITICAL_SECTION_END;
                         }
                     }
                 }
@@ -963,7 +947,7 @@ class FillBufferTask : public Protothread {
                 PT_WAIT_THREAD(sDReader);
                 sd.stepBits = *sDReader.readData;
 
-                PT_WAIT_WHILE(stepBuffer.full());
+                PT_WAIT_WHILE(stepBuffer.full2());
                 stepBuffer.push(sd);
 
                 sd.dirBits &= ~0x80; // clear set-direction bit (after push)
@@ -984,7 +968,7 @@ class FillBufferTask : public Protothread {
                         PT_WAIT_THREAD(sDReader);
                         sd.stepBits = *sDReader.readData;
 
-                        PT_WAIT_WHILE(stepBuffer.full());
+                        PT_WAIT_WHILE(stepBuffer.full2());
                         stepBuffer.push(sd);
                     }
                 }
@@ -1004,7 +988,7 @@ class FillBufferTask : public Protothread {
                         PT_WAIT_THREAD(sDReader);
                         sd.stepBits = *sDReader.readData;
 
-                        PT_WAIT_WHILE(stepBuffer.full());
+                        PT_WAIT_WHILE(stepBuffer.full2());
                         stepBuffer.push(sd);
                     }
                 }
@@ -1058,7 +1042,7 @@ class FillBufferTask : public Protothread {
 
                 while (nDwell-- > 0) {
 
-                    PT_WAIT_WHILE(stepBuffer.full());
+                    PT_WAIT_WHILE(stepBuffer.full2());
                     stepBuffer.push(sd);
                 }
 
@@ -1183,8 +1167,6 @@ Printer::Printer() {
     bufferLow = 0;
 };
 
-void incbufferlow() { printer.bufferLow++; }
-
 void Printer::printerInit() {
 
     // XXX handle already running state
@@ -1262,32 +1244,16 @@ void Printer::runFillBuffer() {
     fillBufferTask.Run();
 }
 
-void Printer::underrunError(uint32_t utype, uint32_t t, int32_t wasempty) {
+void Printer::underrunError() {
 
     printer.bufferLow = min((uint32_t)printer.bufferLow+1, (uint32_t)0xffff);
 
-#if 0
-    txBuffer.flush();
-    txBuffer.sendResponseStart(RespUnderrun);
-    txBuffer.sendResponseUInt32((uint32_t)0);
-    txBuffer.sendResponseUInt32((uint32_t)0);
-    txBuffer.sendResponseUInt32((uint32_t)0);
+    txBuffer.sendResponseStart(RespUnsolicitedMsg);
+    txBuffer.sendResponseUint8(BufDebug);
     txBuffer.sendResponseUInt32(swapDev.available());
     txBuffer.sendResponseUInt32((uint32_t)sDReader.available());
     txBuffer.sendResponseEnd();
-    kill();
-#endif
-                    txBuffer.sendResponseStart(RespUnsolicitedMsg);
-                    txBuffer.sendResponseUint8(BufDebug);
-    txBuffer.sendResponseUInt32(utype);
-    txBuffer.sendResponseUInt32(t);
-    // txBuffer.sendResponseInt32(stepBuffer.stepbal);
-    txBuffer.sendResponseInt32(wasempty);
-    txBuffer.sendResponseUInt32(swapDev.available());
-    txBuffer.sendResponseUInt32((uint32_t)sDReader.available());
-                    txBuffer.sendResponseEnd();
 }
-
 
 #if 0
 void Printer::underrunError(uint32_t lastSize, uint32_t lastSize2, uint32_t minTimer) {
@@ -1665,7 +1631,7 @@ void Printer::cmdGetIOStats() {
     txBuffer.sendResponseStart(CmdGetIOStats);
 
     // for (uint8_t i=0; i<(sizeof(ioStats) / sizeof(ioStats[0])); i++) {
-    for (uint8_t i=0; i<3; i++) { // XXX
+    for (uint8_t i=0; i<4; i++) { // XXX
 #if defined(DEBUGREADWRITE)
         txBuffer.sendResponseUInt32(swapDev.ioStats[i].ncalls);
         txBuffer.sendResponseUInt32(swapDev.ioStats[i].sumcall);
@@ -2570,11 +2536,11 @@ void loop() {
     TaskEnd(taskTiming, TaskUsbInput);
 
     // Write stepper data to mass storage
-    if (GetTaskDuration(taskTiming, TaskIdle) <= 2) {
+    // if (GetTaskDuration(taskTiming, TaskIdle) <= 2) {
         TaskStart(taskTiming, TaskSwapDev);
         swapDev.Run();
         TaskEnd(taskTiming, TaskSwapDev);
-    }
+    // }
 
 #if 0
     // Check for buffer underruns. A underrun is a emtpy stepper buffer even if data

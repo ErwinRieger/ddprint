@@ -139,7 +139,7 @@ class USBH_StateMachine {
 
         void _checkTimeout() { 
             if (state > (StateEnumType)0)
-                massert(millis() < (timeout + 1000)); } // one second should be enough for a max. runtime of about 5mS
+                massert(millis() < (timeout + 5000)); } // one second should be enough for a max. runtime of about 5mS
 };
 
 typedef struct _Ctrl
@@ -182,6 +182,7 @@ typedef struct _Host_TypeDef
   
   void                  *reserve1; // USBH_Class_cb_TypeDef               *class_cb;  
   void                  *reserve2; // USBH_Usr_cb_TypeDef  	              *usr_cb;
+  // uint32_t              usbh_timeout; // USBH_TIMEOUT_LONG for initialisation, USBH_TIMEOUT_SHORT later
 } USBH_HOST, *pUSBH_HOST;
 
 USBH_Status USBH_DeInit(USB_OTG_CORE_HANDLE *pdev, 

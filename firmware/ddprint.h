@@ -114,7 +114,7 @@ class Printer {
         void cmdMove(MoveType);
         void cmdEot();
         bool eotWasReceived() { return eotReceived; }
-        void underrunError(uint32_t utype, uint32_t t, int32_t wasempty);
+        void underrunError();
         // void underrunError(uint32_t lastSize, uint32_t lastSize2, uint32_t minTimer);
         void runFillBuffer();
 

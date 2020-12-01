@@ -338,6 +338,8 @@ USBH_Status dd_USBH_MSC_HandleBOTXfer (USB_OTG_CORE_HANDLE *pdev ,USBH_HOST *pho
         /* If the CBW Pkt is sent successful, then change the state */
         xferDirection = (USBH_MSC_CBWData.field.CBWFlags & USB_REQ_DIR_MASK);
         
+        // timeout = millis() + phost->usbh_timeout;
+
         if ( USBH_MSC_CBWData.field.CBWTransferLength != 0 )
         {
          
@@ -353,18 +355,28 @@ USBH_Status dd_USBH_MSC_HandleBOTXfer (USB_OTG_CORE_HANDLE *pdev ,USBH_HOST *pho
             usbh_msc.BOTState = USBH_BOTSTATE_BOT_DATAOUT_STATE;
           } 
 
-          timeout = millis() + DATA_STAGE_TIMEOUT;
+          // timeout = millis() + DATA_STAGE_TIMEOUT;
+          timeout = millis() + USBH_TIMEOUT_LONG;
         }
         else
         {/* If there is NO Data Transfer Stage */
           usbh_msc.BOTState = USBH_BOTSTATE_RECEIVE_CSW_STATE;
-          timeout = millis() + NODATA_STAGE_TIMEOUT;
+          // timeout = millis() + NODATA_STAGE_TIMEOUT;
+          timeout = millis() + USBH_TIMEOUT_SHORT;
         }
       }   
       else if (URB_Status == URB_NOTREADY)
       {
+
+        if (millis() > timeout)
+        {
+            /* timeout for IN transfer */
+            status = USBH_TIMEOUT;
+        }   
+        else {
             ///* Re-send CBW */
             status = USBH_NOTREADY;
+        }
       }     
       else if(URB_Status >= URB_ERROR) // error or stall
       {
@@ -377,8 +389,6 @@ USBH_Status dd_USBH_MSC_HandleBOTXfer (USB_OTG_CORE_HANDLE *pdev ,USBH_HOST *pho
         USBH_BulkReceiveData (
                 pdev, usbh_msc.pRxTxBuff, 
                 USBH_MSC_MPS_SIZE, MSC_Machine.hc_num_in);
-
-massert(millis() < timeout);
 
         usbh_msc.BOTState = USBH_BOTSTATE_BOT_DATAIN_WAIT_STATE;
         break;   
@@ -717,10 +727,13 @@ USBH_Status dd_USBH_HandleControl (USB_OTG_CORE_HANDLE *pdev, USBH_HOST *phost, 
     { 
       direction = (phost->Control.setup.b.bmRequestType & USB_REQ_DIR_MASK);
       
+      // timeout = millis() + phost->usbh_timeout;
+
       /* check if there is a data stage */
       if (phost->Control.setup.b.wLength.w != 0 )
       {        
-        timeout = millis() + DATA_STAGE_TIMEOUT;
+        // timeout = millis() + DATA_STAGE_TIMEOUT;
+        timeout = millis() + USBH_TIMEOUT_LONG;
         if (direction == USB_D2H)
         {
           /* Data Direction is IN */
@@ -735,7 +748,8 @@ USBH_Status dd_USBH_HandleControl (USB_OTG_CORE_HANDLE *pdev, USBH_HOST *phost, 
       /* No DATA stage */
       else
       {
-        timeout = millis() + NODATA_STAGE_TIMEOUT;
+        // timeout = millis() + NODATA_STAGE_TIMEOUT;
+        timeout = millis() + USBH_TIMEOUT_SHORT;
         
         /* If there is No Data Transfer Stage */
         if (direction == USB_D2H)
@@ -1141,8 +1155,6 @@ massert((end_time_3-start_time_3) < 13 );
   }
 }
 
-void incbufferlow(); // XXX debug
-
 //--------------------------------------------------------------
 //
 // "Bulk-Only Mass Storage reset"
@@ -1184,11 +1196,6 @@ USBH_Status USBH_MSC_BlockReset(USB_OTG_CORE_HANDLE *pdev, USBH_HOST *phost)
 
       if (bot_status != USBH_BUSY) {
           usbh_msc.CmdStateMachine = CMD_SEND_STATE;
-      }
-
-      if (bot_status == USBH_NOTREADY) {
-          incbufferlow(); // XXX debug
-          return USBH_BUSY; // restart command
       }
 
       return bot_status;
@@ -1621,6 +1628,7 @@ uint32_t USB_OTG_USBH_handle_hc_n_In_ISR (USB_OTG_CORE_HANDLE *pdev , uint32_t n
       hcchar.b.chen = 1;
       hcchar.b.chdis = 0;
       USB_OTG_WRITE_REG32(&pdev->regs.HC_REGS[num]->HCCHAR, hcchar.d32); 
+
 // xxxx no clear interrupt here?
 CLEAR_HC_INT(hcreg , nak);   
     }
@@ -1630,7 +1638,6 @@ CLEAR_HC_INT(hcreg , nak);
 
     pdev->host.HC_Status[num] = HC_NAK;
   }
-
 
 // xxxx  
 USB_OTG_READ_REG32(&hcreg->HCINT);
@@ -2367,7 +2374,7 @@ static USBH_Status USBH_MSC_Handle(USB_OTG_CORE_HANDLE *pdev , USBH_HOST *phost)
         usbh_msc.MSCState = USBH_MSC_TEST_UNIT_READY;
       }
       else {
-          usbMSCHostAssert(subStatus == USBH_BUSY);
+        debugUSBHStatus(subStatus);
       }
       break;
 
@@ -2624,6 +2631,8 @@ USBH_Status USBH_DeInit(USB_OTG_CORE_HANDLE *pdev, USBH_HOST *phost)
   
   USBH_Free_Channel  (pdev, phost->Control.hc_num_in);
   USBH_Free_Channel  (pdev, phost->Control.hc_num_out);  
+
+  // phost->usbh_timeout = USBH_TIMEOUT_LONG;
   return USBH_OK;
 }
 

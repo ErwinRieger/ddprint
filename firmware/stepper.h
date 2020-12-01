@@ -489,8 +489,8 @@ typedef struct {
 #define StepBufferLen  256
 #else
 // #define StepBufferLen  512
-// #define StepBufferLen  2048
-#define StepBufferLen  1024
+#define StepBufferLen  2048
+// #define StepBufferLen  1024
 #endif
 
 typedef CircularBuffer<stepData, uint32_t, StepBufferLen> StepBufferBase;
@@ -512,15 +512,17 @@ class StepBuffer: public StepBufferBase {
 
         public:
 
+// xxx
+uint32_t countsInBuffer;
+
             StepBuffer() {
 
                 ringBufferInit();
-docheck=true;
 
                 // undo syncCount = 0;
                 miscStepperMode = HOMINGMODE;
                 stepbits = 0;
-
+                countsInBuffer = 0;
             };
 
             void setContinuosTimer(uint16_t timerValue) {
@@ -540,7 +542,7 @@ docheck=true;
 
             void flush() {
                 ringBufferInit();
-docheck=true;
+                countsInBuffer = 0;
             }
 
             void homingMode() {
@@ -573,6 +575,19 @@ docheck=true;
                 }
             }
 
+    bool full2()     { return full() || (countsInBuffer>=70000); }
+    void push(stepData& val)  {
+        countsInBuffer += val.timer;
+        StepBufferBase::push(val);
+    }
+
+    stepData &pop() {
+        stepData &sd = StepBufferBase::pop();
+
+        countsInBuffer -= sd.timer;
+        return sd;
+    }
+
             // * Timer 1A is running in CTC mode.
             // * ISR is called if timer 1A reaches OCR1A value
             // * Timer 1A is reset to 0 and starts counting up while ISR is running
@@ -583,9 +598,7 @@ docheck=true;
             // --> To relax this situation we set the new OCR1A value as fast as possible.
             FWINLINE void runMoveSteps() {
 
-                static int32_t wasempty = 0;
-                static uint32_t lastgood = 0, m = 0;
-
+                static bool wasempty = false;
 
                 if (empty()) {
 
@@ -596,35 +609,16 @@ docheck=true;
                     // Check for step buffer underruns
                     if (printer.stepsAvailable()) {
                         if (!wasempty) {
-                            m = millis() - lastgood;
-                            // printer.underrunError(1, millis() - lastgood);
+                            printer.underrunError();
                         }
-                        // HAL_SET_STEPPER_TIMER(25);
-                    // }
-                    // else {
-                        // HAL_SET_STEPPER_TIMER(2000); // 1kHz.
-                    
-                        wasempty++;
+                        wasempty = true;
                     }
                     HAL_SET_STEPPER_TIMER(25);
-
-                            // printer.runFillBuffer();
                 }
                 else {
 
-
-                    if (wasempty) {
-                        printer.underrunError(millis() - lastgood, m, wasempty);
-                    }
-
                     stepData &sd = pop();
 
-// debug
-                    if (size() == StepBufferLen/2)
-                        lastgood = millis();
-
-// enddebug
-//
                     uint16_t t = sd.timer;
 
                     // Set new timer value
@@ -670,7 +664,7 @@ docheck=true;
                         st_deactivate_pin<EAxisSelector>(stepbits);
                     }
 
-                    wasempty = 0;
+                    wasempty = false;
                 }
             }
 
