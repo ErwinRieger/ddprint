@@ -386,15 +386,16 @@ class SDReader: public Protothread {
                     // Get new block from swapmem
                     //
 #if 0
-if ((printerState == StateStart) && swapDev.isBusyWriting()) {
+if ((printerState == StateStart) && swapDev.busy()) {
     assert(!readRequest);
     readRequest = true;
 }
 #endif
                     PT_WAIT_UNTIL(swapDev.available());
-                    // PT_WAIT_WHILE(swapDev.isBusyWritingForRead());
-                    // PT_WAIT_UNTIL((bufferLength = swapDev.readBlock(buffer)) > 0);
-                    PT_WAIT_UNTIL(!swapDev.isBusyWritingForRead() && (bufferLength = swapDev.readBlock(buffer)) > 0);
+                    PT_WAIT_UNTIL(!swapDev.busy());
+                    swapDev.startReadBlock(buffer);
+
+                    PT_WAIT_UNTIL((bufferLength = swapDev.getReadLen()) > 0);
 
                     for (i=0; i<bytesToRead; i++) {
                         tempBuffer[haveBytes+i] = buffer[i]; 
@@ -409,15 +410,16 @@ if ((printerState == StateStart) && swapDev.isBusyWriting()) {
                     // Buffer empty, get new block from swapmem
                     //
 #if 0
-if ((printerState == StateStart) && swapDev.isBusyWriting()) {
+if ((printerState == StateStart) && swapDev.busy()) {
     assert(!readRequest);
     readRequest = true;
 }
 #endif
                     PT_WAIT_UNTIL(swapDev.available());
-                    // PT_WAIT_WHILE(swapDev.isBusyWritingForRead());
-                    // PT_WAIT_UNTIL((bufferLength = swapDev.readBlock(buffer)) > 0);
-                    PT_WAIT_UNTIL(!swapDev.isBusyWritingForRead() && (bufferLength = swapDev.readBlock(buffer)) > 0);
+                    PT_WAIT_UNTIL(!swapDev.busy());
+                    swapDev.startReadBlock(buffer);
+
+                    PT_WAIT_UNTIL((bufferLength = swapDev.getReadLen()) > 0);
 
                     readData = buffer;
                     bufferPtr = bytesToRead;
@@ -982,8 +984,6 @@ class FillBufferTask : public Protothread {
                         PT_WAIT_THREAD(sDReader);
                         sd.timer = STD min ( (uint16_t)(FromBuf(uint16_t, sDReader.readData) * timerScale), (uint16_t)0xffff );
 
-                        massert(sd.timer >= 25); // xxxx  hardcoded...
-
                         sDReader.setBytesToRead1();
                         PT_WAIT_THREAD(sDReader);
                         sd.stepBits = *sDReader.readData;
@@ -1251,8 +1251,11 @@ void Printer::underrunError() {
     txBuffer.sendResponseStart(RespUnsolicitedMsg);
     txBuffer.sendResponseUint8(BufDebug);
     txBuffer.sendResponseUInt32(swapDev.available());
-    txBuffer.sendResponseUInt32((uint32_t)sDReader.available());
+    txBuffer.sendResponseUInt32(sDReader.available());
     txBuffer.sendResponseEnd();
+
+
+    kill();
 }
 
 #if 0
@@ -1489,7 +1492,7 @@ void Printer::checkMoveFinished() {
         }
 
         if ( eotReceived &&
-             (! swapDev.isBusyWritingForWrite()) &&
+             (! swapDev.busy()) &&
              (! swapDev.available()) &&
              (! sDReader.available()) &&
              stepBuffer.empty() ) {
@@ -1899,7 +1902,7 @@ class UsbCommand : public Protothread {
 
             if ((ts - startTS) > 2500) {
 
-                // XXXXXXXXXXXXX undo: txBuffer.sendSimpleResponse(RespRXTimeoutError, serialNumber);
+                txBuffer.sendSimpleResponse(RespRXTimeoutError, serialNumber);
                 reset();
                 return SerTimeout;
             }
@@ -1910,9 +1913,11 @@ class UsbCommand : public Protothread {
 
         bool Run() {
 
+            static uint8_t c;
+
             PT_BEGIN();
 
-            uint8_t c, flags, cs1, cs2;
+            uint8_t flags, cs1, cs2;
 
             SerAvailableState av;
 
@@ -1975,8 +1980,8 @@ class UsbCommand : public Protothread {
 
                 if ((commandByte != CmdBlock) && (commandByte != CmdBlockPacked)) {
 
+                    PT_WAIT_WHILE( swapDev.busy() );
                     swapDev.addByte(commandByte);
-                    PT_WAIT_WHILE( swapDev.isBusyWritingForWrite() );
                 }
 
                 // Tell RxBuffer that it's pointing to the beginning of a COBS block
@@ -2016,8 +2021,8 @@ unzipper.Restart()
                     //
                     while (serialPort.cobsAvailable()) {
                         c = serialPort.readNoCheckCobs();
+                        PT_WAIT_WHILE( swapDev.busy() );
                         swapDev.addByte(c);
-                        PT_WAIT_WHILE( swapDev.isBusyWritingForWrite() );
                     }
                 }
 
@@ -2485,24 +2490,20 @@ void loop() {
 #if defined(POWER_BUTTON)
         printer.checkPowerOff(m);
 #endif
-
-        if (swapDev.getBusyWriting() == 2) {
-            swapDev.setBusyWriting(1);
-        }
     }
 
-    // Statistics: minimal step buffer watermark
+    // Statistics: minimal step buffer watermark in [mS]
     if (printer.printerState == Printer::StateStart)
         if (! (printer.eotWasReceived() && (swapDev.available()==0))) {
 
-            uint16_t s = stepBuffer.size();
+            uint32_t t = stepBuffer.timeInBuffer();
 
-            if (s > printer.minBufferMax) {
-                printer.minBuffer = s;
-                printer.minBufferMax = s;
+            if (t > printer.minBufferMax) {
+                printer.minBuffer = t;
+                printer.minBufferMax = t;
             }
             else {
-                printer.minBuffer = min((uint32_t)s, printer.minBuffer);
+                printer.minBuffer = min(t, printer.minBuffer);
             }
         }
 
@@ -2576,7 +2577,7 @@ void loop() {
 void printDebugInfo() {
 #if defined(REPRAP_DISCOUNT_SMART_CONTROLLER)
     lcd.setCursor(0, 0); lcd.print("ser:"); lcd.print(serialPort._available());
-    lcd.print("B:"); lcd.print(swapDev.isBusyWritingForWrite());
+    lcd.print("B:"); lcd.print(swapDev.busy());
     lcd.print("WP:"); lcd.print(swapDev.getWritePos());
 
     lcd.setCursor(0, 1); lcd.print("swd:"); lcd.print(swapDev.available());

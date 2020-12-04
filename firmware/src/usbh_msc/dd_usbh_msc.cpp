@@ -117,12 +117,6 @@ void debugUSBHStatus(USBH_Status status) {
         case USBH_APPLY_DEINIT:
             massert(0);
             break;
-        case USBH_TIMEOUT:
-            massert(0);
-            break;
-        case USBH_NOTREADY:
-            massert(0);
-            break;
     }
 }
 
@@ -154,14 +148,14 @@ void usbMSCHostError() {
 
 //--------------------------------------------------------------
 //
-USBH_Status nu_USB_disk_write(
+USBH_Status USB_disk_write(
         USB_OTG_CORE_HANDLE *pdev, USBH_HOST *phost,
         uint8_t *buff, uint32_t sector) {
 
     USBH_Status status;
     
     while (true) {
-        status = USBH_MSC_Write10(pdev, phost, buff, sector, 512, 0);
+        status = USBH_MSC_Write10(pdev, phost, buff, sector, 512);
         if (status != USBH_BUSY)
             break;
     }
@@ -298,19 +292,6 @@ void USBH_LL_SetToggle(USB_OTG_CORE_HANDLE *pdev, uint8_t pipe, uint8_t toggle)
     }
 }
 
-//xxx debug
-//
-uint32_t start_time_1=0;
-uint32_t start_time_2=0;
-uint32_t start_time_3=0;
-uint32_t start_time_4=0;
-uint32_t start_time_5=0;
-uint32_t end_time_1;
-uint32_t end_time_2;
-uint32_t end_time_3;
-uint32_t end_time_4;
-uint32_t end_time_5;
-
 //--------------------------------------------------------------
 //
 // Data Transfer handler
@@ -338,8 +319,6 @@ USBH_Status dd_USBH_MSC_HandleBOTXfer (USB_OTG_CORE_HANDLE *pdev ,USBH_HOST *pho
         /* If the CBW Pkt is sent successful, then change the state */
         xferDirection = (USBH_MSC_CBWData.field.CBWFlags & USB_REQ_DIR_MASK);
         
-        // timeout = millis() + phost->usbh_timeout;
-
         if ( USBH_MSC_CBWData.field.CBWTransferLength != 0 )
         {
          
@@ -365,20 +344,7 @@ USBH_Status dd_USBH_MSC_HandleBOTXfer (USB_OTG_CORE_HANDLE *pdev ,USBH_HOST *pho
           timeout = millis() + USBH_TIMEOUT_SHORT;
         }
       }   
-      else if (URB_Status == URB_NOTREADY)
-      {
-
-        if (millis() > timeout)
-        {
-            /* timeout for IN transfer */
-            status = USBH_TIMEOUT;
-        }   
-        else {
-            ///* Re-send CBW */
-            status = USBH_NOTREADY;
-        }
-      }     
-      else if(URB_Status >= URB_ERROR) // error or stall
+      else if(URB_Status >= URB_NOTREADY) // URB_NOTREADY, error or stall
       {
         massert(0);
       }
@@ -512,24 +478,14 @@ massert(millis() < timeout);
       
     case USBH_BOTSTATE_DECODE_CSW:
 
-start_time_4 = millis();
       URB_Status = dd_HCD_GetURB_State(pdev , MSC_Machine.hc_num_in);
-end_time_4 = millis();
-massert((end_time_4-start_time_4) < 10 );
-
-// massert(millis() < to);
 
       /* Decode CSW */
       if(URB_Status == URB_DONE)
       {
         // usbh_msc.MSCState = usbh_msc.MSCStateCurrent ;
         
-start_time_5 = millis();
         USBH_MSC_Status_TypeDef decodeState = USBH_MSC_DecodeCSW(pdev , phost);
-end_time_5 = millis();
-massert((end_time_5-start_time_5) < 10 );
-
-massert(millis() < to);
 
         // Note: USBH_MSC_BUSY never returned by USBH_MSC_DecodeCSW
         if (decodeState == USBH_MSC_OK) {
@@ -553,11 +509,6 @@ massert(millis() < to);
           usbh_msc.BOTState  = USBH_BOTSTATE_BOT_ERROR_OUT;
           debugCalls.stallErrors++;
       }
-      else if (millis() > timeout)
-      {
-        /* timeout for IN transfer */
-        status = USBH_TIMEOUT;
-      }   
       break;
 
     case USBH_BOTSTATE_BOT_ERROR_IN: 
@@ -727,8 +678,6 @@ USBH_Status dd_USBH_HandleControl (USB_OTG_CORE_HANDLE *pdev, USBH_HOST *phost, 
     { 
       direction = (phost->Control.setup.b.bmRequestType & USB_REQ_DIR_MASK);
       
-      // timeout = millis() + phost->usbh_timeout;
-
       /* check if there is a data stage */
       if (phost->Control.setup.b.wLength.w != 0 )
       {        
@@ -979,7 +928,7 @@ static USBH_Status USBH_MSC_BOTReset_Mass_Storage_Reset(USB_OTG_CORE_HANDLE *pde
 USBH_Status USBH_MSC_Write10(USB_OTG_CORE_HANDLE *pdev, USBH_HOST *phost,
                          uint8_t *dataBuffer,
                          uint32_t address,
-                         uint32_t nbOfbytes, uint32_t timeout)
+                         uint32_t nbOfbytes)
 {
 
   USBH_Status bot_status;
@@ -1042,32 +991,16 @@ debugUsbIrq.    chhltd=0;
     debugUsbIrq. frmovrun_in=0;
 
 
-start_time_2 = millis();
       dd_USBH_BulkSendData (pdev,
                          USBH_MSC_CBWData.CBWArray,          // 31, entire CBW struct
                          USBH_MSC_BOT_CBW_PACKET_LENGTH_31 , // 31
                          MSC_Machine.hc_num_out);
-end_time_2 = millis(); // 36493
-massert((end_time_2-start_time_2) < 13 );
       return USBH_BUSY;
       
     case CMD_WAIT_STATUS:
 
-        // if entire duration of write is above some threshold: 
-        if (timeout >= WRITE10_CMD_TIMEOUT) {
-            // usbh_msc.CmdStateMachine = CMD_STORAGE_RESET;
-            // return USBH_BUSY;
-            usbh_msc.CmdStateMachine = CMD_SEND_STATE;
-            return USBH_TIMEOUT;
-        } 
-
         /* Process the BOT state machine */
-start_time_3 = millis(); // 36523 , dh.h. start_time_3+30!!!
-massert((start_time_3 - start_time_1) <= 2);
-
         bot_status = dd_USBH_MSC_HandleBOTXfer(pdev, phost);
-end_time_3 = millis();
-massert((end_time_3-start_time_3) < 13 );
 
         if (bot_status != USBH_BUSY) {
             usbh_msc.CmdStateMachine = CMD_SEND_STATE;
@@ -2631,8 +2564,6 @@ USBH_Status USBH_DeInit(USB_OTG_CORE_HANDLE *pdev, USBH_HOST *phost)
   
   USBH_Free_Channel  (pdev, phost->Control.hc_num_in);
   USBH_Free_Channel  (pdev, phost->Control.hc_num_out);  
-
-  // phost->usbh_timeout = USBH_TIMEOUT_LONG;
   return USBH_OK;
 }
 
