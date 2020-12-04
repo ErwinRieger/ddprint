@@ -590,6 +590,7 @@ class StepBuffer: public StepBufferBase {
             bool notEnough()     { return full() || (timeInBuffer()>=50); }
 
 
+    void push(stepData& val)  {
 // CRITICAL_SECTION_START;
         // countsInBuffer += val.timer;
         upcount += val.timer;
