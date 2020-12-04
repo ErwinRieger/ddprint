@@ -67,7 +67,7 @@ USBH_Status USBH_MSC_ReadCapacity10(USB_OTG_CORE_HANDLE *pdev, USBH_HOST *phost)
 extern USBH_Status USBH_MSC_Write10(USB_OTG_CORE_HANDLE *pdev, USBH_HOST *phost,
                          uint8_t *,
                          uint32_t ,
-                         uint32_t , uint32_t timeout);
+                         uint32_t);
 extern USBH_Status USBH_MSC_Read10(USB_OTG_CORE_HANDLE *pdev, USBH_HOST *phost,
                         uint8_t *,
                         uint32_t ,
