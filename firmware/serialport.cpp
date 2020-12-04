@@ -229,7 +229,7 @@ void SerialPort::begin(long baud)
 extern "C" {
   void __irq_usart1(void) {
 
-	volatile int sr = USART1->regs->SR;
+	int sr = USART1->regs->SR;
 	if(sr & USART_SR_RXNE) {
 		// rb_safe_insert(&dev->rbRX, (uint8)dev->regs->DR);
         unsigned char c = USART1->regs->DR;

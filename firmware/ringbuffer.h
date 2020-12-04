@@ -14,8 +14,8 @@ struct CircularBuffer {
     typedef IndexType _IndexType;
 
     ElementType _ringbuffer_array[BufferSize];
-    volatile IndexType _ringbuffer_head;
-    volatile IndexType _ringbuffer_tail;
+    IndexType _ringbuffer_head;
+    IndexType _ringbuffer_tail;
 
     void ringBufferInit() { _ringbuffer_head = _ringbuffer_tail = 0; }
 

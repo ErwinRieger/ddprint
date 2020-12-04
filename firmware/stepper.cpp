@@ -29,7 +29,7 @@
   // const int motor_current_setting[3] = DEFAULT_PWM_MOTOR_CURRENT;
 // #endif
 
-volatile int32_t current_pos_steps[NUM_AXIS] = { 0, 0, 0, 0};
+int32_t current_pos_steps[NUM_AXIS] = { 0, 0, 0, 0};
 
 StepBuffer stepBuffer;
 

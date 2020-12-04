@@ -40,7 +40,7 @@
 #define enable_e0() (E0_ENABLE_PIN :: activate())
 #define disable_e0() (E0_ENABLE_PIN :: deActivate())
 
-extern volatile int32_t current_pos_steps[NUM_AXIS];
+extern int32_t current_pos_steps[NUM_AXIS];
 
 // Initialize and start the stepper motor subsystem
 void st_init();
