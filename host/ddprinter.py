@@ -771,8 +771,8 @@ class Printer(Serial):
         slipstr = "----"
         if statusDict["slippage"]:
             slipstr = "%4.2f" % (1.0/statusDict["slippage"])
-        print "State: %d, Bed: %5.1f, Hotend: %5.1f(%5.1f), Pwm: %3d, Swap: %10s, Underrun: %5d, Grip: %s" % \
-            (statusDict["state"], statusDict["t0"], statusDict["t1"], statusDict["targetT1"], statusDict["pwmOutput"], util.sizeof_fmt(statusDict["Swap"]), statusDict["StepBufUnderRuns"], slipstr)
+        print "State: %d, Bed: %5.1f, Hotend: %5.1f(%5.1f), Pwm: %3d, Swap: %10s, MinBuffer: %3d, Grip: %s" % \
+            (statusDict["state"], statusDict["t0"], statusDict["t1"], statusDict["targetT1"], statusDict["pwmOutput"], util.sizeof_fmt(statusDict["Swap"]), statusDict["minBuffer"], slipstr)
 
     # Get printer (-profile) name from printer eeprom
     def getPrinterName(self):
