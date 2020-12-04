@@ -24,7 +24,7 @@
 # at second connect).
 #
 import time, struct, crc_ccitt_kermit, termios, pprint, sys
-import dddumbui, cobs, ddprintutil, types
+import dddumbui, cobs, ddprintutil as util, types
 
 from serial import Serial, SerialException, SerialTimeoutException
 from ddconfig import debugComm
@@ -778,7 +778,7 @@ class Printer(Serial):
     def getPrinterName(self):
 
         resp = self.query(CmdGetPrinterName)
-        pn = ddprintutil.getResponseString(resp[1], 1)
+        pn = util.getResponseString(resp[1], 1)
         return pn
 
     def setPrinterName(self, args):
