@@ -65,7 +65,7 @@ class SwapDev {
             printf("addbackref %d - %d = %d %c\n", outputpos, offs, (outputpos - offs), c);
             outputbuffer[outputpos++] = c;
         }
-        bool isBusyWriting() {
+        bool busy() {
             static bool wait = false;
             // printf("isbuxy...\n");
             wait = !wait;
@@ -100,7 +100,7 @@ int tinf_getbit(uzlib_uncomp *d)
 /* Inflate next output bytes from compressed stream */
 bool UnZipper::Run() {
 
-    int sym;
+    static int sym;
     int dist;
     int res;
 
@@ -156,8 +156,8 @@ bool UnZipper::Run() {
                 }
                 else if (sym < 256) {
                     /* literal byte */
+                    PT_WAIT_WHILE( swapDev.busy() );
                     swapDev.addByte(sym);
-                    PT_WAIT_WHILE( swapDev.isBusyWritingForWrite() );
 
 /*
     PT_WAIT_WHILE(condition) PT_WAIT_UNTIL(!(condition))
@@ -189,8 +189,8 @@ bool UnZipper::Run() {
                     d.lzOff = tinf_read_bits(&d, dist_bits[dist], dist_base[dist]);;
 
                     /* copy next byte from dict substring */
+                    PT_WAIT_WHILE( swapDev.busy() );
                     swapDev.addBackRefByte(d.lzOff);
-                    PT_WAIT_WHILE( swapDev.isBusyWritingForWrite() );
 
                     d.curlen--;
                     res = TINF_OK;
@@ -198,8 +198,9 @@ bool UnZipper::Run() {
             }
             else {
                 /* copy next byte from dict substring */
+                PT_WAIT_WHILE( swapDev.busy() );
                 swapDev.addBackRefByte(d.lzOff);
-                PT_WAIT_WHILE( swapDev.isBusyWritingForWrite() );
+
                 d.curlen--;
                 res = TINF_OK;
             }
