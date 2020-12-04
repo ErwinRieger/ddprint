@@ -738,7 +738,7 @@ class FillBufferTask : public Protothread {
 
                     sd.timer = STD min ( (uint16_t)(lastTimer * timerScale), (uint16_t)0xffff );
                     computeStepBits();
-                    PT_WAIT_WHILE(stepBuffer.full2());
+                    PT_WAIT_WHILE(stepBuffer.notEnough());
                     stepBuffer.push(sd);
                     sd.dirBits &= ~0x80; // clear set-direction bit (after push)
 
@@ -753,7 +753,7 @@ class FillBufferTask : public Protothread {
 
                             sd.timer = STD min ( (uint16_t)(lastTimer * timerScale),  (uint16_t)0xffff );
                             computeStepBits();
-                            PT_WAIT_WHILE(stepBuffer.full2());
+                            PT_WAIT_WHILE(stepBuffer.notEnough());
                             stepBuffer.push(sd);
                         }
                     }
@@ -767,7 +767,7 @@ class FillBufferTask : public Protothread {
                             sd.timer = STD min ( (uint16_t)(FromBuf(uint16_t, sDReader.readData) * timerScale), (uint16_t)0xffff );
 
                             computeStepBits();
-                            PT_WAIT_WHILE(stepBuffer.full2());
+                            PT_WAIT_WHILE(stepBuffer.notEnough());
                             stepBuffer.push(sd);
                         }
                     }
@@ -782,7 +782,7 @@ class FillBufferTask : public Protothread {
                     sd.timer = tLin;
 
                     computeStepBits();
-                    PT_WAIT_WHILE(stepBuffer.full2());
+                    PT_WAIT_WHILE(stepBuffer.notEnough());
                     stepBuffer.push(sd);
 
                     sd.dirBits &= ~0x80; // clear set-direction bit (after push)
@@ -790,7 +790,7 @@ class FillBufferTask : public Protothread {
                     for (; step > 1; step--) {
 
                         computeStepBits();
-                        PT_WAIT_WHILE(stepBuffer.full2());
+                        PT_WAIT_WHILE(stepBuffer.notEnough());
                         stepBuffer.push(sd);
                     }
                 }
@@ -807,7 +807,7 @@ class FillBufferTask : public Protothread {
                     sd.timer = STD min ( (uint16_t)(lastTimer * timerScale), (uint16_t)0xffff );
 
                     computeStepBits();
-                    PT_WAIT_WHILE(stepBuffer.full2());
+                    PT_WAIT_WHILE(stepBuffer.notEnough());
                     stepBuffer.push(sd);
 
                     sd.dirBits &= ~0x80; // clear set-direction bit (after push)
@@ -824,7 +824,7 @@ class FillBufferTask : public Protothread {
                             sd.timer = STD min ( (uint16_t)(lastTimer * timerScale),  (uint16_t)0xffff );
 
                             computeStepBits();
-                            PT_WAIT_WHILE(stepBuffer.full2());
+                            PT_WAIT_WHILE(stepBuffer.notEnough());
                             stepBuffer.push(sd);
                         }
                     }
@@ -838,7 +838,7 @@ class FillBufferTask : public Protothread {
                             sd.timer = STD min ( (uint16_t)(FromBuf(uint16_t, sDReader.readData) * timerScale), (uint16_t)0xffff );
 
                             computeStepBits();
-                            PT_WAIT_WHILE(stepBuffer.full2());
+                            PT_WAIT_WHILE(stepBuffer.notEnough());
                             stepBuffer.push(sd);
                         }
                     }
@@ -949,7 +949,7 @@ class FillBufferTask : public Protothread {
                 PT_WAIT_THREAD(sDReader);
                 sd.stepBits = *sDReader.readData;
 
-                PT_WAIT_WHILE(stepBuffer.full2());
+                PT_WAIT_WHILE(stepBuffer.notEnough());
                 stepBuffer.push(sd);
 
                 sd.dirBits &= ~0x80; // clear set-direction bit (after push)
@@ -970,7 +970,7 @@ class FillBufferTask : public Protothread {
                         PT_WAIT_THREAD(sDReader);
                         sd.stepBits = *sDReader.readData;
 
-                        PT_WAIT_WHILE(stepBuffer.full2());
+                        PT_WAIT_WHILE(stepBuffer.notEnough());
                         stepBuffer.push(sd);
                     }
                 }
@@ -988,7 +988,7 @@ class FillBufferTask : public Protothread {
                         PT_WAIT_THREAD(sDReader);
                         sd.stepBits = *sDReader.readData;
 
-                        PT_WAIT_WHILE(stepBuffer.full2());
+                        PT_WAIT_WHILE(stepBuffer.notEnough());
                         stepBuffer.push(sd);
                     }
                 }
@@ -1042,7 +1042,7 @@ class FillBufferTask : public Protothread {
 
                 while (nDwell-- > 0) {
 
-                    PT_WAIT_WHILE(stepBuffer.full2());
+                    PT_WAIT_WHILE(stepBuffer.notEnough());
                     stepBuffer.push(sd);
                 }
 

@@ -486,11 +486,17 @@ typedef struct {
 
 // Size of step buffer, entries are stepData structs.
 #if defined(AVR)
-#define StepBufferLen  256
+    #error buflen
+    #define StepBufferLen  256
 #else
-// #define StepBufferLen  512
-#define StepBufferLen  2048
-// #define StepBufferLen  1024
+    //
+    // Good for max: (4096*(25/2))/1000.0 = 51.2 mS
+    //
+    // PS1: (timer value 25)/2 = 12.5 uS -> theoretical max allowed stepper frequency of about 80 kHz
+    // PS2: Note 50 mS buffer depth is a bit aggressive, it is not enough for some random 
+    // long USB transfers... 
+    //
+    #define StepBufferLen  4096
 #endif
 
 typedef CircularBuffer<stepData, uint32_t, StepBufferLen> StepBufferBase;
@@ -508,21 +514,20 @@ class StepBuffer: public StepBufferBase {
 
             uint16_t continuosTimer;
 
-            uint8_t stepbits; // xxx for deactivate
+            // Sum of timer values in buffer
+            // uint32_t countsInBuffer;
+            uint32_t upcount;
+            uint32_t downcount;
 
         public:
 
-// xxx
-uint32_t countsInBuffer;
 
             StepBuffer() {
 
-                ringBufferInit();
-
                 // undo syncCount = 0;
                 miscStepperMode = HOMINGMODE;
-                stepbits = 0;
-                countsInBuffer = 0;
+
+                flush();
             };
 
             void setContinuosTimer(uint16_t timerValue) {
@@ -542,7 +547,8 @@ uint32_t countsInBuffer;
 
             void flush() {
                 ringBufferInit();
-                countsInBuffer = 0;
+                // countsInBuffer = 0;
+                upcount = downcount = 0;
             }
 
             void homingMode() {
@@ -575,16 +581,28 @@ uint32_t countsInBuffer;
                 }
             }
 
-    bool full2()     { return full() || (countsInBuffer>=70000); }
-    void push(stepData& val)  {
-        countsInBuffer += val.timer;
+            // XXX note: assumes fixed timer frequency of 2Mhz!
+            uint8_t timeInBuffer() {
+                return min((uint8_t)((upcount-downcount) / 2000), (uint8_t)255);
+            }
+
+            // XXX fixed 50 ms buffer depth for long usb transactions here!
+            bool notEnough()     { return full() || (timeInBuffer()>=50); }
+
+
+// CRITICAL_SECTION_START;
+        // countsInBuffer += val.timer;
+        upcount += val.timer;
         StepBufferBase::push(val);
+// CRITICAL_SECTION_END;
     }
 
-    stepData &pop() {
-        stepData &sd = StepBufferBase::pop();
+    stepData pop() {
+        stepData sd = StepBufferBase::pop();
 
-        countsInBuffer -= sd.timer;
+        // massert(countsInBuffer >= sd.timer);
+        // countsInBuffer -= sd.timer;
+        downcount += sd.timer;
         return sd;
     }
 
@@ -604,7 +622,6 @@ uint32_t countsInBuffer;
 
                     // Empty buffer, nothing to step
                     // HAL_SET_STEPPER_TIMER(2000); // 1kHz.
-                    stepbits = 0;
 
                     // Check for step buffer underruns
                     if (printer.stepsAvailable()) {
@@ -617,7 +634,7 @@ uint32_t countsInBuffer;
                 }
                 else {
 
-                    stepData &sd = pop();
+                    stepData sd = pop();
 
                     uint16_t t = sd.timer;
 
@@ -638,7 +655,7 @@ uint32_t countsInBuffer;
                         st_set_direction<EAxisSelector>(sd.dirBits);
                     }
 
-                    stepbits = sd.stepBits;
+                    uint8_t stepbits = sd.stepBits;
 
                     if (stepbits) {
 
@@ -665,21 +682,10 @@ uint32_t countsInBuffer;
                     }
 
                     wasempty = false;
+
+ // HAL_SET_STEPPER_TIMER(t - (2*STEPPER_MINPULSE)); // correction: min step width z.b. 2uS -> 4 timer takte
                 }
             }
-
-        FWINLINE void deactivateSteppers() {
-
-            if (stepbits) {
-
-                st_deactivate_pin<XAxisSelector>(stepbits);
-                st_deactivate_pin<YAxisSelector>(stepbits);
-                st_deactivate_pin<ZAxisSelector>(stepbits);
-                st_deactivate_pin<EAxisSelector>(stepbits);
-
-                stepbits = 0;
-            }
-        }
 
         FWINLINE void runMiscSteps() {
 
@@ -698,7 +704,7 @@ uint32_t countsInBuffer;
             }
             else {
 
-                stepData &sd = pop();
+                stepData sd = pop();
 
                 HAL_SET_HOMING_TIMER(sd.timer);
 
