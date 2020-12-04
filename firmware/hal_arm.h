@@ -418,14 +418,6 @@ struct AnalogInput {
 void spiInit();
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-//xxx debug
-//
-extern uint32_t start_time_1;
-extern uint32_t start_time_2;
-extern uint32_t start_time_3;
-extern uint32_t end_time_1;
-extern uint32_t end_time_2;
-extern uint32_t end_time_3;
 
 //
 // Mass storage interface, USB flash drive in this case.
@@ -463,34 +455,30 @@ class MassStorage: public MassStorageBase {
         return 0;
     }
 
-    bool readBlock(uint32_t readBlockNumber, uint8_t *dst) {
+    int readBlock(uint32_t readBlockNumber, uint8_t *dst) {
 
-        USBH_Status status = USB_disk_read(&USB_OTG_Core_Host, &USB_Host,
-                dst, readBlockNumber);
-
-        return status == USBH_OK;
-    }
-
-    // xxx darf nicht blockieren:
-    //
-    //
-    //
-    int writeBlock(uint32_t writeBlockNumber, uint8_t *src, uint32_t timeout) {
-
-        start_time_1 = millis();
-        USBH_Status status = USBH_MSC_Write10(
+        USBH_Status status = USBH_MSC_Read10(
                 &USB_OTG_Core_Host, &USB_Host,
-                src, writeBlockNumber, 512, timeout);
-end_time_1 = millis();
-massert((end_time_1-start_time_1) < 15 );
-
+                dst, readBlockNumber, 512);
         if (status == USBH_BUSY) {
             return 1; // continue thread
         }
-        else if (status == USBH_TIMEOUT) {
 
-            // return -1 for write-retry
-            return -1;
+        // Todo: check errors
+        // if (status != USBH_OK) ...
+        massert(status == USBH_OK);
+        
+        return 0; // OK, write done
+    }
+
+    int writeBlock(uint32_t writeBlockNumber, uint8_t *src) {
+
+        USBH_Status status = USBH_MSC_Write10(
+                &USB_OTG_Core_Host, &USB_Host,
+                src, writeBlockNumber, 512);
+
+        if (status == USBH_BUSY) {
+            return 1; // continue thread
         }
 
         // Todo: check errors
