@@ -49,7 +49,7 @@
 //
 
 
-enum SwapTasks { TaskRead, TaskWrite, TaskReset, TaskWriteSum };
+enum SwapTasks { TaskRead, TaskReadSum, TaskWrite, TaskWriteSum };
 
 class SDSwap: public MassStorage, public Protothread {
 
@@ -58,8 +58,8 @@ class SDSwap: public MassStorage, public Protothread {
     // Pointer to current write position (byte) in writeBuffer
     uint16_t writePos;
 
-    // bool busyWriting;
-    int busyWriting;
+    enum BusyStates { idle, reading, writing };
+    BusyStates busyState;
 
     // Sector number on storage device
     uint32_t writeBlockNumber;
@@ -74,11 +74,15 @@ class SDSwap: public MassStorage, public Protothread {
     // Written size in bytes, multiple of SwapSectorSize
     uint32_t size;
 
+    uint8_t *readBuffer;
+    uint16_t readBytes;
+
 public:
 
     SDSwap() {
 
-        busyWriting = 0;
+        busyState = idle;
+        readBytes = 0;
         reset();
     }
 
@@ -90,6 +94,8 @@ public:
     // FWINLINE uint32_t getReadPos() { return readPos; }
     FWINLINE uint32_t getSize() { return size; }
 
+    FWINLINE uint16_t getReadLen() { return readBytes; }
+
     FWINLINE uint32_t available() {
 
         simassert(readPos <= size);
@@ -98,10 +104,7 @@ public:
 
     void reset() {
       
-        if (busyWriting == 2)
-            busyWriting = 1;
-
-        while (busyWriting)
+        while (busy())
             Run();
 
         readRetry = 0;
@@ -115,17 +118,17 @@ public:
         writeBlockNumber = 1;
     }
 
-    FWINLINE bool isBusyWritingForRead() { return busyWriting == 1; }
-    FWINLINE bool isBusyWritingForWrite() { return busyWriting >= 1; }
+    FWINLINE bool busy() { return busyState != idle; }
+    // FWINLINE bool busyR() { return busyState == reading; }
+    // FWINLINE bool busyW() { return busyState != writing; }
 
-    int getBusyWriting() { return busyWriting; }
-    void setBusyWriting(int b) { busyWriting = b; }
+    // void setBusyWriting(int b) { busyWriting = b; }
 
     FWINLINE void addByte(uint8_t b) {
 
         uint16_t wp = getWritePos();
 
-        simassert(! busyWriting);
+        simassert(busyState != writing);
         simassert(wp < SwapSectorSize);
 
         writeBuffer[wp] = b;
@@ -150,7 +153,7 @@ public:
 
         uint16_t wp = getWritePos();
 
-        simassert(! busyWriting);
+        simassert(busyState != writing);
         simassert(wp < SwapSectorSize);
 
         uint8_t b = writeBuffer[(writePos - offs) & SwapSectorMask]; // Overflow expected
@@ -164,22 +167,39 @@ public:
     }
 
     //------------------------------------------------------------------------------
+    // Start reading *readBuffer* from storage device
+    FWINLINE void startReadBlock(uint8_t *buf) {
+
+#if defined(HEAVYDEBUG)
+        massert(!busy());
+#endif
+
+        massert(available() > 0);
+        massert((readPos % SwapSectorSize) == 0); // read pos should be block-aligned
+
+        readBuffer = buf;
+
+        readBytes = 0;
+
+        busyState = reading;
+
+        Restart(); // Start thread
+    }
+
     // Start writing *writeBuffer* to storage device
     FWINLINE void startWriteBlock() {
 
 #if defined(HEAVYDEBUG)
-        massert(! busyWriting);
+        massert(!busy());
 #endif
-        busyWriting = 1;
+        busyState = writing;
+
+        Restart(); // Start thread
     }
 
-    FWINLINE int16_t readBlock(uint8_t* dst) {
+    FWINLINE int16_t _readBlock(uint8_t* dst) {
 
         // Number of bytes in this block:
-        massert(available() > 0);
-        massert(busyWriting != 1);
-        massert((readPos % SwapSectorSize) == 0); // read pos should be block-aligned
-
         TaskStart(ioStats, TaskRead);
         if (! MassStorage::readBlock((readPos >> 9)+1, dst)) {
 
@@ -210,10 +230,6 @@ public:
         // Read was successful, reset retry count
         readRetry = 0;
 
-        if (busyWriting == 2) {
-            busyWriting = 1;  // Retry
-        }
-
         return readBytes;
     }
 
@@ -222,84 +238,65 @@ public:
 
         uint16_t wp;
         static int res;
-        static USBH_Status usbstatus;
 
         PT_BEGIN();
 
-        PT_WAIT_UNTIL(busyWriting == 1);
+        if (busyState == reading) {
 
-        simassert((size % SwapSectorSize) == 0); // block write after final partial block is invalid
+            //////////////////////////////////////////////////////////////////////////////////          
+            TaskStart(ioStats, TaskReadSum);
 
-        //////////////////////////////////////////////////////////////////////////////////          
-        TaskStart(ioStats, TaskWriteSum);
-
-        // PT_WAIT_WHILE((res = writeBlock(writeBlockNumber, writeBuffer, GetTaskDuration(ioStats, TaskWriteSum))) == 1);
-        do { _ptLine = __LINE__; case __LINE__: {
-            TaskStart(ioStats, TaskWrite);
-            res = writeBlock(writeBlockNumber, writeBuffer, GetTaskDuration(ioStats, TaskWriteSum));
-            TaskEnd(ioStats, TaskWrite);
-            if (res == 1) return true; // continue thread
-          }
-        } while (0);
-
-        TaskEnd(ioStats, TaskWriteSum);
-
-        if (res == -1) {
-
-            TaskStart(ioStats, TaskReset);
-
-            // Clean up and retry fresh write command later
-            // PT_WAIT_WHILE((usbstatus = USBH_MSC_BlockReset(&USB_OTG_Core_Host, &USB_Host)) == USBH_BUSY);
-            // debugUSBHStatus(usbstatus);
-
-            // PT_WAIT_WHILE()
             do { _ptLine = __LINE__; case __LINE__: {
-                TaskStart(ioStats, TaskWrite);
-                usbstatus = USBH_MSC_BlockReset(&USB_OTG_Core_Host, &USB_Host);
-                TaskEndX(ioStats, TaskWrite);
-                if (usbstatus == USBH_BUSY) return true; // continue thread
+                TaskStart(ioStats, TaskRead);
+                res = readBlock((readPos >> 9)+1, readBuffer);
+                TaskEnd(ioStats, TaskRead);
+                if (res == 1) return true; // continue thread
+                if (res == -1) { // error
+
+                    // Return Sd2Card error code and SPI status byte from sd card.
+                    // In case of SD_CARD_ERROR_CMD17 this is the return status of
+                    // CMD17 in Sd2Card::cardCommand().
+                    if (readRetry++ < 5) {
+                        // Log error and retry
+                        txBuffer.sendSimpleResponse(RespUnsolicitedMsg, RespSDReadError, errorCode(), errorData());
+                        return true;
+                    }
+
+                    killMessage(RespSDReadError, errorCode(), errorData());
+                    // notreached
+                }
             }
             } while (0);
 
-            // PT_WAIT_WHILE(usbstatus == USBH_BUSY);
-            debugUSBHStatus(usbstatus);
+            TaskEnd(ioStats, TaskReadSum);
+            //////////////////////////////////////////////////////////////////////////////////          
 
-            // PT_WAIT_WHILE((usbstatus = USBH_MSC_BOT_Abort(&USB_OTG_Core_Host, &USB_Host, USBH_MSC_DIR_IN)) == USBH_BUSY);
-            // debugUSBHStatus(usbstatus);
+            readBytes = STD min(available(), (uint32_t)SwapSectorSize);
 
-            do { _ptLine = __LINE__; case __LINE__: {
-                TaskStart(ioStats, TaskWrite);
-                usbstatus = USBH_MSC_BOT_Abort(&USB_OTG_Core_Host, &USB_Host, USBH_MSC_DIR_IN);
-                TaskEndX(ioStats, TaskWrite);
-                if (usbstatus == USBH_BUSY) return true; // continue thread
-            }
-            } while (0);
+            // printf("size: %d, readpos: %d, read bytes: %d\n", size, readPos, readBytes);
 
-            // PT_WAIT_WHILE(usbstatus == USBH_BUSY);
-            debugUSBHStatus(usbstatus);
+            readPos += readBytes;
 
-            // PT_WAIT_WHILE((usbstatus = USBH_MSC_BOT_Abort(&USB_OTG_Core_Host, &USB_Host, USBH_MSC_DIR_OUT)) == USBH_BUSY);
-            // debugUSBHStatus(usbstatus);
-    
-            do { _ptLine = __LINE__; case __LINE__: {
-                TaskStart(ioStats, TaskWrite);
-                usbstatus = USBH_MSC_BOT_Abort(&USB_OTG_Core_Host, &USB_Host, USBH_MSC_DIR_OUT);
-                TaskEndX(ioStats, TaskWrite);
-                if (usbstatus == USBH_BUSY) return true; // continue thread
-            }
-            } while (0);
-
-            // PT_WAIT_WHILE(usbstatus == USBH_BUSY);
-            debugUSBHStatus(usbstatus);
-
-            // Don't update size 
-            // Don't change write buffer
-            busyWriting = 2;
-
-            TaskEnd(ioStats, TaskReset);
+            // Read was successful, reset retry count
+            readRetry = 0;
+            busyState = idle;
         }
-        else {
+        else if (busyState == writing) {
 
+            simassert((size % SwapSectorSize) == 0); // block write after final partial block is invalid
+
+            //////////////////////////////////////////////////////////////////////////////////          
+            TaskStart(ioStats, TaskWriteSum);
+
+            do { _ptLine = __LINE__; case __LINE__: {
+                TaskStart(ioStats, TaskWrite);
+                res = writeBlock(writeBlockNumber, writeBuffer);
+                TaskEnd(ioStats, TaskWrite);
+                if (res == 1) return true; // continue thread
+            }
+            } while (0);
+
+            TaskEnd(ioStats, TaskWriteSum);
             //////////////////////////////////////////////////////////////////////////////////          
 
             // Update size 
@@ -322,105 +319,55 @@ public:
             // printf("Size: %d bytes\n", size);
 
             writeBlockNumber++;
-            busyWriting = 0;
+            busyState = idle;
         }
 
-        PT_RESTART();
+
+        // PT_RESTART();
         PT_END();
     };
 
     void writeConfig(MSConfigBlock &config) { 
 
-        enum WriteState { WriteBlock, blockReset, blockAbortIn, blockAbortOut };
-
         int res;  
-        static USBH_Status usbstatus;
 
         TaskStart(ioStats, TaskWriteSum);
 
-        WriteState writeState = WriteBlock;
-
         while (true) {
            
-           switch (writeState) {
-                case WriteBlock:
-                    TaskStart(ioStats, TaskWrite);
-                    res = writeBlock(0, config.sector, GetTaskDuration(ioStats, TaskWriteSum));
+            TaskStart(ioStats, TaskWrite);
+            res = writeBlock(0, config.sector);
+            TaskEndX(ioStats, TaskWrite);
 
-//
-// xxx timout mit 30 ms hier in TaskEnd:
-//
-//
-// usbh_msc.BOTState: USBH_BOTSTATE_DECODE_CSW
-//
-// here: taskStart = 36493
-// readBlock.start_time_1: 36493
-// readBlock.start_time_2: 36493
-//
-// XXX dazwischen return von USBH_MSC_Write10() ->
-//  readBlock() -> hierher
-//  und dann 30 ms später wieder aufruf von 
-//  readBlock()/USBH_MSC_Write10() ?
-//
-// readBlock.start_time_3: 36523 30 ms später !
-//
-//
-//normal:
-//  {tsqlvl = 41, hcintr = 804, portintr = 0}
-//  {tsqlvl = 13, hcintr = 602, portintr = 0}
-//
-//aber auch:
-//  {tsqlvl = 53, hcintr = 15860, portintr = 0}
-//
-                    TaskEndX(ioStats, TaskWrite);
-
-                    if (res == -1) { // Timeout error
-                        writeState = blockReset;
-                    }
-                    else if (res == 0) { // Done, USBH_OK from USBH_MSC_Write10/USBH_OK from dd_USBH_MSC_HandleBOTXfer
-                        TaskEnd(ioStats, TaskWriteSum);
-                        return;
-                    }
-                    break;
-                case blockReset:
-                    TaskStart(ioStats, TaskWrite);
-                    usbstatus = USBH_MSC_BlockReset(&USB_OTG_Core_Host, &USB_Host);
-                    TaskEndX(ioStats, TaskWrite);
-
-                    if (usbstatus != USBH_BUSY) {
-                        debugUSBHStatus(usbstatus);
-                        writeState = blockAbortIn; // USBH_OK
-                    }
-                    break;
-                case blockAbortIn:
-                    TaskStart(ioStats, TaskWrite);
-                    usbstatus = USBH_MSC_BOT_Abort(&USB_OTG_Core_Host, &USB_Host, USBH_MSC_DIR_IN);
-                    TaskEndX(ioStats, TaskWrite);
-
-                    if (usbstatus != USBH_BUSY) {
-                        debugUSBHStatus(usbstatus);
-                        writeState = blockAbortOut; // USBH_OK
-                    }
-                    break;
-                case blockAbortOut:
-                    TaskStart(ioStats, TaskWrite);
-                    usbstatus = USBH_MSC_BOT_Abort(&USB_OTG_Core_Host, &USB_Host, USBH_MSC_DIR_OUT);
-                    TaskEndX(ioStats, TaskWrite);
-
-                    if (usbstatus != USBH_BUSY) {
-                        debugUSBHStatus(usbstatus);
-                        TaskEnd(ioStats, TaskWriteSum); // USBH_OK
-                        return;
-                    }
-                    break;
+            if (res == 0) { // Done
+                TaskEnd(ioStats, TaskWriteSum);
+                return;
             }
         }
         TaskEnd(ioStats, TaskWriteSum);
     }
+
     void readConfig(MSConfigBlock &config) {
-        TaskStart(ioStats, TaskRead);
-        MassStorage::readBlock(0, config.sector);
-        TaskEnd(ioStats, TaskRead);
+
+        // TaskStart(ioStats, TaskRead);
+        // MassStorage::readBlock(0, config.sector);
+        // TaskEnd(ioStats, TaskRead);
+        int res;  
+
+        TaskStart(ioStats, TaskReadSum);
+
+        while (true) {
+           
+            TaskStart(ioStats, TaskRead);
+            res = readBlock(0, config.sector);
+            TaskEndX(ioStats, TaskRead);
+
+            if (res == 0) { // Done
+                TaskEnd(ioStats, TaskReadSum);
+                return;
+            }
+        }
+        TaskEnd(ioStats, TaskReadSum);
     }
 };
 
