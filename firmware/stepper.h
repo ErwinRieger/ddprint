@@ -598,8 +598,8 @@ class StepBuffer: public StepBufferBase {
 // CRITICAL_SECTION_END;
     }
 
-    stepData pop() {
-        stepData sd = StepBufferBase::pop();
+    stepData &pop() {
+        stepData &sd = StepBufferBase::pop();
 
         // massert(countsInBuffer >= sd.timer);
         // countsInBuffer -= sd.timer;
@@ -635,7 +635,7 @@ class StepBuffer: public StepBufferBase {
                 }
                 else {
 
-                    stepData sd = pop();
+                    stepData &sd = pop();
 
                     uint16_t t = sd.timer;
 
@@ -705,7 +705,7 @@ class StepBuffer: public StepBufferBase {
             }
             else {
 
-                stepData sd = pop();
+                stepData &sd = pop();
 
                 HAL_SET_HOMING_TIMER(sd.timer);
 
