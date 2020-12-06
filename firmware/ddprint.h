@@ -80,6 +80,9 @@ class Printer {
         uint32_t minBuffer;
         uint32_t minBufferMax;
 
+        uint16_t underTemp;
+        uint16_t underGrip;
+
         // State enum
         enum {
             StateIdle,       // The state when printer is turned on.

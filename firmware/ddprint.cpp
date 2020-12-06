@@ -664,6 +664,9 @@ class FillBufferTask : public Protothread {
                             // XXX cleanup temptable: store temptable as floats or use integer (*1000) numeric here...
                             timerScale = (maxTempSpeed / eSpeedTimer) * VAR_FILSENSOR_GRIP;
                             // printf("speed is limited by factor: %f\n", timerScale);
+                            printer.underTemp = min(printer.underTemp+1, 0xffff);
+                            if (VAR_FILSENSOR_GRIP > 1.0)
+                                printer.underGrip = min(printer.underGrip+1, 0xffff);
                         }
                         else {
                             // Speed is not limited by temperature
@@ -919,6 +922,9 @@ class FillBufferTask : public Protothread {
                         // XXX cleanup temptable store temptable as floats or use integer (*1000) numeric here...
                         timerScale = (maxTempSpeed / eSpeedTimer) * VAR_FILSENSOR_GRIP;
                         // printf("speed is limited by factor: %f\n", timerScale);
+                        printer.underTemp = min(printer.underTemp+1, 0xffff);
+                        if (VAR_FILSENSOR_GRIP > 1.0)
+                            printer.underGrip = min(printer.underGrip+1, 0xffff);
                     }
                     else {
                         // Speed is not limited by temperature
@@ -1283,6 +1289,8 @@ void Printer::cmdMove(MoveType mt) {
 
     minBufferMax = 0;
     minBuffer = 0;
+
+    underTemp = underGrip = 0;
 
     // if (mt == MoveTypeNormal) {
         // armrun massert(homed);
@@ -1685,6 +1693,9 @@ void Printer::cmdGetStatus() {
 
     txBuffer.sendResponseInt32(current_pos_steps[E_AXIS]);
     txBuffer.sendResponseUInt32(minBuffer);
+
+    txBuffer.sendResponseUInt16(underTemp);
+    txBuffer.sendResponseUInt16(minBuffer);
 
     txBuffer.sendResponseEnd();
 }
