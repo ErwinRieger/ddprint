@@ -37,31 +37,48 @@ def filamentTool(fn):
 def gcodeTool(fn):
    
     i = 0
-    settings = {}
+    settings = argparse.Namespace(generator="")
     for line in open(fn).readlines():
         l = line.strip()
 
         if l.startswith(";"):
             tokens = l.split()
-            for token in tokens[1:]:
+            ti = 1
+            while ti < len(tokens):
+                token = tokens[ti].lower()
                 valtokens = token.split(",")
                 if len(valtokens) >= 2:
-                    settings[valtokens[0].lower()] = valtokens[1]
+                    v = valtokens[1:]
+
+                    while ti+1 < len(tokens):
+                        v.append(tokens[ti])
+                        ti += 1
+                    settings.__setattr__(valtokens[0].lower(), v)
+                    break
+                if token == "generated":
+                    settings.generator = l
+                    break
+
+                ti += 1
 
         i += 1
 
     # print "gcode settings:",
     # pprint.pprint(settings)
+    print "lh:", settings.layerheight
+    print "starting:", settings.startinggcode
 
-    lh = float(settings["layerheight"])
-    ew = float(settings["extruderwidth"])
-    spd = float(settings["defaultspeed"]) / 60
+    lh = float(settings.layerheight[0])
+    ew = float(settings.extruderwidth[0])
+    spd = float(settings.defaultspeed[0]) / 60
 
     print "\nGCode info's:"
     print   "-------------"
+    print "Generator   : %s" % settings.generator
     print "LayerHeight : %.2f mm" % lh
     print "ExtrudeWidth: %.2f mm" % ew
     print "Speed       : %.2f mm/s" % spd
+    print "starting cod: %s" % settings.startinggcode
     print "\nMax flowrate: %.2f mm³/s" % (lh*ew*spd)
 
 
