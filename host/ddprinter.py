@@ -708,7 +708,7 @@ class Printer(Serial):
 
     def getStatus(self):
 
-        valueNames = ["state", "t0", "t1", "Swap", "SDReader", "StepBuffer", "StepBufUnderRuns", "targetT1", "pwmOutput", "slippage", "extruder_pos", "minBuffer"]
+        valueNames = ["state", "t0", "t1", "Swap", "SDReader", "StepBuffer", "StepBufUnderRuns", "targetT1", "pwmOutput", "slippage", "extruder_pos", "minBuffer", "underTemp", "underGrip"]
 
         (cmd, payload) = self.query(CmdGetStatus, doLog=False)
 
@@ -716,11 +716,11 @@ class Printer(Serial):
 
 
         # XXXXXX debug workaround, payload 37, needed: 36
-        if len(payload) > 36:
+        if len(payload) > 40:
             print "WARNING: payload to long, stripping bytes #", len(payload)-36
             payload = payload[:36]
 
-        tup = struct.unpack("<BffIHIhHBfiI", payload)
+        tup = struct.unpack("<BffIHIhHBfiIHH", payload)
 
         statusDict = {}
         for i in range(len(valueNames)):
