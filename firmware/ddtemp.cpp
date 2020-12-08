@@ -117,6 +117,7 @@ void TempControl::setTemp(uint8_t heater, uint16_t temp) {
         // xxx hack, reset/clear suggestPwm
         if (temp < 50) {
             suggestPwm = 0;
+            suggestUsed = true;
         }
         // eAlt = 0;
     }
@@ -181,8 +182,42 @@ void TempControl::heater() {
                     antiWindupMode = false;
                 }
 
-                if ((pid_output < suggestPwm) && (e > 0.0)) {
-                    pid_output = suggestPwm;
+                // if ((pid_output < suggestPwm) && (e > 0.0)) {
+                // if (e > 0.0) {
+                if (suggestPwm && (! suggestUsed)) {
+
+                    if (e > 5.0) {           // xxxx avoid to often disturb pid with suggest pid XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+                        // temp to low
+                        if (pid_output < suggestPwm)
+                            pid_output = suggestPwm;
+                    }
+                    else {
+                        // temp reached
+                        // bumpless transfer
+                        //
+                        // xxxx recalcuated to mucht here 
+                        //
+                        eSum = (suggestPwm - (pTerm+dTerm)) / (Ki * pid_dt); // xxx term ki*dt
+                        iTerm = Ki * pid_dt * eSum; // xxx term ki*dt
+
+                        pid_output = pTerm + iTerm + dTerm + 0.5;
+
+                        // switch to pid mode
+                        // suggestPwm = 0;
+                        suggestUsed = true;
+    
+                if (pid_output > PID_MAX) {
+                    pid_output = PID_MAX;
+                    antiWindupMode = true;
+                }
+                else if (pid_output < 0) {
+                    pid_output = 0;
+                    antiWindupMode = true;
+                }
+                else {
+                    antiWindupMode = false;
+                }
+                    }
                 }
 
                 HEATER_0_PIN :: write( pid_output );
@@ -193,13 +228,12 @@ void TempControl::heater() {
                 if ((dbgcount++ % 10) == 0) {
                     txBuffer.sendResponseStart(RespUnsolicitedMsg);
                     txBuffer.sendResponseUint8(PidDebug);
-                    txBuffer.sendResponseValue(pid_dt);
-                    txBuffer.sendResponseValue(pTerm);
-                    txBuffer.sendResponseValue(iTerm);
-                    txBuffer.sendResponseValue(dTerm);
-                    /* txBuffer.sendResponseValue(pwmSum); */
-                    txBuffer.sendResponseValue(pid_output);
-                    txBuffer.sendResponseValue(e);
+                    txBuffer.sendResponseFloat(pid_dt);
+                    txBuffer.sendResponseFloat(pTerm);
+                    txBuffer.sendResponseFloat(iTerm);
+                    txBuffer.sendResponseFloat(dTerm);
+                    txBuffer.sendResponseInt32(pid_output);
+                    txBuffer.sendResponseFloat(e);
                     txBuffer.sendResponseEnd();
                 }
 

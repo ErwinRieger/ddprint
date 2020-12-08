@@ -583,7 +583,12 @@ class StepBuffer: public StepBufferBase {
 
             // XXX note: assumes fixed timer frequency of 2Mhz!
             uint8_t timeInBuffer() {
-                return min((uint8_t)((upcount-downcount) / 2000), (uint8_t)255);
+
+                CRITICAL_SECTION_START;
+                uint32_t d = downcount;
+                CRITICAL_SECTION_END;
+
+                return (uint8_t)((upcount-d) / 2000);
             }
 
             // XXX fixed 50 ms buffer depth for long usb transactions here!

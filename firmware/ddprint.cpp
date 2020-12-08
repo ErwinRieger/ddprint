@@ -665,13 +665,13 @@ class FillBufferTask : public Protothread {
                             timerScale = (maxTempSpeed / eSpeedTimer) * VAR_FILSENSOR_GRIP;
                             // printf("speed is limited by factor: %f\n", timerScale);
                             printer.underTemp = min(printer.underTemp+1, 0xffff);
-                            if (VAR_FILSENSOR_GRIP > 1.0)
-                                printer.underGrip = min(printer.underGrip+1, 0xffff);
                         }
                         else {
                             // Speed is not limited by temperature
                             timerScale = VAR_FILSENSOR_GRIP;
                         }
+                        if (VAR_FILSENSOR_GRIP > 1.0)
+                            printer.underGrip = min(printer.underGrip+1, 0xffff);
                     }
                     else {
                         // Non-printmove
@@ -690,6 +690,7 @@ class FillBufferTask : public Protothread {
 // xxx cleanup temptable
 // #if defined(HEAVYDEBUG)
                 massert(timerScale >= 1.0);
+// timerScale = 1.0;
 // #endif
                 //////////////////////////////////////////////////////
 #endif
@@ -923,13 +924,13 @@ class FillBufferTask : public Protothread {
                         timerScale = (maxTempSpeed / eSpeedTimer) * VAR_FILSENSOR_GRIP;
                         // printf("speed is limited by factor: %f\n", timerScale);
                         printer.underTemp = min(printer.underTemp+1, 0xffff);
-                        if (VAR_FILSENSOR_GRIP > 1.0)
-                            printer.underGrip = min(printer.underGrip+1, 0xffff);
                     }
                     else {
                         // Speed is not limited by temperature
                         timerScale = VAR_FILSENSOR_GRIP;
                     }
+                    if (VAR_FILSENSOR_GRIP > 1.0)
+                        printer.underGrip = min(printer.underGrip+1, 0xffff);
                 }
     
                 if (flags & 0x100) {
@@ -942,6 +943,7 @@ class FillBufferTask : public Protothread {
 // xxx cleanup temptable
 // #if defined(HEAVYDEBUG)
                 massert(timerScale >= 1.0);
+// timerScale = 1.0;
 // #endif
                 //////////////////////////////////////////////////////
 #endif
@@ -1062,7 +1064,13 @@ class FillBufferTask : public Protothread {
                 targetHeater = *sDReader.readData;
                 targetTemp = FromBuf(uint16_t, sDReader.readData+1);
 
-                tempControl.suggestPwm = *(sDReader.readData+3);
+                i = *(sDReader.readData+3);
+
+                if (i > tempControl.suggestPwm) {
+                    tempControl.suggestUsed = false;
+                }
+
+                tempControl.suggestPwm = i;
 
                 printer.cmdSetTargetTemp(*sDReader.readData, FromBuf(uint16_t, sDReader.readData+1));
 
@@ -1695,7 +1703,7 @@ void Printer::cmdGetStatus() {
     txBuffer.sendResponseUInt32(minBuffer);
 
     txBuffer.sendResponseUInt16(underTemp);
-    txBuffer.sendResponseUInt16(minBuffer);
+    txBuffer.sendResponseUInt16(underGrip);
 
     txBuffer.sendResponseEnd();
 }
