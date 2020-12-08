@@ -65,8 +65,8 @@ def gcodeTool(fn):
 
     # print "gcode settings:",
     # pprint.pprint(settings)
-    print "lh:", settings.layerheight
-    print "starting:", settings.startinggcode
+    # print "lh:", settings.layerheight
+    # print "starting:", settings.startinggcode
 
     lh = float(settings.layerheight[0])
     ew = float(settings.extruderwidth[0])
@@ -74,6 +74,7 @@ def gcodeTool(fn):
 
     print "\nGCode info's:"
     print   "-------------"
+    print "Model (STL) : %s" % settings.applytomodels
     print "Generator   : %s" % settings.generator
     print "LayerHeight : %.2f mm" % lh
     print "ExtrudeWidth: %.2f mm" % ew
