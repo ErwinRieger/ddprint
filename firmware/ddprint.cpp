@@ -1064,13 +1064,7 @@ class FillBufferTask : public Protothread {
                 targetHeater = *sDReader.readData;
                 targetTemp = FromBuf(uint16_t, sDReader.readData+1);
 
-                i = *(sDReader.readData+3);
-
-                if (i > tempControl.suggestPwm) {
-                    tempControl.suggestUsed = false;
-                }
-
-                tempControl.suggestPwm = i;
+                tempControl.suggestPwm = *(sDReader.readData+3);;
 
                 printer.cmdSetTargetTemp(*sDReader.readData, FromBuf(uint16_t, sDReader.readData+1));
 
@@ -1605,16 +1599,16 @@ void Printer::cmdGetDirBits() {
 
 
 
-// log of stepbuffer fill state
-typedef struct {
-    uint32_t timestamp;
-    uint16_t sdsize;
-} filltrace;
-
-typedef CircularBuffer<filltrace, uint16_t, 256> StepBufferLog;
-
-StepBufferLog stepBufferLog;
-
+// // log of stepbuffer fill state
+// typedef struct {
+    // uint32_t timestamp;
+    // uint16_t sdsize;
+// } filltrace;
+// 
+// typedef CircularBuffer<filltrace, uint16_t, 256> StepBufferLog;
+// 
+// StepBufferLog stepBufferLog;
+// 
 
 
 
@@ -2536,13 +2530,13 @@ void loop() {
     fillBufferTask.Run();
     TaskEnd(taskTiming, TaskFillBuffer);
 
-// debug
-  filltrace ft;
-  ft.timestamp = m;
-  ft.sdsize = stepBuffer.size();
-
-    stepBufferLog .pushWrap(ft);
-
+// // debug
+  // filltrace ft;
+  // ft.timestamp = m;
+  // ft.sdsize = stepBuffer.size();
+// 
+    // stepBufferLog .pushWrap(ft);
+// 
 // end debug
 
     // Handle USB output
