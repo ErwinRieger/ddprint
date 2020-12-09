@@ -518,6 +518,7 @@ class StepBuffer: public StepBufferBase {
             // uint32_t countsInBuffer;
             uint32_t upcount;
             uint32_t downcount;
+            bool wasempty;
 
         public:
 
@@ -549,6 +550,7 @@ class StepBuffer: public StepBufferBase {
                 ringBufferInit();
                 // countsInBuffer = 0;
                 upcount = downcount = 0;
+                wasempty = true;
             }
 
             void homingMode() {
@@ -621,8 +623,6 @@ class StepBuffer: public StepBufferBase {
             //     pulse is not related to it.
             // --> To relax this situation we set the new OCR1A value as fast as possible.
             FWINLINE void runMoveSteps() {
-
-                static bool wasempty = false;
 
                 if (empty()) {
 
