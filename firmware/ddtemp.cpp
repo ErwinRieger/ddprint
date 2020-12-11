@@ -82,31 +82,6 @@ void TempControl::setTemp(uint8_t heater, uint16_t temp) {
         // we switch "from manual mode to automatic".
         if (target_temperature[heater-1] == 0) {
             eSum = 0;
-            // cobias = 0;
-        }
-        else {
-
-            // Switch to "automatic mode", bumpless
-
-            // Bumpless mode
-
-            // We achieve this desired outcome at switchover by initializing the controller integral sum of error to zero.
-            // eSum = 0;
-            // Also, the set point and controller bias value are initialized by setting:
-            //    ▪ SP equal to the current PV
-            //    ▪ CObias equal to the current CO
-            // sp = pv;
-            // cobias = pid_output;
-
-            // CO = controller output signal (the wire out)
-            // CObias = controller bias; set by bumpless transfer
-            //
-            // e(t) = current controller error, defined as SP – PV
-            // SP = set point
-            // PV = measured process variable (the wire in)
-            //
-            // Thus, when switching to automatic, SP is set equal to the current PV and CObias is set equal to the current CO.
-            //
         }
 
         // if (pwmMode && (temp < target_temperature[heater-1]))
@@ -117,8 +92,8 @@ void TempControl::setTemp(uint8_t heater, uint16_t temp) {
         // xxx hack, reset/clear suggestPwm
         if (temp < 50) {
             suggestPwm = 0;
-            suggestUsed = true;
         }
+
         // eAlt = 0;
     }
 }
@@ -154,18 +129,30 @@ void TempControl::heater() {
                 // Regeldifferenz, grösser 0 falls temperatur zu klein
                 float e = target_temperature[0] - current_temperature[0];
 
+                float pTerm = Kp * e;
+
+                float dTerm = Kd * (e - eAlt) / pid_dt;
+
                 if (! antiWindupMode) {
+
+                    float newEsum;
+
+                    if ((e > 2.5) && (pid_output < suggestPwm)) {           // xxxx avoid to often disturb pid with suggest pid XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+                        // temp to low
+                        newEsum = (suggestPwm - (pTerm+dTerm)) / (Ki * pid_dt);
+                        suggestPwm = 0;
+                    }
+                    else {
+                        newEsum = eSum + e;
+                    }
+
                     eSum = constrain(
-                        eSum + e,
+                        newEsum,
                         -eSumLimit,
                         eSumLimit);
                 }
 
-                float pTerm = Kp * e;
-
                 float iTerm = Ki * pid_dt * eSum;
-
-                float dTerm = Kd * (e - eAlt) / pid_dt;
 
                 // int32_t pid_output = cobias + pTerm + iTerm + dTerm + 0.5;
                 pid_output = pTerm + iTerm + dTerm + 0.5;
@@ -182,43 +169,6 @@ void TempControl::heater() {
                     antiWindupMode = false;
                 }
 
-                // if ((pid_output < suggestPwm) && (e > 0.0)) {
-                // if (e > 0.0) {
-                if (suggestPwm && (! suggestUsed)) {
-
-                    if (e > 5.0) {           // xxxx avoid to often disturb pid with suggest pid XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
-                        // temp to low
-                        if (pid_output < suggestPwm)
-                            pid_output = suggestPwm;
-                    }
-                    else {
-                        // temp reached
-                        // bumpless transfer
-                        //
-                        // xxxx recalcuated to mucht here 
-                        //
-                        eSum = (suggestPwm - (pTerm+dTerm)) / (Ki * pid_dt); // xxx term ki*dt
-                        iTerm = Ki * pid_dt * eSum; // xxx term ki*dt
-
-                        pid_output = pTerm + iTerm + dTerm + 0.5;
-
-                        // switch to pid mode
-                        // suggestPwm = 0;
-                        suggestUsed = true;
-    
-                if (pid_output > PID_MAX) {
-                    pid_output = PID_MAX;
-                    antiWindupMode = true;
-                }
-                else if (pid_output < 0) {
-                    pid_output = 0;
-                    antiWindupMode = true;
-                }
-                else {
-                    antiWindupMode = false;
-                }
-                    }
-                }
 
                 HEATER_0_PIN :: write( pid_output );
 

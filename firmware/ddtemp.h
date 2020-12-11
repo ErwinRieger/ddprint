@@ -110,7 +110,6 @@ class TempControl: public Protothread
 
         // xxx todo setter
         uint8_t suggestPwm;
-        bool suggestUsed;
 
         TempControl():
             avgBedTemp(HEATER_0_MINTEMP),
@@ -120,8 +119,7 @@ class TempControl: public Protothread
             Kd(1.0),
             pwmValueOverride(0),
             antiWindupMode(false),
-            suggestPwm(0),
-            suggestUsed(false)
+            suggestPwm(0)
             {};
         void init();
         virtual bool Run();
