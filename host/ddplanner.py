@@ -495,9 +495,11 @@ class Planner (object):
         return (homePosMM, homePosStepped)
 
     # Called from gcode parser
-    def newPart(self, partNumber):
+    def newPart(self, partNumber=None):
 
-        self.partNumber = partNumber
+        if partNumber:
+            self.partNumber = partNumber
+        self.advance.newPart(partNumber)
 
     # Called from gcode parser
     def layerChange(self, layer):

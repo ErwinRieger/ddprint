@@ -125,6 +125,10 @@ class Advance (object):
         # dvin = dvout + ka * acceleration [ m/s + s * m/s² = m/s ]
         #
 
+        self.__kAdv = args.kadvance
+        if self.__kAdv == None:
+            self.__kAdv = planner.matProfile.getKAdvI()
+
         self.startAdvance = None
 
         # K-Advance is defined in material profile and overridable by the
@@ -134,13 +138,10 @@ class Advance (object):
         #   * advance increase (example: 0.1)
         #   * stepheight in layers (example: 10)
         if "startAdvance" in args:
-            self.startAdvance = args.startAdvance
+            self.__kAdv = args.startAdvance
+            self.startAdvance = args.startAdvance - args.advIncrease
             self.advIncrease = args.advIncrease
-            self.advStepHeight = args.advStepHeight
-
-        self.__kAdv = args.kadvance
-        if self.__kAdv == None:
-            self.__kAdv = planner.matProfile.getKAdvI()
+            # self.advStepHeight = args.advStepHeight
 
         self.useAutoTemp = args.autotemp
 
@@ -201,14 +202,18 @@ class Advance (object):
 
             return self.printer.printerProfile.getMaxAxisAccelerationI()
 
-    # Implement gradual advance on layer change
+    # Implement gradual advance on part change (sequential print)
+    def newPart(self, nParts=None):
+
+        self.planner.gui.log("Advance: start new part #: ", nParts)
+
+        if nParts==None and self.startAdvance != None:
+            self.startAdvance += self.advIncrease
+            self.setkAdvance(self.startAdvance)
+
     def layerChange(self, layer):
-
         # self.planner.gui.log("Advance: layer changed: ", layer)
-
-        if layer != None and self.startAdvance != None:
-            self.setkAdvance(self.startAdvance + (layer / self.advStepHeight) * self.advIncrease)
-            self.planner.gui.log("Advance: layer changed: ", self.getKAdv())
+        pass
 
     def setkAdvance(self, kAdv):
 

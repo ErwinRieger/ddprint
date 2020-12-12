@@ -307,7 +307,7 @@ class UM2GcodeParser:
             lineNumber += 1
             line = line.strip()
 
-            if line.startswith(";"):
+            if line.startswith(";"): # Gcode comments
 
                 upperLine = line.upper()
 
@@ -323,7 +323,7 @@ class UM2GcodeParser:
                     # self.planner.newPart(self.numParts)
 
                 # Simplify3D: "; skirt "
-                elif upperLine.startswith("; SKIRT"):
+                elif upperLine.startswith("; SKIRT") or "FEATURE SKIRT" in upperLine:
                     self.numParts += 1
                     self.planner.newPart(self.numParts)
 
@@ -482,6 +482,8 @@ class UM2GcodeParser:
                 elif upperLine.endswith("SINGLE EXTRUSION"):
                     # print "gcodeparser: Starting single extrusion..."
                     self.layerPart = "single extrusion"
+                elif upperLine.endswith("SKIRT"):
+                    self.planner.newPart()
                 elif upperLine.endswith("SUMMARY"):
                     self.layerPart = "unknown"
                 elif len(tokens) > 1 and tokens[1].upper() in [ "PURGING:", "PROCESS", "FEATURE" ]:
