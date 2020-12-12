@@ -39,11 +39,12 @@ from ddprofile import MatProfile, PrinterProfile, NozzleProfile
 if __name__ == "__main__":
 
     printerName = sys.argv[1]
-    nozzle = sys.argv[2]
+    nozzleProfile = sys.argv[2]
     baseProfile = sys.argv[3]
 
     pp = PrinterProfile(printerName)
-    nozzleDiam = NozzleProfile(nozzle).getSize()
+    nozzle = NozzleProfile(nozzleProfile)
+    nozzleDiam = nozzle.getSizeI()
 
     tempGraphs = []
     pwmGraphs = []
