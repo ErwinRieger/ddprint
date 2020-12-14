@@ -337,7 +337,7 @@ public:
            
             TaskStart(ioStats, TaskWrite);
             res = writeBlock(0, config.sector);
-            TaskEndX(ioStats, TaskWrite);
+            TaskEnd(ioStats, TaskWrite);
 
             if (res == 0) { // Done
                 TaskEnd(ioStats, TaskWriteSum);
@@ -349,9 +349,6 @@ public:
 
     void readConfig(MSConfigBlock &config) {
 
-        // TaskStart(ioStats, TaskRead);
-        // MassStorage::readBlock(0, config.sector);
-        // TaskEnd(ioStats, TaskRead);
         int res;  
 
         TaskStart(ioStats, TaskReadSum);
@@ -360,7 +357,7 @@ public:
            
             TaskStart(ioStats, TaskRead);
             res = readBlock(0, config.sector);
-            TaskEndX(ioStats, TaskRead);
+            TaskEnd(ioStats, TaskRead);
 
             if (res == 0) { // Done
                 TaskEnd(ioStats, TaskReadSum);

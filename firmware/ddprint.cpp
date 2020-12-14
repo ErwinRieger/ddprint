@@ -1241,11 +1241,11 @@ void Printer::cmdEot() {
 
     eotReceived = true;
 
-    if (swapDev.getWritePos()) {
-        // Save last partial block
-        // xxx check busy here
-        swapDev.startWriteBlock();
-    }
+    // if (swapDev.getWritePos()) {
+        // // Save last partial block
+        // // xxx check busy here
+        // swapDev.startWriteBlock();
+    // }
 }
 
 void Printer::runFillBuffer() {
@@ -1501,29 +1501,34 @@ void Printer::checkMoveFinished() {
             fillBufferTask.flush();
         }
 
-        if ( eotReceived &&
-             (! swapDev.busy()) &&
-             (! swapDev.available()) &&
-             (! sDReader.available()) &&
-             stepBuffer.empty() ) {
+        if (eotReceived) {
 
-            // printf("finish ok...\n");
+            if (! swapDev.busy()) {
 
-            DISABLE_STEPPER_DRIVER_INTERRUPT();
-            DISABLE_STEPPER1_DRIVER_INTERRUPT();
+                if (swapDev.getWritePos()) {
+                    // Save last partial block
+                    swapDev.startWriteBlock();
+                    return;
+                }
 
-            // hack, stepbuffer adds an invalid bufferunderrun at the end of the move...
-            // if (moveType == MoveTypeNormal)
-                // bufferLow -= 1;
+                if ((! swapDev.available()) &&
+                    (! sDReader.available()) &&
+                    stepBuffer.empty() ) {
 
-            printerState = StateInit;
-            moveType = MoveTypeNone;
+                    // printf("finish ok...\n");
 
-            // Reset swap/buffers
-            fillBufferTask.flush();
+                    DISABLE_STEPPER_DRIVER_INTERRUPT();
+                    DISABLE_STEPPER1_DRIVER_INTERRUPT();
 
-            eotReceived = false;
-            // bufferLow = -1;
+                    printerState = StateInit;
+                    moveType = MoveTypeNone;
+
+                    // Reset swap/buffers
+                    fillBufferTask.flush();
+
+                    eotReceived = false;
+                }
+            }
         }
     }
 }

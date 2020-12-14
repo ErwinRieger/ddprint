@@ -113,7 +113,6 @@ extern void *__brkval;
     #define GetTaskStart(timings, looptask) (timings[looptask].taskStart) 
     #define GetTaskDuration(timings, looptask) (millis() - timings[looptask].taskStart)
     #define TaskEnd(timings, looptask) { uint32_t taskDuration = millis() - timings[looptask].taskStart; timings[looptask].ncalls += 1; timings[looptask].sumcall += taskDuration; if (taskDuration > timings[looptask].longest) timings[looptask].longest = taskDuration; }
-#define TaskEndX(timings, looptask) { uint32_t taskDuration = millis() - timings[looptask].taskStart; timings[looptask].ncalls += 1; timings[looptask].sumcall += taskDuration; if (taskDuration > timings[looptask].longest) timings[looptask].longest = taskDuration; massert(taskDuration < 20); }
 
 #else
 #error mist
