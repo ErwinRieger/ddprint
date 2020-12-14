@@ -645,7 +645,7 @@ class UM2GcodeParser:
 
         current_position = self.getPos()
 
-        rl = - self.planner.printer.printerProfile.getRetractLengthI()
+        rl = - self.planner.printer.printerProfile.getRetractLength()
 
         current_position[A_AXIS] += rl
 
@@ -653,7 +653,7 @@ class UM2GcodeParser:
             line,
             displacement_vector=Vector([0.0, 0.0, 0.0, rl, 0.0]),
             displacement_vector_steps=[0.0, 0.0, 0.0, rl * self.steps_per_mm[A_AXIS], 0.0],
-            feedrate=min(self.planner.printer.printerProfile.getRetractFeedrateI(), self.planner.printer.printerProfile.getMaxFeedrateI(3)),
+            feedrate=min(self.planner.printer.printerProfile.getRetractFeedrate(), self.planner.printer.printerProfile.getMaxFeedrateI(3)),
             layerPart=self.layerPart,
             ))
 
@@ -665,7 +665,7 @@ class UM2GcodeParser:
 
         current_position = self.getPos()
 
-        rl = self.planner.printer.printerProfile.getRetractLengthI()
+        rl = self.planner.printer.printerProfile.getRetractLength()
 
         current_position[A_AXIS] += rl
 
@@ -673,7 +673,7 @@ class UM2GcodeParser:
             line,
             displacement_vector=Vector([0.0, 0.0, 0.0, rl, 0.0]),
             displacement_vector_steps=[0.0, 0.0, 0.0, rl * self.steps_per_mm[A_AXIS], 0.0],
-            feedrate=min(self.planner.printer.printerProfile.getRetractFeedrateI(), self.planner.printer.printerProfile.getMaxFeedrateI(3)),
+            feedrate=min(self.planner.printer.printerProfile.getRetractFeedrate(), self.planner.printer.printerProfile.getMaxFeedrateI(3)),
             layerPart=self.layerPart,
             ))
 

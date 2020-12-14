@@ -194,3 +194,13 @@ def home(args, printer, parser, planner, force=False):
 
 ####################################################################################################
 
+def assureIsHomed(args, printer, parser, planner):
+
+    if not printer.isHomed():
+        raw_input("Press return to start homing...")
+        home(args, printer, parser, planner)
+
+####################################################################################################
+
+
+

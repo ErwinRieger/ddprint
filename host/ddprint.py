@@ -327,13 +327,13 @@ def main():
 
     elif args.mode == 'insertFilament':
 
-        (parser, _, _) = util.initParser(args, mode=args.mode, travelMovesOnly=True)
-        util.insertFilament(args, parser, args.feedrate)
+        (printer, parser, planner) = util.initParser(args, mode=args.mode, travelMovesOnly=True)
+        util.insertFilament(args, printer, parser, planner, args.feedrate)
 
     elif args.mode == 'removeFilament':
 
-        (parser, _, _) = util.initParser(args, mode=args.mode, travelMovesOnly=True)
-        util.removeFilament(args, parser, args.feedrate)
+        (printer, parser, planner) = util.initParser(args, mode=args.mode, travelMovesOnly=True)
+        util.removeFilament(args, printer, parser, planner, args.feedrate)
 
     elif args.mode == 'readGpio':
         printer = Printer()

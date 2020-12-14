@@ -31,12 +31,6 @@ from ddconfig import *
 from ddprofile import NozzleProfile, MatProfile
 from ddvector import vectorMul
 
-
-####################################################################################################
-# XXX todo: read from printer profile
-# UM2:
-FILAMENT_REVERSAL_LENGTH = 750
-
 ####################################################################################################
 def sign(x):
     if x == 0:
@@ -780,9 +774,7 @@ def zRepeatability(parser):
 
 def manualMove(args, printer, parser, planner, axis, distance, feedrate=0, absolute=False):
 
-    if not printer.isHomed():
-        raw_input("Press return to start homing...")
-        ddhome.home(args, printer, parser, planner)
+    ddhome.assureIsHomed(args, printer, parser, planner)
 
     # Get current pos from printer and set our virtual pos
     getVirtualPos(printer, parser)
@@ -930,15 +922,11 @@ def printFile(args, printer, parser, planner, logObj, gfile, t0, t0_wait, t1, do
 
 ####################################################################################################
 
-def insertFilament(args, parser, feedrate):
+def insertFilament(args, printer, parser, planner, feedrate):
 
-    planner = parser.planner
-    printer = planner.printer
+    ddhome.assureIsHomed(args, printer, parser, planner)
 
-    assert(0) # todo: transition to printer.printerProfile...
-
-    assert(0) # commandInit
-    ddhome.home(args, printer, parser, planner)
+    pp = printer.printerProfile
 
     def manualMoveE():
 
@@ -971,7 +959,7 @@ def insertFilament(args, parser, feedrate):
             printer.waitForState(StateInit, wait=0.1)
 
     # Move to mid-position
-    maxFeedrate = PrinterProfile.getMaxFeedrate(X_AXIS)
+    maxFeedrate = pp.getMaxFeedrateI(X_AXIS)
     parser.execute_line("G0 F%d X%f Y%f" % (maxFeedrate*60, planner.MAX_POS[X_AXIS]/2, planner.MAX_POS[Y_AXIS]/2))
 
     planner.finishMoves()
@@ -988,7 +976,7 @@ def insertFilament(args, parser, feedrate):
     manualMoveE()
 
     print "\nForwarding filament.\n"
-    manualMove(printer, parser, planner, A_AXIS, FILAMENT_REVERSAL_LENGTH * 0.85, feedrate)
+    manualMove(args, printer, parser, planner, A_AXIS, pp.getBowdenLength(), feedrate)
 
     print "\nExtrude filament.\n"
     manualMoveE()
@@ -1009,18 +997,14 @@ def insertFilament(args, parser, feedrate):
 
 ####################################################################################################
 
-def removeFilament(args, parser, feedrate):
+def removeFilament(args, printer, parser, planner, feedrate):
 
-    planner = parser.planner
-    printer = planner.printer
+    ddhome.assureIsHomed(args, printer, parser, planner)
 
-    assert(0) # todo: transition to printer.printerProfile...
-
-    assert(0) # commandInit
-    ddhome.home(args, printer, parser, planner)
+    pp = printer.printerProfile
 
     # Move to mid-position
-    maxFeedrate = PrinterProfile.getMaxFeedrate(X_AXIS)
+    maxFeedrate = pp.getMaxFeedrateI(X_AXIS)
     parser.execute_line("G0 F%d X%f Y%f" % (maxFeedrate*60, planner.MAX_POS[X_AXIS]/2, planner.MAX_POS[Y_AXIS]/2))
 
     planner.finishMoves()
@@ -1034,9 +1018,9 @@ def removeFilament(args, parser, feedrate):
     printer.heatUp(HeaterEx1, t1, wait=t1, log=True)
 
     # Filament vorwärts feeden um den 'retract-pfropfen' einzuschmelzen
-    manualMove(printer, parser, planner, A_AXIS, PrinterProfile.getRetractLength() + 50, 5)
+    manualMove(args, printer, parser, planner, A_AXIS, pp.getRetractLength() + 50, 5)
 
-    manualMove(printer, parser, planner, A_AXIS, -1.3*FILAMENT_REVERSAL_LENGTH, feedrate)
+    manualMove(args, printer, parser, planner, A_AXIS, -1.25 * pp.getBowdenLength(), feedrate)
 
     if not args.noCoolDown:
         printer.coolDown(HeaterEx1,wait=150, log=True)

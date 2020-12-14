@@ -190,13 +190,11 @@ class PrinterProfile(ProfileBase):
     def getMaxFeedrateVectorI(self):
         return map(lambda d: self.getMaxFeedrateI(d), range(5))
 
-    @classmethod
-    def getRetractFeedrate(cls):
-        return cls.getValues()["RetractFeedrate"]
+    def getRetractFeedrate(self):
+        return self.getValue("RetractFeedrate")
 
-    @classmethod
-    def getRetractLength(cls):
-        return float(cls.getValues()["RetractLength"])
+    def getRetractLength(self):
+        return float(self.getValue("RetractLength"))
 
     @classmethod
     def getMaxAxisAcceleration(cls):
@@ -337,6 +335,9 @@ class PrinterProfile(ProfileBase):
     def getMaxStepperFreq(self):
         return float(self.getValue("maxStepperFreq"))
 
+    def getBowdenLength(self):
+        return self.getValue("bowdenLength")
+
 ####################################################################################################
 #
 # Material profile, singleton
@@ -388,6 +389,7 @@ class MatProfile(ProfileBase):
 
     def getHotendGoodTemp(self):
         return int(self.getValue("hotendGoodTemp"))
+
     def getHotendMaxTemp(self):
         return int(self.getValuesI()["hotendMaxTemp"])
 

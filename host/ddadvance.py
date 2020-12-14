@@ -137,7 +137,7 @@ class Advance (object):
         #   * startadvance (example: 0.1)
         #   * advance increase (example: 0.1)
         #   * stepheight in layers (example: 10)
-        if "startAdvance" in args:
+        if "startAdvance" in args and args.startAdvance != None:
             self.__kAdv = args.startAdvance
             self.startAdvance = args.startAdvance - args.advIncrease
             self.advIncrease = args.advIncrease

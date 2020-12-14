@@ -41,6 +41,8 @@
       "jerk"          : 7.5
     }
   },
+  # Length of bowden tube for *insertfilament* command
+  "bowdenLength": 750,
   # Max stepper frequency
   "maxStepperFreq": 50000,
   # 1.75 mm filament, with advance [mm/s]
