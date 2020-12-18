@@ -1165,7 +1165,6 @@ class Planner (object):
 
         elif timer > self.maxTimerValue:
             print "Warning, timervalue %d to high (%d)!" % (timer, self.maxTimerValue)
-            assert(0)
             timer = self.maxTimerValue
 
         return timer
@@ -1176,7 +1175,9 @@ class Planner (object):
     #
     def accelRamp(self, steps_per_mm, vstart, vend, a, nSteps):
 
-        assert(vstart <= vend)
+        # no-acceleration-aceleration, makes no sense?
+        # assert(vstart <= vend)
+        assert(vstart < vend)
 
         pulses = [] # (tstep, dt, timerValue)
 
@@ -1222,7 +1223,9 @@ class Planner (object):
     #
     def decelRamp(self, steps_per_mm, vstart, vend, a, nSteps):
 
-        assert(vstart >= vend)
+        # no-deceleration-deceleration, makes no sense?
+        # assert(vstart >= vend)
+        assert(vstart > vend)
 
         pulses = []
 
