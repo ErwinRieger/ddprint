@@ -20,7 +20,9 @@
 
 import math, struct # , zlib
 
-import ddprintcommands, cobs, cStringIO, ddprintutil
+import ddprintcommands, cobs, cStringIO
+
+import ddprintutil as util
 
 from ddprintconstants import maxTimerValue16, fTimer, _MAX_ACCELERATION, X_AXIS, Y_AXIS, A_AXIS
 from ddprintconstants import AdvanceEThreshold, StepDataTypeBresenham, StepDataTypeRaw
@@ -896,14 +898,17 @@ class AdvanceData:
 
     # Check if sign changes at accel/decel
     def startSignChange(self):
-        return ddprintutil.sign(self.startEFeedrate()) != ddprintutil.sign(self.startEReachedFeedrate())
+        return util.sign(self.startEFeedrate()) != util.sign(self.startEReachedFeedrate())
 
     def endSignChange(self):
 
         v0 = self.endEReachedFeedrate()
         v1 = self.endEFeedrate()
 
-        if v0 == 0 or v1 == 0:
+        if util.isclose(v0, v1):
+            assert(0)
+
+        if util.isclose(v0, 0) or util.isclose(v1, 0):
             return False
 
         if v0 >= 0 and v1 >= 0:
@@ -1621,7 +1626,15 @@ class PrintMove(RealMove):
         return esteps
     ################################################################################
 
-    def crossedDecelStep(self):
+    def isCrossedDecelStep(self):
+
+
+        print "isCrossedDecelStep on printMove!, ", self
+        # xxx test, never called?
+
+
+        assert(0)
+
         return False
 
     def getExtrusionVolume(self, matProfile):
@@ -1694,6 +1707,8 @@ class SubMove(MoveBase):
                  moveNumber,
                  displacement_vector_steps):
 
+        assert(displacement_vector_steps != ([0] * 5))
+
         # MoveBase.__init__(self, Vector(displacement_vector_steps))
         MoveBase.__init__(self)
 
@@ -1733,17 +1748,61 @@ class SubMove(MoveBase):
 
         self.endSpeed.setSpeed(ev, "SubMove.setSpeeds")
 
-    def crossedDecelStep(self):
+    def isCrossedDecelStep(self):
 
-        if self.endSpeed.speed().eSpeed < 0:
+        v_1 = self.topSpeed.speed().feedrate3()
+        v_2 = self.endSpeed.speed().feedrate3()
+        xyzSign = util.sign(abs(v_2) - abs(v_1))
+
+        print "isCrossedDecelStep(): v_1: %f, v_2: %f\n" % (v_1, v_2), xyzSign
+
+        ve_1 = self.topSpeed.speed().eSpeed
+        ve_2 = self.endSpeed.speed().eSpeed
+        eSign = util.sign(abs(ve_2) - abs(ve_1))
+
+        print "isCrossedDecelStep(): ve_1: %f, ve_2: %f\n" % (ve_1, ve_2), eSign
+
+        if (xyzSign != eSign):
+            print "isCrossedDecelStep, different sign", xyzSign, eSign
+            return True
+
+        print "isCrossedDecelStep false"
+        return False
+
+        if ve_1 > 0 and ve_2 > 0:
+            print "isCrossedDecelStep false 2>"
+            return False
+
+        if ve_1 < 0 and ve_2 < 0:
+            print "isCrossedDecelStep false 2<"
+            return False
+
+        if util.isclose(ve_1, 0) and util.isclose(ve_2, 0):
+            assert(0)
+
+        print "isCrossedDecelStep true"
+        return True
+
+        if util.isclose(self.topSpeed.speed().eSpeed, self.endSpeed.speed().eSpeed):
+            print "isCrossedDecelStep(): 1"
+            return False
+
+        # return sign(self.topSpeed.speed().eSpeed) != sign(self.endSpeed.speed().eSpeed)
+
+        # if util.isclose(self.endSpeed.speed().eSpeed, 0):
+            # return False
+
+        if self.endSpeed.speed().eSpeed < 0 and not util.isclose(self.endSpeed.speed().eSpeed,0):
+            print "isCrossedDecelStep(): 2"
             return True
 
         # xxx  wofür test auf topspeed < 0 ?
         if self.topSpeed.speed().eSpeed < 0:
-            print "crossedDecelStep", self.topSpeed.speed().eSpeed
+            print "isCrossedDecelStep", self.topSpeed.speed().eSpeed
             assert(0)
             return True
 
+        print "isCrossedDecelStep(): ret false"
         return False
 
     def pprint(self, title):

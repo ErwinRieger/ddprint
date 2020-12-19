@@ -1419,7 +1419,7 @@ class Advance (object):
 
         if advMove.advanceData.endSignChange(): 
 
-            # advMove.pprint("zero cross move")
+            advMove.pprint("zero cross move")
 
             ###############################################################
             # Compute additional data for planSteps()
@@ -1428,15 +1428,14 @@ class Advance (object):
             topSpeed = advMove.topSpeed.speed()
             endSpeed = advMove.endSpeed.speed()
 
-            tdc = 0
-
             v0 = advMove.advanceData.endEReachedFeedrate()
 
-            # print "v0, accel, endFeedrateIncrease: ", v0, advMove.endAccel.eAccel(), advMove.advanceData.endFeedrateIncrease
-            tdc = v0 / advMove.endAccel.eAccel()
+            print "v0, accel, endFeedrateIncrease: ", v0, advMove.endAccel.eAccel(), advMove.advanceData.endFeedrateIncrease
+            tdc = min(v0 / advMove.endAccel.eAccel(), td)
 
-            # print "Time to reach zero-crossing tdc:", tdc, ", tdd: ", td - tdc
-            assert(tdc >= 0 and tdc <= td)
+            print "Time to reach zero-crossing tdc:", tdc, ", tdd: ", td - tdc
+            print "tdc: %f, td: %f" % (tdc, td)
+            assert(tdc >= 0 and ((tdc < td) or util.isclose(tdc,td)))
 
             # Nominal speed at zero crossing
             if topSpeed.feedrate3() > endSpeed.feedrate3():
@@ -1449,7 +1448,7 @@ class Advance (object):
             crossingSpeed = advMove.topSpeed.speed()
             crossingSpeed.setSpeed(zeroCrossingS)
 
-            # print "crossingspeed: ", crossingSpeed
+            print "crossingspeed: ", crossingSpeed
 
             # PART C, D
             estepsc = advMove.endRampTriangle(v0 = v0, v1 = 0, dt = tdc) * self.e_steps_per_mm
@@ -1459,15 +1458,20 @@ class Advance (object):
             advMove.advanceData.endEStepsC = estepsc
             advMove.advanceData.advStepSum += estepsc
 
-            # print "top, zerocrossspeed:", topSpeed.feedrate3(), crossingSpeed
+            print "top, zerocrossspeed:", topSpeed.feedrate3(), crossingSpeed
 
             advMove.advanceData.tdc = tdc
             advMove.advanceData.tdd = td - tdc
             advMove.advanceData.crossingSpeed = crossingSpeed
 
+            v1 = advMove.advanceData.endEFeedrate()
+
+            print "vo, v1:", v0, v1
+            assert(not util.isclose(0, v1))
+            
             estepsd = advMove.startRampTriangle(
                     v0 = 0,
-                    v1 = advMove.advanceData.endEFeedrate(),
+                    v1 = v1,
                     dt = advMove.advanceData.tdd)  * self.e_steps_per_mm
 
             # print "(sdd, estepsd):", (sdd, estepsd) 
@@ -1593,7 +1597,7 @@ class Advance (object):
         for newMove in newMoves:
             newMove.sanityCheck()
 
-            if newMove.crossedDecelStep():
+            if newMove.isCrossedDecelStep():
                 if self.planCrossedDecelSteps(newMove):
                     newMove.isStartMove = startMove
                     newMove.isMeasureMove = move.isMeasureMove
@@ -1784,7 +1788,6 @@ class Advance (object):
         assert(ta == 0)
         assert(tl == 0)
         assert(td > 0)
-        assert(topSpeedS > endSpeedS) # XYZ should be decelerating
         assert(abs(topSpeedE) < abs(endSpeedE)) # E should be accelerating
 
         # Round step values
@@ -1804,6 +1807,9 @@ class Advance (object):
             return False
 
         self.planner.stepRounders.commit()
+
+        # print "topSpeedS > endSpeedS:", topSpeedS> endSpeedS
+        assert(topSpeedS > endSpeedS) # XYZ should be decelerating
 
         abs_displacement_vector_steps = vectorAbs(dispS)
 
@@ -2369,7 +2375,7 @@ class Advance (object):
 
         # print "new A steps: ", displacement_vector_steps_A
         # print "new B steps: ", displacement_vector_steps_B
-        # print "new C steps: ", displacement_vector_steps_C
+        print "new C steps: ", displacement_vector_steps_C
 
         from move import SubMove
 
@@ -2481,13 +2487,13 @@ class Advance (object):
                     parentMove.advanceData.tdd)
 
             steps = sd * self.printer.printerProfile.getStepsPerMMI(dim)
-            # print "dim %d moves %.3f mm while decelerating -> %f steps" % (dim, sd, steps)
+            print "dim %d moves %.3f mm while decelerating -> %f steps" % (dim, sd, steps)
 
             displacement_vector_steps_C[dim] = steps
        
         # PART C, E
         displacement_vector_steps_C[A_AXIS] = parentMove.advanceData.endEStepsD
-        # print "tdd esteps: ", parentMove.advanceData.endEStepsD
+        print "tdd esteps: ", parentMove.advanceData.endEStepsD
         ####################################################################################
 
         # Distribute missing X/Y steps from rounding errors (only if no other part that uses them)
@@ -2498,11 +2504,11 @@ class Advance (object):
         if ta or tl:
 
             for dim in range(3):
-                displacement_vector_steps_A[dim] = displacement_vector_steps_raw[dim] - (displacement_vector_steps_B[dim] + displacement_vector_steps_C[dim])
+                displacement_vector_steps_A[dim] = displacement_vector_steps_raw[dim] - stepsUsed[dim]
 
         elif stepsMissing != emptyVector3:
         
-            # print "stepsMissing:", stepsMissing
+            print "stepsMissing:", stepsMissing
             assert(vectorLength(stepsMissing) < 1.0)
 
             maxSteps = displacement_vector_steps_B
@@ -2512,37 +2518,41 @@ class Advance (object):
 
             for dim in [X_AXIS, Y_AXIS]:
                 maxSteps[dim] += stepsMissing[dim]
-            # print "adjusted steps: ", maxSteps
+            print "adjusted steps: ", maxSteps
 
         if ta:
 
-            # print "dim E moves %f steps while accelerating" % parentMove.advanceData.startESteps
+            print "dim E moves %f steps while accelerating" % parentMove.advanceData.startESteps
             displacement_vector_steps_A[A_AXIS] += parentMove.advanceData.startESteps
 
         if tl:
 
-            # print "dim E moves %f steps in linear phase" % parentMove.advanceData.linESteps
+            print "dim E moves %f steps in linear phase" % parentMove.advanceData.linESteps
             displacement_vector_steps_A[A_AXIS] += parentMove.advanceData.linESteps
 
         ####################################################################################
 
         # print "new A steps: ", displacement_vector_steps_A
         # print "new B steps: ", displacement_vector_steps_B
-        # print "new C steps: ", displacement_vector_steps_C
+        print "new C steps 2: ", displacement_vector_steps_C
 
         from move import SubMove
 
-        moveC = SubMove(parentMove, parentMove.moveNumber + 3, displacement_vector_steps_C)
-       
-        moveC.setDuration(0, 0, parentMove.advanceData.tdd)
+        newMoves = []
 
-        newMoves = [moveC]
+        if True: # if displacement_vector_steps_C != emptyVector5:
 
-        sv = parentMove.advanceData.crossingSpeed.copy()
-        sv.eSpeed = 0
-        ev = endSpeed
-        ev.setESpeed(parentMove.advanceData.endEFeedrate())
-        moveC.setSpeeds(sv, sv, ev)
+            moveC = SubMove(parentMove, parentMove.moveNumber + 3, displacement_vector_steps_C)
+      
+            moveC.setDuration(0, 0, parentMove.advanceData.tdd)
+
+            newMoves.append(moveC)
+
+            sv = parentMove.advanceData.crossingSpeed.copy()
+            sv.eSpeed = 0
+            ev = endSpeed
+            ev.setESpeed(parentMove.advanceData.endEFeedrate())
+            moveC.setSpeeds(sv, sv, ev)
 
         # if ta or tl:
         if displacement_vector_steps_A != emptyVector5:
@@ -2577,7 +2587,10 @@ class Advance (object):
             ev.eSpeed = 0
             moveB.setSpeeds(sv, sv, ev)
 
-            newMoves.insert(-1, moveB)
+            if True: # if displacement_vector_steps_C != emptyVector5:
+                newMoves.insert(-1, moveB)
+            else:
+                newMoves.append(moveB)
 
         prevMove = None
         nextMove = None
@@ -2714,7 +2727,7 @@ class Advance (object):
 
         # print "new A steps: ", displacement_vector_steps_A
         # print "new B steps: ", displacement_vector_steps_B
-        # print "new C steps: ", displacement_vector_steps_C
+        print "new C steps 3: ", displacement_vector_steps_C
         # print "new D steps: ", displacement_vector_steps_D
 
         from move import SubMove

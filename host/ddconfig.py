@@ -23,8 +23,8 @@
 # Enable Debugging
 #
 debugMoves = False
-debugAdvance = False
-debugAutoTemp = True
+debugAdvance = True
+debugAutoTemp = False
 
 #
 # Enable type checks (see ddebug.py)

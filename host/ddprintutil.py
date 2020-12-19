@@ -33,13 +33,21 @@ from ddvector import vectorMul
 
 ####################################################################################################
 def sign(x):
-    if x == 0:
+
+    #
+    # special handling of 0 and (pseudo-) -0.0
+    #
+    if (x == 0) or ((x<0) and isclose(x, 0)):
         return 1.0
     return math.copysign(1, x)
 
 ####################################################################################################
 def circaf(a, b, delta):
     return abs(a-b) < delta
+
+# def isclose(a, b, rel_tol=1e-9, abs_tol=0.0):
+def isclose(a, b, abs_tol=1e-9):
+    return abs(a-b) < abs_tol
 
 ####################################################################################################
 
@@ -132,6 +140,7 @@ def joinMoves(move1, move2, advInstance): # jerk, maxAccelV):
         maxAllowedEEndSpeed = vAccelPerDist(startSpeed1.eSpeed, move1.startAccel.eAccel(), move1.eDistance)
         if maxAllowedEEndSpeed < endSpeed1.eSpeed:
             assert(circaf(maxAllowedEEndSpeed, endSpeed1.eSpeed, 0.000000001))
+            # assert(isclose(maxAllowedEEndSpeed, endSpeed1.eSpeed))
 
         joinMoves2(move1, move2, advInstance)
 
@@ -155,7 +164,7 @@ def joinMoves2(move1, move2, advInstance): # jerk):
         # more than AdvanceEThreshold).
         # Therefore we compare the compensated values here:
         #
-        # if circaf(eEndSpeed1, eStartSpeed2, AdvanceEThreshold):
+        # if isclose(eEndSpeed1, eStartSpeed2, AdvanceEThreshold):
         #
         adjEEndSpeed1 = advInstance.eComp(eEndSpeed1)
         adjEStartSpeed2 = advInstance.eComp(eStartSpeed2)

@@ -585,7 +585,7 @@ class Planner (object):
                 # print "endPath(): ending path print with %d moves" % len(self.pathData.path)
                 self.advance.planPath(self.pathData.path)
 
-                if debugPlot:
+                if self.plotfile:
                     self.plotfile.close()
                     self.plotfile = None
 
