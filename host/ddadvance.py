@@ -1150,6 +1150,7 @@ class Advance (object):
 
         if debugAdvance:
             print "***** Start planAdvance() *****"
+            print "len path:", len(path)
             # move.pprint("planAdvance:")
 
         values = []
@@ -1160,6 +1161,8 @@ class Advance (object):
 
         t = 0
         # f = open("adv_%d.dat" % path[0].moveNumber, "w")
+
+        s=0
         for move in path:
 
             # Compute area (= amount of e-advance) of the accel- and decel-ramps:
@@ -1167,9 +1170,17 @@ class Advance (object):
             sadv = move.startAdvSteps(startFeedrateIncrease=startFeedrateIncrease)
             move.advanceData.sAccel = sadv
 
+            s+=sadv
+
+            print "startFeedrateIncrease, sadv", startFeedrateIncrease, sadv
+
             endFeedrateIncrease = - eJerk(self.getKAdv(), move.endAccel.eAccel())
             sdec = move.endAdvSteps(endFeedrateIncrease=endFeedrateIncrease)
             move.advanceData.sDecel = sdec
+
+            s+=sdec
+
+            print "endFeedrateIncrease, sdec", endFeedrateIncrease, sdec
 
             tmove = move.accelTime() + move.linearTime() + move.decelTime()
             tmid = t + tmove / 2
@@ -1183,6 +1194,17 @@ class Advance (object):
             fwd.append(ewma.value())
 
             revValues.insert(0, v)
+
+            move.pprint("planAdvance step 1:")
+
+        if sadv or sdec:
+            move.pprint("planAdvance step 1:")
+            print "s:", sadv, sdec, s
+        else:
+            print "neutral move?:", 
+            move.pprint("neutral move step 1:")
+
+        assert(util.isclose(s, 0))
 
         ewma = util.EWMA(0.25)
         bwd = []
@@ -1205,6 +1227,8 @@ class Advance (object):
         splitRanges = []
         skipRange = None
         nonSkipRange = None
+
+        xsum = 0
         for i in range(len(path)):
 
             if avg[i] < AdvanceMinRamp:
@@ -1219,6 +1243,8 @@ class Advance (object):
                     skipRange = { "skip": True, "index": [i], "sum": 0.0 }
 
                 move = path[i]
+                print "saccel,secel:", move.advanceData.sAccel, move.advanceData.sDecel
+                xsum += move.advanceData.sAccel + move.advanceData.sDecel
                 skipRange['sum'] += move.advanceData.sAccel + move.advanceData.sDecel
 
             else:
@@ -1233,8 +1259,13 @@ class Advance (object):
                     nonSkipRange = { "skip": False, "index": [i], "sum": 0.0 }
 
                 move = path[i]
+                print "saccel,secel:", move.advanceData.sAccel, move.advanceData.sDecel
+                xsum += move.advanceData.sAccel + move.advanceData.sDecel
                 nonSkipRange['sum'] += move.advanceData.sAccel + move.advanceData.sDecel
 
+            print "xsum:", xsum
+
+        assert(util.isclose(xsum, 0))
 
         if skipRange:
             splitRanges.append(skipRange)
@@ -1266,10 +1297,13 @@ class Advance (object):
                 # Benutze moves aus dem skipped range um das fehlende
                 # advance abzuarbeiten.
 
-                if debugAdvance:
+                if True: # debugAdvance:
                     print "Skip range: [%d:%d]" % (skipRange["index"][0], skipRange["index"][-1])
                     print "advance at start of skiprange:", advance, ", advance of this range:", toAdvance
-                    advance += toAdvance
+
+                advance += toAdvance
+
+                if True: # debugAdvance:
                     print "advance at end of skiprange:", advance
 
                 if toAdvance > 0:
@@ -1283,7 +1317,7 @@ class Advance (object):
 
                         if adv:
 
-                            if debugAdvance:
+                            if True: # debugAdvance:
                                 print "Move %d, corr. adv:" % skippedMove.moveNumber, adv
 
                             self.computeAccelAdvance(skippedMove, adv)
@@ -1320,7 +1354,7 @@ class Advance (object):
 
                         if adv:
 
-                            if debugAdvance:
+                            if True: # debugAdvance:
                                 print "Move %d, corr. adv:" % skippedMove.moveNumber, adv
 
                             self.computeDecelAdvance(skippedMove, adv)
@@ -1344,12 +1378,15 @@ class Advance (object):
 
                         index += 1
 
-            else:
+            else: # if skipRange["skip"]:
 
-                if debugAdvance:
+                if True: # debugAdvance:
                     print "Non-Skip range: [%d:%d]" % (skipRange["index"][0], skipRange["index"][-1])
                     print "advance at start of non-skiprange:", advance, ", advance of this range:", toAdvance
-                    advance += toAdvance
+
+                advance += toAdvance
+
+                if True: # debugAdvance:
                     print "advance at end of non-skiprange:", advance
 
                 # plan advance steps
@@ -1370,12 +1407,12 @@ class Advance (object):
                     if accelAdvance or decelAdvance:
                         self.computeConstSteps(advMove)
 
-        if debugAdvance:
+        if True: # debugAdvance:
 
             print "advSum (should be 0):", advSum
-            assert(util.circaf(advSum, 0, 0.000001)) 
             print "advance (should be 0):", advance
-            assert(util.circaf(advance, 0, 0.000001)) 
+            # assert(util.isclose(advSum, 0, 0.000001))           # xxxxxxxxxxxxxx use default e-9
+            # assert(util.isclose(advance, 0, 0.000001))           # xxxxxxxxxxxxxx use default e-9
 
             print 
             print "***** End planAdvance() *****"
@@ -1385,6 +1422,9 @@ class Advance (object):
         # Aparallel = g * h; g = fri; h = ta
         # Sadv = fri * ta -> fri = Sadv / ta 
         ta = advMove.accelTime()
+
+        assert(ta)
+
         startFeedrateIncrease = accelAdvance / ta
 
         # print "startFeedrateIncrease: ", startFeedrateIncrease
@@ -1407,9 +1447,12 @@ class Advance (object):
         # Aparallel = g * h; g = fri; h = td
         # Sadv = fri * td -> fri = Sadv / td 
         td = advMove.decelTime()
+
+        assert(td)
+
         endFeedrateIncrease = decelAdvance / td
 
-        # print "endFeedrateIncrease: ", endFeedrateIncrease
+        print "endFeedrateIncrease: ", endFeedrateIncrease
 
         advMove.advanceData.endFeedrateIncrease = endFeedrateIncrease
 
@@ -2540,7 +2583,7 @@ class Advance (object):
 
         newMoves = []
 
-        if True: # if displacement_vector_steps_C != emptyVector5:
+        if displacement_vector_steps_C != emptyVector5:
 
             moveC = SubMove(parentMove, parentMove.moveNumber + 3, displacement_vector_steps_C)
       
@@ -2553,6 +2596,10 @@ class Advance (object):
             ev = endSpeed
             ev.setESpeed(parentMove.advanceData.endEFeedrate())
             moveC.setSpeeds(sv, sv, ev)
+
+        else:
+
+            assert(0)
 
         # if ta or tl:
         if displacement_vector_steps_A != emptyVector5:

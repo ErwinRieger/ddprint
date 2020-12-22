@@ -26,7 +26,6 @@ import gcodeparser
 from ddprintcommands import *
 from ddprintstates import *
 from ddprintconstants import dimNames
-from ddplanner import Planner
 
 import ddprintutil as util
 

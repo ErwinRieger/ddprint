@@ -874,26 +874,31 @@ class AdvanceData:
         # self.hasAccelAdvance = False
         # self.hasDecelAdvance = False
 
-    def hasStartAdvance(self):
+    def _hasStartAdvance(self):
+        assert(self.move.accelTime())
         return self.startFeedrateIncrease != 0
 
     def startEFeedrate(self):
+        assert(self.move.accelTime())
         return self.move.startSpeed.speed().eSpeed + self.startFeedrateIncrease
 
     # xxx rename to startETopFeedrate
     def startEReachedFeedrate(self):
+        assert(self.move.accelTime())
         return self.move.topSpeed.speed().eSpeed + self.startFeedrateIncrease
 
-    def hasEndAdvance(self):
+    def _hasEndAdvance(self):
+        assert(self.move.decelTime())
         return self.endFeedrateIncrease != 0
 
     # xxx rename to endETopFeedrate
     def endEReachedFeedrate(self):
-
+        assert(self.move.decelTime())
         return self.move.topSpeed.speed().eSpeed + self.endFeedrateIncrease
 
     def endEFeedrate(self):
 
+        assert(self.move.decelTime())
         return self.move.endSpeed.speed().eSpeed + self.endFeedrateIncrease
 
     # Check if sign changes at accel/decel
@@ -938,10 +943,11 @@ class AdvanceData:
     def __repr__(self):
 
         s = ""
-        if self.hasStartAdvance():
-            s += "\n  EStartAdvance: %.3f, Start %.3f, Top: %.3f" % (self.startFeedrateIncrease, self.startEFeedrate(), self.startEReachedFeedrate())
-        if self.hasEndAdvance():
-            s += "\n    EEndAdvance: %.3f, Top %.3f, End: %.3f" % (self.endFeedrateIncrease, self.endEReachedFeedrate(), self.endEFeedrate())
+        if self.move.state > 1:
+            if self.move.accelTime() and self._hasStartAdvance():
+                s += "\n  EStartAdvance: %.3f, Start %.3f, Top: %.3f" % (self.startFeedrateIncrease, self.startEFeedrate(), self.startEReachedFeedrate())
+            if self.move.decelTime() and self._hasEndAdvance():
+                s += "\n    EEndAdvance: %.3f, Top %.3f, End: %.3f" % (self.endFeedrateIncrease, self.endEReachedFeedrate(), self.endEFeedrate())
 
         if self.startESteps:
             s += "\n startESteps: %.3f" % self.startESteps
@@ -969,16 +975,18 @@ class AdvanceData:
 
     def sanityCheck(self):
 
-        # XXX assuming no retraction moves with advance
-        if self.hasStartAdvance():
-            assert(self.move.startSpeed.speed()[A_AXIS] >= 0)
-            assert(self.move.topSpeed.speed()[A_AXIS] > 0)
-            assert(self.startFeedrateIncrease >= 0)
+        if self.move.state > 1:
 
-        if self.hasEndAdvance():
-            assert(self.move.topSpeed.speed()[A_AXIS] > 0)
-            assert(self.move.endSpeed.speed()[A_AXIS] >= 0)
-            assert(self.endFeedrateIncrease >= 0)
+            # XXX assuming no retraction moves with advance
+            if self.move.accelTime() and self._hasStartAdvance():
+                assert(self.move.startSpeed.speed()[A_AXIS] >= 0)
+                assert(self.move.topSpeed.speed()[A_AXIS] > 0)
+                assert(self.startFeedrateIncrease >= 0)
+
+            if self.move.decelTime() and self._hasEndAdvance():
+                assert(self.move.topSpeed.speed()[A_AXIS] > 0)
+                assert(self.move.endSpeed.speed()[A_AXIS] >= 0)
+                assert(self.endFeedrateIncrease >= 0)
 
 ##################################################
 #
@@ -1100,11 +1108,9 @@ class MoveBase(object):
         return self
 
     def setDuration(self, accelTime, linearTime, decelTime):
-
         self.accelData.setDuration(accelTime, linearTime, decelTime)
 
     def accelTime(self):
-
         return self.accelData.accelTime
 
     def linearTime(self):
@@ -1476,24 +1482,36 @@ class PrintMove(RealMove):
 
         ta = self.accelTime()
 
-        if not ta:
+        if not ta: #  or util.isclose(ta, 0):
+            print "startAdvSteps: ta is 0 or near 0"
             return 0.0
+
+        if util.isclose(ta, 0):
+            print "close 0 ta/td:", ta
+            assert(0)
 
         sa = self.startAdvDistance(ta, startFeedrateIncrease)
         # esteps = sa * self.e_steps_per_mm
 
+        print "startAdvSteps: sa is ", sa
         return sa
 
     def endAdvSteps(self, endFeedrateIncrease=None):
 
         td = self.decelTime()
 
-        if not td:
+        if not td: #  or util.isclose(td, 0):
+            print "endAdvSteps: td is 0 or near 0"
             return 0.0
+
+        if util.isclose(td, 0):
+            print "close 0 ta/td:", td
+            assert(0)
 
         sd = self.endAdvDistance(td, endFeedrateIncrease)
         # esteps = sd * self.e_steps_per_mm
 
+        print "endAdvSteps: sd is ", sd
         return sd
     ################################################################################
 
@@ -1695,7 +1713,9 @@ class PrintMove(RealMove):
         print "Allowed End Acceleration: ",
         print self.endAccel
 
-        print self.advanceData
+        if self.state > 1:
+            print self.advanceData
+
         print "---------------------"
 
 ##################################################

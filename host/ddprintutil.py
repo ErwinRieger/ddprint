@@ -25,7 +25,6 @@ import ddhome, ddadvance, pprint, movingavg, gcodeparser
 from ddprintcommands import *
 from ddprintstates import *
 from ddprinter import Printer
-from ddplanner import Planner
 from ddprintconstants import *
 from ddconfig import *
 from ddprofile import NozzleProfile, MatProfile
@@ -37,13 +36,13 @@ def sign(x):
     #
     # special handling of 0 and (pseudo-) -0.0
     #
-    if (x == 0) or ((x<0) and isclose(x, 0)):
+    if (x == 0): #  or ((x<0) and isclose(x, 0)):
         return 1.0
     return math.copysign(1, x)
 
 ####################################################################################################
 def circaf(a, b, delta):
-    return abs(a-b) < delta
+    return isclose(a, b, delta)
 
 # def isclose(a, b, rel_tol=1e-9, abs_tol=0.0):
 def isclose(a, b, abs_tol=1e-9):
@@ -2573,54 +2572,6 @@ def measureTempFlowrateCurve2(args, printer, parser, planner):
     printer.sendCommand(CmdDisableSteppers)
     printer.coolDown(HeaterEx1, wait=100, log=True)
     printer.sendCommandParamV(CmdFanSpeed, [packedvalue.uint8_t(0)])
-
-####################################################################################################
-# Create material profile singleton instance
-def initMatProfile(args, printerName):
-
-    mat = MatProfile(args.mat, args.smat, printerName)
-
-    # Overwrite settings from material profile with command line arguments:
-    if args.t0:
-        mat.override("bedTemp", args.t0)
-        mat.override("bedTempReduced", args.t0)
-    if args.t1:
-        mat.override("hotendGoodTemp", args.t1)
-        mat.override("hotendStartTemp", args.t1)
-
-    return mat
-
-####################################################################################################
-
-def initParser(args, mode=None, gui=None, travelMovesOnly=False, pidSet="pidMeasure"):
-
-    # Create the Printer singleton instance
-    printer = Printer(gui=gui)
-
-    # Create printer profile
-    printer.commandInit(args, pidSet)
-
-    # Create material profile singleton instance
-    if "mat" in args:
-        if args.mode == "pre":
-            mat = initMatProfile(args, args.printer)
-        else:
-            mat = initMatProfile(args, printer.getPrinterName())
-    else:
-        mat = None
-
-    if "nozzle" in args:
-        nozzle = NozzleProfile(args.nozzle)
-    else:
-        nozzle = None
-
-    # Create planner singleton instance
-    planner = Planner(args, nozzleProfile=nozzle, materialProfile=mat, printer=printer, travelMovesOnly=travelMovesOnly)
-
-    # Create parser singleton instance
-    parser = gcodeparser.UM2GcodeParser(planner, logger=gui, travelMovesOnly=travelMovesOnly)
-
-    return (printer, parser, planner)
 
 ####################################################################################################
 

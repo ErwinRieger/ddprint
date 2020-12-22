@@ -27,7 +27,7 @@ logging.basicConfig(level=logging.DEBUG)
 import ddprintutil as util, gcodeparser, packedvalue, ddhome
 import ddtest
 
-from ddplanner import Planner
+from ddplanner import Planner, initParser
 from ddprinter import Printer, RxTimeout
 
 #
@@ -263,7 +263,7 @@ def main():
 
     elif args.mode == "print":
 
-        (printer, parser, planner) = util.initParser(args, mode=args.mode, pidSet="pidMeasure")
+        (printer, parser, planner) = initParser(args, mode=args.mode, pidSet="pidMeasure")
 
         t0 = planner.matProfile.getBedTemp()
         t0Wait = min(t0, printer.printerProfile.getWeakPowerBedTemp())
@@ -274,7 +274,7 @@ def main():
 
     elif args.mode == "pre":
 
-        (printer, parser, planner) = util.initParser(args, mode=args.mode, pidSet="pidMeasure")
+        (printer, parser, planner) = initParser(args, mode=args.mode, pidSet="pidMeasure")
 
         # Virtuelle position des druckkopfes falls 'gehomed'
         homePosMM = planner.getHomePos()[0]
@@ -298,7 +298,7 @@ def main():
 
     elif args.mode == 'measureTempFlowrateCurve':
 
-        (printer, parser, planner) = util.initParser(args, mode=args.mode, pidSet="pidMeasure")
+        (printer, parser, planner) = initParser(args, mode=args.mode, pidSet="pidMeasure")
         util.measureTempFlowrateCurve(args, printer, parser, planner)
 
     elif args.mode == 'measureTempFlowrateCurve2':
@@ -308,31 +308,31 @@ def main():
         # Disable autotemp
         args.autoTemp = False
 
-        (printer, parser, planner) = util.initParser(args, mode=args.mode)
+        (printer, parser, planner) = initParser(args, mode=args.mode)
         util.measureTempFlowrateCurve2(args, printer, parser, planner)
 
     elif args.mode == 'moverel':
 
         assert(args.axis.upper() in "XYZAB")
 
-        (printer, parser, planner) = util.initParser(args, mode=args.mode, travelMovesOnly=True)
+        (printer, parser, planner) = initParser(args, mode=args.mode, travelMovesOnly=True)
         util.manualMove(args, printer, parser, planner, util.dimIndex[args.axis.upper()], args.distance, args.feedrate)
 
     elif args.mode == 'moveabs':
 
         assert(args.axis.upper() in "XYZAB")
 
-        (printer, parser, planner) = util.initParser(args, mode=args.mode, travelMovesOnly=True)
+        (printer, parser, planner) = initParser(args, mode=args.mode, travelMovesOnly=True)
         util.manualMove(args, printer, parser, planner, util.dimIndex[args.axis.upper()], args.distance, args.feedrate, True)
 
     elif args.mode == 'insertFilament':
 
-        (printer, parser, planner) = util.initParser(args, mode=args.mode, travelMovesOnly=True)
+        (printer, parser, planner) = initParser(args, mode=args.mode, travelMovesOnly=True)
         util.insertFilament(args, printer, parser, planner, args.feedrate)
 
     elif args.mode == 'removeFilament':
 
-        (printer, parser, planner) = util.initParser(args, mode=args.mode, travelMovesOnly=True)
+        (printer, parser, planner) = initParser(args, mode=args.mode, travelMovesOnly=True)
         util.removeFilament(args, printer, parser, planner, args.feedrate)
 
     elif args.mode == 'readGpio':
@@ -355,7 +355,7 @@ def main():
 
     elif args.mode == 'bedleveling':
 
-        (printer, parser, planner) = util.initParser(args, mode=args.mode, travelMovesOnly=True)
+        (printer, parser, planner) = initParser(args, mode=args.mode, travelMovesOnly=True)
         util.bedLeveling(args, printer, parser, planner)
 
     elif args.mode == 'heathotend':
@@ -388,7 +388,7 @@ def main():
 
     elif args.mode == "getpos":
 
-        # (printer, _, planner) = util.initParser(args, mode=args.mode, travelMovesOnly=True)
+        # (printer, _, planner) = initParser(args, mode=args.mode, travelMovesOnly=True)
 
         printer = Printer()
         printer.initPrinterProfile(args)
@@ -443,7 +443,7 @@ def main():
 
     elif args.mode == 'home':
 
-        (printer, parser, planner) = util.initParser(args, mode=args.mode, travelMovesOnly=True)
+        (printer, parser, planner) = initParser(args, mode=args.mode, travelMovesOnly=True)
         ddhome.home(args, printer, parser, planner)
 
     elif args.mode == 'todo zRepeatability':

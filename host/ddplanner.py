@@ -23,6 +23,8 @@ import math, collections, types, pprint
 from argparse import Namespace
 
 import ddprintutil as util, dddumbui, packedvalue
+import gcodeparser
+
 from ddvector import Vector, vectorMul, vectorAbs
 from ddprintconstants import *
 from ddconfig import *
@@ -30,6 +32,7 @@ from ddprinter import Printer
 from ddprintcommands import CmdSyncTargetTemp, CmdDwellMS, CmdSyncFanSpeed, CmdSuggestPwm
 from ddprintstates import HeaterEx1, HeaterBed
 from ddadvance import Advance
+from ddprofile import NozzleProfile, MatProfile
 
 #####################################################################
 
@@ -742,7 +745,7 @@ class Planner (object):
                 # print "finishMoves(): ending path print with %d moves" % len(self.pathData.path)
                 self.advance.planPath(self.pathData.path)
 
-                if debugPlot:
+                if self.plotfile:
                     self.plotfile.close()
                     self.plotfile = None
 
@@ -1160,7 +1163,6 @@ class Planner (object):
 
         if timer < self.minTimerValue:
             print "Warning, timervalue %d to low (%d)!" % (timer, self.minTimerValue)
-            assert(0)
             timer = self.minTimerValue
 
         elif timer > self.maxTimerValue:
@@ -1265,4 +1267,51 @@ class Planner (object):
 
         return pulses
 
+
+####################################################################################################
+# Create material profile singleton instance
+def initMatProfile(args, printerName):
+
+    mat = MatProfile(args.mat, args.smat, printerName)
+
+    # Overwrite settings from material profile with command line arguments:
+    if args.t0:
+        mat.override("bedTemp", args.t0)
+        mat.override("bedTempReduced", args.t0)
+    if args.t1:
+        mat.override("hotendGoodTemp", args.t1)
+        mat.override("hotendStartTemp", args.t1)
+
+    return mat
+
+def initParser(args, mode=None, gui=None, travelMovesOnly=False, pidSet="pidMeasure"):
+
+    # Create the Printer singleton instance
+    printer = Printer(gui=gui)
+
+    # Create printer profile
+    printer.commandInit(args, pidSet)
+
+    # Create material profile singleton instance
+    if "mat" in args:
+        if args.mode == "pre":
+            mat = initMatProfile(args, args.printer)
+        else:
+            mat = initMatProfile(args, printer.getPrinterName())
+    else:
+        mat = None
+
+    if "nozzle" in args:
+        nozzle = NozzleProfile(args.nozzle)
+    else:
+        nozzle = None
+
+    # Create planner singleton instance
+    planner = Planner(args, nozzleProfile=nozzle, materialProfile=mat, printer=printer, travelMovesOnly=travelMovesOnly)
+
+    parser = gcodeparser.UM2GcodeParser(planner, logger=gui, travelMovesOnly=travelMovesOnly)
+
+    return (printer, parser, planner)
+
+####################################################################################################
 

@@ -30,7 +30,7 @@ import numpy as np
 import ddhome, movingavg, gcodeparser, ddprintutil as util
 from ddprofile import MatProfile
 from ddprinter import Printer
-from ddplanner import Planner
+from ddplanner import Planner, initParser
 from ddprintcommands import *
 from ddprintstates import *
 from ddprintconstants import A_AXIS, maxTimerValue16
@@ -514,7 +514,7 @@ plot '-' using 1:2 with linespoints title 'sensor counts', \\
 
 def execGcode(args):
 
-    (printer, parser, planner) = util.initParser(args, mode=args.mode)
+    (printer, parser, planner) = initParser(args, mode=args.mode)
 
     ddhome.home(args, printer, parser, planner)
 
