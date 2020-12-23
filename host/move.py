@@ -1482,37 +1482,22 @@ class PrintMove(RealMove):
 
         ta = self.accelTime()
 
-        if not ta: #  or util.isclose(ta, 0):
-            print "startAdvSteps: ta is 0 or near 0"
+        if not ta:
             return 0.0
 
-        if util.isclose(ta, 0):
-            print "close 0 ta/td:", ta
-            assert(0)
-
         sa = self.startAdvDistance(ta, startFeedrateIncrease)
-        # esteps = sa * self.e_steps_per_mm
-
-        print "startAdvSteps: sa is ", sa
         return sa
 
     def endAdvSteps(self, endFeedrateIncrease=None):
 
         td = self.decelTime()
 
-        if not td: #  or util.isclose(td, 0):
-            print "endAdvSteps: td is 0 or near 0"
+        if not td:
             return 0.0
 
-        if util.isclose(td, 0):
-            print "close 0 ta/td:", td
-            assert(0)
-
         sd = self.endAdvDistance(td, endFeedrateIncrease)
-        # esteps = sd * self.e_steps_per_mm
-
-        print "endAdvSteps: sd is ", sd
         return sd
+
     ################################################################################
 
     ################################################################################
@@ -1645,14 +1630,6 @@ class PrintMove(RealMove):
     ################################################################################
 
     def isCrossedDecelStep(self):
-
-
-        print "isCrossedDecelStep on printMove!, ", self
-        # xxx test, never called?
-
-
-        assert(0)
-
         return False
 
     def getExtrusionVolume(self, matProfile):
@@ -1774,55 +1751,19 @@ class SubMove(MoveBase):
         v_2 = self.endSpeed.speed().feedrate3()
         xyzSign = util.sign(abs(v_2) - abs(v_1))
 
-        print "isCrossedDecelStep(): v_1: %f, v_2: %f\n" % (v_1, v_2), xyzSign
+        # print "isCrossedDecelStep(): v_1: %f, v_2: %f\n" % (v_1, v_2), xyzSign
 
         ve_1 = self.topSpeed.speed().eSpeed
         ve_2 = self.endSpeed.speed().eSpeed
         eSign = util.sign(abs(ve_2) - abs(ve_1))
 
-        print "isCrossedDecelStep(): ve_1: %f, ve_2: %f\n" % (ve_1, ve_2), eSign
+        # print "isCrossedDecelStep(): ve_1: %f, ve_2: %f\n" % (ve_1, ve_2), eSign
 
         if (xyzSign != eSign):
-            print "isCrossedDecelStep, different sign", xyzSign, eSign
+            # print "isCrossedDecelStep, different sign", xyzSign, eSign
             return True
 
-        print "isCrossedDecelStep false"
-        return False
-
-        if ve_1 > 0 and ve_2 > 0:
-            print "isCrossedDecelStep false 2>"
-            return False
-
-        if ve_1 < 0 and ve_2 < 0:
-            print "isCrossedDecelStep false 2<"
-            return False
-
-        if util.isclose(ve_1, 0) and util.isclose(ve_2, 0):
-            assert(0)
-
-        print "isCrossedDecelStep true"
-        return True
-
-        if util.isclose(self.topSpeed.speed().eSpeed, self.endSpeed.speed().eSpeed):
-            print "isCrossedDecelStep(): 1"
-            return False
-
-        # return sign(self.topSpeed.speed().eSpeed) != sign(self.endSpeed.speed().eSpeed)
-
-        # if util.isclose(self.endSpeed.speed().eSpeed, 0):
-            # return False
-
-        if self.endSpeed.speed().eSpeed < 0 and not util.isclose(self.endSpeed.speed().eSpeed,0):
-            print "isCrossedDecelStep(): 2"
-            return True
-
-        # xxx  wofür test auf topspeed < 0 ?
-        if self.topSpeed.speed().eSpeed < 0:
-            print "isCrossedDecelStep", self.topSpeed.speed().eSpeed
-            assert(0)
-            return True
-
-        print "isCrossedDecelStep(): ret false"
+        # print "isCrossedDecelStep false"
         return False
 
     def pprint(self, title):
