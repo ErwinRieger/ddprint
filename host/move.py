@@ -1629,8 +1629,9 @@ class PrintMove(RealMove):
         return esteps
     ################################################################################
 
-    def isCrossedDecelStep(self):
-        return False
+    # notused ?
+    # def isCrossedDecelStep(self):
+        # return False
 
     def getExtrusionVolume(self, matProfile):
         return self.eDistance * matProfile.getMatArea()
@@ -1745,6 +1746,8 @@ class SubMove(MoveBase):
 
         self.endSpeed.setSpeed(ev, "SubMove.setSpeeds")
 
+    # xxx method is inlined into  planSteps()
+    """
     def isCrossedDecelStep(self):
 
         v_1 = self.topSpeed.speed().feedrate3()
@@ -1766,6 +1769,7 @@ class SubMove(MoveBase):
 
         # print "isCrossedDecelStep false"
         return False
+    """
 
     def pprint(self, title):
 

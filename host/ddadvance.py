@@ -1668,6 +1668,38 @@ class Advance (object):
         for newMove in newMoves:
             newMove.sanityCheck()
 
+
+
+
+            # inlined isCrossedDecelStep
+            """
+            def isCrossedDecelStep(self):
+
+                v_1 = self.topSpeed.speed().feedrate3()
+                v_2 = self.endSpeed.speed().feedrate3()
+                xyzSign = util.sign(abs(v_2) - abs(v_1))
+
+                # print "\nisCrossedDecelStep(): v_1: %f, v_2: %f\n" % (v_1, v_2), xyzSign
+
+                ve_1 = self.topSpeed.speed().eSpeed
+                ve_2 = self.endSpeed.speed().eSpeed
+
+                eSign = util.sign(abs(ve_2) - abs(ve_1))
+
+                # print "isCrossedDecelStep(): ve_1: %f, ve_2: %f\n" % (ve_1, ve_2), eSign
+
+                if (xyzSign != eSign):
+                    # print "isCrossedDecelStep, different sign", xyzSign, eSign
+                    return True
+
+                # print "isCrossedDecelStep false"
+                return False
+            """
+
+    
+
+            # end inlined isCrossedDecelStep
+            """
             if newMove.isCrossedDecelStep():
                 if self.planCrossedDecelSteps(newMove):
                     newMove.isStartMove = startMove
@@ -1675,6 +1707,31 @@ class Advance (object):
                     startMove = False
             else:
                 if self.planStepsSimple(newMove):
+                    newMove.isStartMove = startMove
+                    newMove.isMeasureMove = move.isMeasureMove
+                    startMove = False
+            """
+
+            v_1 = newMove.topSpeed.speed().feedrate3()
+            v_2 = newMove.endSpeed.speed().feedrate3()
+            xyzSign = util.sign(abs(v_2) - abs(v_1))
+
+            # print "\nisCrossedDecelStep(): v_1: %f, v_2: %f\n" % (v_1, v_2), xyzSign
+
+            ve_1 = newMove.topSpeed.speed().eSpeed
+            ve_2 = newMove.endSpeed.speed().eSpeed
+
+            eSign = util.sign(abs(ve_2) - abs(ve_1))
+
+            # print "isCrossedDecelStep(): ve_1: %f, ve_2: %f\n" % (ve_1, ve_2), eSign
+
+            if xyzSign == eSign: # no crossed move
+                if self.planStepsSimple(newMove):
+                    newMove.isStartMove = startMove
+                    newMove.isMeasureMove = move.isMeasureMove
+                    startMove = False
+            else: # crossed deceleration step
+                if self.planCrossedDecelSteps(newMove):
                     newMove.isStartMove = startMove
                     newMove.isMeasureMove = move.isMeasureMove
                     startMove = False
