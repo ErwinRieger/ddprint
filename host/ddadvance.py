@@ -1720,7 +1720,6 @@ class Advance (object):
 
             ve_1 = newMove.topSpeed.speed().eSpeed
             ve_2 = newMove.endSpeed.speed().eSpeed
-
             eSign = util.sign(abs(ve_2) - abs(ve_1))
 
             # print "isCrossedDecelStep(): ve_1: %f, ve_2: %f\n" % (ve_1, ve_2), eSign
