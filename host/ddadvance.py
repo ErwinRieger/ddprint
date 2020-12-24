@@ -1162,15 +1162,22 @@ class Advance (object):
         t = 0
         # f = open("adv_%d.dat" % path[0].moveNumber, "w")
 
+        diff = 0.0 # To compute rounding errors
+        posAdv = 0.0 # To compute relative rounding error
+        
         for move in path:
 
             # Compute area (= amount of e-advance) of the accel- and decel-ramps:
             startFeedrateIncrease = eJerk(self.getKAdv(), move.startAccel.eAccel())
             sadv = move.startAdvSteps(startFeedrateIncrease=startFeedrateIncrease)
 
-            if sadv != 0.0 and util.isclose(sadv, 0, 1e-16):
-                print "sadv:", sadv
-                assert(0)
+            if sadv != 0.0:
+
+                diff += sadv
+                posAdv += sadv
+                if util.isclose(sadv, 0, 1e-16):
+                    print "sadv:", sadv
+                    assert(0)
 
             move.advanceData.sAccel = sadv
 
@@ -1180,9 +1187,13 @@ class Advance (object):
             endFeedrateIncrease = - eJerk(self.getKAdv(), move.endAccel.eAccel())
             sdec = move.endAdvSteps(endFeedrateIncrease=endFeedrateIncrease)
 
-            if sdec != 0.0 and util.isclose(sdec, 0, 2e-9):
-                print "sadv:", sdec
-                assert(0)
+            if sdec != 0.0:
+               
+                diff += sdec
+                posAdv -= sdec
+                if util.isclose(sdec, 0, 2e-9):
+                    print "sadv:", sdec
+                    assert(0)
 
             move.advanceData.sDecel = sdec
 
@@ -1203,6 +1214,9 @@ class Advance (object):
             revValues.insert(0, v)
 
             # move.pprint("planAdvance step 1:")
+
+        # print "diff:", abs(diff), abs(s/1000)
+        assert(abs(diff) < (abs(posAdv)/1000))
 
         ewma = util.EWMA(0.25)
         bwd = []
@@ -1283,12 +1297,16 @@ class Advance (object):
 
         advSum = 0
         advance = 0
-        s=0
+
         for splitRange in splitRanges:
 
-            toAdvance = splitRange["sum"]
+            # Amount of advance ([mm]?) to apply for this range
+            # Note: we apply rounding differences from above (diff) into the first run.
 
             if splitRange["skip"]:
+
+                toAdvance = splitRange["sum"] + diff
+                diff = 0
 
                 # Benutze moves aus dem skipped range um das fehlende
                 # advance abzuarbeiten.
@@ -1297,10 +1315,7 @@ class Advance (object):
                     print "Skip range: [%d:%d]" % (splitRange["index"][0], splitRange["index"][-1])
                     print "advance at start of splitRange:", advance, ", advance of this range:", toAdvance
 
-
-                print "corr adv:", toAdvance
-                assert(not toAdvance)
-
+                # print "corr adv:", toAdvance
                 advance += toAdvance
 
                 if debugAdvance:
@@ -1322,7 +1337,6 @@ class Advance (object):
 
                             self.computeAccelAdvance(skippedMove, adv)
                             advSum += adv
-                            s += adv
 
                             self.computeConstSteps(skippedMove)
 
@@ -1360,7 +1374,6 @@ class Advance (object):
 
                             self.computeDecelAdvance(skippedMove, adv)
                             advSum += adv
-                            s += adv
 
                             self.computeConstSteps(skippedMove)
 
@@ -1382,12 +1395,11 @@ class Advance (object):
 
             else: # if splitRange["skip"]:
 
+                toAdvance = splitRange["sum"]
+
                 if debugAdvance:
                     print "Non-Skip range: [%d:%d]" % (splitRange["index"][0], splitRange["index"][-1])
-                    print "advance at start of non-splitRange:", advance, ", advance of this range:", toAdvance
-
-                print "corr adv:", toAdvance
-                assert(not toAdvance)
+                    print "advance at start of non-skip range:", advance, ", advance of this range:", toAdvance
 
                 advance += toAdvance
 
@@ -1398,33 +1410,34 @@ class Advance (object):
                 for i in splitRange["index"]:
 
                     advMove = path[i]
-                    accelAdvance = advMove.advanceData.sAccel
+
+                    accelAdvance = advMove.advanceData.sAccel + diff
+                    diff = 0
+                    assert(accelAdvance >= 0)
                     decelAdvance = advMove.advanceData.sDecel
 
                     if accelAdvance:
                         self.computeAccelAdvance(advMove, accelAdvance)
                         advSum += accelAdvance
-                        s += accelAdvance
+                        posAdv += accelAdvance
 
                     if decelAdvance:
                         self.computeDecelAdvance(advMove, decelAdvance)
                         advSum += decelAdvance
-                        s += decelAdvance
 
                     if accelAdvance or decelAdvance:
                         self.computeConstSteps(advMove)
 
 
         if advSum:
-            s
-            print "s: ", s
-            print "s: advSum (should be 0): %f, %f ppm" % ( advSum, (s/(advSum*len(path))*1000000.0))
-            assert(advSum < s/1000.0)
+            if not util.isclose(advSum, 0):
+                print "s: advSum (should be 0): %f, f: %f, %f ppm" % ( advSum, advSum/posAdv, (advSum/(posAdv/1000000.0)))
+            assert(advSum < posAdv/1000.0)
 
         if advance:
-            print "s: ", s
-            print "s: advance (should be 0): %f, %f ppm" %( advance, (s/(advSum*len(path))*1000000.0))
-            assert(advance < s/1000.0)
+            if not util.isclose(advance, 0):
+                print "s: advance (should be 0): %f, f: %f, %f ppm" %( advance, advSum/posAdv, (advance/(posAdv/1000000.0)))
+            assert(advance < posAdv/1000.0)
 
         if debugAdvance:
             print 

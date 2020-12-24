@@ -1751,19 +1751,26 @@ class SubMove(MoveBase):
         v_2 = self.endSpeed.speed().feedrate3()
         xyzSign = util.sign(abs(v_2) - abs(v_1))
 
-        # print "isCrossedDecelStep(): v_1: %f, v_2: %f\n" % (v_1, v_2), xyzSign
+        print "\nisCrossedDecelStep(): v_1: %f, v_2: %f\n" % (v_1, v_2), xyzSign
 
         ve_1 = self.topSpeed.speed().eSpeed
         ve_2 = self.endSpeed.speed().eSpeed
+
         eSign = util.sign(abs(ve_2) - abs(ve_1))
 
-        # print "isCrossedDecelStep(): ve_1: %f, ve_2: %f\n" % (ve_1, ve_2), eSign
+        print "isCrossedDecelStep(): ve_1: %f, ve_2: %f\n" % (ve_1, ve_2), eSign
+
+        if util.isclose(v_1, v_2):
+            print "speed close to each other, return False"
+            return False
+
+        assert(not util.isclose(ve_1, ve_2))
 
         if (xyzSign != eSign):
-            # print "isCrossedDecelStep, different sign", xyzSign, eSign
+            print "isCrossedDecelStep, different sign", xyzSign, eSign
             return True
 
-        # print "isCrossedDecelStep false"
+        print "isCrossedDecelStep false"
         return False
 
     def pprint(self, title):
