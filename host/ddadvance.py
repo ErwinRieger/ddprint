@@ -2558,13 +2558,13 @@ class Advance (object):
                     parentMove.advanceData.tdd)
 
             steps = sd * self.printer.printerProfile.getStepsPerMMI(dim)
-            print "dim %d moves %.3f mm while decelerating -> %f steps" % (dim, sd, steps)
+            # print "dim %d moves %.3f mm while decelerating -> %f steps" % (dim, sd, steps)
 
             displacement_vector_steps_C[dim] = steps
        
         # PART C, E
         displacement_vector_steps_C[A_AXIS] = parentMove.advanceData.endEStepsD
-        print "tdd esteps: ", parentMove.advanceData.endEStepsD
+        # print "tdd esteps: ", parentMove.advanceData.endEStepsD
         ####################################################################################
 
         # Distribute missing X/Y steps from rounding errors (only if no other part that uses them)
@@ -2579,7 +2579,7 @@ class Advance (object):
 
         elif stepsMissing != emptyVector3:
         
-            print "stepsMissing:", stepsMissing
+            # print "stepsMissing:", stepsMissing
             assert(vectorLength(stepsMissing) < 1.0)
 
             maxSteps = displacement_vector_steps_B
@@ -2589,16 +2589,16 @@ class Advance (object):
 
             for dim in [X_AXIS, Y_AXIS]:
                 maxSteps[dim] += stepsMissing[dim]
-            print "adjusted steps: ", maxSteps
+            # print "adjusted steps: ", maxSteps
 
         if ta:
 
-            print "dim E moves %f steps while accelerating" % parentMove.advanceData.startESteps
+            # print "dim E moves %f steps while accelerating" % parentMove.advanceData.startESteps
             displacement_vector_steps_A[A_AXIS] += parentMove.advanceData.startESteps
 
         if tl:
 
-            print "dim E moves %f steps in linear phase" % parentMove.advanceData.linESteps
+            # print "dim E moves %f steps in linear phase" % parentMove.advanceData.linESteps
             displacement_vector_steps_A[A_AXIS] += parentMove.advanceData.linESteps
 
         ####################################################################################
@@ -2649,7 +2649,7 @@ class Advance (object):
             moveB = SubMove(parentMove, parentMove.moveNumber + 2, displacement_vector_steps_B)
             moveB.setDuration(0, 0, parentMove.advanceData.tdc)
 
-            sv = topSpeed
+            sv = topSpeed.copy()
             sv.setESpeed(parentMove.advanceData.endEReachedFeedrate())
             ev = parentMove.advanceData.crossingSpeed.copy()
             ev.eSpeed = 0
