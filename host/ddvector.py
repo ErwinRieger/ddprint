@@ -344,7 +344,6 @@ class VelocityVector32(object):
         object.__setattr__(self, attr, val)
 
     def setESpeed(self, eSpeed):
-
         self.eSpeed = eSpeed
 
     def copy(self):
