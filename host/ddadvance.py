@@ -1880,9 +1880,23 @@ class Advance (object):
         # Zwei gegenläufige bewegungen bezüglich der beschleunigung. Während
         # XYZ abbremst wird die E achse (negativ) beschleunigt.
 
-        ta = move.accelTime()
-        tl = move.linearTime()
-        td = move.decelTime()
+        # Round step values
+        dispF = move.displacement_vector_steps_raw3 + [move.eSteps, 0.0]
+        dispS = self.planner.stepRounders.round(dispF)
+
+        self.moveEsteps -= move.eSteps
+        # print "planCrossedDecelSteps(): moveEsteps-: %7.3f %7.3f" % (move.eSteps, dispS[A_AXIS])
+
+        if dispS == emptyVector5:
+       
+            if debugAdvance:
+                print "Empty move..."
+                print "***** End planCrossedDecelSteps() *****"
+
+            self.planner.stepRounders.rollback()
+            return False
+
+        self.planner.stepRounders.commit()
 
         topSpeed =  move.topSpeed.speed()
         topSpeedS = topSpeed.feedrate3()
@@ -1893,28 +1907,7 @@ class Advance (object):
         endSpeedE = endSpeed.eSpeed
 
         # Some sanity tests
-        assert(ta == 0)
-        assert(tl == 0)
-        assert(td > 0)
         assert(abs(topSpeedE) < abs(endSpeedE)) # E should be accelerating
-
-        # Round step values
-        dispF = move.displacement_vector_steps_raw3 + [move.eSteps, 0.0]
-        dispS = self.planner.stepRounders.round(dispF)
-
-        self.moveEsteps -= move.eSteps
-        # print "planCrossedDecelSteps(): moveEsteps-: %7.3f %7.3f" % (move.eSteps, dispS[A_AXIS])
-
-        if dispS == emptyVector5:
-        
-            if debugAdvance:
-                print "Empty move..."
-                print "***** End planCrossedDecelSteps() *****"
-
-            self.planner.stepRounders.rollback()
-            return False
-
-        self.planner.stepRounders.commit()
 
         # print "topSpeedS > endSpeedS:", topSpeedS> endSpeedS
         assert(topSpeedS > endSpeedS) # XYZ should be decelerating
@@ -1929,8 +1922,6 @@ class Advance (object):
             self.planner.curDirBits = dirBits
 
         leadAxisxy = move.leadAxis(nAxes = 2, disp=dispS)
-        leadAxis_stepsxy = abs_displacement_vector_steps[leadAxisxy]
-        # print "lead axisxy is:", leadAxisxy, "lead steps:", leadAxis_stepsxy
 
         ############################################################################################
         #
@@ -1973,14 +1964,9 @@ class Advance (object):
             abs(move.endAccel.accel(leadAxisxy)),
             abs_displacement_vector_steps)
 
-        if debugAdvance:
-            print "Generated %d/%d XY steps" % (len(xyClocks), leadAxis_stepsxy)
-
         ############################################################################################
 
-        # tv75khz = int(fTimer / 100000.0)
-        # print "Timer value of a 75khz stepper: %d" % tv75khz
-        tv75khz = self.planner.minTimerValue / 2.0
+        # tv75khz = self.planner.minTimerValue / 2.0
         tv75khz = 25 # xxx hardcoded
 
         # print "tv75khz: ", tv75khz, self.planner.minTimerValue 
@@ -2113,28 +2099,14 @@ class Advance (object):
             tvsum += tv
 
             # Sanity check
-            ts = 0
-            for t in tvIndex:
-                stepDesc = tMap[t]
-
-                assert(stepDesc.ttv == ts)
-                assert(stepDesc.tv >= tv75khz)
-                ts += stepDesc.tv
+            if debugAdvance:
+                ts = 0
+                for t in tvIndex:
+                    stepDesc = tMap[t]
+                    assert(stepDesc.ttv == ts)
+                    assert(stepDesc.tv >= tv75khz)
+                    ts += stepDesc.tv
             # End sanity check
-
-        # Sanity check
-        # print t+stepDesc.tv, tvsum
-        # assert(t+stepDesc.tv == tvsum)
-        # End sanity check
-
-            # print "other tMap:", otherAxis
-            # pprint.pprint(tvIndex)
-            # pprint.pprint(tMap)
-
-        # if move.moveNumber == 9713:
-            # assert(1)
-
-        assert((leadAxis_stepsxy + eStepsToMove) == (len(tvIndex) + nMerges))
 
         for ttv in tvIndex:
 
@@ -2144,6 +2116,11 @@ class Advance (object):
         assert(len(tvIndex) == len(move.stepData.pulses))
 
         if debugAdvance:
+        
+            leadAxis_stepsxy = abs_displacement_vector_steps[leadAxisxy]
+            print "Generated %d/%d XY steps" % (len(xyClocks), leadAxis_stepsxy)
+            assert((leadAxis_stepsxy + eStepsToMove) == (len(tvIndex) + nMerges))
+
             move.pprint("planCrossedDecelSteps:")
             print "***** End planCrossedDecelSteps() *****"
 
