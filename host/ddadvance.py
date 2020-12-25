@@ -24,10 +24,10 @@ from argparse import Namespace
 
 from ddprintconstants import *
 from ddconfig import *
-from ddvector import VelocityVector32, vectorAdd, vectorSub, vectorLength, vectorAbs
+from ddvector import vectorAdd, vectorSub, vectorLength, vectorAbs
 
 import ddprintutil as util
-import math, collections
+import math
 import pprint
 
 #####################################################################
@@ -111,8 +111,6 @@ def eJerk(kAdv, accel):
 #####################################################################
 
 class Advance (object):
-
-    __single = None 
 
     def __init__(self, planner, args): # , gui=None):
 
@@ -284,18 +282,7 @@ class Advance (object):
             for move in path:
 
                 v = move.topSpeed.speed()
-                # xxx hack
-                # f = avgRate / v.eSpeed
                 f = min(avgRate / v.eSpeed, 10)
-
-                # scaledTopSpeed = v.scale(f)
-                # print type(scaledTopSpeed)
-                # topSpeed = scaledTopSpeed.constrain(self.maxFeedrateVector) or scaledTopSpeed
-                # print "Scale factor:", f, "topSpeed: ", topSpeed
-
-                # move.startSpeed.setSpeed(topSpeed, "planPath - Smooth FlowRate")
-                # move.topSpeed.setSpeed(topSpeed, "planPath - Smooth FlowRate")
-                # move.endSpeed.setSpeed(topSpeed, "planPath - Smooth FlowRate")
 
                 move.startSpeed.setSpeed(v.scale(f), "planPath - Smooth FlowRate")
                 move.topSpeed.setSpeed(v.scale(f), "planPath - Smooth FlowRate")
@@ -2272,8 +2259,6 @@ class Advance (object):
         if debugAdvance:
             print "***** End planStepsAdvSA() *****"
 
-        #  assert(vectorAdd(displacement_vector_steps_A[:3], displacement_vector_steps_B[:3]) == displacement_vector_steps_raw[:3])
-
         xyzStepSum = vectorAdd(displacement_vector_steps_A[:3], displacement_vector_steps_B[:3])
         stepsMissing = vectorSub(displacement_vector_steps_raw[:3], xyzStepSum)
         # print "stepsMissing:", stepsMissing
@@ -2508,7 +2493,7 @@ class Advance (object):
 
         moveA.setSpeeds(sv, tv, tv)
 
-        sv = parentMove.topSpeed.speed().copy() # xxx save this copy?
+        sv = parentMove.topSpeed.speed().copy()
         sv.setESpeed(parentMove.advanceData.endEReachedFeedrate())
 
         ev = parentMove.endSpeed.speed().copy()
