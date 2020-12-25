@@ -27,7 +27,7 @@ logging.basicConfig(level=logging.DEBUG)
 import ddprintutil as util, gcodeparser, packedvalue, ddhome
 import ddtest
 
-from ddplanner import Planner, initParser
+from ddplanner import Planner, initParser, initMatProfile
 from ddprinter import Printer, RxTimeout
 
 #
@@ -230,7 +230,7 @@ def main():
 
         printer = Printer()
         printer.commandInit(args)
-        matProfile = util.initMatProfile(args, printer.getPrinterName())
+        matProfile = initMatProfile(args, printer.getPrinterName())
         util.measureHotendStepResponse(args, printer, matProfile)
 
     elif args.mode == 'bootBootloader':
@@ -362,7 +362,7 @@ def main():
 
         printer = Printer()
         printer.commandInit(args, pidSet="pidMeasure")
-        matProfile = util.initMatProfile(args, printer.getPrinterName())
+        matProfile = initMatProfile(args, printer.getPrinterName())
         util.heatHotend(args, matProfile, printer)
 
     elif args.mode == 'getendstops':
