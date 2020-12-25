@@ -167,12 +167,6 @@ class Advance (object):
 
         self.e_steps_per_mm = planner.printer.printerProfile.getStepsPerMMI(A_AXIS)
 
-        # Compute minimal e speed
-        # maxStepTime = maxTimerValue16 / fTimer
-        # v = (1.0/self.e_steps_per_mm) / maxStepTime
-        # self.minESpeed = v * 1.1 # savety margin for rounding errors
-        # print "min e-speed", self.minESpeed
-
         self.maxEFeedrate = self.printer.printerProfile.getMaxFeedrateI(A_AXIS)
         self.maxFeedrateVector = self.printer.printerProfile.getMaxFeedrateVectorI()
 
@@ -2242,14 +2236,10 @@ class Advance (object):
 
         moveA.setDuration(ta, 0, 0)
 
-        # sv = startSpeed.vv()
-        # sv[A_AXIS] = parentMove.advanceData.startEFeedrate()
-        sv = parentMove.startSpeed.speed()
+        sv = parentMove.startSpeed.speed().copy()
         sv.setESpeed(parentMove.advanceData.startEFeedrate())
 
-        # tv = topSpeed.vv()
-        # tv[A_AXIS] = parentMove.advanceData.startEReachedFeedrate()
-        tv = parentMove.topSpeed.speed()
+        tv = parentMove.topSpeed.speed().copy()
         tv.setESpeed(parentMove.advanceData.startEReachedFeedrate())
 
         moveA.setSpeeds(sv, tv, tv)
@@ -2367,14 +2357,10 @@ class Advance (object):
 
         moveB.setDuration(0, 0, td)
 
-        # sv = topSpeed.vv()
-        # sv[A_AXIS] = parentMove.advanceData.endEReachedFeedrate()
-        sv = parentMove.topSpeed.speed()
+        sv = parentMove.topSpeed.speed().copy()
         sv.setESpeed(parentMove.advanceData.endEReachedFeedrate())
 
-        # ev = endSpeed.vv()
-        # ev[A_AXIS] = parentMove.advanceData.endEFeedrate()
-        ev = parentMove.endSpeed.speed()
+        ev = parentMove.endSpeed.speed().copy()
         ev.setESpeed(parentMove.advanceData.endEFeedrate())
 
         moveB.setSpeeds(sv, sv, ev)
@@ -2514,16 +2500,20 @@ class Advance (object):
         moveA.setDuration(ta, 0, 0)
         moveC.setDuration(0, 0, td)
 
-        sv = parentMove.startSpeed.speed()
+        sv = parentMove.startSpeed.speed().copy()
         sv.setESpeed(parentMove.advanceData.startEFeedrate())
-        tv = parentMove.topSpeed.speed()
+
+        tv = parentMove.topSpeed.speed().copy()
         tv.setESpeed(parentMove.advanceData.startEReachedFeedrate())
+
         moveA.setSpeeds(sv, tv, tv)
 
-        sv = parentMove.topSpeed.speed()
+        sv = parentMove.topSpeed.speed().copy() # xxx save this copy?
         sv.setESpeed(parentMove.advanceData.endEReachedFeedrate())
-        ev = parentMove.endSpeed.speed()
+
+        ev = parentMove.endSpeed.speed().copy()
         ev.setESpeed(parentMove.advanceData.endEFeedrate())
+
         moveC.setSpeeds(sv, sv, ev)
 
         if tl:
@@ -2673,8 +2663,8 @@ class Advance (object):
         moveC.setDuration(0, 0, parentMove.advanceData.tdd)
 
         sv = parentMove.advanceData.crossingSpeed.copy()
-        sv.eSpeed = 0
-        ev = endSpeed
+        sv.setESpeed(0)
+        ev = endSpeed.copy()
         ev.setESpeed(parentMove.advanceData.endEFeedrate())
         moveC.setSpeeds(sv, sv, ev)
 
@@ -2708,7 +2698,7 @@ class Advance (object):
             sv = topSpeed.copy()
             sv.setESpeed(parentMove.advanceData.endEReachedFeedrate())
             ev = parentMove.advanceData.crossingSpeed.copy()
-            ev.eSpeed = 0
+            ev.setESpeed(0)
             moveB.setSpeeds(sv, sv, ev)
 
             newMoves.insert(-1, moveB)
@@ -2862,9 +2852,9 @@ class Advance (object):
         # newMoves = [moveA, moveC, moveD]
         newMoves = [moveA]
 
-        sv = parentMove.startSpeed.speed()
+        sv = parentMove.startSpeed.speed().copy()
         sv.setESpeed(parentMove.advanceData.startEFeedrate())
-        tv = parentMove.topSpeed.speed()
+        tv = parentMove.topSpeed.speed().copy()
         tv.setESpeed(parentMove.advanceData.startEReachedFeedrate())
         moveA.setSpeeds(sv, tv, tv)
 
@@ -2875,15 +2865,15 @@ class Advance (object):
 
             newMoves.append(moveC)
 
-            sv = parentMove.topSpeed.speed()
+            sv = parentMove.topSpeed.speed().copy()
             sv.setESpeed(parentMove.advanceData.endEReachedFeedrate())
             ev = parentMove.advanceData.crossingSpeed.copy()
-            ev.eSpeed = 0
+            ev.setESpeed(0)
             moveC.setSpeeds(sv, sv, ev)
 
         sv = parentMove.advanceData.crossingSpeed.copy()
         sv.setESpeed(0)
-        ev = parentMove.endSpeed.speed()
+        ev = parentMove.endSpeed.speed().copy()
         ev.setESpeed(parentMove.advanceData.endEFeedrate())
         moveD.setSpeeds(sv, sv, ev)
 
