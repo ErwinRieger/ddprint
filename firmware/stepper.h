@@ -737,8 +737,11 @@ class StepBuffer: public StepBufferBase {
         FWINLINE void runContinuosSteps() {
 
             HAL_SET_HOMING_TIMER(continuosTimer);
-            massert(0); 
-            // st_step_motor<EAxisSelector>(st_get_move_bit_mask<EAxisSelector>(), st_get_move_bit_mask<EAxisSelector>());
+            st_step_motor<EAxisSelector>(st_get_move_bit_mask<EAxisSelector>(), st_get_move_bit_mask<EAxisSelector>());
+            #if defined(STEPPER_MINPULSE)
+                delayMicroseconds(STEPPER_MINPULSE);
+            #endif
+            st_deactivate_pin<EAxisSelector>(st_get_move_bit_mask<EAxisSelector>());
         }
 
 };

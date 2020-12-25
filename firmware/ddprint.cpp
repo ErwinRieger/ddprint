@@ -2371,7 +2371,7 @@ unzipper.Restart()
                 }
 
                 #if defined(HEAVYDEBUG)
-                massert(serialPort.size() == bytesLeft);
+                massert(serialPort.size() >= bytesLeft);
                 #endif
 
                 serialPort.ringBufferInit(); // clear rx buffer
