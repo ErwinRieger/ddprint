@@ -441,7 +441,7 @@ class Printer(Serial):
             self.commandInitDone = True
             return 
 
-        assert(pidSet=="pidMeasure")
+        # assert(pidSet=="pidMeasure")
 
         settings = self.printerProfile.getSettingsI(pidSet)
 
