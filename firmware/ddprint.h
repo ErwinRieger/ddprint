@@ -134,7 +134,7 @@ class Printer {
         void cmdGetHomed();
         void cmdGetEndstops();
         void cmdGetPos();
-        void cmdSetPIDValues(float kp, float ki, float kd, uint16_t Tu);
+        void cmdSetPIDValues(float kp, float ki, float kd, float kpC, float kiC, float kdC, uint16_t Tu);
         void cmdSetStepsPerMM(uint16_t spmmX, uint16_t spmmY, uint16_t spmmZ);
         void cmdFanSpeed(uint8_t speed, uint8_t blipTime);
         void cmdContinuousE(uint16_t timerValue);

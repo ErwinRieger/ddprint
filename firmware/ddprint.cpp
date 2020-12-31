@@ -1370,9 +1370,9 @@ void Printer::cmdGetFSReadings(uint8_t nReadings) {
     txBuffer.sendResponseEnd();
 }
 
-void Printer::cmdSetPIDValues(float kp, float ki, float kd, uint16_t tu) {
+void Printer::cmdSetPIDValues(float kp, float ki, float kd, float kpC, float kiC, float kdC, uint16_t tu) {
 
-    tempControl.setPIDValues(kp, ki, kd);
+    tempControl.setPIDValues(kp, ki, kd, kpC, kiC, kdC);
     Tu = tu;
 }
 
@@ -2317,8 +2317,11 @@ unzipper.Restart()
                             float Kp = serialPort.readFloatNoCheckCobs();
                             float Ki = serialPort.readFloatNoCheckCobs();
                             float Kd = serialPort.readFloatNoCheckCobs();
+                            float KpC = serialPort.readFloatNoCheckCobs();
+                            float KiC = serialPort.readFloatNoCheckCobs();
+                            float KdC = serialPort.readFloatNoCheckCobs();
                             uint16_t Tu = serialPort.readUInt16NoCheckCobs();
-                            printer.cmdSetPIDValues(Kp, Ki, Kd, Tu);
+                            printer.cmdSetPIDValues(Kp, Ki, Kd, KpC, KiC, KdC, Tu);
                             txBuffer.sendACK();
                         }
                         break;

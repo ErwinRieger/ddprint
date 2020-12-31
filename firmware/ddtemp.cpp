@@ -33,8 +33,48 @@
 // this gives us about 10khz max. sampling rate (one conversion is ~100 uS).
 //
 
+// T-Sum method PID parameters (fast):
+// static struct PidSet pidSetHeating = { 0.6334, 0.0071, 0.0293 };
+// T-Sum method PI (fast)
+// static struct PidSet pidSetHeating = { 0.3167, 0.0041, 0 };
+
+// Chien aperiodisch PID, gute führung:
+// static struct PidSet pidSetHeating = { 3.5432, 0.0349, 1.3030 };
+
+// Ziegler PID 1.2:
+// static struct PidSet pidSetHeating = { 6.4368, 0.6008, 2.4034 };
+// Ziegler PI
+// static struct PidSet pidSetHeating = { 5.3148, 0.2935, 0.0 };
+
+
+
+
+// static struct PidSet pidSetCooling = { 0.6334, 0.0071, 0.0293 };
+// static struct PidSet pidSetCooling = { 0.3167, 0.0041, 0 };
+
+// static struct PidSet pidSetCooling = { 3.5432, 0.0349, 1.3030 };
+
+// static struct PidSet pidSetCooling = { 6.4368, 0.6008, 2.4034 };
+// static struct PidSet pidSetCooling = { 5.3148, 0.2935, 0.0 };
+
+
+
 // Redundant definitions to avoid include of ddprint.h
 extern void kill();
+
+TempControl::TempControl():
+            avgBedTemp(HEATER_0_MINTEMP),
+            avgHotendTemp(HEATER_1_MINTEMP),
+            // Kp(1.0),
+            // Ki(0.1),
+            // Kd(1.0),
+            curPidSet(&pidSetHeating),
+            pwmValueOverride(0),
+            antiWindupMode(false),
+            pidSetHeating({1, 0.1, 0.1}),
+            pidSetCooling({1, 0.1, 0.1}),
+            suggestPwm(0)
+            {};
 
 void TempControl::init() {
 
@@ -42,9 +82,9 @@ void TempControl::init() {
 
     eSum = 0;
     eAlt = 0;
+    dTerm = 0;
     pwmMode = false;
 
-    // cobias = 0;
     pid_output = 0;
 
     //
@@ -55,12 +95,7 @@ void TempControl::init() {
     for (uint8_t e=0; e<EXTRUDERS; e++)
         current_temperature[e] = HEATER_1_MINTEMP;
 
-    // isum begrenzen auf max. 255 output
-    //
-    // Ki * pid_dt * eSum = iTerm < 255
-    // eSummax = 255 / (Ki * pid_dt)
-    //
-    eSumLimit = 255.0 / ((Ki * TIMER100MS) / 1000.0);
+    setPidSet(&pidSetHeating, 0.0, 1.0);
 }
 
 void TempControl::setTemp(uint8_t heater, uint16_t temp) {
@@ -82,10 +117,8 @@ void TempControl::setTemp(uint8_t heater, uint16_t temp) {
         // we switch "from manual mode to automatic".
         if (target_temperature[heater-1] == 0) {
             eSum = 0;
+            dTerm = 0;
         }
-
-        // if (pwmMode && (temp < target_temperature[heater-1]))
-            // eSum = 0;
 
         target_temperature[heater-1] = temp;
 
@@ -93,9 +126,39 @@ void TempControl::setTemp(uint8_t heater, uint16_t temp) {
         if (temp < 50) {
             suggestPwm = 0;
         }
-
-        // eAlt = 0;
     }
+}
+
+void TempControl::choosePidSet(float e, float pid_dt) {
+
+    if (e > 0) {
+        // temp to low, use fast pid
+        if (curPidSet != &pidSetHeating) {
+            setPidSet(&pidSetHeating, e, pid_dt);
+        }
+    }
+    else {
+        // temp to high, use slow pid
+        if (curPidSet != &pidSetCooling) {
+            setPidSet(&pidSetCooling, e, pid_dt);
+        }
+    }
+}
+
+void TempControl::setPidSet(struct PidSet *pidSet, float e, float pid_dt) {
+
+    float pTermOld = curPidSet->Kp * e;
+    float iTermOld = curPidSet->Ki * pid_dt * eSum;
+
+    float pTermNew = pidSet->Kp * e;
+    float iTermNew = pidSet->Ki * pid_dt * eSum;
+
+    // iTerm = curPidSet->Ki * pid_dt * eSum;
+    eSum += ((pTermOld-pTermNew) + (iTermOld-iTermNew)) / (pidSet->Ki * pid_dt);
+    
+    curPidSet = pidSet;
+
+    eSumLimit = 255.0 / ((pidSet->Ki * TIMER100MS) / 1000.0);
 }
 
 void TempControl::heater() {
@@ -129,22 +192,26 @@ void TempControl::heater() {
                 // Regeldifferenz, grösser 0 falls temperatur zu klein
                 float e = target_temperature[0] - current_temperature[0];
 
-                float pTerm = Kp * e;
+                choosePidSet(e, pid_dt);
 
-                float dTerm = Kd * (e - eAlt) / pid_dt;
+                float pTerm = curPidSet->Kp * e;
+
+                // float dTerm = curPidSet->Kd * (e - eAlt) / pid_dt;
+                dTerm += curPidSet->Kd * (e - eAlt) / pid_dt;
 
                 if (! antiWindupMode) {
 
                     float newEsum;
-
+#if 0
                     if ((e > 2.5) && (pid_output < suggestPwm)) {           // xxxx avoid to often disturb pid with suggest pid XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
                         // temp to low
-                        newEsum = (suggestPwm - (pTerm+dTerm)) / (Ki * pid_dt);
+                        newEsum = (suggestPwm - (pTerm+dTerm)) / (curPidSet->Ki * pid_dt);
                         suggestPwm = 0;
                     }
                     else {
+#endif
                         newEsum = eSum + e;
-                    }
+                    // }
 
                     eSum = constrain(
                         newEsum,
@@ -152,10 +219,27 @@ void TempControl::heater() {
                         eSumLimit);
                 }
 
-                float iTerm = Ki * pid_dt * eSum;
+                float iTerm = curPidSet->Ki * pid_dt * eSum;
 
-                // int32_t pid_output = cobias + pTerm + iTerm + dTerm + 0.5;
-                pid_output = pTerm + iTerm + dTerm + 0.5;
+                float out = pTerm + iTerm;
+
+                if (dTerm > 0) {
+                    if (out < PID_MAX) {
+                        float d = min(dTerm, PID_MAX-out);
+                        out += d;
+                        dTerm -= d;
+                    }
+                }
+                else {
+                    if (out > 0) {
+                        float d = min(abs(dTerm), out);
+                        out -= d;
+                        dTerm += d;
+                    }
+                }
+
+                // pid_output = pTerm + iTerm + dTerm + 0.5;
+                pid_output = out + dTerm + 0.5;
 
                 if (pid_output > PID_MAX) {
                     pid_output = PID_MAX;
@@ -251,6 +335,17 @@ void TempControl::hotendOn(uint8_t heater) {
         HEATER_0_PIN :: write(255);
     else
         HEATER_1_PIN :: write(255);
+}
+
+void TempControl::setPIDValues(float kp, float ki, float kd, float kpC, float kiC, float kdC) {
+
+    pidSetHeating.Kp = kp;
+    pidSetHeating.Ki = ki;
+    pidSetHeating.Kd = kd;
+
+    pidSetCooling.Kp = kpC;
+    pidSetCooling.Ki = kiC;
+    pidSetCooling.Kd = kdC;
 }
 
 TempControl tempControl;

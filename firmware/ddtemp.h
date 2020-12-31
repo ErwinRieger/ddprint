@@ -26,73 +26,76 @@
 
 // Window size running average of temperature.
 // Poll rate is 10ms (see ddprint.cpp).
-#define RAVGWINDOW 100
+#define RAVGWINDOW 25
 
 // To smooth tempsensor readings.
 class RunningAvgF {
 
-    // float values; // [RAVGWINDOW];
-    // uint8_t i;
-    // uint8_t n;
+    float values[RAVGWINDOW];
+    uint8_t i;
+    uint8_t n;
     float avg;
 
   public:
 
     RunningAvgF(float startValue) {
-        // i = n = 0;
-        // avg = 0;
+        i = 0;
+        avg = 0;
 
-        // for (uint8_t j=0; j<RAVGWINDOW; j++)
-            // values[j] = startValue;
-            avg = startValue;
+        for (uint8_t j=0; j<RAVGWINDOW; j++)
+            values[j] = startValue;
+
+        avg = startValue;
     }
 
     inline void addValue(float v) {
 
-        avg = (avg * (RAVGWINDOW-1) + v) /RAVGWINDOW;
-
 #if 0
+        avg = (avg * (RAVGWINDOW-1) + v) /RAVGWINDOW;
+#endif
+
         values[i++] = v;
         if (i == RAVGWINDOW)
             i = 0;
-        if (n < RAVGWINDOW)
-            n++;
 
         float sum = 0;
-        for (uint8_t j=0; j<n; j++)
+        for (uint8_t j=0; j<RAVGWINDOW; j++)
             sum += values[j];
-        avg = sum / n;
-#endif
-
+        avg = sum / RAVGWINDOW;
     }
 
     inline float value() { return avg; }
 };
 
-class TempControl: public Protothread
-{
-    //
-    // ADC has 10 bits
-    //
-    // float raw_temp_0_value; // sum of OVERSAMPLENR ADC values
-    // float raw_temp_bed_value; // sum of OVERSAMPLENR ADC values
-    RunningAvgF avgBedTemp;
-    RunningAvgF avgHotendTemp;
 
+
+
+
+struct PidSet {
     // PID values from host printerprofile
     float Kp;
     float Ki;
     float Kd;
+};
+
+class TempControl: public Protothread
+{
+    RunningAvgF avgBedTemp;
+    RunningAvgF avgHotendTemp;
+
+    // PID values from host printerprofile
+    // float Kp;
+    // float Ki;
+    // float Kd;
+    struct PidSet *curPidSet;
 
     // Timestamp of last pid computation
     unsigned long lastPidCompute;
 
     float eSum; // For I-Part
     float eAlt; // For D-Part
+    float dTerm;
 
-    // Running sum of pwm output values to handle clipping
-    float pwmSum;
-    // int32_t cobias;
     int32_t pid_output;
 
     bool pwmMode;
@@ -106,42 +109,29 @@ class TempControl: public Protothread
 
     bool antiWindupMode;
 
+        struct PidSet pidSetHeating;
+        struct PidSet pidSetCooling;
+
     public:
 
         // xxx todo setter
         uint8_t suggestPwm;
 
-        TempControl():
-            avgBedTemp(HEATER_0_MINTEMP),
-            avgHotendTemp(HEATER_1_MINTEMP),
-            Kp(1.0),
-            Ki(0.1),
-            Kd(1.0),
-            pwmValueOverride(0),
-            antiWindupMode(false),
-            suggestPwm(0)
-            {};
+        TempControl();
         void init();
         virtual bool Run();
         void setTemp(uint8_t heater, uint16_t newTarget);
+
+        void choosePidSet(float e, float pid_dt);
+        void setPidSet(struct PidSet *pidSet, float e, float pid_dt);
+
         void heater();
         // Set heater PWM value directly for PID AutoTune
         // and filament measurements
         void setTempPWM(uint8_t heater, uint8_t pwmValue);
         void hotendOn(uint8_t heater);
 
-        void setPIDValues(float kp, float ki, float kd) {
-            Kp = kp;
-            Ki = ki;
-            Kd = kd;
-
-            // isum begrenzen auf max. 255 output
-            //
-            // Ki * pid_dt * eSum = iTerm < 255
-            // eSummax = 255 / (Ki * pid_dt)
-            //
-            eSumLimit = 255.0 / ((ki * TIMER100MS) / 1000.0);
-        }
+        void setPIDValues(float kp, float ki, float kd, float kpC, float kiC, float kdC);
         uint8_t getPwmOutput() { 
             if (pwmMode)
                 return pwmValueOverride;
