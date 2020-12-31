@@ -244,28 +244,34 @@ class Printer(Serial):
             msgType = ord(payload[0])
             self.gui.logComm("RespUnsolicitedMsg:", msgType)
 
-            if msgType == ExtrusionLimitDbg:
-                (tempIndex, actSpeed, targetSpeed, grip) = struct.unpack("<hhhh", payload[1:])
-                self.gui.logComm("Limit extrusion index: %d, act: %d, target: %d, grip: %d" % (tempIndex, actSpeed, targetSpeed, grip))
-            elif msgType == PidDebug:
-                (pid_dt, pTerm, iTerm, dTerm, pwmOutput, e) = struct.unpack("<ffffif", payload[1:])
-                self.gui.logComm("PidDebug: pid_dt: %f, pTerm: %f, iTerm: %f, dTerm: %f, pwmOutput: %d, e: %f" % (pid_dt, pTerm, iTerm, dTerm, pwmOutput, e))
-            elif msgType == RespSDReadError:
-                # payload: SD errorcode, SPI status byte
-                (errorCode, spiStatus) = struct.unpack("<BB", payload[1:])
-                self.gui.logError("SDReadErr: errCode: 0x%x, spiStat: 0x%x" % (errorCode, spiStatus))
-            elif msgType == FilSensorDebug:
-                # payload: deltaStepperSteps(float) deltaSensorSteps(i32) filSensorCalibration(float) slip(float) s(float)
-                (deltaStepperSteps, deltaSensorSteps, filSensorCalibration, slip, s) = struct.unpack("<fifff", payload[1:])
-                self.gui.logError("FilSensorDebug: deltaStepperSteps: %f deltaSensorSteps: %d filSensorCalibration: %f slip: %f s: %f" % (deltaStepperSteps, deltaSensorSteps, filSensorCalibration, slip, s))
-            elif msgType == GenericMessage:
-                # payload: generic message string
-                (slen,) = struct.unpack("<B", payload[1:2])
-                message = payload[2:2+slen]
-                self.gui.logComm("GenericMessage: '%s'" % message)
-            elif msgType == BufDebug:
-                (swapdev, sdreader) = struct.unpack("<II", payload[1:])
-                self.gui.logComm("BufDebug: swapdev: %d, sdreader: %d" % (swapdev, sdreader))
+            try:
+
+                if msgType == ExtrusionLimitDbg:
+                    (tempIndex, actSpeed, targetSpeed, grip) = struct.unpack("<hhhh", payload[1:])
+                    self.gui.logComm("Limit extrusion index: %d, act: %d, target: %d, grip: %d" % (tempIndex, actSpeed, targetSpeed, grip))
+                elif msgType == PidDebug:
+                    (pid_dt, pTerm, iTerm, dTerm, pwmOutput, e) = struct.unpack("<ffffif", payload[1:])
+                    self.gui.logComm("PidDebug: pid_dt: %f, pTerm: %f, iTerm: %f, dTerm: %f, pwmOutput: %d, e: %f" % (pid_dt, pTerm, iTerm, dTerm, pwmOutput, e))
+                elif msgType == RespSDReadError:
+                    # payload: SD errorcode, SPI status byte
+                    (errorCode, spiStatus) = struct.unpack("<BB", payload[1:])
+                    self.gui.logError("SDReadErr: errCode: 0x%x, spiStat: 0x%x" % (errorCode, spiStatus))
+                elif msgType == FilSensorDebug:
+                    # payload: deltaStepperSteps(float) deltaSensorSteps(i32) filSensorCalibration(float) slip(float) s(float)
+                    (deltaStepperSteps, deltaSensorSteps, filSensorCalibration, slip, s) = struct.unpack("<fifff", payload[1:])
+                    self.gui.logError("FilSensorDebug: deltaStepperSteps: %f deltaSensorSteps: %d filSensorCalibration: %f slip: %f s: %f" % (deltaStepperSteps, deltaSensorSteps, filSensorCalibration, slip, s))
+                elif msgType == GenericMessage:
+                    # payload: generic message string
+                    (slen,) = struct.unpack("<B", payload[1:2])
+                    message = payload[2:2+slen]
+                    self.gui.logComm("GenericMessage: '%s'" % message)
+                elif msgType == BufDebug:
+                    (swapdev, sdreader) = struct.unpack("<II", payload[1:])
+                    self.gui.logComm("BufDebug: swapdev: %d, sdreader: %d" % (swapdev, sdreader))
+
+            except struct.error:
+                self.gui.logComm("handleUnsolicitedMsg: warning, error unpacking struct! Len data: %d" % len(payload))
+
             return True # consume message
 
         return False # continue message processing

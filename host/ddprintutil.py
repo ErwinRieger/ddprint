@@ -1280,17 +1280,10 @@ def changeNozzle(args, parser):
 #
 # Measure closed loop step-response of the hotend and plot it with gnuplot.
 # Do three setpoint changes: the first is from current temperature to args.t1 or 200 °C, then
-# after reaching this first set temperature a step upwards to 120%, then a downward step to 90% of
-# the first temperature is done.
+# after reaching this first set temperature a step upwards to 120%, then a downward step to 50% of
+# the first temperature (to test a bigger downward temp change, *asymmetric gain*) is done.
 #
-def stepResponse(args, parser):
-
-    assert(0) # todo: transition to printer.printerProfile...
-
-    assert(broken_temp_curve)
-
-    planner = parser.planner
-    printer = planner.printer
+def stepResponse(args, printer):
 
     def stopHeater():
         printer.coolDown(HeaterEx1)
@@ -1299,20 +1292,17 @@ def stepResponse(args, parser):
     # Destination temperature
     tDest1 = args.t1 or 200
     tDest2 = int(round(tDest1 * 1.2))
-    tDest3 = int(round(tDest1 * 0.9))
+    tDest3 = tDest1
     assert(tDest1 <= 275)
 
     # Bail out if tmax reached
     tmax = tDest1 * 1.5
 
-    printer.commandInit(args, PrinterProfile.getSettings())
+    timeConstant = int(printer.printerProfile.getTuI()) * 4
 
     # Open output gnuplot file
     f = open("stepresponse_closed.gnuplot", "w")
 
-    # f.write("# Kp: %f\n" % es["Kp"])
-    # f.write("# Ki: %f\n" % es["Ki"])
-    # f.write("# Kd: %f\n" % es["Kd"])
     f.write("set yrange [0:%d]\n" % tmax)
     f.write("set grid\n")
     f.write("plot \"-\" using 1:2 with linespoints title \"StepResponse\",")
@@ -1320,7 +1310,7 @@ def stepResponse(args, parser):
 
     # Do the first step
     print "Starting input step to %d °" % tDest1
-    printer.heatUp(HeaterEx1, tDest1)
+    # printer.heatUp(HeaterEx1, tDest1)
     printer.sendCommandParamV(CmdFanSpeed, [packedvalue.uint8_t(100)])
 
     timeStart = time.time()
@@ -1330,139 +1320,54 @@ def stepResponse(args, parser):
     print "Temp:", tempStart
     f.write("0 %f\n" % tempStart)
 
-    lastTime = timeStart 
-    lastTemp = tempStart
+    temp = tempStart
 
-    # Build 60 second average of the temperature change derivation
-    nAvg = 60
-    aAvg = nAvg * 1.0
+    for tDest in (tDest1, tDest2, tDest3):
 
-    # Stop if temp curve gets flat enough
-    wait = 60
-    flatReached = False
-    while wait:
+        tempAvg = movingavg.MovingAvg( timeConstant )
+
+        # Stop if temp curve gets flat enough
+        flatReached = False
+
+        # Do the n-th temperature step
+        print "Setting input step to %d °" % tDest
+        printer.heatUp(HeaterEx1, tDest)
+        # tempRamp = printer.heatUpRamp(HeaterEx1, tDest)
+
+        while True:
         
-        if lastTemp > tmax:
-            print "Error, max temp (%d) reached: " % tmax, lastTemp
-            stopHeater()
-            return
+            if temp > tmax:
+                print "Error, max temp (%d) reached: " % tmax, temp
+                # stopHeater()
+                # return
 
-        time.sleep(1)
+            time.sleep(1)
 
-        tim = time.time()
-        status = printer.getStatus()
-        temp = status["t1"]
+            # try:
+                # print "temp ramp..."
+                # tempRamp.next()
+            # except StopIteration:
+                # print "\ntemp reached...\n"
 
-        relTime = tim-timeStart
+            tim = time.time()
+            relTime = tim-timeStart
 
-        f.write("%f %f\n" % (relTime, temp))
+            status = printer.getStatus()
 
-        dy = temp - lastTemp
-        dx = tim - lastTime
+            print "\ntemp: %.2f/%.2f, avg: %.2f, pwm: %d\n" % (temp, tDest, tempAvg.mean(), status["pwmOutput"])
 
-        a = dy / dx
-        print "Temp:", temp, "Wait:", wait
+            temp = status["t1"]
 
-        aAvg = aAvg - (aAvg/nAvg) + a
-        print "Steigung: %7.4f %7.4f" % (a, aAvg/nAvg)
+            tempAvg.add(temp)
 
-        if abs((aAvg/nAvg)) < 0.2 and not flatReached:
-            flatReached = True
+            f.write("%f %f\n" % (relTime, temp))
 
-        if flatReached:
-            wait -= 1
+            if tempAvg.valid() and tempAvg.near(0.05, tDest):
+                print "Temp is in 5% range, this temp done..."
+                break
 
-        lastTime = tim
-        lastTemp = temp
-        
-    # Do the second step
-    print "Starting input step to %d °" % tDest2
-    printer.heatUp(HeaterEx1, tDest2)
+        # Do the second step...
 
-    aAvg = nAvg * 1.0
-
-    # Stop if temp curve gets flat enough
-    wait = 20
-    flatReached = False
-    while wait:
-        
-        if lastTemp > tmax:
-            print "Error, max temp (%d) reached: " % tmax, lastTemp
-            stopHeater()
-            return
-
-        time.sleep(1)
-
-        tim = time.time()
-        status = printer.getStatus()
-        temp = status["t1"]
-
-        relTime = tim-timeStart
-
-        f.write("%f %f\n" % (relTime, temp))
-
-        dy = temp - lastTemp
-        dx = tim - lastTime
-
-        a = dy / dx
-        print "Temp:", temp, "Wait:", wait
-
-        aAvg = aAvg - (aAvg/nAvg) + a
-        print "Steigung: %7.4f %7.4f" % (a, aAvg/nAvg)
-
-        if abs((aAvg/nAvg)) < 0.25 and not flatReached:
-            flatReached = True
-
-        if flatReached:
-            wait -= 1
-
-        lastTime = tim
-        lastTemp = temp
-        
-    # Do the third step
-    print "Starting input step to %d °" % tDest3
-    printer.heatUp(HeaterEx1, tDest3)
-
-    aAvg = nAvg * 1.0
-
-    # Stop if temp curve gets flat enough
-    wait = 20
-    flatReached = False
-    while wait:
-        
-        if lastTemp > tmax:
-            print "Error, max temp (%d) reached: " % tmax, lastTemp
-            stopHeater()
-            return
-
-        time.sleep(1)
-
-        tim = time.time()
-        status = printer.getStatus()
-        temp = status["t1"]
-
-        relTime = tim-timeStart
-
-        f.write("%f %f\n" % (relTime, temp))
-
-        dy = temp - lastTemp
-        dx = tim - lastTime
-
-        a = dy / dx
-        print "Temp:", temp, "Wait:", wait
-
-        aAvg = aAvg - (aAvg/nAvg) + a
-        print "Steigung: %7.4f %7.4f" % (a, aAvg/nAvg)
-
-        if abs((aAvg/nAvg)) < 0.25 and not flatReached:
-            flatReached = True
-
-        if flatReached:
-            wait -= 1
-
-        lastTime = tim
-        lastTemp = temp
-        
     f.write("e\npause mouse close\n")
     stopHeater()
 

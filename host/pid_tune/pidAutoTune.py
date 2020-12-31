@@ -2,7 +2,7 @@
 # encoding: utf-8 
 #
 #/*
-# This file is part of ddprint - a direct drive 3D printer firmware.
+# This file is part of ddprint - a 3D printer firmware.
 # 
 # Copyright 2017 erwin.rieger@ibrieger.de
 # 
@@ -134,6 +134,12 @@ Tu = (Tu1+Tu2+ttu)/3.0
 print "Tu:", Tu
 print "Tg:", Tg
 
+print "\nZiegler PI:"
+Kr = (0.9 / Ks) * (Tg / Tu)
+Tn = 3.33 * Tu 
+print '"Kp": %.4f,' % Kr
+print '"Ki": %.4f,' % (Kr / Tn)
+
 print "\nZiegler PID 1.2:"
 Kr = (1.2 / Ks) * (Tg / Tu)
 Tn = 2.0 * Tu 
@@ -179,6 +185,13 @@ Tv = 0.194 * tSum
 print '"Kp": %.4f,' % Kr
 print '"Ki": %.4f,' % (Kr / Tn)
 print '"Kd": %.4f,' % (Kr / Tv)
+
+print "\nT-Sum method PI parameters (fast):"
+Kr = 1.0 / Ks
+Tn = 0.7 * tSum
+print '"Kp": %.4f,' % Kr
+print '"Ki": %.4f,' % (Kr / Tn)
+
 
 ##################################################
 

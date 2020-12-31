@@ -31,6 +31,7 @@ import ddprintutil as util
 from ddprintcommands import *
 from ddprintstates import *
 from ddprinter import FatalPrinterError
+from ddplanner import initParser
 from ddprintconstants import A_AXIS
 
 class SyncCall:
@@ -360,7 +361,7 @@ class MainForm(npyscreen.FormBaseNew):
         # print "args: ", self.args
 
         try:
-            (self.printer, self.parser, self.planner) = util.initParser(self.args, gui=self)
+            (self.printer, self.parser, self.planner) = initParser(self.args, gui=self)
         except IOError, ex:
             msg = "Can't open serial device '%s' (baudrate: %d)." % (self.args.device, self.args.baud)
             self.guiQueue.put(SyncCall(self.quit, msg, ex))

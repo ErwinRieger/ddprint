@@ -109,7 +109,7 @@ def main():
 
     subparsers = argParser.add_subparsers(dest="mode", help='Mode: mon(itor)|print|store|reset|pre(process).')
 
-    sp = subparsers.add_parser("autoTune", help=u"Autotune hotend PID values (open-loop).")
+    sp = subparsers.add_parser("autotune", help=u"Measure open loop step resopnse of hotend. Used to autotune hotend PID values (open-loop).")
     sp.add_argument("mat", help="Name of generic material profile to use [pla, abs...].")
 
     sp = subparsers.add_parser("bootBootloader", help=u"ARM/stm32: boot into bootloader mode for firmware download.")
@@ -226,7 +226,7 @@ def main():
     args = argParser.parse_args()
 
     
-    if args.mode == 'autoTune':
+    if args.mode == 'autotune':
 
         printer = Printer()
         printer.commandInit(args)
@@ -263,7 +263,8 @@ def main():
 
     elif args.mode == "print":
 
-        (printer, parser, planner) = initParser(args, mode=args.mode, pidSet="pidMeasure")
+        # (printer, parser, planner) = initParser(args, mode=args.mode, pidSet="pidMeasure")
+        (printer, parser, planner) = initParser(args, mode=args.mode, pidSet="pidPrint")
 
         t0 = planner.matProfile.getBedTemp()
         t0Wait = min(t0, printer.printerProfile.getWeakPowerBedTemp())
@@ -450,9 +451,11 @@ def main():
 
         util.zRepeatability(parser)
 
-    elif args.mode == 'todo stepResponse':
+    elif args.mode == 'stepResponse':
 
-        util.stepResponse(args, parser)
+        printer = Printer()
+        printer.commandInit(args, pidSet="pidMeasure")
+        util.stepResponse(args, printer)
 
     elif args.mode == 'todo stop':
 
