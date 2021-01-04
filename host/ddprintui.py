@@ -341,6 +341,7 @@ class MainForm(npyscreen.FormBaseNew):
         parser.add_argument("-t1", dest="t1", action="store", type=int, help="Temp 1 (hotend 1), default comes from mat. profile.")
         parser.add_argument("-kadvance", dest="kadvance", action="store", type=float, help="K-Advance factor, default comes from mat. profile.")
         parser.add_argument("-autotemp", dest="autotemp", action="store", type=bool, help="Use autotemp algorithm, default is True.", default=True)
+        parser.add_argument("-pidset", dest="pidset", action="store", type=str, help="Debug: Specify PID parameter sets to use (ZNCH).", default="ZNCH")
         parser.add_argument("-rl", dest="retractLength", action="store", type=float, help="Retraction length, default comes from printer profile.", default=0)
         parser.add_argument("-inctemp", dest="inctemp", action="store", type=int, help="Increase extruder temperature niveau (layer bonding).", default=0)
         parser.add_argument("-wp", dest="workingPoint", action="store", type=float, help="xxx temp niveau between best/worst case SLE.", default=0.5)
