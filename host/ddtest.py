@@ -218,8 +218,6 @@ def calibrateESteps(args, printer, planner):
 #
 def calibrateFilSensor(args, printer, planner):
 
-    assert(0) # todo: transition to printer.printerProfile...
-
     maxFeedrate = args.feedrate or 10.0 # mm/s
 
     printer.commandInit(args)
@@ -233,9 +231,10 @@ def calibrateFilSensor(args, printer, planner):
     # Set filament sensor calibration to 1
     printer.sendCommandParamV(CmdSetFilSensorCal, [packedvalue.float_t(1.0)])
 
+    dt = printer.printerProfile.getFilSensorIntervalI()
+
     # xxx check jerk
-    print "todo: jerk"
-    eJerk = printer.printerProfile.getValue(['axes'])["A"]['jerk']
+    # eJerk = printer.printerProfile.getJerk("A"))
 
     calValues = []
     valueSum = 0
@@ -254,7 +253,6 @@ def calibrateFilSensor(args, printer, planner):
     # Start feedrate
     feedrate = steps[0] * stepfactor
 
-    dt = printer.printerProfile.getFilSensorIntervalI()
     dFeederWheel = printer.printerProfile.getFeederWheelDiamI()
 
     while feedrate <= maxFeedrate:
