@@ -33,7 +33,6 @@ class RunningAvgF {
 
     float values[RAVGWINDOW];
     uint8_t i;
-    uint8_t n;
     float avg;
 
   public:
@@ -50,10 +49,6 @@ class RunningAvgF {
 
     inline void addValue(float v) {
 
-#if 0
-        avg = (avg * (RAVGWINDOW-1) + v) /RAVGWINDOW;
-#endif
-
         values[i++] = v;
         if (i == RAVGWINDOW)
             i = 0;
@@ -69,10 +64,8 @@ class RunningAvgF {
 
 
 
-
-
+// Group PID values from host printerprofile
 struct PidSet {
-    // PID values from host printerprofile
     float Kp;
     float Ki;
     float Kd;
@@ -83,20 +76,17 @@ class TempControl: public Protothread
     RunningAvgF avgBedTemp;
     RunningAvgF avgHotendTemp;
 
-    // PID values from host printerprofile
-    // float Kp;
-    // float Ki;
-    // float Kd;
+    // Currently active PID values from host printerprofile
     struct PidSet *curPidSet;
 
     // Timestamp of last pid computation
     unsigned long lastPidCompute;
 
-    float eSum; // For I-Part
-    float eAlt; // For D-Part
-    float dTerm;
+    float eSum;  // For I-Part
+    float eAlt;  // For D-Part
+    float dTerm; // To distribute D-Part
 
-    int32_t pid_output;
+    uint8_t pid_output;
 
     bool pwmMode;
 
