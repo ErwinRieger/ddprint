@@ -101,6 +101,8 @@ def main():
     argParser.add_argument("-F", dest="fakeendstop", action="store", type=bool, help="Debug: fake endstops", default=False)
     argParser.add_argument("-nc", dest="noCoolDown", action="store", type=bool, help="Debug: don't wait for heater cool down after print.", default=False)
 
+    argParser.add_argument("-pidset", dest="pidset", action="store", type=str, help="Debug: Specify PID parameter sets to use (ZNCH).", default="ZNCH")
+
     argParser.add_argument("-fr", dest="feedrate", action="store", type=float, help="Feedrate for move commands.", default=0)
 
     argParser.add_argument("-inctemp", dest="inctemp", action="store", type=int, help="Increase extruder temperature niveau (layer bonding).", default=0)
@@ -220,7 +222,7 @@ def main():
     sp = subparsers.add_parser("calibrateESteps", help=u"Debug: helper to determine the e-steps value.")
     # sp.add_argument("printer", help="Name of printer profile to use.")
 
-    sp = subparsers.add_parser("calibrateFilSensor", help=u"Debug: helper to determine the ratio of stepper to flowrate sensor.")
+    sp = subparsers.add_parser("calibratefilsensor", help=u"Debug: helper to determine the ratio of stepper to flowrate sensor.")
     # sp.add_argument("printer", help="Name of printer profile to use.")
 
     args = argParser.parse_args()
@@ -263,8 +265,7 @@ def main():
 
     elif args.mode == "print":
 
-        # (printer, parser, planner) = initParser(args, mode=args.mode, pidSet="pidMeasure")
-        (printer, parser, planner) = initParser(args, mode=args.mode, pidSet="pidPrint")
+        (printer, parser, planner) = initParser(args, mode=args.mode)
 
         t0 = planner.matProfile.getBedTemp()
         t0Wait = min(t0, printer.printerProfile.getWeakPowerBedTemp())
@@ -299,7 +300,10 @@ def main():
 
     elif args.mode == 'measureTempFlowrateCurve':
 
-        (printer, parser, planner) = initParser(args, mode=args.mode, pidSet="pidMeasure")
+        args.pidset="TSTS"
+        # args.pidset="CHCH"
+        # args.pidset="ZNCH"
+        (printer, parser, planner) = initParser(args, mode=args.mode)
         util.measureTempFlowrateCurve(args, printer, parser, planner)
 
     elif args.mode == 'measureTempFlowrateCurve2':
@@ -362,7 +366,7 @@ def main():
     elif args.mode == 'heathotend':
 
         printer = Printer()
-        printer.commandInit(args, pidSet="pidMeasure")
+        printer.commandInit(args)
         matProfile = initMatProfile(args, printer.getPrinterName())
         util.heatHotend(args, matProfile, printer)
 
@@ -454,7 +458,7 @@ def main():
     elif args.mode == 'stepResponse':
 
         printer = Printer()
-        printer.commandInit(args, pidSet="pidMeasure")
+        printer.commandInit(args)
         util.stepResponse(args, printer)
 
     elif args.mode == 'todo stop':
@@ -492,10 +496,10 @@ def main():
         planner = Planner(args, printer, travelMovesOnly=True)
         ddtest.calibrateESteps(args, printer, planner)
 
-    elif args.mode == 'calibrateFilSensor':
+    elif args.mode == 'calibratefilsensor':
 
         printer = Printer()
-        initPrinterProfile(args)
+        printer.initPrinterProfile(args)
         planner = Planner(args, printer, travelMovesOnly=True)
         ddtest.calibrateFilSensor(args, printer, planner)
 
