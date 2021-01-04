@@ -273,11 +273,13 @@ class PathData (object):
             assert(self.planner.args.workingPoint >= 0 and self.planner.args.workingPoint <= 1.0)
 
             delta = sleTempBest.c-sleTempPrint.c
+            print "delta:", delta
             assert(delta > 0.0)
 
             self.tempSLE = util.SLE(x1=0, y1=sleTempPrint.c + delta*self.planner.args.workingPoint, m=sleTempBest.m)
 
             delta = slePwmBest.c-slePwmPrint.c
+            print "delta:", delta
             assert(delta > 0.0)
 
             self.pwmSLE = util.SLE(x1=0, y1=slePwmPrint.c + delta*self.planner.args.workingPoint, m=slePwmBest.m)
@@ -1284,13 +1286,13 @@ def initMatProfile(args, printerName):
 
     return mat
 
-def initParser(args, mode=None, gui=None, travelMovesOnly=False, pidSet="pidMeasure"):
+def initParser(args, mode=None, gui=None, travelMovesOnly=False):
 
     # Create the Printer singleton instance
     printer = Printer(gui=gui)
 
     # Create printer profile
-    printer.commandInit(args, pidSet)
+    printer.commandInit(args)
 
     # Create material profile singleton instance
     if "mat" in args:
