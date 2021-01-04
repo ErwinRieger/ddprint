@@ -812,8 +812,6 @@ def manualMove(args, printer, parser, planner, axis, distance, feedrate=0, absol
 
 def printFile(args, printer, parser, planner, logObj, gfile, t0, t0_wait, t1, doLog=False):
 
-    printer.commandInit(args, pidSet="pidMeasure")
-    # printer.commandInit(args)
     ddhome.home(args, printer, parser, planner)
 
     if args.dummyTempTable:
@@ -1217,13 +1215,14 @@ def heatHotend(args, matProfile, printer):
 
     t1 = args.t1 or matProfile.getHotendGoodTemp()
 
-    printer.heatUp(HeaterEx1, t1, wait=t1-5, log=True)
+    startTime = time.time()
+    printer.heatUp(HeaterEx1, t1, wait=t1, log=True)
 
     kbd = GetChar()
-    print("Press return to stop heating...")
+    print("\nTemp %d reached in %.2f sec. Press return to stop heating...\n" % (t1, time.time() - startTime))
     while not kbd.getcNB():
         status = printer.getStatus()
-        printer.ppStatus(status)
+        printer.ppStatus(status, msg="T %.2f" % (time.time() - startTime))
         time.sleep(1)
 
     if not args.noCoolDown:
@@ -1835,8 +1834,9 @@ def measureTempFlowrateCurve(args, printer, parser, planner):
 
     aFilament = planner.matProfile.getMatArea()
 
-    printer.commandInit(args, pidSet="pidMeasure") # Use slow pid
-    ddhome.home(args, printer, parser, planner)
+    # printer.commandInit(args, pidSet="pidMeasure") # Use slow pid
+    # ddhome.home(args, printer, parser, planner)
+    ddhome.assureIsHomed(args, printer, parser, planner)
 
     # Disable flowrate limit
     printer.sendCommandParamV(CmdEnableFRLimit, [packedvalue.uint8_t(0)])
@@ -1881,7 +1881,8 @@ def measureTempFlowrateCurve(args, printer, parser, planner):
     for t1 in [planner.matProfile.getHotendBaseTemp(), planner.matProfile.getHotendMaxTemp()]:
 
       print "Heating up to target temp:", t1
-      printer.heatUp(HeaterEx1, t1, wait=round(t1 - t1*.01), log=True) # Wait until 99% of temp reached
+      # printer.heatUp(HeaterEx1, t1, wait=round(t1 - t1*.01), log=True) # Wait until 99% of temp reached
+      printer.heatUp(HeaterEx1, int(round(t1*1.025)), wait=t1, log=True)
 
       # Set extruder motor speed
       print "\nRunning extruder motor with %.2f mm/s" % feedrate
@@ -1918,9 +1919,19 @@ def measureTempFlowrateCurve(args, printer, parser, planner):
 
         currentFlowrate = targetFlowRate * r
     #t: 69.81, TempAvg: 254.2, pwm: 76, target flowrate: 7.293 mm³/s, actual flowrate: 1253.53 mm³/s, current ratio: 171.89 TOP:
-        print "\rt: %.2f, TempAvg: %.1f, pwm: %d, target flowrate: %.3f mm³/s, actual flowrate: %.2f mm³/s, current ratio: %.2f" % \
+        print "\rt: %.2f, TempAvg: %.1f, fixed pwm: %d, target flowrate: %.3f mm³/s, actual flowrate: %.2f mm³/s, current ratio: %.2f" % \
                 (time.time()-tStart, t1Avg, pwm, targetFlowRate, currentFlowrate, r),
         sys.stdout.flush()
+
+        if r > 2:
+
+            print "fsreadings:", fsreadings
+
+            print "index:", flowAvg.index
+            print "navg:", flowAvg.navg
+            print "nValues:", flowAvg.nValues
+            print "array:", flowAvg.array
+            assert(0)
 
         if startup > 0:
             time.sleep(dt)
@@ -2156,7 +2167,6 @@ def measureTempFlowrateCurve2(args, printer, parser, planner):
     #
     # Start print:
     #
-    printer.commandInit(args, pidSet="pidPrint") # Use fast pid
     xstartPrint(args, printer, parser, planner, t1)
 
     lastEPos = 0.0
