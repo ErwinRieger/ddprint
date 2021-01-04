@@ -435,7 +435,7 @@ class Printer(Serial):
         self.resetLineNumber()
 
     # Initialize serial interface and download printer settings.
-    def commandInit(self, args, pidSet="pidMeasure"):
+    def commandInit(self, args):
 
         if not self.isOpen() and args.mode != "pre":
             self.initSerial(args.device, args.baud, True)
@@ -447,9 +447,7 @@ class Printer(Serial):
             self.commandInitDone = True
             return 
 
-        # assert(pidSet=="pidMeasure")
-
-        settings = self.printerProfile.getSettingsI(pidSet)
+        settings = self.printerProfile.getSettingsI(args.pidset)
 
         # todo: move all settings into CmdSetHostSettings call
         self.sendCommandParamV(CmdSetFilSensorCal, [packedvalue.float_t(settings["filSensorCalibration"])])
@@ -458,6 +456,9 @@ class Printer(Serial):
             packedvalue.float_t(settings["Kp"]),
             packedvalue.float_t(settings["Ki"]),
             packedvalue.float_t(settings["Kd"]),
+            packedvalue.float_t(settings["KpC"]),
+            packedvalue.float_t(settings["KiC"]),
+            packedvalue.float_t(settings["KdC"]),
             packedvalue.uint16_t(int(settings["Tu"] * 1000)), # xxx Tu < 65 s
             ])
 
@@ -772,11 +773,13 @@ class Printer(Serial):
         return statusDict
 
     # Prettyprint pritner status
-    def ppStatus(self, statusDict):
+    def ppStatus(self, statusDict, msg=""):
 
         slipstr = "----"
         if statusDict["slippage"]:
             slipstr = "%4.2f" % (1.0/statusDict["slippage"])
+        if msg:
+            print msg
         print "State: %d, Bed: %5.1f, Hotend: %5.1f(%5.1f), Pwm: %3d, Swap: %10s, MinBuffer: %3d, Grip: %s" % \
             (statusDict["state"], statusDict["t0"], statusDict["t1"], statusDict["targetT1"], statusDict["pwmOutput"], util.sizeof_fmt(statusDict["Swap"]), statusDict["minBuffer"], slipstr)
 
