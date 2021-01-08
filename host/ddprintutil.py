@@ -1873,10 +1873,11 @@ def measureTempFlowrateCurve(args, printer, parser, planner):
     flowAvg = movingavg.MovingAvgReadings(int(round(1.0/dt)))
 
     minGrip = 0.90
-    startup = 10.0 # seconds
     data = []
 
     ####################################################################################################
+
+    lastGoodFlowrate = 0
 
     for t1 in [planner.matProfile.getHotendBaseTemp(), planner.matProfile.getHotendMaxTemp()]:
 
@@ -1889,6 +1890,7 @@ def measureTempFlowrateCurve(args, printer, parser, planner):
       printer.sendCommandParamV(CmdContinuousE, [packedvalue.uint16_t(eTimerValue(printer, feedrate))])
 
       tStart = time.time()
+      startup = 5.0       # initial time for averages to settle
 
       # Fix pwm value, enter *pwmMode*
       status = printer.getStatus()
@@ -1914,16 +1916,17 @@ def measureTempFlowrateCurve(args, printer, parser, planner):
         # should-be speed:
         stepsPerInterval = feedrate * steps_per_mm * dt
 
-        print "mean, stepsPerInterval, pcal", meanShort, stepsPerInterval, pcal
         r = meanShort / (stepsPerInterval * pcal)
 
         currentFlowrate = targetFlowRate * r
-    #t: 69.81, TempAvg: 254.2, pwm: 76, target flowrate: 7.293 mm³/s, actual flowrate: 1253.53 mm³/s, current ratio: 171.89 TOP:
+
         print "\rt: %.2f, TempAvg: %.1f, fixed pwm: %d, target flowrate: %.3f mm³/s, actual flowrate: %.2f mm³/s, current ratio: %.2f" % \
                 (time.time()-tStart, t1Avg, pwm, targetFlowRate, currentFlowrate, r),
         sys.stdout.flush()
 
-        if r > 2:
+        if r > 10:
+
+            print "mean, stepsPerInterval, pcal", meanShort, stepsPerInterval, pcal
 
             print "fsreadings:", fsreadings
 
@@ -1938,7 +1941,7 @@ def measureTempFlowrateCurve(args, printer, parser, planner):
             startup -= dt
             continue
 
-        if r > minGrip:
+        if r >= minGrip:
 
             # Increase feedrate by max 1% and min 0.01% mm per second
             frincrease = feedrate * max(0.01 * (max(r, minGrip) - minGrip), 0.0001)

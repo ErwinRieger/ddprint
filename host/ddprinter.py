@@ -719,13 +719,9 @@ class Printer(Serial):
 
         (cmd, payload) = self.query(CmdGetStatus, doLog=False)
 
-        # print "len payload:", len(payload)
-
-
-        # XXXXXX debug workaround, payload 37, needed: 36
-        if len(payload) > 40:
-            print "WARNING: payload to long, stripping bytes #", len(payload)-36
-            payload = payload[:36]
+        # XXXXXX debug 
+        if len(payload) != 40:
+            print "WARNING: payload size wrong: %d/40" % len(payload)
 
         tup = struct.unpack("<BffIHIhHBfiIHH", payload)
 
@@ -744,6 +740,7 @@ class Printer(Serial):
 
         self.gui.statusCb(statusDict)
 
+        """
         for (statusCmd, statusName, tasknames) in [(CmdGetTaskStatus, "TOP:", ("idle", "tempcontrol", "tempheater", "filsensor", "ubscommand", "txbuffer", "swapdev", "fillbuffer", "tasksum")), (CmdGetIOStats, "IOStats:", ("read", "readSum", "write", "writeSum"))]:
 
             ## XXX debug iotimings
@@ -769,6 +766,7 @@ class Printer(Serial):
                 tSum = tup[tupindex+1]
                 print "%15s %10d %10d %10d" % (taskname, nCalls, tSum, tup[tupindex+2])
                 tupindex+=3
+        """
 
         return statusDict
 
@@ -846,6 +844,9 @@ class Printer(Serial):
         if len(payload) == 8:
             temps = struct.unpack("<ff", payload)
         else:
+            if len(payload) != 12:
+                print "WARNING: getTemp(): payload size wrong: %d/12" % len(payload)
+
             temps = struct.unpack("<fff", payload)
 
         return temps
