@@ -61,7 +61,6 @@ FilamentSensorEMS22::FilamentSensorEMS22() {
 void FilamentSensorEMS22::init() {
 
     lastASteps = (int32_t)LONG_MAX; // marker for not set
-
     grip = 1.0;
 }
 
@@ -126,7 +125,7 @@ float FilamentSensorEMS22::slippage() {
         int16_t dssum = 0;
         int16_t dysum = 0;
 
-        for (uint8_t i=filsensorReadingIndex - 1 - nAvg; i<filsensorReadingIndex - 1; i++) {
+        for (uint8_t i=filsensorReadingIndex - nAvg; i<filsensorReadingIndex; i++) {
             dssum += filsensorReadings[i].ds;
             dysum += filsensorReadings[i].dy;
         }
@@ -151,10 +150,8 @@ void FilamentSensorEMS22::run() {
     if (lastASteps == LONG_MAX) {
 
         // not initialized yet
-
         lastASteps = astep;
         lastSensorCount = sensorCount;
-
         return;
     }
 
@@ -193,7 +190,7 @@ void FilamentSensorEMS22::cmdGetFSReadings(uint8_t nr) {
 
     txBuffer.sendResponseStart(CmdGetFSReadings);
 
-    uint8_t start = filsensorReadingIndex - (nr + 1);
+    uint8_t start = filsensorReadingIndex - nr;
 
     while (nr--) {
 
