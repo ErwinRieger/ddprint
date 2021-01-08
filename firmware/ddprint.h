@@ -125,7 +125,7 @@ class Printer {
         void cmdSetTargetTemp(uint8_t heater, uint16_t temp);
         void cmdSetIncTemp(uint8_t heater, int16_t incTemp);
         void cmdGetFreeMem();
-        void cmdGetFSReadings(uint8_t nReadings);
+        // void cmdGetFSReadings(uint8_t nReadings);
         void checkMoveFinished();
         void disableSteppers();
         void cmdDisableSteppers();

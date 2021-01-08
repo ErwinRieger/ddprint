@@ -683,7 +683,7 @@ class FillBufferTask : public Protothread {
                     // Start filament sensor measurement
                     sDReader.setBytesToRead1();
                     PT_WAIT_THREAD(sDReader);
-                    setNAvg(FromBuf(uint8_t, sDReader.readData));
+                    filamentSensor.setNAvg(FromBuf(uint8_t, sDReader.readData));
                 }
 
 
@@ -937,7 +937,7 @@ class FillBufferTask : public Protothread {
                     // Start filament sensor measurement
                     sDReader.setBytesToRead1();
                     PT_WAIT_THREAD(sDReader);
-                    setNAvg(FromBuf(uint8_t, sDReader.readData));
+                    filamentSensor.setNAvg(FromBuf(uint8_t, sDReader.readData));
                 }
 
 // xxx cleanup temptable
@@ -1351,22 +1351,6 @@ void Printer::cmdGetFreeMem() {
 
     txBuffer.sendResponseStart(CmdGetFreeMem);
     txBuffer.sendResponseUInt32((uint32_t)freeRam());
-    txBuffer.sendResponseEnd();
-}
-
-void Printer::cmdGetFSReadings(uint8_t nReadings) {
-
-    txBuffer.sendResponseStart(CmdGetFSReadings);
-
-    uint8_t start = filsensorReadingIndex - (nReadings + 1);
-
-    while (nReadings--) {
-
-        txBuffer.sendResponseUInt32((uint32_t)filsensorReadings[start].timeStamp);
-        txBuffer.sendResponseInt16(filsensorReadings[start].dy);
-        start++;
-    }
-
     txBuffer.sendResponseEnd();
 }
 
@@ -2362,7 +2346,7 @@ unzipper.Restart()
                     case CmdGetFSReadings: {
                         // uint8_t nReadings = serialPort.readNoCheckCobs();
                         // printer.cmdGetFSReadings(nReadings);
-                        printer.cmdGetFSReadings(10);
+                        filamentSensor.cmdGetFSReadings(10);
                         }
                         break;
 

@@ -30,12 +30,12 @@ typedef struct {
     int16_t       dy;
     int16_t       ds;
 } FilsensorReading;
-extern FilsensorReading filsensorReadings[];
-extern uint8_t filsensorReadingIndex;
-extern uint8_t nReadings;
-extern uint8_t nAvg;
+// extern FilsensorReading filsensorReadings[];
+// extern uint8_t filsensorReadingIndex;
+// extern uint8_t nReadings;
+// extern uint8_t nAvg;
 
-extern void setNAvg(uint8_t nAvg);
+// extern void setNAvg(uint8_t nAvg);
 
 #if defined(PMWFS)
 
@@ -210,6 +210,9 @@ class FilamentSensorEMS22 {
         float slippage();
         int32_t getSensorCount() { return sensorCount; }
         float getGrip() { return grip; }
+
+        void setNAvg(uint8_t n);
+        void cmdGetFSReadings(uint8_t nr);
 };
 
 extern FilamentSensorEMS22 filamentSensor;

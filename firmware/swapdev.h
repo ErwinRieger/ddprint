@@ -221,16 +221,16 @@ public:
         // xxx hack
         massert(GetTaskDuration(ioStats, TaskRead) <= 5);
 
-        uint16_t readBytes = STD min(available(), (uint32_t)SwapSectorSize);
+        uint16_t bytesRead = STD min(available(), (uint32_t)SwapSectorSize);
 
-        // printf("size: %d, readpos: %d, read bytes: %d\n", size, readPos, readBytes);
+        // printf("size: %d, readpos: %d, read bytes: %d\n", size, readPos, bytesRead);
 
-        readPos += readBytes;
+        readPos += bytesRead;
 
         // Read was successful, reset retry count
         readRetry = 0;
 
-        return readBytes;
+        return bytesRead;
     }
 
     // Async block write.

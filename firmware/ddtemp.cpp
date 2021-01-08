@@ -69,9 +69,9 @@ void TempControl::init() {
     setPidSet(&pidSetHeating, 0.0, 1.0);
 }
 
-void TempControl::setTemp(uint8_t heater, uint16_t temp) {
+void TempControl::setTemp(uint8_t heaterNum, uint16_t temp) {
 
-    if (heater == 0) {
+    if (heaterNum == 0) {
 
         if (temp > HEATER_0_MAXTEMP)
             return;
@@ -86,12 +86,12 @@ void TempControl::setTemp(uint8_t heater, uint16_t temp) {
         // Keep integral eSum if changing setpont from a
         // already stable setpoint. Reset integral sum if
         // we switch "from manual mode to automatic".
-        if (target_temperature[heater-1] == 0) {
+        if (target_temperature[heaterNum-1] == 0) {
             eSum = 0;
             dTerm = 0;
         }
 
-        target_temperature[heater-1] = temp;
+        target_temperature[heaterNum-1] = temp;
 
         // xxx hack, reset/clear suggestPwm
         if (temp < 50) {
@@ -286,9 +286,9 @@ void TempControl::heater() {
     WDT_RESET();
 }
 
-void TempControl::setTempPWM(uint8_t heater, uint8_t pwmValue) {
+void TempControl::setTempPWM(uint8_t heaterNum, uint8_t pwmValue) {
 
-    if (heater == 1) 
+    if (heaterNum == 1) 
         HEATER_0_PIN :: write(pwmValue);
     else
         HEATER_1_PIN :: write(pwmValue);
@@ -301,9 +301,9 @@ void TempControl::setTempPWM(uint8_t heater, uint8_t pwmValue) {
     pwmValueOverride = pwmValue;
 }
 
-void TempControl::hotendOn(uint8_t heater) {
+void TempControl::hotendOn(uint8_t heaterNum) {
 
-    if (heater == 1) 
+    if (heaterNum == 1) 
         HEATER_0_PIN :: write(255);
     else
         HEATER_1_PIN :: write(255);
