@@ -1881,7 +1881,7 @@ def measureTempFlowrateCurve(args, printer, parser, planner):
 
     for t1 in [planner.matProfile.getHotendBaseTemp(), planner.matProfile.getHotendMaxTemp()]:
 
-      print "Heating up to target temp:", t1
+      print "\nHeating up to target temp:", t1
       # printer.heatUp(HeaterEx1, t1, wait=round(t1 - t1*.01), log=True) # Wait until 99% of temp reached
       printer.heatUp(HeaterEx1, int(round(t1*1.025)), wait=t1, log=True)
 
@@ -1990,6 +1990,7 @@ def measureTempFlowrateCurve(args, printer, parser, planner):
     dtemp = data[1][2] - data[0][2]
 
     # todo: create template material profile with name from commandline
+    print ""
     print "# Material properties:"
     print "# a1 for pwm"
     print '"Kpwm": %.4f,' % (dfr / dpwm)
@@ -2002,7 +2003,7 @@ def measureTempFlowrateCurve(args, printer, parser, planner):
     print '"P0temp": %.4f,' % data[0][2]
 
     print "# feedrate at a0"
-    print '"FR0pwm": %.4f,' % data[0][0]
+    print '"FR0pwm": %.4f,\n' % data[0][0]
 
     printer.sendCommand(CmdDisableSteppers)
     printer.coolDown(HeaterEx1, wait=100, log=True)
@@ -2296,13 +2297,14 @@ def measureTempFlowrateCurve2(args, printer, parser, planner):
 
     # todo: create template material profile with name from commandline
     print "# Avg: P0temp: %.2f, P0pwm: %.2f, grip: %.2f, FR0pwm: %.2f mm³/s" % (t1Avg, pAvg, gAvg, frAvg)
+    print ""
     print "# Material properties, printing:"
     print "# a0 for pwm"
     print '"P0pwmPrint": %.4f,' % pAvg
     print "# a0 for temp"
     print '"P0tempPrint": %.4f,' % t1Avg
     print "# feedrate at a0"
-    print '"FR0pwmPrint": %.4f,' % frAvg
+    print '"FR0pwmPrint": %.4f,\n' % frAvg
 
     # Re-enable flowrate limit
     printer.sendCommandParamV(CmdEnableFRLimit, [packedvalue.uint8_t(1)])

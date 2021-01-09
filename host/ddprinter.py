@@ -721,9 +721,12 @@ class Printer(Serial):
 
         # XXXXXX debug 
         if len(payload) != 40:
+            # XXX ...WARNING: payload size wrong: 41/40... XXX
             print "WARNING: payload size wrong: %d/40" % len(payload)
+            print "Hex dump:"
+            print payload.encode("hex")
 
-        tup = struct.unpack("<BffIHIhHBfiIHH", payload)
+        tup = struct.unpack("<BffIHIhHBfiIHH", payload[:40])
 
         statusDict = {}
         for i in range(len(valueNames)):
