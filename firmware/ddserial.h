@@ -100,9 +100,8 @@ public:
 
     public:
         TxBuffer() {
-            ringBufferInit();
-            nMessages = 0;
-            cobsStart = 0xffff;
+            flush();
+            // cobsStart = 0xffff;
         };
 
         FWINLINE void sendACK() {
@@ -187,8 +186,10 @@ public:
 
                 nMessages--;
                 // Init cobs encoder
-                cobsStart = 0xffff;
+                // cobsStart = 0xffff;
             }
+
+            ringBufferInit();
 
             PT_RESTART();
             PT_END();
@@ -214,7 +215,7 @@ public:
             }
 
             if (cobsStart != 0xffff) {
-                // Cobs block does not end with 0x0, mark block as a
+                // Cobs block does NOT end with 0x0, mark block as a
                 // 'maximum length code block'.
                 // _ringbuffer_array[mask(cobsStart)] = 0xff;
                 setVar(cobsStart, 0xff);
