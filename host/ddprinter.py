@@ -396,8 +396,10 @@ class Printer(Serial):
             """
             raise RxChecksumError()
 
-        # Decode COBS encode payload
-        payload = cobs.decodeCobs(payload)
+        if payload != "":
+            # Decode COBS encode payload
+            payload = cobs.decodeCobs(payload)
+
         return (cmd, payload)
 
     def initSerial(self, device, br, bootloaderWait=False):
@@ -1066,9 +1068,11 @@ class Printer(Serial):
         (cmd, payload) = self.query(CmdGetFSReadings)
 
         readings = []
+
         for i in range(10):
             (ts, dy) = struct.unpack("<Ih", payload[i*6:(i+1)*6])
             readings.append((ts, dy))
+
         return readings
 
     ####################################################################################################

@@ -510,10 +510,10 @@ def main():
     elif args.mode == 'test':
 
         printer = Printer()
-        printer.commandInit(args, pidSet="pidMeasure")
+        printer.commandInit(args)
 
-        printer.heatUp(HeaterBed, 100)
-        printer.heatUp(HeaterEx1, 150)
+        while True:
+            pprint.pprint(printer.getFSReadings())
 
     else:
         print "Unknown/not implemented command: ", args.mode
