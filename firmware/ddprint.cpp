@@ -1644,21 +1644,14 @@ void Printer::cmdGetIOStats() {
 }
 
 void Printer::cmdGetStatus() {
-//0
+
     txBuffer.sendResponseStart(CmdGetStatus);
 
-//1
     txBuffer.sendResponseUint8(printerState);
-//2
     txBuffer.sendResponseFloat(current_temperature_bed);
-//6
     txBuffer.sendResponseFloat(current_temperature[0]);
-//10
     txBuffer.sendResponseUInt32(swapDev.available());
-//14
     txBuffer.sendResponseUInt16(sDReader.available());
-//12
-    // xxx undo txBuffer.sendResponseUint8(stepBuffer.byteSize());
     txBuffer.sendResponseUInt32(stepBuffer.size());
     txBuffer.sendResponseInt16(bufferLow);
     txBuffer.sendResponseUInt16(target_temperature[0]);
@@ -1680,7 +1673,6 @@ void Printer::cmdGetStatus() {
 
     txBuffer.sendResponseInt32(current_pos_steps[E_AXIS]);
     txBuffer.sendResponseUInt32(minBuffer);
-
     txBuffer.sendResponseUInt16(underTemp);
     txBuffer.sendResponseUInt16(underGrip);
 
