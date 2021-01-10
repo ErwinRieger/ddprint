@@ -125,9 +125,9 @@ float FilamentSensorEMS22::slippage() {
         int16_t dssum = 0;
         int16_t dysum = 0;
 
-        for (uint8_t i=filsensorReadingIndex - nAvg; i<filsensorReadingIndex; i++) {
-            dssum += filsensorReadings[i].ds;
-            dysum += filsensorReadings[i].dy;
+        for (uint8_t i=nAvg; i>0; i--) {
+            dssum += filsensorReadings[(filsensorReadingIndex-i) & 0xff].ds;
+            dysum += filsensorReadings[(filsensorReadingIndex-i) & 0xff].dy;
         }
 
         if (dysum != 0)
@@ -190,13 +190,11 @@ void FilamentSensorEMS22::cmdGetFSReadings(uint8_t nr) {
 
     txBuffer.sendResponseStart(CmdGetFSReadings);
 
-    uint8_t start = filsensorReadingIndex - nr;
+    uint8_t n = min(nReadings, nr);
 
-    while (nr--) {
-
-        txBuffer.sendResponseUInt32(filsensorReadings[start].timeStamp);
-        txBuffer.sendResponseInt16(filsensorReadings[start].dy);
-        start++;
+    for (uint8_t i=n; i>0; i--) {
+        txBuffer.sendResponseUInt32(filsensorReadings[(filsensorReadingIndex-i) & 0xff].timeStamp);
+        txBuffer.sendResponseInt16(filsensorReadings[(filsensorReadingIndex-i) & 0xff].dy);
     }
 
     txBuffer.sendResponseEnd();
