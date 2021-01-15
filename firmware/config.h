@@ -61,9 +61,14 @@
     #error Unknown MOTHERBOARD in config.h
 #endif
 
-#if defined(PMWFS) || defined(BournsEMS22AFS)
+// Dont use flowrate sensor if COLDEXTRUSION is enabled.
+#if defined(BournsEMS22AFS)
     #if ! defined(COLDEXTRUSION)
         #define HASFILAMENTSENSOR
     #endif
 #endif
+
+
+
+
 

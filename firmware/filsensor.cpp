@@ -1,4 +1,3 @@
-
 /*
 * This file is part of ddprint - a direct drive 3D printer firmware.
 * 
