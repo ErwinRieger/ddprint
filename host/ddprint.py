@@ -277,7 +277,7 @@ def main():
 
     elif args.mode == "pre":
 
-        (printer, parser, planner) = initParser(args, mode=args.mode, pidSet="pidMeasure")
+        (printer, parser, planner) = initParser(args, mode=args.mode)
 
         # Virtuelle position des druckkopfes falls 'gehomed'
         homePosMM = planner.getHomePos()[0]

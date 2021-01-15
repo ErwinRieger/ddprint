@@ -255,8 +255,8 @@ class PathData (object):
             self.p0Print = mp.getP0pwmPrint(hwVersion, nozzleDiam) # xxx hardcoded in firmware!
             self.fr0Print = mp.getFR0pwmPrint(hwVersion, nozzleDiam)
 
-            self.goodtemp = mp.getHotendGoodTemp()
-            self.lastTemp = self.goodtemp
+            self._goodtemp = mp.getHotendGoodTemp()
+            self.lastTemp = self._goodtemp
 
             # xxx same as in genTempTable
 
@@ -270,21 +270,23 @@ class PathData (object):
 
             # XXX simple way, use average of best and worst flowrate:
 
+            # WorkingPoint = 0: Figurine print, low tempeartures
+            # WorkingPoint = 1: Parts print, higer tempeartures for good layer bonding
             assert(self.planner.args.workingPoint >= 0 and self.planner.args.workingPoint <= 1.0)
 
             delta = sleTempBest.c-sleTempPrint.c
             print "delta:", delta
             assert(delta > 0.0)
 
-            self.tempSLE = util.SLE(x1=0, y1=sleTempPrint.c + delta*self.planner.args.workingPoint, m=sleTempBest.m)
+            self.tempSLE = util.SLE(x1=0, y1=sleTempPrint.c+delta*(1 - self.planner.args.workingPoint), m=sleTempBest.m)
 
             delta = slePwmBest.c-slePwmPrint.c
             print "delta:", delta
             assert(delta > 0.0)
 
-            self.pwmSLE = util.SLE(x1=0, y1=slePwmPrint.c + delta*self.planner.args.workingPoint, m=slePwmBest.m)
+            self.pwmSLE = util.SLE(x1=0, y1=slePwmPrint.c+delta*(1 - self.planner.args.workingPoint), m=slePwmBest.m)
 
-            print "Temp sle:", self.tempSLE, self.tempSLE.y(self.goodtemp)
+            print "Temp sle:", self.tempSLE, self.tempSLE.y(self._goodtemp)
             print "Pwm sle:", self.pwmSLE
 
     def updateHistory(self, move):
@@ -315,8 +317,12 @@ class PathData (object):
 
         # Compute new temp and suggested heater-PWM for this segment
 
+        # Floor temp is between basetemp and goodtemp, controlled by workingPoint parameter
+        bt = self.planner.matProfile.getHotendBaseTemp()
+        goodtemp = bt + (self._goodtemp - bt) * self.planner.args.workingPoint + self.planner.l0TempIncrease
+
         # Amount of flowrate above floor (that is the flowrate at goodtemp)
-        rateDiff = (avgERate*adj) - self.tempSLE.y(self.goodtemp)
+        rateDiff = (avgERate*adj) - self.tempSLE.y(goodtemp)
 
         tempIncrease = 0.0
 
@@ -324,11 +330,9 @@ class PathData (object):
             # Needed temp increase for this flowrate delta
             tempIncrease = round((rateDiff / self.ktemp) + 0.5)
 
-        # Floor temp
-        baseTemp = self.goodtemp + self.planner.l0TempIncrease
-        newTemp = min(baseTemp+tempIncrease, self.planner.matProfile.getHotendMaxTemp())
+        newTemp = min(goodtemp+tempIncrease, self.planner.matProfile.getHotendMaxTemp())
       
-        rateDiff = (newTemp - baseTemp) * self.ktemp
+        rateDiff = (newTemp - goodtemp) * self.ktemp
 
         newTemp = int(newTemp)
 
@@ -336,7 +340,7 @@ class PathData (object):
             # Nothing to change...
             return 
 
-        suggestPwm = int(round(self.pwmSLE.x( self.tempSLE.y(self.goodtemp) + rateDiff ) + 0.5))
+        suggestPwm = int(round(self.pwmSLE.x( self.tempSLE.y(goodtemp) + rateDiff ) + 0.5))
         suggestPwm = min(suggestPwm, 255)
 
         if debugAutoTemp:

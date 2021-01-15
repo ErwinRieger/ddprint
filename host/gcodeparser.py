@@ -436,7 +436,9 @@ class UM2GcodeParser:
         else:
             print "downloadTime %.2f greater than printing time %.2f, no preload possible..." % (downloadTime, moveTime)
 
-        return (f, max(preloadLines, 1000))
+        # return (f, max(preloadLines, 1000))
+        # XXXXX hack weil download von stopfen-4mal.gcode ewig zum download dauert...
+        return (f, max(min(preloadLines, 10000), 1000))
 
     def execute_line(self, rawLine):
 

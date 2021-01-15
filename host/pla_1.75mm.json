@@ -2,7 +2,7 @@
   "version": 4,
   "material_diameter" : 1.75,
   "hotendBaseTemp"    : 190,
-  "hotendGoodTemp"    : 200,
+  "hotendGoodTemp"    : 210,
   "hotendMaxTemp"     : 260,
   "bedTemp"           : 65,
   "bedTempReduced"    : 60,

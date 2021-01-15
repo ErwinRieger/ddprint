@@ -1035,7 +1035,7 @@ def removeFilament(args, printer, parser, planner, feedrate):
 
 def bedLeveling(args, printer, parser, planner):
 
-    t1 = args.t1 or planner.matProfile.getHotendGoodTemp()
+    t1 = args.t1 or planner.matProfile.getHotendBaseTemp()
     printer.heatUp(HeaterEx1, t1)
 
     # Reset bedlevel offset in printer profile
@@ -1213,7 +1213,7 @@ def stopMove(args, parser):
 
 def heatHotend(args, matProfile, printer):
 
-    t1 = args.t1 or matProfile.getHotendGoodTemp()
+    t1 = args.t1 or matProfile.getHotendBaseTemp()
 
     startTime = time.time()
     printer.heatUp(HeaterEx1, t1, wait=t1, log=True)
