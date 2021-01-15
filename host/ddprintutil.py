@@ -2141,7 +2141,11 @@ def measureTempFlowrateCurve2(args, printer, parser, planner):
     # layerheight
     lh = 0.15
     goodtemp = planner.matProfile.getHotendGoodTemp()
-    t1 = (goodtemp + planner.matProfile.getHotendMaxTemp()) / 2
+    maxtemp = planner.matProfile.getHotendMaxTemp()
+
+    tempSpan = maxtemp - goodtemp
+
+    t1 = goodtemp + tempSpan / 2
 
     ####################################################################################################
 
@@ -2282,7 +2286,11 @@ def measureTempFlowrateCurve2(args, printer, parser, planner):
     if printer.stateMoving(status):
         printer.sendCommand(CmdSoftStop)
 
-    # Wait till print is cancelled
+    # Increase temp of hotend to release stress from hotend
+    # for the rest of the print.
+    printer.heatUp(HeaterEx1, min(maxtemp, t1+10))
+
+    # Wait till print is cancelled.
     while printer.stateMoving(status):
         time.sleep(2)
         status = printer.getStatus()
