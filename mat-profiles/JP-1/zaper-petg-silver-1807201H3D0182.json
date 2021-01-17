@@ -1,4 +1,6 @@
 {
+  # Schlechte layerhaftung, scheint ein material-mix zu sein.
+  "usable": false,
   "properties_80" : {
       "version":  5,
       "slippage": 0.10,
