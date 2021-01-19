@@ -2138,8 +2138,15 @@ def measureTempFlowrateCurve2(args, printer, parser, planner):
 
     # Hardcorded values
 
+    # xxx todo  read from gcode
     # layerheight
     lh = 0.15
+
+    print ""
+    print "measureTempFlowrateCurve2():"
+    print ""
+    print "NOTE: assuming 0.15mm layerheight!"
+
     goodtemp = planner.matProfile.getHotendGoodTemp()
     maxtemp = planner.matProfile.getHotendMaxTemp()
 
@@ -2180,6 +2187,8 @@ def measureTempFlowrateCurve2(args, printer, parser, planner):
     lastEPos = 0.0
     lastTime = 0.0
 
+    print "\nPrint started, waiting for start of first layer..."
+
     #
     # Wait for second layer
     #
@@ -2191,6 +2200,7 @@ def measureTempFlowrateCurve2(args, printer, parser, planner):
         time.sleep(1)
         curPosMM = getVirtualPos(printer, parser)
 
+    print "\nFirst layer started, waiting for second layer..."
     while curPosMM.Z < lh:
         print "waiting for second layer, Z pos:", curPosMM.Z
         status = printer.getStatus()
@@ -2204,6 +2214,7 @@ def measureTempFlowrateCurve2(args, printer, parser, planner):
 
     timeConstant = printer.printerProfile.getTgI() 
     tempdec = float(t1 - goodtemp) / timeConstant
+    print "Temperature decreasing step:", tempdec
 
     #
     # Decrease temp while monitoring feeder slippage

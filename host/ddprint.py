@@ -312,7 +312,7 @@ def main():
         # Disable linear advance
         args.kadvance = 0.0
         # Disable autotemp
-        args.autoTemp = False
+        args.autotemp = False
 
         (printer, parser, planner) = initParser(args, mode=args.mode)
         util.measureTempFlowrateCurve2(args, printer, parser, planner)
