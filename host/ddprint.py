@@ -115,7 +115,7 @@ def main():
     sp = subparsers.add_parser("autotune", help=u"Measure open loop step resopnse of hotend. Used to autotune hotend PID values (open-loop).")
     sp.add_argument("mat", help="Name of generic material profile to use [pla, abs...].")
 
-    sp = subparsers.add_parser("bootBootloader", help=u"ARM/stm32: boot into bootloader mode for firmware download.")
+    sp = subparsers.add_parser("bootbootloader", help=u"ARM/stm32: boot into bootloader mode for firmware download.")
 
     sp = subparsers.add_parser("mon", help=u"Monitor serial printer interface.")
 
@@ -236,7 +236,7 @@ def main():
         matProfile = initMatProfile(args, printer.getPrinterName())
         util.measureHotendStepResponse(args, printer, matProfile)
 
-    elif args.mode == 'bootBootloader':
+    elif args.mode == 'bootbootloader':
 
         printer = Printer()
         printer.initSerial(args.device, args.baud)
