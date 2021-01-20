@@ -185,8 +185,6 @@ void FilamentSensorEMS22::setNAvg(uint8_t n) {
 
 void FilamentSensorEMS22::cmdGetFSReadings(uint8_t nr) {
 
-    massert(nr <= nAvg);
-
     txBuffer.sendResponseStart(CmdGetFSReadings);
 
     uint8_t n = min(nReadings, nr);
