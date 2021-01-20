@@ -215,6 +215,7 @@ class UM2GcodeParser:
         # types : s3d, ulti, unknown
         self.gcodeType = GCODEUNKNOWN
         self.layerPart = "unknown"
+        self.layerHeight = None             # Read from gcode comments
 
     # Set current virtual printer position
     def setPos(self, point):
@@ -334,8 +335,13 @@ class UM2GcodeParser:
                     # V = A * h, h = V / A, A = pi/4 * diameter²
                     aFilament = self.planner.matProfile.getMatArea()
                     self.e_to_filament_length = 1.0 / aFilament
+
                 elif "SIMPLIFY3D" in upperLine:
                     self.gcodeType = GCODES3D
+
+                elif "LAYERHEIGHT," in upperLine:
+                    self.layerHeight = float(upperLine.split(",")[1])
+                    print "layerheight:", self.layerHeight
 
             elif line:
 
