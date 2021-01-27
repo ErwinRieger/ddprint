@@ -2138,14 +2138,9 @@ def measureTempFlowrateCurve2(args, printer, parser, planner):
 
     # Hardcorded values
 
-    # xxx todo  read from gcode
-    # layerheight
-    lh = 0.15
-
     print ""
     print "measureTempFlowrateCurve2():"
     print ""
-    print "NOTE: assuming 0.15mm layerheight!"
 
     goodtemp = planner.matProfile.getHotendGoodTemp()
     maxtemp = planner.matProfile.getHotendMaxTemp()
@@ -2184,24 +2179,29 @@ def measureTempFlowrateCurve2(args, printer, parser, planner):
     #
     xstartPrint(args, printer, parser, planner, t1)
 
+    # Assure we have read layerheight from gcode comments
+    assert(parser.layerHeight)
+
     lastEPos = 0.0
     lastTime = 0.0
-
-    print "\nPrint started, waiting for start of first layer..."
 
     #
     # Wait for second layer
     #
+    # XXX add timeout here, deadlock 
+    #
+    print "\nPrint started, waiting for start of first layer..."
     curPosMM = getVirtualPos(printer, parser)
-    while curPosMM.Z >= lh:
+    while curPosMM.Z >= parser.layerHeight:
         print "waiting for first layer, Z pos:", curPosMM.Z
         status = printer.getStatus()
         printer.ppStatus(status)
         time.sleep(1)
         curPosMM = getVirtualPos(printer, parser)
 
+    # XXX add timeout here, deadlock 
     print "\nFirst layer started, waiting for second layer..."
-    while curPosMM.Z < lh:
+    while curPosMM.Z < parser.layerHeight:
         print "waiting for second layer, Z pos:", curPosMM.Z
         status = printer.getStatus()
         printer.ppStatus(status)
@@ -2282,7 +2282,7 @@ def measureTempFlowrateCurve2(args, printer, parser, planner):
                 break
 
             if t1Avg < goodtemp:
-                print "break on temp...", goodtemp
+                print "Test did not converge! break on temp (goodtemp reached) ...", t1Avg, goodtemp
                 break
 
         lastEPos = ePos
