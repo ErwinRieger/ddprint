@@ -274,15 +274,13 @@ class PathData (object):
             # WorkingPoint = 1: Parts print, higer tempeartures for good layer bonding
             assert(self.planner.args.workingPoint >= 0 and self.planner.args.workingPoint <= 1.0)
 
-            delta = sleTempBest.c-sleTempPrint.c
-            print "delta:", delta
-            assert(delta > 0.0)
+            # Note: into-air extrusion not always higher rates
+            delta = max(sleTempBest.c-sleTempPrint.c, 0.0)
 
             self.tempSLE = util.SLE(x1=0, y1=sleTempPrint.c+delta*(1 - self.planner.args.workingPoint), m=sleTempBest.m)
 
-            delta = slePwmBest.c-slePwmPrint.c
-            print "delta:", delta
-            assert(delta > 0.0)
+            # Note: into-air extrusion not always higher rates
+            delta = max(slePwmBest.c-slePwmPrint.c, 0.0)
 
             self.pwmSLE = util.SLE(x1=0, y1=slePwmPrint.c+delta*(1 - self.planner.args.workingPoint), m=slePwmBest.m)
 
