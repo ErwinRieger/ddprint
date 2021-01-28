@@ -95,8 +95,6 @@ class TempControl: public Protothread
     // Maxtemp is still checked even if PID is disabled.
     uint8_t pwmValueOverride;
 
-    float eSumLimit;
-
     bool antiWindupMode;
 
         struct PidSet pidSetHeating;

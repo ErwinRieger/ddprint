@@ -127,15 +127,11 @@ void TempControl::setPidSet(struct PidSet *pidSet, float e, float pid_dt) {
     // iTerm = curPidSet->Ki * pid_dt * eSum;
     eSum += ((pTermOld-pTermNew) + (iTermOld-iTermNew)) / (pidSet->Ki * pid_dt);
   
-// xxx
-    // dTerm = 0;
     // dTerm wurde mit curPidSet->Kd aufsummiert, das ist curPidSet->Kd/pidSet->Kd mal größer als wir es für
     // das neue pidset brauchen, desshalb:
     dTerm /= (pidSet->Kd/curPidSet->Kd);
 
     curPidSet = pidSet;
-
-    eSumLimit = 255.0 / ((pidSet->Ki * TIMER100MS) / 1000.0);
 }
 
 void TempControl::heater() {
@@ -160,7 +156,8 @@ void TempControl::heater() {
             }
             else {
 
-                // y = Kp*e + Ki*Ta*esum + Kd/Ta*(e – ealt);   //Reglergleichung
+                // Reglergleichung
+                // y = Kp*e + Ki*Ta*esum + Kd/Ta*(e – ealt);
 
                 // PID interval [s]
                 unsigned long ts = millis();
@@ -177,14 +174,7 @@ void TempControl::heater() {
                 float pTerm = curPidSet->Kp * e;
 
                 if (! antiWindupMode) {
-
-                    // eSum = constrain(
-                        // eSum + e,
-                        // -eSumLimit,
-                        // eSumLimit);
-
-                    // if ((eSum < eSumLimit) && (eSum > -eSumLimit))
-                        eSum += e;
+                    eSum += e;
                 }
 
                 float iTerm = curPidSet->Ki * pid_dt * eSum;
@@ -208,10 +198,17 @@ void TempControl::heater() {
                 output += d;
                 dTerm -= d;
 
-                // if ((e >= 0) && (output < suggestPwm)) {
-                    // // Temp to low, and suggestPwm (feed forward) is used.
-                    // output = suggestPwm;
-                // }
+                if ((e >= 0) && (output <= suggestPwm)) {
+
+                    // Temp to low, and suggestPwm (feed forward) is available.
+                    output = suggestPwm;
+
+                    // Set eSum to maintain this suggested pwm
+                    float newITerm = suggestPwm - (pTerm + d);
+                    // iterm = ki * pid_dt * eSum
+                    // eSum = iterm / (ki*pid_dt)
+                    eSum = newITerm / (curPidSet->Ki * pid_dt);
+                }
 
                 if (output > PID_MAX) {
                     pid_output = PID_MAX;
@@ -280,9 +277,8 @@ void TempControl::heater() {
         }
     }
 
-    //
-    // Reset the watchdog after we know we have a temperature measurement.
-    //
+    // Watchdog timeout if temperature control is not run
+    // regularily.
     WDT_RESET();
 }
 
