@@ -11,13 +11,12 @@ FDM 3d printer firmware with host preprocessing and *closed loop E*
    :width: 200px
    :target: ./images/flowsensor_red.jpg
 
-3d printer firmware for atmega based cartesian printers (ultimaker 2 and ramps based only at this time).
+3d printer firmware for cartesian FDM printers (ultimaker clones, atmega and stm32, like um2, ramps or jennyprinter).
 
-This firmware is part of the *ddprint printing system*, this immproves a common FDM printer with
-a closed loop E-Axis: http://www.ibrieger.de/close_the_loop_for_e.html.
+This firmware is part of the *ddprint printing system*, which immproves a common FDM printer by a closed loop E-Axis: http://www.ibrieger.de/close_the_loop_for_e.html.
 
 Reference printer is a Ultimaker 2 with ddprint installed and some hardware
-modifications: http://www.ibrieger.de/pimped-ultimaker-2.html
+modifications: http://www.ibrieger.de/pimped-ultimaker-2.html, and a jennyprinter X340 now too.
 
 .. contents::
 
@@ -31,6 +30,17 @@ DDprint system project homepage: `ibrieger.de/close_the_loop_for_e.html <http://
 Video: https://youtu.be/1Kbl9AZd10Y, ddprint playlist: https://www.youtube.com/playlist?list=PLzn7lnnZpS7XP-JhLw_o7p27ayv5bJ29o.
 
 HackadayIO project: https://hackaday.io/project/170695-ddprint.
+
+Current state
++++++++++++++++++++++++++++++++
+
+Works for me, experimental.
+
+Branches:
+
+* master: outdated, should work somehow.
+* next:   currently uploading as of jan-2021, many changes: feed-forward temperature control, more stable, stm32 port to the jennyprinter and more...
+
 
 Key features
 +++++++++++++
