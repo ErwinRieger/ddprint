@@ -1026,6 +1026,7 @@ def removeFilament(args, printer, parser, planner, feedrate):
     # Filament vorwärts feeden um den 'retract-pfropfen' einzuschmelzen
     manualMove(args, printer, parser, planner, A_AXIS, pp.getRetractLength() + 50, 5)
 
+    # Retract filament
     manualMove(args, printer, parser, planner, A_AXIS, -1.25 * pp.getBowdenLength(), feedrate)
 
     if not args.noCoolDown:
