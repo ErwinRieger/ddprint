@@ -72,41 +72,28 @@ class ProfileBase(object):
 
     def openJson(self, name):
 
+        #
+        # Directory search order:
+        # * working directory
+        # * ./mat-profiles
+        # * $HOME/.ddprint
+        # * $DDPRINTPROFILES/mat-profiles
+        #
+        searchpath = ["", "mat-profiles", os.path.join(os.environ["HOME"], ".ddprint")]
         try:
-            f = open(name + ".json")
-            return f
-        except IOError:
+            searchpath.append(os.path.join(os.environ["DDPRINTPROFILES"], "mat-profiles"))
+        except KeyError:
             pass
 
-        try:
-            f = open(name)
-            return f
-        except IOError:
-            pass
+        for searchdir in searchpath:
 
-        try:
-            f = open(os.path.join("mat-profiles", name) + ".json")
-            return f
-        except IOError:
-            pass
+            for extension in ["", ".json"]:
 
-        try:
-            f = open(os.path.join("mat-profiles", name))
-            return f
-        except IOError:
-            pass
-
-        try:
-            f = open(os.path.join(os.environ["HOME"], ".ddprint", name) + ".json")
-            return f
-        except IOError:
-            pass
-
-        try:
-            f = open(os.path.join(os.environ["HOME"], ".ddprint", name))
-            return f
-        except IOError:
-            pass
+                try:
+                    f = open(os.path.join(searchdir, name+extension))
+                    return f
+                except IOError:
+                    pass
 
         raise Exception("Profile %s not found." % name)
 
