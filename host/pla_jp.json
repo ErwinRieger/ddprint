@@ -1,0 +1,37 @@
+{
+  "version": 5,
+  "material_diameter" : 1.75,
+  "hotendBaseTemp"    : 190,
+  "hotendGoodTemp"    : 210,
+  "hotendMaxTemp"     : 260,
+  "bedTemp"           : 65,
+  "bedTempReduced"    : 60,
+  "kAdvance"          : 0.2,
+
+  # XXX copied from pegt, change this!!!
+  "properties_80" : {
+      "slippage": 0.10,
+      "Kpwm": 0.15,
+      "Ktemp": 0.2,
+      "P0pwm": 90,
+      "FR0pwm": 7.5,
+      "P0temp": 205.0,
+      "P0pwmPrint": 120.0,
+      "P0tempPrint": 225.0,
+      "FR0pwmPrint": 5
+  },
+
+  "properties_40" : {
+      "slippage": 0.10,
+      "Kpwm": 0.1,
+      "Ktemp": 0.1,
+      "P0pwm": 90,
+      "FR0pwm": 2.5,
+      "P0temp": 205.0,
+      "P0pwmPrint": 110.0,
+      "P0tempPrint": 215.0,
+      "FR0pwmPrint": 2
+  }
+}
+
+

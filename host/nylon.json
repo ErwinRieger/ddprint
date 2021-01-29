@@ -1,0 +1,36 @@
+{
+  "version": 5,
+  "material_diameter" : 1.75,
+  # Min printing temp for good look (figurine print).
+  "hotendBaseTemp"    : 215,
+  # Min printing temp for good layer adhesion (parts print).
+  "hotendGoodTemp"    : 230,
+  "hotendMaxTemp"     : 260,
+  "bedTemp"           : 85,
+  "bedTempReduced"    : 80,
+  "kAdvance"          : 0.25,
+
+  # XXX copied from petg...
+  "properties_80" : {
+      "slippage": 0.10,
+      "Kpwm": 0.15,
+      "Ktemp": 0.2,
+      "P0pwm": 90,
+      "FR0pwm": 10,
+      "P0temp": 205.0,
+      "P0pwmPrint": 110.0,
+      "P0tempPrint": 225.0,
+      "FR0pwmPrint": 7.5
+  },
+
+  "properties_40" : {
+      "slippage": 0.10,
+      "Kpwm": 0.1,
+      "Ktemp": 0.1,
+      "P0pwm": 90,
+      "FR0pwm": 2.5,
+      "P0temp": 205.0
+  }
+}
+
+
