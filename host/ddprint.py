@@ -113,7 +113,7 @@ def main():
     subparsers = argParser.add_subparsers(dest="mode", help='Mode: mon(itor)|print|store|reset|pre(process).')
 
     sp = subparsers.add_parser("autotune", help=u"Measure open loop step resopnse of hotend. Used to autotune hotend PID values (open-loop).")
-    sp.add_argument("mat", help="Name of generic material profile to use [pla, abs...].")
+    sp.add_argument("mat", help="Name of generic material profile to use [pla, petg...].")
 
     sp = subparsers.add_parser("bootbootloader", help=u"ARM/stm32: boot into bootloader mode for firmware download.")
 
@@ -123,7 +123,7 @@ def main():
 
     sp = subparsers.add_parser("print", help=u"Download and print file at once.")
     sp.add_argument("nozzle", help="Name of nozzle profile to use [nozzle40, nozzle80...].")
-    sp.add_argument("mat", help="Name of generic material profile to use [pla, abs...].")
+    sp.add_argument("mat", help="Name of generic material profile to use [pla, petg...].")
     sp.add_argument("gfile", help="Input GCode file.")
 
     # sp = subparsers.add_parser("reset", help=u"Try to stop/reset printer.")
@@ -131,7 +131,7 @@ def main():
     sp = subparsers.add_parser("pre", help=u"Preprocess gcode, for debugging purpose.")
     sp.add_argument("printer", help="Name of printer profile to use.")
     sp.add_argument("nozzle", help="Name of nozzle profile to use [nozzle40, nozzle80...].")
-    sp.add_argument("mat", help="Name of generic material profile to use [pla, abs...].")
+    sp.add_argument("mat", help="Name of generic material profile to use [pla, petg...].")
     sp.add_argument("gfile", help="Input GCode file.")
 
     sp = subparsers.add_parser("test", help=u"Debug: tests for debugging purpose.")
@@ -142,12 +142,12 @@ def main():
 
     sp = subparsers.add_parser("measureTempFlowrateCurve", help=u"Determine temperature/flowrate properties of filament.")
     sp.add_argument("nozzle", help="Name of nozzle profile to use [nozzle40, nozzle80...].")
-    sp.add_argument("mat", help="Name of generic material profile to use [pla, abs...].")
+    sp.add_argument("mat", help="Name of generic material profile to use [pla, petg...].")
     sp.add_argument("flowrate", action="store", help="Start-flowrate in mm³/s.", type=float)
 
     sp = subparsers.add_parser("measureTempFlowrateCurve2", help=u"Determine temperature/flowrate properties of filament.")
     sp.add_argument("nozzle", help="Name of nozzle profile to use [nozzle40, nozzle80...].")
-    sp.add_argument("mat", help="Name of generic material profile to use [pla, abs...].")
+    sp.add_argument("mat", help="Name of generic material profile to use [pla, petg...].")
     sp.add_argument("gfile", help="Measurement GCode file.")
 
     sp = subparsers.add_parser("moverel", help=u"Debug: Move axis manually, relative coords.")
@@ -160,14 +160,14 @@ def main():
 
     sp = subparsers.add_parser("exec", help=u"Debug: exec gcode.")
     sp.add_argument("nozzle", help="Name of nozzle profile to use [nozzle40, nozzle80...].")
-    sp.add_argument("mat", help="Name of generic material profile to use [pla, abs...].")
+    sp.add_argument("mat", help="Name of generic material profile to use [pla, petg...].")
     sp.add_argument("gcode", action="store", help="G-Code string.", type=str)
 
-    sp = subparsers.add_parser("insertFilament", help=u"Insert filament (heatup, forward filament).")
-    sp.add_argument("mat", help="Name of generic material profile to use [pla, abs...].")
+    sp = subparsers.add_parser("insertfilament", help=u"Insert filament (heatup, forward filament).")
+    sp.add_argument("mat", help="Name of generic material profile to use [pla, petg...].")
 
-    sp = subparsers.add_parser("removeFilament", help=u"Remove filament (heatup, retract filament).")
-    sp.add_argument("mat", help="Name of generic material profile to use [pla, abs...].")
+    sp = subparsers.add_parser("removefilament", help=u"Remove filament (heatup, retract filament).")
+    sp.add_argument("mat", help="Name of generic material profile to use [pla, petg...].")
 
     sp = subparsers.add_parser("readGpio", help=u"Debug: Set gpio pin to INPUT and read value.")
     sp.add_argument("pin", type=int, help="Pin number to read.")
@@ -179,11 +179,11 @@ def main():
 
     sp = subparsers.add_parser("bedleveling", help=u"Do bed leveling sequence.")
     sp.add_argument("-rl", dest="relevel", action="store", type=bool, help="Releveling, don't adjust bedlevel offset, just turn screws.", default=False)
-    sp.add_argument("mat", help="Name of generic material profile to use [pla, abs...].")
+    sp.add_argument("mat", help="Name of generic material profile to use [pla, petg...].")
 
     sp = subparsers.add_parser("heathotend", help=u"Heat up hotend (to clean it, etc).")
     # sp.add_argument("printer", help="Name of printer profile to use.")
-    sp.add_argument("mat", help="Name of generic material profile to use [pla, abs...].")
+    sp.add_argument("mat", help="Name of generic material profile to use [pla, petg...].")
 
     sp = subparsers.add_parser("getendstops", help=u"Get current endstop state.")
 
@@ -331,12 +331,12 @@ def main():
         (printer, parser, planner) = initParser(args, mode=args.mode, travelMovesOnly=True)
         util.manualMove(args, printer, parser, planner, util.dimIndex[args.axis.upper()], args.distance, args.feedrate, True)
 
-    elif args.mode == 'insertFilament':
+    elif args.mode == 'insertfilament':
 
         (printer, parser, planner) = initParser(args, mode=args.mode, travelMovesOnly=True)
         util.insertFilament(args, printer, parser, planner, args.feedrate)
 
-    elif args.mode == 'removeFilament':
+    elif args.mode == 'removefilament':
 
         (printer, parser, planner) = initParser(args, mode=args.mode, travelMovesOnly=True)
         util.removeFilament(args, printer, parser, planner, args.feedrate)
