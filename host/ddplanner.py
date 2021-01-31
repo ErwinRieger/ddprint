@@ -275,14 +275,41 @@ class PathData (object):
             assert(self.planner.args.workingPoint >= 0 and self.planner.args.workingPoint <= 1.0)
 
             # Note: into-air extrusion not always higher rates
-            delta = max(sleTempBest.c-sleTempPrint.c, 0.0)
 
-            self.tempSLE = util.SLE(x1=0, y1=sleTempPrint.c+delta*(1 - self.planner.args.workingPoint), m=sleTempBest.m)
+
+
+            temp_delta = sleTempBest.c-sleTempPrint.c
+            print "Delta temp :", temp_delta
+
+            # if the temperatue needed to print is lower than the 
+            # into-air temperature, the we assume some
+            # cooling-, environmental-, bed-temperature- or some material effects that
+            # makes it flow better when really printing.
+            # But we can not count on this effect, so ignore this
+            # here:
+
+            # but check if error is small (<=10%)
+            if temp_delta < 0:
+                assert((abs(temp_delta) / 230) <= 0.1)
+
+            temp_delta = max(temp_delta, 0.0)
+            self.tempSLE = util.SLE(x1=0, y1=sleTempPrint.c+temp_delta*(1 - self.planner.args.workingPoint), m=sleTempBest.m)
 
             # Note: into-air extrusion not always higher rates
-            delta = max(slePwmBest.c-slePwmPrint.c, 0.0)
 
-            self.pwmSLE = util.SLE(x1=0, y1=slePwmPrint.c+delta*(1 - self.planner.args.workingPoint), m=slePwmBest.m)
+            pwm_delta = slePwmBest.c-slePwmPrint.c
+            print "Delta pwm :", pwm_delta
+
+            # but check if error is small (<=10%)
+            if pwm_delta < 0:
+                assert((abs(pwm_delta) / 255) <= 0.1)
+
+            pwm_delta = max(pwm_delta, 0.0)
+
+            assert( temp_delta >= 0.0)
+            assert( pwm_delta >= 0.0)
+
+            self.pwmSLE = util.SLE(x1=0, y1=slePwmPrint.c+pwm_delta*(1 - self.planner.args.workingPoint), m=slePwmBest.m)
 
             print "Temp sle:", self.tempSLE, self.tempSLE.y(self._goodtemp)
             print "Pwm sle:", self.pwmSLE
