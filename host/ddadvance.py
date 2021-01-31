@@ -213,7 +213,7 @@ class Advance (object):
         self.__kAdv = kAdv
 
     # Called from gcode parser
-    def g900(self, values):
+    def m900(self, values):
 
         self.setkAdvance(values["K"])
 

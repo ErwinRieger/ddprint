@@ -180,6 +180,7 @@ class UM2GcodeParser:
                 "M501": self.m501_reset_params,
                 "M502": self.m502_reset_params,
                 "M900": self.m900_set_kAdvance,
+                "M901": self.m901_set_wp,
                 "M907": self.m907_motor_current,
                 "T0": self.t0,
                 "U": self.unknown, # unknown command for testing purposes
@@ -624,8 +625,11 @@ class UM2GcodeParser:
         self.logger.log("ignoring m502 (reset params)")
 
     def m900_set_kAdvance(self, line, values):
+        self.planner.m900(values)
 
-        self.planner.g900(values)
+    # Experimental gcode, set 'workingpoint' [0..1]
+    def m901_set_wp(self, line, values):
+        self.planner.m901(values)
 
     def m907_motor_current(self, line, values):
         self.logger.log("ignoring m907 (motor current)")

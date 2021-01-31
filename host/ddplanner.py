@@ -546,9 +546,15 @@ class Planner (object):
         self.stepRounders.g92(values)
 
     # Called from gcode parser
-    def g900(self, values):
+    def m900(self, values):
 
-        self.advance.g900(values)
+        self.advance.m900(values)
+
+    # Called from gcode parser,
+    # set strength aka workingpoint
+    def m901(self, values):
+        
+        print "XXX m901 set workingpoint or set whatever ddprint option not implemented", values
 
     # Called from gcode parser, pause the print for the specified amount
     # of time.
