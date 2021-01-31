@@ -645,7 +645,8 @@ class Printer(Serial):
         if debugComm:
             self.gui.logComm("*** sendCommand %s (0x%x, len: %d, seq: %d) *** " % (CommandNames[sendCmd], sendCmd, len(binary), self.prevLineNumber()))
         # print "send: ", binary.encode("hex")
-        self.send(binary)
+        if binary:
+            self.send(binary)
 
         # print "Waiting for reply code 0x%x (or ack)" % sendCmd
 
@@ -653,29 +654,34 @@ class Printer(Serial):
         while True:
 
             try:
-                # recvLine = self.safeReadline()        
                 (cmd, payload) = self.readResponse()        
             except SERIALDISCON:
                 self.gui.logError("Line disconnected in send2(), reconnecting!")
                 self.reconnect()
 
                 startTime = time.time()
-                self.send(binary)
+                if binary:
+                    self.send(binary)
                 continue
 
             except RxTimeout:
                 self.gui.logComm("RxTimeout, resending command...")
                 startTime = time.time()
-                self.send(binary)
+                if binary:
+                    self.send(binary)
                 continue
 
             except RxChecksumError:
                 self.gui.logComm("RxChecksumError, resending command...")
                 startTime = time.time()
-                self.send(binary)
+                if binary:
+                    self.send(binary)
                 continue
 
-            n = len(binary)
+            n = 0
+            if binary:
+                n = len(binary)
+
             dt = time.time() - startTime
             if cmd == 0x6:
                 if debugComm:
