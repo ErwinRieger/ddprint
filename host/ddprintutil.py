@@ -998,6 +998,8 @@ def insertFilament(args, printer, parser, planner, feedrate):
 
     printer.waitForState(StateInit)
 
+    printer.sendCommand(CmdDisableSteppers) # power off motors
+
     if not args.noCoolDown:
         printer.coolDown(HeaterEx1, wait=150, log=True)
 
@@ -1029,8 +1031,10 @@ def removeFilament(args, printer, parser, planner, feedrate):
     # Retract filament
     manualMove(args, printer, parser, planner, A_AXIS, -1.25 * pp.getBowdenLength(), feedrate)
 
+    printer.sendCommand(CmdDisableSteppers) # power off motors
+
     if not args.noCoolDown:
-        printer.coolDown(HeaterEx1,wait=150, log=True)
+        printer.coolDown(HeaterEx1, wait=150, log=True)
 
 ####################################################################################################
 
