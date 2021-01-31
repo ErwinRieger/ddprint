@@ -196,6 +196,11 @@ class MainForm(npyscreen.FormBaseNew):
                 max_width=w-1)
         self.kAdvance.editable = False
 
+        rely += 1
+        self.wp = self.add(npyscreen.TitleFixedText, name =    "WorkinPoint         :", relx=1, rely=rely, use_two_lines=False, begin_entry_at=23,
+                max_width=w-1)
+        self.wp.editable = False
+
         rely += 2
         """
         Slider, TitleSlider
@@ -381,6 +386,7 @@ class MainForm(npyscreen.FormBaseNew):
         else:
             self.guiQueue.put(SyncCallUpdate(self.smatProfile.set_value, "---"))
         self.guiQueue.put(SyncCallUpdate(self.kAdvance.set_value, self.planner.advance.getKAdv()))
+        self.guiQueue.put(SyncCallUpdate(self.wp.set_value, self.args.wp))
         self.guiQueue.put(SyncCallUpdate(self.fn.set_value, self.args.file))
         
         # try:
