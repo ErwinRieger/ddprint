@@ -334,15 +334,15 @@ class PathData (object):
 
         newTemp = int(newTemp)
 
-        if newTemp == self.lastTemp:
-            # Nothing to change...
-            return 
-
         suggestPwm = int(round(self.pwmSLE.x( self.tempSLE.y(goodtemp) + rateDiff ) + 0.5))
         suggestPwm = min(suggestPwm, 255)
 
         if debugAutoTemp:
-            self.planner.gui.log( "AutoTemp: %d moves of %.2f s duration, extrusion rate: %.2f mm³/s, temp: %d, PWM: %d" % (len(moves), tsum, avgERate, newTemp, suggestPwm))
+            self.planner.gui.log( "AutoTemp: segment of %.2f s duration, avg. extrusion rate: %.2f mm³/s, auto-temp: %d, forward-PWM: %d" % (tsum, avgERate, newTemp, suggestPwm))
+
+        if newTemp == self.lastTemp:
+            self.planner.gui.log( "AutoTemp: temp did not change, skipping temperature command.")
+            return 
 
         cmd = SyncedCommand(
             CmdSuggestPwm,
@@ -351,6 +351,8 @@ class PathData (object):
              packedvalue.uint16_t(newTemp), 
              packedvalue.uint8_t(suggestPwm) ])
         self.updateHistory(cmd)
+
+        self.lastTemp = newTemp
 
 #####################################################################
 
