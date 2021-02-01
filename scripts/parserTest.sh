@@ -11,8 +11,8 @@ for inp in $*; do
     # for kadv in 0 0.1 0.4 0.5 1; do
     for kadv in 0.4 0.5 1 0 0.1; do
 
-        echo "python -u ddprint.py -kadvance $kadv pre UM2_profile_template nozzle40 pla_1.75mm $inp"
-        python -u ddprint.py -kadvance $kadv pre UM2_profile_template nozzle40 pla_1.75mm $inp
+        echo "python -u ddprint.py -kadvance $kadv pre UM2_profile_template nozzle40 pla $inp"
+        python -u ddprint.py -kadvance $kadv pre UM2_profile_template nozzle40 pla $inp
 
         if [ "$?" != "0" ]; then
             echo "########################################################"
