@@ -23,7 +23,7 @@
 # Note: pyserial 2.6.1 seems to have a bug with reconnect (read only garbage 
 # at second connect).
 #
-import time, struct, crc_ccitt_kermit, termios, pprint, sys
+import time, struct, crc_ccitt_kermit, termios, pprint, sys, argparse
 import dddumbui, cobs, ddprintutil as util, types
 
 from serial import Serial, SerialException, SerialTimeoutException
@@ -106,6 +106,12 @@ class Printer(Serial):
         # xxx debug
         self.commandInitDone = False
 
+        self.stallwarn = argparse.Namespace(
+            lastSwap = 0,
+            lastSteps = 0,
+            lastSDReader = 0,
+            )
+
     @classmethod
     def get(cls):
 
@@ -113,6 +119,14 @@ class Printer(Serial):
             raise RuntimeError('Printer instance not created, yet')
 
         return cls._single
+
+    def checkStall(self, status):
+
+        if (self.stallwarn.lastSwap == status["Swap"]):
+            print "Swap did not change..."
+        if (self.stallwarn.lastSteps == status["StepBuffer"]) and (self.stallwarn.lastSDReader == status["SDReader"]):
+            print "stall ???"
+
 
     def commandResend(self, lastLine):
 
