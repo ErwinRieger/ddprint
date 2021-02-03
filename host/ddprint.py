@@ -285,6 +285,7 @@ def main():
                 printer.checkErrorResponse(cmd, payload, False)
 
 
+            """
             # We monitor end-of print here,
             # 
             if not printer.stateMoving(status):
@@ -304,8 +305,9 @@ def main():
                 printer.sendCommandParamV(CmdFanSpeed, [packedvalue.uint8_t(0)])
 
             else:
+            """
 
-                printer.checkStall(status)
+            printer.checkStall(status)
 
             printer.stallwarn.lastSwap = status["Swap"]
             printer.stallwarn.lastSteps = status["StepBuffer"]
