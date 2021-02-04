@@ -2494,9 +2494,9 @@ void loop() {
 
 #if defined(HASFILAMENTSENSOR) || defined(STARTFILAMENTSENSOR)
         // Read filament sensor
-        // TaskStart(taskTiming, TaskFilSensor);
-        // filamentSensor.run();
-        // TaskEnd(taskTiming, TaskFilSensor);
+        TaskStart(taskTiming, TaskFilSensor);
+        filamentSensor.run();
+        TaskEnd(taskTiming, TaskFilSensor);
 #endif
 
 #if defined(POWER_BUTTON)

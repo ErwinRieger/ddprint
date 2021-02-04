@@ -36,8 +36,8 @@
 #define TIMER10MS 10
 #define TIMER100MS 100
 
-#define COLDEXTRUSION 1
-#define COLDMovement 1
+// #define COLDEXTRUSION 1
+// #define COLDMovement 1
 
 #if MOTHERBOARD == 1
     //
@@ -61,7 +61,7 @@
     // Use Bourns ems22a Rotary Encoder as a flowrate sensor
     #define BournsEMS22AFS 1
     #define STEPPER_MINPULSE 2 /* µS */
-    #define STARTFILAMENTSENSOR 1
+    // #define STARTFILAMENTSENSOR 1
 #else
     #error Unknown MOTHERBOARD in config.h
 #endif

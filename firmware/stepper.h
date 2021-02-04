@@ -624,6 +624,8 @@ class StepBuffer: public StepBufferBase {
             // --> To relax this situation we set the new OCR1A value as fast as possible.
             FWINLINE void runMoveSteps() {
 
+HAL_SET_STEPPER_TIMER(25);
+
                 if (empty()) {
 
                     // Empty buffer, nothing to step
@@ -636,7 +638,7 @@ class StepBuffer: public StepBufferBase {
                         }
                         wasempty = true;
                     }
-                    HAL_SET_STEPPER_TIMER(25);
+                    // xxxx  HAL_SET_STEPPER_TIMER(25);
                 }
                 else {
 
@@ -645,11 +647,12 @@ class StepBuffer: public StepBufferBase {
                     uint16_t t = sd.timer;
 
                     // Set new timer value
-#if defined(HEAVYDEBUG)
+// #if defined(HEAVYDEBUG)
                     massert(t >= 25);
-#endif
+// #endif
 
-                    HAL_SET_STEPPER_TIMER(t - (2*STEPPER_MINPULSE)); // correction: min step width z.b. 2uS -> 4 timer takte
+                    // HAL_SET_STEPPER_TIMER(t - (2*STEPPER_MINPULSE)); // correction: min step width z.b. 2uS -> 4 timer takte
+                    HAL_SET_STEPPER_TIMER(t);
 
                     // Set dir bits
                     if (sd.dirBits & 0x80) {
@@ -689,7 +692,9 @@ class StepBuffer: public StepBufferBase {
 
                     wasempty = false;
 
- // HAL_SET_STEPPER_TIMER(t - (2*STEPPER_MINPULSE)); // correction: min step width z.b. 2uS -> 4 timer takte
+                    // Set new timer value
+// HAL_SET_STEPPER_TIMER(t - (2*STEPPER_MINPULSE)); // correction: min step width z.b. 2uS -> 4 timer takte
+                    HAL_SET_STEPPER_TIMER(t);
                 }
             }
 
