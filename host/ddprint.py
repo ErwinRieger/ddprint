@@ -315,11 +315,10 @@ def main():
 
     elif args.mode == "print":
 
-
-        args.dummyTempTable = True
-        args.fakeendstop = True
-        args.noCoolDown = True
-        args.autotemp = False
+        if args.testbatch:
+            args.fakeendstop = True
+            args.noCoolDown = True
+            args.autotemp = False
 
         (printer, parser, planner) = initParser(args, mode=args.mode)
 

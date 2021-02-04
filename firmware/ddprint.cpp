@@ -245,7 +245,7 @@ void killMessage(uint8_t errorCode, uint8_t errorParam1, uint8_t errorParam2, co
 
 void setup() {
 
-    // WDT_ENABLE();
+    WDT_ENABLE();
 
     TIMER_INIT();
 
