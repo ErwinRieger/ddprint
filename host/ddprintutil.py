@@ -2265,13 +2265,13 @@ def measureTempFlowrateCurve2(args, printer, parser, planner):
         if status["slippage"]:
           grip = 1.0 / status["slippage"]
 
+        # temp in 5% band
+        # if tempGood(t1Avg, t1, 0.025):
+        gripAvg.add(grip)
+
         t1Avg = tempAvg.mean()
         pAvg = pwmAvg.mean()
         gAvg = gripAvg.mean()
-
-        # temp in 5% band
-        if tempGood(t1Avg, t1, 0.025):
-            gripAvg.add(grip)
 
         # current target flowrate
         ePos = status["extruder_pos"]
