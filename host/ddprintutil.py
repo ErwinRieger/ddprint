@@ -927,7 +927,6 @@ def printFile(args, printer, parser, planner, logObj, gfile, t0, t0_wait, t1, do
 
     logObj.log( "Print finished, duration: %s" % printer.getPrintDuration() )
 
-
     if args.testbatch:
 
         print "#"

@@ -356,6 +356,7 @@ class MainForm(npyscreen.FormBaseNew):
         # parser.add_argument("-noz", dest="nozzle", action="store", help="Name of nozzle profile to use [nozzle40, nozzle80...], default is nozzle40.", default="nozzle40")
         # parser.add_argument("-mat", dest="mat", action="store", help="Name of material profile to use [pla, abs...], default is pla.", default="pla_1.75mm")
         # parser.add_argument("-f", dest="file", action="store", type=str, help="Gcode to print")
+        parser.add_argument("-testbatch", action="store", type=bool, help="Debug: testbatch.", default=False)
 
         parser.add_argument("nozzle", help="Name of nozzle profile to use [nozzle40, nozzle80...].")
         parser.add_argument("mat", help="Name of generic material profile to use [pla, abs...].")
@@ -386,7 +387,7 @@ class MainForm(npyscreen.FormBaseNew):
         else:
             self.guiQueue.put(SyncCallUpdate(self.smatProfile.set_value, "---"))
         self.guiQueue.put(SyncCallUpdate(self.kAdvance.set_value, self.planner.advance.getKAdv()))
-        self.guiQueue.put(SyncCallUpdate(self.wp.set_value, self.args.wp))
+        self.guiQueue.put(SyncCallUpdate(self.wp.set_value, self.args.workingPoint))
         self.guiQueue.put(SyncCallUpdate(self.fn.set_value, self.args.file))
         
         # try:
