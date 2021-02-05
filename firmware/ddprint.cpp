@@ -291,10 +291,6 @@ void setup() {
         kill();
     }
 
-#if defined(PMWFS)
-    filamentSensor.reset();
-#endif
-
     HAL_IRQ_INIT();
 
     SEI();
@@ -1303,9 +1299,11 @@ void Printer::cmdMove(MoveType mt) {
         // minBuffer = stepBuffer.byteSize();
     }
 
+#if ! defined(COLDMovement)
     enable_x();
     enable_y();
     enable_z();
+#endif
 
 #if ! defined(COLDEXTRUSION)
     enable_e0();
@@ -1313,7 +1311,7 @@ void Printer::cmdMove(MoveType mt) {
 
     bufferLow = 0;
 
-#if defined(HASFILAMENTSENSOR)
+#if defined(HASFILAMENTSENSOR) || defined(STARTFILAMENTSENSOR)
     filamentSensor.init();
 #endif
 }
@@ -1658,7 +1656,7 @@ void Printer::cmdGetStatus() {
     txBuffer.sendResponseUint8(tempControl.getPwmOutput());
 
     // Flowrate sensor
-#if defined(HASFILAMENTSENSOR)
+#if defined(HASFILAMENTSENSOR) || defined(STARTFILAMENTSENSOR)
     // txBuffer.sendResponseInt16(filamentSensor.targetSpeed.value());
     // txBuffer.sendResponseInt16(filamentSensor.targetSpeed);
     // txBuffer.sendResponseInt16(filamentSensor.actualSpeed.value());
@@ -1667,6 +1665,7 @@ void Printer::cmdGetStatus() {
     txBuffer.sendResponseFloat(filamentSensor.slippage());
     // txBuffer.sendResponseValue(filamentSensor.grip);
 #else
+#error nix
     txBuffer.sendResponseFloat(0.0);
     // txBuffer.sendResponseInt16(0);
 #endif
@@ -1679,7 +1678,7 @@ void Printer::cmdGetStatus() {
     txBuffer.sendResponseEnd();
 }
 
-#if defined(HASFILAMENTSENSOR)
+#if defined(HASFILAMENTSENSOR) || defined(STARTFILAMENTSENSOR)
 void Printer::cmdGetFilSensor() {
 
     txBuffer.sendResponseStart(CmdGetFilSensor);
@@ -1690,7 +1689,7 @@ void Printer::cmdGetFilSensor() {
 
 void Printer::cmdSetFilSensorCal(float cal) {
 
-#if defined(HASFILAMENTSENSOR)
+#if defined(HASFILAMENTSENSOR) || defined(STARTFILAMENTSENSOR)
     filamentSensor.setFilSensorCalibration(cal);
 #endif
 }
@@ -2164,11 +2163,29 @@ unzipper.Restart()
                         }
                         break;
 #endif
+
 #if defined(HASFILAMENTSENSOR)
                     case CmdEnableFRLimit:
                         filamentSensor.enableFeedrateLimiter(serialPort.readNoCheckCobs());
                         txBuffer.sendACK();
                         break;
+#else
+
+  #if defined(STARTFILAMENTSENSOR)
+                    case CmdEnableFRLimit:
+                        {
+                            /*
+                             * XXX always disabled, extruder does not move!
+                             */
+                            serialPort.readNoCheckCobs();
+                            filamentSensor.enableFeedrateLimiter(0);
+                            txBuffer.sendACK();
+                        }
+                        break;
+#else
+#error goht_garid
+  #endif
+
 #endif
 
                     case CmdSetContTimer:
@@ -2265,10 +2282,12 @@ unzipper.Restart()
                     case CmdSetTempTable:
                         printer.cmdSetTempTable();
                         break;
-#if defined(HASFILAMENTSENSOR)
+#if defined(HASFILAMENTSENSOR) || defined(STARTFILAMENTSENSOR)
                     case CmdGetFilSensor:
                         printer.cmdGetFilSensor();
                         break;
+#else
+#error blosid
 #endif
 
 #if 0
@@ -2473,7 +2492,7 @@ void loop() {
 
         printer.checkMoveFinished();
 
-#if defined(HASFILAMENTSENSOR)
+#if defined(HASFILAMENTSENSOR) || defined(STARTFILAMENTSENSOR)
         // Read filament sensor
         TaskStart(taskTiming, TaskFilSensor);
         filamentSensor.run();

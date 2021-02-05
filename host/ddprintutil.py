@@ -864,10 +864,26 @@ def printFile(args, printer, parser, planner, logObj, gfile, t0, t0_wait, t1, do
 
         if time.time() > checkTime:
 
+            if args.testbatch:
+                print "\n#"
+                print "# MONITOR:", time.time()
+                print "#"
+
             status = printer.getStatus()
             if doLog:
               printer.ppStatus(status)
             pprint.pprint(status)
+
+            if args.testbatch:
+
+                pos = printer.getPos()
+                print "POS: "
+                pprint.pprint(pos)
+
+                counts = printer.getFilSensor()
+                print "Filament pos:", counts
+
+                printer.checkStall(status)
 
             #
             # Check temp and start print
@@ -904,12 +920,22 @@ def printFile(args, printer, parser, planner, logObj, gfile, t0, t0_wait, t1, do
             elif state == StatePrinting:
 
                 # Stop sending moves on error of if print is done
-                if not printer.stateMoving(status):
+                if not printer.stateMoving(status) or ((not f) and args.testbatch):
                     break
 
             checkTime = time.time() + 1.5
 
     logObj.log( "Print finished, duration: %s" % printer.getPrintDuration() )
+
+
+    if args.testbatch:
+
+        print "#"
+        print "# NOTE: testbatch mode, dont monitoring rest of print !!!"
+        print "# NOTE: heaters are RUNNING !!!"
+        print "# NOTE: note printer is not momitored - no cooldown, no homing, no disabling anything!"
+        print "#"
+        return
 
     printer.coolDown(HeaterEx1)
     printer.coolDown(HeaterBed)
@@ -2239,13 +2265,13 @@ def measureTempFlowrateCurve2(args, printer, parser, planner):
         if status["slippage"]:
           grip = 1.0 / status["slippage"]
 
+        # temp in 5% band
+        # if tempGood(t1Avg, t1, 0.025):
+        gripAvg.add(grip)
+
         t1Avg = tempAvg.mean()
         pAvg = pwmAvg.mean()
         gAvg = gripAvg.mean()
-
-        # temp in 5% band
-        if tempGood(t1Avg, t1, 0.025):
-            gripAvg.add(grip)
 
         # current target flowrate
         ePos = status["extruder_pos"]

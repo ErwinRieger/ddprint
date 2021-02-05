@@ -101,6 +101,10 @@ def main():
     argParser.add_argument("-F", dest="fakeendstop", action="store", type=bool, help="Debug: fake endstops", default=False)
     argParser.add_argument("-nc", dest="noCoolDown", action="store", type=bool, help="Debug: don't wait for heater cool down after print.", default=False)
 
+    # testbatch: assume dummyTempTable, fakeendstop, noCoolDown, dont wait for print-done
+    argParser.add_argument("-testbatch", action="store", type=bool, help="Debug: testbatch.", default=False)
+
+
     argParser.add_argument("-pidset", dest="pidset", action="store", type=str, help="Debug: Specify PID parameter sets to use (ZNCH).", default="ZNCH")
 
     argParser.add_argument("-fr", dest="feedrate", action="store", type=float, help="Feedrate for move commands.", default=0)
@@ -117,7 +121,7 @@ def main():
 
     sp = subparsers.add_parser("bootbootloader", help=u"ARM/stm32: boot into bootloader mode for firmware download.")
 
-    sp = subparsers.add_parser("mon", help=u"Monitor serial printer interface.")
+    sp = subparsers.add_parser("mon", help=u"Monitor printer state.")
 
     sp = subparsers.add_parser("changenozzle", help=u"Heat hotend and change nozzle.")
 
@@ -187,7 +191,7 @@ def main():
 
     sp = subparsers.add_parser("getendstops", help=u"Get current endstop state.")
 
-    sp = subparsers.add_parser("getFilSensor", help=u"Get current filament position.")
+    sp = subparsers.add_parser("getfilsensor", help=u"Get current filament position.")
 
     sp = subparsers.add_parser("getfreemem", help=u"Get printer free memory.")
 
@@ -255,6 +259,22 @@ def main():
         printer.initSerial(args.device, args.baud)
 
         while True:
+
+            print "\n#"
+            print "# MONITOR:", time.time()
+            print "#"
+            status = printer.getStatus()
+            print "Status: "
+            pprint.pprint(status)
+
+
+            pos = printer.getPos()
+            print "POS: "
+            pprint.pprint(pos)
+
+            counts = printer.getFilSensor()
+            print "Filament pos:", counts
+
             try:
                 (cmd, payload) = printer.readResponse()        
             except RxTimeout:
@@ -264,13 +284,52 @@ def main():
                 print "Response payload:", payload.encode("hex")
                 printer.checkErrorResponse(cmd, payload, False)
 
+
+            """
+            # We monitor end-of print here,
+            # 
+            if not printer.stateMoving(status):
+
+                print "print ended because of printer.stateMoving()"
+
+                printer.coolDown(HeaterEx1)
+                printer.coolDown(HeaterBed)
+
+                ddhome.home(args, printer, parser, planner)
+
+                printer.sendCommand(CmdDisableSteppers)
+
+                printer.coolDown(HeaterEx1, wait=150, log=doLog)
+
+                # Stop hotend fan
+                printer.sendCommandParamV(CmdFanSpeed, [packedvalue.uint8_t(0)])
+
+            else:
+            """
+
+            printer.checkStall(status)
+
+            printer.stallwarn.lastSwap = status["Swap"]
+            printer.stallwarn.lastSteps = status["StepBuffer"]
+            printer.stallwarn.lastSDReader = status["SDReader"]
+
     elif args.mode == "print":
+
+        if args.testbatch:
+            args.fakeendstop = True
+            args.noCoolDown = True
+            args.autotemp = False
 
         (printer, parser, planner) = initParser(args, mode=args.mode)
 
         t0 = planner.matProfile.getBedTemp()
         t0Wait = min(t0, printer.printerProfile.getWeakPowerBedTemp())
         t1 = planner.matProfile.getHotendGoodTemp() + planner.l0TempIncrease
+
+        if args.testbatch:
+            t0 = 25
+            t0Wait = 20
+            t1 = 30
 
         util.printFile(args, printer, parser, planner, printer.gui,
                 args.gfile, t0, t0Wait, t1, doLog=True)
@@ -378,7 +437,7 @@ def main():
         res = printer.getEndstops()
         print "Endstop state: ", res
     
-    elif args.mode == 'getFilSensor':
+    elif args.mode == 'getfilsensor':
 
         printer = Printer()
         printer.initSerial(args.device, args.baud)

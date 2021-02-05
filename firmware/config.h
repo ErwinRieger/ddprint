@@ -37,6 +37,7 @@
 #define TIMER100MS 100
 
 // #define COLDEXTRUSION 1
+// #define COLDMovement 1
 
 #if MOTHERBOARD == 1
     //
@@ -44,10 +45,15 @@
     //
     // Use Bourns ems22a Rotary Encoder as a flowrate sensor
     #define BournsEMS22AFS 1
+    #define STEPPER_MINPULSE 1 /* µS */
+
+    // use filamentsensor, at least for initializing it.
+    #define STARTFILAMENTSENSOR 1
 #elif MOTHERBOARD == 2
     //
     // Ramps
     //
+    #error ramps_not_tested
 #elif MOTHERBOARD == 3
     //
     // Jennyprinter
@@ -55,8 +61,7 @@
     // Use Bourns ems22a Rotary Encoder as a flowrate sensor
     #define BournsEMS22AFS 1
     #define STEPPER_MINPULSE 2 /* µS */
-    // #define COLDEXTRUSION 1
-// #define PID_DEBUG 1
+    // #define STARTFILAMENTSENSOR 1
 #else
     #error Unknown MOTHERBOARD in config.h
 #endif
