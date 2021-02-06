@@ -27,6 +27,9 @@
         lcd.setCursor(0, 1); lcd.print("Reason: "); lcd.print(reason); \
         lcd.setCursor(0, 2); lcd.print("Param1: "); lcd.print(p1); \
         lcd.setCursor(0, 3); lcd.print("Param2: "); lcd.print(p2); }
+
+    #define LCDMSG(p) { lcd.print(p); }
+    #define LCDMSGXY(x, y, p) { lcd.setCursor(x, y); lcd.print(p); }
 #else
     #if defined(__amd64__)
         // Simulator
@@ -35,8 +38,12 @@
             std::cout<<"Reason:"<<reason<<std::endl; \
             std::cout<<"Param1:"<<p1<<std::endl; \
             std::cout<<"Param2:"<<p2<<std::endl; }
+        #define LCDMSG(p) { lcd.print(p); }
+        #define LCDMSGXY(x, y, p) { lcd.setCursor(x, y); lcd.print(p); }
     #else
         #define LCDMSGKILL(reason, p1, p2) /* */
+        #define LCDMSG(p) /* */
+        #define LCDMSGXY(x, y, p) /* */
     #endif
 #endif
 
