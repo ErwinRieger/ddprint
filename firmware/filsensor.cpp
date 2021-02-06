@@ -36,16 +36,18 @@
 #define FilSensorDebug 1
 
 // Circular buffer of last 256 filsensor measurements
+#if defined(HASFILAMENTSENSOR) || defined(STARTFILAMENTSENSOR)
 static FilsensorReading filsensorReadings[256];
 static uint8_t filsensorReadingIndex;
 static uint8_t nReadings;
 static uint8_t nAvg = 10; // Average 10 filament sensor readings if setNAvg() is not used.
+#endif
+
+FilamentSensorEMS22 filamentSensor;
 
 #if defined(BournsEMS22AFS)
 
 HAL_FS_SPI_SETTINGS;
-
-FilamentSensorEMS22 filamentSensor;
 
 FilamentSensorEMS22::FilamentSensorEMS22() {
 
