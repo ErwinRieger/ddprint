@@ -45,15 +45,15 @@
     //
     // Use Bourns ems22a Rotary Encoder as a flowrate sensor
     #define BournsEMS22AFS 1
-    #define STEPPER_MINPULSE 1 /* µS */
 
     // use filamentsensor, at least for initializing it.
-    #define STARTFILAMENTSENSOR 1
+    // #define STARTFILAMENTSENSOR 1
+
 #elif MOTHERBOARD == 2
     //
     // Ramps
     //
-    #error ramps_not_tested
+
 #elif MOTHERBOARD == 3
     //
     // Jennyprinter
