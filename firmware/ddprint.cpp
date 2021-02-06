@@ -58,6 +58,8 @@
 
 // debug
 
+#if  defined(DEBUGPROCSTAT)
+
 enum LoopTasks { TaskIdle, TaskTempControl, TaskHeater, TaskFilSensor, TaskUsbInput, TaskUsbOutput, TaskSwapDev, TaskFillBuffer, TaskSum};
 
 static struct TaskTiming taskTiming[9] = { 
@@ -71,7 +73,7 @@ static struct TaskTiming taskTiming[9] = {
     { 0, 0, 0, 0 },         // Read *swapdev* and fill *stepbuffer*
     { 0, 0, 0, 0 },         // Summary of all these tasks
 };
-
+#endif
 
 
 /////////////////////////////////////////////////////////////////////////////////////
@@ -681,6 +683,10 @@ class FillBufferTask : public Protothread {
 
 // xxx cleanup temptable
 // #if defined(HEAVYDEBUG)
+
+                LCDMSGXY(0, 0,"TScale:");
+                LCDMSG(timerScale);
+
                 massert(timerScale >= 1.0);
 // timerScale = 1.0;
 // #endif
@@ -1457,9 +1463,11 @@ void Printer::cmdGetPrinterName() {
 
     txBuffer.sendResponseStart(CmdGetPrinterName);
     txBuffer.sendResponseUint8(RespOK);
+
     txBuffer.sendResponseString(
             configSector.config.printerName,
             strnlen(configSector.config.printerName, sizeof(configSector.config.printerName)-1));
+
     txBuffer.sendResponseEnd();
 }
 
@@ -1559,7 +1567,10 @@ void Printer::cmdGetEndstops() {
 void Printer::cmdGetPos() {
 
     txBuffer.sendResponseStart(CmdGetPos);
-    txBuffer.sendResponseBlob((uint8_t*)current_pos_steps, sizeof(current_pos_steps));
+    txBuffer.sendResponseInt32(current_pos_steps[X_AXIS]);
+    txBuffer.sendResponseInt32(current_pos_steps[Y_AXIS]);
+    txBuffer.sendResponseInt32(current_pos_steps[Z_AXIS]);
+    txBuffer.sendResponseInt32(current_pos_steps[E_AXIS]);
     txBuffer.sendResponseEnd();
 }
 
@@ -1594,24 +1605,19 @@ void Printer::cmdGetDirBits() {
 // 
 
 
-
+// ramps
+#if defined(DEBUGPROCSTAT)
 void Printer::cmdGetTaskStatus() {
 txBuffer.sendResponseStart(CmdGetTaskStatus);
 
     for (uint8_t i=0; i<(sizeof(taskTiming) / sizeof(taskTiming[0])); i++) {
-#if defined(DEBUGPROCSTAT)
         txBuffer.sendResponseUInt32(taskTiming[i].ncalls);
         txBuffer.sendResponseUInt32(taskTiming[i].sumcall);
         txBuffer.sendResponseUInt32(taskTiming[i].longest);
-#else
-        txBuffer.sendResponseUInt32(0);
-        txBuffer.sendResponseUInt32(0);
-        txBuffer.sendResponseUInt32(0);
-#endif
     }
     txBuffer.sendResponseEnd();
 } 
-
+#endif
 
 
 
@@ -1657,17 +1663,11 @@ void Printer::cmdGetStatus() {
 
     // Flowrate sensor
 #if defined(HASFILAMENTSENSOR) || defined(STARTFILAMENTSENSOR)
-    // txBuffer.sendResponseInt16(filamentSensor.targetSpeed.value());
-    // txBuffer.sendResponseInt16(filamentSensor.targetSpeed);
-    // txBuffer.sendResponseInt16(filamentSensor.actualSpeed.value());
-    // txBuffer.sendResponseValue(filamentSensor.slippage.value());
     // xxx move to filsensor class
     txBuffer.sendResponseFloat(filamentSensor.slippage());
-    // txBuffer.sendResponseValue(filamentSensor.grip);
 #else
-#error nix
+    // ramps or other test boards without filsensor
     txBuffer.sendResponseFloat(0.0);
-    // txBuffer.sendResponseInt16(0);
 #endif
 
     txBuffer.sendResponseInt32(current_pos_steps[E_AXIS]);
@@ -2076,6 +2076,10 @@ unzipper.Restart()
                 uint8_t bytesLeft = 3;
 #endif
 
+
+                LCDMSGXY(0, 0,"command:");
+                LCDMSG(commandByte);
+
                 // Handle direct command
                 switch (commandByte) {
                     //
@@ -2183,7 +2187,6 @@ unzipper.Restart()
                         }
                         break;
 #else
-#error goht_garid
   #endif
 
 #endif
@@ -2243,9 +2246,12 @@ unzipper.Restart()
                     case CmdGetStatus:
                         printer.cmdGetStatus();
                         break;
+                        // ramps
+#if defined(DEBUGPROCSTAT)
                     case CmdGetTaskStatus:
                         printer.cmdGetTaskStatus();
                         break;
+#endif
                     case CmdGetIOStats:
                         printer.cmdGetIOStats();
                         break;
@@ -2286,8 +2292,6 @@ unzipper.Restart()
                     case CmdGetFilSensor:
                         printer.cmdGetFilSensor();
                         break;
-#else
-#error blosid
 #endif
 
 #if 0
@@ -2502,6 +2506,10 @@ void loop() {
 #if defined(POWER_BUTTON)
         printer.checkPowerOff(m);
 #endif
+
+#if defined(REPRAP_DISCOUNT_SMART_CONTROLLER)
+    LCDMSGXY(0, 2,"RAM:"); LCDMSG(freeRam());
+#endif
     }
 
     // Statistics: minimal step buffer watermark in [mS]
@@ -2588,7 +2596,7 @@ void loop() {
 
 void printDebugInfo() {
 #if defined(REPRAP_DISCOUNT_SMART_CONTROLLER)
-    lcd.setCursor(0, 0); lcd.print("ser:"); lcd.print(serialPort._available());
+    lcd.setCursor(0, 0); lcd.print("ser:"); /* ramps lcd.print(serialPort._available()); */
     lcd.print("B:"); lcd.print(swapDev.busy());
     lcd.print("WP:"); lcd.print(swapDev.getWritePos());
 
@@ -2597,7 +2605,7 @@ void printDebugInfo() {
 
     lcd.setCursor(0, 2); lcd.print("sdr:"); lcd.print(sDReader.available());
 
-    lcd.setCursor(0, 3); lcd.print("stb:"); lcd.print(stepBuffer.byteSize());
+    lcd.setCursor(0, 3); lcd.print("stb:"); /* ramps lcd.print(stepBuffer.byteSize()); */
 
     // Wait 100 s before reboot
     for (int i=0; i<100000; i++) {
