@@ -25,34 +25,66 @@
 #include "pins.h"
 #include "thermistortables.h"
 
-DefineIOPinMembers(2);
-DefineIOPinMembers(3);
-DefineIOPinMembers(4);
-DefineIOPinMembers(7);
-DefineIOPinMembers(8);
-DefineIOPinMembers(22);
-DefineIOPinMembers(23);
-DefineIOPinMembers(25);
-DefineIOPinMembers(26);
-DefineIOPinMembers(27);
-DefineIOPinMembers(29);
-DefineIOPinMembers(30);
-DefineIOPinMembers(31);
-DefineIOPinMembers(32);
-DefineIOPinMembers(33);
-DefineIOPinMembers(34);
-DefineIOPinMembers(35);
-DefineIOPinMembers(36);
-DefineIOPinMembers(37);
-DefineIOPinMembers(42);
-DefineIOPinMembers(43);
-DefineIOPinMembers(44);
-DefineIOPinMembers(45);
-DefineIOPinMembers(46);
-DefineIOPinMembers(51);
-DefineIOPinMembers(52);
-DefineIOPinMembers(53);
-DefineIOPinMembers(69);
+#if MOTHERBOARD == 1
+    //
+    // Ultimaker UM2
+    //
+    DefineIOPinMembers(2);
+    DefineIOPinMembers(3);
+    DefineIOPinMembers(4);
+    DefineIOPinMembers(7);
+    DefineIOPinMembers(8);
+    DefineIOPinMembers(22);
+    DefineIOPinMembers(23);
+    DefineIOPinMembers(25);
+    DefineIOPinMembers(26);
+    DefineIOPinMembers(27);
+    DefineIOPinMembers(29);
+    DefineIOPinMembers(30);
+    DefineIOPinMembers(31);
+    DefineIOPinMembers(32);
+    DefineIOPinMembers(33);
+    DefineIOPinMembers(34);
+    DefineIOPinMembers(35);
+    DefineIOPinMembers(36);
+    DefineIOPinMembers(37);
+    DefineIOPinMembers(42);
+    DefineIOPinMembers(43);
+    DefineIOPinMembers(44);
+    DefineIOPinMembers(45);
+    DefineIOPinMembers(46);
+    DefineIOPinMembers(51);
+    DefineIOPinMembers(52);
+    DefineIOPinMembers(53);
+    DefineIOPinMembers(69);
+#elif MOTHERBOARD == 2
+    //
+    // Ramps
+    //
+    DefineIOPinMembers(3);
+    DefineIOPinMembers(8);
+    DefineIOPinMembers(9);
+    DefineIOPinMembers(10);
+    DefineIOPinMembers(13);
+    DefineIOPinMembers(15);
+    DefineIOPinMembers(19);
+    DefineIOPinMembers(24);
+    DefineIOPinMembers(26);
+    DefineIOPinMembers(28);
+    DefineIOPinMembers(38);
+    DefineIOPinMembers(46);
+    DefineIOPinMembers(48);
+    DefineIOPinMembers(51);
+    DefineIOPinMembers(52);
+    DefineIOPinMembers(53);
+    DefineIOPinMembers(54);
+    DefineIOPinMembers(55);
+    DefineIOPinMembers(56);
+    DefineIOPinMembers(59);
+    DefineIOPinMembers(60);
+    DefineIOPinMembers(61);
+    DefineIOPinMembers(62);
+#endif // motherboard
 
 void HAL_SETUP_TEMP_ADC() {
 
@@ -167,6 +199,7 @@ bool MassStorage::swapInit() {
 
     massert(eraseSingleBlockEnable());
 
+    readRetry = 0;
     return true;
 }
 
