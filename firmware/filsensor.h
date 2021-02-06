@@ -94,9 +94,27 @@ class FilamentSensorEMS22 {
         void cmdGetFSReadings(uint8_t nr);
 };
 
-extern FilamentSensorEMS22 filamentSensor;
-
 #else // #if defined(BournsEMS22AFS)
     #define VAR_FILSENSOR_GRIP (1.0)
+
+class FilamentSensorEMS22 {
+    public:
+        FilamentSensorEMS22() { };
+        void setNAvg(uint8_t n) { };
+        void cmdGetFSReadings(uint8_t nr) {
+            txBuffer.sendResponseStart(CmdGetFSReadings);
+            uint8_t n = min(10, nr);
+
+            for (uint8_t i=n; i>0; i--) {
+                txBuffer.sendResponseUInt32(0);
+                txBuffer.sendResponseInt16(0);
+            }
+
+            txBuffer.sendResponseEnd();
+        }
+};
+
 #endif
+
+extern FilamentSensorEMS22 filamentSensor;
 
