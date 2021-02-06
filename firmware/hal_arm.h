@@ -457,7 +457,13 @@ class MassStorage: public MassStorageBase {
         return 0;
     }
 
-    int readBlock(uint32_t readBlockNumber, uint8_t *dst) {
+    //
+    // Wrapper around lowlevel read
+    // Returns 0 if read is done and ok
+    // Returns <0 if read is done and error (return value is error code)
+    // Returns 1 if we want to be called again to continue work
+    //
+    int readBlockWrapper(uint32_t readBlockNumber, uint8_t *dst) {
 
         USBH_Status status = USBH_MSC_Read10(
                 &USB_OTG_Core_Host, &USB_Host,
