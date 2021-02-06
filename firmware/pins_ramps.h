@@ -8,76 +8,61 @@
 // Ramps 1.4
 //
 
-//////////////////FIX THIS//////////////
-#ifndef __AVR_ATmega1280__
- #ifndef __AVR_ATmega2560__
- #error Oops!  Make sure you have 'Arduino Mega' selected from the 'Tools -> Boards' menu.
- #endif
-#endif
+#define X_STEP_PIN         DigitalOutput<54, ACTIVEHIGHPIN>
+#define X_DIR_PIN          DigitalOutput<55, ACTIVELOWPIN>
+#define X_STOP_PIN         DigitalInput<3, ACTIVELOWPIN> /* 3 */
+#define X_ENABLE_PIN       DigitalOutput<38, ACTIVELOWPIN> /* 38 */
 
+/*
+#define Y_STEP_PIN         60
+#define Y_DIR_PIN          61
+#define Y_ENABLE_PIN       56
+#define Y_STOP_PIN         15
+*/
+#define Y_STEP_PIN         DigitalOutput<60, ACTIVEHIGHPIN>
+#define Y_DIR_PIN          DigitalOutput<61, ACTIVELOWPIN>
+#define Y_STOP_PIN         DigitalInput<15, ACTIVELOWPIN>
+#define Y_ENABLE_PIN       DigitalOutput<56, ACTIVELOWPIN>
 
-// uncomment one of the following lines for RAMPS v1.3 or v1.0, comment both for v1.2 or 1.1
-// #define RAMPS_V_1_3
-// #define RAMPS_V_1_0
+/*
+#define Z_STEP_PIN         46
+#define Z_DIR_PIN          48
+#define Z_ENABLE_PIN       62
+#define Z_STOP_PIN         19
+*/
+#define Z_STEP_PIN              DigitalOutput<46, ACTIVEHIGHPIN>
+#define Z_DIR_PIN               DigitalOutput<48, ACTIVELOWPIN>
+#define Z_STOP_PIN              DigitalInput<19, ACTIVELOWPIN>
+#define Z_ENABLE_PIN            DigitalOutput<62, ACTIVELOWPIN>
 
-#if MOTHERBOARD == 2
-    #define REPRAP_DISCOUNT_SMART_CONTROLLER
-    #define NEWPANEL
-    #define ULTRA_LCD
-
-    #define LARGE_FLASH true
-
-    #define X_STEP_PIN         54
-    #define X_DIR_PIN          55
-    #define X_ENABLE_PIN       38
-    #define X_STOP_PIN          3
-
-    #define Y_STEP_PIN         60
-    #define Y_DIR_PIN          61
-    #define Y_ENABLE_PIN       56
-    #define Y_STOP_PIN         15
-
-    #define Z_STEP_PIN         46
-    #define Z_DIR_PIN          48
-    #define Z_ENABLE_PIN       62
-    #define Z_STOP_PIN         19
-
+/*
     #define Z2_STEP_PIN        36
     #define Z2_DIR_PIN         34
     #define Z2_ENABLE_PIN      30
+*/
 
+/*
     #define E0_STEP_PIN        26
     #define E0_DIR_PIN         28
     #define E0_ENABLE_PIN      24
+*/
+#define E0_STEP_PIN             DigitalOutput<26, ACTIVEHIGHPIN>
+#define E0_DIR_PIN              DigitalOutput<28, ACTIVELOWPIN>
+#define E0_ENABLE_PIN           DigitalOutput<24, ACTIVELOWPIN>
 
+
+/*
     #define E1_STEP_PIN        36
     #define E1_DIR_PIN         34
     #define E1_ENABLE_PIN      30
+*/
 
-    // SPI
-    // Chip select SDCard
-    #define SDSS               53
-    #define SCK_PIN            52
-    #define MISO_PIN           50
-    #define MOSI_PIN           51
 
-    #define LED_PIN            13
-    #define LED_PIN_ACTIVE_LOW false
+#define HEATER_BED_PIN     DigitalOutput<8, ACTIVEHIGHPIN>    // BED
 
-    #define FAN_PIN            9 // (Sprinter config)
-    #define FAN_PIN_ACTIVE_LOW false
+#define HEATER_0_PIN        PWMOutput<10, ACTIVEHIGHPIN>   // EXTRUDER 1
+#define HEATER_1_PIN        PWMOutput<10, ACTIVEHIGHPIN>   // EXTRUDER 2
 
-  // #define POWER_SUPPLY_RELAY  12
-
-  #if defined(REPRAP_DISCOUNT_SMART_CONTROLLER) || defined(G3D_PANEL)
-    #define KILL_PIN           41
-  #else
-    #define KILL_PIN           -1
-  #endif
-
-  #define HEATER_0_PIN        10   // EXTRUDER 1
-  #define H0_PIN_ACTIVE_LOW   false
-  // #define HEATER_1_PIN       -1
   // #define HEATER_2_PIN       -1
 
   #define TEMP_0_PIN         13   // ANALOG NUMBERING
@@ -86,30 +71,54 @@
   #define TEMP_1_PIN         14   // ANALOG NUMBERING
   #define TEMP_2_PIN         -1   // ANALOG NUMBERING
 
-  #define HEATER_BED_PIN     8    // BED
-  #define HEATER_BED_ACTIVE  HIGH
-
   // xxx messed up wiring, T1 and T2 swapped
   // #define TEMP_BED_PIN       14   // ANALOG NUMBERING
   #define TEMP_BED_PIN       15   // ANALOG NUMBERING
 
 
 
-  #ifdef NUM_SERVOS
-    #define SERVO0_PIN         11
 
-    #if NUM_SERVOS > 1
-      #define SERVO1_PIN         6
-    #endif
 
-    #if NUM_SERVOS > 2
-      #define SERVO2_PIN         5
-    #endif
+// SPI
+// Chip select SDCard
+#define SDSS               DigitalOutput<53, ACTIVELOWPIN>
+    #define SCK_PIN        DigitalOutput<52, ACTIVEHIGHPIN>
+// #define MISO_PIN           DigitalInput<50...
+    #define MOSI_PIN           DigitalOutput<51, ACTIVEHIGHPIN>
 
-    #if NUM_SERVOS > 3
-      #define SERVO3_PIN         4
-    #endif
+
+// #define LED_PIN_ACTIVE_LOW false
+#define LED_PIN            PWMOutput<13, ACTIVEHIGHPIN>
+
+// #define FAN_PIN_ACTIVE_LOW false
+#define FAN_PIN            PWMOutput<9, ACTIVEHIGHPIN>
+
+  // #define POWER_SUPPLY_RELAY  12
+  //
+//
+// Filament sensor pins (half duplex/3wire spi)
+//
+#define FILSENSNCS   DigitalOutput<59, ACTIVELOWPIN> // Analog A5
+
+// #define FILSENSSDIO  63
+// #define FILSENSMISO  50
+// #define FILSENSMOSI  51
+// #define FILSENSSCLK  52
+
+
+
+
+    #define REPRAP_DISCOUNT_SMART_CONTROLLER
+  #if defined(REPRAP_DISCOUNT_SMART_CONTROLLER) || defined(G3D_PANEL)
+    #define KILL_PIN           41
+  #else
+    #define KILL_PIN           -1
   #endif
+
+
+    #define NEWPANEL
+    #define ULTRA_LCD
+
 
   #ifdef ULTRA_LCD
 
@@ -175,15 +184,42 @@
     #endif
   #endif //ULTRA_LCD
 
+
+// attic
+#if 0
+
+//////////////////FIX THIS//////////////
+#ifndef __AVR_ATmega1280__
+ #ifndef __AVR_ATmega2560__
+ #error Oops!  Make sure you have 'Arduino Mega' selected from the 'Tools -> Boards' menu.
+ #endif
+#endif
+
+
+// uncomment one of the following lines for RAMPS v1.3 or v1.0, comment both for v1.2 or 1.1
+// #define RAMPS_V_1_3
+// #define RAMPS_V_1_0
+
+#if MOTHERBOARD == 2
+
 #endif // MOTHERBOARD == 2
 
-//
-// Filament sensor pins (half duplex/3wire spi)
-//
-#define FILSENSNCS   59 // Analog A5
-// #define FILSENSSDIO  63
-#define FILSENSMISO  50
-#define FILSENSMOSI  51
-#define FILSENSSCLK  52
+
+
+
+
+
+#endif
+
+
+
+
+
+
+
+
+
+
+
 
 
