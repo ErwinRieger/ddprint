@@ -231,22 +231,6 @@ class PrinterProfile(ProfileBase):
     def getFilSensorIntervalI(self):
         return float(self.getValue("filSensorInterval"))
 
-    @classmethod
-    def nu_getSettings(cls):
-        return {
-            "filSensorCalibration": cls.getValues()["filSensorCalibration"],
-            "Kp": cls.getValues()["Kp"],
-            "Ki": cls.getValues()["Ki"],
-            "Kd": cls.getValues()["Kd"],
-            "Tu": cls.getValues()["Tu"],
-            "stepsPerMMX": int(cls.getStepsPerMM(X_AXIS)),
-            "stepsPerMMY": int(cls.getStepsPerMM(Y_AXIS)),
-            "stepsPerMMZ": int(cls.getStepsPerMM(Z_AXIS)),
-            "buildVolX": int(cls.getPlatformLength(X_AXIS) * cls.getStepsPerMM(X_AXIS)),
-            "buildVolY": int(cls.getPlatformLength(Y_AXIS) * cls.getStepsPerMM(Y_AXIS)),
-            "buildVolZ": int(cls.getPlatformLength(Z_AXIS) * cls.getStepsPerMM(Z_AXIS)),
-            }
-
     def getSettingsI(self, pidSet):
 
         pidSetHeating = pidSet[:2]
