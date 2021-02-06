@@ -486,7 +486,6 @@ typedef struct {
 
 // Size of step buffer, entries are stepData structs.
 #if defined(AVR)
-    #error buflen
     #define StepBufferLen  256
 #else
     //
