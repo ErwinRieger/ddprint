@@ -140,7 +140,7 @@ def main():
 
     sp = subparsers.add_parser("test", help=u"Debug: tests for debugging purpose.")
 
-    sp = subparsers.add_parser("disableSteppers", help=u"Disable stepper current (this dis-homes the printer).")
+    sp = subparsers.add_parser("disablesteppers", help=u"Disable stepper current (this dis-homes the printer).")
 
     sp = subparsers.add_parser("home", help=u"Home the printer.")
 
@@ -352,7 +352,7 @@ def main():
 
         planner.finishMoves()
 
-    elif args.mode == 'disableSteppers':
+    elif args.mode == 'disablesteppers':
 
         printer = Printer()
         printer.initSerial(args.device, args.baud)
@@ -452,8 +452,6 @@ def main():
         print "Free memory: %d bytes" % freeMem
 
     elif args.mode == "getpos":
-
-        # (printer, _, planner) = initParser(args, mode=args.mode, travelMovesOnly=True)
 
         printer = Printer()
         printer.initPrinterProfile(args)
