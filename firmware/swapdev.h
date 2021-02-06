@@ -27,6 +27,7 @@
 
 #include "ddserial.h"
 #include "ddcommands.h"
+#include "ddlcd.h"
 
 // Redefined here from ddcommands.h
 #define RespSDReadError         9  
@@ -86,7 +87,9 @@ public:
         reset();
     }
 
+#if defined(DEBUGREADWRITE)
     struct TaskTiming ioStats[4];
+#endif
 
     // FWINLINE uint32_t getWriteBlockNumber() { return writeBlockNumber; }
     FWINLINE uint16_t getWritePos() { return writePos & SwapSectorMask; }
@@ -197,10 +200,14 @@ public:
         Restart(); // Start thread
     }
 
+#if 0
     FWINLINE int16_t _readBlock(uint8_t* dst) {
 
         // Number of bytes in this block:
+#if defined(DEBUGPROCSTAT)
         TaskStart(ioStats, TaskRead);
+#endif
+
         if (! MassStorage::readBlock((readPos >> 9)+1, dst)) {
 
             // Return Sd2Card error code and SPI status byte from sd card.
@@ -216,10 +223,15 @@ public:
             killMessage(RespSDReadError, errorCode(), errorData());
             // notreached
         }
-        TaskEnd(ioStats, TaskRead);
 
+#if defined(DEBUGPROCSTAT)
+        TaskEnd(ioStats, TaskRead);
+#endif
+
+#if defined(DEBUGREADWRITE)
         // xxx hack
         massert(GetTaskDuration(ioStats, TaskRead) <= 5);
+#endif
 
         uint16_t bytesRead = STD min(available(), (uint32_t)SwapSectorSize);
 
@@ -232,6 +244,7 @@ public:
 
         return bytesRead;
     }
+#endif
 
     // Async block write.
     bool Run() {
@@ -248,7 +261,7 @@ public:
 
             do { _ptLine = __LINE__; case __LINE__: {
                 TaskStart(ioStats, TaskRead);
-                res = readBlock((readPos >> 9)+1, readBuffer);
+                res = readBlockWrapper((readPos >> 9)+1, readBuffer);
                 TaskEnd(ioStats, TaskRead);
                 if (res == 1) return true; // continue thread
                 if (res == -1) { // error
@@ -265,6 +278,8 @@ public:
                     killMessage(RespSDReadError, errorCode(), errorData());
                     // notreached
                 }
+
+                // (res == 0), fall-through
             }
             } while (0);
 
@@ -353,16 +368,25 @@ public:
 
         TaskStart(ioStats, TaskReadSum);
 
+        // BLOCKING loop for config read!
         while (true) {
            
             TaskStart(ioStats, TaskRead);
-            res = readBlock(0, config.sector);
+            res = readBlockWrapper(0, config.sector);
+
             TaskEnd(ioStats, TaskRead);
+
+            if (res == 1) { // Continue calling
+                continue;
+            }
 
             if (res == 0) { // Done
                 TaskEnd(ioStats, TaskReadSum);
                 return;
             }
+
+            // Error, xxx nothandled
+            massert(0);
         }
         TaskEnd(ioStats, TaskReadSum);
     }
