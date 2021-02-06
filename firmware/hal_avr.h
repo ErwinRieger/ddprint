@@ -21,7 +21,6 @@
 #include <avr/wdt.h>
 
 #include "pin_states.h"
-#include "fastio.h"
 #include "ddcommands.h"
 
 #include "SdCard/SdSpiCard.h"
@@ -301,6 +300,7 @@ protected:
 
     // Number of bytes to shift the block address for non-sdhc cards
     uint8_t blockShift;
+    uint8_t readRetry;
 
     SdSpiAltDriver m_spi;
 
@@ -348,6 +348,35 @@ protected:
                 wbstate = WBWait1;
                 return false; // stop sub thread
         }
+    }
+
+    //
+    // Wrapper around lowlevel read
+    // Returns 0 if read is done and ok
+    // Returns <0 if read is done and error (return value is error code)
+    // Returns 1 if we want to be called again to continue work
+    //
+    int readBlockWrapper(uint32_t readBlockNumber, uint8_t *dst) {
+
+        if (! SdSpiCard::readBlock(readBlockNumber, dst)) {
+
+            // Return Sd2Card error code and SPI status byte from sd card.
+            // In case of SD_CARD_ERROR_CMD17 this is the return status of
+            // CMD17 in Sd2Card::cardCommand().
+
+            if (readRetry++ < 5) {
+                // Log error and retry
+                // txBuffer.sendSimpleResponse(RespUnsolicitedMsg, RespSDReadError, errorCode(), errorData());
+                return 1; // continue
+            }
+
+            // return -errorcode
+            killMessage(RespSDReadError, errorCode(), errorData());
+            // notreached
+        }
+
+        readRetry = 0;
+        return 0; // done
     }
 };
 
