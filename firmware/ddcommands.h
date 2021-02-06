@@ -72,8 +72,6 @@
 
 #define CmdSetHomePos           133
 #define CmdSetTargetTemp        134
-// #define CmdWriteEepromFloat     135 // Name max. 63 chars!
-// #define CmdEepromFactory        136
 #define CmdFanSpeed             137
 #define CmdStopMove             138
 
@@ -84,8 +82,6 @@
 // #define CmdGetDirBits           150
 #define CmdGetHomed             151
 #define CmdGetEndstops          152
-// #define CmdGetEepromVersion     153
-// #define CmdGetEepromSettings    154
 
 #define CmdDisableStepperIsr    155
 #define CmdDisableSteppers      156
