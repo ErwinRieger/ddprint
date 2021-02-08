@@ -52,7 +52,7 @@ union {
     int16_t       dy   : 11;
     int16_t       ds   : 11;
     uint8_t     fill   : 2;
-    };
+    } __attribute__((packed));
     uint8_t binary[3];
 } FilsensorReading;
 
