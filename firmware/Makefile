@@ -22,6 +22,12 @@ all: fw
 fw:
 	make -f Makefile.fw 
 
+fwupload:
+	make -f Makefile.fw do_upload
+
+fwall: fw fwupload
+	echo "make fw and upload done"
+
 ramps:
 	make -f Makefile.ramps 
 
