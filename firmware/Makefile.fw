@@ -37,5 +37,9 @@ CPPFLAGS      +=  -D"PGM_P=const char*"
 # Disable colored gcc output (don't confuse vim)
 CXXFLAGS      +=  -fno-diagnostics-color
 
+# Create map file
+# CXXFLAGS      += -Wl,-Map,output.map
+OTHER_LIBS      += -Wl,-Map,build.fw/output.map
+
 # End Mega
 
