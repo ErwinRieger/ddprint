@@ -247,7 +247,7 @@ void killMessage(uint8_t errorCode, uint8_t errorParam1, uint8_t errorParam2, co
 
 void setup() {
 
-    WDT_ENABLE();
+    // WDT_ENABLE();
 
     TIMER_INIT();
 
@@ -680,13 +680,15 @@ class FillBufferTask : public Protothread {
                     filamentSensor.setNAvg(FromBuf(uint8_t, sDReader.readData));
                 }
 
-
+// xxx todo ramps/avr update/merge
 // xxx cleanup temptable
 // #if defined(HEAVYDEBUG)
 
-                LCDMSGXY(0, 0,"TScale:");
-                LCDMSG(timerScale);
+                // LCDMSGXY(0, 0,"TScale:");
+                // LCDMSG(timerScale);
 
+                massert(timerScale >= 0.95);
+                massert(timerScale >= 0.99);
                 massert(timerScale >= 1.0);
 // timerScale = 1.0;
 // #endif
@@ -938,8 +940,11 @@ class FillBufferTask : public Protothread {
                     filamentSensor.setNAvg(FromBuf(uint8_t, sDReader.readData));
                 }
 
+// xxx todo ramps/avr update/merge
 // xxx cleanup temptable
 // #if defined(HEAVYDEBUG)
+                massert(timerScale >= 0.95);
+                massert(timerScale >= 0.99);
                 massert(timerScale >= 1.0);
 // timerScale = 1.0;
 // #endif
@@ -1605,7 +1610,6 @@ void Printer::cmdGetDirBits() {
 // 
 
 
-// ramps
 #if defined(DEBUGPROCSTAT)
 void Printer::cmdGetTaskStatus() {
 txBuffer.sendResponseStart(CmdGetTaskStatus);
@@ -1618,15 +1622,6 @@ txBuffer.sendResponseStart(CmdGetTaskStatus);
     txBuffer.sendResponseEnd();
 } 
 #endif
-
-
-
-
-
-
-
-
-
 
 void Printer::cmdGetIOStats() {
 
@@ -2076,7 +2071,6 @@ unzipper.Restart()
                 uint8_t bytesLeft = 3;
 #endif
 
-
                 LCDMSGXY(0, 0,"command:");
                 LCDMSG(commandByte);
 
@@ -2246,7 +2240,6 @@ unzipper.Restart()
                     case CmdGetStatus:
                         printer.cmdGetStatus();
                         break;
-                        // ramps
 #if defined(DEBUGPROCSTAT)
                     case CmdGetTaskStatus:
                         printer.cmdGetTaskStatus();
