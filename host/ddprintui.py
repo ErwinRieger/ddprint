@@ -283,11 +283,11 @@ class MainForm(npyscreen.FormBaseNew):
         self.printDuration.editable = False
 
         rely += 1
-        self.undergrip = self.add(npyscreen.TitleFixedText, name =       "Under-grip          :", relx=w, rely=rely, use_two_lines=False, begin_entry_at=23)
+        self.undergrip = self.add(npyscreen.TitleFixedText, name =       "Grip-low warning    :", relx=w, rely=rely, use_two_lines=False, begin_entry_at=23)
         self.undergrip.editable = False
 
         rely += 1
-        self.undertemp = self.add(npyscreen.TitleFixedText, name =       "Under-temp          :", relx=w, rely=rely, use_two_lines=False, begin_entry_at=23)
+        self.undertemp = self.add(npyscreen.TitleFixedText, name =       "Temperature-low warn:", relx=w, rely=rely, use_two_lines=False, begin_entry_at=23)
         self.undertemp.editable = False
 
         rely += 1
@@ -346,7 +346,8 @@ class MainForm(npyscreen.FormBaseNew):
 
         parser = argparse.ArgumentParser(description='%s, Direct Drive USB Print.' % sys.argv[0])
         parser.add_argument("-b", dest="baud", action="store", type=int, help="Baudrate, default 500000.", default=500000)
-        parser.add_argument("-d", dest="device", action="store", type=str, help="Device to use, default: /dev/ttyACM0.", default="/dev/ttyACM0")
+        defaultSerialDev = os.getenv("DDPRINTDEV") or os.getenv("dev") or "/dev/ttyACM"
+        parser.add_argument("-d", dest="device", action="store", type=str, help="Device to use, default: %s." % defaultSerialDev, default=defaultSerialDev)
         parser.add_argument("-dt", dest="dummyTempTable", action="store", type=bool, help="Debug: download dummy temperature table, don't limit speeed.", default=False)
         parser.add_argument("-F", dest="fakeendstop", action="store", type=bool, help="fake endstops", default=False)
         parser.add_argument("-nc", dest="noCoolDown", action="store", type=bool, help="Debug: don't wait for heater cool down after print.", default=False)
