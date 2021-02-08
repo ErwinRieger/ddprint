@@ -262,9 +262,9 @@ class MainForm(npyscreen.FormBaseNew):
         # self.sbSisze = self.add(npyscreen.TitleFixedText, name =  "Size StepBuffer     :", relx=w, rely=rely, use_two_lines=False, begin_entry_at=25)
         # self.sbSisze.editable = False
 
-        rely += 1
-        self.underrun = self.add(npyscreen.TitleFixedText, name = "Stepbuffer underruns:", relx=w, rely=rely, use_two_lines=False, begin_entry_at=23)
-        self.underrun.editable = False
+        # rely += 1
+        # self.underrun = self.add(npyscreen.TitleFixedText, name = "Stepbuffer underruns:", relx=w, rely=rely, use_two_lines=False, begin_entry_at=23)
+        # self.underrun.editable = False
 
         rely += 1
         self.extGripC = self.add(npyscreen.TitleFixedText, name =  "Feeder Grip (avg)   :", relx=w, rely=rely, use_two_lines=False, begin_entry_at=23)
@@ -281,6 +281,14 @@ class MainForm(npyscreen.FormBaseNew):
         rely += 1
         self.printDuration = self.add(npyscreen.TitleFixedText, name =   "Print duration      :", relx=w, rely=rely, use_two_lines=False, begin_entry_at=23)
         self.printDuration.editable = False
+
+        rely += 1
+        self.undergrip = self.add(npyscreen.TitleFixedText, name =       "Under-grip          :", relx=w, rely=rely, use_two_lines=False, begin_entry_at=23)
+        self.undergrip.editable = False
+
+        rely += 1
+        self.undertemp = self.add(npyscreen.TitleFixedText, name =       "Under-temp          :", relx=w, rely=rely, use_two_lines=False, begin_entry_at=23)
+        self.undertemp.editable = False
 
         rely += 1
         self.errors = self.add(npyscreen.TitleFixedText, name =   "Errors              :", relx=w, rely=rely, use_two_lines=False, begin_entry_at=23, color="WARNING") 
@@ -460,12 +468,11 @@ class MainForm(npyscreen.FormBaseNew):
         # self.sdrSize.update()
         # self.sbSisze.set_value( "%8s" % util.sizeof_fmt(status["StepBuffer"]))
         # self.sbSisze.update()
-        if status["StepBufUnderRuns"] > 0:
-            self.underrun.set_value( "%8s" % str(status["StepBufUnderRuns"]))
-        else:
-            self.underrun.set_value( "       0" )
-
-        self.underrun.update()
+        # if status["StepBufUnderRuns"] > 0:
+            # self.underrun.set_value( "%8s" % str(status["StepBufUnderRuns"]))
+        # else:
+            # self.underrun.set_value( "       0" )
+        # self.underrun.update()
 
         slippage = status["slippage"]
         self.gripAvg1.add(slippage)
@@ -536,6 +543,11 @@ class MainForm(npyscreen.FormBaseNew):
 
         self.lastEPos = ePos
         self.lastTime = t
+
+        self.undergrip.set_value( "%8s" % str(status["underGrip"]))
+        self.undergrip.update()
+        self.undertemp.set_value( "%8s" % str(status["underTemp"]))
+        self.undertemp.update()
 
         self.printDuration.set_value(self.printer.getPrintDuration())
         self.printDuration.update()
@@ -673,7 +685,7 @@ class MainForm(npyscreen.FormBaseNew):
                 self,
                 self.fn.get_value(), self.mat_t0, self.mat_t0_wait, self.mat_t1)
 
-            self.printLog.close()
+            self.closePrintLog()
 
         except stoppableThread.StopThread:
             # Stop of current action requested
@@ -691,6 +703,12 @@ class MainForm(npyscreen.FormBaseNew):
 
     # def stopMove(self):
         # util.stopMove(self.parser)
+
+    def closePrintLog(self):
+        self.printLog.write("\nUserNotes:")
+        self.printLog.write("* Real printing time (Build time) : " + self.printer.getPrintDuration())
+        self.printLog.write("* Measured Weight (Plastic weight): ")
+        self.printLog.close()
 
     # Non-thread save version
     def _log(self, *args):

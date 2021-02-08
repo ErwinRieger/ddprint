@@ -45,12 +45,3 @@ public:
 };
 extern UnZipper unZipper;
 
-// //////// xxx adater code
-// #include <assert.h>
-// #include <stdio.h>
-// #include <stdlib.h>
-// #define massert assert
-
-///////////////////////////////
-//
-//
