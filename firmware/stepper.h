@@ -486,7 +486,8 @@ typedef struct {
 
 // Size of step buffer, entries are stepData structs.
 #if defined(AVR)
-    #define StepBufferLen  256
+    // #define StepBufferLen  256
+    #define StepBufferLen  512
 #else
     //
     // Good for max: (4096*(25/2))/1000.0 = 51.2 mS

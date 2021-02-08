@@ -19,7 +19,7 @@
 # along with ddprint.  If not, see <http://www.gnu.org/licenses/>.
 #*/
 
-import logging, pprint, sys
+import logging, pprint, sys, os
 import argparse, time, cProfile
 
 logging.basicConfig(level=logging.DEBUG)
@@ -83,7 +83,7 @@ def main():
     argParser = argparse.ArgumentParser(description='%s, Direct Drive USB Print.' % sys.argv[0])
 
     argParser.add_argument("-b", dest="baud", action="store", type=int, help="Baudrate, default 500000.", default=500000)
-    argParser.add_argument("-d", dest="device", action="store", type=str, help="Device to use, default: /dev/ttyACM0.", default="/dev/ttyACM0")
+    argParser.add_argument("-d", dest="device", action="store", type=str, help="Device to use, default: /dev/ttyACM0.", default=(os.getenv("DDPRINTDEV") or os.getenv("dev")))
 
     argParser.add_argument("-t0", dest="t0", action="store", type=int, help="Temp 0 (heated bed), default comes from mat. profile.")
     argParser.add_argument("-t1", dest="t1", action="store", type=int, help="Temp 1 (hotend 1), default comes from mat. profile.")
@@ -264,16 +264,20 @@ def main():
             print "# MONITOR:", time.time()
             print "#"
             status = printer.getStatus()
-            print "Status: "
+            print "*** Status: ***"
             pprint.pprint(status)
 
-
             pos = printer.getPos()
-            print "POS: "
-            pprint.pprint(pos)
+            print "*** Printer POS: %s ***" % str(pos)
 
             counts = printer.getFilSensor()
-            print "Filament pos:", counts
+            print "*** Filament pos: %s ***" % str(counts)
+
+            freeMem = printer.getFreeMem()
+            print "*** Free memory: %d bytes ***" % freeMem
+
+            print "*** FRS readings: ***"
+            pprint.pprint(printer.getFSReadings())
 
             try:
                 (cmd, payload) = printer.readResponse()        

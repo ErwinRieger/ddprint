@@ -37,9 +37,32 @@
 
 // Circular buffer of last 256 filsensor measurements
 #if defined(HASFILAMENTSENSOR) || defined(STARTFILAMENTSENSOR)
+
+/*
+typedef struct {
+    // unsigned long timeStamp;
+    int16_t       dy;
+    int16_t       ds;
+} FilsensorReading;
+*/
+
+typedef union __packed { // packed needed?
+// typedef struct __packed {
+union {
+    int16_t       dy   : 11;
+    int16_t       ds   : 11;
+    uint8_t     fill   : 2;
+    };
+    uint8_t binary[3];
+} FilsensorReading;
+
+static_assert (sizeof(FilsensorReading)==3, "FilsensorReading not 3 bytes size.");
+
 static FilsensorReading filsensorReadings[256];
-static uint8_t filsensorReadingIndex;
-static uint8_t nReadings;
+static_assert (sizeof(filsensorReadings)==(3*256), "FilsensorReading not 3 bytes size.");
+
+static uint8_t filsensorReadingIndex = 0;
+static uint8_t nReadings = 0;
 static uint8_t nAvg = 10; // Average 10 filament sensor readings if setNAvg() is not used.
 #endif
 
@@ -158,7 +181,8 @@ void FilamentSensorEMS22::run() {
 
     int16_t deltaStepperSteps = astep - lastASteps; // Requested extruded length
 
-    filsensorReadings[filsensorReadingIndex].timeStamp = millis();
+    // filsensorReadings[filsensorReadingIndex].timeStamp = millis();
+
     filsensorReadings[filsensorReadingIndex].ds = deltaStepperSteps;
     filsensorReadings[filsensorReadingIndex].dy = dy;
     
@@ -192,7 +216,8 @@ void FilamentSensorEMS22::cmdGetFSReadings(uint8_t nr) {
     uint8_t n = min(nReadings, nr);
 
     for (uint8_t i=n; i>0; i--) {
-        txBuffer.sendResponseUInt32(filsensorReadings[(filsensorReadingIndex-i) & 0xff].timeStamp);
+        // ramps txBuffer.sendResponseUInt32(filsensorReadings[(filsensorReadingIndex-i) & 0xff].timeStamp);
+        // txBuffer.sendResponseUint8(filsensorReadingIndex-i);
         txBuffer.sendResponseInt16(filsensorReadings[(filsensorReadingIndex-i) & 0xff].dy);
     }
 

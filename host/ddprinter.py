@@ -1090,8 +1090,10 @@ class Printer(Serial):
         readings = []
 
         for i in range(10):
-            (ts, dy) = struct.unpack("<Ih", payload[i*6:(i+1)*6])
-            readings.append((ts, dy))
+            # (ts, dy) = struct.unpack("<Ih", payload[i*6:(i+1)*6])
+            (dy, ) = struct.unpack("<h", payload[i*2:(i+1)*2])
+            # readings.append((i, dy))
+            readings.append(dy)
 
         return readings
 

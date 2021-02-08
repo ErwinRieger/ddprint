@@ -25,12 +25,6 @@
 
 #pragma once
 
-typedef struct {
-    unsigned long timeStamp;
-    int16_t       dy;
-    int16_t       ds;
-} FilsensorReading;
-
 #if defined(BournsEMS22AFS)
 
 #define VAR_FILSENSOR_GRIP (filamentSensor.getGrip())

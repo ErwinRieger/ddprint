@@ -104,16 +104,17 @@ class MovingAvgReadings(MovingAvg):
 
         # dict of all used timestamps to filter duplicates
         # from printer.getFSReadings()
-        self.data = {}
+        # self.data = {}
 
     def addReadings(self, readings):
 
-        for (ts, dy) in readings:
+        # for (ts, dy) in readings:
+        for dy in readings:
 
-            if ts in self.data:
-                continue
+            # if ts in self.data:
+                # continue
 
-            self.data[ts] = dy
+            # self.data[ts] = dy
             self.add(dy)
 
 
