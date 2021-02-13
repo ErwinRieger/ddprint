@@ -807,7 +807,13 @@ class Printer(Serial):
             (statusDict["state"], statusDict["t0"], statusDict["t1"], statusDict["targetT1"], statusDict["pwmOutput"], util.sizeof_fmt(statusDict["Swap"]), statusDict["minBuffer"], slipstr)
 
     # Get printer (-profile) name from printer eeprom
-    def getPrinterName(self):
+    def getPrinterName(self, args):
+
+        if args.mode == "pre":
+            return args.printer
+
+        if not self.isOpen():
+            self.initSerial(args.device, args.baud, True)
 
         resp = self.query(CmdGetPrinterName)
         pn = util.getResponseString(resp[1], 1)
@@ -829,12 +835,7 @@ class Printer(Serial):
     #
     def initPrinterProfile(self, args):
 
-        if args.mode == "pre":
-            self.printerProfile = PrinterProfile(args.printer)
-        else:
-            if not self.isOpen():
-                self.initSerial(args.device, args.baud, True)
-            self.printerProfile = PrinterProfile(self.getPrinterName())
+        self.printerProfile = PrinterProfile(self.getPrinterName(args))
 
     # Set a gpio port on printer
     def setGpio(self, pin, value):
