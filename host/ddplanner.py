@@ -241,19 +241,16 @@ class PathData (object):
 
             mp = self.planner.matProfile
 
-            hwVersion = planner.printer.printerProfile.getHwVersionI()
-            nozzleDiam = planner.nozzleProfile.getSizeI()
+            self.ks = mp.getKpwm()
+            self.ktemp = mp.getKtemp()
 
-            self.ks = mp.getKpwm(hwVersion, nozzleDiam)
-            self.ktemp = mp.getKtemp(hwVersion, nozzleDiam)
+            p0TempAir = mp.getP0temp()
+            self.p0Air = mp.getP0pwm() # xxx hardcoded in firmware!
+            self.fr0Air = mp.getFR0pwm()
 
-            p0TempAir = mp.getP0temp(hwVersion, nozzleDiam)
-            self.p0Air = mp.getP0pwm(hwVersion, nozzleDiam) # xxx hardcoded in firmware!
-            self.fr0Air = mp.getFR0pwm(hwVersion, nozzleDiam)
-
-            p0TempPrint = mp.getP0tempPrint(hwVersion, nozzleDiam)
-            self.p0Print = mp.getP0pwmPrint(hwVersion, nozzleDiam) # xxx hardcoded in firmware!
-            self.fr0Print = mp.getFR0pwmPrint(hwVersion, nozzleDiam)
+            p0TempPrint = mp.getP0tempPrint()
+            self.p0Print = mp.getP0pwmPrint() # xxx hardcoded in firmware!
+            self.fr0Print = mp.getFR0pwmPrint()
 
             self._goodtemp = mp.getHotendGoodTemp()
             self.lastTemp = self._goodtemp
@@ -261,11 +258,11 @@ class PathData (object):
             # xxx same as in genTempTable
 
             # Interpolate best case flowrate (into air)
-            (sleTempBest, slePwmBest) = mp.getFrSLE(hwVersion, nozzleDiam)
+            (sleTempBest, slePwmBest) = mp.getFrSLE()
             print "best case flowrate:", sleTempBest, slePwmBest
 
             # Interpolate worst case flowrate (100% fill with small nozzle)
-            (sleTempPrint, slePwmPrint) = mp.getFrSLEPrint(hwVersion, nozzleDiam)
+            (sleTempPrint, slePwmPrint) = mp.getFrSLEPrint()
             print "worst case flowrate:", sleTempPrint, slePwmPrint
 
             # XXX simple way, use average of best and worst flowrate:
@@ -1309,9 +1306,18 @@ class Planner (object):
 
 ####################################################################################################
 # Create material profile singleton instance
-def initMatProfile(args, printerName):
+def initMatProfile(args, printer, nozzleProfile):
+    
+    nozzle = None
+    if nozzleProfile:
+        nozzle = nozzleProfile.getSizeI()
 
-    mat = MatProfile(args.mat, args.smat, printerName)
+    mat = MatProfile(
+            args.mat, args.smat,
+            printer.getPrinterName(args),
+            printer.printerProfile.getHwVersionI(),
+            nozzle
+            )
 
     # Overwrite settings from material profile with command line arguments:
     if args.t0:
@@ -1331,19 +1337,18 @@ def initParser(args, mode=None, gui=None, travelMovesOnly=False):
     # Create printer profile
     printer.commandInit(args)
 
-    # Create material profile singleton instance
-    if "mat" in args:
-        if args.mode == "pre":
-            mat = initMatProfile(args, args.printer)
-        else:
-            mat = initMatProfile(args, printer.getPrinterName())
-    else:
-        mat = None
-
     if "nozzle" in args:
         nozzle = NozzleProfile(args.nozzle)
     else:
         nozzle = None
+
+    # Create material profile singleton instance
+    if "mat" in args:
+        mat = initMatProfile(args, printer, nozzle)
+    else:
+        mat = None
+
+    print "nozzle, mat:", nozzle, mat
 
     # Create planner singleton instance
     planner = Planner(args, nozzleProfile=nozzle, materialProfile=mat, printer=printer, travelMovesOnly=travelMovesOnly)
