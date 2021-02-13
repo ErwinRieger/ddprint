@@ -238,7 +238,7 @@ def main():
 
         printer = Printer()
         printer.commandInit(args)
-        matProfile = initMatProfile(args, printer.getPrinterName())
+        matProfile = initMatProfile(args, printer, None)
         util.measureHotendStepResponse(args, printer, matProfile)
 
     elif args.mode == 'bootbootloader':
@@ -432,7 +432,7 @@ def main():
 
         printer = Printer()
         printer.commandInit(args)
-        matProfile = initMatProfile(args, printer.getPrinterName())
+        matProfile = initMatProfile(args, printer, None)
         util.heatHotend(args, matProfile, printer)
 
     elif args.mode == 'getendstops':
