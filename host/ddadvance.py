@@ -148,12 +148,9 @@ class Advance (object):
         self.kFeederComp = 0.0
         if UseFeederCompensation:
 
-            hwVersion = self.printer.printerProfile.getHwVersionI()
-            nozzleDiam = planner.nozzleProfile.getSizeI()
+            slippage = planner.matProfile.getSlippageI()
 
-            slippage = planner.matProfile._getSlippage(hwVersion, nozzleDiam)
-
-            tempCurve = planner.matProfile.getTempCurve(hwVersion, nozzleDiam)
+            tempCurve = planner.matProfile.getTempCurve()
 
             area = planner.matProfile._getMatArea()
 
