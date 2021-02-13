@@ -323,15 +323,9 @@ class PrinterProfile(ProfileBase):
 # Material profile, singleton
 #
 ####################################################################################################
-_count  = 0 
 class MatProfile(ProfileBase):
 
     def __init__(self, name, smatName, printerName, hwVersion, nozzleDiam):
-
-        global _count
-
-        assert(_count==0)
-        _count +=1
 
         if smatName:
             smatName = os.path.join(printerName, smatName)
