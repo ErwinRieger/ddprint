@@ -1546,9 +1546,7 @@ def getResponseString(s, offset):
 
 def genTempTable(printerProfile, nozzleProfile, matProfile):
 
-    hwVersion = printerProfile.getHwVersionI()
     spm = printerProfile.getStepsPerMMI(A_AXIS)
-    nozzleDiam = nozzleProfile.getSizeI()
     aFilament = matProfile.getMatArea()
 
     startTemp = matProfile.getHotendBaseTemp()
@@ -1559,11 +1557,11 @@ def genTempTable(printerProfile, nozzleProfile, matProfile):
 
     # xxx same as in PathData
     # Interpolate best case flowrate (into air)
-    (sleTempBest, slePwmBest) = matProfile.getFrSLE(hwVersion, nozzleDiam)
+    (sleTempBest, slePwmBest) = matProfile.getFrSLE()
     print "best case flowrate:", sleTempBest, slePwmBest
 
     # Interpolate worst case flowrate (100% fill with small nozzle)
-    (sleTempPrint, slePwmPrint) = matProfile.getFrSLEPrint(hwVersion, nozzleDiam)
+    (sleTempPrint, slePwmPrint) = matProfile.getFrSLEPrint()
     print "worst case flowrate:", sleTempPrint, slePwmPrint
 
     # XXX simple way, use average of best and worst flowrate:
@@ -2183,9 +2181,7 @@ def measureTempFlowrateCurve2(args, printer, parser, planner):
 
     # timeConstant = printer.printerProfile.getTuI() + printer.printerProfile.getTgI() 
 
-    hwVersion = printer.printerProfile.getHwVersion()
-    nozzleDiam = planner.nozzleProfile.getSizeI()
-    p0pwm = planner.matProfile.getP0pwm(hwVersion, nozzleDiam) # xxx hardcoded in firmware!
+    p0pwm = planner.matProfile.getP0pwm() # xxx hardcoded in firmware!
 
     aFilament = planner.matProfile.getMatArea()
 
