@@ -49,27 +49,35 @@ if __name__ == "__main__":
     tempGraphs = []
     pwmGraphs = []
 
-    bp = MatProfile(name=baseProfile, smatName=None, printerName=printerName)
+    bp = MatProfile(
+            name=baseProfile, smatName=None,
+            printerName=printerName,
+            hwVersion=pp.getHwVersionI(),
+            nozzleDiam=nozzleDiam)
     goodTemp = bp.getHotendGoodTemp()
 
     for specificProfile in sys.argv[4:]:
 
-        mp = MatProfile(name=baseProfile, smatName=specificProfile, printerName=printerName)
+        mp = MatProfile(
+                name=baseProfile, smatName=specificProfile,
+                printerName=printerName,
+                hwVersion=pp.getHwVersionI(),
+                nozzleDiam=nozzleDiam)
 
-        kpwm = mp.getKpwm(pp.getHwVersion(), nozzleDiam)
-        ktemp = mp.getKtemp(pp.getHwVersion(), nozzleDiam)
+        kpwm = mp.getKpwm()
+        ktemp = mp.getKtemp()
 
-        p0 = mp.getP0pwm(pp.getHwVersion(), nozzleDiam)
-        p0Temp = mp.getP0temp(pp.getHwVersion(), nozzleDiam)
-        fr0 = mp.getFR0pwm(pp.getHwVersion(), nozzleDiam)
+        p0 = mp.getP0pwm()
+        p0Temp = mp.getP0temp()
+        fr0 = mp.getFR0pwm()
 
-        flowrateData = mp.getFlowrateData(pp.getHwVersion(), nozzleDiam)
+        flowrateData = mp.getFlowrateData()
         hasPrintingValues = "P0tempPrint" in flowrateData
 
         if hasPrintingValues:
-            p0Print = mp.getP0pwmPrint(pp.getHwVersion(), nozzleDiam)
-            p0TempPrint = mp.getP0tempPrint(pp.getHwVersion(), nozzleDiam)
-            fr0Print = mp.getFR0pwmPrint(pp.getHwVersion(), nozzleDiam)
+            p0Print = mp.getP0pwmPrint()
+            p0TempPrint = mp.getP0tempPrint()
+            fr0Print = mp.getFR0pwmPrint()
 
         maxTemp = mp.getHotendMaxTemp()
 
