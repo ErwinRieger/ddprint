@@ -323,46 +323,34 @@ class PrinterProfile(ProfileBase):
 # Material profile, singleton
 #
 ####################################################################################################
+_count  = 0 
 class MatProfile(ProfileBase):
 
-    # _single = None 
+    def __init__(self, name, smatName, printerName, hwVersion, nozzleDiam):
 
-    def __init__(self, name, smatName, printerName):
+        global _count
 
-        # if MatProfile._single:
-            # raise RuntimeError('Error: a MatProfile instance already exists')
-
-        # MatProfile._single = self
+        assert(_count==0)
+        _count +=1
 
         if smatName:
             smatName = os.path.join(printerName, smatName)
 
         super(MatProfile, self).__init__(name, smatName)
 
+        # Check hardware version
+        assert(self.getValue("version") == hwVersion)
+
         self.matArea = (math.pi * pow(float(self.values["material_diameter"]), 2)) / 4.0
+
+        self.nozzleDiam = nozzleDiam
 
     def override(self, key, value):
         assert(key != "material_diameter")
         ProfileBase.override(self, key, value)
 
-    @classmethod
-    def get(cls):
-
-        if not cls._single:
-            raise RuntimeError('MatProfile instance not created, yet')
-
-        return cls._single
-
-    @classmethod
-    def getValues(cls):
-        return cls.get().values
-
     def getValuesI(self):
         return self.values
-
-    @classmethod
-    def getMatDiameter(cls):
-        return float(cls.getValues()["material_diameter"])
 
     def getHotendBaseTemp(self):
         return int(self.getValue("hotendBaseTemp"))
@@ -382,89 +370,68 @@ class MatProfile(ProfileBase):
     def getMatArea(self):
         return self.matArea
 
-    @classmethod
-    def getKAdv(cls):
-        return float(cls.getValues()["kAdvance"])
-
     def getKAdvI(self):
         return float(self.getValue("kAdvance"))
+        
+    def getFlowrateData(self):
+        return  self.getValue("properties_%d" % (self.nozzleDiam*100))
 
-    def getFlowrateData(self, hwVersion, nozzleDiam):
-        # Check hardware version
-        assert(self.getValue("version") == hwVersion)
-        return  self.getValue("properties_%d" % (nozzleDiam*100))
+    def getKpwm(self):
 
-    def getKpwm(self, hwVersion, nozzleDiam):
-
-        flowrateData = self.getFlowrateData(hwVersion, nozzleDiam)
+        flowrateData = self.getFlowrateData()
         return flowrateData["Kpwm"]
 
-    def getKtemp(self, hwVersion, nozzleDiam):
+    def getKtemp(self):
 
-        flowrateData = self.getFlowrateData(hwVersion, nozzleDiam)
+        flowrateData = self.getFlowrateData()
         return flowrateData["Ktemp"]
 
-    def getP0pwm(self, hwVersion, nozzleDiam):
+    def getP0pwm(self):
 
-        flowrateData = self.getFlowrateData(hwVersion, nozzleDiam)
+        flowrateData = self.getFlowrateData()
         return flowrateData["P0pwm"]
 
-    def getP0pwmPrint(self, hwVersion, nozzleDiam):
+    def getP0pwmPrint(self):
 
-        flowrateData = self.getFlowrateData(hwVersion, nozzleDiam)
+        flowrateData = self.getFlowrateData()
         return flowrateData["P0pwmPrint"]
 
-    def getFR0pwm(self, hwVersion, nozzleDiam):
+    def getFR0pwm(self):
 
-        flowrateData = self.getFlowrateData(hwVersion, nozzleDiam)
+        flowrateData = self.getFlowrateData()
         return flowrateData["FR0pwm"]
 
-    def getFR0pwmPrint(self, hwVersion, nozzleDiam):
+    def getFR0pwmPrint(self):
 
-        flowrateData = self.getFlowrateData(hwVersion, nozzleDiam)
+        flowrateData = self.getFlowrateData()
         return flowrateData["FR0pwmPrint"]
 
-    def getP0temp(self, hwVersion, nozzleDiam):
+    def getP0temp(self):
 
-        flowrateData = self.getFlowrateData(hwVersion, nozzleDiam)
+        flowrateData = self.getFlowrateData()
         return flowrateData["P0temp"]
 
-    def getP0tempPrint(self, hwVersion, nozzleDiam):
+    def getP0tempPrint(self):
 
-        flowrateData = self.getFlowrateData(hwVersion, nozzleDiam)
+        flowrateData = self.getFlowrateData()
         return flowrateData["P0tempPrint"]
 
-    def xgetFlowrateForTemp(self, temp, hwVersion, nozzleDiam):
-
-        FR0pwm= self.getFR0pwm(hwVersion, nozzleDiam)   # a0 feedrate
-        Ktemp = self.getKtemp (hwVersion, nozzleDiam)   # a1
-        p0Temp = self.getP0temp(hwVersion, nozzleDiam)  # a0 temperature
-
-        fr = FR0pwm + (temp - p0Temp) * Ktemp
-
-        print "flowrate for temp:", temp, fr
-        return fr
-
-    @classmethod
-    def getSlippage(cls, hwVersion, nozzleDiam):
-        return cls.get()._getSlippage(temp, hwVersion, nozzleDiam)
-
-    def _getSlippage(cls, hwVersion, nozzleDiam):
-        flowrateData = self.getFlowrateData(hwVersion, nozzleDiam)
+    def getSlippageI(self):
+        flowrateData = self.getFlowrateData()
         return flowrateData["slippage"]
 
-    def getFrSLE(self, hwVersion, nozzleDiam):
-        print "matprofile: todo, add version and nozzle to constructor!"
+    def getFrSLE(self):
+
         return (
-                util.SLE(x1=self.getP0temp(hwVersion, nozzleDiam), y1=self.getFR0pwm(hwVersion, nozzleDiam), m=self.getKtemp(hwVersion, nozzleDiam)),
-                util.SLE(x1=self.getP0pwm(hwVersion, nozzleDiam), y1=self.getFR0pwm(hwVersion, nozzleDiam), m=self.getKpwm(hwVersion, nozzleDiam))
+                util.SLE(x1=self.getP0temp(), y1=self.getFR0pwm(), m=self.getKtemp()),
+                util.SLE(x1=self.getP0pwm(), y1=self.getFR0pwm(), m=self.getKpwm())
                 )
 
-    def getFrSLEPrint(self, hwVersion, nozzleDiam):
+    def getFrSLEPrint(self):
 
         return (
-                util.SLE(x1=self.getP0tempPrint(hwVersion, nozzleDiam), y1=self.getFR0pwmPrint(hwVersion, nozzleDiam), m=self.getKtemp(hwVersion, nozzleDiam)),
-                util.SLE(x1=self.getP0pwmPrint(hwVersion, nozzleDiam), y1=self.getFR0pwmPrint(hwVersion, nozzleDiam), m=self.getKpwm(hwVersion, nozzleDiam))
+                util.SLE(x1=self.getP0tempPrint(), y1=self.getFR0pwmPrint(), m=self.getKtemp()),
+                util.SLE(x1=self.getP0pwmPrint(), y1=self.getFR0pwmPrint(), m=self.getKpwm())
                 )
 
 
@@ -510,10 +477,6 @@ class NozzleProfile(ProfileBase):
     @classmethod
     def getArea(cls):
         return (math.pi/4) * pow(cls.getSize(), 2)
-
-
-    # def getValuesI(self):
-        # return cls.get().values
 
     def getSizeI(self):
         return float(self.getValue("size"))
