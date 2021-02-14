@@ -80,6 +80,9 @@ class FilamentSensorEMS22 {
             // axis_steps_per_mm_e = steps;
         // }
 
+        // Return ratio of FRS counts to stepper stepps (taking filSensorCalibration into account):
+        // Returns 1.0 if average of FSR readings still no available,
+        // else slip value, range is [0.1...1.0], but values > 1.0 are possible to some extend (calibraition).
         float slippage();
         int32_t getSensorCount() { return sensorCount; }
         float getGrip() { return grip; }
