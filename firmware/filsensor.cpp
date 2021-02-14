@@ -38,28 +38,30 @@
 // Circular buffer of last 256 filsensor measurements
 #if defined(HASFILAMENTSENSOR) || defined(STARTFILAMENTSENSOR)
 
-/*
-typedef struct {
-    // unsigned long timeStamp;
-    int16_t       dy;
-    int16_t       ds;
-} FilsensorReading;
-*/
-
-typedef union __packed { // packed needed?
-// typedef struct __packed {
-union {
-    int16_t       dy   : 11;
-    int16_t       ds   : 11;
-    uint8_t     fill   : 2;
-    } __attribute__((packed));
-    uint8_t binary[3];
-} FilsensorReading;
-
-static_assert (sizeof(FilsensorReading)==3, "FilsensorReading not 3 bytes size.");
+    #if defined(AVR)
+        typedef union /*__packed */ { // packed needed?
+        // typedef struct __packed {
+        union {
+            int16_t       dy   : 11;
+            int16_t       ds   : 11;
+            uint8_t     fill   : 2;
+            } __attribute__((packed));
+            uint8_t binary[3];
+        } FilsensorReading;
+        static_assert (sizeof(FilsensorReading)==3, "FilsensorReading not 3 bytes size.");
+    #else
+        typedef struct {
+            // unsigned long timeStamp;
+            int16_t       dy;
+            int16_t       ds;
+        } FilsensorReading;
+    #endif
 
 static FilsensorReading filsensorReadings[256];
-static_assert (sizeof(filsensorReadings)==(3*256), "FilsensorReading not 3 bytes size.");
+
+#if defined(AVR)
+    static_assert (sizeof(filsensorReadings)==(3*256), "FilsensorReading not 3 bytes size.");
+#endif
 
 static uint8_t filsensorReadingIndex = 0;
 static uint8_t nReadings = 0;
@@ -141,6 +143,9 @@ int16_t FilamentSensorEMS22::getDY() {
     return dy;
 }
 
+// Return ratio of FRS counts to stepper stepps (taking filSensorCalibration into account).
+// Returns 1.0 if average of FSR readings still no available,
+// else slip value, range is [0.1...1.0], but values > 1.0 are possible to some extend (calibraition).
 float FilamentSensorEMS22::slippage() {
 
     if (nReadings == nAvg) {
@@ -154,8 +159,25 @@ float FilamentSensorEMS22::slippage() {
             dysum += filsensorReadings[(filsensorReadingIndex-i) & 0xff].dy;
         }
 
-        if (dysum != 0)
-            return abs((dssum * filSensorCalibration) / dysum);
+#if 0
+        //if (dysum != 0)
+            //return abs((dssum * filSensorCalibration) / dysum);
+
+        // Filter out jitter/noise of encoder if there is no movement
+        // if (dysum != 0)
+        if (abs(dysum) >= 50) { // xxx fixed value, should be derived from stepspermm*1mm or so
+            float slip = (dssum * filSensorCalibration) / dysum;
+            // if (slip > 0)
+                return slip;
+        }
+#endif
+
+        float slip = (dssum * filSensorCalibration) / dysum;
+        // Filter out jitter/noise of encoder if there is no movement.
+        // Filters out negative values and other
+        // temporary glitches of the Feeder/FRS system (fast short retractions), too.
+        if (slip >= 0.1) 
+            return slip;
     }
 
     return 1.0;
@@ -193,7 +215,7 @@ void FilamentSensorEMS22::run() {
 
     float s = slippage();
 
-    if (feedrateLimiterEnabled && (s > 0.0)) {
+    if (feedrateLimiterEnabled) { //  && (s > 0.0)) {
 
         float allowedSlippage = s * 0.90; // allow for 10% slip before we slow down
         float g = max(1.0, pow(allowedSlippage - 1.0, 2)*25);
