@@ -26,13 +26,20 @@ fwupload:
 	make -f Makefile.fw do_upload
 
 fwall: fw fwupload
-	echo "make fw and upload done"
+	echo "build and upload done"
 
 ramps:
 	make -f Makefile.ramps 
 
 jp:
 	make -f Makefile.jp 
+
+jpupload:
+	echo "Don't forget to boot into bootloader and hold power button."
+	make -f Makefile.jp upload
+
+jpall: jp jpupload
+	echo "build and upload done"
 
 world: fw ramps jp
 	make -f Makefile.sim 
