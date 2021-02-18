@@ -484,7 +484,7 @@ def main():
 
         printer = Printer()
         printer.initSerial(args.device, args.baud)
-        print "Printer name: '%s'" % printer.getPrinterName()
+        print "Printer name: '%s'" % printer.getPrinterName(args)
 
     elif args.mode == 'getTemps':
 
