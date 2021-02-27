@@ -654,6 +654,8 @@ HAL_SET_STEPPER_TIMER(25);
                     // HAL_SET_STEPPER_TIMER(t - (2*STEPPER_MINPULSE)); // correction: min step width z.b. 2uS -> 4 timer takte
                     HAL_SET_STEPPER_TIMER(t);
 
+                    // downcount += t;
+
                     // Set dir bits
                     if (sd.dirBits & 0x80) {
 
@@ -718,6 +720,8 @@ HAL_SET_STEPPER_TIMER(25);
                 stepData &sd = pop();
 
                 HAL_SET_HOMING_TIMER(sd.timer);
+
+                // downcount += sd.timer;
 
                 // * Set direction 
                 if (sd.dirBits & 0x80) {
