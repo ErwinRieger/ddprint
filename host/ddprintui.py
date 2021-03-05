@@ -706,9 +706,9 @@ class MainForm(npyscreen.FormBaseNew):
         # util.stopMove(self.parser)
 
     def closePrintLog(self):
-        self.printLog.write("\nUserNotes:")
-        self.printLog.write("* Real printing time (Build time) : " + self.printer.getPrintDuration())
-        self.printLog.write("* Measured Weight (Plastic weight): ")
+        self.printLog.write("\nUser Notes:\n")
+        self.printLog.write("  * Real printing time (Build time) : \n" + self.printer.getPrintDuration())
+        self.printLog.write("  * Measured Weight (Plastic weight): \n")
         self.printLog.close()
 
     # Non-thread save version
