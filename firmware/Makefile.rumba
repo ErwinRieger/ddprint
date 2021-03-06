@@ -1,0 +1,44 @@
+
+# ARDUINO_DIR  = /usr/share/arduino
+ARDUINO_DIR  = ../../arduino-1.6.13
+
+TARGET       = firmware.rumba
+
+OBJDIR := build.rumba
+
+# Mega/rumba board
+BOARD_TAG    = mega
+MCU = atmega2560
+AVRDUDE_ARD_PROGRAMMER = wiring
+# End Mega
+
+SDFAT = ../../SdFat-1.0.5
+
+ARDUINO_LIBS = SdCard uzlib
+
+USER_LIB_PATH = libraries
+
+ARDUINO_PORT = /dev/ttyACM0
+
+AVRDUDE_ARD_BAUDRATE = 115200
+
+NO_CORE_MAIN_CPP = 1
+
+include ../../Arduino-Makefile/Arduino.mk
+
+# Mega/rumba board
+CPPFLAGS      +=  -DMOTHERBOARD=4 -I. -Iavr -Isrc 
+CPPFLAGS      +=  -I$(SDFAT)/src
+CPPFLAGS      +=  -I$(ARDUINO_PLATFORM_LIB_PATH)
+
+# Temp. fix depreciated warning in arduino:Print.cpp
+CPPFLAGS      +=  -D"PGM_P=const char*"
+
+# Disable colored gcc output (don't confuse vim)
+CXXFLAGS      +=  -fno-diagnostics-color
+
+# Create map file
+OTHER_LIBS      += -Wl,-Map,build.rumba/build.map
+
+# End Mega
+
