@@ -250,50 +250,6 @@ inline void deactivate_step_pin<EAxisSelector>() {
     E0_STEP_PIN :: deActivate();
 }
 
-#if 0
-template<typename MOVE>
-uint8_t st_get_positive_dir();
-
-template<>
-inline uint8_t st_get_positive_dir<XAxisSelector>() {
-    return POSITIVE_X_DIR;
-}
-template<>
-inline uint8_t st_get_positive_dir<YAxisSelector>() {
-    return POSITIVE_Y_DIR;
-}
-template<>
-inline uint8_t st_get_positive_dir<ZAxisSelector>() {
-    return POSITIVE_Z_DIR;
-}
-template<>
-inline uint8_t st_get_positive_dir<EAxisSelector>() {
-    return POSITIVE_E1_DIR;
-}
-#endif
-
-/*
-template<typename MOVE>
-bool st_get_invert_step_pin();
-
-template<>
-inline bool st_get_invert_step_pin<XAxisSelector>() {
-    return INVERT_X_STEP_PIN;
-}
-template<>
-inline bool st_get_invert_step_pin<YAxisSelector>() {
-    return INVERT_Y_STEP_PIN;
-}
-template<>
-inline bool st_get_invert_step_pin<ZAxisSelector>() {
-    return INVERT_Z_STEP_PIN;
-}
-template<>
-inline bool st_get_invert_step_pin<EAxisSelector>() {
-    return INVERT_E_STEP_PIN;
-}
-*/
-
 template<typename MOVE>
 int st_get_home_dir();
 

@@ -25,12 +25,21 @@
 #include "pins.h"
 #include "thermistortables.h"
 
+
+
+// Common for all avr boards (um2, ramps, rumba)
+#if defined(AVR)
+    DefineIOPinMembers(3);
+    DefineIOPinMembers(51);
+    DefineIOPinMembers(52);
+    DefineIOPinMembers(53);
+#endif
+
 #if MOTHERBOARD == 1
     //
     // Ultimaker UM2
     //
     DefineIOPinMembers(2);
-    DefineIOPinMembers(3);
     DefineIOPinMembers(4);
     DefineIOPinMembers(7);
     DefineIOPinMembers(8);
@@ -53,15 +62,11 @@
     DefineIOPinMembers(44);
     DefineIOPinMembers(45);
     DefineIOPinMembers(46);
-    DefineIOPinMembers(51);
-    DefineIOPinMembers(52);
-    DefineIOPinMembers(53);
     DefineIOPinMembers(69);
 #elif MOTHERBOARD == 2
     //
     // Ramps
     //
-    DefineIOPinMembers(3);
     DefineIOPinMembers(8);
     DefineIOPinMembers(9);
     DefineIOPinMembers(10);
@@ -74,15 +79,39 @@
     DefineIOPinMembers(38);
     DefineIOPinMembers(46);
     DefineIOPinMembers(48);
-    DefineIOPinMembers(51);
-    DefineIOPinMembers(52);
-    DefineIOPinMembers(53);
     DefineIOPinMembers(54);
     DefineIOPinMembers(55);
     DefineIOPinMembers(56);
     DefineIOPinMembers(59);
     DefineIOPinMembers(60);
     DefineIOPinMembers(61);
+    DefineIOPinMembers(62);
+#elif MOTHERBOARD == 4
+    //
+    // Rumba
+    //
+    DefineIOPinMembers(2);
+    DefineIOPinMembers(7);
+    DefineIOPinMembers(9);
+    DefineIOPinMembers(11);
+    DefineIOPinMembers(13);
+    DefineIOPinMembers(14);
+    DefineIOPinMembers(15);
+    DefineIOPinMembers(16);
+    DefineIOPinMembers(17);
+    DefineIOPinMembers(22);
+    DefineIOPinMembers(23);
+    DefineIOPinMembers(24);
+    DefineIOPinMembers(33);
+    DefineIOPinMembers(35);
+    DefineIOPinMembers(37);
+    DefineIOPinMembers(47);
+    DefineIOPinMembers(48);
+    DefineIOPinMembers(54);
+    DefineIOPinMembers(55);
+    DefineIOPinMembers(56);
+    DefineIOPinMembers(57);
+    DefineIOPinMembers(59);
     DefineIOPinMembers(62);
 #endif // motherboard
 

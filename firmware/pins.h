@@ -36,6 +36,11 @@
     // Jennyprinter arm shuttle gear board
     //
     #include "pins_jp.h"
+#elif MOTHERBOARD == 4
+    //
+    // Rumba mega2560
+    //
+    #include "pins_rumba.h"
 #else
     #error Unknown MOTHERBOARD value in pins.h
 #endif

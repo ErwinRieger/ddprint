@@ -38,8 +38,7 @@ CPPFLAGS      +=  -D"PGM_P=const char*"
 CXXFLAGS      +=  -fno-diagnostics-color
 
 # Create map file
-# CXXFLAGS      += -Wl,-Map,output.map
-OTHER_LIBS      += -Wl,-Map,build.fw/output.map
+OTHER_LIBS      += -Wl,-Map,build.fw/build.map
 
 # End Mega
 

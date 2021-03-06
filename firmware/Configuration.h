@@ -7,25 +7,12 @@
 
 #pragma once
 
-#if MOTHERBOARD == 2
-    #include "Configuration_ramps.h"
-#else
-    #include "Configuration_um2.h"
-#endif
-
 // This determines the communication speed of the printer
-// #define BAUDRATE 115200
-// #define BAUDRATE 230400
-// #define BAUDRATE 250000
 #define BAUDRATE 500000
-// #define BAUDRATE 1000000
 
 // This defines the number of extruders
 #define EXTRUDERS 1
 
-//===========================================================================
-//=============================Thermal Settings  ============================
-//===========================================================================
 //
 //--NORMAL IS 4.7kohm PULLUP!-- 1kohm pullup can be used on hotend sensor, using correct resistor and table
 //
@@ -49,10 +36,6 @@
 // 51 is 100k thermistor - EPCOS (1k pullup)
 // 52 is 200k thermistor - ATC Semitec 204GT-2 (1k pullup)
 // 55 is 100k thermistor - ATC Semitec 104GT-2 (Used in ParCan) (1k pullup)
-
-#define TEMP_SENSOR_0 20
-#define TEMP_SENSOR_1 20
-#define TEMP_SENSOR_BED 20
 
 // Actual temperature must be close to target for this long before M109 returns success
 // #define TEMP_RESIDENCY_TIME 3   // (seconds)
@@ -81,19 +64,6 @@
 // PID settings:
 #define PID_MAX 255 // limits current to nozzle while PID is active (see PID_FUNCTIONAL_RANGE below); 255=full current
 
-//===========================================================================
-//=============================Mechanical Settings===========================
-//===========================================================================
-
-//
-// Stepper direction pins. Set this to the logical level for a movement into positive direction.
-//
-#define POSITIVE_X_DIR LOW
-#define POSITIVE_Y_DIR HIGH
-#define POSITIVE_Z_DIR LOW
-#define POSITIVE_E1_DIR LOW
-#define POSITIVE_E2_DIR LOW
-
 // ENDSTOP SETTINGS:
 // Sets direction of endstops when homing; 1=MAX, -1=MIN
 #define X_HOME_DIR -1
@@ -102,21 +72,6 @@
 
 //// MOVEMENT SETTINGS
 #define NUM_AXIS 4 // The axis order in all axis related arrays is X, Y, Z, E
-
-// default settings
-
-#define DEFAULT_MAX_FEEDRATE          {300, 300, 40, 45}    // (mm/sec)
-#define DEFAULT_MAX_ACCELERATION      {9000,9000,100,10000}    // X, Y, Z, E maximum start speed for accelerated moves. E default values are good for skeinforge 40+, for older versions raise them a lot.
-
-#define DEFAULT_ACCELERATION          3000    // X, Y, Z and E max acceleration in mm/s^2 for printing moves
-#define DEFAULT_RETRACT_ACCELERATION  3000   // X, Y, Z and E max acceleration in mm/s^2 for retracts
-
-#define DEFAULT_MINIMUMFEEDRATE       0.0     // minimum feedrate
-#define DEFAULT_MINTRAVELFEEDRATE     0.0
-
-//===========================================================================
-//=============================Additional Features===========================
-//===========================================================================
 
 // Default motor current for XY,Z,E in mA
 #define DEFAULT_PWM_MOTOR_CURRENT 1300

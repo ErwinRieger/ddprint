@@ -48,12 +48,10 @@
 
     // use filamentsensor, at least for initializing it.
     // #define STARTFILAMENTSENSOR 1
-
 #elif MOTHERBOARD == 2
     //
     // Ramps
     //
-
 #elif MOTHERBOARD == 3
     //
     // Jennyprinter
@@ -62,6 +60,10 @@
     #define BournsEMS22AFS 1
     #define STEPPER_MINPULSE 2 /* µS */
     // #define STARTFILAMENTSENSOR 1
+#elif MOTHERBOARD == 4
+    //
+    // Rumba
+    //
 #else
     #error Unknown MOTHERBOARD in config.h
 #endif
