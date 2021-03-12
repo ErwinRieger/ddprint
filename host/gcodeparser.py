@@ -23,7 +23,6 @@ import packedvalue
 import shutil, os, re
 
 from ddprintcommands import CmdUnknown
-# , CmdDwellMS
 from ddprintconstants import dimNames, GCODEUNKNOWN, GCODEULTI, GCODES3D, X_AXIS, Y_AXIS, Z_AXIS, A_AXIS, B_AXIS, Uint8Max
 from ddconfig import *
 from move import TravelMove, PrintMove

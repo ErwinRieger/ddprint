@@ -197,7 +197,7 @@ class MainForm(npyscreen.FormBaseNew):
         self.kAdvance.editable = False
 
         rely += 1
-        self.wp = self.add(npyscreen.TitleFixedText, name =    "WorkinPoint         :", relx=1, rely=rely, use_two_lines=False, begin_entry_at=23,
+        self.wp = self.add(npyscreen.TitleFixedText, name =    "WorkingPoint        :", relx=1, rely=rely, use_two_lines=False, begin_entry_at=23,
                 max_width=w-1)
         self.wp.editable = False
 
