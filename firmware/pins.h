@@ -19,6 +19,7 @@
 
 #pragma once
 
+#include "config.h"
 #include "hal.h"
 
 #if MOTHERBOARD == 1

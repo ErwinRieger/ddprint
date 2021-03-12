@@ -52,6 +52,7 @@
     //
     // Ramps
     //
+    #define REPRAP_DISCOUNT_SMART_CONTROLLER 1
 #elif MOTHERBOARD == 3
     //
     // Jennyprinter
@@ -64,6 +65,7 @@
     //
     // Rumba
     //
+    #define REPRAP_DISCOUNT_SMART_CONTROLLER 1
 #else
     #error Unknown MOTHERBOARD in config.h
 #endif

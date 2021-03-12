@@ -22,6 +22,14 @@
 #include "pins.h"
 
 #if defined(REPRAP_DISCOUNT_SMART_CONTROLLER)
+
+    #include <LiquidCrystal.h> // library for character LCD
+
+    #ifdef REPRAP_DISCOUNT_SMART_CONTROLLER
+
+        #define SDCARDDETECT 49
+    #endif
+
     #define LCDMSGKILL(reason, p1, p2) { \
         lcd.setCursor(0, 0); lcd.print("KILLED:"); \
         lcd.setCursor(0, 1); lcd.print("Reason: "); lcd.print(reason); \
@@ -30,6 +38,8 @@
 
     #define LCDMSG(p) { lcd.print(p); }
     #define LCDMSGXY(x, y, p) { lcd.setCursor(x, y); lcd.print(p); }
+
+    extern LiquidCrystal lcd;
 #else
     #if defined(__amd64__)
         // Simulator
@@ -45,13 +55,5 @@
         #define LCDMSG(p) /* */
         #define LCDMSGXY(x, y, p) /* */
     #endif
-#endif
-
-#if defined(REPRAP_DISCOUNT_SMART_CONTROLLER)
-
-#include <LiquidCrystal.h> // library for character LCD
-
-extern LiquidCrystal lcd;
-
 #endif
 

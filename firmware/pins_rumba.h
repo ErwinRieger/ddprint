@@ -87,3 +87,19 @@
 //
 #define FILSENSNCS   DigitalOutput<59, ACTIVELOWPIN> // Analog A5
 
+#ifdef REPRAP_DISCOUNT_SMART_CONTROLLER
+
+    #define LCD_PINS_RS 19
+    #define LCD_PINS_ENABLE 42
+    #define LCD_PINS_D4 18
+    #define LCD_PINS_D5 38
+    #define LCD_PINS_D6 41
+    #define LCD_PINS_D7 40
+
+    #define BEEPER 44
+
+    #define BTN_EN1 11
+    #define BTN_EN2 12
+    #define BTN_ENC 43
+#endif
+

@@ -14,7 +14,7 @@ AVRDUDE_ARD_PROGRAMMER = wiring
 
 SDFAT = ../../SdFat-1.0.5
 
-ARDUINO_LIBS = SdCard uzlib
+ARDUINO_LIBS = LiquidCrystal SdCard uzlib
 
 USER_LIB_PATH = libraries
 
