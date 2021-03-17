@@ -19,7 +19,6 @@
 
 /*
  * Todo jennyprinter port:
- * * fully remove fastio.h
  * * swapdevice: add sanity test sectorsize != 512 bytes?
  * * usb: some flash sticks seem to hang at getReady cmd (add timeout / testUnitReadyRetry)
  * * cleanup task info stuff

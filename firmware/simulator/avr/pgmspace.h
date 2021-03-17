@@ -25,7 +25,6 @@
 
 #include <string.h>
 #include <stdint.h>
-#include <fastio.h>
 
 #define PROGMEM /* nix */
 

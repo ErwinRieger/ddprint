@@ -25,10 +25,6 @@
 #include "stepper.h"
 #include "temperature.h"
 
-#if defined(AVR)
-#include "fastio.h"
-#endif
-
 #include "ddserial.h"
 #include "ddcommands.h"
 #include "ddlcd.h"
