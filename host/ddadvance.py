@@ -136,10 +136,12 @@ class Advance (object):
         #   * advance increase (example: 0.1)
         #   * stepheight in layers (example: 10)
         if "startAdvance" in args and args.startAdvance != None:
-            self.__kAdv = args.startAdvance
-            self.startAdvance = args.startAdvance - args.advIncrease
+
+            self.startAdvance = args.startAdvance
             self.advIncrease = args.advIncrease
-            # self.advStepHeight = args.advStepHeight
+            self.advStepHeight = args.advStepHeight
+
+            self.setkAdvance(self.startAdvance)
 
         self.useAutoTemp = args.autotemp
 
@@ -194,15 +196,21 @@ class Advance (object):
     # Implement gradual advance on part change (sequential print)
     def newPart(self, nParts=None):
 
-        self.planner.gui.log("Advance: start new part #: ", nParts)
+        # self.planner.gui.log("Advance: start new part #: ", nParts)
 
-        if nParts==None and self.startAdvance != None:
-            self.startAdvance += self.advIncrease
-            self.setkAdvance(self.startAdvance)
+        # if nParts==None and self.startAdvance != None:
+            # self.startAdvance += self.advIncrease
+            # self.setkAdvance(self.startAdvance)
+
+        pass
 
     def layerChange(self, layer):
+
         # self.planner.gui.log("Advance: layer changed: ", layer)
-        pass
+
+        if layer != None and self.startAdvance != None:
+            self.setkAdvance(self.startAdvance + (layer / self.advStepHeight) * self.advIncrease)
+            self.planner.gui.log("Advance: layer changed, new k-adv: ", self.getKAdv())
 
     def setkAdvance(self, kAdv):
 

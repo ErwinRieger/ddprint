@@ -94,6 +94,7 @@ def main():
 
     argParser.add_argument("-startadvance", dest="startAdvance", action="store", type=float, help="Gradual advance: advance startvalue.")
     argParser.add_argument("-advincrease", dest="advIncrease", action="store", type=float, help="Gradual advance: increase kAdvance by advIncrease after each part.")
+    argParser.add_argument("-advstepheight", dest="advStepHeight", action="store", type=int, help="Gradual advance: height of each step (number of layers).")
 
     argParser.add_argument("-smat", dest="smat", action="store", help="Name of specific material profile to use.")
 
