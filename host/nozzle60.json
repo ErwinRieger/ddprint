@@ -1,7 +1,0 @@
-{
-    "size" : 0.6,
-    # Max extrusion rate that can be done with this nozzle [mm³]
-    "maxExtrusionRate" : 20.0
-}
-
-
