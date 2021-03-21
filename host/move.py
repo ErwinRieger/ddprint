@@ -18,7 +18,7 @@
 # along with ddprint.  If not, see <http://www.gnu.org/licenses/>.
 #*/
 
-import math, struct # , zlib
+import math, struct
 
 import ddprintcommands, cobs, cStringIO
 
@@ -34,9 +34,6 @@ from ddprofile import PrinterProfile
 from types import ListType
 
 from ddconfig import *
-
-import lz4.block, zlib
-
 
 ####################################################################################################
 ####################################################################################################
