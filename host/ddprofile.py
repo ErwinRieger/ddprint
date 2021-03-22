@@ -75,15 +75,18 @@ class ProfileBase(object):
         #
         # Directory search order:
         # * working directory
-        # * ./mat-profiles
-        # * $HOME/.ddprint
-        # * $DDPRINTPROFILES/mat-profiles
+        # * $DDPRINTPROFILES
+        # [* $HOME/.ddprint]
         #
-        searchpath = ["", "mat-profiles", os.path.join(os.environ["HOME"], ".ddprint")]
-        try:
-            searchpath.append(os.path.join(os.environ["DDPRINTPROFILES"], "mat-profiles"))
-        except KeyError:
-            pass
+        # searchpath = ["", "mat-profiles", "nozzle-profiles", "machine-profiles", os.path.join(os.environ["HOME"], ".ddprint")]
+        searchpath = [""]
+
+        for p in ["mat-profiles", "nozzle-profiles", "machine-profiles"]:
+            searchpath.append(os.path.join(".", p))
+            try:
+                searchpath.append(os.path.join(os.environ["DDPRINTPROFILES"], p))
+            except KeyError:
+                pass
 
         for searchdir in searchpath:
 
