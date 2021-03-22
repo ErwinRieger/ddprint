@@ -1,0 +1,10 @@
+
+#
+# Simple wrapper for plot_mat_profile.py
+#
+envscript="$(realpath -m ${0}/../ddprint.env)"
+. $envscript
+
+python $DDPRINTHOME/host/ddtool.py $*
+
+
