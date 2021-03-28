@@ -78,6 +78,18 @@ from ddprintcommands import *
 #
 from ddprintstates import *
 
+#
+# For float commandline arg range check
+#
+class ArgRange(object):
+    def __init__(self, start, end):
+        self.start = start
+        self.end = end
+    def __eq__(self, other):
+        return self.start <= other <= self.end
+    def __repr__(self):
+        return "[%f:%f]" % (self.start, self.end)
+
 def main():
 
     argParser = argparse.ArgumentParser(description='%s, Direct Drive USB Print.' % sys.argv[0])
@@ -89,7 +101,8 @@ def main():
     argParser.add_argument("-t0", dest="t0", action="store", type=int, help="Temp 0 (heated bed), default comes from mat. profile.")
     argParser.add_argument("-t1", dest="t1", action="store", type=int, help="Temp 1 (hotend 1), default comes from mat. profile.")
 
-    argParser.add_argument("-kadvance", dest="kadvance", action="store", type=float, help="K-Advance factor, default comes from mat. profile.")
+    # todo: describe limit k-advance
+    argParser.add_argument("-kadvance", dest="kadvance", action="store", type=float, choices=[ArgRange(0.0, 1.0)], help="K-Advance factor, default comes from mat. profile.")
     argParser.add_argument("-autotemp", dest="autotemp", action="store", type=int, help="Use autotemp algorithm, default is True.", default=1)
 
     argParser.add_argument("-startadvance", dest="startAdvance", action="store", type=float, help="Gradual advance: advance startvalue.")
