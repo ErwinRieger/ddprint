@@ -1912,10 +1912,9 @@ class Advance (object):
         endSpeedE = endSpeed.eSpeed
 
         # Some sanity tests
-        assert(abs(topSpeedE) < abs(endSpeedE)) # E should be accelerating
-
         # print "topSpeedS > endSpeedS:", topSpeedS> endSpeedS
-        assert(topSpeedS > endSpeedS) # XYZ should be decelerating
+        assert(topSpeedS > endSpeedS)           # XYZ should be decelerating
+        assert(abs(topSpeedE) < abs(endSpeedE)) # E should be accelerating
 
         abs_displacement_vector_steps = vectorAbs(dispS)
 
@@ -1976,6 +1975,96 @@ class Advance (object):
 
         # print "tv75khz: ", tv75khz, self.planner.minTimerValue 
         # assert(tv75khz >= 25)
+
+
+
+############################################################################################
+
+
+        # Merge steps into list of rawsteps
+        # xxx can this be done in one step together with acceleration/deceleration
+        # computation. "rasterisierung"
+        tv75khz = int(fTimer / 75000)
+
+        # print "xyclocks:", xyClocks
+        # print "eclocks:", eClocks
+        # print "tv75khz", tv75khz
+
+        # ftxy = xyClocks[0][2]
+        # fte = eClocks[0]
+
+        tvMap = {}
+        # tvIndex = []
+        currentClock = 0
+        nMerges = 0
+        for tv in eClocks:
+
+            tvR = tv / tv75khz
+            currentClock += tvR
+            try:
+                tvMap[currentClock]
+                assert(0)
+            except KeyError:
+                tvMap[currentClock] = [0, 0, 0, 1, 0] # e-step at this time
+                # tvIndex.append(currentClock)
+
+        # print "tvIndex:", 
+        # pprint.pprint(tvIndex)
+        # print "tvMap:", 
+        # pprint.pprint(tvMap)
+
+        currentClock = 0
+        for (t, dt, tv, stepBits) in xyClocks:
+
+            tvR = tv / tv75khz
+            currentClock += tvR
+            try:
+                steps = tvMap[currentClock]
+                assert(not (steps[0] or steps[1])) # sanity
+                steps[0] = stepBits[0]
+                steps[1] = stepBits[1]
+                nMerges += 1
+            except KeyError:
+                tvMap[currentClock] = stepBits + [0, 0, 0] # xy-step at this time
+                # tvIndex.append(currentClock)
+
+        tvIndex = tvMap.keys()
+        tvIndex.sort()
+
+        # print "tvIndex:", 
+        # pprint.pprint(tvIndex)
+        # print "tvMap:", 
+        # pprint.pprint(tvMap)
+
+        currentClock = 0
+        for ts in tvIndex:
+
+            move.stepData.addPulse((ts-currentClock)*tv75khz, tvMap[ts])
+            currentClock = ts
+
+        # print "pulses:", 
+        # pprint.pprint(move.stepData.pulses)
+
+        assert(len(tvIndex) == len(move.stepData.pulses)) # xxx sanity
+
+        if debugAdvance:
+        
+            leadAxis_stepsxy = abs_displacement_vector_steps[leadAxisxy]
+            print "Generated %d/%d XY steps" % (len(xyClocks), leadAxis_stepsxy)
+            print "Merged %d steps" % nMerges
+            assert((leadAxis_stepsxy + eStepsToMove) == (len(tvIndex) + nMerges))
+
+            move.pprint("planCrossedDecelSteps:")
+            print "***** End planCrossedDecelSteps() *****"
+
+        # assert(0)
+        return True
+
+############################################################################################
+
+
+
+
 
         tvsum = 0
         tvIndex = []
@@ -2129,6 +2218,7 @@ class Advance (object):
             move.pprint("planCrossedDecelSteps:")
             print "***** End planCrossedDecelSteps() *****"
 
+        assert(0)
         return True
 
     #

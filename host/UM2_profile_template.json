@@ -5,7 +5,7 @@
   # Dual feeder motor, adns9800 flowrate sensor
   # "hwVersion": 2,
   # Dual feeder motor, pmw3360 flowrate sensor
-  "hwVersion": 4,
+  "hwVersion": 5,
   "axes"  : {
     "X" : {
       "platform_length" : 230,
