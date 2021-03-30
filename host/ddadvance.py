@@ -1970,31 +1970,12 @@ class Advance (object):
 
         ############################################################################################
 
-        # tv75khz = self.planner.minTimerValue / 2.0
-        tv75khz = 25 # xxx hardcoded
-
-        # print "tv75khz: ", tv75khz, self.planner.minTimerValue 
-        # assert(tv75khz >= 25)
-
-
-
-############################################################################################
-
-
         # Merge steps into list of rawsteps
         # xxx can this be done in one step together with acceleration/deceleration
         # computation. "rasterisierung"
         tv75khz = int(fTimer / 75000)
 
-        # print "xyclocks:", xyClocks
-        # print "eclocks:", eClocks
-        # print "tv75khz", tv75khz
-
-        # ftxy = xyClocks[0][2]
-        # fte = eClocks[0]
-
         tvMap = {}
-        # tvIndex = []
         currentClock = 0
         nMerges = 0
         for tv in eClocks:
@@ -2006,10 +1987,7 @@ class Advance (object):
                 assert(0)
             except KeyError:
                 tvMap[currentClock] = [0, 0, 0, 1, 0] # e-step at this time
-                # tvIndex.append(currentClock)
 
-        # print "tvIndex:", 
-        # pprint.pprint(tvIndex)
         # print "tvMap:", 
         # pprint.pprint(tvMap)
 
@@ -2026,7 +2004,6 @@ class Advance (object):
                 nMerges += 1
             except KeyError:
                 tvMap[currentClock] = stepBits + [0, 0, 0] # xy-step at this time
-                # tvIndex.append(currentClock)
 
         tvIndex = tvMap.keys()
         tvIndex.sort()
@@ -2045,8 +2022,6 @@ class Advance (object):
         # print "pulses:", 
         # pprint.pprint(move.stepData.pulses)
 
-        assert(len(tvIndex) == len(move.stepData.pulses)) # xxx sanity
-
         if debugAdvance:
         
             leadAxis_stepsxy = abs_displacement_vector_steps[leadAxisxy]
@@ -2057,168 +2032,6 @@ class Advance (object):
             move.pprint("planCrossedDecelSteps:")
             print "***** End planCrossedDecelSteps() *****"
 
-        # assert(0)
-        return True
-
-############################################################################################
-
-
-
-
-
-        tvsum = 0
-        tvIndex = []
-        tMap = {}
-        for (t, dt, tv, stepBits) in xyClocks:
-            tvIndex.append(tvsum)
-            tMap[tvsum] = Namespace(t=t, ttv=tvsum, dt=dt, tv=tv, steps=stepBits + [0, 0, 0])
-            tvsum += tv
-
-        # print "lead tMap:"
-        # pprint.pprint(tMap)
-
-        nMerges = 0
-        tvsum = 0
-        for tv in eClocks:
-
-            if tvsum in tvIndex:
-
-                # Exact match
-                tMap[tvsum].steps[A_AXIS] = 1
-                # print "merged :", tMap[tvsum]
-                nMerges += 1
-            else:
-
-                # XXX user faster inserting algo...
-                minDist = maxTimerValue16
-                bestIndex = -1
-                for i in range(len(tvIndex)):
-                    tvSearch = tvIndex[i]
-                    if abs(tvSearch - tvsum) < minDist:
-                        minDist = abs(tvSearch - tvsum)
-                        bestIndex = i
-
-                tvBestIndex = tvIndex[bestIndex]
-
-                # print "\nfound index %d for tvsum %d, ttv of found index: %d, distance: %d" % (bestIndex, tvsum, tvBestIndex, minDist)
-
-                if minDist <= tv75khz:
-
-                    tMap[tvBestIndex].steps[A_AXIS] = 1
-                    # print "merged :", tMap[tvBestIndex]
-                    nMerges += 1
-
-                else:
-
-                    stepBits = [0, 0, 0, 1, 0]
-
-                    if tvsum > tvBestIndex:
-                        # insert above best match
-                        
-                        prevStepDesc = tMap[tvBestIndex]
-                        prevTv = prevStepDesc.tv
-
-                        nextttv = prevStepDesc.ttv + prevStepDesc.tv
-                        # print "prev situation: %d --(%5d)-->                     %6d" % (prevStepDesc.ttv, prevStepDesc.tv, nextttv)
-
-                        if prevTv < minDist:
-
-                            # print "append at end..."
-
-                            # append at end
-                            assert(bestIndex == len(tvIndex) -1)
-
-                            if prevTv > minDist:
-                                newTv2 = max(prevTv - minDist, tv75khz)
-                                newTv1 = prevTv - newTv2
-                                tvsum = prevStepDesc.ttv + newTv1
-                                # print "anew situation: %d --(%5d)--> %6d --(%5d)--> %d" % (prevStepDesc.ttv, newTv1, tvsum, newTv2, nextttv)
-                            else:
-                                newTv2 = tv
-                                newTv1 = minDist
-                                # print "bnew situation: %d --(%5d)--> %6d --(%5d)--> %d" % (prevStepDesc.ttv, newTv1, tvsum, newTv2, nextttv)
-
-                            newStepDesc = Namespace(t=None, ttv=tvsum, dt=None, tv=newTv2, steps=stepBits)
-                            tvIndex.append(tvsum)
-
-                        else:
-
-                            # print "insert above index: %d/%d" % (bestIndex, len(tvIndex))
-                            assert(prevTv >= 2*tv75khz) # is gap long enough?
-
-                            newTv2 = max(prevTv - minDist, tv75khz)
-                            newTv1 = prevTv - newTv2
-                            tvsum = prevStepDesc.ttv + newTv1
-
-                            # print "modify prev tv:", prevTv, " --> ", newTv2
-                            # print "insert new  tv:", newTv2
-                            # print "cnew situation: %d --(%5d)--> %6d --(%5d)--> %d" % (prevStepDesc.ttv, newTv1, tvsum, newTv2, nextttv)
-
-                            newStepDesc = Namespace(t=None, ttv=tvsum, dt=None, tv=newTv2, steps=stepBits)
-                            tvIndex.insert(bestIndex+1, tvsum)
-
-                        # assert(newTv1 > 14)
-                        prevStepDesc.tv = newTv1
-                        prevStepDesc.dt = None
-
-                        tMap[tvsum] = newStepDesc
-
-                    else:
-                        # insert below best match
-                        # print "insert below:", bestIndex
-
-                        prevTvSum = tvIndex[bestIndex-1]
-                        prevStepDesc = tMap[prevTvSum]
-                        prevTv = prevStepDesc.tv
-
-                        assert(prevTv >= 2*tv75khz) # is gap long enough?
-
-                        nextttv = prevStepDesc.ttv + prevStepDesc.tv
-
-                        newTv1 = prevTv - minDist
-
-                        # print "prev situation: %d --(%5d)-->                     %6d" % (prevStepDesc.ttv, prevStepDesc.tv, nextttv)
-                        # print "modify prev tv:", prevTv, " --> ", newTv1
-                        # print "insert new  tv:", minDist
-                        # print " new situation: %d --(%5d)--> %6d --(%5d)--> %d" % (prevStepDesc.ttv, newTv1, tvsum, minDist, nextttv)
-
-                        prevStepDesc.dt = None
-                        prevStepDesc.tv = newTv1
-
-                        # assert(minDist > 14)
-                        newStepDesc = Namespace(t=None, ttv=tvsum, dt=None, tv=minDist, steps=stepBits)
-                        tvIndex.insert(bestIndex, tvsum)
-                        tMap[tvsum] = newStepDesc
-
-            tvsum += tv
-
-            # Sanity check
-            if debugAdvance:
-                ts = 0
-                for t in tvIndex:
-                    stepDesc = tMap[t]
-                    assert(stepDesc.ttv == ts)
-                    assert(stepDesc.tv >= tv75khz)
-                    ts += stepDesc.tv
-            # End sanity check
-
-        for ttv in tvIndex:
-
-            stepDesc = tMap[ttv]
-            move.stepData.addPulse(stepDesc.tv, stepDesc.steps)
-
-        assert(len(tvIndex) == len(move.stepData.pulses))
-
-        if debugAdvance:
-        
-            leadAxis_stepsxy = abs_displacement_vector_steps[leadAxisxy]
-            print "Generated %d/%d XY steps" % (len(xyClocks), leadAxis_stepsxy)
-            assert((leadAxis_stepsxy + eStepsToMove) == (len(tvIndex) + nMerges))
-
-            move.pprint("planCrossedDecelSteps:")
-            print "***** End planCrossedDecelSteps() *****"
-
-        assert(0)
         return True
 
     #
