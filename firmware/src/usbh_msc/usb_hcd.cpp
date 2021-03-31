@@ -37,7 +37,6 @@ uint32_t dd_HCD_Init(USB_OTG_CORE_HANDLE *pdev , USB_OTG_CORE_ID_TypeDef coreID)
   USB_OTG_CoreInitHost(pdev);
   USB_OTG_EnableGlobalInt(pdev);
 
-   
   return 0;
 }
 

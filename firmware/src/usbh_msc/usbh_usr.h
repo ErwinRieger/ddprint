@@ -15,18 +15,8 @@
 #include <stdio.h>
 #include "usbh_msc_core.h"
 
-/* This value can be equal to (512 * x) according to RAM size availability with x=[1, 128]
-   In this project x is fixed to 64 => 512 * 64 = 32768bytes = 32 Kbytes */   
-#define BUFFER_SIZE        ((uint16_t)512*64)  
-
-
 #define USH_USR_FS_INIT    ((uint8_t)0x00)
 #define USH_USR_FS_LOOP    ((uint8_t)0x01)
-
-/* Exported macros -----------------------------------------------------------*/
-/* Exported variables --------------------------------------------------------*/
-// extern  USBH_Usr_cb_TypeDef USR_Callbacks;
-/* Exported functions ------------------------------------------------------- */ 
 
 void USBH_USR_Init(void);
 void USBH_USR_DeviceAttached(void);

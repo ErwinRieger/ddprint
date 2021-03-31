@@ -107,30 +107,8 @@
 
 /* As per USB specs 9.2.6.4 :Standard request with data request timeout: 5sec
    Standard request with no data stage timeout : 50ms */
-// #define DATA_STAGE_TIMEOUT                              5000 
-// #define NODATA_STAGE_TIMEOUT                            50
-//
-// Max value of all requests.
-//
-// #define DATA_STAGE_TIMEOUT                              5 // [mS]
-// #define NODATA_STAGE_TIMEOUT                            5 // [mS]
 #define USBH_TIMEOUT_LONG                                  5000
 #define USBH_TIMEOUT_SHORT                                 50
-
-// Abort long running writes and retry lagter
-// #define WRITE10_CMD_TIMEOUT                             4 // [mS]
-#define WRITE10_CMD_TIMEOUT                             USBH_TIMEOUT_SHORT // [mS]
- 
-
-
-#define USBH_CONFIGURATION_DESCRIPTOR_SIZE (USB_CONFIGURATION_DESC_SIZE \
-                                           + USB_INTERFACE_DESC_SIZE\
-                                           + (USBH_MAX_NUM_ENDPOINTS * USB_ENDPOINT_DESC_SIZE))
-
-
-#define CONFIG_DESC_wTOTAL_LENGTH (ConfigurationDescriptorData.ConfigDescfield.\
-                                          ConfigurationDescriptor.wTotalLength)
-
 
 /*  This Union is copied from usb_core.h  */
 typedef union

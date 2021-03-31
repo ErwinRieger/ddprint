@@ -10,10 +10,6 @@
 //--------------------------------------------------------------
 #include <stdint.h>
 
-extern "C" {
-    // #include <usb_core.h>
-}
-
 uint32_t  HCD_Init                 (USB_OTG_CORE_HANDLE *pdev ,
                                     USB_OTG_CORE_ID_TypeDef coreID);
 uint32_t  HCD_HC_Init              (USB_OTG_CORE_HANDLE *pdev , 

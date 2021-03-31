@@ -60,10 +60,6 @@ typedef struct __MassStorageParameter
 USBH_Status USBH_MSC_TestUnitReady(USB_OTG_CORE_HANDLE *pdev, USBH_HOST *phost);
 USBH_Status USBH_MSC_ReadCapacity10(USB_OTG_CORE_HANDLE *pdev, USBH_HOST *phost);
 
-// #define USBH_MSC_Read10 999
-// #define USBH_MSC_Write10 999
-
-// /*
 extern USBH_Status USBH_MSC_Write10(USB_OTG_CORE_HANDLE *pdev, USBH_HOST *phost,
                          uint8_t *,
                          uint32_t ,
@@ -73,7 +69,6 @@ extern USBH_Status USBH_MSC_Read10(USB_OTG_CORE_HANDLE *pdev, USBH_HOST *phost,
                         uint32_t ,
                         uint32_t );
 extern USBH_Status USBH_MSC_BlockReset(USB_OTG_CORE_HANDLE *pdev, USBH_HOST *phost);
-// */
 
 void USBH_MSC_StateMachine(USB_OTG_CORE_HANDLE *pdev);
 
