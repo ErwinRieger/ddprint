@@ -1,6 +1,7 @@
 #! /bin/bash
 
 nTests=0
+count="$(ls $*|wc -l)"
 
 for inp in $*; do 
 
@@ -8,7 +9,6 @@ for inp in $*; do
     echo "$0: running python ddprint.py pre $inp" >&2
     echo "###################################"
 
-    # for kadv in 0 0.1 0.4 0.5 1; do
     for kadv in 0.4 0.5 1 0 0.1; do
 
         echo "python -u ddprint.py -kadvance $kadv pre UM2_profile_template nozzle40 pla $inp"
@@ -21,13 +21,11 @@ for inp in $*; do
             echo "$kadv $inp" > /tmp/parserTest_error_file
             exit 1
         fi
-
-        let "nTests = nTests + 1"
-
     done
 
+    let "nTests = nTests + 1"
     echo "###################################"
-    echo "$0: Test $nTests $inp done"
+    echo "$0: Test $inp (#$nTests of $count) done"
     echo "###################################"
 done
 
