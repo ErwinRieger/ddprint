@@ -1,8 +1,9 @@
 
 
 This directory contains a stripped down and customized version of
-uzlib deflat library.
+uzlib deflate library.
 
+Modified for ddprint by Erwin Rieger (github.com/ErwinRieger/ddprint, ibrieger.de/close_the_loop_for_e.html).
 
 Origin: https://github.com/pfalcon/uzlib
 
