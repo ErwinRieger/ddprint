@@ -28,11 +28,7 @@ void killMessage(uint8_t errorCode, uint8_t errorParam1, uint8_t errorParam2, co
 //
 // Add heavy and time consuming debugging
 //
-#define HEAVYDEBUG 1
-
-
-
-
+// #define HEAVYDEBUG 1
 
 #if defined(__amd64__)
 

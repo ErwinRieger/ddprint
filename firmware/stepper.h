@@ -654,8 +654,6 @@ HAL_SET_STEPPER_TIMER(25);
                     // HAL_SET_STEPPER_TIMER(t - (2*STEPPER_MINPULSE)); // correction: min step width z.b. 2uS -> 4 timer takte
                     HAL_SET_STEPPER_TIMER(t);
 
-                    // downcount += t;
-
                     // Set dir bits
                     if (sd.dirBits & 0x80) {
 
@@ -675,16 +673,9 @@ HAL_SET_STEPPER_TIMER(25);
                         st_step_motor<ZAxisSelector>(stepbits, sd.dirBits);
                         st_step_motor<EAxisSelector>(stepbits, sd.dirBits);
 
-                        // st_activate_pin<XAxisSelector>(stepbits, sd.dirBits);
-                        // st_activate_pin<YAxisSelector>(stepbits, sd.dirBits);
-                        // st_activate_pin<ZAxisSelector>(stepbits, sd.dirBits);
-                        // st_activate_pin<EAxisSelector>(stepbits, sd.dirBits);
-
-                        // Common delay
                         #if defined(STEPPER_MINPULSE)
                             delayMicroseconds(STEPPER_MINPULSE);
                         #endif
-                            //printer.runFillBuffer();
 
                         st_deactivate_pin<XAxisSelector>(stepbits);
                         st_deactivate_pin<YAxisSelector>(stepbits);
@@ -739,8 +730,6 @@ HAL_SET_STEPPER_TIMER(25);
                 st_step_motor_es<YAxisSelector>(sd.stepBits, sd.dirBits);
                 st_step_motor_es<ZAxisSelector>(sd.stepBits, sd.dirBits);
             }
-
-            // printer.runFillBuffer();
         }
 
         FWINLINE void runContinuosSteps() {

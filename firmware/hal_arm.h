@@ -21,25 +21,7 @@
  * State machines:
  *  dd_USBH_MSC_HandleBOTXfer():  usbh_msc.BOTState (USBH_BOTSTATE_SENT_CBW)
  *  USBH_MSC_TestUnitReady():     usbh_msc.CmdStateMachine CMD_SEND_STATE
- *
- *
- * python ddprint.py -d$dev -autotemp=0 -t0=25 -t1=25 -dt=1 -smat=kaisertech_pla-grey_FF30010-S03-1 print nozzle80 pla_1.75mm_v5
- *      /3dmodels/jan/gravi/gravi.gcode
- * und
- * python ddprint.py -d$dev -autotemp=0 -t0=25 -t1=25 -dt=1 -smat=kaisertech_pla-grey_FF30010-S03-1 print nozzle80 pla_1.75mm_v5
- *      /3dmodels/downloads/MiniCalTest.gcode
- *
- *
- * funktionieren mit ohne write cancel/restart... gravi.gcode macht mit der zeit underrun error weil download zu langsam...
- *
- *
- * Control messages gibts auf mehreren ebenen: device, interface, endpoint) (z.b. GET_STATUS oder auch CLEAR_FEATURE)
- *   siehe https://www.beyondlogic.org/usbnutshell/usb6.shtml
- *
- *
  */
-
-
 
 #include <Arduino.h>
 #include <libmaple/iwdg.h>
