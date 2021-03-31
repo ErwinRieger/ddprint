@@ -1,22 +1,9 @@
 
 #
-# Simple wrapper around ddprint.py
+# Simple wrapper for plot_mat_profile.py
 #
-
-# xxx todo: move to common env-script
-if [ -z "$DDPRINTHOME" ]; then
-    p="$(dirname $0)/.."
-    export DDPRINTHOME="$(realpath $p)"
-    echo "DDPRINTHOME set to: $DDPRINTHOME"
-fi
-
-if [ -z "$DDPRINTPROFILE" ]; then
-    p="$DDPRINTHOME/../ddprint-profiles"
-    export DDPRINTPROFILES="$(realpath $p)"
-    echo "DDPRINTPROFILES set to: $DDPRINTPROFILES"
-fi
-
-export PYTHONPATH="$DDPRINTHOME/host:$PYTHONPATH"
+envscript="$(realpath -m ${0}/../ddprint.env)"
+. $envscript
 
 python $DDPRINTHOME/scripts/plot_mat_profile.py $*
 
