@@ -8,13 +8,11 @@
 //--------------------------------------------------------------
 // Includes
 //-------------------------------------------------------------- 
-// #include<Arduino.h>
+
 extern "C" {
-    #define xxxfuck 1
     #include "usbh_def.h"
     #include "usb_core.h"
 }
-// #include "mdebug.h"
 
 #define MSC_CLASS                         0x08
 #define HID_CLASS                         0x03

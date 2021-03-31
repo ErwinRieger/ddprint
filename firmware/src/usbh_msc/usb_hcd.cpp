@@ -7,16 +7,11 @@
 //--------------------------------------------------------------
 
 extern "C" {
-    #define xxxfuck 1
     #include <usb_core.h>
     #include <usb_bsp.h>
 }
 
 #include "usb_hcd.h"
-
-
-
-
 
 //--------------------------------------------------------------
 uint32_t dd_HCD_Init(USB_OTG_CORE_HANDLE *pdev , USB_OTG_CORE_ID_TypeDef coreID)
@@ -74,12 +69,6 @@ uint32_t dd_HCD_ResetPort(USB_OTG_CORE_HANDLE *pdev)
 uint32_t dd_HCD_IsDeviceConnected(USB_OTG_CORE_HANDLE *pdev)
 {
   return (pdev->host.ConnSts);
-}
-
-//--------------------------------------------------------------
-uint32_t dd_HCD_GetCurrentFrame (USB_OTG_CORE_HANDLE *pdev) 
-{
- return (USB_OTG_READ_REG32(&pdev->regs.HREGS->HFNUM) & 0xFFFF) ;
 }
 
 //--------------------------------------------------------------

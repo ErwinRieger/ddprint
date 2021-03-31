@@ -11,7 +11,6 @@
 //-------------------------------------------------------------- 
 extern "C" {
     // Maple include
-#define xxxfuck 1
     #include "usb_hcd.h"
 }
 

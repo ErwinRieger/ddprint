@@ -2,8 +2,6 @@
 
 #pragma once
 
-// #include <VCP/misc.h>
-
 typedef int IRQn_Type;
 #define __NVIC_PRIO_BITS          4
 #define __Vendor_SysTickConfig    1
@@ -19,10 +17,6 @@ typedef int IRQn_Type;
 #define AIRCR_VECTKEY_MASK    ((uint32_t)0x05FA0000)
 
 #define usbMSCHostAssert(expr) massert(expr)
-
-// #if ! defined(max)
-    // #define max(X,Y) ((X) > (Y) ? (X) : (Y))
-// #endif
 
 typedef enum {DISABLE = 0, ENABLE = !DISABLE} FunctionalState;
 

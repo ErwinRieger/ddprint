@@ -115,7 +115,6 @@
 // #define DATA_STAGE_TIMEOUT                              5 // [mS]
 // #define NODATA_STAGE_TIMEOUT                            5 // [mS]
 #define USBH_TIMEOUT_LONG                                  5000
-// #define USBH_TIMEOUT_SHORT                                 5
 #define USBH_TIMEOUT_SHORT                                 50
 
 // Abort long running writes and retry lagter
