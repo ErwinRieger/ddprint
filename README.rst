@@ -36,11 +36,30 @@ Current state
 
 Works for me, experimental.
 
-Branches:
+Update Mar 31 2021:
 
-* master: outdated, should work somehow.
-* next:   currently uploading as of jan-2021, many changes: feed-forward temperature control, more stable, stm32 port to the jennyprinter and more...
+Merged *next branch* into master with the following changes:
 
+* Feed forward temp control (*PID hinting*, *guided PID*) :-o
+  AutoTemp algorithm: set new temperature some time before the new flowrate demand, 
+  using the information from the material profile.
+* Added a experimental gcode (M901) for part strength (along with new *workingpoint* command line parameter) :-o
+* Asymmetric PID temperature control: switch between different PID control sets for
+  heating (fast) and cooling (a slower PID set to avoid temperature underruns).
+* Deflate/zip data downloaded to printer to increase download speed over usb-serial.
+  Using python's zlib on the host and uzlib (https://github.com/pfalcon/uzlib) on
+  the firmware side.
+* Added a second step to material profile measurement (measuretempflowratecurve2):
+  Measure hotend performance while doing a real print, in addition to the *into-the-air* extrusion measurement.
+* Some smaller improvements:
+   + Moved printer-, nozzle- and material-profiles into their own repository (https://github.com/ErwinRieger/ddprint-profiles).
+   + Show print time in CLI and terminal UI (TUI).
+   + Show the number of *under-temperature* and *under-grip* warnings in TUI.
+   + Added a *printlog* to ddprintui.py: log information about the current printjob (gcode info, timestamp,
+     printing time, slicersettings).
+   + Added some tools and scripts (plot_mat_profile, ddtool, wrapperscripts).
+   + Removed usage of eeprom, configuration now stored on mass storage device (sdcard, usb).
+   + And many more...
 
 Key features
 +++++++++++++
