@@ -67,10 +67,6 @@ class Printer(Serial):
 
     _single = None 
 
-    # Number of rx errors till we assume the
-    # line is dead.
-    # maxRXErrors = 10
-    maxRXErrors = 3
     # maxTXErrors = 10
     maxTXErrors = 3
 
@@ -94,8 +90,7 @@ class Printer(Serial):
         # The last (max. 256) commands sent, for command re-send
         self.lastCommands = {}
 
-        # Retry counter on rx and tx errors
-        self.rxErrors = 0
+        # Retry counter on tx errors
         self.txErrors = 0
 
         self.printStartedAt = None
@@ -291,91 +286,52 @@ class Printer(Serial):
         return False # continue message processing
 
 
-    # Read a response from printer, "handle" exceptions
-    def safeReadline(self):
+    # Read usb-serial device, "ignore" exceptions
+    def safeRead(self):
 
-        result = ""
+        try:
+            return self.read(self.in_waiting)
+        except SerialException as ex:
+            self.gui.log("Readline() Exception raised:", ex)
 
-        while True:
-
-            try:
-                c = self.read()
-            except SerialException as ex:
-                self.gui.log("Readline() Exception raised:", ex)
-
-                self.rxErrors += 1
-
-                if self.rxErrors >= Printer.maxRXErrors:
-                    self.gui.log("declare line is dead ...")
-                    raise SERIALDISCON
-
-                time.sleep(0.1)
-                continue
-
-            # Receive without error, reset error counter
-            self.rxErrors = 0
-
-            if not c:
-                return result
-
-            result += c
-
-            if c == "\n" or ord(c) == 0x6:
-                # result += "\n"
-                return result
-
-        # not reached
+        return ""
 
     def readWithTimeout(self, length):
 
-        res = ""
-        timeout = 0
-        while len(res) < length:
+        try:
+            res = self.read(length)
+        except SerialException as ex:
+            self.gui.log("Readline(): disconnected? - exception raised:", ex)
+            raise SERIALDISCON
 
-            try:
-                c = self.read(length - len(res))
-            except SerialException as ex:
-                self.gui.log("Readline() Exception raised:", ex)
-
-                self.rxErrors += 1
-
-                if self.rxErrors >= Printer.maxRXErrors:
-                    self.gui.log("declare line is dead ...")
-                    raise SERIALDISCON
-
-                time.sleep(0.1)
-                continue
-
-            # Receive without error, reset error counter
-            if c:
-                self.rxErrors = 0
-                res += c
-
-            timeout += self.timeout
-
-            if timeout > 3:
-                # print "timeout reading, data read: %d bytes, '%s'" % (len(res), res)
-                raise RxTimeout()
+        # Receive without error
+        if not res:
+            print "timeout reading, data read: %d of %d bytes, '%s'" % (len(res), length, res)
+            raise RxTimeout()
 
         return res
 
     def readResponse(self):
 
-        s = self.readWithTimeout(1) # SOH
+        header = self.readWithTimeout(3) # SOH + RC + lenbyte
 
-        # xxx loop til SOH found
-        assert(s == cobs.nullByte)
+        # Todo: loop til SOH found and/or proper errorhandling
+        assert(header[0] == cobs.nullByte)
 
-        rc = self.readWithTimeout(1) # read response code
-        crc = crc_ccitt_kermit.crc16_kermit(rc, 0xffff)
+        # Response code
+        rc = header[1]
         cmd = ord(rc)
 
-        l = self.readWithTimeout(1) # read length byte
-        crc = crc_ccitt_kermit.crc16_kermit(l, crc)
-
+        # Length byte
+        l = header[2]
         length = ord(l) - 1
-        if debugComm:
-            self.gui.logComm("Response 0x%x, reading %d b" % (cmd, length))
+
+        # if debugComm:
+            # self.gui.logComm("Response 0x%x, reading %d b" % (cmd, length))
+
+        # Checksum
+        crc = crc_ccitt_kermit.crc16_kermit(rc, 0xffff)
+        crc = crc_ccitt_kermit.crc16_kermit(l, crc)
 
         payload = ""
         if length:
@@ -411,7 +367,7 @@ class Printer(Serial):
             raise RxChecksumError()
 
         if payload != "":
-            # Decode COBS encode payload
+            # Decode COBS encoded payload
             payload = cobs.decodeCobs(payload)
 
         return (cmd, payload)
@@ -432,7 +388,8 @@ class Printer(Serial):
 
         self.port = device
         self.baudrate = br
-        self.timeout = 0.05
+        # Py-Serial read timeout
+        self.timeout = 3
         self.writeTimeout = 10
         # self.setDTR(False) # does not work?
         self.open()
@@ -442,11 +399,11 @@ class Printer(Serial):
             time.sleep(0.1)
 
         # Read left over garbage
-        recvLine = self.safeReadline()        
+        recvLine = self.safeRead()
         while recvLine:
             # self.gui.logComm("Initial read: '%s'" % recvLine)
             self.gui.logComm("Initail read: " + recvLine.encode("hex"), "\n")
-            recvLine = self.safeReadline()        
+            recvLine = self.safeRead()
 
         self.resetLineNumber()
 
