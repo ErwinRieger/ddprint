@@ -601,7 +601,7 @@ class StepBuffer: public StepBufferBase {
 // CRITICAL_SECTION_START;
         // countsInBuffer += val.timer;
         upcount += val.timer;
-        StepBufferBase::push(val);
+        StepBufferBase::pushRef(val);
 // CRITICAL_SECTION_END;
     }
 

@@ -39,7 +39,7 @@ struct CircularBuffer {
     bool full()     { return size() == BufferSize; }
     IndexType size()     { return _ringbuffer_head - _ringbuffer_tail; }
 
-    void push(ElementType& val)  {
+    void pushRef(ElementType& val)  {
        
        massert(!full());
 
@@ -48,7 +48,7 @@ struct CircularBuffer {
         _ringbuffer_head = h+1;
     }
 
-    void pushVar(ElementType val)  {
+    void pushVal(ElementType val)  {
         
        massert(!full());
 
@@ -57,13 +57,14 @@ struct CircularBuffer {
         _ringbuffer_head = h+1;
     }
 
-    // 
+    #if 0
     void pushWrap(ElementType& val)  {
         
         if (full())
             pop();
         push(val);
     }
+    #endif
 
     ElementType &pop() {
 
@@ -77,15 +78,19 @@ struct CircularBuffer {
     ElementType &peek() { massert(!empty()); return _ringbuffer_array[mask(_ringbuffer_tail)]; }
     ElementType &peekN(IndexType index) { return _ringbuffer_array[mask(_ringbuffer_tail+index)]; }
 
-    void set(IndexType i, ElementType &val) {
+    #if 0
+    void setRef(IndexType i, ElementType &val) {
         _ringbuffer_array[mask(i)] = val;
     }
-    void setVar(IndexType i, ElementType val) {
+    #endif
+    void setVal(IndexType i, ElementType val) {
         _ringbuffer_array[mask(i)] = val;
     }
+    #if 0
     void mod(IndexType i, ElementType &val) {
         _ringbuffer_array[mask(i)] += val;
     }
+    #endif
     void inc(IndexType i) {
         _ringbuffer_array[mask(i)] ++;
     }

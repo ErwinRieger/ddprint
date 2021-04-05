@@ -121,11 +121,11 @@ inline void SerialPort::store_char(unsigned char c) {
             if (_ringbuffer_head == 0) {
                 // Lost SOH
                 ringBufferInit();
-                pushVar(0x0);
+                pushVal(0x0);
             }
         }
 
-        push(c);
+        pushVal(c);
     }
 
 
