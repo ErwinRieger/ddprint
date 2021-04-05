@@ -41,8 +41,7 @@ typedef CircularBuffer<uint8_t, uint16_t, TxBufferLen> TxBufferBase;
 #define RESPUSBACK 0x6
 
 //
-// Stm32 port:
-// Note: rx/tx buffer memory wasted in struct usart_dev.
+// Note (stm32 port): rx/tx buffer memory unused/wasted in struct usart_dev.
 //
 class TxBuffer: public Protothread, public TxBufferBase {
 
@@ -63,12 +62,8 @@ class TxBuffer: public Protothread, public TxBufferBase {
 public:
         FWINLINE bool pushByte(uint8_t c) {
 
-// #if defined(HEAVYDEBUG)
-            // massert(! full());
-// #endif
-
             if (! full()) {
-                push(c);
+                pushVal(c);
                 return true;
             }
             return false;
@@ -101,7 +96,6 @@ public:
     public:
         TxBuffer() {
             flush();
-            // cobsStart = 0xffff;
         };
 
         FWINLINE void sendACK() {
@@ -112,84 +106,75 @@ public:
             
             PT_BEGIN();
 
-            while (nMessages) {
+            PT_WAIT_UNTIL( nMessages );
 
-                // PT_WAIT_UNTIL((UCSR0A) & (1 << UDRE0));
+            charToSend = pop(); // SOH
+
+            simassert(charToSend == 0); 
+
+            PT_WAIT_UNTIL( SERIAL_TX_DR_EMPTY() );
+            SERIAL_TX_DR_PUTC( charToSend );
+
+            // printf("payload: ");
+            checksum = 0xffff;
+
+            charToSend = peek();
+            while (charToSend) {
+
                 PT_WAIT_UNTIL( SERIAL_TX_DR_EMPTY() );
-                charToSend = pop();
-                // UDR0 = charToSend;
                 SERIAL_TX_DR_PUTC( charToSend );
 
-                simassert(charToSend == 0);
+                // printf("%02x", charToSend);
 
-                // printf("payload: ");
-                checksum = 0xffff;
+                _ringbuffer_tail++;
+
+                checksum = _crc_ccitt_update(checksum, charToSend);
+
+                if (empty())
+                    break;
 
                 charToSend = peek();
-                while (charToSend) {
-
-                    // PT_WAIT_UNTIL((UCSR0A) & (1 << UDRE0));
-                    PT_WAIT_UNTIL( SERIAL_TX_DR_EMPTY() );
-                    // UDR0 = charToSend;
-                    SERIAL_TX_DR_PUTC( charToSend );
-
-                    // printf("%02x", charToSend);
-
-                    _ringbuffer_tail++;
-
-                    checksum = _crc_ccitt_update(checksum, charToSend);
-
-                    if (empty())
-                        charToSend = 0;
-                    else
-                        charToSend = peek();
-                }
-
-                // printf(" checksum fw: 0x%x\n", checksum);
-
-                csh = checksum >> 8;
-                csl = checksum & 0xFF;
-                cf = 0x1;
-
-                if (checksum == 0) {
-                    cf = 0x4;
-                    csh += 0x1;
-                    csl += 0x1;
-                }
-                else if (csh == 0) {
-                    cf = 0x2;
-                    csh += 0x1;
-                }
-                else if  (csl == 0) {
-                    cf = 0x3;
-                    csl += 0x1;
-                }
-
-                // printf(" checksum flags: 0x%x\n", cf);
-
-                // PT_WAIT_UNTIL((UCSR0A) & (1 << UDRE0));
-                PT_WAIT_UNTIL( SERIAL_TX_DR_EMPTY() );
-                // UDR0 = cf;
-                SERIAL_TX_DR_PUTC( cf );
-
-                // PT_WAIT_UNTIL((UCSR0A) & (1 << UDRE0));
-                PT_WAIT_UNTIL( SERIAL_TX_DR_EMPTY() );
-                // UDR0 = csl;
-                SERIAL_TX_DR_PUTC( csl );
-
-                // PT_WAIT_UNTIL((UCSR0A) & (1 << UDRE0));
-                PT_WAIT_UNTIL( SERIAL_TX_DR_EMPTY() );
-                // UDR0 = csh;
-                SERIAL_TX_DR_PUTC( csh );
-
-                PT_WAIT_UNTIL( SERIAL_TX_COMPLETE() );
-
-                nMessages--;
-                // Init cobs encoder
-                // cobsStart = 0xffff;
             }
 
-            ringBufferInit();
+            // printf(" checksum fw: 0x%x\n", checksum);
+
+            csh = checksum >> 8;
+            csl = checksum & 0xFF;
+            cf = 0x1;
+
+            if (checksum == 0) {
+                cf = 0x4;
+                csh += 0x1;
+                csl += 0x1;
+            }
+            else if (csh == 0) {
+                cf = 0x2;
+                csh += 0x1;
+            }
+            else if  (csl == 0) {
+                cf = 0x3;
+                csl += 0x1;
+            }
+
+            // printf(" checksum flags: 0x%x\n", cf);
+
+            PT_WAIT_UNTIL( SERIAL_TX_DR_EMPTY() );
+            SERIAL_TX_DR_PUTC( cf );
+
+            PT_WAIT_UNTIL( SERIAL_TX_DR_EMPTY() );
+            SERIAL_TX_DR_PUTC( csl );
+
+            PT_WAIT_UNTIL( SERIAL_TX_DR_EMPTY() );
+            SERIAL_TX_DR_PUTC( csh );
+
+            PT_WAIT_UNTIL( SERIAL_TX_COMPLETE() );
+
+            nMessages--;
+
+            if (! nMessages) {
+                // ringBufferInit();
+                massert(empty()); // sanity check
+            }
 
             PT_RESTART();
             PT_END();
@@ -218,11 +203,11 @@ public:
                 // Cobs block does NOT end with 0x0, mark block as a
                 // 'maximum length code block'.
                 // _ringbuffer_array[mask(cobsStart)] = 0xff;
-                setVar(cobsStart, 0xff);
+                setVal(cobsStart, 0xff);
             }
 
             // _ringbuffer_array[mask(_ringbuffer_head)] = 0x0; // Terminate loop in Run() if last response in buffer
-            setVar(_ringbuffer_head, 0x0);
+            // setVal(_ringbuffer_head, 0x0);
             nMessages++;
         }
 
