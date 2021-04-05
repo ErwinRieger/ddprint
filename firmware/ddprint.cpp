@@ -1611,9 +1611,9 @@ void Printer::cmdGetDirBits() {
 
 #if defined(DEBUGPROCSTAT)
 void Printer::cmdGetTaskStatus() {
-txBuffer.sendResponseStart(CmdGetTaskStatus);
 
-    for (uint8_t i=0; i<(sizeof(taskTiming) / sizeof(taskTiming[0])); i++) {
+    txBuffer.sendResponseStart(CmdGetTaskStatus);
+    for (uint8_t i=0; i<(sizeof(taskTiming) / sizeof(struct TaskTiming)); i++) {
         txBuffer.sendResponseUInt32(taskTiming[i].ncalls);
         txBuffer.sendResponseUInt32(taskTiming[i].sumcall);
         txBuffer.sendResponseUInt32(taskTiming[i].longest);
@@ -1622,24 +1622,18 @@ txBuffer.sendResponseStart(CmdGetTaskStatus);
 } 
 #endif
 
+#if defined(DEBUGREADWRITE)
 void Printer::cmdGetIOStats() {
 
     txBuffer.sendResponseStart(CmdGetIOStats);
-
-    // for (uint8_t i=0; i<(sizeof(ioStats) / sizeof(ioStats[0])); i++) {
-    for (uint8_t i=0; i<4; i++) { // XXX
-#if defined(DEBUGREADWRITE)
+    for (uint8_t i=0; i<(sizeof(swapDev.ioStats) / sizeof(struct TaskTiming)); i++) {
         txBuffer.sendResponseUInt32(swapDev.ioStats[i].ncalls);
         txBuffer.sendResponseUInt32(swapDev.ioStats[i].sumcall);
         txBuffer.sendResponseUInt32(swapDev.ioStats[i].longest);
-#else
-        txBuffer.sendResponseUInt32(0);
-        txBuffer.sendResponseUInt32(0);
-        txBuffer.sendResponseUInt32(0);
-#endif
     }
     txBuffer.sendResponseEnd();
 }
+#endif
 
 void Printer::cmdGetStatus() {
 
@@ -2244,9 +2238,11 @@ unzipper.Restart()
                         printer.cmdGetTaskStatus();
                         break;
 #endif
+#if defined(DEBUGREADWRITE)
                     case CmdGetIOStats:
                         printer.cmdGetIOStats();
                         break;
+#endif
                     case CmdSetPrinterName: {
                         uint8_t len = serialPort.readNoCheckCobs();
                         char name[64];
