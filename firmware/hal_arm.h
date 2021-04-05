@@ -72,7 +72,7 @@ extern "C" {
 #define CRITICAL_SECTION_START  noInterrupts() /* uint32_t primask = __get_PRIMASK(); __disable_irq() */
 #define CRITICAL_SECTION_END    interrupts() /* if (!primask) __enable_irq() */
 
-#define WDT_ENABLE() iwdg_init(IWDG_PRE_16, 10000) /* Timeout: 40khz / (160000) -> 4 seconds */
+#define WDT_ENABLE() iwdg_init(IWDG_PRE_16, 10000) /* Timeout: 10000 / (40khz/16) -> 4 seconds */
 #define WDT_RESET() iwdg_feed()
 
 #define HAL_SYSTEM_RESET() systemHardReset();
