@@ -7,6 +7,8 @@ FDM 3d printer firmware with host preprocessing and *closed loop E*
 
 **Note: Experimental and work in progress.**
 
+**Note: Documentation is incomplete and outdated.**
+
 .. image:: ./images/flowsensor_red.jpg
    :width: 200px
    :target: ./images/flowsensor_red.jpg
