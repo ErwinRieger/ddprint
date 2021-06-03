@@ -9,9 +9,9 @@ FDM 3d printer firmware with host preprocessing and *closed loop E*
 
 **Note: Documentation is incomplete and outdated.**
 
-.. image:: ./images/flowsensor_red.jpg
+.. image:: /images/flowsensor_red.jpg
    :width: 200px
-   :target: ./images/flowsensor_red.jpg
+   :target: /images/flowsensor_red.jpg
 
 3d printer firmware for cartesian FDM printers (ultimaker clones, atmega and stm32, like um2, ramps or jennyprinter).
 
@@ -485,4 +485,10 @@ Thanks
 
 Thanks to all open/free software people that make this all possible.  
 
+
+
+.. raw:: html
+
+    <script type='text/javascript' src='/images/Widget_2.js'></script>
+    <script type='text/javascript' src='/images/kofiButton.js'></script>
 
