@@ -479,6 +479,13 @@ Other
 * Simulator mode for testing/development: Firmware runs as a host-program with serial communication over a ptty device.
 * Debugging: plot/display generated acceleration ramps
 
+Things todo, nice to have
+++++++++++++++++++++++++++++
+
+* Improve documentation, examples, videos.
+* Cleanup and stabilisation, make binary releases.
+* Python3 port (currently python 2.7).
+* Other convenient things like automatic bedleveling and so on.
 
 Thanks
 +++++++++++++
