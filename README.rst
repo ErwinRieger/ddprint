@@ -487,6 +487,26 @@ Things todo, nice to have
 * Python3 port (currently python 2.7).
 * Other convenient things like automatic bedleveling and so on.
 
+Log
+++++++++++++++++++++++++++++
+
+::
+
+   Tue Jun  8 14:41:41 CEST 2021
+
+   Pushed fix-avr branch to github. The JennyPrinter port made the avr/atmega side to slow.
+   Changes are:
+
+   * Integer math instead of floating point.
+   * Reworked usb-serial interface: store 512byte blocks.
+   * Removed compression with zlib, the avr has not enough cpu cycles.
+   * Experiment: auto-baudrate. Switch between 1000000, 500000 and 250000 baud.
+   * SDReader: double-buffering.
+   * Many other improvements and cleanup.
+
+   So for now, fix-avr is the branch to use for avr/atmega based printers and master is for
+   the stm32 JennyPrinter. Branch fix-avr has will be merged into master.
+
 Thanks
 +++++++++++++
 
