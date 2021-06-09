@@ -235,7 +235,7 @@ void killMessage(uint8_t errorCode, uint8_t errorParam /*, const char *msg */) {
     kill();
 }
 
-void killMessage(uint8_t errorCode, uint8_t errorParam1, uint8_t errorParam2, const char *msg) {
+void killMessage(uint8_t errorCode, uint8_t errorParam1, uint8_t errorParam2 /* , const char *msg */) {
 
     LCDMSGKILL(errorCode, errorParam1, msg);
     txBuffer.sendSimpleResponse(RespKilled, errorCode, errorParam1, errorParam2);
