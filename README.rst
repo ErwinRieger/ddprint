@@ -492,6 +492,10 @@ Log
 
 ::
 
+   Wed Jun  9 21:17:22 CEST 2021
+
+   Merged *fix-avr* branch into master.
+
    Tue Jun  8 14:41:41 CEST 2021
 
    Pushed fix-avr branch to github. The JennyPrinter port made the avr/atmega side to slow.
