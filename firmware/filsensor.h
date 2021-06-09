@@ -18,16 +18,9 @@
 * along with ddprint.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-
-/*
- * Parts of this code come from https://github.com/mrjohnk
- */
-
 #pragma once
 
 #if defined(BournsEMS22AFS)
-
-#define VAR_FILSENSOR_GRIP (filamentSensor.getGrip())
 
 /*
  * Inteface to a Bourns EMS22 incremental sensor.
@@ -35,69 +28,77 @@
 class FilamentSensorEMS22 {
 
         int32_t lastASteps;
-        int32_t lastSensorCount;
+        uint16_t sensorCount;
 
-        int16_t rest = 0;
         int16_t lastEncoderPos = 0;
 
-        uint8_t readLoc(uint8_t addr);
-
-        void writeLoc(uint8_t addr, uint8_t value);
-        uint8_t pullbyte();
         bool feedrateLimiterEnabled;
-
-        int32_t sensorCount;
+        bool limiting;
 
         // Factor to slow down movement because feeder slippage is greater than 10%.
-        float grip;
+        uint16_t slowDown;
+
+        int32_t sensorCountAbs;
+        int16_t slip32;
 
         // Ratio between measured filament sensor counts and the 
         // extruder stepper motor steps.
         // For example if steps per mm of the extruder stepper is 141 and
         // the resolution of the filament sensor is 102.8 counts/mm, then:
         // filSensorCalibration = 102.8 Counts / 141 Steps = 0.73.
-        float filSensorCalibration;
-
-        // uint16_t axis_steps_per_mm_e;
+        ScaledUInt16 filSensorCalibration;
 
         uint16_t readEncoderPos();
 
         int16_t getDY();
 
+        // Mode we are in. If *IDLE*, a measurement can be started by
+        // the stepper-isr. Mode is *MEASURING* when a measurement is
+        // currently in progress.
+        enum {
+            IDLE,
+            MEASURING
+        } frsMode;
+
+        uint8_t measureTimer;
+
+        uint16_t fsrMinSteps;
+
     public:
 
         FilamentSensorEMS22();
+
         void init();
         void reset();
 
         // The polling method
         void run();
-        void selfTest();
+
+        bool idle() { return frsMode == IDLE; }
 
         void enableFeedrateLimiter(bool flag) { feedrateLimiterEnabled = flag; }
-        void setFilSensorCalibration(float fc) { filSensorCalibration = fc; }
-        // void setStepsPerMME(uint16_t steps) {
-            // axis_steps_per_mm_e = steps;
-        // }
+        void setFilSensorConfig(ScaledUInt16 & fc, uint16_t minsteps) {
+            filSensorCalibration = fc;
+            fsrMinSteps = minsteps;
+        }
 
-        // Return ratio of FRS counts to stepper stepps (taking filSensorCalibration into account):
-        // Returns 1.0 if average of FSR readings still no available,
-        // else slip value, range is [0.1...1.0], but values > 1.0 are possible to some extend (calibraition).
-        float slippage();
-        int32_t getSensorCount() { return sensorCount; }
-        float getGrip() { return grip; }
+        int32_t getSensorCount() { return sensorCountAbs; }
+        bool isLimiting() { return limiting; }
+        uint16_t getSlowDown() { return slowDown; }
+        int16_t getSlip32() { return slip32; }
 
-        void setNAvg(uint8_t n);
         void cmdGetFSReadings(uint8_t nr);
 };
 
 #else // #if defined(BournsEMS22AFS)
-    #define VAR_FILSENSOR_GRIP (1.0)
 
+// Mockup for testing if no FRS hardware available.
 class FilamentSensorEMS22 {
     public:
         FilamentSensorEMS22() { };
-        void setNAvg(uint8_t n) { };
+        void enableFeedrateLimiter(bool /* flag */) { }
+        bool isLimiting() { return false; }
+        uint16_t getSlowDown() { return 0; }
         void cmdGetFSReadings(uint8_t nr) {
             txBuffer.sendResponseStart(CmdGetFSReadings);
             uint8_t n = min(10, nr);
@@ -106,7 +107,6 @@ class FilamentSensorEMS22 {
                 txBuffer.sendResponseUInt32(0);
                 txBuffer.sendResponseInt16(0);
             }
-
             txBuffer.sendResponseEnd();
         }
 };

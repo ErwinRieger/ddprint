@@ -1,5 +1,5 @@
 /*
-* This file is part of ddprint - a direct drive 3D printer firmware.
+* This file is part of ddprint - a 3D printer firmware.
 * 
 * Copyright 2015 erwin.rieger@ibrieger.de
 * 
@@ -22,7 +22,7 @@
 #include "ddtemp.h"
 #include "temperature.h"
 #include "pins.h"
-#include "ddserial.h"
+#include "txbuffer.h"
 #include "ddcommands.h"
 
 #include "hal.h"
@@ -37,14 +37,14 @@
 extern void kill();
 
 TempControl::TempControl():
-            avgBedTemp(HEATER_0_MINTEMP),
-            avgHotendTemp(HEATER_1_MINTEMP),
+            avgBedTemp(ThermistorTableLowADC + 30), 
+            avgHotendTemp(ThermistorTableLowADC + 30),
             curPidSet(&pidSetHeating),
-            pwmValueOverride(0),
+            continousPID(0),
             antiWindupMode(false),
-            pidSetHeating({1, 0.1, 0.1}),
-            pidSetCooling({1, 0.1, 0.1}),
-            suggestPwm(0)
+            pidSetHeating({1, 1, 1}),
+            pidSetCooling({1, 1, 1}),
+            pwmOverride(0)
             {};
 
 void TempControl::init() {
@@ -53,23 +53,22 @@ void TempControl::init() {
 
     eSum = 0;
     eAlt = 0;
+
     dTerm = 0;
-    pwmMode = false;
 
     pid_output = 0;
 
-    //
-    // Timestamp of last pid computation
-    //
+#ifdef PID_DEBUG
     lastPidCompute = millis();
+#endif
 
     for (uint8_t e=0; e<EXTRUDERS; e++)
         current_temperature[e] = HEATER_1_MINTEMP;
 
-    setPidSet(&pidSetHeating, 0.0, 1.0);
+    curPidSet = &pidSetHeating;
 }
 
-void TempControl::setTemp(uint8_t heaterNum, uint16_t temp) {
+void TempControl::setTemp(uint8_t heaterNum, int16_t temp, uint8_t pwmOv) {
 
     if (heaterNum == 0) {
 
@@ -87,103 +86,192 @@ void TempControl::setTemp(uint8_t heaterNum, uint16_t temp) {
         // already stable setpoint. Reset integral sum if
         // we switch "from manual mode to automatic".
         if (target_temperature[heaterNum-1] == 0) {
+
             eSum = 0;
+
+            // Regeldifferenz, grösser 0 falls temperatur zu klein
+            // int32_t e = target_temperature[0] - current_temperature[0];
+            eAlt = target_temperature[0] - current_temperature[0];
+
             dTerm = 0;
         }
 
         target_temperature[heaterNum-1] = temp;
-
-        // xxx hack, reset/clear suggestPwm
-        if (temp < 50) {
-            suggestPwm = 0;
-        }
+        pwmOverride = pwmOv;
     }
 }
 
-void TempControl::choosePidSet(float e, float pid_dt) {
+void TempControl::setPidSet(
+        struct PidSet &pidSetOld, struct PidSet &pidSetNew,
+        ScaledUInt32 &kiSwitch,
+        int32_t e) {
 
-    if (e > 0) {
-        // temp to low, use fast pid
-        if (curPidSet != &pidSetHeating) {
-            setPidSet(&pidSetHeating, e, pid_dt);
-        }
+    // eSumNew = kiSwitch * eSumOld; kiSwitch = KiOld/KiNew;
+
+#ifdef PID_DEBUG
+    // PID interval [ms]
+    uint32_t ts = millis();
+#endif
+
+    //
+    // P-term
+    //
+
+    int32_t pTerm = pidSetNew.Kp_scaled.mul31(e);
+
+    eSum = kiSwitch.mul31(eSum);
+
+    if (!antiWindupMode)
+        eSum += e;
+
+    //
+    // I-term
+    //
+    //
+    // float iTerm = Ki * pid_dt * eSum;
+    //
+    int32_t iTerm = pidSetNew.Ki_scaled.mul31(eSum);
+
+    int32_t output = pTerm + iTerm;
+
+    //
+    // dTerm += (Kd * (e - eAlt)) / pid_dt;
+    //
+    int32_t delta = e - eAlt;
+
+    dTerm += pidSetNew.Kd_scaled.mul31(delta);
+
+    if (e >= 0 && (output < pwmOverride)) {
+
+        // Temp to low, and pwmOverride (feed forward) is available.
+        output = pwmOverride;
+        antiWindupMode = true;
+    }
+
+    if (output >= PID_MAX) {
+        pid_output = PID_MAX;
+        antiWindupMode = true;
+    }
+    else if (output <= 0) {
+        pid_output = 0;
+        antiWindupMode = true;
     }
     else {
-        // temp to high, use slow pid
-        if (curPidSet != &pidSetCooling) {
-            setPidSet(&pidSetCooling, e, pid_dt);
-        }
+        pid_output = output;
+        antiWindupMode = false;
     }
-}
 
-void TempControl::setPidSet(struct PidSet *pidSet, float e, float pid_dt) {
+    HEATER_0_PIN :: write( pid_output );
 
-    float pTermOld = curPidSet->Kp * e;
-    float iTermOld = curPidSet->Ki * pid_dt * eSum;
+    // Kept values of last pidrun
+    eAlt = e;
 
-    float pTermNew = pidSet->Kp * e;
-    float iTermNew = pidSet->Ki * pid_dt * eSum;
+#ifdef PID_DEBUG
+    txBuffer.sendResponseStart(RespUnsolicitedMsg);
+    txBuffer.sendResponseUint8(PidSwitch);
+    txBuffer.sendResponseUInt32(ts - lastPidCompute);
+    txBuffer.sendResponseInt32(pTerm);
+    txBuffer.sendResponseInt32(iTerm);
 
-    // iTerm = curPidSet->Ki * pid_dt * eSum;
-    eSum += ((pTermOld-pTermNew) + (iTermOld-iTermNew)) / (pidSet->Ki * pid_dt);
-  
-    // dTerm wurde mit curPidSet->Kd aufsummiert, das ist curPidSet->Kd/pidSet->Kd mal größer als wir es für
-    // das neue pidset brauchen, desshalb:
-    dTerm /= (pidSet->Kd/curPidSet->Kd);
+    txBuffer.sendResponseInt32(dTerm);
+    txBuffer.sendResponseUint8(pid_output);
+    txBuffer.sendResponseInt16(e);
+    txBuffer.sendResponseInt32(eSum);
+    txBuffer.sendResponseEnd();
 
-    curPidSet = pidSet;
+    lastPidCompute = ts;
+#endif //PID_DEBUG
+
+    curPidSet = &pidSetNew;
 }
 
 void TempControl::heater() {
 
     // Check if temperature is within the correct range
     if(current_temperature[0] < HEATER_1_MINTEMP) {
-        LCDMSGKILL(RespMinTemp, 1, current_temperature[0]);
+        LCDMSGKILL(RespMinTemp, 1, fromFWTemp(current_temperature[0]));
         txBuffer.sendSimpleResponse(RespKilled, RespMinTemp, 1);
         kill();
     }
     else {
         if(current_temperature[0] > HEATER_1_MAXTEMP) {
-            LCDMSGKILL(RespMaxTemp, 1, current_temperature[0]);
+            LCDMSGKILL(RespMaxTemp, 1, fromFWTemp(current_temperature[0]));
             txBuffer.sendSimpleResponse(RespKilled, RespMaxTemp, 1);
             kill();
         }
         else {
 
-            if (pwmMode) {
+            if (continousPID) {
 
-                HEATER_0_PIN :: write(pwmValueOverride);
+                HEATER_0_PIN :: write(continousPID);
             }
             else {
 
+                //
                 // Reglergleichung
+                //
                 // y = Kp*e + Ki*Ta*esum + Kd/Ta*(e – ealt);
 
+#ifdef PID_DEBUG
                 // PID interval [s]
-                unsigned long ts = millis();
-                float pid_dt = (ts - lastPidCompute) / 1000.0;
+                uint32_t ts = millis();
+#endif
 
                 // Regeldifferenz, grösser 0 falls temperatur zu klein
-                float e = target_temperature[0] - current_temperature[0];
+                int32_t e = target_temperature[0] - current_temperature[0];
 
-                choosePidSet(e, pid_dt);
+                if (e >= 0) {
+
+                    if (curPidSet != &pidSetHeating) {
+                        // temp to low, use fast pid
+                        setPidSet(
+                                pidSetCooling,
+                                pidSetHeating,
+                                kiSwitchToHeating,
+                                e);
+                        return;
+                    }
+                }
+                else {
+
+                    if ((curPidSet != &pidSetCooling) && (e & 0xfffffffe)) { // hysterese
+                        // temp to high or equal set-temp, use slow pid
+                        setPidSet(
+                            pidSetHeating,
+                            pidSetCooling,
+                            kiSwitchToCooling,
+                            e);
+                        return;
+                        }
+                }
 
                 //
                 // pid_output = (uint8_t)(pTerm + iTerm + dTerm + 0.5);
                 //
-                float pTerm = curPidSet->Kp * e;
+                // float pTerm = curPidSet->Kp * e;
+                int32_t pTerm = curPidSet->Kp_scaled.mul31(e);
 
-                if (! antiWindupMode) {
+                //
+                // eSum
+                //
+                if (!antiWindupMode) {
                     eSum += e;
                 }
 
-                float iTerm = curPidSet->Ki * pid_dt * eSum;
+                //
+                // float iTerm = curPidSet->Ki * pid_dt * eSum;
+                //
+                int32_t iTerm = curPidSet->Ki_scaled.mul31(eSum);
 
-                float output = pTerm + iTerm; // output value as float before rounding
+                int32_t output = pTerm + iTerm;
 
-                dTerm += curPidSet->Kd * (e - eAlt) / pid_dt;
+                //
+                // dTerm += (curPidSet->Kd * (e - eAlt)) / pid_dt;
+                //
+                int32_t delta = e - eAlt;
+                dTerm += curPidSet->Kd_scaled.mul31(delta);
 
-                float d = 0.0; // differiential part for this interval
+                int32_t d = 0; // differiential part for this interval
                 if (dTerm > 0) {
                     if (output < PID_MAX) {
                         d = min(dTerm, PID_MAX-output);
@@ -198,53 +286,49 @@ void TempControl::heater() {
                 output += d;
                 dTerm -= d;
 
-                if ((e >= 0) && (output <= suggestPwm)) {
+                if ( (e >= 0) && (output < pwmOverride)) {
 
-                    // Temp to low, and suggestPwm (feed forward) is available.
-                    output = suggestPwm;
-
-                    // Set eSum to maintain this suggested pwm
-                    float newITerm = suggestPwm - (pTerm + d);
-                    // iterm = ki * pid_dt * eSum
-                    // eSum = iterm / (ki*pid_dt)
-                    eSum = newITerm / (curPidSet->Ki * pid_dt);
+                    // Temp to low, and pwmOverride (feed forward) is available.
+                    output = pwmOverride;
+                    antiWindupMode = true;
                 }
 
-                if (output > PID_MAX) {
+                if (output >= PID_MAX) {
                     pid_output = PID_MAX;
                     antiWindupMode = true;
                 }
-                else if (output < 0) {
+                else if (output <= 0) {
                     pid_output = 0;
                     antiWindupMode = true;
                 }
                 else {
-                    pid_output = output + 0.5;
+                    pid_output = output;
                     antiWindupMode = false;
                 }
 
                 HEATER_0_PIN :: write( pid_output );
 
 #ifdef PID_DEBUG
-                static int dbgcount=0;
-    
-                if ((dbgcount++ % 10) == 0) {
+
+                static uint8_t dbgcount=0;
+                if ((dbgcount++ & 0x1f) == 0) {
                     txBuffer.sendResponseStart(RespUnsolicitedMsg);
                     txBuffer.sendResponseUint8(PidDebug);
-                    txBuffer.sendResponseFloat(pid_dt);
-                    txBuffer.sendResponseFloat(pTerm);
-                    txBuffer.sendResponseFloat(iTerm);
-                    txBuffer.sendResponseFloat(dTerm);
-                    txBuffer.sendResponseInt32(pid_output);
-                    txBuffer.sendResponseFloat(e);
+                    txBuffer.sendResponseUInt32(ts - lastPidCompute);
+                    txBuffer.sendResponseInt32(pTerm);
+                    txBuffer.sendResponseInt32(iTerm);
+                    txBuffer.sendResponseInt32(dTerm);
+                    txBuffer.sendResponseUint8(pid_output);
+                    txBuffer.sendResponseInt16(e);
+                    txBuffer.sendResponseInt32(eSum);
                     txBuffer.sendResponseEnd();
                 }
 
+                lastPidCompute = ts;
 #endif //PID_DEBUG
 
                 // Kept values of last pidrun
                 eAlt = e;
-                lastPidCompute = ts;
             }
         }
     }
@@ -255,13 +339,13 @@ void TempControl::heater() {
 
     // Check if temperature is within the correct range
     if(current_temperature_bed < HEATER_0_MINTEMP) {
-        LCDMSGKILL(RespMinTemp, 0, current_temperature_bed);
+        LCDMSGKILL(RespMinTemp, 0, fromFWTemp(current_temperature_bed));
         txBuffer.sendSimpleResponse(RespKilled, RespMinTemp, 0);
         kill();
     }
     else {
         if(current_temperature_bed > HEATER_0_MAXTEMP) {
-            LCDMSGKILL(RespMaxTemp, 0, current_temperature_bed);
+            LCDMSGKILL(RespMaxTemp, 0, fromFWTemp(current_temperature_bed));
             txBuffer.sendSimpleResponse(RespKilled, RespMaxTemp, 0);
             kill();
         }
@@ -289,12 +373,7 @@ void TempControl::setTempPWM(uint8_t heaterNum, uint8_t pwmValue) {
     else
         HEATER_1_PIN :: write(pwmValue);
 
-    if (pwmValue)
-        pwmMode = true;
-    else
-        pwmMode = false;
-
-    pwmValueOverride = pwmValue;
+    continousPID = pwmValue;
 }
 
 void TempControl::hotendOn(uint8_t heaterNum) {
@@ -305,15 +384,32 @@ void TempControl::hotendOn(uint8_t heaterNum) {
         HEATER_1_PIN :: write(255);
 }
 
-void TempControl::setPIDValues(float kp, float ki, float kd, float kpC, float kiC, float kdC) {
+void TempControl::setPIDValues(
+    ScaledUInt32 &kp,
+    ScaledUInt32 &ki, int32_t  maxEsum,
+    ScaledUInt32 &kd,
+    ScaledUInt32 &kpC,
+    ScaledUInt32 &kiC, int32_t maxEsumC,
+    ScaledUInt32 &kdC,
+    ScaledUInt32 &toHeating,
+    ScaledUInt32 &toCooling) {
 
-    pidSetHeating.Kp = kp;
-    pidSetHeating.Ki = ki;
-    pidSetHeating.Kd = kd;
+    pidSetHeating.Kp_scaled = kp;
 
-    pidSetCooling.Kp = kpC;
-    pidSetCooling.Ki = kiC;
-    pidSetCooling.Kd = kdC;
+    pidSetHeating.Ki_scaled = ki;
+    pidSetHeating.maxEsum = maxEsum;
+
+    pidSetHeating.Kd_scaled = kd;
+
+    pidSetCooling.Kp_scaled = kpC;
+
+    pidSetCooling.Ki_scaled = kiC;
+    pidSetCooling.maxEsum = maxEsumC;
+
+    pidSetCooling.Kd_scaled = kdC;
+
+    kiSwitchToHeating = toHeating;
+    kiSwitchToCooling = toCooling;
 }
 
 TempControl tempControl;

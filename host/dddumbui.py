@@ -1,5 +1,5 @@
 #/*
-# This file is part of ddprint - a direct drive 3D printer firmware.
+# This file is part of ddprint - a 3D printer firmware.
 # 
 # Copyright 2015 erwin.rieger@ibrieger.de
 # 

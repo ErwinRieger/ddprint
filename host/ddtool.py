@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 #/*
-# This file is part of ddprint - a direct drive 3D printer firmware.
+# This file is part of ddprint - a 3D printer firmware.
 # 
 # Copyright 2020 erwin.rieger@ibrieger.de
 # 
@@ -79,7 +79,7 @@ def gcodeTool(fn):
     print "LayerHeight : %.2f mm" % lh
     print "ExtrudeWidth: %.2f mm" % ew
     print "Speed       : %.2f mm/s" % spd
-    print "starting cod: %s" % settings.startinggcode
+    print "starting cod: \n  %s" % "".join(settings.startinggcode).replace(";", "\n  ;")
     print "\nMax flowrate: %.2f mm³/s" % (lh*ew*spd)
 
 

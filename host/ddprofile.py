@@ -1,5 +1,5 @@
 #/*
-# This file is part of ddprint - a direct drive 3D printer firmware.
+# This file is part of ddprint - a 3D printer firmware.
 # 
 # Copyright 2015 erwin.rieger@ibrieger.de
 # 
@@ -253,6 +253,8 @@ class PrinterProfile(ProfileBase):
             "stepsPerMMX": self.getStepsPerMMI(X_AXIS),
             "stepsPerMMY": self.getStepsPerMMI(Y_AXIS),
             "stepsPerMMZ": self.getStepsPerMMI(Z_AXIS),
+            "stepsPerMMA": self.getStepsPerMMI(A_AXIS),
+            # "stepsPerMMB": self.getStepsPerMMI(B_AXIS),
             "buildVolX": int(self.getPlatformLengthI(X_AXIS) * self.getStepsPerMMI(X_AXIS)),
             "buildVolY": int(self.getPlatformLengthI(Y_AXIS) * self.getStepsPerMMI(Y_AXIS)),
             "buildVolZ": int(self.getPlatformLengthI(Z_AXIS) * self.getStepsPerMMI(Z_AXIS)),
@@ -320,6 +322,9 @@ class PrinterProfile(ProfileBase):
 
     def getBowdenLength(self):
         return self.getValue("bowdenLength")
+
+    def getXo(self):
+        return int(self.getValue("Xo"))
 
 ####################################################################################################
 #

@@ -31,6 +31,7 @@
 #include <stdint.h>
 #include "ringbuffer.h"
 #include "mdebug.h"
+#include "intmath.h"
 
 #if !defined(SERIAL_PORT)
 #define SERIAL_PORT 0
@@ -46,7 +47,7 @@
 #define SERIAL_REGNAME_INTERNAL(registerbase,number,suffix) registerbase##number##suffix
 #endif
 
-// Registers used by SerialPort class (these are expanded
+// Registers used by RxBuffer class (these are expanded
 // depending on selected serial port
 #define M_UCSRxA SERIAL_REGNAME(UCSR,SERIAL_PORT,A) // defines M_UCSRxA to be UCSRnA where n is the serial port number
 #define M_UCSRxB SERIAL_REGNAME(UCSR,SERIAL_PORT,B)
@@ -61,17 +62,11 @@
 #define M_USARTx_RX_vect SERIAL_REGNAME(USART,SERIAL_PORT,_RX_vect)
 #define M_U2Xx SERIAL_REGNAME(U2X,SERIAL_PORT,)
 
-// Size of tx buffer in bytes
-#define RX_BUFFER_SIZE 256
-
-typedef CircularBuffer<uint8_t, uint16_t, RX_BUFFER_SIZE> SerialPortBase;
-
 //
 // stm32 port:
 // Note: rx/tx buffer memory wasted in struct usart_dev.
 //
-class SerialPort: public SerialPortBase
-{
+class RxBuffer: public Buffer256<uint8_t> {
 
   private:
 
@@ -79,25 +74,21 @@ class SerialPort: public SerialPortBase
     uint8_t cobsLen;
 
     // Length of current cobs code block
-    int16_t cobsCodeLen;
+    uint8_t cobsCodeLen;
 
     void init();
 
+  public:
+
+    void begin(uint32_t baud);
+    void end();
+    void setBaudrate(uint32_t baudRate);
+
+    void peekChecksum(uint16_t *checksum, uint8_t count);
+
     void atCobsBlock();
 
-  public:
-    SerialPort();
-
-    void begin(long);
-    void  peekChecksum(uint16_t *checksum, uint8_t count);
-
     void cobsInit(uint16_t payloadLength);
-    bool cobsAvailable() { return (cobsLen > 0) || (cobsCodeLen == 1); }
-
-    /* uint8_t serReadNoCheck(void) { simassert(0); } */
-
-    uint8_t readNoCheckNoCobs(void);
-    /* uint16_t readUInt16NoCheckNoCobs(); */
 
     uint8_t readNoCheckCobs(void);
 
@@ -109,28 +100,10 @@ class SerialPort: public SerialPortBase
     int32_t readInt32NoCheckCobs();
     uint32_t readUInt32NoCheckCobs();
 
-    inline void store_char(unsigned char c);
+    void readScaledUInt32NoCheckCobs(ScaledUInt32 &scaledInt);
 };
 
-inline void SerialPort::store_char(unsigned char c) {
-
-        if (c == 0x0) { // SOH
-            ringBufferInit();
-        }
-        else {
-            if (_ringbuffer_head == 0) {
-                // Lost SOH
-                ringBufferInit();
-                pushVal(0x0);
-            }
-        }
-
-        pushVal(c);
-    }
-
-
-
-extern SerialPort serialPort;
+extern RxBuffer rxBuffer;
 
 
 

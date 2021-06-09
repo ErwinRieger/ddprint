@@ -26,6 +26,8 @@
 // * maple/libmaple/timer_map.c
 //
 
+// Note: Pin nubers are the logical/mapped pins, not the physical chip pins.
+
 #define POWER_BUTTON            DigitalInput<15, INPUT_PULLDOWN, ACTIVEHIGHPIN>  // ["GPIOA","D15","PA15"], # Known: Input, Power button
 
 #define POWER_SUPPLY_RELAY      DigitalOutput<28, ACTIVEHIGHPIN>  // ["GPIOB","D28","PB12"], # Known: Output, Power-Relais  
@@ -87,10 +89,10 @@
 // #define TEMP_2_PIN              AnalogInput<34, 12> // ["GPIOC","D34","PC2"],  # Known: Analog Input, Temp. PT100 Sensor, nothing connected
 
 //
-// USB OTG_HS Host, hardcoded in xxxx!
+// USB OTG_HS Host, hardcoded in dd_usbh_msc.h!
 //
-// ["GPIOB","D30","PB14"], # Known: USB OTG DM
-// ["GPIOB","D31","PB15"], # Known: USB OTG DP
+// ["GPIOB","D30","PB14"], # DD_BOARD_USB_DM_PIN
+// ["GPIOB","D31","PB15"], # DD_BOARD_USB_DP_PIN
 
 // SPI for flowrate sensor
 // Chip select SDCard

@@ -31,9 +31,9 @@ extern "C" {
 
 #include "usbh_usr.h"
 #include "dd_usbh_msc.h"
-#include "mdebug.h"
+// #include "mdebug.h"
 
-//xxx
+// Todo: move prototypes to header.
 USB_OTG_STS dd_HCD_SubmitRequest (USB_OTG_CORE_HANDLE *pdev , uint8_t hc_num);
 uint32_t dd_HCD_IsDeviceConnected    (USB_OTG_CORE_HANDLE *pdev); 
 uint32_t dd_HCD_GetXferCnt (USB_OTG_CORE_HANDLE *pdev, uint8_t ch_num);
@@ -1633,8 +1633,7 @@ static uint32_t USB_OTG_USBH_handle_hc_ISR (USB_OTG_CORE_HANDLE *pdev)
 * @param  pdev: device instance
 * @retval status
 */
-// XXX retval is not used in __irq_usb_hs().
-uint32_t USBD_OTG_HS_ISR_Handler (USB_OTG_CORE_HANDLE *pdev)
+void USBD_OTG_HS_ISR_Handler (USB_OTG_CORE_HANDLE *pdev)
 {
 
     USB_OTG_GINTSTS_TypeDef  gintr_status;
@@ -1748,9 +1747,6 @@ uint32_t USBD_OTG_HS_ISR_Handler (USB_OTG_CORE_HANDLE *pdev)
       #endif
       retval |= USB_OTG_USBH_handle_port_ISR (pdev);
     }
-    
-
-  return retval;
 }
 
 //--------------------------------------------------------------
@@ -2466,7 +2462,6 @@ void dd_USB_OTG_BSP_Init(USB_OTG_CORE_HANDLE *pdev)
   rcc_clk_enable(RCC_USBHS);
 }
 
-// xxx
 #define USB_OTG_HCCHAR_CHENA_Pos                 (31U)                         
 #define USB_OTG_HCCHAR_CHENA_Msk                 (0x1UL << USB_OTG_HCCHAR_CHENA_Pos) /*!< 0x80000000 */
 #define USB_OTG_HCCHAR_CHENA                     USB_OTG_HCCHAR_CHENA_Msk      /*!< Channel enable */

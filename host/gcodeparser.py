@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# This file is part of ddprint - a direct drive 3D printer firmware.
+# This file is part of ddprint - a 3D printer firmware.
 # 
 # Copyright 2015 erwin.rieger@ibrieger.de
 # 
@@ -112,9 +112,12 @@ def _isExtrudingMove(displacement_vector, extruder):
 def _isZMove(displacement_vector):
     return displacement_vector[Z_AXIS]
 
+def isExtrudingMove(displacement_vector):
+    return _isExtrudingMove(displacement_vector, A_AXIS) or _isExtrudingMove(displacement_vector, B_AXIS)
+
 def isPrintMove(displacement_vector):
 
-    printMove = _isHeadMove(displacement_vector) and (_isExtrudingMove(displacement_vector, A_AXIS) or _isExtrudingMove(displacement_vector, B_AXIS))
+    printMove = _isHeadMove(displacement_vector) and isExtrudingMove(displacement_vector)
 
     # Printmoves with reverting E are invalid
     # Note: some Cura versions generate gcode with a initial G11 and without the matching G10 for it,
@@ -444,7 +447,8 @@ class UM2GcodeParser:
 
         # return (f, max(preloadLines, 1000))
         # XXXXX hack weil download von stopfen-4mal.gcode ewig zum download dauert...
-        return (f, max(min(preloadLines, 10000), 1000))
+        print "XXXX preParse(): retuning fixed preload 1000..." # return (f, max(min(preloadLines, 10000), 1000))
+        return (f, 1000)
 
     def execute_line(self, rawLine):
 

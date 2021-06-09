@@ -18,7 +18,6 @@
 */
 
 #include "mdebug.h"
-#include "mdebug.h"
 
 #pragma once
 
@@ -28,8 +27,11 @@ struct CircularBuffer {
     typedef IndexType _IndexType;
 
     ElementType _ringbuffer_array[BufferSize];
+
     IndexType _ringbuffer_head;
     IndexType _ringbuffer_tail;
+
+    CircularBuffer() { ringBufferInit(); }
 
     void ringBufferInit() { _ringbuffer_head = _ringbuffer_tail = 0; }
 
@@ -40,59 +42,107 @@ struct CircularBuffer {
     IndexType size()     { return _ringbuffer_head - _ringbuffer_tail; }
 
     void pushRef(ElementType& val)  {
-       
-       massert(!full());
-
-        IndexType h = _ringbuffer_head;
-        _ringbuffer_array[mask(h)] = val;
-        _ringbuffer_head = h+1;
+        _ringbuffer_array[mask(_ringbuffer_head++)] = val;
     }
 
     void pushVal(ElementType val)  {
-        
-       massert(!full());
-
-        IndexType h = _ringbuffer_head;
-        _ringbuffer_array[mask(h)] = val;
-        _ringbuffer_head = h+1;
+        _ringbuffer_array[mask(_ringbuffer_head++)] = val;
     }
-
-    #if 0
-    void pushWrap(ElementType& val)  {
-        
-        if (full())
-            pop();
-        push(val);
-    }
-    #endif
 
     ElementType &pop() {
-
-       massert(!empty());
-
-        IndexType t = _ringbuffer_tail;
-        ElementType &val = _ringbuffer_array[mask(t)];
-        _ringbuffer_tail = t + 1;
-        return val;
+        return _ringbuffer_array[mask(_ringbuffer_tail++)];
     }
-    ElementType &peek() { massert(!empty()); return _ringbuffer_array[mask(_ringbuffer_tail)]; }
+    ElementType &peek() { return _ringbuffer_array[mask(_ringbuffer_tail)]; }
     ElementType &peekN(IndexType index) { return _ringbuffer_array[mask(_ringbuffer_tail+index)]; }
+};
 
-    #if 0
-    void setRef(IndexType i, ElementType &val) {
-        _ringbuffer_array[mask(i)] = val;
+template <class ElementType>
+struct Buffer256 {
+
+    ElementType _ringbuffer_array[256];
+    uint8_t _ringbuffer_head;
+    uint8_t _ringbuffer_tail;
+
+    Buffer256() { ringBufferInit(); }
+    FWINLINE void ringBufferInit() { _ringbuffer_head = _ringbuffer_tail = 0; }
+
+    FWINLINE bool empty()   { return _ringbuffer_head == _ringbuffer_tail; }
+    FWINLINE bool full()    { return size() == 255; }
+    FWINLINE uint8_t size() { return _ringbuffer_head - _ringbuffer_tail; }
+
+    FWINLINE void pushRef(ElementType &val)  {
+       _ringbuffer_array[_ringbuffer_head++] = val;
     }
-    #endif
-    void setVal(IndexType i, ElementType val) {
-        _ringbuffer_array[mask(i)] = val;
+
+    FWINLINE void pushVal(ElementType val)  {
+       _ringbuffer_array[_ringbuffer_head++] = val;
     }
-    #if 0
-    void mod(IndexType i, ElementType &val) {
-        _ringbuffer_array[mask(i)] += val;
+
+    FWINLINE ElementType &pop() {
+       return _ringbuffer_array[_ringbuffer_tail++];
     }
-    #endif
-    void inc(IndexType i) {
-        _ringbuffer_array[mask(i)] ++;
+
+    // For uart ringbuffer
+    FWINLINE ElementType &peek() { return _ringbuffer_array[_ringbuffer_tail]; }
+    // For uart ringbuffer
+    FWINLINE ElementType &peekN(uint8_t index) { return _ringbuffer_array[_ringbuffer_tail+index]; }
+
+    // For uart ringbuffer/cobs
+    FWINLINE void setVal(uint8_t i, ElementType val) {
+        _ringbuffer_array[i] = val;
+    }
+
+    // For uart ringbuffer/cobs
+    FWINLINE void inc(uint8_t i) {
+        _ringbuffer_array[i] ++;
     }
 };
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 

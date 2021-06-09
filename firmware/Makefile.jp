@@ -1,7 +1,7 @@
 #
 # Build firmware for jennyprinter stm32 shuttle board ("gear p1", "engine")
 #
-ARDUINO_BASE  = $(realpath $(PWD)/../..)
+ARDUINO_BASE  = $(realpath $(DDPRINTHOME)/..)
 ARDUINO_DIR  = $(ARDUINO_BASE)/arduino-1.6.13
 
 ACCONFIG = $(ARDUINO_BASE)/arduino-cli_0.11.0
@@ -13,7 +13,7 @@ NO_CORE_MAIN_CPP = 1
 
 # from arduino-cli_0.11.0/packages/stm32duino/hardware/STM32F4/2019.2.28/boards.txt:
 CPPFLAGS       =  -mthumb -DSTM32_HIGH_DENSITY -DSTM32F4 -DBOARD_generic_f407v
-CPPFLAGS      +=  -DMOTHERBOARD=3 -Ifw -Isrc -I$(PWD) -DCRYSTAL_FREQ=8
+CPPFLAGS      +=  -DMOTHERBOARD=3 -Ifw -Isrc -I$(PWD) -I$(PWD)/firmware -DCRYSTAL_FREQ=8
 
 # -O1 for debugging:
 # CPPFLAGS      +=  -O1
@@ -37,6 +37,7 @@ CPPFLAGS      +=  -Wshadow
 # CXXFLAGS      +=  -fno-diagnostics-color
 
 compile:
+	echo "ARDUINO_BASE: $(ARDUINO_BASE)"
 	# Usb options: usb_cfg=usb_serial usb_cfg=usb_nc usb_cfg=usb_msc 
 	# Debug options: opt=ogstd
 	# Example: -b stm32duino:STM32F4:generic_f407v:usb_cfg=usb_msc,opt=ogstd

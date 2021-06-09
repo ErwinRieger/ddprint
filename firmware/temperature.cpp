@@ -1,3 +1,9 @@
+/************************************************************************************************
+* Note by erwin.rieger@ibrieger.de:
+* This file is part of ddprint - a 3d printer firmware.
+* The Origin of this code is Ultimaker2Marlin (https://github.com/Ultimaker/Ultimaker2Marlin).
+************************************************************************************************/
+
 /*
   temperature.c - temperature control
   Part of Marlin
@@ -36,23 +42,16 @@
 
 #include "hal.h"
 
-#include "serialport.h"
-
-// Redundant definitions to avoid include of ddprint.h
-// extern bool IsStopped();
-// extern void Stop(uint8_t reasonNr);
-// extern void kill(const char* msg);
-
 //===========================================================================
 //=============================public variables============================
 //===========================================================================
-// XXX todo: make member of TempControl
-uint16_t target_temperature[EXTRUDERS] = { 0 };
-// XXX todo: make member of TempControl
-uint8_t target_temperature_bed = 0;
+// Todo: make member of TempControl?
+int16_t target_temperature[EXTRUDERS] = { 0 };
+// Todo: make member of TempControl?
+int16_t target_temperature_bed = 0;
 
-float current_temperature_bed = HEATER_0_MINTEMP;
-float current_temperature[EXTRUDERS] = ARRAY_BY_EXTRUDERS(HEATER_1_MINTEMP, HEATER_2_MINTEMP, HEATER_3_MINTEMP);
+int16_t current_temperature_bed = HEATER_0_MINTEMP;
+int16_t current_temperature[EXTRUDERS] = ARRAY_BY_EXTRUDERS(HEATER_1_MINTEMP, HEATER_2_MINTEMP, HEATER_3_MINTEMP);
 
 void tp_init()
 {
@@ -65,17 +64,6 @@ void tp_init()
     HEATER_1_PIN :: init();
 #endif
 
-// #if defined(HEATER_2_PIN)
-    // SET_OUTPUT_PWM(HEATER_2_PIN, false);
-// #endif
-
-// Bitbang
-// #if defined(HEATER_BED_PIN)
-//    SET_OUTPUT_PWM(HEATER_BED_PIN, HB_PIN_ACTIVE_LOW);
-//#endif
-
-    // SET_OUTPUT(HEATER_BED_PIN);
-    // WRITE(HEATER_BED_PIN, ~HEATER_BED_ACTIVE);
     HEATER_BED_PIN :: initDeActive();
 
     tempControl.init();

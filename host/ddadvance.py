@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 #
 #/*
-# This file is part of ddprint - a direct drive 3D printer firmware.
+# This file is part of ddprint - a 3D printer firmware.
 # 
 # Copyright 2016 erwin.rieger@ibrieger.de
 # 
@@ -519,49 +519,10 @@ class Advance (object):
         #debug if debugPlot and debugPlotLevel == "plotLevelPlanned":
             #debug self.plotPlannedPath(path)
 
-        """
-        esum = 0
-        measureMove = None
-        # Mark filament sensor measure moves
         for move in path:
-
-            # move.pprint("mark")
-            if not measureMove:
-                measureMove = move
-
-            # print "dir?", move.eDirection
-            assert(move.eDirection > 0)
-
-            assert(move.eDistance > 0)
-            esum += move.eDistance
-
-            if move.advanceData.startSignChange(): assert(0)
-
-            if move.advanceData.endSignChange():
-
-                if esum > 0.5: # xxx hardcoded...
-                    self.planner.gui.log("Segment %d: endSignChange: started measurement move, distance: " % move.moveNumber, esum)
-
-                    assert(not measureMove.isSubMove())
-                    measureMove.isMeasureMove = True
-
-                measureMove = None
-
-        if measureMove and esum > 0.5: # xxx hardcoded...
-            self.planner.gui.log("Segment %d: started measurement move, distance: " % move.moveNumber, esum)
-
-            assert(not measureMove.isSubMove())
-            measureMove.isMeasureMove = True
-        """
-
-        rateList = []
-        for move in path:
-            rateList.append(move.topSpeed.speed().eSpeed)
-
-        avgRate = sum(rateList) / len(rateList)
-        assert(avgRate > 0)
-        path[0].isMeasureMove = True
-        path[0].measureSpeed = avgRate
+            if move.eDistance > 1.0 and move.linearTime() > 0.15:
+                # print "FRS: e-dist, linear time:", move.eDistance, move.linearTime()
+                move.isMeasureMove = True
 
         newPath = []
         for move in path:
@@ -620,6 +581,7 @@ class Advance (object):
         if self.getKAdv():
             assert(abs(self.moveEsteps) < 0.1)
 
+        """
         # Debug, check chain
         if debugAdvance:
            
@@ -633,6 +595,7 @@ class Advance (object):
                 m = m.prevMove
                 n += 1
             assert(n == 2*len(newPath))
+        """
 
         # Stream moves to printer
         if debugAdvance:
@@ -1580,12 +1543,18 @@ class Advance (object):
             # Single move with simple ramps
             # xxx can we use plantravelsteps here
             if self.planStepsSimple(move):
+
                 move.isStartMove = True
+
+                if debugAdvance:
+                    print "***** End planSteps() *****"
+
+                return [move]
 
             if debugAdvance:
                 print "***** End planSteps() *****"
 
-            return [move]
+            return []
 
         assert(move.displacement_vector_steps_raw3[Z_AXIS] == 0)
 
@@ -1651,52 +1620,9 @@ class Advance (object):
             newMoves[-1].nextMove = move.nextMove
 
         startMove = True
+        subMoves = []
         for newMove in newMoves:
             newMove.sanityCheck()
-
-
-
-
-            # inlined isCrossedDecelStep
-            """
-            def isCrossedDecelStep(self):
-
-                v_1 = self.topSpeed.speed().feedrate3()
-                v_2 = self.endSpeed.speed().feedrate3()
-                xyzSign = util.sign(abs(v_2) - abs(v_1))
-
-                # print "\nisCrossedDecelStep(): v_1: %f, v_2: %f\n" % (v_1, v_2), xyzSign
-
-                ve_1 = self.topSpeed.speed().eSpeed
-                ve_2 = self.endSpeed.speed().eSpeed
-
-                eSign = util.sign(abs(ve_2) - abs(ve_1))
-
-                # print "isCrossedDecelStep(): ve_1: %f, ve_2: %f\n" % (ve_1, ve_2), eSign
-
-                if (xyzSign != eSign):
-                    # print "isCrossedDecelStep, different sign", xyzSign, eSign
-                    return True
-
-                # print "isCrossedDecelStep false"
-                return False
-            """
-
-    
-
-            # end inlined isCrossedDecelStep
-            """
-            if newMove.isCrossedDecelStep():
-                if self.planCrossedDecelSteps(newMove):
-                    newMove.isStartMove = startMove
-                    newMove.isMeasureMove = move.isMeasureMove
-                    startMove = False
-            else:
-                if self.planStepsSimple(newMove):
-                    newMove.isStartMove = startMove
-                    newMove.isMeasureMove = move.isMeasureMove
-                    startMove = False
-            """
 
             v_1 = newMove.topSpeed.speed().feedrate3()
             v_2 = newMove.endSpeed.speed().feedrate3()
@@ -1715,16 +1641,18 @@ class Advance (object):
                     newMove.isStartMove = startMove
                     newMove.isMeasureMove = move.isMeasureMove
                     startMove = False
+                    subMoves.append(newMove)
             else: # crossed deceleration step
                 if self.planCrossedDecelSteps(newMove):
                     newMove.isStartMove = startMove
                     newMove.isMeasureMove = move.isMeasureMove
                     startMove = False
+                    subMoves.append(newMove)
 
         if debugAdvance:
             print "***** End planSteps() *****"
 
-        return newMoves
+        return subMoves
     
     # xxx use planner.planTravelMove here
     def planStepsSimple(self, move):
@@ -1793,6 +1721,9 @@ class Advance (object):
         else:
             v1 = abs(move.endSpeed.speed().eSpeed)
 
+        steps_per_second_nominal = nominalSpeed * steps_per_mm
+        linearTimerValue = self.planner.timerLimit(int(fTimer / steps_per_second_nominal))
+
         nAccel = 0
         if move.accelTime():
 
@@ -1801,10 +1732,10 @@ class Advance (object):
                 v0,
                 nominalSpeed,
                 abs(move.startAccel.accel(leadAxis)),
-                leadAxis_steps) # maximum number of steps
+                leadAxis_steps,
+                linearTimerValue)
 
             move.stepData.setAccelPulses(accelClocks)
-
             nAccel = len(accelClocks)
 
         nDecel = 0
@@ -1815,10 +1746,10 @@ class Advance (object):
                 nominalSpeed,
                 v1,
                 abs(move.endAccel.accel(leadAxis)),
-                leadAxis_steps) # maximum number of steps
+                leadAxis_steps,
+                linearTimerValue)
 
             move.stepData.setDecelPulses(decelClocks)
-
             nDecel = len(decelClocks)
 
         #
@@ -1829,9 +1760,7 @@ class Advance (object):
 
         if nLin > 0:
 
-            steps_per_second_nominal = nominalSpeed * steps_per_mm
-            timerValue = self.planner.timerLimit(fTimer / steps_per_second_nominal)
-            move.stepData.setLinTimer(timerValue)
+            move.stepData.setLinTimer(linearTimerValue)
 
         else:
 
@@ -1905,16 +1834,16 @@ class Advance (object):
 
         topSpeed =  move.topSpeed.speed()
         topSpeedS = topSpeed.feedrate3()
-        topSpeedE = topSpeed.eSpeed
+        topSpeedE = abs( topSpeed.eSpeed )
 
         endSpeed =  move.endSpeed.speed()
         endSpeedS = endSpeed.feedrate3()
-        endSpeedE = endSpeed.eSpeed
+        endSpeedE = abs( endSpeed.eSpeed )
 
         # Some sanity tests
         # print "topSpeedS > endSpeedS:", topSpeedS> endSpeedS
         assert(topSpeedS > endSpeedS)           # XYZ should be decelerating
-        assert(abs(topSpeedE) < abs(endSpeedE)) # E should be accelerating
+        assert(topSpeedE < endSpeedE) # E should be accelerating
 
         abs_displacement_vector_steps = vectorAbs(dispS)
 
@@ -1934,10 +1863,11 @@ class Advance (object):
         eStepsToMove = abs_displacement_vector_steps[A_AXIS]
         eClocks = self.planner.accelRamp(
                 self.e_steps_per_mm,
-                abs( topSpeed.eSpeed ),
-                abs( endSpeed.eSpeed ),
+                topSpeedE,
+                endSpeedE,
                 abs(move.endAccel.eAccel()),
-                eStepsToMove)
+                eStepsToMove,
+                0)
 
         if debugAdvance:
             print "Generated %d/%d E steps" % (len(eClocks), eStepsToMove)

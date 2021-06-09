@@ -25,10 +25,7 @@
 
     #include <LiquidCrystal.h> // library for character LCD
 
-    #ifdef REPRAP_DISCOUNT_SMART_CONTROLLER
-
-        #define SDCARDDETECT 49
-    #endif
+    #define SDCARDDETECT 49
 
     #define LCDMSGKILL(reason, p1, p2) { \
         lcd.setCursor(0, 0); lcd.print("KILLED:"); \

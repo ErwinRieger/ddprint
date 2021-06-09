@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 #
 #/*
-# This file is part of ddprint - a direct drive 3D printer firmware.
+# This file is part of ddprint - a 3D printer firmware.
 # 
 # Copyright 2015 erwin.rieger@ibrieger.de
 # 
@@ -415,7 +415,7 @@ def testFeederUniformity(args, parser):
     # Start feeder motor
     parser.execute_line("G0 F%d %s%f" % (feedrate*60, util.dimNames[A_AXIS], startPos + d))
     planner.finishMoves()
-    printer.sendCommand(CmdEOT)
+    # printer.sendCommand(CmdEOT)
     printer.sendCommandParamV(CmdMove, [MoveTypeNormal])
 
     tWait = 0.75
@@ -522,8 +522,7 @@ def execGcode(args):
             parser.execute_line(g)
 
     planner.finishMoves()
-
-    printer.sendCommand(CmdEOT)
+    # printer.sendCommand(CmdEOT)
 
     printer.sendCommandParamV(CmdMove, [MoveTypeNormal])
 

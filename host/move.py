@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #/*
-# This file is part of ddprint - a direct drive 3D printer firmware.
+# This file is part of ddprint - a 3D printer firmware.
 # 
 # Copyright 2015 erwin.rieger@ibrieger.de
 # 
@@ -18,16 +18,16 @@
 # along with ddprint.  If not, see <http://www.gnu.org/licenses/>.
 #*/
 
-import math, struct
+import math, struct, zlib
 
-import ddprintcommands, cobs, cStringIO
+import ddprintcommands, cobs, cStringIO, intmath, packedvalue
 
 import ddprintutil as util
 
 from ddprintconstants import maxTimerValue16, fTimer, _MAX_ACCELERATION, X_AXIS, Y_AXIS, A_AXIS
 from ddprintconstants import AdvanceEThreshold, StepDataTypeBresenham, StepDataTypeRaw
 from ddvector import Vector, VelocityVector32, VelocityVector5, vectorLength, vectorSub, vectorAbs
-from ddprintcommands import CommandNames, DecelByteFlagBit, AccelByteFlagBit, DirBitsBit, DirBitsBitRaw, MoveStartBit
+from ddprintcommands import CommandNames, DirBitsBit, DirBitsBitRaw, MoveStartBit
 from ddprintcommands import MeasureStartBit, MeasureStartBitRaw, EndMoveBit, EndMoveBitRaw
 from ddprintcommands import TimerByteFlagBit, MoveStartBitRaw
 from ddprofile import PrinterProfile
@@ -148,43 +148,32 @@ class StepData:
     def checkLen(self, deltaLead):
         assert(self.abs_vector_steps[self.leadAxis] - (len(self.accelPulses) + len(self.decelPulses)) >= 0)
 
-    # return a list of binary encoded commands, ready to be send over serial...
-    def commands(self, move):
+    # Return binary encoded stepdata for
+    # this PrintMove, ready to be send over serial...
+    def command(self, move):
 
         flags = 0
         if self.setDirBits:
             flags = self.dirBits | DirBitsBit
 
-        # Check if acceleration timer values can be sent as difference bytes
-        accelByteFlag = AccelByteFlagBit
-        if self.accelPulses:
-            lastTimer = self.accelPulses[0]
-            for tv in self.accelPulses[1:]:
-                dtv = lastTimer - tv
+        # Check how much acceleration timer values can be sent as a bytes
+        nAccel16 = 0
+        for tv in self.accelPulses:
 
-                assert(dtv >= 0)
+                if tv > 255:
+                    nAccel16 += 1
 
-                if dtv > 255:
-                    accelByteFlag = 0
-                    break
+        assert(nAccel16 < 0xffff)
 
-                lastTimer = tv
+        # Check how many deceleration timer values can be sent as a byte
+        nDecel8 = 0
+        for tv in self.decelPulses:
 
-        # Check if deceleration timer values can be sent as difference bytes
-        decelByteFlag = DecelByteFlagBit
-        if self.decelPulses:
-            lastTimer = self.decelPulses[0]
-            for tv in self.decelPulses[1:]:
-                dtv = tv - lastTimer
+                if tv < 256:
+                    nDecel8 += 1
+      
+        assert(nDecel8 < 0xffff)
 
-                assert(dtv >= 0)
-
-                if dtv > 255:
-                    decelByteFlag = 0
-                    break
-
-                lastTimer = tv
-       
         startMoveFlag = 0
         if move.isStartMove:
             startMoveFlag = MoveStartBit
@@ -197,23 +186,18 @@ class StepData:
         if move.isEndMove:
             endMoveBit = EndMoveBit
 
-        # print "flags: 0x%x, dirbits: 0x%x" % (flags | accelByteFlag | decelByteFlag, flags)
         # print "ald:", len(self.accelPulses), self.abs_vector_steps[self.leadAxis]-(len(self.accelPulses)+len(self.decelPulses)), len(self.decelPulses)
 
-        #
-        # Payload in *LenCobs* blocksize blocks
-        #
-        payLoadBlocks = []
-
-        payLoad = struct.pack("<HBiiiiiH",
-                flags | accelByteFlag | decelByteFlag | startMoveFlag | measureStartBit | endMoveBit,
+        payLoad = struct.pack("<HBiiiiiHH",
+                flags | startMoveFlag | measureStartBit | endMoveBit,
                 self.leadAxis,
                 self.abs_vector_steps[0],
                 self.abs_vector_steps[1],
                 self.abs_vector_steps[2],
                 self.abs_vector_steps[3],
                 self.abs_vector_steps[4],
-                len(self.accelPulses))
+                nAccel16,
+                len(self.accelPulses) - nAccel16)
 
         if move.isStartMove:
 
@@ -223,56 +207,55 @@ class StepData:
 
                 # xxx move to own method  
                 nominalSpeed = abs( baseMove.topSpeed.speed().eSpeed )
-                e_steps_per_second_nominal = nominalSpeed * baseMove.e_steps_per_mm
-                timerValue = fTimer / e_steps_per_second_nominal
+                nominalSpeed = baseMove.topSpeed.speed().eSpeed
 
-                # print "StartMove, E-Timer:", nominalSpeed, timerValue
-                payLoad += struct.pack("<H", min(timerValue, 0xffff))
+                assert(nominalSpeed > 0)
+
+                e_steps_per_second_nominal = nominalSpeed * baseMove.e_steps_per_mm
+                eTimer = fTimer / e_steps_per_second_nominal
+
+                # print "StartMove, E-Timer:", nominalSpeed, eTimer
+                payLoad += intmath.eTimer(min(eTimer, 0xffff)).pack()
 
             else:
-                payLoad += struct.pack("<H", 0)
+                # payLoad += struct.pack("<H", 0)
+                payLoad += packedvalue.scaledint_t(0, 0).pack()
 
-        if move.isMeasureMove:
-
-            # Store window size of running average
-            nAvg = min (255, PrinterProfile.getNShortInterval(move.getBaseMove().measureSpeed))
-            payLoad += struct.pack("<B", nAvg)
-
-        payLoad += struct.pack("<HH",
+        payLoad += struct.pack("<HHH",
                 self.linearTimer,
-                len(self.decelPulses))
+                nDecel8,
+                len(self.decelPulses) - nDecel8)
 
-        if self.accelPulses and accelByteFlag:
+        for timer in self.accelPulses[:nAccel16]:
+            payLoad += struct.pack("<H", timer)
+        for timer in self.accelPulses[nAccel16:]:
+            payLoad += struct.pack("<B", timer)
 
-            lastTimer = self.accelPulses[0]
-            payLoad += struct.pack("<H", lastTimer)
+        for timer in self.decelPulses[:nDecel8]:
+            payLoad += struct.pack("<B", timer)
+        for timer in self.decelPulses[nDecel8:]:
+            payLoad += struct.pack("<H", timer)
 
-            for tv in self.accelPulses[1:]:
-                dtv = lastTimer - tv
-                payLoad += struct.pack("<B", dtv)
-                lastTimer = tv
+        rawPayloadSize = len(payLoad)
 
-        else:
+        # print "size of payload:", len(payLoad)
 
-            for timer in self.accelPulses:
-                payLoad += struct.pack("<H", timer)
+        """
+        # Test if compression gives smaller packet
+        # XXX reuse compressor object?
+        compressor = zlib.compressobj(9, zlib.DEFLATED, -15)
+        compressedPayload = compressor.compress(payLoad)
+        compressedPayload += compressor.flush()
+        print "encodeCobs_cmd_packed compressed %d blocksize into %d bytes..." % (rawPayloadSize, len(compressedPayload))
 
-        if self.decelPulses and decelByteFlag:
+        if len(compressedPayload) > rawPayloadSize*0.95:
+            print "fixme Sending uncompressed..."
+            # return chr(ddprintcommands.CmdG1Packed) + compressedPayload
+        """
 
-            lastTimer = self.decelPulses[0]
-            payLoad += struct.pack("<H", lastTimer)
+        return chr(ddprintcommands.CmdG1) + payLoad
 
-            for tv in self.decelPulses[1:]:
-                dtv = tv - lastTimer
-                payLoad += struct.pack("<B", dtv)
-                lastTimer = tv
-
-        else:
-
-            for timer in self.decelPulses:
-                payLoad += struct.pack("<H", timer)
-
-        stream = cStringIO.StringIO(payLoad)
+        # stream = cStringIO.StringIO(payLoad)
 
         cmds = [ cobs.encodeCobs_cmd_packed(ddprintcommands.CmdG1, ddprintcommands.CmdG1Packed, stream) ]
 
@@ -339,8 +322,9 @@ class RawStepData:
 
         return bits
 
-    # return a list of binary encoded commands, ready to be send over serial...
-    def commands(self, move):
+    # Return a list of binary encoded commands
+    # for this RawMove, ready to be send over serial...
+    def command(self, move):
 
         flags = 0
         if self.setDirBits:
@@ -351,6 +335,9 @@ class RawStepData:
         if self.pulses:
             lastTimer = self.pulses[0][0]
             for (tv, _) in self.pulses[1:]:
+
+                #print "rtv:%d" % tv
+
                 dtv = lastTimer - tv
 
                 if dtv > 127 or dtv < -128:
@@ -383,16 +370,10 @@ class RawStepData:
             # xxx move to own method  
             nominalSpeed = abs( baseMove.topSpeed.speed().eSpeed )
             e_steps_per_second_nominal = nominalSpeed * baseMove.e_steps_per_mm
-            timerValue = fTimer / e_steps_per_second_nominal
+            eTimer = fTimer / e_steps_per_second_nominal
 
-            # print "StartMove, E-Timer:", nominalSpeed, timerValue
-            payLoad += struct.pack("<H", min(timerValue, 0xffff))
-
-        if move.isMeasureMove:
-
-            # Store window size of running average
-            nAvg = min (255, PrinterProfile.getNShortInterval(move.getBaseMove().measureSpeed))
-            payLoad += struct.pack("<B", nAvg)
+            # print "StartMove, E-Timer:", nominalSpeed, eTimer
+            payLoad += intmath.eTimer(min(eTimer, 0xffff)).pack()
 
         if timerByteFlag:
 
@@ -410,8 +391,26 @@ class RawStepData:
                 assert(etimer >= 25)
                 payLoad += struct.pack("<HB", etimer, self.stepBits(stepBits))
 
-        stream = cStringIO.StringIO(payLoad)
+        rawPayloadSize = len(payLoad)
 
+        # print "size of payload:", len(payLoad)
+
+        """
+        # Test if compression gives smaller packet
+        # XXX reuse compressor object?
+        compressor = zlib.compressobj(9, zlib.DEFLATED, -15)
+        compressor.compress(payLoad)
+        compressedPayload = compressor.flush()
+        print "encodeCobs_cmd_packed compressed %d blocksize into %d bytes..." % (rawPayloadSize, len(compressedPayload))
+
+        if len(compressedPayload) > rawPayloadSize*0.95:
+            print "fixme Sending uncompressed..."
+            # return chr(ddprintcommands.CmdG1RawPacked) + compressedPayload
+        """
+
+        return chr(ddprintcommands.CmdG1Raw) + payLoad
+
+        # stream = cStringIO.StringIO(payLoad)
         # cobsBlock = cobs.encodeCobs_cmd_packed(stream)
         # cmds = [( ddprintcommands.CmdG1Raw, cobsBlock )]
 
@@ -615,20 +614,6 @@ class VelocityOverride(object):
         if speed != self.speeds[-1]:
             self.speeds.append((speed, comment))
 
-    def nu_nominalSpeed(self, speed=None):
-
-        if speed:
-            self.setSpeed(speed)
-            return
-
-        return self.speed()
-
-    def nu_plannedSpeed(self, speed=None):
-        return self.nominalSpeed(speed)
-
-    def nu_trueSpeed(self, speed=None):
-        return self.nominalSpeed(speed)
-
     def __repr__(self):
 
         s = ""
@@ -770,13 +755,12 @@ class MoveBase(object):
     def empty(self):
         return self.stepData.empty()
 
-    # return a list of binary encoded commands, ready to be send over serial...
-    def commands(self):
-
-        if not self.empty():
-            return self.stepData.commands(self)
-
-        return []
+    # Return binary encoded stepdata, ready to be send over serial...
+    def command(self):
+        # if self.empty():
+        #    self.pprint("empty move")
+        #    assert(0)
+        return self.stepData.command(self)
 
     def sanityCheck(self, checkDirection=True):
 
@@ -846,6 +830,8 @@ class RealMove(MoveBase):
         # debug
         self.state = 0 # 1: joined, 2: accel planned, 3: steps planned
 
+        self.e_steps_per_mm = PrinterProfile.getStepsPerMM(A_AXIS)
+
     def getJerkSpeed(self, jerk):
 
         return self.topSpeed.speed().constrain(jerk)
@@ -909,6 +895,12 @@ class TravelMove(RealMove):
 
     def isPrintMove(self):
         return False
+
+    # def isExtrudingMove(self):
+        # return self.eDistance() > 0
+
+    def eDistance(self):
+        return self.displacement_vector_raw5[A_AXIS]
 
     def distanceStr(self):
         d = self.displacement_vector_raw5.length()
@@ -988,8 +980,6 @@ class PrintMove(RealMove):
 
         self.advanceData = AdvanceData(self)
 
-        self.e_steps_per_mm = PrinterProfile.getStepsPerMM(A_AXIS)
-
         self.displacement_vector_raw3 = Vector(displacement_vector[:3])
         self.displacement_vector_steps_raw3 = displacement_vector_steps[:3]
 
@@ -1027,6 +1017,9 @@ class PrintMove(RealMove):
 
     def isPrintMove(self):
         return True
+
+    # def isExtrudingMove(self):
+        # return True
 
     def distanceStr(self):
         d = self.displacement_vector_raw3.length()

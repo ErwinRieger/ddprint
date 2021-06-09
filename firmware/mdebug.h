@@ -22,13 +22,18 @@
 #include <Arduino.h>
 
 void mAssert(uint16_t line, const char* file);
-void killMessage(uint8_t errorCode, uint8_t errorParam, const char *msg = "");
-void killMessage(uint8_t errorCode, uint8_t errorParam1, uint8_t errorParam2, const char *msg = "");
+void killMessage(uint8_t errorCode, uint8_t errorParam /* , const char *msg = "" */);
+void killMessage(uint8_t errorCode, uint8_t errorParam1, uint8_t errorParam2 /* , const char *msg = "" */);
+
+// #define PID_DEBUG // Sends hotend pid values as RespUnsolicitedMsg, type PidDebug
 
 //
 // Add heavy and time consuming debugging
 //
 // #define HEAVYDEBUG 1
+
+// Debug usb-serail download to mass-storage
+#define HEAVYDEBUGRX 1
 
 #if defined(__amd64__)
 
@@ -53,6 +58,7 @@ void killMessage(uint8_t errorCode, uint8_t errorParam1, uint8_t errorParam2, co
     // Assertion that is only active in simulation
     #define simassert(x) 
 
+    // To be able to compile a debug version without inlining
     #define FWINLINE inline
 
     #define printf ERROR_PRINTF_USED
@@ -81,6 +87,10 @@ extern void *__brkval;
                     return free_memory;
                 }
 
+                // Process stats
+                #define DEBUGPROCSTAT 1
+                // Mass storage timing
+                #define DEBUGREADWRITE 1
 #elif defined(__arm__)
 
                 #define STD std::
@@ -101,12 +111,12 @@ extern void *__brkval;
 #endif
 
 #if defined(DEBUGPROCSTAT) || defined(DEBUGREADWRITE)
-    struct TaskTiming {
+    typedef struct TaskTiming {
         uint32_t taskStart;
         uint32_t ncalls;
         uint32_t sumcall;
         uint32_t longest;
-    };
+    } TaskTiming;
     #define TaskStart(timings, looptask) { timings[looptask].taskStart = millis(); }
     #define GetTaskStart(timings, looptask) (timings[looptask].taskStart) 
     #define GetTaskDuration(timings, looptask) (millis() - timings[looptask].taskStart)

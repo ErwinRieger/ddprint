@@ -22,6 +22,7 @@
 #include "ddprint.h"
 #include "move.h"
 #include "ringbuffer.h"
+#include "filsensor.h"
 
 #define  enable_x() (X_ENABLE_PIN :: activate())
 #define disable_x() (X_ENABLE_PIN :: deActivate())
@@ -46,32 +47,6 @@ extern int32_t current_pos_steps[NUM_AXIS];
 void st_init();
 void st_disableSteppers();
 
-template<typename MOVE>
-void st_set_position_steps(long value);
-
-template<>
-void st_set_position_steps<XAxisSelector>(long value);
-template<>
-void st_set_position_steps<YAxisSelector>(long value);
-template<>
-void st_set_position_steps<ZAxisSelector>(long value);
-template<>
-void st_set_position_steps<EAxisSelector>(long value);
-
-#if 0
-template<typename MOVE>
-long st_get_position_steps();
-
-template<>
-long st_get_position_steps<XAxisSelector>();
-template<>
-long st_get_position_steps<YAxisSelector>();
-template<>
-long st_get_position_steps<ZAxisSelector>();
-template<>
-long st_get_position_steps<EAxisSelector>();
-#endif
-
 //
 // Three different positions:
 // * target pos: temp. position where we want to go to
@@ -88,19 +63,19 @@ template<typename MOVE>
 void st_inc_current_pos_steps();
 
 template<>
-inline void st_inc_current_pos_steps<XAxisSelector>() {
+FWINLINE void st_inc_current_pos_steps<XAxisSelector>() {
     current_pos_steps[X_AXIS] ++;
 }
 template<>
-inline void st_inc_current_pos_steps<YAxisSelector>() {
+FWINLINE void st_inc_current_pos_steps<YAxisSelector>() {
     current_pos_steps[Y_AXIS] ++;
 }
 template<>
-inline void st_inc_current_pos_steps<ZAxisSelector>() {
+FWINLINE void st_inc_current_pos_steps<ZAxisSelector>() {
     current_pos_steps[Z_AXIS] ++;
 }
 template<>
-inline void st_inc_current_pos_steps<EAxisSelector>() {
+FWINLINE void st_inc_current_pos_steps<EAxisSelector>() {
     current_pos_steps[E_AXIS] ++;
 }
 
@@ -108,24 +83,24 @@ template<typename MOVE>
 void st_dec_current_pos_steps();
 
 template<>
-inline void st_dec_current_pos_steps<XAxisSelector>() {
+FWINLINE void st_dec_current_pos_steps<XAxisSelector>() {
     current_pos_steps[X_AXIS] --;
 }
 template<>
-inline void st_dec_current_pos_steps<YAxisSelector>() {
+FWINLINE void st_dec_current_pos_steps<YAxisSelector>() {
     current_pos_steps[Y_AXIS] --;
 }
 template<>
-inline void st_dec_current_pos_steps<ZAxisSelector>() {
+FWINLINE void st_dec_current_pos_steps<ZAxisSelector>() {
     current_pos_steps[Z_AXIS] --;
 }
 template<>
-inline void st_dec_current_pos_steps<EAxisSelector>() {
+FWINLINE void st_dec_current_pos_steps<EAxisSelector>() {
     current_pos_steps[E_AXIS] --;
 }
 
 template<typename MOVE>
-inline void st_set_direction(uint8_t dirbits) {
+FWINLINE void st_set_direction(uint8_t dirbits) {
 
     if (dirbits & st_get_move_bit_mask<MOVE>())
         activate_dir_pin<MOVE>();
@@ -133,30 +108,11 @@ inline void st_set_direction(uint8_t dirbits) {
         deactivate_dir_pin<MOVE>();
 }
 
-#if 0
-template<typename MOVE>
-inline uint8_t st_get_direction() {
-
-    if (st_read_dir_pin<MOVE>()) {
-
-        if (st_get_positive_dir<MOVE>())
-            return st_get_move_bit_mask<MOVE>();
-    }
-    else {
-
-        if (! st_get_positive_dir<MOVE>())
-            return st_get_move_bit_mask<MOVE>();
-    }
-
-    return 0;
-}
-#endif
-
 template<typename MOVE>
 bool st_endstop_pressed(bool);
 
 template<>
-inline bool st_endstop_pressed<XAxisSelector>(bool forward) {
+FWINLINE bool st_endstop_pressed<XAxisSelector>(bool forward) {
 
     static uint8_t nPresses = 0;
 
@@ -184,7 +140,7 @@ inline bool st_endstop_pressed<XAxisSelector>(bool forward) {
 }
 
 template<>
-inline bool st_endstop_pressed<YAxisSelector>(bool forward) {
+FWINLINE bool st_endstop_pressed<YAxisSelector>(bool forward) {
 
     static uint8_t nPresses = 0;
 
@@ -212,7 +168,7 @@ inline bool st_endstop_pressed<YAxisSelector>(bool forward) {
 }
 
 template<>
-inline bool st_endstop_pressed<ZAxisSelector>(bool forward) {
+FWINLINE bool st_endstop_pressed<ZAxisSelector>(bool forward) {
 
     static uint8_t nPresses = 0;
 
@@ -243,7 +199,7 @@ template<typename MOVE>
 bool st_endstop_released(bool);
 
 template<>
-inline bool st_endstop_released<XAxisSelector>(bool forward) {
+FWINLINE bool st_endstop_released<XAxisSelector>(bool forward) {
 
     static uint8_t nRelease = 0;
 
@@ -271,7 +227,7 @@ inline bool st_endstop_released<XAxisSelector>(bool forward) {
 }
 
 template<>
-inline bool st_endstop_released<YAxisSelector>(bool forward) {
+FWINLINE bool st_endstop_released<YAxisSelector>(bool forward) {
 
     static uint8_t nRelease = 0;
 
@@ -299,7 +255,7 @@ inline bool st_endstop_released<YAxisSelector>(bool forward) {
 }
 
 template<>
-inline bool st_endstop_released<ZAxisSelector>(bool forward) {
+FWINLINE bool st_endstop_released<ZAxisSelector>(bool forward) {
 
     static uint8_t nRelease = 0;
 
@@ -327,9 +283,9 @@ inline bool st_endstop_released<ZAxisSelector>(bool forward) {
 }
 
 template<typename MOVE>
-inline void st_step_motor(uint8_t stepBits, uint8_t dirbits) {
+FWINLINE void st_step_motor(uint8_t stepBits, uint8_t dirbits) {
 
-    uint8_t mask = st_get_move_bit_mask<MOVE>();
+    constexpr uint8_t mask = st_get_move_bit_mask<MOVE>();
 
     if (stepBits & mask) {
 
@@ -339,20 +295,13 @@ inline void st_step_motor(uint8_t stepBits, uint8_t dirbits) {
             st_inc_current_pos_steps<MOVE>();
         else
             st_dec_current_pos_steps<MOVE>();
-        
-        ////////////////////////////////////////// // #if defined(AVR)
-        ////////////////////////////////////////// #if defined(STEPPER_MINPULSE)
-            ////////////////////////////////////////// delayMicroseconds(STEPPER_MINPULSE);
-        ////////////////////////////////////////// #endif
-            ////////////////////////////////////////// deactivate_step_pin<MOVE>();
-        // #endif
     }
 }
 
 template<typename MOVE>
-inline void st_activate_pin(uint8_t stepBits) {
+FWINLINE void st_activate_pin(uint8_t stepBits) {
 
-    uint8_t mask = st_get_move_bit_mask<MOVE>();
+    constexpr uint8_t mask = st_get_move_bit_mask<MOVE>();
 
     if (stepBits & mask) {
         activate_step_pin<MOVE>();
@@ -360,9 +309,9 @@ inline void st_activate_pin(uint8_t stepBits) {
 }
 
 template<typename MOVE>
-inline void st_deactivate_pin(uint8_t stepBits) {
+FWINLINE void st_deactivate_pin(uint8_t stepBits) {
 
-    uint8_t mask = st_get_move_bit_mask<MOVE>();
+    constexpr uint8_t mask = st_get_move_bit_mask<MOVE>();
 
     if (stepBits & mask) {
         deactivate_step_pin<MOVE>();
@@ -373,9 +322,9 @@ inline void st_deactivate_pin(uint8_t stepBits) {
 // Like st_step_motor, but check endstops
 //
 template<typename MOVE>
-inline void st_step_motor_es(uint8_t stepBits, uint8_t dirbits) {
+FWINLINE void st_step_motor_es(uint8_t stepBits, uint8_t dirbits) {
 
-    uint8_t mask = st_get_move_bit_mask<MOVE>();
+    constexpr uint8_t mask = st_get_move_bit_mask<MOVE>();
 
     if (stepBits & mask) {
 
@@ -410,52 +359,6 @@ inline void st_step_motor_es(uint8_t stepBits, uint8_t dirbits) {
     }
 }
 
-#if 0
-template<typename MOVE>
-inline void st_toggle_motor_es(uint8_t stepBits, uint8_t dirbits) {
-
-    uint8_t mask = st_get_move_bit_mask<MOVE>();
-    static bool activ = false;
-
-    if (stepBits & mask) {
-
-        if (activ) {
-
-            bool forward = dirbits & mask;
-            bool endStop = st_endstop_pressed<MOVE>(forward);
-
-            if (endStop) {
-                DISABLE_STEPPER1_DRIVER_INTERRUPT();
-                return;
-            }
-
-            endStop = st_endstop_released<MOVE>(forward);
-
-            if (endStop) {
-                DISABLE_STEPPER1_DRIVER_INTERRUPT();
-                return;
-            }
-
-            // Update steps counter on falling edge
-            if (forward)
-                st_inc_current_pos_steps<MOVE>();
-            else
-                st_dec_current_pos_steps<MOVE>();
-
-            deactivate_step_pin<MOVE>();
-            activ = false;
-        }
-        else {
-            activate_step_pin<MOVE>();
-            activ = true;
-        }
-    }
-}
-
-#endif
-
-
-
 /*
 #
 # Konkurrierender zugriff auf den stepbuffer:
@@ -476,18 +379,17 @@ inline void st_toggle_motor_es(uint8_t stepBits, uint8_t dirbits) {
 */
 
 typedef struct {
-    // uint8_t cmd;
-    // Bit 0-4: Direction bits, F
-    // Bit 7: set-direction-flag, DDDDD
-    uint8_t dirBits;
-    uint8_t stepBits;
+    // Bit 7: set-direction-flag
+    // Bit 0-4: Direction bits
+    uint8_t dirBits;   // S??DDDDD -> 3 bits unused
+    // Bit 0-4: Step bits
+    uint8_t stepBits;  // ???SSSSS -> 3 bits unused
     uint16_t timer;
 } stepData;
 
-// Size of step buffer, entries are stepData structs.
+// Stepbuffer
 #if defined(AVR)
-    // #define StepBufferLen  256
-    #define StepBufferLen  512
+    typedef Buffer256<stepData> StepBufferBase;
 #else
     //
     // Good for max: (4096*(25/2))/1000.0 = 51.2 mS
@@ -497,9 +399,9 @@ typedef struct {
     // long USB transfers... 
     //
     #define StepBufferLen  4096
-#endif
 
-typedef CircularBuffer<stepData, uint32_t, StepBufferLen> StepBufferBase;
+    typedef CircularBuffer<stepData, uint16_t, StepBufferLen> StepBufferBase;
+#endif
 
 class StepBuffer: public StepBufferBase {
 
@@ -515,13 +417,12 @@ class StepBuffer: public StepBufferBase {
             uint16_t continuosTimer;
 
             // Sum of timer values in buffer
-            // uint32_t countsInBuffer;
             uint32_t upcount;
             uint32_t downcount;
-            bool wasempty;
 
         public:
 
+            bool linearFlag;
 
             StepBuffer() {
 
@@ -548,9 +449,8 @@ class StepBuffer: public StepBufferBase {
 
             void flush() {
                 ringBufferInit();
-                // countsInBuffer = 0;
                 upcount = downcount = 0;
-                wasempty = true;
+                linearFlag = false;
             }
 
             void homingMode() {
@@ -558,6 +458,7 @@ class StepBuffer: public StepBufferBase {
                 miscStepperMode = HOMINGMODE;
 
                 // Start interrupt
+                HAL_SET_HOMING_TIMER(2000); // 1kHz.
                 ENABLE_STEPPER1_DRIVER_INTERRUPT();
             }
 
@@ -575,44 +476,39 @@ class StepBuffer: public StepBufferBase {
 
                     // Start interrupt
                     ENABLE_STEPPER1_DRIVER_INTERRUPT();
+
+                    linearFlag = true;
                 }
                 else {
+
+                    linearFlag = false;
 
                     disable_e0();
                     DISABLE_STEPPER1_DRIVER_INTERRUPT();
                 }
             }
 
-            // XXX note: assumes fixed timer frequency of 2Mhz!
-            uint8_t timeInBuffer() {
+            // Compute clocktics available in stepper
+            // buffer.
+            FWINLINE uint8_t timeInBuffer() {
 
                 CRITICAL_SECTION_START;
                 uint32_t d = downcount;
                 CRITICAL_SECTION_END;
 
-                return (uint8_t)((upcount-d) / 2000);
+                // return STD min( (upcount-d)/2000, 255);
+                return STD min( (upcount-d)/2000, (uint32_t)255);
             }
 
-            // XXX fixed 50 ms buffer depth for long usb transactions here!
-            bool notEnough()     { return full() || (timeInBuffer()>=50); }
+            // Reserve 50 ms buffer depth for long usb
+            // transactions, this assumes 2Mhz timer clock tick.
+            FWINLINE bool enough() { 
+                return full() || (timeInBuffer() >= 50); }
 
-
-    void push(stepData& val)  {
-// CRITICAL_SECTION_START;
-        // countsInBuffer += val.timer;
-        upcount += val.timer;
-        StepBufferBase::pushRef(val);
-// CRITICAL_SECTION_END;
-    }
-
-    stepData &pop() {
-        stepData &sd = StepBufferBase::pop();
-
-        // massert(countsInBuffer >= sd.timer);
-        // countsInBuffer -= sd.timer;
-        downcount += sd.timer;
-        return sd;
-    }
+            void pushRef(stepData& val)  {
+                upcount += val.timer;
+                StepBufferBase::pushRef(val);
+            }
 
             // * Timer 1A is running in CTC mode.
             // * ISR is called if timer 1A reaches OCR1A value
@@ -622,23 +518,20 @@ class StepBuffer: public StepBufferBase {
             //     immediately on return. The OCR1A value set is therefore ignored and the generated 
             //     pulse is not related to it.
             // --> To relax this situation we set the new OCR1A value as fast as possible.
-            FWINLINE void runMoveSteps() {
-
-HAL_SET_STEPPER_TIMER(25);
+            FWINLINE void runPrintSteps() {
 
                 if (empty()) {
 
                     // Empty buffer, nothing to step
-                    // HAL_SET_STEPPER_TIMER(2000); // 1kHz.
-
-                    // Check for step buffer underruns
                     if (printer.stepsAvailable()) {
-                        if (!wasempty) {
-                            printer.underrunError();
-                        }
-                        wasempty = true;
+
+                        HAL_SET_STEPPER_TIMER(25);
+                        printer.underrunError();
                     }
-                    // xxxx  HAL_SET_STEPPER_TIMER(25);
+                    else {
+
+                        HAL_SET_STEPPER_TIMER(2000); // 1kHz.
+                    }
                 }
                 else {
 
@@ -647,9 +540,9 @@ HAL_SET_STEPPER_TIMER(25);
                     uint16_t t = sd.timer;
 
                     // Set new timer value
-// #if defined(HEAVYDEBUG)
+                    #if defined(HEAVYDEBUG)
                     massert(t >= 25);
-// #endif
+                    #endif
 
                     // HAL_SET_STEPPER_TIMER(t - (2*STEPPER_MINPULSE)); // correction: min step width z.b. 2uS -> 4 timer takte
                     HAL_SET_STEPPER_TIMER(t);
@@ -665,6 +558,18 @@ HAL_SET_STEPPER_TIMER(25);
                     }
 
                     uint8_t stepbits = sd.stepBits;
+
+                    #if defined(HASFILAMENTSENSOR)
+                    if (sd.dirBits & 0x40) {
+                        // Start FRS measurement if not running already
+                        if (filamentSensor.idle())
+                            linearFlag = true;
+                    }
+                    else {
+                        linearFlag = false;
+                        // filamentSensor.stopflag = true;
+                    }
+                    #endif
 
                     if (stepbits) {
 
@@ -683,11 +588,9 @@ HAL_SET_STEPPER_TIMER(25);
                         st_deactivate_pin<EAxisSelector>(stepbits);
                     }
 
-                    wasempty = false;
-
                     // Set new timer value
 // HAL_SET_STEPPER_TIMER(t - (2*STEPPER_MINPULSE)); // correction: min step width z.b. 2uS -> 4 timer takte
-                    HAL_SET_STEPPER_TIMER(t);
+                    // HAL_SET_STEPPER_TIMER(t);
                 }
             }
 
@@ -712,7 +615,7 @@ HAL_SET_STEPPER_TIMER(25);
 
                 HAL_SET_HOMING_TIMER(sd.timer);
 
-                // downcount += sd.timer;
+                downcount += sd.timer;
 
                 // * Set direction 
                 if (sd.dirBits & 0x80) {
@@ -741,11 +644,12 @@ HAL_SET_STEPPER_TIMER(25);
             #endif
             st_deactivate_pin<EAxisSelector>(st_get_move_bit_mask<EAxisSelector>());
         }
-
 };
 
 extern StepBuffer stepBuffer;
 
-#include "simulator/stepperSim.h"
+#if defined(DDSim)
+    #include "simulator/stepperSim.h"
+#endif
 
 

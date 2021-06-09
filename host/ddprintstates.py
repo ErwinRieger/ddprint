@@ -1,5 +1,5 @@
 #/*
-# This file is part of ddprint - a direct drive 3D printer firmware.
+# This file is part of ddprint - a 3D printer firmware.
 # 
 # Copyright 2015 erwin.rieger@ibrieger.de
 # 
@@ -94,6 +94,8 @@ PidDebug          = 0x1
 FilSensorDebug    = 0x2
 GenericMessage    = 0x3
 BufDebug          = 0x4
+PidSwitch         = 0x5
+GenericInt32      = 0x6
 
 
 

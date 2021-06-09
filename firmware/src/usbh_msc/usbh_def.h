@@ -2,6 +2,10 @@
 // File     : usbh_def.h
 //--------------------------------------------------------------
 
+#pragma once
+
+#include <stdint.h>
+
 #ifndef  USBH_DEF_H
 #define  USBH_DEF_H
 

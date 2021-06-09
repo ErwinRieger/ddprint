@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #/*
-# This file is part of ddprint - a direct drive 3D printer firmware.
+# This file is part of ddprint - a 3D printer firmware.
 # 
 # Copyright 2015 erwin.rieger@ibrieger.de
 # 
@@ -27,7 +27,7 @@ CmdNull          = 0x0
 CmdSyncFanSpeed  = 0x3 # Parameters: pwm value 0 - 255, blipTime 0 - 255 mS
 CmdRaw           = 0x4 # Parameters: blob data
 Cmd5             = 0x5
-CmdBlock         = 0x6 # A 512byte block of a lager command
+# CmdBlock         = 0x6 # A 512byte block of a lager command
 CmdG1            = 0x7
 # CmdDirG1         = 0x8 # CmdDirBits and CmdG1 combined
 CmdG1Packed      = 0x9 # CmdG1, zlib compressed
@@ -35,13 +35,14 @@ CmdG1Packed      = 0x9 # CmdG1, zlib compressed
 CmdSyncTargetTemp= 0xb # Parameters: heater, temp 
 CmdDwellMS       = 0xc # Parameters: number of 25 mS dwell NOP moves
 CmdG1Raw         = 0xd # Raw print move steps, bresenham algo already done.
-# CmdDirG1Raw      = 0xe # CmdDirBits and CmdG1Raw combined
+# CMDDirG1Raw      = 0xe # CmdDirBits and CmdG1Raw combined
 CmdG1RawPacked   = 0xf # CmdG1Raw, zlib compressed
 CmdBlockPacked   = 0x10 # CmdBlock, zlib compressed
 
 
-CmdSuggestPwm      = 0x11 # Parameters: heater, target temp, pwm value
+CmdSuggestPwm    = 0x11 # Parameters: heater, target temp, pwm value
 
+CmdNop           = 0x77 # NOP command for padding of partial sectors
 CmdUnknown       = 0x7f # Unknown command for debugging
 
 #
@@ -52,7 +53,7 @@ CmdPrinterInit = 128
 # * start move, print
 CmdMove = 129               # Parameters: MoveType
 # * End of text, all moves have been sent
-CmdEOT = 130
+# CmdEOT = 130
 CmdResetLineNr = 131
 # free: 132
 CmdSetHomePos = 133
@@ -60,8 +61,6 @@ CmdSetHomePos = 133
 CmdSetTargetTemp = 134 # Parameters: heater, temp
 CmdFanSpeed = 137
 CmdStopMove = 138
-# Set heater PWM value (stellgrösse) directly, used by PID autoTune. Parameters: heater, pwmvalue
-CmdSetHeaterY = 139
 
 # CmdGetDirBits = 150
 # Get homed flag
@@ -77,13 +76,13 @@ CmdGetPos = 159
 CmdExit = 160
 CmdGetStatus = 161
 CmdGetFilSensor = 162 # Get raw value of filament sensor pos
-CmdGetTempTable = 163 # ExtrusionLimit: get tempTable 
+# CmdGetTempTable = 163 # ExtrusionLimit: get tempTable 
 CmdSetTempTable = 164 # ExtrusionLimit: set tempTable
 CmdEnableFRLimit = 165 # Enable/disable flowrate limit
 
 CmdSetContTimer =    166 # Timer value for CmdContinuousE -> E-Speed
 CmdContinuousE =     167 # Start/Stop continuous e-move for filament measurement
-CmdSetFilSensorCal = 168 # Flowrate sensor: set calibration value.
+CmdSetFilSensorConfig = 168 # Flowrate sensor: set calibration value.
 # CmdSetStepsPerMME =  169 # Set steps per mm value
 CmdSetPrinterName =  170 # Set printer (-profile) name from printer eeprom, payload is a 'pascal string'
 CmdGetPrinterName =  171 # Read printer (-profile) name from printer eeprom, payload is a 'pascal string'
@@ -104,6 +103,8 @@ CmdSetHostSettings = 186 # Initial printer settings
 CmdSystemReset     = 187 # Emergency hard reset system 
 CmdGetTaskStatus   = 188 # 
 CmdGetIOStats      = 189 # 
+CmdDumpMassStorage = 190 # Dump a 512 bytes sector from sdcard/usb.
+CmdSetBaudRate     = 191 # Autobaudrate
 
 CommandNames = {
 }
@@ -118,7 +119,7 @@ for (cmd, cmdName) in [
     (CmdNull, "CmdNull",),
     (CmdG1, "CmdG1",),
     # CmdDirBits, "CmdDirBits",
-    (CmdBlock, "CmdBlock",),
+    # (CmdBlock, "CmdBlock",),
     (Cmd5, "Cmd5",),
     # CmdDirG1, "CmdDirG1",
     (CmdG1Raw, "CmdG1Raw",),
@@ -138,14 +139,13 @@ for (cmd, cmdName) in [
     # * start move, print
     (CmdMove, "CmdMove",),
     # * End of text, all moves have been sent
-    (CmdEOT, "CmdEOT",),
+    # (CmdEOT, "CmdEOT",),
     (CmdResetLineNr, "CmdResetLineNr",),
     (CmdSetHomePos, "CmdSetHomePos",),
     (CmdSetTargetTemp, "CmdSetTargetTemp",),
     (CmdSyncFanSpeed, "CmdSyncFanSpeed",),
     (CmdFanSpeed, "CmdFanSpeed",),
     (CmdStopMove, "CmdStopMove",),
-    (CmdSetHeaterY, "CmdSetHeaterY",),
     (CmdRaw, "CmdRaw",),
     
     # Getters
@@ -160,12 +160,12 @@ for (cmd, cmdName) in [
     (CmdExit, "CmdExit",),
     (CmdGetStatus, "CmdGetStatus",),
     (CmdGetFilSensor, "CmdGetFilSensor",),
-    (CmdGetTempTable, "CmdGetTempTable",),
+    # (CmdGetTempTable, "CmdGetTempTable",),
     (CmdSetTempTable, "CmdSetTempTable",),
     (CmdEnableFRLimit, "CmdEnableFRLimit",),
     (CmdSetContTimer, "CmdSetContTimer",),
     (CmdContinuousE, "CmdContinuousE",),
-    (CmdSetFilSensorCal, "CmdSetFilSensorCal",),
+    (CmdSetFilSensorConfig, "CmdSetFilSensorConfig",),
     # (CmdSetStepsPerMME, "CmdSetStepsPerMME",),
     (CmdSetPrinterName, "CmdSetPrinterName",),
     (CmdGetPrinterName, "CmdGetPrinterName",),
@@ -185,6 +185,7 @@ for (cmd, cmdName) in [
     (CmdSystemReset, "CmdSystemReset",),
     (CmdGetTaskStatus, "CmdGetTaskStatus",),
     (CmdGetIOStats, "CmdGetIOStats",),
+    (CmdSetBaudRate, "CmdSetBaudRate",),
     ]:
 
         insertCommandName(cmd, cmdName)
@@ -193,8 +194,8 @@ for (cmd, cmdName) in [
 # Flag bits for CmdG1x commands
 #
 # Bits 0, 1, 2, 3, 4 reserved for direction bits
-DecelByteFlagBit     = (1 << 5)  # 0x20
-AccelByteFlagBit     = (1 << 6)  # 0x40
+# DecelByteFlagBit     = (1 << 5)  # 0x20
+# AccelByteFlagBit     = (1 << 6)  # 0x40
 DirBitsBit           = (1 << 7)  # 0x80
 MoveStartBit         = (1 << 8)  # 0x100
 MeasureStartBit      = (1 << 9)  # 0x200
@@ -219,6 +220,7 @@ RespACK =                       6 #
 RespSerNumberError =            7 # Payload: serialNumber (last line)
 RespRXTimeoutError =            8 # Payload: serialNumber (last line)
 RespUnsolicitedMsg =            9 # Payload: message type, params
+# RespRXFullError =              10 # Payload: received len
 RespUnderrun      =            13 # Payload: empty flag, size, message
 
 ResponseNames = {
@@ -230,6 +232,7 @@ ResponseNames = {
         RespSerNumberError: "RespSerNumberError",
         RespRXTimeoutError: "RespRXTimeoutError",
         RespUnsolicitedMsg: "RespUnsolicitedMsg",
+        # RespRXFullError: "RespRXFullError",
         RespUnderrun: "RespUnderrun",
 }
 

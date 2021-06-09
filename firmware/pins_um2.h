@@ -8,27 +8,29 @@
 * Ultiboard v2.0 pin assignment
 ******************************************************************/
 
-#define X_STEP_PIN              DigitalOutput<25, ACTIVEHIGHPIN>  // todo: speedup
+// Note: Pin nubers are the logical/mapped arduino pins, not the physical chip pins.
+
+#define X_STEP_PIN              FastDigitalOutput<PORTADDR(PORTA), 3, ACTIVEHIGHPIN>  /* Arduino pin 25, PA3 */
 // Active state is forward direction (positive)
-#define X_DIR_PIN               DigitalOutput<23, ACTIVELOWPIN>  // todo: speedup
+#define X_DIR_PIN               FastDigitalOutput<PORTADDR(PORTA), 1, ACTIVELOWPIN>  /* Arduino pin 23, PA1 */
 #define X_STOP_PIN              DigitalInput<22, ACTIVELOWPIN>  // todo: speedup
 #define X_ENABLE_PIN            DigitalOutput<27, ACTIVELOWPIN>
 
-#define Y_STEP_PIN              DigitalOutput<32, ACTIVEHIGHPIN>  // todo: speedup
+#define Y_STEP_PIN              FastDigitalOutput<PORTADDR(PORTC), 5, ACTIVEHIGHPIN>  /* Arduino pin 32, PC5 */
 // Active state is forward direction (positive)
-#define Y_DIR_PIN               DigitalOutput<33, ACTIVEHIGHPIN>  // todo: speedup
+#define Y_DIR_PIN               FastDigitalOutput<PORTADDR(PORTC), 4, ACTIVEHIGHPIN>  /* Arduino pin 33, PC4 */
 #define Y_STOP_PIN              DigitalInput<26, ACTIVELOWPIN>  // todo: speedup
 #define Y_ENABLE_PIN            DigitalOutput<31, ACTIVELOWPIN>
 
-#define Z_STEP_PIN              DigitalOutput<35, ACTIVEHIGHPIN>  // todo: speedup
+#define Z_STEP_PIN              FastDigitalOutput<PORTADDR(PORTC), 2, ACTIVEHIGHPIN>  /* Arduino pin 35, PC2 */
 // Active state is forward direction (positive)
-#define Z_DIR_PIN               DigitalOutput<36, ACTIVELOWPIN>  // todo: speedup
+#define Z_DIR_PIN               FastDigitalOutput<PORTADDR(PORTC), 1, ACTIVELOWPIN>  /* Arduino pin 36, PC1 */
 #define Z_STOP_PIN              DigitalInput<29, ACTIVELOWPIN>  // todo: speedup
 #define Z_ENABLE_PIN            DigitalOutput<34, ACTIVELOWPIN>
 
-#define E0_STEP_PIN             DigitalOutput<42, ACTIVEHIGHPIN>  // todo: speedup
+#define E0_STEP_PIN             FastDigitalOutput<PORTADDR(PORTL), 7, ACTIVEHIGHPIN>  /* Arduino pin 42, PL7 */
 // Active state is forward direction (positive)
-#define E0_DIR_PIN              DigitalOutput<43, ACTIVELOWPIN>  // todo: speedup
+#define E0_DIR_PIN               FastDigitalOutput<PORTADDR(PORTL), 6, ACTIVELOWPIN>  /* Arduino pin 43, PL6 */
 #define E0_ENABLE_PIN           DigitalOutput<37, ACTIVELOWPIN>
 
 // Second extruder not used 

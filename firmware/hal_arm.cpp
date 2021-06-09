@@ -23,6 +23,7 @@
 #include "temperature.h"
 #include "pins.h"
 #include "thermistortables.h"
+#include "rxbuffer.h"
 
 // extern const uint8 adc_map[];
 extern uint8 *adc_map;
@@ -77,7 +78,7 @@ void pwmInit(uint8_t pwmpin, uint16_t duty, bool activeLow)
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 //
-// XXX re-implement pinMode() from stm32duino() since it has a problem with unintended timer-deactivation
+// Te-implement pinMode() from stm32duino() since it has a problem with unintended timer-deactivation
 //
 void myPinMode(uint8 pin, WiringPinMode mode) {
     gpio_pin_mode outputMode;
@@ -112,6 +113,164 @@ void myPinMode(uint8 pin, WiringPinMode mode) {
     }
 
     gpio_set_mode(pin, outputMode);
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void timerInit() {
+
+    // PWM FAN, todo: set prescaler to work around hardware problem
+    timer_init(&timer4);
+
+    // PWM LED
+    timer_init(&timer5);
+
+    //
+    // PWM, hotend 1 heater, default pwm is 1280Hz (with overflow 0xffff)
+    // This is too fast for the electronics of the jennyprinter (optocoupler)
+    // The pulses are up to 100uS to long so we have to use a low frequency
+    // to keep the error small. Prescaler 25 gives us 51 Hz, the error for
+    // 100uS is then 0.5%.
+    //
+    timer_init(&timer8);
+    timer_set_prescaler(&timer8, 25 - 1);
+
+    //
+    // Stepper timers
+    // * timer2: general, 32 bit
+    // * timer3: general, 16 bit
+    //
+    timer_init(&timer2); // Stepper interrupt
+    timer_init(&timer3); // Homing stepper interrupt
+
+    timer_pause(&timer2);
+    timer_pause(&timer3);
+
+    // Prescaler to achieve 2 mhz clock like mega2560, timer 2+3 are
+    // running with APB2 clock of 84Mhz
+    // 84 / 2.0 = 42,
+    timer_set_prescaler(&timer2, 42 - 1);
+    timer_set_prescaler(&timer3, 42 - 1);
+
+    timer_set_count(&timer2, 0);
+    timer_set_count(&timer3, 0);
+
+    timer_set_reload(&timer2, 2000); // Set ARR
+    timer_set_reload(&timer3, 2000); // Set ARR
+
+    // bb_peri_set_bit(&(timer2.regs.gen)->CR1, TIMER_CR1_ARPE_BIT, 1);
+    // bb_peri_set_bit(&(timer2.regs.gen)->CR1, TIMER_CR1_OPM_BIT, 1);
+
+// XXX is this used?
+    timer_set_compare(&timer2, 1, 5); // Pulse width for stepper motors
+
+    // bb_peri_set_bit(&(timer3.regs.gen)->CR1, TIMER_CR1_ARPE_BIT, 1);
+
+    nvic_irq_enable(NVIC_TIMER2);
+    nvic_irq_enable(NVIC_TIMER3);
+
+    timer_resume(&timer2);
+    timer_resume(&timer3);
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void irqInit() {
+
+    //
+    // Init interrupt prio's, stm32duino initialized all irq't to prio 16.
+    //
+    nvic_irq_set_priority(NVIC_TIMER2, 2); // like systick
+    nvic_irq_set_priority(NVIC_TIMER3, 2); // like systick
+
+    // XXX NVIC_SPIx ???
+    // nvic_irq_set_priority(NVIC_USART1, 2);
+
+    // Done in dd_USBH_Init():
+    // nvic_irq_set_priority(NVIC_USB_HS, 3);
+    //
+    // nvic_irq_set_priority(NVIC_USART1, 3);
+
+    // nvic_irq_set_priority(NVIC_SYSTICK, 3);
+    //
+
+// reuse cpu cycles of busy wait in stepper routine, lower prio for stepper than serial and usb:
+    nvic_irq_set_priority(NVIC_SYSTICK, 2);
+ // nvic_irq_set_priority(NVIC_USB_HS, 3);
+
+    // nvic_irq_set_priority(NVIC_TIMER2, 4);
+    // nvic_irq_set_priority(NVIC_TIMER3, 4);
+    //
+    nvic_irq_set_priority(NVIC_USART1, 3);
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+uint8_t filsensorRead() {
+
+    // Clock output
+    USART2->regs->DR = 0;
+    // Wait until clocked out
+    while (! SERIAL_TX_COMPLETE() );
+    // Wait until rx byte available
+	while (! (USART2->regs->SR & USART_SR_RXNE) );
+    // Read rx byte and swap bitwise
+    return reverseBits(USART2->regs->DR) >> 24;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void JumpToBootloader() {
+
+    rxBuffer.end();
+
+    /**
+    * Step: Disable systick timer and reset it to default values
+    */
+    /*
+    SYSTICK_BASE->RVR = 0;
+    while (SYSTICK_BASE->CNT);
+    SYSTICK_BASE->CSR = 0;
+    */
+    SYSTICK_BASE->LOAD = 0;
+    while (SYSTICK_BASE->VAL);
+    SYSTICK_BASE->CTRL = 0;
+
+    /**
+    * Step: Disable RCC, set it to default (after reset) settings
+    *       Internal clock, no PLL, etc.
+    */
+    // RCC_DeInit();
+ 
+    /**
+    * Step: Set system memory address. 
+    *       
+    *       For STM32F429, system memory is on 0x1FFF 0000
+    *       For other families, check AN2606 document table 110 with descriptions of memory addresses 
+    */
+    volatile uint32_t addr = 0x1FFF0000;
+ 
+    void (*SysMemBootJump)(void) = (void (*)(void)) (*((uint32_t *)(addr + 4)));;
+ 
+    /**
+    * Step: Set main stack pointer.
+    *       This step must be done last otherwise local variables in this function
+    *       don't have proper value since stack pointer is located on different position
+    *
+    *       Set direct address location which specifies stack pointer in SRAM location
+    */
+    asm volatile ("MSR msp, %0\n" : : "r" (*(uint32_t*)addr) );
+ 
+    /**
+    * Step: Actually call our function to jump to set location
+    *       This will start system memory execution
+    */
+    SysMemBootJump();
+ 
+    /**
+    * Step: Connect USB<->UART converter to dedicated USART pins and test
+    *       and test with bootloader works with STM32 Flash Loader Demonstrator software
+    */
+    while(1) {};
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -178,8 +337,7 @@ bool TempControl::Run() {
 
     PT_WAIT_UNTIL( TEMP_BED_PIN :: conversionDone() );
 
-    avgBedTemp.addValue( tempFromRawADC( TEMP_BED_PIN :: read() ) );
-    current_temperature_bed = avgBedTemp.value();
+    current_temperature_bed = avgBedTemp.addValue( tempFromRawADC( TEMP_BED_PIN :: read() ) );
 
     ////////////////////////////////
     // Read hotend temp
@@ -188,8 +346,7 @@ bool TempControl::Run() {
 
     PT_WAIT_UNTIL( TEMP_0_PIN :: conversionDone() );
 
-    avgHotendTemp.addValue( tempFromRawADC( TEMP_0_PIN :: read() ) );
-    current_temperature[0] = avgHotendTemp.value();
+    current_temperature[0] = avgHotendTemp.addValue( tempFromRawADC( TEMP_0_PIN :: read() ) );
 
     PT_RESTART();
         

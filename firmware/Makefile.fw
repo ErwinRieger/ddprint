@@ -14,7 +14,7 @@ AVRDUDE_ARD_PROGRAMMER = wiring
 
 SDFAT = ../../SdFat-1.0.5
 
-ARDUINO_LIBS = SdCard uzlib
+ARDUINO_LIBS = SdCard
 
 USER_LIB_PATH = libraries
 
@@ -25,6 +25,8 @@ AVRDUDE_ARD_BAUDRATE = 115200
 NO_CORE_MAIN_CPP = 1
 
 include ../../Arduino-Makefile/Arduino.mk
+
+OPTIMIZATION_LEVEL = 2
 
 # Mega/Ramps board
 CPPFLAGS      +=  -DMOTHERBOARD=1 -I. -Iavr -Isrc
@@ -37,8 +39,19 @@ CPPFLAGS      +=  -D"PGM_P=const char*"
 # Disable colored gcc output (don't confuse vim)
 CXXFLAGS      +=  -fno-diagnostics-color
 
+CXXFLAGS      +=  -ffat-lto-objects -save-temps=obj -fverbose-asm
+
+# Dump assembler with line information for debugging
+# CXXFLAGS      +=  -g -Wa,-adhln
+
+LDFLAGS 	  += -mrelax
+
 # Create map file
 OTHER_LIBS      += -Wl,-Map,build.fw/build.map
 
 # End Mega
+
+floatcheck:
+	@echo "\nGrepping for soft math functions, watch out for divsf and mulsf:\n"
+	grep -E "call.*divs|call.*muls" build.fw/*.s|sort -u
 

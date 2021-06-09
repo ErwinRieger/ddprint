@@ -22,13 +22,15 @@
 // Rumba board
 //
 
+// Note: Pin nubers are the logical/mapped pins, not the physical chip pins.
+
 // #define X_STEP_PIN         17
 // #define X_DIR_PIN          16
 // #define X_ENABLE_PIN       48
 // #define X_MIN_PIN          37
 // #define X_MAX_PIN          36 
-#define X_STEP_PIN         DigitalOutput<17, ACTIVEHIGHPIN>
-#define X_DIR_PIN          DigitalOutput<16, ACTIVELOWPIN>
+#define X_STEP_PIN         FastDigitalOutput<PORTADDR(PORTH), 0, ACTIVEHIGHPIN>  /* Arduino pin 17, PH0 */
+#define X_DIR_PIN          FastDigitalOutput<PORTADDR(PORTH), 1, ACTIVELOWPIN>  /* Arduino pin 16, PH1 */
 #define X_STOP_PIN         DigitalInput<37, ACTIVELOWPIN> /* 3 */
 #define X_ENABLE_PIN       DigitalOutput<48, ACTIVELOWPIN> /* 38 */
 
@@ -37,8 +39,8 @@
 // #define Y_ENABLE_PIN       55
 // #define Y_MIN_PIN          35
 // #define Y_MAX_PIN          34 
-#define Y_STEP_PIN         DigitalOutput<54, ACTIVEHIGHPIN>
-#define Y_DIR_PIN          DigitalOutput<47, ACTIVELOWPIN>
+#define Y_STEP_PIN         FastDigitalOutput<PORTADDR(PORTF), 0, ACTIVEHIGHPIN>  /* Arduino pin 54, PF0 */
+#define Y_DIR_PIN          FastDigitalOutput<PORTADDR(PORTL), 2, ACTIVELOWPIN>  /* Arduino pin 47, PL2 */
 #define Y_STOP_PIN         DigitalInput<35, ACTIVELOWPIN>
 #define Y_ENABLE_PIN       DigitalOutput<55, ACTIVELOWPIN>
 
@@ -47,17 +49,17 @@
 // #define Z_ENABLE_PIN       62 
 // #define Z_MIN_PIN          33
 // #define Z_MAX_PIN          32
-#define Z_STEP_PIN              DigitalOutput<57, ACTIVEHIGHPIN>
-#define Z_DIR_PIN               DigitalOutput<56, ACTIVELOWPIN>
-#define Z_STOP_PIN              DigitalInput<33, ACTIVELOWPIN>
-#define Z_ENABLE_PIN            DigitalOutput<62, ACTIVELOWPIN>
+#define Z_STEP_PIN         FastDigitalOutput<PORTADDR(PORTF), 3, ACTIVEHIGHPIN>  /* Arduino pin 57, PF3 */
+#define Z_DIR_PIN          FastDigitalOutput<PORTADDR(PORTF), 2, ACTIVELOWPIN>  /* Arduino pin 56, PF2 */
+#define Z_STOP_PIN         DigitalInput<33, ACTIVELOWPIN>
+#define Z_ENABLE_PIN       DigitalOutput<62, ACTIVELOWPIN>
 
 // #define E0_STEP_PIN        23
 // #define E0_DIR_PIN         22
 // #define E0_ENABLE_PIN      24
-#define E0_STEP_PIN             DigitalOutput<23, ACTIVEHIGHPIN>
-#define E0_DIR_PIN              DigitalOutput<22, ACTIVELOWPIN>
-#define E0_ENABLE_PIN           DigitalOutput<24, ACTIVELOWPIN>
+#define E0_STEP_PIN        FastDigitalOutput<PORTADDR(PORTA), 1, ACTIVEHIGHPIN>  /* Arduino pin 23, PA1 */
+#define E0_DIR_PIN         FastDigitalOutput<PORTADDR(PORTA), 0, ACTIVELOWPIN>  /* Arduino pin 22, PA0 */
+#define E0_ENABLE_PIN      DigitalOutput<24, ACTIVELOWPIN>
 
 
 #define HEATER_BED_PIN     DigitalOutput<9, ACTIVEHIGHPIN>    // BED
@@ -81,6 +83,8 @@
 #define LED_PIN            PWMOutput<13, ACTIVEHIGHPIN>
 
 #define FAN_PIN            PWMOutput<7, ACTIVEHIGHPIN>
+
+#define HOTEND_FAN_PIN     DigitalOutput<8, ACTIVEHIGHPIN> 
 
 //
 // Filament sensor pins (half duplex/3wire spi)

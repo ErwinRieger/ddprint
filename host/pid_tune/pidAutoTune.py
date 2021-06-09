@@ -48,7 +48,7 @@ rawTMax = np.max(rawYValues)
 # Ks = raw["tEnd"]/Xo # Ks is also normalized endtemp
 Ks = rawTMax / Xo # Ks is also normalized endtemp
 
-print "raw endtemp, endtemp:", raw["tEnd"], rawTMax, Ks
+print "# raw endtemp, endtemp:", raw["tEnd"], rawTMax, Ks
 
 t033 = getPercentT(normData, Ks/3.0)
 t066 = getPercentT(normData, Ks*2/3.0)
@@ -56,34 +56,31 @@ t066 = getPercentT(normData, Ks*2/3.0)
 print "##################################################"
 print "## PID Parameter aus Sprungantwort              ##"
 print "##################################################"
-
-print "\nMax time between samples: %.4f s" % np.max(times)
+print "# Max time between samples: %.4f s" % np.max(times)
 fs = 1.0 / np.mean(times)
-print "Mean sampling freq %.4f s, %.4f Hz" % (np.mean(times), fs)
-
-print "\nKs,Kp is:", Ks
-
-print "\nTg/Tu nach Gregory Reeves, https://www.youtube.com/watch?v=4o4cqsu8JnE:"
+print "# Mean sampling freq %.4f s, %.4f Hz" % (np.mean(times), fs)
+print "# Ks,Kp is:", Ks
+print "# Tg/Tu nach Gregory Reeves, https://www.youtube.com/watch?v=4o4cqsu8JnE:"
 # "Time Constant"
 Tg1 = (t066-t033) / 0.7
-print "Tg:", Tg1
+# print '"Tg": %.4f'% Tg1
 # "Dead Time"
 Tu1 = t033 - 0.4*Tg1
-print "Tu:", Tu1
+# print '"Tu": %.4f' % Tu1
 
-print "\nTg/Tu nach http://controlguru.com/:"
+# print "\nTg/Tu nach http://controlguru.com/:"
 # "Time Constant"
 Tg2 = getPercentT(normData, Ks*0.632)
-print "Tg:", Tg2
+# print "Tg:", Tg2
 # "Dead Time"
 Tu2 = getFoptdTd(normData, Ks)
-print "Tu:", Tu2
+# print "Tu:", Tu2
 
 # tangente über steigung
 
-print "\nTg/Tu über steigung"
+# print "\nTg/Tu über steigung"
 nAvgShortterm = int(round(((Tu1+Tu2)/20.0) * fs))
-print "nAvgShortterm:", nAvgShortterm
+# print "nAvgShortterm:", nAvgShortterm
 tangentAvg = movingavg.MovingAvg(nAvgShortterm)
 
 last = normData[0]
@@ -122,17 +119,19 @@ ttu = tts[idx] - (tempidx / smax)
 ttg = tts[idx] + ((Ks - tempidx) / smax)
 
 # print "max steigung:", smax, idx, tempidx
-print "Tg from tangent:", ttg
-print "Tu from tangent:", ttu
+# print "Tu from tangent:", ttu
+# print "Tg from tangent:", ttg
 
 #end # tangente über steigung
 
 # Mittelwert Tg, Tu:
-print "\nAverage Tg/Tu:"
+print "# Average Tg/Tu:"
 Tg = (Tg1+Tg2+ttg)/3.0
 Tu = (Tu1+Tu2+ttu)/3.0
-print "Tu:", Tu
-print "Tg:", Tg
+# print "Tu:", Tu
+# print "Tg:", Tg
+print '"Tu": %.4f,' % Tu
+print '"Tg": %.4f, "ZN": {'% Tg
 
 # print "\nZiegler PI:"
 # Kr = (0.9 / Ks) * (Tg / Tu)
@@ -140,21 +139,21 @@ print "Tg:", Tg
 # print '"Kp": %.4f,' % Kr
 # print '"Ki": %.4f,' % (Kr / Tn)
 
-print "\nZiegler PID 1.2:"
+print "#Ziegler PID 1.2:"
 Kr = (1.2 / Ks) * (Tg / Tu)
 Tn = 2.0 * Tu 
 Tv = 0.5 * Tu
 print '"Kp": %.4f,' % Kr
 print '"Ki": %.4f,' % (Kr / Tn)
-print '"Kd": %.4f,' % (Kr / Tv)
+print '"Kd": %.4f} , "CH": {' % (Kr / Tv)
 
-print "\nChien aperiodisch PID, gute führung:"
+print "#Chien aperiodisch PID, gute führung:"
 Kr = (0.6 / Ks) * (Tg / Tu) 
 Tn = Tg 
 Tv = 0.5 * Tu
 print '"Kp": %.4f,' % Kr
 print '"Ki": %.4f,' % (Kr / Tn)
-print '"Kd": %.4f,' % (Kr / Tv)
+print '"Kd": %.4f},' % (Kr / Tv)
 
 ##################################################
 

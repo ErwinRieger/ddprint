@@ -20,18 +20,7 @@
 
 #pragma once
 
-// Compile firmware in the PID autoTune version:
-// #define PIDAutoTune 1
-
 #define USEExtrusionRateTable
-
-// #define PID_DEBUG // Sends hotend pid values as RespUnsolicitedMsg, type PidDebug
-
-// Limit for the integral term and for pwmSum if heater is
-// switched off (target temp == 0) or if setpoint temperature
-// could not be reached.
-// #define PID_DRIVE_MAX 100000.0
-// #define PID_DRIVE_MAX 25000.0
 
 #define TIMER10MS 10
 #define TIMER100MS 100
@@ -46,8 +35,11 @@
     // Use Bourns ems22a Rotary Encoder as a flowrate sensor
     #define BournsEMS22AFS 1
 
-    // use filamentsensor, at least for initializing it.
-    // #define STARTFILAMENTSENSOR 1
+    // #define COLDEXTRUSION 1
+    // #define COLDMovement 1
+
+    // Use filamentsensor even if COLDEXTRUSION is defined, at least for initializing it.
+    // #define RUNFILAMENTSENSOR 1
 #elif MOTHERBOARD == 2
     //
     // Ramps
@@ -60,12 +52,15 @@
     // Use Bourns ems22a Rotary Encoder as a flowrate sensor
     #define BournsEMS22AFS 1
     #define STEPPER_MINPULSE 2 /* µS */
-    // #define STARTFILAMENTSENSOR 1
+    // #define RUNFILAMENTSENSOR 1
 #elif MOTHERBOARD == 4
     //
     // Rumba
     //
     #define REPRAP_DISCOUNT_SMART_CONTROLLER 1
+
+    // debug
+    #define COLDEXTRUSION 1
 #else
     #error Unknown MOTHERBOARD in config.h
 #endif

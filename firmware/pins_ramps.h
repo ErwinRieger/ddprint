@@ -8,6 +8,11 @@
 // Ramps 1.4
 //
 
+// Note: Pin nubers are the logical/mapped pins, not the physical chip pins.
+
+//
+// Todo: speed up, use FastDigitalOutput like in pins_um2.h
+//
 #define X_STEP_PIN         DigitalOutput<54, ACTIVEHIGHPIN>
 #define X_DIR_PIN          DigitalOutput<55, ACTIVELOWPIN>
 #define X_STOP_PIN         DigitalInput<3, ACTIVELOWPIN> /* 3 */
@@ -66,12 +71,12 @@
   // #define HEATER_2_PIN       -1
 
   #define TEMP_0_PIN         13   // ANALOG NUMBERING
-  // xxx messed up wiring, T1 and T2 swapped
+  // Note messed up wiring, bedtemp and T1 swapped
   // #define TEMP_1_PIN         15   // ANALOG NUMBERING
   #define TEMP_1_PIN         14   // ANALOG NUMBERING
   #define TEMP_2_PIN         -1   // ANALOG NUMBERING
 
-  // xxx messed up wiring, T1 and T2 swapped
+  // Note messed up wiring, bedtemp and T1 swapped
   // #define TEMP_BED_PIN       14   // ANALOG NUMBERING
   #define TEMP_BED_PIN       15   // ANALOG NUMBERING
 

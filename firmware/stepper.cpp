@@ -21,7 +21,7 @@
 #include <Arduino.h>
 
 #include "ddprint.h"
-#include "serialport.h"
+// #include "rxbuffer.h"
 #include "stepper.h"
 #include "mdebug.h"
 
@@ -127,7 +127,7 @@ void st_disableSteppers() {
 
             if (regs->SR & TIMER_SR_UIF) {
 
-	            stepBuffer.runMoveSteps();
+	            stepBuffer.runPrintSteps();
                 regs->SR = ~TIMER_SR_UIF;
                 regs->SR; // Avoid duplicated pulses
             }
@@ -157,8 +157,7 @@ void st_disableSteppers() {
     // Stepper irq routine
     ISR(TIMER1_COMPA_vect) {
 
-        // xxx call it runPrintStep
-        stepBuffer.runMoveSteps();
+        stepBuffer.runPrintSteps();
     }
 
     // Stepper irq routine for homing steps

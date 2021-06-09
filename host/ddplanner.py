@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 #
 #/*
-# This file is part of ddprint - a direct drive 3D printer firmware.
+# This file is part of ddprint - a 3D printer firmware.
 # 
 # Copyright 2015 erwin.rieger@ibrieger.de
 # 
@@ -23,13 +23,14 @@ import math, collections, types, pprint
 from argparse import Namespace
 
 import ddprintutil as util, dddumbui, packedvalue
-import gcodeparser
+import gcodeparser, cobs, intmath
 
 from ddvector import Vector, vectorMul, vectorAbs
 from ddprintconstants import *
 from ddconfig import *
 from ddprinter import Printer
 from ddprintcommands import CmdSyncTargetTemp, CmdDwellMS, CmdSyncFanSpeed, CmdSuggestPwm
+from ddprintcommands import CmdNop
 from ddprintstates import HeaterEx1, HeaterBed
 from ddadvance import Advance
 from ddprofile import NozzleProfile, MatProfile
@@ -40,6 +41,8 @@ if debugPlot:
     import pickle
 
 emptyVector5 = [0] * 5
+
+FillByte = chr(CmdNop)
 
 #####################################################################
 
@@ -60,8 +63,14 @@ class SyncedCommand(object):
     def isTemperatureCmd(self):
         return self.cmd == CmdSuggestPwm
 
-    def streamCommand(self, printer):
-        printer.sendCommandParamV(self.cmd, self.params)
+    def streamCommand(self, planner):
+
+        payload = chr(self.cmd)
+        for p in self.params:
+            if p:
+                payload += p.pack()
+
+        planner.streamStepData(payload)
 
     def __repr__(self):
         return "SyncedCommand, cmd: %d, time: %f, %s" % (self.cmd, self.duration, str(self.params))
@@ -215,11 +224,12 @@ class MoveHistory (object):
 
     def streamMove(self, move):
 
-            if move.isMove():
-                self.planner.streamMove(move)
-            else:
-                if self.planner.args.mode != "pre":
-                    move.streamCommand(self.planner.printer)
+        if move.isMove():
+            self.planner.streamMove(move)
+        else:
+            if self.planner.args.mode != "pre":
+                # move.streamCommand(self.planner.printer)
+                move.streamCommand(self.planner)
 
 
 class PathData (object):
@@ -361,18 +371,18 @@ class PathData (object):
         suggestPwm = int(round(self.pwmSLE.x( self.tempSLE.y(goodtemp) + rateDiff ) + 0.5))
         suggestPwm = min(suggestPwm, 255)
 
-        if debugAutoTemp:
-            self.planner.gui.log( "AutoTemp: segment of %.2f s duration, avg. extrusion rate: %.2f mm³/s, auto-temp: %d, forward-PWM: %d" % (tsum, avgERate, newTemp, suggestPwm))
-
         if newTemp == self.lastTemp:
-            self.planner.gui.log( "AutoTemp: temp did not change, skipping temperature command.")
+            # self.planner.gui.log( "AutoTemp: temp did not change, skipping temperature command.")
             return 
+
+        if debugAutoTemp:
+            self.planner.gui.log( "AutoTemp: segment of %.2f s duration, avg. extrusion rate: %.2f mm³/s, new temp: %d, forward-PWM: %d" % (tsum, avgERate, newTemp, suggestPwm))
 
         cmd = SyncedCommand(
             CmdSuggestPwm,
             0.0, [
              packedvalue.uint8_t(HeaterEx1),
-             packedvalue.uint16_t(newTemp), 
+             packedvalue.uint16_t(intmath.toFWTemp(newTemp)), 
              packedvalue.uint8_t(suggestPwm) ])
         self.updateHistory(cmd)
 
@@ -490,6 +500,9 @@ class Planner (object):
 
         self.curDirBits = None
 
+        # Binary data to send to printer
+        self.stepData = ""
+
     # @classmethod
     def get(cls):
         return cls.__single
@@ -562,7 +575,7 @@ class Planner (object):
                 CmdSyncTargetTemp, 
                 0.0, [
                 packedvalue.uint8_t(HeaterBed),
-                packedvalue.uint16_t(bedTemp) ])
+                packedvalue.uint16_t(intmath.toFWTemp(bedTemp)) ])
 
             self.pathData.updateHistory(cmd)
 
@@ -738,6 +751,8 @@ class Planner (object):
         if debugMoves:
             print "Streaming %d travel moves..." % len(path)
 
+# xxxx newmeasure
+        """
         rateList = []
         for move in path:
             # rateList.append(move.topSpeed.speed().eSpeed)
@@ -748,6 +763,13 @@ class Planner (object):
         if avgRate > 0:
             path[0].isMeasureMove = True
             path[0].measureSpeed = avgRate
+        """
+
+        for move in path:
+            # xxxx check for minimal frs steps ....
+            if move.eDistance() > 1.0 and move.linearTime() > 0.15:
+                print "FRS: e-dist, linear time:", move.eDistance(), move.linearTime()
+                move.isMeasureMove = True
 
         # Move timeline housekeeping
         # for move in path:
@@ -755,10 +777,9 @@ class Planner (object):
 
         for move in path:
 
-            self.planTravelSteps(move)
+            if self.planTravelSteps(move):
 
-            # self.streamMove(move)
-            self.pathData.updateHistory(move)
+                self.pathData.updateHistory(move)
 
             # Help garbage collection
             move.prevMove = util.StreamedMove()
@@ -791,6 +812,18 @@ class Planner (object):
                 self.planTravelPath(self.pathData.path)
 
         self.pathData.history.finishMoves()
+
+        # Send last partial 512 bytes block
+        remaining = len(self.stepData)
+
+        if self.args.mode != "pre":
+        
+            # print "Sending last stepdata block of size %d" % remaining
+
+            # Fill sector with dummy data
+            cobsPayload = cobs.encodeCobs512(self.stepData + (cobs.SectorSize-remaining)*FillByte)
+            self.printer.sendCommand512(cobsPayload)
+
         self.reset()
 
 
@@ -809,9 +842,30 @@ class Planner (object):
 
             self.plotfile.plotSteps(move)
 
-        for (cmd, cobsBlock) in move.commands():
+        self.streamStepData(move.command())
+
+    def streamStepData(self, stepData):
+
+        self.stepData += stepData
+
+        sent = 0
+        left = len(self.stepData)
+        while left >= cobs.SectorSize:
+
+            cobsPayload = cobs.encodeCobs512(self.stepData[sent:sent+cobs.SectorSize])
+    
+            assert((len(cobsPayload) >= 512) and (len(cobsPayload) <= 515))
+
+            # print "cobs encoded sector block:", cobsPayload.encode("hex")
+
             if self.args.mode != "pre":
-                self.printer.sendCommandC(cmd, cobsBlock)
+                self.printer.sendCommand512(cobsPayload)
+
+            sent += cobs.SectorSize
+            left -= cobs.SectorSize
+
+        self.stepData = self.stepData[sent:]
+        # print "streamStepData: %d bytes stepdata left..." % left
 
     #
     #
@@ -1077,7 +1131,7 @@ class Planner (object):
                 print "***** End planTravelSteps() *****"
 
             self.stepRounders.rollback()
-            return
+            return False
 
         move.isStartMove = True
 
@@ -1106,8 +1160,6 @@ class Planner (object):
         #
         # Create a list of stepper pulses
         #
-        nominalSpeed = abs( move.topSpeed.speed().vv()[leadAxis] ) # [mm/s]
-
         allowedAccel = move.getMaxAllowedAccelVectorNoAdv5()[leadAxis]
 
         v0 = abs(move.startSpeed.speed()[leadAxis])                # [mm/s]
@@ -1115,6 +1167,9 @@ class Planner (object):
         nominalSpeed = abs( move.topSpeed.speed()[leadAxis] ) # [mm/s]
 
         v1 = abs(move.endSpeed.speed()[leadAxis])                # [mm/s]
+
+        steps_per_second_nominal = nominalSpeed * steps_per_mm
+        linearTimerValue = self.timerLimit(int(fTimer / steps_per_second_nominal))
 
         nAccel = 0
         if move.accelTime():
@@ -1124,10 +1179,10 @@ class Planner (object):
                 v0,
                 nominalSpeed,
                 allowedAccel,
-                leadAxis_steps) # maximum number of steps
+                leadAxis_steps,
+                linearTimerValue)
 
             move.stepData.setAccelPulses(accelClocks)
-
             nAccel = len(accelClocks)
 
         nDecel = 0
@@ -1138,10 +1193,10 @@ class Planner (object):
                 nominalSpeed,
                 v1,
                 allowedAccel,
-                leadAxis_steps) # maximum number of steps
+                leadAxis_steps,
+                linearTimerValue)
 
             move.stepData.setDecelPulses(decelClocks)
-
             nDecel = len(decelClocks)
 
 
@@ -1153,9 +1208,7 @@ class Planner (object):
 
         if nLin > 0:
 
-            steps_per_second_nominal = nominalSpeed * steps_per_mm
-            timerValue = fTimer / steps_per_second_nominal
-            move.stepData.setLinTimer(self.timerLimit(timerValue))
+            move.stepData.setLinTimer(linearTimerValue)
 
         else:
 
@@ -1193,6 +1246,8 @@ class Planner (object):
 
         if debugMoves:
             print "***** End planTravelSteps() *****"
+
+        return True
     
     # Check if stepper frequency gets to high or to low
     def timerLimit(self, timer):
@@ -1211,7 +1266,7 @@ class Planner (object):
     #
     # Create a list of stepper pulses for a acceleration ramp.
     #
-    def accelRamp(self, steps_per_mm, vstart, vend, a, nSteps):
+    def accelRamp(self, steps_per_mm, vstart, vend, a, nSteps, linearTimerValue):
 
         # no-acceleration-aceleration, makes no sense?
         # assert(vstart <= vend)
@@ -1225,9 +1280,7 @@ class Planner (object):
         tstep = 0
         s = sPerStep
 
-        stepToDo = nSteps
-
-        while v < vend and stepToDo > 0:
+        while v < vend and nSteps > 0:
 
             # Speed after this step
             vn1 = util.vAccelPerDist(vstart, a, s)
@@ -1243,12 +1296,15 @@ class Planner (object):
 
             # print "v after this step:", vn1, s, dt, timerValue
 
+            if timerValue <= linearTimerValue:
+                break
+
             pulses.append(timerValue)
 
             s += sPerStep
             v = vn1
             tstep += dt
-            stepToDo -= 1
+            nSteps -= 1
 
         # print "acel pulses:",
         # pprint.pprint(pulses)
@@ -1259,7 +1315,7 @@ class Planner (object):
     #
     # Create a list of stepper pulses for a deceleration ramp.
     #
-    def decelRamp(self, steps_per_mm, vstart, vend, a, nSteps):
+    def decelRamp(self, steps_per_mm, vstart, vend, a, nSteps, linearTimerValue):
 
         # no-deceleration-deceleration, makes no sense?
         # assert(vstart >= vend)
@@ -1291,7 +1347,8 @@ class Planner (object):
 
             # print "v after this step:", vn1, s, dt, timerValue
 
-            pulses.append(timerValue)
+            if timerValue > linearTimerValue:
+                pulses.append(timerValue)
 
             s += sPerStep
             v = vn1
@@ -1302,7 +1359,6 @@ class Planner (object):
         # pprint.pprint(pulses)
 
         return pulses
-
 
 ####################################################################################################
 # Create material profile singleton instance

@@ -14,7 +14,7 @@ AVRDUDE_ARD_PROGRAMMER = wiring
 
 SDFAT = ../../SdFat-1.0.5
 
-ARDUINO_LIBS = LiquidCrystal SdCard uzlib
+ARDUINO_LIBS = LiquidCrystal SdCard
 
 USER_LIB_PATH = libraries
 
@@ -25,6 +25,8 @@ AVRDUDE_ARD_BAUDRATE = 115200
 NO_CORE_MAIN_CPP = 1
 
 include ../../Arduino-Makefile/Arduino.mk
+
+OPTIMIZATION_LEVEL = 3
 
 # Mega/Ramps board
 CPPFLAGS      +=  -DMOTHERBOARD=2 -I. -Iavr -Isrc 

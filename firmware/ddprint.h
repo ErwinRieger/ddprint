@@ -27,9 +27,11 @@
 #include "config.h"
 #include "Configuration.h"
 #include "pins.h"
+#include "intmath.h"
 #include "mdebug.h"
 
 #include "swapdev.h"
+#include "rxbuffer.h"
 
 #if defined(DDSim)
     #include <unistd.h>
@@ -41,10 +43,6 @@
 // Number of entries in ExtrusionRateLimit table, this must match the value
 // in the host (ddprintconstants.py).
 #define NExtrusionLimit 100
-extern uint16_t tempExtrusionRateTable[];
-extern uint16_t extrusionLimitBaseTemp;
-
-extern uint8_t errorFlags;
 
 void kill();
 
@@ -54,13 +52,10 @@ void setup();
 
 class Printer {
 
-        bool eotReceived;
         bool homed;
-        // We erase entire swapdev (sdcard) to speed up writes.
-        bool swapErased;
 
         // To adjust temperature-niveau at runtime
-        uint16_t increaseTemp[N_HEATERS];
+        int16_t increaseTemp[N_HEATERS];
 
         // Timeconstant hotend [ms]
         uint16_t Tu;
@@ -77,8 +72,7 @@ class Printer {
 
     public:
 
-        uint32_t minBuffer;
-        uint32_t minBufferMax;
+        uint8_t minBuffer;
 
         uint16_t underTemp;
         uint16_t underGrip;
@@ -99,12 +93,12 @@ class Printer {
 
         MoveType moveType;
 
-        // long z_max_pos_steps;
         int16_t bufferLow;
 
         Printer();
         void printerInit();
         void sendGenericMessage(const char *s, uint8_t l);
+        void sendGenericInt32(int32_t v);
 
         uint16_t getTu() { return Tu; }
         uint8_t getIncreaseTemp(uint8_t heater) { return increaseTemp[heater]; }
@@ -115,30 +109,33 @@ class Printer {
         uint16_t getStepsPerMMZ() { return stepsPerMMZ; }
 
         void cmdMove(MoveType);
-        void cmdEot();
-        bool eotWasReceived() { return eotReceived; }
         void underrunError();
-        // void underrunError(uint32_t lastSize, uint32_t lastSize2, uint32_t minTimer);
-        void runFillBuffer();
 
         void setHomePos( int32_t x, int32_t y, int32_t z);
-        void cmdSetTargetTemp(uint8_t heater, uint16_t temp);
+        void cmdSetTargetTemp(uint8_t heater, int16_t temp, uint8_t pwmOverride=0);
         void cmdSetIncTemp(uint8_t heater, int16_t incTemp);
         void cmdGetFreeMem();
-        // void cmdGetFSReadings(uint8_t nReadings);
-        void checkMoveFinished();
+        void checkPrintFinished();
         void disableSteppers();
         void cmdDisableSteppers();
         void cmdDisableStepperIsr();
-        void cmdGetDirBits();
         void cmdGetHomed();
         void cmdGetEndstops();
         void cmdGetPos();
-        void cmdSetPIDValues(float kp, float ki, float kd, float kpC, float kiC, float kdC, uint16_t Tu);
+        void cmdSetPIDValues(
+                ScaledUInt32 &kp,
+                ScaledUInt32 &ki, int32_t maxEsum,
+                ScaledUInt32 &kd,
+                ScaledUInt32 &kpC,
+                ScaledUInt32 &kiC, int32_t maxEsumC,
+                ScaledUInt32 &kdC,
+                ScaledUInt32 &kiSwitchToHeating,
+                ScaledUInt32 &kiSwitchToCooling,
+                uint16_t Tu);
         void cmdSetStepsPerMM(uint16_t spmmX, uint16_t spmmY, uint16_t spmmZ);
         void cmdFanSpeed(uint8_t speed, uint8_t blipTime);
         void cmdContinuousE(uint16_t timerValue);
-        void cmdSetFilSensorCal(float cal);
+        void cmdSetFilSensorConfig(ScaledUInt16 & cal, uint16_t fsrMinSteps);
         void cmdSetStepsPerMME(uint16_t steps);
         void cmdStopMove();
         void cmdGetTargetTemps();
@@ -147,7 +144,6 @@ class Printer {
         void cmdGetTaskStatus();
         void cmdGetIOStats();
         void cmdGetFilSensor();
-        void cmdGetTempTable();
         void cmdSetTempTable();
         void cmdReadGpio(uint8_t pinNumber);
         void cmdReadAnalogGpio(uint8_t pinNumber);
@@ -157,15 +153,20 @@ class Printer {
 #if defined(POWER_BUTTON)
         void checkPowerOff(unsigned long ms);
 #endif
+        void cmdDumpMassStorage(uint32_t block);
         bool stepsAvailable();
+        void cmdSetBaudRate(uint32_t br);
 };
 
 extern Printer printer;
 
 
 //
-// One-shot timer for
+// One-shot timer for delayed things like
 // * fan blip
+// * reset request
+// * boot into bootloader request
+// * baudrate change command (auto-baudrate)
 //
 class Timer {
 
@@ -176,11 +177,15 @@ class Timer {
     bool bootBootloaderRequest;
     bool resetRequest;
 
+    int32_t baudRate;
+    uint32_t baudRateTime;
+
     public:
         Timer() {
             fanEndTime = 0;
             bootBootloaderRequest = false;
             resetRequest = false;
+            baudRate = -1; 
         }
 
         void run(unsigned long m);
@@ -204,6 +209,12 @@ class Timer {
         void startResetTimer() {
 
             resetRequest = true;
+        }
+
+        void baudRateTimer(uint32_t br) {
+
+            baudRate = br;
+            baudRateTime = millis() + 10;
         }
 
 };

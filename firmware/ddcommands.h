@@ -40,11 +40,11 @@
 // Buffered commands:
 // ----------------------
 //
-#define CmdNull            0x0
+// #define CmdNull            0x0
 // #define CmdDirBits         0x2
 #define CmdSyncFanSpeed    0x3
 #define CmdRaw             0x4
-#define CmdBlock           0x6
+// #define CmdBlock           0x6
 
 #define CmdG1              0x7
 // #define CmdDirG1           0x8
@@ -56,9 +56,7 @@
 // #define CmdDirG1Raw        0xe
 #define CmdSuggestPwm      0x11
 
-#define CmdG1Packed        0x9
-#define CmdG1RawPacked     0xf
-#define CmdBlockPacked     0x10
+#define CmdNop             0x77
 
 //
 // Direct commands:
@@ -67,17 +65,13 @@
 
 #define CmdPrinterInit          128
 #define CmdMove                 129
-#define CmdEOT                  130
+// #define CmdEOT                  130
 #define CmdResetLineNr          131
 
 #define CmdSetHomePos           133
 #define CmdSetTargetTemp        134
 #define CmdFanSpeed             137
 #define CmdStopMove             138
-
-#if defined(PIDAutoTune)
-    #define CmdSetHeaterY       139
-#endif
 
 // #define CmdGetDirBits           150
 #define CmdGetHomed             151
@@ -97,13 +91,13 @@
 
 // Get raw value of filament sensor pos 
 #define CmdGetFilSensor         162 
-#define CmdGetTempTable         163 // ExtrusionLimit: get tempTable
+// #define CmdGetTempTable         163 // ExtrusionLimit: get tempTable
 #define CmdSetTempTable         164 // ExtrusionLimit: set tempTable
 #define CmdEnableFRLimit        165 // Enable/disable flowrate limit
 
 #define CmdSetContTimer         166 // Timer value for CmdContinuousE -> E-Speed
 #define CmdContinuousE          167 // Start/Stop continuous e-move for filament measurement
-#define CmdSetFilSensorCal      168 // Set filament sensor calibration vaue
+#define CmdSetFilSensorConfig      168 // Set filament sensor calibration vaue
 // #define CmdSetStepsPerMME       169 // 
 
 #define CmdSetPrinterName       170 // Write printer (-profile) name to printer eeprom
@@ -125,6 +119,8 @@
 #define CmdSystemReset          187 // Emergency hard reset system
 #define CmdGetTaskStatus        188 //
 #define CmdGetIOStats           189 //
+#define CmdDumpMassStorage      190 // Dump a 512 bytes sector from sdcard/usb.
+#define CmdSetBaudRate          191 // Autobaudrate
 
 //
 // Response types 
@@ -138,6 +134,7 @@
 #define RespSerNumberError      7 // Payload: serialNumber (last line)
 #define RespRXTimeoutError      8 // Payload: serialNumber (last line)
 #define RespUnsolicitedMsg      9 // Payload: message type, params
+// #define RespRXFullError        10 // Payload: serialNumber (last line)
 
 //
 // Rsponse error codes (payload)
@@ -162,8 +159,10 @@
 // #define ExtrusionLimitDbg       0x0
 #define PidDebug                0x1
 // #define FilSensorDebugMsg       0x2
-#define GenericMessage       0x3
-#define BufDebug       0x4
+#define GenericMessage          0x3
+#define BufDebug                0x4
+#define PidSwitch               0x5
+#define GenericInt32            0x6
 
 
 

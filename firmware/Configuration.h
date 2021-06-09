@@ -8,7 +8,16 @@
 #pragma once
 
 // This determines the communication speed of the printer
-#define BAUDRATE 500000
+
+//
+// Initial baudrate
+//
+// Baud 1000000
+#define BAUDRATE halBaudrate(1000000)
+// Baud 500000
+// #define BAUDRATE halBaudrate(500000)
+// Baud 250000
+// #define BAUDRATE halBaudrate(250000)
 
 // This defines the number of extruders
 #define EXTRUDERS 1
@@ -45,21 +54,21 @@
 // The minimal temperature defines the temperature below which the heater will not be enabled It is used
 // to check that the wiring to the thermistor is not broken.
 // Otherwise this would lead to the heater being powered on all the time.
-#define HEATER_0_MINTEMP 5
-#define HEATER_1_MINTEMP 5
-#define HEATER_2_MINTEMP 5
+#define HEATER_0_MINTEMP toFWTemp((int16_t)5)
+#define HEATER_1_MINTEMP toFWTemp((int16_t)5)
+#define HEATER_2_MINTEMP toFWTemp((int16_t)5)
 
 // When temperature exceeds max temp, your heater will be switched off.
 // This feature exists to protect your hotend from overheating accidentally, but *NOT* from thermistor short/failure!
 // You should use MINTEMP for thermistor short/failure protection.
-#define HEATER_0_MAXTEMP 125
-#define HEATER_1_MAXTEMP 285
-#define HEATER_2_MAXTEMP 285
+#define HEATER_0_MAXTEMP toFWTemp((int16_t)125)
+#define HEATER_1_MAXTEMP toFWTemp((int16_t)285)
+#define HEATER_2_MAXTEMP toFWTemp((int16_t)285)
 
 //Check if the heater heats up MAX_HEATING_TEMPERATURE_INCREASE within MAX_HEATING_CHECK_MILLIS while the PID was at the maximum.
 // If not, raise an error because most likely the heater is not heating up the temperature sensor. Indicating an issue in the system.
-#define MAX_HEATING_TEMPERATURE_INCREASE 10
-#define MAX_HEATING_CHECK_MILLIS (20 * 1000)
+// #define MAX_HEATING_TEMPERATURE_INCREASE 10
+// #define MAX_HEATING_CHECK_MILLIS (20 * 1000)
 
 // PID settings:
 #define PID_MAX 255 // limits current to nozzle while PID is active (see PID_FUNCTIONAL_RANGE below); 255=full current

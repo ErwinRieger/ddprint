@@ -25,7 +25,7 @@
 #include "Configuration.h"
 #include "pins.h"
 
-#include "ddserial.h"
+#include "txbuffer.h"
 #include "ddcommands.h"
 #include "ddlcd.h"
 
@@ -54,36 +54,49 @@ enum SwapTasks { TaskRead, TaskReadSum, TaskWrite, TaskWriteSum };
 
 class SDSwap: public MassStorage, public Protothread {
 
+    //
+    // Writing 
+    //
     uint8_t writeBuffer[SwapSectorSize];
-
     // Pointer to current write position (byte) in writeBuffer
     uint16_t writePos;
-
-    enum BusyStates { idle, reading, writing };
-    BusyStates busyState;
-
     // Sector number on storage device
     uint32_t writeBlockNumber;
+    // Written size in bytes, multiple of SwapSectorSize
+    uint32_t size;
+
+
+    //
+    // Reading 
+    //
+    // uint8_t readAhead[SwapSectorSize];
+    uint8_t b1[SwapSectorSize];
+    uint8_t b2[SwapSectorSize];
 
     // Read position, bytes, multiple of SwapSectorSize,
     // excluding the first eeprom sector.
     uint32_t readPos;
-
     // Number of consecutive read attempts
     uint8_t  readRetry;
-
-    // Written size in bytes, multiple of SwapSectorSize
-    uint32_t size;
-
-    uint8_t *readBuffer;
+    // uint8_t *readBuffer;
     uint16_t readBytes;
 
+    enum BusyStates { idle, reading, writing };
+    BusyStates busyState;
+
 public:
+
+    //
+    // Reading 
+    //
+    bool cacheFilled;
+    uint8_t *readBuffer;
 
     SDSwap() {
 
         busyState = idle;
         readBytes = 0;
+        readBuffer = b1;
         reset();
     }
 
@@ -91,13 +104,9 @@ public:
     struct TaskTiming ioStats[4];
 #endif
 
-    // FWINLINE uint32_t getWriteBlockNumber() { return writeBlockNumber; }
-    FWINLINE uint16_t getWritePos() { return writePos & SwapSectorMask; }
+    FWINLINE void discardWriteBlock() { writePos = 0; }
 
-    // FWINLINE uint32_t getReadPos() { return readPos; }
     FWINLINE uint32_t getSize() { return size; }
-
-    FWINLINE uint16_t getReadLen() { return readBytes; }
 
     FWINLINE uint32_t available() {
 
@@ -111,82 +120,44 @@ public:
             Run();
 
         readRetry = 0;
+
         size = 0;
         writePos = 0;
 
-        // writeBlockNumber = 0;
         readPos = 0;
+        cacheFilled = false;
 
-        // First sector reserved for eeprom emulation
+        // First sector reserved for eeprom emulation/config storage
         writeBlockNumber = 1;
     }
 
-    FWINLINE bool busy() { return busyState != idle; }
-    // FWINLINE bool busyR() { return busyState == reading; }
-    // FWINLINE bool busyW() { return busyState != writing; }
-
-    // void setBusyWriting(int b) { busyWriting = b; }
+    FWINLINE bool busy() { 
+        return busyState != idle;
+    }
+    
+    FWINLINE bool busyWriting() { return busyState == writing; }
 
     FWINLINE void addByte(uint8_t b) {
 
-        uint16_t wp = getWritePos();
-
         simassert(busyState != writing);
         simassert(wp < SwapSectorSize);
 
-        writeBuffer[wp] = b;
-        writePos++;
-
-        // Block is full if write index
-        // overflowed to zero.
-        if (getWritePos() == 0)
-            startWriteBlock();
-    }
-
-    //
-    // Add a byte to our writebuffer, just like addByte(),
-    // but does the *back-reference* handling of the inflate
-    // algorithm. This works hand-in-hand with the UnZipper
-    // tread.
-    //
-    // Note: buffer is written asynchronous to storage device. We use data
-    // partly new and partly flushed to mass storage.
-    // 
-    FWINLINE void addBackRefByte(uint8_t offs) {
-
-        uint16_t wp = getWritePos();
-
-        simassert(busyState != writing);
-        simassert(wp < SwapSectorSize);
-
-        uint8_t b = writeBuffer[(writePos - offs) & SwapSectorMask]; // Overflow expected
-        writeBuffer[wp] = b;
-        writePos++;
-
-        // Block is full if write index
-        // overflowed to zero.
-        if (getWritePos() == 0)
-            startWriteBlock();
+        writeBuffer[writePos++] = b;
     }
 
     //------------------------------------------------------------------------------
-    // Start reading *readBuffer* from storage device
-    FWINLINE void startReadBlock(uint8_t *buf) {
+    // Beginning from block 1 (skipping config block)
+    uint16_t readBlock() {
 
-#if defined(HEAVYDEBUG)
-        massert(!busy());
-#endif
+        if (readBuffer == b1) 
+            readBuffer = b2;
+        else
+            readBuffer = b1;
 
-        massert(available() > 0);
-        massert((readPos % SwapSectorSize) == 0); // read pos should be block-aligned
+        readPos += readBytes;
+        cacheFilled = false;
 
-        readBuffer = buf;
-
-        readBytes = 0;
-
-        busyState = reading;
-
-        Restart(); // Start thread
+        return readBytes;
     }
 
     // Start writing *writeBuffer* to storage device
@@ -200,56 +171,9 @@ public:
         Restart(); // Start thread
     }
 
-#if 0
-    FWINLINE int16_t _readBlock(uint8_t* dst) {
+    // Async block read/write.
+    FWINLINE bool Run() {
 
-        // Number of bytes in this block:
-#if defined(DEBUGPROCSTAT)
-        TaskStart(ioStats, TaskRead);
-#endif
-
-        if (! MassStorage::readBlock((readPos >> 9)+1, dst)) {
-
-            // Return Sd2Card error code and SPI status byte from sd card.
-            // In case of SD_CARD_ERROR_CMD17 this is the return status of
-            // CMD17 in Sd2Card::cardCommand().
-
-            if (readRetry++ < 5) {
-                // Log error and retry
-                txBuffer.sendSimpleResponse(RespUnsolicitedMsg, RespSDReadError, errorCode(), errorData());
-                return 0;
-            }
-
-            killMessage(RespSDReadError, errorCode(), errorData());
-            // notreached
-        }
-
-#if defined(DEBUGPROCSTAT)
-        TaskEnd(ioStats, TaskRead);
-#endif
-
-#if defined(DEBUGREADWRITE)
-        // xxx hack
-        massert(GetTaskDuration(ioStats, TaskRead) <= 5);
-#endif
-
-        uint16_t bytesRead = STD min(available(), (uint32_t)SwapSectorSize);
-
-        // printf("size: %d, readpos: %d, read bytes: %d\n", size, readPos, bytesRead);
-
-        readPos += bytesRead;
-
-        // Read was successful, reset retry count
-        readRetry = 0;
-
-        return bytesRead;
-    }
-#endif
-
-    // Async block write.
-    bool Run() {
-
-        uint16_t wp;
         static int res;
 
         PT_BEGIN();
@@ -261,7 +185,12 @@ public:
 
             do { _ptLine = __LINE__; case __LINE__: {
                 TaskStart(ioStats, TaskRead);
-                res = readBlockWrapper((readPos >> 9)+1, readBuffer);
+
+                if (readBuffer == b1)
+                    res = readBlockWrapper((readPos >> 9)+1, b2);
+                else
+                    res = readBlockWrapper((readPos >> 9)+1, b1);
+
                 TaskEnd(ioStats, TaskRead);
                 if (res == 1) return true; // continue thread
                 if (res == -1) { // error
@@ -290,11 +219,13 @@ public:
 
             // printf("size: %d, readpos: %d, read bytes: %d\n", size, readPos, readBytes);
 
-            readPos += readBytes;
+            // Done in readBlock()
+            // readPos += readBytes;
 
-            // Read was successful, reset retry count
+            // Cache read successful, reset retry count
             readRetry = 0;
             busyState = idle;
+            cacheFilled = true;
         }
         else if (busyState == writing) {
 
@@ -314,31 +245,23 @@ public:
             TaskEnd(ioStats, TaskWriteSum);
             //////////////////////////////////////////////////////////////////////////////////          
 
-            // Update size 
-            wp = getWritePos();
-            if (wp) { // Last block
+            size += SwapSectorSize;
 
-                size += wp;
-                writePos = 0;
-                #if defined(HEAVYDEBUG)
-                    massert(size == ((writeBlockNumber-1)*SwapSectorSize + wp));
-                #endif
-            }
-            else {
-                size += SwapSectorSize;
-                #if defined(HEAVYDEBUG)
-                    massert(size == (writeBlockNumber*SwapSectorSize));
-                #endif
-            }
+            writePos = 0;
 
             // printf("Size: %d bytes\n", size);
 
             writeBlockNumber++;
+
             busyState = idle;
         }
+        else {
+            // idle
+            if (!cacheFilled && available())
+                busyState = reading;
+        }
 
-
-        // PT_RESTART();
+        PT_RESTART();
         PT_END();
     };
 
@@ -362,6 +285,7 @@ public:
         TaskEnd(ioStats, TaskWriteSum);
     }
 
+    // Read first 512 byte block, the *config block*.
     void readConfig(MSConfigBlock &config) {
 
         int res;  
@@ -385,7 +309,7 @@ public:
                 return;
             }
 
-            // Error, xxx nothandled
+            // Error, nothandled yet
             massert(0);
         }
         TaskEnd(ioStats, TaskReadSum);

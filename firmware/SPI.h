@@ -44,15 +44,15 @@
 #define SPI dDPrintSpi
 
 // Hack to access the private spcr and spsr members of SPISettings.
-class RobSPISettings {
+class AccessSPISettings {
 public:
   uint8_t spcr;
   uint8_t spsr;
 };
 
-// Some check if layout of original SPISettings and our RobSPISettings match.
+// Some check if layout of original SPISettings and our AccessSPISettings match.
 // We can only compare size here, not the order of the members.
-static_assert(sizeof(SPISettings) == sizeof(RobSPISettings), "SPISettings: class size mismatch");
+static_assert(sizeof(SPISettings) == sizeof(AccessSPISettings), "SPISettings: class size mismatch");
 
 class DDPrintSpi {
 
@@ -60,20 +60,20 @@ class DDPrintSpi {
 
         void begin() { }
 
-        inline void beginTransaction(SPISettings &spiSettings) {
+        FWINLINE void beginTransaction(SPISettings &spiSettings) {
 
             // Does not work, private members of SPISettings.
             // SPCR = spiSettings.spcr;
             // SPSR = spiSettings.spsr;
 
-            SPCR = ((RobSPISettings&)spiSettings).spcr;
-            SPSR = ((RobSPISettings&)spiSettings).spsr;
+            SPCR = ((AccessSPISettings&)spiSettings).spcr;
+            SPSR = ((AccessSPISettings&)spiSettings).spsr;
         }
 
-        inline void endTransaction(void) {
+        FWINLINE void endTransaction(void) {
         }
 
-        inline uint8_t transfer(uint8_t data) { 
+        FWINLINE uint8_t transfer(uint8_t data) { 
             return RealArduinoSPI.transfer(data);
         }
 };

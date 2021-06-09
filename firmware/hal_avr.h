@@ -34,6 +34,8 @@
 #define SERIAL_TX_COMPLETE() ( true )
 #define SERIAL_TX_DR_PUTC(c) ( UDR0 = c )
 
+constexpr uint32_t halBaudrate(const uint32_t br) { return ((F_CPU+8*br) / (16*br)) - 1; }
+
 #define HAL_SET_INPUT_PU(pin) pinMode(pin, INPUT_PULLUP)
 #define HAL_SET_INPUT_ANALOG(pin) /* */
 
@@ -54,6 +56,10 @@
 
 #ifndef sbi
 #define sbi(sfr, bit) (_SFR_BYTE(sfr) |= _BV(bit))
+#endif
+
+#ifndef cbi
+#define cbi(sfr, bit) (_SFR_BYTE(sfr) &= ~(_BV(bit)))
 #endif
 
 #define CRITICAL_SECTION_START  unsigned char _sreg = SREG; cli();
@@ -92,11 +98,13 @@ void HAL_SETUP_TEMP_ADC();
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
+#define PORTADDR(port) ((uint16_t) & (port))
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 //
 // Pins
 //
-template <uint8_t PIN>
+template <const uint8_t PIN>
 struct AvrPin {
 
     static volatile uint8_t * pinAddr;
@@ -133,86 +141,42 @@ struct AvrPin {
         else
             outputLow(); // disable pullup
     };
-    static void outputLow() {
+    FWINLINE static void outputLow() {
         CRITICAL_SECTION_START
         *portAddr = *portAddr & ~bitMask;
         CRITICAL_SECTION_END
     };
-    static void outputHigh() {
+    FWINLINE static void outputHigh() {
         CRITICAL_SECTION_START
         *portAddr = *portAddr | bitMask;
         CRITICAL_SECTION_END
     };
-    static uint8_t read() {
-        CRITICAL_SECTION_START
+    FWINLINE static uint8_t read() {
         uint8_t res = *pinAddr & bitMask;
-        CRITICAL_SECTION_END
         return res;
     };
 };
 
-template <uint8_t PIN>
+template <const uint8_t PIN>
 struct DigitalOutput<PIN, ACTIVEHIGHPIN>: AvrPin<PIN> {
     static void initDeActive() { AvrPin<PIN>::setOutput(); deActivate(); }
-    static void activate() { AvrPin<PIN>::outputHigh(); };
-    static void deActivate() { AvrPin<PIN>::outputLow(); };
+    FWINLINE static void activate() { AvrPin<PIN>::outputHigh(); };
+    FWINLINE static void deActivate() { AvrPin<PIN>::outputLow(); };
     static void saveState() { AvrPin<PIN>::setInput(false); }
-    /*
-    static void initActive() { _SET_OUTPUT(PIN) ; activate(); }
-    // static void write(uint8_t v) { _WRITE_NC(PIN, v); }
-    */
 };
 
-template <uint8_t PIN>
+template <const uint8_t PIN>
 struct DigitalOutput<PIN, ACTIVELOWPIN>: AvrPin<PIN>  {
     static void initDeActive() { AvrPin<PIN>::setOutput(); deActivate(); }
-    static void activate() { AvrPin<PIN>::outputLow(); };
-    static void deActivate() { AvrPin<PIN>::outputHigh(); };
-    /*
-    static void initActive() { _SET_OUTPUT(PIN) ; activate(); }
-    static void saveState() { myPinMode(PIN, INPUT_FLOATING); }
-    // static void write(uint8_t v) { _WRITE_NC(PIN, v); }
-    */
+    FWINLINE static void activate() { AvrPin<PIN>::outputLow(); };
+    FWINLINE static void deActivate() { AvrPin<PIN>::outputHigh(); };
 };
 
-// note: pullup für avr durch high-write auf input: WRITE(X_STOP_PIN,HIGH); 
-template <uint8_t PIN, typename ACTIVEHIGH>
-struct DigitalInput { };
+////////////////////////////////////////////////////////////////////////////////////////////////////
 
-template <uint8_t PIN>
-struct DigitalInput<PIN, ACTIVELOWPIN>: AvrPin<PIN> {
-    static void init() { AvrPin<PIN>::setInput(true); }
-    static bool active() { return AvrPin<PIN>::read() == LOW; }
-    static bool deActive() { return ! active(); }
-};
-
-#if 0
-template <uint8_t PIN, WiringPinMode PM>
-struct DigitalInput<PIN, PM, ACTIVEHIGHPIN>: DigitalInputBase<PIN, PM> {
-    static void init() { AvrPin<PIN>::setInput(false); }
-    static bool deActive() { return read(PIN) == LOW; }
-    static bool active() { return ! deActive(); }
-};
-
-// #define PWM_WRITE(p, v) pwmWrite(p, map(v, 0, 255, 0, 65535))
-#endif
-
-template <uint8_t PIN>
-struct PWMOutput<PIN, ACTIVEHIGHPIN>: AvrPin<PIN> {
-    static void init() { AvrPin<PIN>::setOutput(); }
-    static void write(uint8_t v) { analogWrite(PIN, v); }
-    static void saveState() { AvrPin<PIN>::setInput(false); }
-};
-
-#if 0
-template <uint8_t PIN>
-struct PWMOutput<PIN, ACTIVELOWPIN>: AvrPin<PIN> {
-    static void init() { pwmInit(PIN, 0, true); }
-    static void write(uint8_t v) { pwmWrite(PIN, map(v, 0, 255, 0, 65535)); }
-    static void saveState() { myPinMode(PIN, INPUT_FLOATING); }
-};
-#endif
-
+//
+// Macro to declare static storage for AvrPin template members.
+//
 // #define DigitalOutPin(nr, active) { DigitalOutput< nr, active >; uint8_t DigitalOutput< nr, active > :: bitMask = 0; }
 #define DefineIOPinMembers(nr) template<> uint8_t AvrPin< nr > :: bitMask = 0; \
                                template<> volatile uint8_t * AvrPin< nr > :: pinAddr = NULL; \
@@ -221,58 +185,74 @@ struct PWMOutput<PIN, ACTIVELOWPIN>: AvrPin<PIN> {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 //
+// Optimized output pins for steppers on AVR, assumes we are called from
+// ISR context (or when no stepper is running), so no critical section stuff.
+// Assumes port-addr is ddr-addr + 1
+//
+template <const uint16_t PORTADDR, const uint8_t PIN>
+struct FastAvrPin {
+
+    static void setOutput() {
+        *(volatile uint8_t*)(PORTADDR-1) |= _BV(PIN);
+    };
+    FWINLINE static void outputLow() {
+        *(volatile uint8_t*)PORTADDR &= ~_BV(PIN);
+    };
+    FWINLINE static void outputHigh() {
+        *(volatile uint8_t*)PORTADDR |= _BV(PIN);
+    };
+};
+
+template <const uint16_t PORTADDR, const uint8_t PIN, typename ACTIVEHIGH>
+struct FastDigitalOutput { };
+
+template <const uint16_t PORTADDR, const uint8_t PIN>
+struct FastDigitalOutput<PORTADDR, PIN, ACTIVEHIGHPIN>: FastAvrPin<PORTADDR, PIN> {
+    static void initDeActive() { FastAvrPin<PORTADDR, PIN>::setOutput(); deActivate(); }
+    FWINLINE static void activate() { FastAvrPin<PORTADDR, PIN>::outputHigh(); };
+    FWINLINE static void deActivate() { FastAvrPin<PORTADDR, PIN>::outputLow(); };
+};
+
+template <const uint16_t PORTADDR, const uint8_t PIN>
+struct FastDigitalOutput<PORTADDR, PIN, ACTIVELOWPIN>: FastAvrPin<PORTADDR, PIN> {
+    static void initDeActive() { FastAvrPin<PORTADDR, PIN>::setOutput(); deActivate(); }
+    FWINLINE static void activate() { FastAvrPin<PORTADDR, PIN>::outputLow(); };
+    FWINLINE static void deActivate() { FastAvrPin<PORTADDR, PIN>::outputHigh(); };
+};
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// note: pullup für avr durch high-write auf input: WRITE(X_STOP_PIN,HIGH); 
+template <uint8_t PIN, typename ACTIVEHIGH>
+struct DigitalInput { };
+
+template <uint8_t PIN>
+struct DigitalInput<PIN, ACTIVELOWPIN>: AvrPin<PIN> {
+    static void init() { AvrPin<PIN>::setInput(true); }
+    FWINLINE static bool active() { return AvrPin<PIN>::read() == LOW; }
+    FWINLINE static bool deActive() { return ! active(); }
+};
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+template <uint8_t PIN>
+struct PWMOutput<PIN, ACTIVEHIGHPIN>: AvrPin<PIN> {
+    static void init() { AvrPin<PIN>::setOutput(); }
+    FWINLINE static void write(uint8_t v) { analogWrite(PIN, v); }
+    static void saveState() { AvrPin<PIN>::setInput(false); }
+};
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+//
 // Emergency hard reset/reboot
 //
-inline void systemHardReset() {
-
-    //
-    // Watchdog reset method does not work, it halts but 
-    // does not reset?
-    //
-    // wdt_enable(WDTO_1S);
-    // while (true);
-    
-    asm volatile ("jmp 0 \n");
-}
+void systemHardReset();
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 //
 // Initialize the used timers
 //
-inline void timerInit() {
-
-    //
-    // Setup Timer1 for stepper interrupt and 
-    // homingstepper interrupt.
-    //
-
-    // 
-    // Timer 0 is used by arduino (millis() ...)
-    // Timer 2 is 8bit only
-    // Timer 3 ist heater pwm
-    // Timer 4 ist LED pin und FAN pin
-    // Timer 5 ist digipot
-    //
-
-    // waveform generation = 0100 = CTC
-    TCCR1B &= ~(1<<WGM13);
-    TCCR1B |=  (1<<WGM12);
-    TCCR1A &= ~(1<<WGM11);
-    TCCR1A &= ~(1<<WGM10);
-    
-    // output mode = 00 (disconnected)
-    // Normal port operation, OCnA/OCnB/OCnC disconnected
-    TCCR1A &= ~(3<<COM1A0);
-    TCCR1A &= ~(3<<COM1B0);
-
-    // Generally we use a divider of 8, resulting in a 2MHz timer
-    // frequency on a 16MHz MCU.
-    TCCR1B = (TCCR1B & ~(0x07<<CS10)) | (2<<CS10);
-
-    OCR1A = 0x4000;
-    OCR1B = 0x4000;
-    TCNT1 = 0;
-}
+void timerInit();
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 //

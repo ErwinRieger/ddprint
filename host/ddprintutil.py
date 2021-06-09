@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 #
 #/*
-# This file is part of ddprint - a direct drive 3D printer firmware.
+# This file is part of ddprint - a 3D printer firmware.
 # 
 # Copyright 2015 erwin.rieger@ibrieger.de
 # 
@@ -774,7 +774,7 @@ def zRepeatability(parser):
 
     planner.finishMoves()
     printer.sendCommandParamV(CmdMove, [MoveTypeNormal])
-    printer.sendCommand(CmdEOT)
+    # printer.sendCommand(CmdEOT)
 
     printer.waitForState(StateInit)
 
@@ -800,8 +800,7 @@ def manualMove(args, printer, parser, planner, axis, distance, feedrate=0, absol
         parser.execute_line("G0 F%d %s%f" % (feedrate*60, dimNames[axis], current_position[axis] + distance))
 
     planner.finishMoves()
-
-    printer.sendCommand(CmdEOT)
+    # printer.sendCommand(CmdEOT)
 
     printer.sendCommandParamV(CmdMove, [MoveTypeNormal])
 
@@ -856,7 +855,7 @@ def printFile(args, printer, parser, planner, logObj, gfile, t0, t0_wait, t1, do
                 endOfPrintLift(parser)
 
                 planner.finishMoves()
-                printer.sendCommand(CmdEOT)
+                # printer.sendCommand(CmdEOT)
 
                 f = None
         else:
@@ -870,9 +869,10 @@ def printFile(args, printer, parser, planner, logObj, gfile, t0, t0_wait, t1, do
                 print "#"
 
             status = printer.getStatus()
+            # pprint.pprint(status)
             if doLog:
               printer.ppStatus(status)
-            pprint.pprint(status)
+              printer.top()
 
             if args.testbatch:
 
@@ -911,7 +911,7 @@ def printFile(args, printer, parser, planner, logObj, gfile, t0, t0_wait, t1, do
                 try:
                     tempRamp.next()
                 except StopIteration:
-                    logObj.log( "\nStarting print...\n" )
+                    logObj.log("Starting print...\n" )
 
                     # Send print start command
                     printer.startPrint()
@@ -986,7 +986,7 @@ def insertFilament(args, printer, parser, planner, feedrate):
 
             planner.finishMoves()
             printer.sendCommandParamV(CmdMove, [MoveTypeNormal])
-            printer.sendCommand(CmdEOT)
+            # printer.sendCommand(CmdEOT)
             printer.waitForState(StateInit, wait=0.1)
 
     # Move to mid-position
@@ -996,7 +996,7 @@ def insertFilament(args, printer, parser, planner, feedrate):
     planner.finishMoves()
 
     printer.sendCommandParamV(CmdMove, [MoveTypeNormal])
-    printer.sendCommand(CmdEOT)
+    # printer.sendCommand(CmdEOT)
 
     printer.waitForState(StateInit)
 
@@ -1019,7 +1019,7 @@ def insertFilament(args, printer, parser, planner, feedrate):
     planner.finishMoves()
 
     printer.sendCommandParamV(CmdMove, [MoveTypeNormal])
-    printer.sendCommand(CmdEOT)
+    # printer.sendCommand(CmdEOT)
 
     printer.waitForState(StateInit)
 
@@ -1043,7 +1043,7 @@ def removeFilament(args, printer, parser, planner, feedrate):
     planner.finishMoves()
 
     printer.sendCommandParamV(CmdMove, [MoveTypeNormal])
-    printer.sendCommand(CmdEOT)
+    # printer.sendCommand(CmdEOT)
 
     printer.waitForState(StateInit)
 
@@ -1135,7 +1135,7 @@ def bedLeveling(args, printer, parser, planner):
 
             planner.finishMoves()
             printer.sendCommandParamV(CmdMove, [MoveTypeNormal])
-            printer.sendCommand(CmdEOT)
+            # printer.sendCommand(CmdEOT)
 
             printer.waitForState(StateInit, wait=0.1)
 
@@ -1157,7 +1157,7 @@ def bedLeveling(args, printer, parser, planner):
 
         planner.finishMoves()
         printer.sendCommandParamV(CmdMove, [MoveTypeNormal])
-        printer.sendCommand(CmdEOT)
+        # printer.sendCommand(CmdEOT)
         printer.waitForState(StateInit, wait=0.1)
 
         if (pointNumber == 0) and (not args.relevel):
@@ -1275,7 +1275,7 @@ def execSingleGcode(parser, gcode):
     planner.finishMoves()
 
     printer.sendCommandParamV(CmdMove, [MoveTypeNormal])
-    printer.sendCommand(CmdEOT)
+    # printer.sendCommand(CmdEOT)
 
     printer.waitForState(StateInit)
 
@@ -1416,9 +1416,7 @@ def measureHotendStepResponse(args, printer, matProfile):
 
     ## Eingangssprung, nicht die volle leistung, da sonst die temperatur am ende
     ## der sprungantwort zu stark überschwingt und zu hoch wird.
-    # TODO: move to printer profile
-    Xo = 100.0 # UM2
-    Xo = 65.0  # Jennyprinter
+    Xo = printer.printerProfile.getXo()
     interval = 0.1
 
     navg = int(round(30/interval))
@@ -1447,7 +1445,7 @@ def measureHotendStepResponse(args, printer, matProfile):
     "dt": %f,
     "startTemp": %f,
     "columns":  "time temperature",
-    """ % (printer.getPrinterName(), Xo, interval, tempStart))
+    """ % (printer.getPrinterName(args), Xo, interval, tempStart))
 
     print "Current hotend temp: %.f" % tempStart
 
@@ -1516,7 +1514,7 @@ def jsonLoad(f):
     s = ""
     for l in f.readlines():
         l = l.strip()
-        if l.startswith("#"):
+        if l.startswith('"#') or l.startswith("#"):
             # print "skip comment:", l
             continue
         s += l
@@ -1583,7 +1581,7 @@ def genTempTable(printerProfile, nozzleProfile, matProfile):
 
         steprate = espeed * spm
         tvs = 1.0/steprate
-        timerValue = min(int(fTimer / steprate), 0xffff)
+        timerValue = min(int(fTimer / steprate), 0xffff) 
 
         print "    Temp: %f, max flowrate: %.2f mm³/s, max espeed: %.2f mm/s, steps/s: %d, steprate: %d us, timervalue: %d" % (t, flowrate, espeed, int(steprate), int(tvs*1000000), timerValue)
         table.append(timerValue)
@@ -1626,31 +1624,26 @@ def printTempTable(temp, tempTable):
 
 def downloadTempTable(printer, nozzleProfile, matProfile):
 
-    (startTemp, table) = genTempTable(printer.printerProfile, nozzleProfile, matProfile)
-
-    payload = struct.pack("<HB", startTemp, NExtrusionLimit)
+    (startTemp, tempTable) = genTempTable(printer.printerProfile, nozzleProfile, matProfile)
 
     print "Downloading TempTable..."
 
-    for timerValue in table:
-        payload += struct.pack("<H", timerValue)
-    resp = printer.query(CmdSetTempTable, binPayload=payload)
-    assert(handleGenericResponse(resp))
+    printer.setTempTable(startTemp, NExtrusionLimit, tempTable)
 
 ####################################################################################################
 
 def downloadDummyTempTable(printer):
 
+    timerValue = int(fTimer / printer.printerProfile.getMaxStepperFreq())
+
+    tempTable = []
+    for i in range(NExtrusionLimit):
+        tempTable.append( timerValue )
+
     print "Downloading Dummy TempTable..."
 
     # todo: use maxtemp - NExtrusionLimit as startvalue
-    payload = struct.pack("<HB", 170, NExtrusionLimit)
-
-    for i in range(NExtrusionLimit):
-        payload += struct.pack("<H", int(fTimer / printer.printerProfile.getMaxStepperFreq()))
-
-    resp = printer.query(CmdSetTempTable, binPayload=payload)
-    assert(handleGenericResponse(resp))
+    printer.setTempTable(170, NExtrusionLimit, tempTable)
 
 ####################################################################################################
 
@@ -1683,7 +1676,8 @@ def measureFlowrateStepResponse(args, parser):
     printer.commandInit(args, PrinterProfile.getSettings())
 
     # Disable flowrate limit
-    printer.sendCommandParamV(CmdEnableFRLimit, [packedvalue.uint8_t(0)])
+# xxx not needed if using ContinuousE mode
+    # printer.sendCommandParamV(CmdEnableFRLimit, [packedvalue.uint8_t(0)])
 
     # Disable temp-flowrate limit
     downloadDummyTempTable(printer)
@@ -1694,7 +1688,7 @@ def measureFlowrateStepResponse(args, parser):
 
     planner.finishMoves()
     printer.sendCommandParamV(CmdMove, [MoveTypeNormal])
-    printer.sendCommand(CmdEOT)
+    # printer.sendCommand(CmdEOT)
     printer.waitForState(StateInit)
 
     printer.sendCommandParamV(CmdFanSpeed, [packedvalue.uint8_t(100)])
@@ -1753,7 +1747,7 @@ def measureFlowrateStepResponse(args, parser):
     "startTemp": %f,
     "columns":  "time targetFlowrate ratio flowrate temp",
     "data": [
-    """ % (printer.getPrinterName(), pwm0, sprung, dt, startTemp))
+    """ % (printer.getPrinterName(args), pwm0, sprung, dt, startTemp))
     ####################################################################################################
 
     print "setting initial pwm:", pwm0
@@ -1852,8 +1846,9 @@ def measureFlowrateStepResponse(args, parser):
     # Stop continuos e-mode
     printer.sendCommandParamV(CmdContinuousE, [packedvalue.uint16_t(0)])
 
+# xxx not needed if using ContinuousE mode
     # Re-enable flowrate limit
-    printer.sendCommandParamV(CmdEnableFRLimit, [packedvalue.uint8_t(1)])
+    # printer.sendCommandParamV(CmdEnableFRLimit, [packedvalue.uint8_t(1)])
 
 
 ####################################################################################################
@@ -1862,12 +1857,11 @@ def measureTempFlowrateCurve(args, printer, parser, planner):
 
     aFilament = planner.matProfile.getMatArea()
 
-    # printer.commandInit(args, pidSet="pidMeasure") # Use slow pid
-    # ddhome.home(args, printer, parser, planner)
     ddhome.assureIsHomed(args, printer, parser, planner)
 
+# xxx not needed if using ContinuousE mode
     # Disable flowrate limit
-    printer.sendCommandParamV(CmdEnableFRLimit, [packedvalue.uint8_t(0)])
+    # printer.sendCommandParamV(CmdEnableFRLimit, [packedvalue.uint8_t(0)])
 
     # Disable temp-flowrate limit
     downloadDummyTempTable(printer)
@@ -1878,7 +1872,7 @@ def measureTempFlowrateCurve(args, printer, parser, planner):
 
     planner.finishMoves()
     printer.sendCommandParamV(CmdMove, [MoveTypeNormal])
-    printer.sendCommand(CmdEOT)
+    # printer.sendCommand(CmdEOT)
     printer.waitForState(StateInit)
 
     printer.sendCommandParamV(CmdFanSpeed, [packedvalue.uint8_t(100)])
@@ -1888,7 +1882,6 @@ def measureTempFlowrateCurve(args, printer, parser, planner):
     feedrate = (args.flowrate or 1.0) / aFilament
 
     dt = printer.printerProfile.getFilSensorIntervalI()
-    steps_per_mm = printer.printerProfile.getStepsPerMMI(A_AXIS)
     pcal = printer.printerProfile.getFilSensorCalibration()
 
     ####################################################################################################
@@ -1898,7 +1891,7 @@ def measureTempFlowrateCurve(args, printer, parser, planner):
 
     # Running average of hotend temperature
     tempAvg = movingavg.MovingAvg(int(round(1.0/dt)))
-    flowAvg = movingavg.MovingAvgReadings(int(round(1.0/dt)))
+    flowAvg = movingavg.MovingAvgReadings(int(round(1.0/dt)), startavg = 1.0)
 
     minGrip = 0.90
     data = []
@@ -1934,17 +1927,12 @@ def measureTempFlowrateCurve(args, printer, parser, planner):
         tempAvg.add(actT1)
 
         fsreadings = printer.getFSReadings()
-        flowAvg.addReadings(fsreadings)
+        flowAvg.addReadings(fsreadings, pcal)
 
         t1Avg = tempAvg.mean()
+        r = flowAvg.mean()
 
-        meanShort = flowAvg.mean()
         targetFlowRate = feedrate * aFilament
-
-        # should-be speed:
-        stepsPerInterval = feedrate * steps_per_mm * dt
-
-        r = meanShort / (stepsPerInterval * pcal)
 
         currentFlowrate = targetFlowRate * r
 
@@ -1952,9 +1940,9 @@ def measureTempFlowrateCurve(args, printer, parser, planner):
                 (time.time()-tStart, t1Avg, pwm, targetFlowRate, currentFlowrate, r),
         sys.stdout.flush()
 
-        if r > 10:
+        if r > 2:
 
-            print "mean, stepsPerInterval, pcal", meanShort, stepsPerInterval, pcal
+            print "mean, pcal", pcal
 
             print "fsreadings:", fsreadings
 
@@ -2009,8 +1997,9 @@ def measureTempFlowrateCurve(args, printer, parser, planner):
     # Stop continuos e-mode
     printer.sendCommandParamV(CmdContinuousE, [packedvalue.uint16_t(0)])
 
+# xxx not needed if using ContinuousE mode
     # Re-enable flowrate limit
-    printer.sendCommandParamV(CmdEnableFRLimit, [packedvalue.uint8_t(1)])
+    # printer.sendCommandParamV(CmdEnableFRLimit, [packedvalue.uint8_t(1)])
 
     ####################################################################################################
     dfr = data[1][0] - data[0][0]
@@ -2114,7 +2103,7 @@ def xstartPrint(args, printer, parser, planner, t1):
                     # Reading done
                     print "Parsed all gcode lines."
                     planner.finishMoves()
-                    printer.sendCommand(CmdEOT)
+                    # printer.sendCommand(CmdEOT)
                     f = None
             else:
                 time.sleep(0.5)
@@ -2123,6 +2112,7 @@ def xstartPrint(args, printer, parser, planner, t1):
 
                 status = printer.getStatus()
                 printer.ppStatus(status)
+                printer.top()
 
                 #
                 # Check temp and start print
@@ -2164,8 +2154,6 @@ def measureTempFlowrateCurve2(args, printer, parser, planner):
     def tempGood(t, t1, percent):
         return abs(t1 - t) <= (t1*percent)
 
-    # Hardcorded values
-
     print ""
     print "measureTempFlowrateCurve2():"
     print ""
@@ -2178,8 +2166,6 @@ def measureTempFlowrateCurve2(args, printer, parser, planner):
     t1 = goodtemp + tempSpan / 2
 
     ####################################################################################################
-
-    # timeConstant = printer.printerProfile.getTuI() + printer.printerProfile.getTgI() 
 
     p0pwm = planner.matProfile.getP0pwm() # xxx hardcoded in firmware!
 

@@ -21,51 +21,39 @@
     #include <avr/interrupt.h>
 #endif
 
-#include "serialport.h"
+#include "rxbuffer.h"
 #include "crc16.h"
 #include "hal.h"
 
 
-#if !defined(DDSim)
-SerialPort::SerialPort()
-{
-    init();
-}
-#endif
-
-void SerialPort::init()
-{
-    ringBufferInit();
-}
-
-void SerialPort::peekChecksum(uint16_t *checksum, uint8_t count) {
+void RxBuffer::peekChecksum(uint16_t *checksum, uint8_t count) {
 
     for (uint8_t i=0; i<count; i++)
         *checksum = _crc_ccitt_update(*checksum, peekN(i));
 }
 
-void SerialPort::cobsInit(uint16_t payloadLength) {
+void RxBuffer::cobsInit(uint16_t payloadLength) {
 
     cobsLen = payloadLength;
     atCobsBlock();
 }
 
-void SerialPort::atCobsBlock() {
+void RxBuffer::atCobsBlock() {
     cobsCodeLen = 0;
 }
 
-uint8_t SerialPort::readNoCheckCobs(void)
+uint8_t RxBuffer::readNoCheckCobs(void)
 {
 
     if (cobsCodeLen == 0) {
         cobsLen--;
-        cobsCodeLen = readNoCheckNoCobs();
+        cobsCodeLen = pop();
     }
 
     if (cobsCodeLen == 0xFF) {
         cobsLen--;
 
-        uint8_t c = readNoCheckNoCobs();
+        uint8_t c = pop();
         simassert(c);
         return c;
     }
@@ -78,17 +66,12 @@ uint8_t SerialPort::readNoCheckCobs(void)
     cobsLen--;
     cobsCodeLen--;
 
-    uint8_t c = readNoCheckNoCobs();
+    uint8_t c = pop();
     simassert(c);
     return c;
 }
 
-uint8_t SerialPort::readNoCheckNoCobs(void)
-{
-    return pop();
-}
-
-float SerialPort::readFloatNoCheckCobs()
+float RxBuffer::readFloatNoCheckCobs()
 {
 
     union {
@@ -104,17 +87,7 @@ float SerialPort::readFloatNoCheckCobs()
     return floatBuf.f;
 }
 
-#if 0
-uint16_t SerialPort::readUInt16NoCheckNoCobs()
-{
-
-    uint16_t i = *(uint16_t*)(buffer + tail);
-    tail += 2;
-    return i;
-}
-#endif
-
-int16_t SerialPort::readInt16NoCheckCobs()
+int16_t RxBuffer::readInt16NoCheckCobs()
 {
 
     uint8_t  b1 = readNoCheckCobs();
@@ -122,7 +95,7 @@ int16_t SerialPort::readInt16NoCheckCobs()
     return (b2<<8) + b1;
 }
 
-uint16_t SerialPort::readUInt16NoCheckCobs()
+uint16_t RxBuffer::readUInt16NoCheckCobs()
 {
 
     uint8_t  b1 = readNoCheckCobs();
@@ -130,7 +103,7 @@ uint16_t SerialPort::readUInt16NoCheckCobs()
     return (b2<<8) + b1;
 }
 
-int32_t SerialPort::readInt32NoCheckCobs()
+int32_t RxBuffer::readInt32NoCheckCobs()
 {
 
     uint8_t  b1 = readNoCheckCobs();
@@ -140,7 +113,7 @@ int32_t SerialPort::readInt32NoCheckCobs()
     return (b4<<24) + (b3<<16) + (b2<<8) + b1;
 }
 
-uint32_t SerialPort::readUInt32NoCheckCobs()
+uint32_t RxBuffer::readUInt32NoCheckCobs()
 {
 
     uint8_t   b1 = readNoCheckCobs();
@@ -150,56 +123,56 @@ uint32_t SerialPort::readUInt32NoCheckCobs()
     return (b4<<24) + (b3<<16) + (b2<<8) + b1;
 }
 
+void RxBuffer::readScaledUInt32NoCheckCobs(ScaledUInt32 &scaledInt) {
+
+    scaledInt.value = readUInt32NoCheckCobs();
+    scaledInt.shift = readNoCheckCobs();
+}
+
 #if defined(AVR)
 
-void SerialPort::begin(long baud)
+void RxBuffer::begin(uint32_t baud)
 {
-  uint16_t baud_setting;
-  bool useU2X = true;
 
-#if F_CPU == 16000000UL && SERIAL_PORT == 0
-  // hardcoded exception for compatibility with the bootloader shipped
-  // with the Duemilanove and previous boards and the firmware on the 8U2
-  // on the Uno and Mega 2560.
-  if (baud == 57600) {
-    useU2X = false;
-  }
-#endif
+  M_UCSRxA = 0;
 
-  if (useU2X) {
-    M_UCSRxA = 1 << M_U2Xx;
-    baud_setting = (F_CPU / 4 / baud - 1) / 2;
-  } else {
-    M_UCSRxA = 0;
-    baud_setting = (F_CPU / 8 / baud - 1) / 2;
-  }
-
-  // assign the baud_setting, a.k.a. ubbr (USART Baud Rate Register)
-  M_UBRRxH = baud_setting >> 8;
-  M_UBRRxL = baud_setting;
+  setBaudrate(baud);
 
   sbi(M_UCSRxB, M_RXENx);
   sbi(M_UCSRxB, M_TXENx);
   sbi(M_UCSRxB, M_RXCIEx);
 }
 
-// #if defined(M_USARTx_RX_vect)
+// Parameter baud is just the lowbyte of the 
+// UBRR register.
+void RxBuffer::setBaudrate(uint32_t baudRate) {
+
+    M_UBRRxH = 0;
+    M_UBRRxL = baudRate;
+}
+
 // Serial interrupt routine
 SIGNAL(M_USARTx_RX_vect)
 {
-
     // // Check error status bits for frame-/overrun- and parity error
-    // serialPort.rxerror |= M_UCSRxA & 0x1C;
+    // RxBuffer.rxerror |= M_UCSRxA & 0x1C;
+
+    //
+    // Don't check for full() buffer here:
+    //
+    // Buffer overrun only if mainloop is to slow().
+    //
+    // RxCRC and RxTimeOut errors if baudrate is to high.
+    //
     unsigned char c  =  M_UDRx;
-    serialPort.store_char(c);
+    rxBuffer.pushVal(c);
 }
-// #endif
 
 #endif
 
 #if defined(__arm__)
 // Note: Fixed usage of USART1
-void SerialPort::begin(long baud)
+void RxBuffer::begin(uint32_t baud)
 {
 
     gpio_set_af_mode(BOARD_USART1_TX_PIN, GPIO_AFMODE_USART1_3);
@@ -212,9 +185,19 @@ void SerialPort::begin(long baud)
 
     nvic_irq_enable(USART1->irq_num);
 
-    usart_set_baud_rate(USART1, baud);
+    setBaudrate(baud);
 
     usart_enable(USART1);
+}
+
+void RxBuffer::end() {
+
+    nvic_irq_disable(USART1->irq_num);
+}
+
+void RxBuffer::setBaudrate(uint32_t baudRate) {
+
+    usart_set_baud_rate(USART1, baudRate);
 }
 
 //
@@ -227,13 +210,14 @@ void SerialPort::begin(long baud)
 // See https://stm32duinoforum.com/forum/viewtopic_f_53_t_2759.html, also.
 //
 extern "C" {
+
   void __irq_usart1(void) {
 
 	int sr = USART1->regs->SR;
 	if(sr & USART_SR_RXNE) {
-		// rb_safe_insert(&dev->rbRX, (uint8)dev->regs->DR);
+
         unsigned char c = USART1->regs->DR;
-        serialPort.store_char(c);
+        rxBuffer.pushVal(c);
     }
     else if(sr & USART_SR_ORE) {
         USART1->regs->DR;
@@ -243,7 +227,7 @@ extern "C" {
 
 #endif
 
-SerialPort serialPort;
+RxBuffer rxBuffer;
 
 
 

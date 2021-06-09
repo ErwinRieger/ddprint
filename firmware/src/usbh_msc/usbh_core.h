@@ -9,6 +9,9 @@
 // Includes
 //-------------------------------------------------------------- 
 
+// #include <Arduino.h>
+#include "mdebug.h"
+
 extern "C" {
     #include "usbh_def.h"
     #include "usb_core.h"
@@ -100,9 +103,6 @@ typedef enum {
 } CMD_State;  
 
 
-// class USBH_StateMachineTimeout() 
-
-// template <typename StateEnumType, const char* name>
 template <typename StateEnumType>
 class USBH_StateMachine {
 

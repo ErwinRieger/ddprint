@@ -1,5 +1,6 @@
+# -*- coding: utf-8 -*-
 #/*
-# This file is part of ddprint - a direct drive 3D printer firmware.
+# This file is part of ddprint - a 3D printer firmware.
 # 
 # Copyright 2015 erwin.rieger@ibrieger.de
 # 
@@ -16,7 +17,6 @@
 # You should have received a copy of the GNU General Public License
 # along with ddprint.  If not, see <http://www.gnu.org/licenses/>.
 #*/
-
 
 Uint8Max = pow(2, 8) - 1
 Uint16Max = pow(2, 16) - 1
@@ -37,7 +37,8 @@ StepDataTypeRaw       = 1
 #
 # Board config, move to printer-profile ?
 #
-fTimer = 2000000.0 # Hz
+fCPU =  16000000.0 # F_CPU, Hz
+fTimer = 2000000.0
 maxTimerValue16 = Uint16Max
 
 ############################################################################
@@ -67,7 +68,6 @@ SOH = 0x0 # 'Start of header', startbit for COBS encoded data block.
 #
 NExtrusionLimit = 100
 
-
 ############################################################################
 #
 # Acceleration planning
@@ -94,6 +94,21 @@ AdvanceMinRamp = 0.1
 # Layer 0 hotend temperature increase
 #
 Layer0TempIncrease = 10
+
+############################################################################
+#
+# Scalingfactor for temperatures, firmware uses fractions of °C
+#
+TempScale = 16
+
+############################################################################
+#
+# To compute PID scaling factors, integer-math
+#
+PidFrequency = 10.0 # [Hz] PID is called every 0.1 seconds, must match firmware
+PidPrecision = 10   # Number of bits
+
+# PidKpScale = (float(pow(2, 14)) / TempScale)
 
 ############################################################################
 #

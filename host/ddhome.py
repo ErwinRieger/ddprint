@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 #
 #/*
-# This file is part of ddprint - a direct drive 3D printer firmware.
+# This file is part of ddprint - a 3D printer firmware.
 # 
 # Copyright 2015 erwin.rieger@ibrieger.de
 # 
@@ -53,7 +53,7 @@ def homeMove(parser, dim, direction, dist, fakeHomingEndstops, feedRateFactor=1.
 
     # Send homing command
     printer.sendCommandParamV(CmdMove, [MoveTypeHoming])
-    printer.sendCommand(CmdEOT)
+    # printer.sendCommand(CmdEOT)
 
     printer.waitForState(StateInit, wait=0.25, log=True)
 
@@ -128,7 +128,7 @@ def home(args, printer, parser, planner, force=False):
 
             planner.finishMoves()
             printer.sendCommandParamV(CmdMove, [MoveTypeNormal])
-            printer.sendCommand(CmdEOT)
+            # printer.sendCommand(CmdEOT)
 
             printer.waitForState(StateInit, wait=0.25, log=True)
 

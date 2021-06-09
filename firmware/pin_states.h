@@ -25,12 +25,10 @@
 struct ACTIVEHIGHPIN { };
 struct ACTIVELOWPIN { };
 
-template <uint8_t PIN, typename ACTIVEHIGH>
+template <const uint8_t PIN, typename ACTIVEHIGH>
 struct DigitalOutput { };
 
-template <uint8_t PIN, typename ACTIVEHIGH>
+template <const uint8_t PIN, typename ACTIVEHIGH>
 struct PWMOutput { };
 
-// template <uint8_t PIN, uint8_t CHANNEL>
-// struct AnalogInput { };
 

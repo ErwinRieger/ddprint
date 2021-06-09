@@ -17,7 +17,7 @@
 * along with ddprint.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "ddserial.h"
+#include "txbuffer.h"
 
 TxBuffer txBuffer;
 

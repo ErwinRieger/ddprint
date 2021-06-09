@@ -1,3 +1,9 @@
+/************************************************************************************************
+* Note by erwin.rieger@ibrieger.de:
+* This file is part of ddprint - a 3d printer firmware.
+* The Origin of this code is Ultimaker2Marlin (https://github.com/Ultimaker/Ultimaker2Marlin).
+************************************************************************************************/
+
 /*
   temperature.h - temperature controller
   Part of Marlin
@@ -39,28 +45,22 @@
   # define ARRAY_BY_EXTRUDERS(v1, v2, v3) { v1 }
 #endif
 
-extern uint8_t target_temperature_bed;
-extern float current_temperature_bed;
+extern int16_t target_temperature_bed;
+extern int16_t current_temperature_bed;
 
-extern uint16_t target_temperature[EXTRUDERS];
-extern float current_temperature[EXTRUDERS];
+extern int16_t target_temperature[EXTRUDERS];
+extern int16_t current_temperature[EXTRUDERS];
 
 void disable_heater();
 void tp_init();  //initialise the heating
 
-inline void setTargetHotend(const float &celsius, uint8_t extruder) {
+FWINLINE void setTargetHotend(int16_t celsius, uint8_t extruder) {
   target_temperature[extruder] = celsius;
 };
 
-inline void setTargetBed(const float &celsius) {
+FWINLINE void setTargetBed(int16_t celsius) {
   target_temperature_bed = celsius;
 };
-
-void min_temp_error(uint8_t e);
-void max_temp_error(uint8_t e);
-
-void bed_min_temp_error(void);
-void bed_max_temp_error(void);
 
 #endif
 

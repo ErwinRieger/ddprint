@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 #/*
-# This file is part of ddprint - a direct drive 3D printer firmware.
+# This file is part of ddprint - a 3D printer firmware.
 # 
 # Copyright 2015 erwin.rieger@ibrieger.de
 # 
@@ -80,6 +80,7 @@ from ddprintstates import *
 
 #
 # For float commandline arg range check
+# todo: help (-h) funktioniert nicht mehr
 #
 class ArgRange(object):
     def __init__(self, start, end):
@@ -92,9 +93,9 @@ class ArgRange(object):
 
 def main():
 
-    argParser = argparse.ArgumentParser(description='%s, Direct Drive USB Print.' % sys.argv[0])
+    argParser = argparse.ArgumentParser(description='%s, USB Print.' % sys.argv[0])
 
-    argParser.add_argument("-b", dest="baud", action="store", type=int, help="Baudrate, default 500000.", default=500000)
+    argParser.add_argument("-b", dest="baud", action="store", type=int, help="Baudrate, default 1Mbaud.", default=1000000)
     defaultSerialDev = os.getenv("DDPRINTDEV") or os.getenv("dev") or "/dev/ttyACM0"
     argParser.add_argument("-d", dest="device", action="store", type=str, help="Device to use, default: %s." % defaultSerialDev, default=defaultSerialDev)
 
@@ -118,7 +119,6 @@ def main():
 
     # testbatch: assume dummyTempTable, fakeendstop, noCoolDown, dont wait for print-done
     argParser.add_argument("-testbatch", action="store", type=bool, help="Debug: testbatch.", default=False)
-
 
     argParser.add_argument("-pidset", dest="pidset", action="store", type=str, help="Debug: Specify PID parameter sets to use (ZNCH).", default="ZNCH")
 
@@ -216,9 +216,10 @@ def main():
 
     sp = subparsers.add_parser("getTemps", help=u"Get current temperatures (Bed, Extruder1, [Extruder2]).")
 
-    sp = subparsers.add_parser("getTempTable", help=u"Get temperature-speed table from printer, print it to stdout and to /tmp/temptable_printer.txt.")
-
     sp = subparsers.add_parser("getstatus", help=u"Get current printer status.")
+    sp = subparsers.add_parser("stat", help=u"Same as getstatus.")
+
+    sp = subparsers.add_parser("top", help=u"Get 'process stats' from printer.")
 
     sp = subparsers.add_parser("zRepeatability", help=u"Debug: Move Z to 10 random positions to test repeatability.")
 
@@ -282,17 +283,19 @@ def main():
             print "*** Status: ***"
             pprint.pprint(status)
 
+            printer.top()
+
             pos = printer.getPos()
             print "*** Printer POS: %s ***" % str(pos)
 
-            counts = printer.getFilSensor()
-            print "*** Filament pos: %s ***" % str(counts)
+            # counts = printer.getFilSensor()
+            # print "*** Filament pos: %s ***" % str(counts)
 
             freeMem = printer.getFreeMem()
             print "*** Free memory: %d bytes ***" % freeMem
 
-            print "*** FRS readings: ***"
-            pprint.pprint(printer.getFSReadings())
+            # print "*** FRS readings: ***"
+            # pprint.pprint(printer.getFSReadings())
 
             try:
                 (cmd, payload) = printer.readResponse()        
@@ -507,14 +510,7 @@ def main():
         temps = printer.getTemps()
         print "temperatures: ", temps
 
-    elif args.mode == 'getTempTable':
-
-        printer = Printer()
-        printer.commandInit(args)
-        (baseTemp, tempTable) = printer.getTempTable()
-        util.printTempTable(baseTemp, tempTable)
-
-    elif args.mode == "getstatus":
+    elif args.mode == "getstatus" or args.mode == "stat":
 
         printer = Printer()
         printer.initSerial(args.device, args.baud)
@@ -522,6 +518,12 @@ def main():
         print "Status: "
         pprint.pprint(status)
         printer.ppStatus(status)
+
+    elif args.mode == "top":
+
+        printer = Printer()
+        printer.initSerial(args.device, args.baud)
+        printer.top()
 
     elif args.mode == 'home':
 
@@ -584,13 +586,18 @@ def main():
 
         ddtest.execGcode(args)
 
-    elif args.mode == 'test':
+    elif args.mode == "test":
 
         printer = Printer()
         printer.commandInit(args)
 
-        while True:
-            pprint.pprint(printer.getFSReadings())
+        # while True:
+            # print "FSReadings:"
+            # pprint.pprint(printer.getFSReadings())
+            # time.sleep(1)
+        cal = printer.printerProfile.getFilSensorCalibration()
+        for (stepper, sensor) in printer.getFSReadings():
+            print "dSteps: %d, dSensor: %d, slip: %.2f" % (stepper, sensor, stepper*cal/sensor)
 
     else:
         print "Unknown/not implemented command: ", args.mode

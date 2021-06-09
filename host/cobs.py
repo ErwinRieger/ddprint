@@ -18,13 +18,17 @@
 # along with ddprint.  If not, see <http://www.gnu.org/licenses/>.
 #*/
 
-import sys, struct, crc16, cStringIO, zlib
+import sys, struct, crc16, zlib
 
 LenLen    = 1
 LenHeader = 1+1+1+LenLen+1+2
-# Rxbuffer in firmare is 256 bytes, but for simpler index handling
-# we use only 255 bytes of it.
-LenCobs   = 255 - LenHeader
+
+MaxCobsBlock = 254
+
+# Size of sectors of printer mass-storage
+SectorSize = 512
+
+#####################################################################
 
 #
 # Paketgrösse insgesamt max. 256 bytes
@@ -56,7 +60,11 @@ nullByte = chr(0)
 # Todo: check cobs-R for more optimization:
 # https://pythonhosted.org/cobs/cobsr-intro.html, https://pypi.org/project/cobs/
 #
-def encodeCobs_cmd_packed(cmd, packedCmd, stream, blockLen=LenCobs):
+def encodeCobs_cmd_packed(cmd, packedCmd, stream):
+
+# xxx debug
+    print "XXXX no zip in encodeCobs_cmd_packed"
+    return (cmd, encodeCobs512(stream))
 
     cobsBody = ""
     cobsResult = ""
@@ -75,7 +83,7 @@ def encodeCobs_cmd_packed(cmd, packedCmd, stream, blockLen=LenCobs):
     if len(data) > len(rawdata)*0.95:
         # xxx ugly, do this compressible test in move.py...
         stream.seek(fpos)
-        return (cmd, encodeCobsNoPack(stream, blockLen))
+        return (cmd, encodeCobs512(stream)) # , blockLen))
 
     # xxx waste one byte if lastbyte is not 0x0
     if data[-1] != nullByte:
@@ -93,79 +101,44 @@ def encodeCobs_cmd_packed(cmd, packedCmd, stream, blockLen=LenCobs):
     assert(len(cobsResult) == len(data))
     return (packedCmd, cobsResult)
 
-def encodeCobsNoPack(stream, blockLen=LenCobs):
+# Encode up to 512 bytes payload
+def encodeCobs512(payload):
+
+    assert(len(payload) <= SectorSize)
 
     cobsBody = ""
     cobsResult = ""
+    # lastIsZero = payload[-1] == nullByte
 
-    data = stream.read(blockLen-1)
-    if not data:
-        return None
-
-    fpos = stream.tell()
-    lastByte2 = stream.read(1)
-
-    lastByte1 = data[-1]
-
-    if lastByte2 == nullByte:
-
-        # print "Cobs packet ends in 0 -> no overhead"
-
-        data += lastByte2
-        for c in data:
-            if c == nullByte:
-                cobsResult += chr(len(cobsBody)+1)
-                cobsResult += cobsBody
-                cobsBody = ""
-            else:
-                cobsBody += c
-
-        assert(len(cobsResult) <= blockLen)
-        assert(len(cobsResult) == len(data))
-        return cobsResult
-
-    # short block, push back lastByte2
-    stream.seek(fpos)
-
-    if lastByte1 == nullByte:
-
-        # print "Cobs packet ends with 0 -> no overhead"
-
-        for c in data:
-            if c == nullByte:
-                cobsResult += chr(len(cobsBody)+1)
-                cobsResult += cobsBody
-                cobsBody = ""
-            else:
-                cobsBody += c
-
-        assert(len(cobsResult) <= blockLen-1)
-        assert(len(cobsResult) == len(data))
-        return cobsResult
-
-    # print "Cobs packet does not end with 0 -> one byte overhead"
-
-    size = len(data)+1
-    for pos in range(size):
-
-        if pos==size-1:
-            cobsResult += chr(0xff)
-            cobsResult += cobsBody
-        elif data[pos] == nullByte:
-            # print "found 0 at", pos, len(cobsBody)
+    lCobsBody = 0
+    for c in payload:
+        if c == nullByte:
             cobsResult += chr(len(cobsBody)+1)
             cobsResult += cobsBody
             cobsBody = ""
+            lCobsBody = 0
         else:
-            cobsBody += data[pos]
+            cobsBody += c
+            lCobsBody += 1
 
-    assert(len(cobsResult) <= blockLen)
-    assert(len(cobsResult) == len(data)+1)
+            if lCobsBody == MaxCobsBlock:
+                cobsResult += chr(0xff) # Special max. length block
+                cobsResult += cobsBody
+                cobsBody = ""
+                lCobsBody = 0
+
+    # Handle "no null at end" case
+    if cobsBody:
+        cobsResult += chr(len(cobsBody)+1)
+        cobsResult += cobsBody
+
+    # print "cobs    :", len(cobsResult), cobsResult.encode("hex")
+
+    # print "encodeCobs512(): todo remove decode-test!"
+    # (deco, _) = decodeCobs512(cobsResult)
+    # assert(deco == payload)
+
     return cobsResult
-
-def encodeCobsString(s, blockLen=LenCobs):
-    s = cStringIO.StringIO(s)
-    return encodeCobsNoPack(s, blockLen)
 
 def decodeCobs(data):
 
@@ -190,5 +163,36 @@ def decodeCobs(data):
         result += nullByte
 
     return result
+
+def decodeCobs512(data):
+
+    assert(len(data) >= 512)
+
+    result = ""
+    pos = 0
+    bytesRead = 0
+    bytesWritten = 0
+
+    while bytesWritten < SectorSize:
+
+        cobsCode = ord(data[pos])
+        bytesRead += 1
+        pos += 1
+
+        for i in range(cobsCode-1):
+
+            assert(bytesWritten < SectorSize)# if bytesWritten < SectorSize:
+            result += data[pos]
+            bytesRead += 1
+            bytesWritten +=1
+            pos += 1
+
+        # Length of last cobs subblock points
+        # intentionally beyond the end
+        if bytesWritten < SectorSize and cobsCode != 0xff:
+            result += nullByte
+            bytesWritten +=1
+
+    return (result, bytesRead)
 
 

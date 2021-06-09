@@ -8,7 +8,7 @@
 //--------------------------------------------------------------
 // Includes
 //--------------------------------------------------------------
-#include "mdebug.h"
+// #include "mdebug.h"
 #include "usbh_core.h"
 
 #define HC_MAX           USB_OTG_MAX_TX_FIFOS

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 #
 #/*
-# This file is part of ddprint - a direct drive 3D printer firmware.
+# This file is part of ddprint - a 3D printer firmware.
 # 
 # Copyright 2015 erwin.rieger@ibrieger.de
 # 
@@ -24,7 +24,8 @@
 # at second connect).
 #
 import time, struct, crc_ccitt_kermit, termios, pprint, sys, argparse
-import dddumbui, cobs, ddprintutil as util, types
+import types
+import dddumbui, cobs, intmath, ddprintutil as util
 
 from serial import Serial, SerialException, SerialTimeoutException
 from ddconfig import debugComm
@@ -91,6 +92,7 @@ class Printer(Serial):
         self.lastCommands = {}
 
         # Retry counter on tx errors
+        self.sendErrors = 0
         self.txErrors = 0
 
         self.printStartedAt = None
@@ -106,6 +108,15 @@ class Printer(Serial):
             lastSteps = 0,
             lastSDReader = 0,
             )
+
+        self.baudrates = [1000000, 500000, 250000]
+        self.baudrateIndex = 0 # Start with 1000Kbaud
+        self.lastAutobaud = 0
+        self.throttleAutoBaud = 60
+
+        # debug
+        # for i in [250000, 500000, 1000000]:
+            # print "BRR value for baudrate %d: %d" % (i, (fCPU+i*8)/(i*16)-1)
 
     @classmethod
     def get(cls):
@@ -138,10 +149,7 @@ class Printer(Serial):
             # empfangen werden konnte. Desswegen kein resend notwendig, und es
             # kann so getan werden, als ob ein ACK empfangen wurde.
             return ResendWasOK
-        # elif self.lineNr > lastLine:
-        # elif self.lineNr < lastLine:
 
-        self.gui.log("Scheduling resend of command:", lastLine)
         return self.lastCommands[lastLine]
 
     # Check a printer response for an error
@@ -215,8 +223,16 @@ class Printer(Serial):
 
             lastLine = ord(payload)
             self.gui.logComm("RespRXCRCError:", lastLine)
+
             if handleError:
-                return self.commandResend(lastLine)
+
+                rs = self.commandResend(lastLine)
+
+                if rs == ResendWasOK:
+                    return rs
+
+                self.sendErrors += 1
+                return rs
 
         elif respCode == RespSerNumberError:
 
@@ -228,9 +244,23 @@ class Printer(Serial):
         elif respCode == RespRXTimeoutError:
 
             lastLine = ord(payload)
-            # self.gui.logComm("RespRXTimeoutError:", lastLine)
+            self.gui.logComm("RespRXTimeoutError:", lastLine)
             if handleError:
-                return self.commandResend(lastLine)
+
+                rs = self.commandResend(lastLine)
+
+                if rs == ResendWasOK:
+                    return rs
+
+                self.sendErrors += 1
+                return rs
+
+        # elif respCode == RespRXFullError:
+
+            # lastLine = ord(payload)
+            # self.gui.logComm("RespRXTFullEror:", lastLine)
+            # if handleError:
+                # return self.commandResend(lastLine)
 
         elif respCode == RespUnderrun:
 
@@ -238,6 +268,10 @@ class Printer(Serial):
             self.gui.logError("ERROR: lastsize: %d, lastsize2: %d, minTimer: %d, swap: %d, sdreader: %d" % (p1, p2, p3, p4, p5))
             if handleError:
                 raise FatalPrinterError(ResponseNames[respCode])
+
+        elif respCode == RespUnsolicitedMsg:
+
+            self.handleUnsolicitedMsg(respCode, payload)
 
         elif respCode < 128: # Range of errorcodes
 
@@ -258,9 +292,9 @@ class Printer(Serial):
                 if msgType == ExtrusionLimitDbg:
                     (tempIndex, actSpeed, targetSpeed, grip) = struct.unpack("<hhhh", payload[1:])
                     self.gui.logComm("Limit extrusion index: %d, act: %d, target: %d, grip: %d" % (tempIndex, actSpeed, targetSpeed, grip))
-                elif msgType == PidDebug:
-                    (pid_dt, pTerm, iTerm, dTerm, pwmOutput, e) = struct.unpack("<ffffif", payload[1:])
-                    self.gui.logComm("PidDebug: pid_dt: %f, pTerm: %f, iTerm: %f, dTerm: %f, pwmOutput: %d, e: %f" % (pid_dt, pTerm, iTerm, dTerm, pwmOutput, e))
+                elif msgType == PidDebug or msgType == PidSwitch:
+                    (pid_dt, pTerm, iTerm, dTerm, pwmOutput, e, esum) = struct.unpack("<iiiiBhi", payload[1:])
+                    self.gui.logComm("%s: pid_dt: %d, pTerm: %d, iTerm: %d, dTerm: %d, pwmOutput: %d, e_16: %d, esum: %d" % (((msgType == PidDebug) and "PidDebug") or "PidSwitch", pid_dt, pTerm, iTerm, dTerm, pwmOutput, e, esum))
                 elif msgType == RespSDReadError:
                     # payload: SD errorcode, SPI status byte
                     (errorCode, spiStatus) = struct.unpack("<BB", payload[1:])
@@ -274,6 +308,11 @@ class Printer(Serial):
                     (slen,) = struct.unpack("<B", payload[1:2])
                     message = payload[2:2+slen]
                     self.gui.logComm("GenericMessage: '%s'" % message)
+                elif msgType == GenericInt32:
+                    # (p1, p2, p3, p4, p5) = struct.unpack("<iiiii", payload[1:])
+                    (p1, ) = struct.unpack("<i", payload[1:])
+                    # self.gui.logComm("GenericInt32: %d(0x%x), %d(0x%x),%d(0x%x), %d(0x%x), %d(0x%x)" % (p1, p1, p2, p2, p3, p3, p4, p4, p5, p5))
+                    self.gui.logComm("GenericInt32: %d(0x%x)" % (p1, p1))
                 elif msgType == BufDebug:
                     (swapdev, sdreader) = struct.unpack("<II", payload[1:])
                     self.gui.logComm("BufDebug: swapdev: %d, sdreader: %d" % (swapdev, sdreader))
@@ -306,24 +345,29 @@ class Printer(Serial):
 
         # Receive without error
         if not res:
-            print "timeout reading, data read: %d of %d bytes, '%s'" % (len(res), length, res)
+            # print "timeout reading, data read: %d of %d bytes, '%s'" % (len(res), length, res)
             raise RxTimeout()
 
         return res
 
     def readResponse(self):
 
-        header = self.readWithTimeout(3) # SOH + RC + lenbyte
+        startByte = self.readWithTimeout(1)
+        while (startByte != cobs.nullByte):
+            print "waiting for SOH, read garbage: 0x%x" % ord(startByte)
+            startByte = self.readWithTimeout(1)
+
+        header = self.readWithTimeout(2) # SOH + RC + lenbyte
 
         # Todo: loop til SOH found and/or proper errorhandling
-        assert(header[0] == cobs.nullByte)
+        # assert(header[0] == cobs.nullByte)
 
         # Response code
-        rc = header[1]
+        rc = header[0]
         cmd = ord(rc)
 
         # Length byte
-        l = header[2]
+        l = header[1]
         length = ord(l) - 1
 
         # if debugComm:
@@ -387,6 +431,7 @@ class Printer(Serial):
         f.close()
 
         self.port = device
+        print "Setting initial baudrate to:", br
         self.baudrate = br
         # Py-Serial read timeout
         self.timeout = 3
@@ -423,40 +468,129 @@ class Printer(Serial):
         settings = self.printerProfile.getSettingsI(args.pidset)
 
         # todo: move all settings into CmdSetHostSettings call
-        self.sendCommandParamV(CmdSetFilSensorCal, [packedvalue.float_t(settings["filSensorCalibration"])])
 
-        self.sendCommandParamV(CmdSetPIDValues, [
-            packedvalue.float_t(settings["Kp"]),
-            packedvalue.float_t(settings["Ki"]),
-            packedvalue.float_t(settings["Kd"]),
-            packedvalue.float_t(settings["KpC"]),
-            packedvalue.float_t(settings["KiC"]),
-            packedvalue.float_t(settings["KdC"]),
+        # Circumfence of FSR is about 10mm, so when extruding
+        # 1mm of filament we should have a measurement in the
+        # range of about 100 (1024/10 = 102.4).
+        fsrMinSteps = 1 * settings["stepsPerMMA"]
+        self.sendCommandParamV(
+                CmdSetFilSensorConfig, (
+                    intmath.fsCalibration(settings["filSensorCalibration"]),
+                    packedvalue.uint16_t(fsrMinSteps)
+                    )
+                )
+
+        """
+
+
+apply F(x) z.b. binary pow 
+
+input range
+
+    grip, ...........
+
+    output index into, z.b. array table 32 64 ..?
+
+        listeninhalt: multiplikator für timer prescaler
+
+
+wie kann ma timervaie 16 bit schnell hochmultipliz...
+
+
+        shift operation ist mit * 2 zu grob
+
+
+    d.h. tendenziell wieder division dabei
+
+        anderer weg: multiplikatin  per shift und divisiom per shiift
+
+        z.b. 2*1/16-tel 
+
+            das kann alls struct ,shift-up shift-down, in einer tabelle gespeichert werden
+
+
+            index   z.b. byte         , dann 256 einträge...
+            für 8 bit auflösung
+
+
+f(x)
+-----
+
+bereiche f(x)
+
+  eingangs wert x = slip = steps / fssteps
+  bereich x (annahme fscal so 0.3): 
+      <3 = negativer slip, grip besser 100%           "overextruding einstellung slicer/host software (fscal)"
+      =3 = kein slip, grip 100%
+      >3 = slip, grip kleiner 100%
+
+
+    ausgang wird auf werte >= 1 skaliert, spaeter grenze nach oben (grenze für verlangsamung) machen
+
+
+        es mus obere grenze festgelegt werden um f(x) besser bestimmen zu können, z.b. 25%
+        """
+
+
+        (ki, maxEsum16H) = intmath.pidScaleKi(settings["Ki"])
+        (kiC, maxEsum16HC) = intmath.pidScaleKi(settings["KiC"])
+
+        self.sendCommandParamV(CmdSetPIDValues, (
+
+            intmath.pidScaleKp(settings["Kp"]),
+            ki,
+            packedvalue.int32_t( maxEsum16H ),
+            intmath.pidScaleKd(settings["Kd"]),
+
+            intmath.pidScaleKp(settings["KpC"]),
+            kiC,
+            packedvalue.int32_t( maxEsum16HC ),
+            intmath.pidScaleKd(settings["KdC"]),
+
+            # Scaling factor to switch pid-set from cooling to heating
+            intmath.pidSwitch(settings["KiC"], settings["Ki"]),
+
+            # Scaling factor to switch pid-set for heating to cooling
+            intmath.pidSwitch(settings["Ki"], settings["KiC"]),
+
             packedvalue.uint16_t(int(settings["Tu"] * 1000)), # xxx Tu < 65 s
-            ])
+            ))
 
-        self.sendCommandParamV(CmdSetIncTemp, [packedvalue.uint8_t(HeaterEx1), packedvalue.int16_t(args.inctemp)]);
+        self.adjTemp(HeaterEx1, args.inctemp)
 
-        self.sendCommandParamV(CmdSetStepsPerMM, [
+        self.sendCommandParamV(CmdSetStepsPerMM, (
             packedvalue.uint16_t(settings["stepsPerMMX"]),
             packedvalue.uint16_t(settings["stepsPerMMY"]),
             packedvalue.uint16_t(settings["stepsPerMMZ"])
-            ])
+            ))
 
-        self.sendCommandParamV(CmdSetHostSettings, [
+        self.sendCommandParamV(CmdSetHostSettings, (
             packedvalue.uint32_t(settings["buildVolX"]),
             packedvalue.uint32_t(settings["buildVolY"]),
             packedvalue.uint32_t(settings["buildVolZ"])
-            ])
+            ))
 
         if not self.commandInitDone:
             self.sendCommand(CmdPrinterInit)
 
         self.commandInitDone = True
 
+    def setBaudRate(self):
+
+        baudrate = self.baudrates[self.baudrateIndex]
+        lowbyte = (fCPU+baudrate*8) / (baudrate*16) - 1;
+        print "Auto-Baudrate: set to %d (lowbyte: %d)" % (baudrate, lowbyte)
+        payload = struct.pack("<I", lowbyte)
+        self.sendCommand(CmdSetBaudRate, binPayload=payload)
+        print "Baudrate command successful"
+
+        self.baudrate = baudrate
+        time.sleep(0.1)
+
     def resetLineNumber(self):
-        self.lineNr = 1
+        # self.lineNr = 1
         self.sendCommand(CmdResetLineNr)
+        self.lineNr = 1
    
     def incLineNumber(self):
         self.lineNr += 1
@@ -475,6 +609,10 @@ class Printer(Serial):
 
             try:
                 self.write(cmd)
+                # self.write(cmd[:256])
+                # if (len(cmd) > 256):
+                    # time.sleep(0.01)
+                    # self.write(cmd[256:])
             except SerialTimeoutException:
                 self.gui.log("Tryed sending %d bytes: " % len(cmd), cmd[:10].encode("hex"))
                 self.gui.log("SerialTimeoutException on send!!!")
@@ -503,14 +641,7 @@ class Printer(Serial):
         payloadSize = 0
         if binPayload:
             payloadSize = len(binPayload)
-            # print "Send payload: %s" % binPayload.encode("hex")
-            # print "Send payload: ", payloadSize, cobs.LenCobs
-            assert(payloadSize <= cobs.LenCobs)
 
-        #
-        # Not block: SOH(1) line(1) cmd(1) size(4) [ data ] chksum(2) -> max payload = 254 (COBS) - 9 = 245
-        # Block:     SOH(1) line(1) cmd(1) size(2) [ data ] chksum(2)
-        #
         binary  = struct.pack("<B", SOH)
 
         header = struct.pack("<BBB", self.lineNr, binCmd, payloadSize+0x01)
@@ -544,17 +675,91 @@ class Printer(Serial):
 
         return binary
 
+    # Fixme: mostly duplicates buildBinaryCommand(). and move.command()
+    def buildBinaryCommand512(self, binPayload):
+
+        binary  = struct.pack("<B", SOH)
+
+        header = struct.pack("<BB", self.lineNr, CmdG1)
+
+        binary += header
+        checksum = crc_ccitt_kermit.crc16_kermit(header, 0xffff)
+
+        if binPayload:
+            binary += binPayload
+            checksum = crc_ccitt_kermit.crc16_kermit(binPayload, checksum)
+
+        # print "cflags, c1: 0x%x, 0x%x" % (cflags, checksum)
+        cflags = 0x1
+        if checksum == 0:
+            cflags = 0x4
+            checksum = 0x0101
+        elif (checksum & 0xFF00) == 0:
+            cflags = 0x2
+            checksum = 0x0100 | (checksum & 0xFf)
+        elif (checksum & 0x00FF) == 0:
+            cflags = 0x3
+            checksum = 0x0001 | (checksum & 0xFF00)
+
+        # self.gui.log("checkSum: ", checksum, " 0x%x" % checksum)
+        binary += struct.pack("<BH", cflags, checksum)
+
+        # Store for later possible command resend
+        self.lastCommands[self.lineNr] = binary
+
+        self.incLineNumber()
+
+        return binary
+
     # Use query() if you need the result of the command
     def sendCommand(self, cmd, binPayload=None):
 
-        cobsBlock = binPayload and cobs.encodeCobsString(binPayload)
-        self.sendCommandC(cmd, cobsBlock)
-
-    # Use query() if you need the result of the command
-    def sendCommandC(self, cmd, cobsBlock):
-
+        cobsBlock = binPayload and cobs.encodeCobs512(binPayload)
+        
         binary = self.buildBinaryCommand(cmd, cobsBlock)
         self.send2(cmd, binary)
+
+    # Send buffered command (512 bytes sector)
+    def sendCommand512(self, cobsBlock):
+
+        binary = self.buildBinaryCommand512(cobsBlock)
+
+        # print "sendCommand512 dbg: decoding command.."
+        # self.dbgCommand512(binary)
+
+        # print "sendCommand512.."
+        self.send2(cmd, binary)
+
+        """
+        tosend = len(binary)
+        start = 0
+        while tosend > 0:
+
+            print "sendCommand512: sending chunk...", start, tosend
+            self.send2(cmd, binary[start:start+255])
+            start += 255
+            tosend -= 255
+        """
+        # print "sendCommand512 done2"
+
+    def dbgCommand512(self, binary):
+
+        assert(ord(binary[0]) == SOH)
+        pnum = ord(binary[1])
+        print "packet num:", pnum
+        assert(ord(binary[2]) == CmdG1)
+
+        (payload, lenread) = cobs.decodeCobs512(binary[3:])
+
+        assert(len(payload) == 512)
+
+        flags = ord(binary[3+lenread])
+        print "flags:", flags
+
+        c1 = ord(binary[4+lenread])
+        print "c1: 0x%x" % c1
+        c2 = ord(binary[5+lenread])
+        print "c2: 0x%x" % c2
 
     # Use query() if you need the result of the command
     def sendCommandParamV(self, cmd, params):
@@ -569,19 +774,22 @@ class Printer(Serial):
     # Query info from printer, use this to receive returned data, use [sendCommand, sendCommandParamV] for 
     # 'write only' commands.
     # Note: Commands must be 'restartable' without sideeffects (see commandResend(), ResendWasOK)
-    def query(self, cmd, binPayload=None, doLog="notused-variable"):
+    def query(self, cmd, binPayload=None, expectedLen=None):
 
-        # if doLog:
-            # self.gui.logComm("query: ", CommandNames[cmd])
-
-        cobsBlock = binPayload and cobs.encodeCobsString(binPayload)
+        cobsBlock = binPayload and cobs.encodeCobs512(binPayload)
         binary = self.buildBinaryCommand(cmd, cobsBlock)
 
         reply = self.send2(cmd, binary)
 
         if reply == ResendWasOK:
             # Command was ok, but no response due to reconnect, restart query:
-            return self.query(cmd, binPayload)
+            reply = self.query(cmd, binPayload)
+
+        # Debug 
+        if expectedLen and len(reply[1]) != expectedLen:
+            print "WARNING: reply size wrong: %d/%d" % (len(reply[1]), expectedLen)
+            print "Hex dump:"
+            print reply.encode("hex")
 
         return reply
 
@@ -602,6 +810,8 @@ class Printer(Serial):
 
         # Send cmd/query
         startTime = time.time()
+        lineNr = self.lineNr
+
 
         """
         # Simulate random checksum error
@@ -655,8 +865,39 @@ class Printer(Serial):
 
             dt = time.time() - startTime
             if cmd == 0x6:
+
                 if debugComm:
                     self.gui.logComm("ACK, Sent %d bytes in %.2f ms, %.2f Kb/s" % (n, dt*1000, n/(dt*1000)))
+
+                
+                if time.time() > (self.lastAutobaud + self.throttleAutoBaud):
+
+                    self.lastAutobaud = time.time()
+
+                    if (self.sendErrors > 10*(self.throttleAutoBaud/60)) and self.baudrateIndex < len(self.baudrates)-1:
+
+                            self.baudrateIndex += 1;
+
+                            if self.throttleAutoBaud < 300:
+                                self.throttleAutoBaud += 60
+
+                            self.setBaudRate()
+
+                            # if self.lineNr != lineNr:
+                                # print "resitting linenr from %d to %d'" % (self.lineNr, lineNr);
+                                # self.lineNr = lineNr
+
+                    else:
+                        
+                        if self.baudrateIndex > 0:
+
+                            self.baudrateIndex -= 1;
+                            baudrate = self.baudrates[self.baudrateIndex]
+
+                            self.setBaudRate()
+
+                    self.sendErrors = 0
+                    
                 return (cmd, payload)
 
             # if cmd == RespGenericString:
@@ -694,25 +935,28 @@ class Printer(Serial):
 
     def getStatus(self):
 
-        valueNames = ["state", "t0", "t1", "Swap", "SDReader", "StepBuffer", "StepBufUnderRuns", "targetT1", "pwmOutput", "slippage", "extruder_pos", "minBuffer", "underTemp", "underGrip"]
+        valueNames = ["state", "t0", "t1", "Swap", "SDReader", "StepBuffer", "StepBufUnderRuns", "targetT1", "pwmOutput", "slippage", "slowdown", "ePos", "minBuffer", "underTemp", "underGrip"]
 
-        (cmd, payload) = self.query(CmdGetStatus, doLog=False)
+        (cmd, payload) = self.query(CmdGetStatus, expectedLen=33)
 
-        # XXXXXX debug 
-        if len(payload) != 40:
-            # XXX ...WARNING: payload size wrong: 41/40... XXX
-            print "WARNING: payload size wrong: %d/40" % len(payload)
-            print "Hex dump:"
-            print payload.encode("hex")
-
-        tup = struct.unpack("<BffIHIhHBfiIHH", payload[:40])
+        tup = struct.unpack("<BhhIHIhhBhHiBHH", payload[:33])
 
         statusDict = {}
         for i in range(len(valueNames)):
 
             valueName = valueNames[i]
 
-            statusDict[valueName] = tup[i]
+            if valueName in ["t0", "t1", "t2", "targetT1"]:
+                # Temperatures in firmware are in 1/16th °C
+                statusDict[valueName] = intmath.fromFWTemp(tup[i])
+            elif valueName == "slippage":
+                # In firmware are in 1/32th 
+                statusDict[valueName] = tup[i] / 32.0
+            elif valueName == "slowdown":
+                # In firmware are in 1/1024th 
+                statusDict[valueName] = (tup[i] / 1024.0) - 1.0
+            else:
+                statusDict[valueName] = tup[i]
 
         # print "statusDict:", statusDict
 
@@ -722,20 +966,16 @@ class Printer(Serial):
 
         self.gui.statusCb(statusDict)
 
-        """
-        for (statusCmd, statusName, tasknames) in [(CmdGetTaskStatus, "TOP:", ("idle", "tempcontrol", "tempheater", "filsensor", "ubscommand", "txbuffer", "swapdev", "fillbuffer", "tasksum")), (CmdGetIOStats, "IOStats:", ("read", "readSum", "write", "writeSum"))]:
+        return statusDict
+
+    def top(self):
+
+        for (statusCmd, statusName, tasknames) in [(CmdGetTaskStatus, "*** TOP: ***:", ("idle", "tempcontrol", "tempheater", "filsensor", "ubscommand", "txbuffer", "swapdev", "fillbuffer", "tasksum")), (CmdGetIOStats, "*** IOStats: ***", ("read", "readSum", "write", "writeSum"))]:
 
             ## XXX debug iotimings
-            (cmd, payload) = self.query(statusCmd, doLog=True)
+            (cmd, payload) = self.query(statusCmd)
 
             # print "cmd, len payload:", cmd, len(payload)
-
-            lenp =(len(payload) / 4) * 4;
-
-            # XXXXXX debug workaround,
-            if len(payload) > lenp:
-                print "WARNING: payload to long, stripping bytes #", len(payload)-lenp
-                payload = payload[:lenp]
 
             structFmt = "<" + "I" * (len(payload) / 4)
             tup = struct.unpack(structFmt, payload)
@@ -748,11 +988,8 @@ class Printer(Serial):
                 tSum = tup[tupindex+1]
                 print "%15s %10d %10d %10d" % (taskname, nCalls, tSum, tup[tupindex+2])
                 tupindex+=3
-        """
 
-        return statusDict
-
-    # Prettyprint pritner status
+    # Prettyprint printer status
     def ppStatus(self, statusDict, msg=""):
 
         slipstr = "----"
@@ -760,8 +997,11 @@ class Printer(Serial):
             slipstr = "%4.2f" % (1.0/statusDict["slippage"])
         if msg:
             print msg
-        print "State: %d, Bed: %5.1f, Hotend: %5.1f(%5.1f), Pwm: %3d, Swap: %10s, MinBuffer: %3d, Grip: %s" % \
-            (statusDict["state"], statusDict["t0"], statusDict["t1"], statusDict["targetT1"], statusDict["pwmOutput"], util.sizeof_fmt(statusDict["Swap"]), statusDict["minBuffer"], slipstr)
+        print "Bed: %5.1f, Hotend: %5.1f(%5.1f), Pwm: %3d, Swap: %10s, MinBuffer: %3d, Underrun: %5d, Grip: %.4s, SlowDown: %4.2f, underTemp %5d, underGrip: %5d" % \
+            (statusDict["t0"], statusDict["t1"], statusDict["targetT1"], 
+             statusDict["pwmOutput"], util.sizeof_fmt(statusDict["Swap"]),
+             statusDict["minBuffer"], statusDict["StepBufUnderRuns"], slipstr, statusDict["slowdown"],
+             statusDict["underTemp"], statusDict["underGrip"])
 
     # Get printer (-profile) name from printer eeprom
     def getPrinterName(self, args):
@@ -823,25 +1063,27 @@ class Printer(Serial):
         #
         # CmdGetCurrentTemps returns (bedtemp, T1 [, T2])
         #
-        (cmd, payload) = self.query(CmdGetCurrentTemps, doLog=doLog)
-        if len(payload) == 8:
-            temps = struct.unpack("<ff", payload)
+        (cmd, payload) = self.query(CmdGetCurrentTemps)
+        if len(payload) == 4:
+            temps = struct.unpack("<hh", payload)
         else:
-            if len(payload) != 12:
+            if len(payload) != 6:
                 print "WARNING: getTemp(): payload size wrong: %d/12" % len(payload)
 
-            temps = struct.unpack("<fff", payload)
+            temps = struct.unpack("<hhh", payload)
 
-        return temps
+        return map(lambda t: intmath.fromFWTemp(t), temps)
 
     def getTemps(self, doLog = False):
 
         temps = self.getTemp()
-        (cmd, payload) = self.query(CmdGetTargetTemps, doLog=doLog)
+        (cmd, payload) = self.query(CmdGetTargetTemps)
         if len(payload) == 3:
-            targetTemps = struct.unpack("<BH", payload)
+            targetTemps = struct.unpack("<hh", payload)
         else:
-            targetTemps = struct.unpack("<BHH", payload)
+            targetTemps = struct.unpack("<hhh", payload)
+
+        targetTemps = map(lambda t: intmath.fromFWTemp(t), targetTemps)
 
         self.gui.tempCb(temps[0], temps[1], targetTemps[1])
         return temps
@@ -852,8 +1094,9 @@ class Printer(Serial):
 
         assert(type(temp) == types.IntType)
 
-        payload = struct.pack("<BH", heater, temp) # Parameters: heater, temp
-        self.sendCommand(CmdSetTargetTemp, binPayload=payload)
+        # payload = struct.pack("<BH", heater, temp) # Parameters: heater, temp
+        # self.sendCommand(CmdSetTargetTemp, binPayload=payload)
+        self.setTargetTemp(heater, temp)
 
         while wait !=  None:
             time.sleep(2)
@@ -892,8 +1135,9 @@ class Printer(Serial):
         print "Start temprapmp...", tdest, timeConstant, a
 
         if a <= 0:
-            payload = struct.pack("<BH", heater, tdest)
-            self.sendCommand(CmdSetTargetTemp, binPayload=payload)
+            # payload = struct.pack("<BH", heater, tdest)
+            # self.sendCommand(CmdSetTargetTemp, binPayload=payload)
+            self.setTargetTemp(heater, tdest)
             return
 
         step = 1
@@ -909,16 +1153,18 @@ class Printer(Serial):
 
                 print "temp is below dest", temp, t, tdest
 
-                payload = struct.pack("<BH", heater, t)
-                self.sendCommand(CmdSetTargetTemp, binPayload=payload)
+                # payload = struct.pack("<BH", heater, t)
+                # self.sendCommand(CmdSetTargetTemp, binPayload=payload)
+                self.setTargetTemp(heater, t)
 
                 yield(temp)
 
             else:
 
-                print "temp reached"
-                payload = struct.pack("<BH", heater, tdest)
-                self.sendCommand(CmdSetTargetTemp, binPayload=payload)
+                # print "temp reached"
+                # payload = struct.pack("<BH", heater, tdest)
+                # self.sendCommand(CmdSetTargetTemp, binPayload=payload)
+                self.setTargetTemp(heater, tdest)
                 yield(temp)
                 break
 
@@ -934,14 +1180,35 @@ class Printer(Serial):
 
     def adjTemp(self, heater, adj):
 
-        payload = struct.pack("<Bh", heater, adj) # Parameters: heater, adjtemp
+        payload = struct.pack("<Bh", heater, intmath.toFWTemp(adj)) # Parameters: heater, adjtemp
         self.sendCommand(CmdSetIncTemp, binPayload=payload)
+
+    ####################################################################################################
+
+    def setTargetTemp(self, heater, temp):
+
+        payload = struct.pack("<Bh", heater, intmath.toFWTemp(temp)) # Parameters: heater, temp
+        self.sendCommand(CmdSetTargetTemp, binPayload=payload)
+
+    ####################################################################################################
+
+    def setTempTable(self, startTemp, nExtrusionLimit, tempTable):
+
+        payload = struct.pack("<hB", startTemp, nExtrusionLimit)
+
+        for timerValue in tempTable:
+            print "TempTable: %d°C, timerValue: %d(0x%x)" % (startTemp, timerValue, timerValue)
+            payload += struct.pack("<H", timerValue)
+            startTemp += 1
+
+        resp = self.query(CmdSetTempTable, binPayload=payload)
+        assert(util.handleGenericResponse(resp))
 
     ####################################################################################################
 
     def setTempPWM(self, heater, pwmvalue):
 
-        payload = struct.pack("<Bh", heater, pwmvalue) # Parameters: heater, adjtemp
+        payload = struct.pack("<Bh", heater, pwmvalue) # Parameters: heater, pwm
         self.sendCommand(CmdSetTempPWM, binPayload=payload)
 
     ####################################################################################################
@@ -955,11 +1222,13 @@ class Printer(Serial):
 
         if heater > HeaterBed:
             # Switch on PID mode
-            payload = struct.pack("<BB", heater, 0)
-            self.sendCommand(CmdSetTempPWM, binPayload=payload)
+            # payload = struct.pack("<BB", heater, 0)
+            # self.sendCommand(CmdSetTempPWM, binPayload=payload)
+            self.setTempPWM(heater, 0)
 
-        payload = struct.pack("<BH", heater, temp)
-        self.sendCommand(CmdSetTargetTemp, binPayload=payload)
+        # payload = struct.pack("<BH", heater, temp)
+        # self.sendCommand(CmdSetTargetTemp, binPayload=payload)
+        self.setTargetTemp(heater, temp)
 
         while wait !=  None:
             time.sleep(2)
@@ -979,14 +1248,14 @@ class Printer(Serial):
 
     def isHomed(self):
 
-        (cmd, payload) = self.query(CmdGetHomed, doLog=False)
+        (cmd, payload) = self.query(CmdGetHomed)
         return struct.unpack("<B", payload)[0] == 1
 
     ####################################################################################################
 
     def getPos(self):
 
-        (cmd, payload) = self.query(CmdGetPos, doLog=False)
+        (cmd, payload) = self.query(CmdGetPos)
         tup = struct.unpack("<iiii", payload)
         return tup
 
@@ -995,7 +1264,7 @@ class Printer(Serial):
     def getEndstops(self):
 
         # Check, if enstop was pressed
-        (cmd, payload) = self.query(CmdGetEndstops, doLog=False)
+        (cmd, payload) = self.query(CmdGetEndstops)
         tup = struct.unpack("<BiBiBi", payload)
         return tup
 
@@ -1012,18 +1281,6 @@ class Printer(Serial):
 
         print "Endstop %s open at position: %d" % (dimNames[dim], tup[dim*2+1])
         return False
-
-    ####################################################################################################
-
-    # Is this useful (anymore)?
-    def getTempTable(self):
-
-        (cmd, payload) = self.query(CmdGetTempTable)
-        basetemp = struct.unpack("<H", payload[:2])[0]
-
-        l = ord(payload[2])
-        fmt = "<" + l*"H"
-        return (basetemp, struct.unpack(fmt, payload[3:]))
 
     ####################################################################################################
 
@@ -1047,11 +1304,8 @@ class Printer(Serial):
 
         readings = []
 
-        for i in range(10):
-            # (ts, dy) = struct.unpack("<Ih", payload[i*6:(i+1)*6])
-            (dy, ) = struct.unpack("<h", payload[i*2:(i+1)*2])
-            # readings.append((i, dy))
-            readings.append(dy)
+        for i in range(len(payload) / 4):
+            readings.append( struct.unpack("<HH", payload[i*4:(i+1)*4]) )
 
         return readings
 
@@ -1060,7 +1314,7 @@ class Printer(Serial):
     # Get current stepper direction bits
     def getDirBits(self):
 
-        (cmd, payload) = self.query(CmdGetDirBits, doLog=False)
+        (cmd, payload) = self.query(CmdGetDirBits)
         return struct.unpack("<B", payload)[0]
 
     ####################################################################################################

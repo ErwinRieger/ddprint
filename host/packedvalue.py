@@ -1,5 +1,5 @@
 #/*
-# This file is part of ddprint - a direct drive 3D printer firmware.
+# This file is part of ddprint - a 3D printer firmware.
 # 
 # Copyright 2015 erwin.rieger@ibrieger.de
 # 
@@ -48,6 +48,11 @@ class uint16_t(PackedValue):
         assertType(value, types.IntType)
         PackedValue.__init__(self, value, "H")
 
+class int32_t(PackedValue):
+    def __init__(self, value):
+        assertType(value, types.IntType)
+        PackedValue.__init__(self, value, "i")
+
 class uint32_t(PackedValue):
     def __init__(self, value):
         assertType(value, types.IntType)
@@ -65,6 +70,25 @@ class pString_t(PackedValue):
 
     def pack(self):
         return struct.pack("<%dp" % (len(self.value)+1), self.value)
+
+# scaledint32_t
+class scaledint_t(PackedValue):
+
+    def __init__(self, value, bits):
+        self.value = value
+        self.bits = bits
+
+    def pack(self):
+        return struct.pack("<IB", self.value, self.bits)
+
+class scaledint16_t(PackedValue):
+
+    def __init__(self, value, bits):
+        self.value = value
+        self.bits = bits
+
+    def pack(self):
+        return struct.pack("<HB", self.value, self.bits)
 
 ####################################################################################################
 

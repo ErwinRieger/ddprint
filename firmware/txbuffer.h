@@ -33,9 +33,7 @@
 #include "ringbuffer.h"
 
 // Size of tx buffer in bytes.
-#define TxBufferLen  256
-
-typedef CircularBuffer<uint8_t, uint16_t, TxBufferLen> TxBufferBase;
+// #define TxBufferLen  256
 
 // Serial communication ACK
 #define RESPUSBACK 0x6
@@ -43,7 +41,7 @@ typedef CircularBuffer<uint8_t, uint16_t, TxBufferLen> TxBufferBase;
 //
 // Note (stm32 port): rx/tx buffer memory unused/wasted in struct usart_dev.
 //
-class TxBuffer: public Protothread, public TxBufferBase {
+class TxBuffer: public Protothread, public Buffer256<uint8_t> {
 
     private:
 
@@ -102,7 +100,7 @@ public:
             sendSimpleResponse(RESPUSBACK);
         }
 
-        bool Run() {
+        FWINLINE bool Run() {
             
             PT_BEGIN();
 
@@ -172,7 +170,6 @@ public:
             nMessages--;
 
             if (! nMessages) {
-                // ringBufferInit();
                 massert(empty()); // sanity check
             }
 

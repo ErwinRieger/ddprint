@@ -110,7 +110,7 @@ if __name__ == "__main__":
     s = (LenCobs-1)*" " + nullByte
     stream = cStringIO.StringIO(s)
 
-    cobs = encodeCobs(stream, LenCobs)
+    cobs = encodeCobsNoPack(stream, LenCobs)
     assert(len(cobs) == LenCobs)
     decodedBlob = decodeCobs(cobs)
 
@@ -120,7 +120,7 @@ if __name__ == "__main__":
     s = (LenCobs-2)*" " + nullByte + " "
     stream = cStringIO.StringIO(s)
 
-    cobs = encodeCobs(stream, LenCobs)
+    cobs = encodeCobsNoPack(stream, LenCobs)
     assert(len(cobs) == LenCobs-1)
     decodedBlob = decodeCobs(cobs)
 
@@ -130,7 +130,7 @@ if __name__ == "__main__":
     s = (LenCobs)*" "
     stream = cStringIO.StringIO(s)
 
-    cobs = encodeCobs(stream, LenCobs)
+    cobs = encodeCobsNoPack(stream, LenCobs)
     assert(len(cobs) == LenCobs)
     decodedBlob = decodeCobs(cobs)
 
@@ -169,7 +169,7 @@ if __name__ == "__main__":
 
     while True:
 
-        cobs = encodeCobs(inp, LenCobs)
+        cobs = encodeCobsNoPack(inp, LenCobs)
 
         if not cobs:
             # done

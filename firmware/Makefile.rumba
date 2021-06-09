@@ -14,7 +14,7 @@ AVRDUDE_ARD_PROGRAMMER = wiring
 
 SDFAT = ../../SdFat-1.0.5
 
-ARDUINO_LIBS = LiquidCrystal SdCard uzlib
+ARDUINO_LIBS = LiquidCrystal SdCard
 
 USER_LIB_PATH = libraries
 
@@ -26,16 +26,28 @@ NO_CORE_MAIN_CPP = 1
 
 include ../../Arduino-Makefile/Arduino.mk
 
+# Release version
+OPTIMIZATION_LEVEL = 2
+# Debug version
+# OPTIMIZATION_LEVEL = s
+# DEBUGFLAGS    =  -g3 -ggdb
+# LDFLAGS += -g
+
 # Mega/rumba board
 CPPFLAGS      +=  -DMOTHERBOARD=4 -I. -Iavr -Isrc 
 CPPFLAGS      +=  -I$(SDFAT)/src
 CPPFLAGS      +=  -I$(ARDUINO_PLATFORM_LIB_PATH)
+CPPFLAGS      +=  $(DEBUGFLAGS)
 
 # Temp. fix depreciated warning in arduino:Print.cpp
 CPPFLAGS      +=  -D"PGM_P=const char*"
 
 # Disable colored gcc output (don't confuse vim)
-CXXFLAGS      +=  -fno-diagnostics-color
+CXXFLAGS      +=  -fno-diagnostics-color $(DEBUGFLAGS)
+
+CXXFLAGS      +=  -ffat-lto-objects -save-temps=obj -fverbose-asm 
+
+LDFLAGS 	  += -mrelax
 
 # Create map file
 OTHER_LIBS      += -Wl,-Map,build.rumba/build.map

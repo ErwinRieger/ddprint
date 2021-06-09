@@ -92,6 +92,7 @@
     //
     DefineIOPinMembers(2);
     DefineIOPinMembers(7);
+    DefineIOPinMembers(8);
     DefineIOPinMembers(9);
     DefineIOPinMembers(11);
     DefineIOPinMembers(13);
@@ -164,8 +165,7 @@ bool TempControl::Run() {
     // printf("TempControl::Run() wait for hotend\n");
     PT_WAIT_WHILE( ADCSRA & (1<<ADSC) );
 
-    avgHotendTemp.addValue(tempFromRawADC(ADC));
-    current_temperature[0] = avgHotendTemp.value();
+    current_temperature[0] = avgHotendTemp.addValue( tempFromRawADC(ADC) );
 
     ////////////////////////////////
     // Handle heated bed 
@@ -184,8 +184,7 @@ bool TempControl::Run() {
     // printf("TempControl::Run() wait for bed\n");
     PT_WAIT_WHILE( ADCSRA & (1<<ADSC) );
 
-    avgBedTemp.addValue(tempFromRawADC(ADC));
-    current_temperature_bed = avgBedTemp.value();
+    current_temperature_bed = avgBedTemp.addValue( tempFromRawADC(ADC) );
 
     PT_RESTART();
         
@@ -193,6 +192,60 @@ bool TempControl::Run() {
     PT_END();
 }
 
+////////////////////////////////////////////////////////////////////////////////////////////////////
+//
+// Emergency hard reset/reboot
+//
+void systemHardReset() {
+
+    //
+    // Watchdog reset method does not work, it halts but 
+    // does not reset?
+    //
+    // wdt_enable(WDTO_1S);
+    // while (true);
+    
+    asm volatile ("jmp 0 \n");
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+//
+// Initialize the spi bus
+//
+void timerInit() {
+
+    //
+    // Setup Timer1 for stepper interrupt and 
+    // homingstepper interrupt.
+    //
+
+    // 
+    // Timer 0 is used by arduino (millis() ...)
+    // Timer 2 is 8bit only
+    // Timer 3 ist heater pwm
+    // Timer 4 ist LED pin und FAN pin
+    // Timer 5 ist digipot
+    //
+
+    // waveform generation = 0100 = CTC
+    TCCR1B &= ~(1<<WGM13);
+    TCCR1B |=  (1<<WGM12);
+    TCCR1A &= ~(1<<WGM11);
+    TCCR1A &= ~(1<<WGM10);
+    
+    // output mode = 00 (disconnected)
+    // Normal port operation, OCnA/OCnB/OCnC disconnected
+    TCCR1A &= ~(3<<COM1A0);
+    TCCR1A &= ~(3<<COM1B0);
+
+    // Generally we use a divider of 8, resulting in a 2MHz timer
+    // frequency on a 16MHz MCU.
+    TCCR1B = (TCCR1B & ~(0x07<<CS10)) | (2<<CS10);
+
+    OCR1A = 0x4000;
+    OCR1B = 0x4000;
+    TCNT1 = 0;
+}
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 //
 // Initialize the spi bus
