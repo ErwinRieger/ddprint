@@ -217,6 +217,10 @@ void kill() {
 
 void mAssert(uint16_t line, const char* file) {
 
+    noInterrupts();
+    disable_heater();
+    st_disableSteppers();
+
     LCDMSGKILL(RespAssertion, line, file);
 
     txBuffer.flush();

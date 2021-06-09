@@ -53,7 +53,7 @@ void killMessage(uint8_t errorCode, uint8_t errorParam1, uint8_t errorParam2 /* 
     void st_disableSteppers();
 
     #define  massert(expr) { \
-        if (!(expr)) { noInterrupts(); disable_heater(); st_disableSteppers(); mAssert(__LINE__, __FILE__); } }
+        if (!(expr)) { mAssert(__LINE__, __FILE__); } }
 
     // Assertion that is only active in simulation
     #define simassert(x) 

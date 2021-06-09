@@ -9,8 +9,12 @@
 // Includes
 //-------------------------------------------------------------- 
 
-// #include <Arduino.h>
-#include "mdebug.h"
+#include <Arduino.h>
+
+#define  massert(expr) { \
+    if (!(expr)) { mAssert(__LINE__, __FILE__); } }
+
+void mAssert(uint16_t line, const char* file);
 
 extern "C" {
     #include "usbh_def.h"
