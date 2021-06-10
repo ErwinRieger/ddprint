@@ -273,6 +273,10 @@ class MainForm(npyscreen.FormBaseNew):
         self.extGrip.editable = False
 
         rely += 1
+        self.slowdown = self.add(npyscreen.TitleFixedText, name =  "Slowdown            :", relx=w, rely=rely, use_two_lines=False, begin_entry_at=23)
+        self.slowdown.editable = False
+
+        rely += 1
         self.extRateC = self.add(npyscreen.TitleFixedText, name =  "Extrusion Rate (avg):", relx=w, rely=rely, use_two_lines=False, begin_entry_at=23)
         self.extRate = self.add(npyscreen.TitleFixedText, relx=w+int(w*0.5), max_width=int(0.25*w), rely=rely, use_two_lines=False, begin_entry_at=0)
         self.extRateC.editable = False
@@ -297,21 +301,21 @@ class MainForm(npyscreen.FormBaseNew):
         #
         # Left side log window - the communication log
         #
-        t = self.add(npyscreen.FixedText, value = "Communication Log:", relx=1, rely=h, color='LABEL') 
-        t.editable = False
+        # t = self.add(npyscreen.FixedText, value = "Communication Log:", relx=1, rely=h, color='LABEL') 
+        # t.editable = False
 
-        self.commLog = self.add(npyscreen.BufferPager, maxlen=h, relx=1, rely=h+2, max_width=w-2) # , height=h-2, width=w-2)
-        self.commLog.editable = False
-        self.commLog._need_update = False
+        # self.commLog = self.add(npyscreen.BufferPager, maxlen=h, relx=1, rely=h+2, max_width=w-2) # , height=h-2, width=w-2)
+        # self.commLog.editable = False
+        # self.commLog._need_update = False
         # self.commLog.buffer(["Scrolling buffer:"])
 
         #
         # Right side log window - the application log
         #
-        t = self.add(npyscreen.FixedText, value = "Application Log:", relx=w, rely=h, color='LABEL') 
+        t = self.add(npyscreen.FixedText, value = "Application Log:", relx=1, rely=h, color='LABEL') 
         t.editable = False
 
-        self.appLog = self.add(npyscreen.BufferPager, maxlen=h, relx=w, rely=h+2, max_width=w-3) # , height=h-2, width=w-2)
+        self.appLog = self.add(npyscreen.BufferPager, maxlen=h, relx=1, rely=h+2, max_width=self.columns-4)
         self.appLog.editable = False
         self.appLog._need_update = False
 
@@ -330,7 +334,7 @@ class MainForm(npyscreen.FormBaseNew):
         # Note: update() can raise a TypeError if we receive non-printable characters over the
         # usb-serial link. Ignore this exceptions here.
         #
-        for w in self._widgets__: # [self.commLog, self.appLog]:
+        for w in self._widgets__:
             if hasattr(w, '_need_update') and w._need_update:
                 w._need_update = False
                 try:
@@ -344,8 +348,8 @@ class MainForm(npyscreen.FormBaseNew):
 
       try:
 
-        parser = argparse.ArgumentParser(description='%s, Direct Drive USB Print.' % sys.argv[0])
-        parser.add_argument("-b", dest="baud", action="store", type=int, help="Baudrate, default 500000.", default=500000)
+        parser = argparse.ArgumentParser(description='%s, ddprint ui.' % sys.argv[0])
+        parser.add_argument("-b", dest="baud", action="store", type=int, help="Baudrate, default 1Mbaud.", default=1000000)
         defaultSerialDev = os.getenv("DDPRINTDEV") or os.getenv("dev") or "/dev/ttyACM"
         parser.add_argument("-d", dest="device", action="store", type=str, help="Device to use, default: %s." % defaultSerialDev, default=defaultSerialDev)
         parser.add_argument("-dt", dest="dummyTempTable", action="store", type=bool, help="Debug: download dummy temperature table, don't limit speeed.", default=False)
@@ -511,7 +515,10 @@ class MainForm(npyscreen.FormBaseNew):
         self.extGripC.update()
         self.extGrip.update()
 
-        ePos = status["extruder_pos"]
+        self.slowdown.set_value( "%8.2f" % status["slowdown"] )
+        self.slowdown.update()
+
+        ePos = status["ePos"]
         t = time.time()
 
         e_steps_per_mm = self.printer.printerProfile.getStepsPerMM(A_AXIS)
@@ -592,7 +599,7 @@ class MainForm(npyscreen.FormBaseNew):
             self._log("display(): Ignoring exception: ", traceback.format_exc())
             return
 
-        self.curses_pad.vline( 1, self.columns/2-1, curses.ACS_VLINE, self.lines-2)
+        self.curses_pad.vline( 1, self.columns/2-1, curses.ACS_VLINE, self.lines/2 - 2)
         self.curses_pad.hline( self.lines/2-1, 1, curses.ACS_HLINE, self.columns/2-2)
         self.curses_pad.hline( self.lines/2-1, self.columns/2, curses.ACS_HLINE, self.columns/2-1)
 
@@ -739,8 +746,10 @@ class MainForm(npyscreen.FormBaseNew):
 
     def logComm(self, *args):
         s = util.stringFromArgs(*args)
-        logging.info("CommLog: %s", s)
-        self.guiQueue.put(SyncCallUpdate(self.commLog.buffer, [s]))
+        # logging.info("CommLog: %s", s)
+        # self.guiQueue.put(SyncCallUpdate(self.commLog.buffer, [s]))
+        logging.info(s)
+        self.guiQueue.put(SyncCallUpdate(self.appLog.buffer, [s]))
 
     def logPrintLog(self, s):
         if self.printLog:
