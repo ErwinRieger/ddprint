@@ -138,7 +138,7 @@ def calibrateESteps(args, printer, planner):
 
     # Set filament sensor calibration to 1
     p = intmath.fsCalibration(1.0),
-    printer.sendCommandParamV(CmdSetFilSensorCal, [p])
+    printer.sendCommandParamV(CmdSetFilSensorCal, (p, ))
 
     dt = printer.printerProfile.getFilSensorIntervalI()
 
@@ -232,7 +232,7 @@ def calibrateFilSensor(args, printer, planner):
 
     # Set filament sensor calibration to 1
     p = intmath.fsCalibration(1.0),
-    printer.sendCommandParamV(CmdSetFilSensorCal, [p])
+    printer.sendCommandParamV(CmdSetFilSensorCal, (p, ))
 
     dt = printer.printerProfile.getFilSensorIntervalI()
 
