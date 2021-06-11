@@ -1912,12 +1912,12 @@ void Printer::cmdSetFilSensorConfig(ScaledUInt16 & cal, uint16_t fsrMinSteps) {
 #endif
 }
 
-// void Printer::cmdSetStepsPerMME(uint16_t steps) {
+void Printer::cmdSetFilSensorCal(ScaledUInt16 & cal) {
 
-// #if defined(HASFILAMENTSENSOR)
-    // filamentSensor.setStepsPerMME(steps);
-// #endif
-// }
+#if defined(HASFILAMENTSENSOR)
+    filamentSensor.setCalibration(cal);
+#endif
+}
 
 // #if defined(USEExtrusionRateTable)
 void Printer::cmdSetTempTable() {
@@ -2396,12 +2396,14 @@ class UsbCommand : public Protothread {
                         txBuffer.sendACK();
                         }
                         break;
-                    // case CmdSetStepsPerMME: {
-                        // uint16_t steps = rxBuffer.readUInt16NoCheckCobs();
-                        // printer.cmdSetStepsPerMME(steps);
-                        // txBuffer.sendACK();
-                        // }
-                        // break;
+                    case CmdSetFilSensorCal: {
+                        ScaledUInt16 fsc;
+                        fsc.value = rxBuffer.readUInt16NoCheckCobs();
+                        fsc.shift = rxBuffer.readNoCheckCobs();
+                        printer.cmdSetFilSensorCal(fsc);
+                        txBuffer.sendACK();
+                        }
+                        break;
 #if defined(__arm__)
                     case CmdBootBootloader:
                         timer.startBootloaderTimer();

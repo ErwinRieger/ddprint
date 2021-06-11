@@ -28,6 +28,7 @@ import time, math, pprint, sys
 import numpy as np
 
 import ddhome, movingavg, gcodeparser, ddprintutil as util
+import intmath
 from ddprofile import MatProfile
 from ddprinter import Printer
 from ddplanner import Planner, initParser
@@ -136,7 +137,8 @@ def calibrateESteps(args, printer, planner):
     util.downloadDummyTempTable(printer)
 
     # Set filament sensor calibration to 1
-    printer.sendCommandParamV(CmdSetFilSensorCal, [packedvalue.float_t(1.0)])
+    p = intmath.fsCalibration(1.0),
+    printer.sendCommandParamV(CmdSetFilSensorCal, [p])
 
     dt = printer.printerProfile.getFilSensorIntervalI()
 
@@ -229,7 +231,8 @@ def calibrateFilSensor(args, printer, planner):
     util.downloadDummyTempTable(printer)
 
     # Set filament sensor calibration to 1
-    printer.sendCommandParamV(CmdSetFilSensorCal, [packedvalue.float_t(1.0)])
+    p = intmath.fsCalibration(1.0),
+    printer.sendCommandParamV(CmdSetFilSensorCal, [p])
 
     dt = printer.printerProfile.getFilSensorIntervalI()
 
