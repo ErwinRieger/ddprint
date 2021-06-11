@@ -89,7 +89,7 @@ class ArgRange(object):
     def __eq__(self, other):
         return self.start <= other <= self.end
     def __repr__(self):
-        return "[%f:%f]" % (self.start, self.end)
+        return "%f:%f" % (self.start, self.end)
 
 def main():
 
