@@ -55,7 +55,7 @@ def homeMove(parser, dim, direction, dist, fakeHomingEndstops, feedRateFactor=1.
     printer.sendCommandParamV(CmdMove, [MoveTypeHoming])
     # printer.sendCommand(CmdEOT)
 
-    printer.waitForState(StateInit, wait=0.25, log=True)
+    printer.waitForState(StateInit, wait=0.25)
 
     if direction > 0:
         # Move towards endstop
@@ -130,7 +130,7 @@ def home(args, printer, parser, planner, force=False):
             printer.sendCommandParamV(CmdMove, [MoveTypeNormal])
             # printer.sendCommand(CmdEOT)
 
-            printer.waitForState(StateInit, wait=0.25, log=True)
+            printer.waitForState(StateInit, wait=0.25)
 
         #
         # Set Virtual E-pos 0:
@@ -157,18 +157,6 @@ def home(args, printer, parser, planner, force=False):
             if homeBounce(parser, dim, args.fakeendstop):
                 continue
 
-        """
-        # Try fast home if head/bed is near the endstop
-        print "Homing: doing short/fast home."
-        if homeMove(parser, dim, 1, planner.MAX_POS[dim] / 10.0, args.fakeendstop): # Move towards endstop fast
-
-            print "Homing: %s - endstop is triggered, trying fast home." % dimNames[dim]
-            if homeBounce(parser, dim, args.fakeendstop):
-                continue
-        """
-
-        # Do the full slow homing move
-        print "Homing: doing full/slow home."
         if not homeMove(parser, dim, 1, planner.MAX_POS[dim] * 1.25, args.fakeendstop): # Move towards endstop fast
             print "Error, %s - endstop NOT hit!" % dimNames[dim]
             assert(0)
