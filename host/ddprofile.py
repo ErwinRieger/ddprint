@@ -269,37 +269,15 @@ class PrinterProfile(ProfileBase):
     def getPidValue(self, pidSet, key):
         return float(self.getValue(pidSet)[key])
 
-    @classmethod
-    def getNLongInterval(cls, feedrate):
+    def getNLongIntervalI(self, feedrate, howlong):
 
-        dt = cls.getFilSensorInterval()
-        # Time for one revolution
-        tRound = cls.getFeederWheelCircum() / feedrate
-        nAvg = int(round(tRound / dt))
-
-        nAvg = max(nAvg, 2)
-        return nAvg
-
-    def getNLongIntervalI(self, feedrate):
-
-        dt = self.getFilSensorIntervalI()
+        # dt = self.getFilSensorIntervalI()
         # Time for one revolution
         tRound = self.getFeederWheelCircumI() / feedrate
-        nAvg = int(round(tRound / dt))
+        # nAvg = int(round(tRound / dt))
 
-        nAvg = max(nAvg, 2)
-        return nAvg
-
-    @classmethod
-    def getNShortInterval(cls, feedrate):
-
-        dt = cls.getFilSensorInterval()
-        # Time for one revolution
-        tRound = cls.getFeederWheelCircum() / feedrate
-        nAvg = int(round(tRound / (dt*8)))
-
-        nAvg = max(nAvg, 2)
-        return nAvg
+        # nAvg = max(nAvg, 2)
+        return howlong / tRound
 
     def getWeakPowerBedTemp(self):
         return int(self.getValues()["weakPowerBedTemp"])

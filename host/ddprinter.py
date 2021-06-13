@@ -1197,7 +1197,7 @@ bereiche f(x)
         payload = struct.pack("<hB", startTemp, nExtrusionLimit)
 
         for timerValue in tempTable:
-            print "TempTable: %d°C, timerValue: %d(0x%x)" % (startTemp, timerValue, timerValue)
+            # print "TempTable: %d°C, timerValue: %d(0x%x)" % (startTemp, timerValue, timerValue)
             payload += struct.pack("<H", timerValue)
             startTemp += 1
 
