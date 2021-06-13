@@ -19,7 +19,7 @@
 # along with ddprint.  If not, see <http://www.gnu.org/licenses/>.
 #*/
 
-import logging, datetime, traceback, os
+import logging, datetime, traceback, os, reprap_svr
 logging.basicConfig(filename=datetime.datetime.now().strftime("/tmp/ddprint_%y.%m.%d_%H:%M:%S.log"), level=logging.DEBUG)
 
 import npyscreen, time, curses, sys, threading, Queue
@@ -148,6 +148,7 @@ class MainForm(npyscreen.FormBaseNew):
         self.frAvg10 = movingavg.MovingAvg(100)
 
         self.printThread = None
+        self.reprapThread = None
         # self.threadStopCount = 0
 
         # Output queue, used by the printer thread to output 
@@ -155,6 +156,8 @@ class MainForm(npyscreen.FormBaseNew):
         self.guiQueue = Queue.Queue()
         # Command queue of the printer thread
         self.cmdQueue = Queue.Queue()
+
+        self.reprapServer = reprap_svr.ReprapServer(self)
 
         self.printerState = None
         self.stateNames = ["IDLE", "INIT", "PRINTING"]
@@ -325,6 +328,11 @@ class MainForm(npyscreen.FormBaseNew):
             self.printThread = stoppableThread.StoppableThread(target=self.printWorker)
             self.printThread.daemon = True
             self.printThread.start()
+
+        if not self.reprapThread:
+            self.reprapThread = threading.Thread(target = self.reprapServer.run)
+            self.reprapThread.daemon = True
+            self.reprapThread.start()
 
         while not self.guiQueue.empty():
             obj = self.guiQueue.get()
@@ -768,6 +776,7 @@ class MainForm(npyscreen.FormBaseNew):
 
     def statusCb(self, status):
         self.guiQueue.put(SyncCall(self.updateStatus, status))
+        self.reprapServer.setStatus(status)
 
 class Application(npyscreen.NPSAppManaged):
 
