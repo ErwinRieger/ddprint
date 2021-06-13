@@ -97,8 +97,8 @@
 
 #define CmdSetContTimer         166 // Timer value for CmdContinuousE -> E-Speed
 #define CmdContinuousE          167 // Start/Stop continuous e-move for filament measurement
-#define CmdSetFilSensorConfig      168 // Set filament sensor calibration vaue
-// #define CmdSetStepsPerMME       169 // 
+#define CmdSetFilSensorConfig   168 // Flowrate sensor: Set steps per mm value and calibration value.
+#define CmdSetFilSensorCal      169 // Flowrate sensor: set calibration value.
 
 #define CmdSetPrinterName       170 // Write printer (-profile) name to printer eeprom
 #define CmdGetPrinterName       171 // Read printer (-profile) name from printer eeprom

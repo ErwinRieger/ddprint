@@ -82,8 +82,8 @@ CmdEnableFRLimit = 165 # Enable/disable flowrate limit
 
 CmdSetContTimer =    166 # Timer value for CmdContinuousE -> E-Speed
 CmdContinuousE =     167 # Start/Stop continuous e-move for filament measurement
-CmdSetFilSensorConfig = 168 # Flowrate sensor: set calibration value.
-# CmdSetStepsPerMME =  169 # Set steps per mm value
+CmdSetFilSensorConfig = 168 # Flowrate sensor: Set steps per mm value and calibration value.
+CmdSetFilSensorCal = 169 # Flowrate sensor: set calibration value.
 CmdSetPrinterName =  170 # Set printer (-profile) name from printer eeprom, payload is a 'pascal string'
 CmdGetPrinterName =  171 # Read printer (-profile) name from printer eeprom, payload is a 'pascal string'
 

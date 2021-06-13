@@ -82,6 +82,10 @@ class FilamentSensorEMS22 {
             fsrMinSteps = minsteps;
         }
 
+        void setCalibration(ScaledUInt16 & fc) {
+            filSensorCalibration = fc;
+        }
+
         int32_t getSensorCount() { return sensorCountAbs; }
         bool isLimiting() { return limiting; }
         uint16_t getSlowDown() { return slowDown; }
