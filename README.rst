@@ -228,7 +228,12 @@ Automatically determine extruder *e-steps* value for printer profile:
 
 .. code-block:: sh
 
-    ./ddprint.py calibrateESteps UM2-2
+    ./ddprint.py calibrateESteps
+
+.. raw:: html
+
+    <asciinema-player src="/images/video/calesteps.asc"></asciinema-player>
+
 
 *calibrateFilSensor*
 **************************************
@@ -522,4 +527,5 @@ Thanks to all open/free software people that make this all possible.
 
     <script type='text/javascript' src='/images/Widget_2.js'></script>
     <script type='text/javascript' src='/images/kofiButton.js'></script>
+    <script src="/images/js_css/asciinema-player.js"></script>
 
