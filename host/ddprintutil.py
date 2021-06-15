@@ -1001,7 +1001,7 @@ def insertFilament(args, printer, parser, planner, feedrate):
     printer.waitForState(StateInit)
 
     t1 = planner.matProfile.getHotendGoodTemp()
-    printer.heatUp(HeaterEx1, t1, wait=t1 * 0.95, log=True)
+    printer.heatUp(HeaterEx1, t1, wait=t1 * 0.95)
 
     print "\nInsert filament.\n"
     manualMoveE()
@@ -1048,7 +1048,7 @@ def removeFilament(args, printer, parser, planner, feedrate):
     printer.waitForState(StateInit)
 
     t1 = (planner.matProfile.getHotendGoodTemp() + planner.matProfile.getHotendMaxTemp()) / 2
-    printer.heatUp(HeaterEx1, t1, wait=t1, log=True)
+    printer.heatUp(HeaterEx1, t1, wait=t1)
 
     # Filament vorwärts feeden um den 'retract-pfropfen' einzuschmelzen
     manualMove(args, printer, parser, planner, A_AXIS, pp.getRetractLength() + 50, 5)
