@@ -18,6 +18,8 @@ Store printer name in printer's eeprom:
 
     ./ddprint.py setPrinterName UM2-1
 
+.. raw:: html
+
     <iframe width="100%" height="475" src="https://dotnetfiddle.net/Widget/CsCons" frameborder="0"></iframe>
 
 *calibrateESteps*
