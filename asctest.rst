@@ -1,6 +1,12 @@
 
-FDM 3d printer firmware with host preprocessing and *closed loop E*
+
+.. raw:: html
+
+   <link rel="stylesheet" href="/images/js_css/asciinema-player.css"" type="text/css"/>
+
+asctet
 =====================================================================
+
 
 
 Usage
@@ -8,6 +14,10 @@ Usage
 
 Commandline Interface, CLI
 -----------------------------
+
+.. raw:: html
+   :file: images/test.svg
+
 
 *setPrinterName*
 **************************************
@@ -20,7 +30,7 @@ Store printer name in printer's eeprom:
 
 .. raw:: html
 
-    <iframe width="100%" height="475" src="https://dotnetfiddle.net/Widget/CsCons" frameborder="0"></iframe>
+    <asciinema-player src="/images/video/calestep.asc" font-size="8"></asciinema-player>  
 
 *calibrateESteps*
 **************************************
@@ -33,7 +43,7 @@ Automatically determine extruder *e-steps* value for printer profile:
 
 .. raw:: html
 
-    <asciinema-player src="/images/video/calesteps.asc"></asciinema-player>
+    <asciinema-player src="/images/video/calestep.asc"></asciinema-player>
 
 
 *calibrateFilSensor*
@@ -51,4 +61,5 @@ Automatically determine flowrate sensor calibration value for printer profile:
     <script type='text/javascript' src='/images/Widget_2.js'></script>
     <script type='text/javascript' src='/images/kofiButton.js'></script>
     <script src="/images/js_css/asciinema-player.js"></script>
+
 
