@@ -1,13 +1,17 @@
 
+.. raw:: html
+
+   <link rel="stylesheet" href="/images/js_css/asciinema-player.css"" type="text/css"/>
+
 FDM 3d printer firmware with host preprocessing and *closed loop E*
 =====================================================================
 
 :tags: FDM, 3DDruck, 3dprinting, python, ddprint
 :slug: ddprint-3d-printer-firmware
 
-**Note: Experimental and work in progress.**
+**Note: Experimental and work in progress, documentation is incomplete and outdated.**
 
-**Note: Documentation is incomplete and outdated.**
+See last chapter in this document for a log/history.
 
 .. image:: /images/flowsensor_red.jpg
    :width: 200px
@@ -144,7 +148,7 @@ Build and upload firmware
 ***************************
 
 :Note: keep a backup of your previous firmware in case you want to go back.
-:Note: keep a backup of your EEProm in case yout want to go back, EEProm content will be erased.
+:Note: ddPrint does not use EEProm.
 
 For a ultimaker UM2 do:
 
@@ -180,7 +184,7 @@ Parts of printer configuration hardcoded in firmware, parts come from printer pr
 
 :Todo: describe configuration.
 
-Only one setting stored in eeprom: the printer name.
+Only one setting stored in printer: the printer name.
 
 :Todo: describe printer name setting.
 
@@ -215,11 +219,13 @@ Commandline Interface, CLI
 *setPrinterName*
 **************************************
 
-Store printer name in printer's eeprom:
+Store printer name in printer's runtime config (on mass storage device):
 
 .. code-block:: sh
 
     ./ddprint.py setPrinterName UM2-1
+
+.. _calibrateesteps-label:
 
 *calibrateESteps*
 **************************************
@@ -230,9 +236,14 @@ Automatically determine extruder *e-steps* value for printer profile:
 
     ./ddprint.py calibrateESteps
 
+Example screencast:
+
 .. raw:: html
 
-    <asciinema-player src="/images/video/calesteps.asc"></asciinema-player>
+    <asciinema-player src="/images/video/calestep.asc" font-size="8"></asciinema-player>  
+    <noscript>
+       <a href="http://www.ibrieger.de/ddprint-3d-printer-firmware.html#calibrateesteps-label">Player not available on github, see video here.</a>
+    </noscript>
 
 
 *calibrateFilSensor*
@@ -385,10 +396,10 @@ Get current printer positions.
 
     ./ddprint.py getpos
 
-Read printer name from eeprom, *getPrinterName*
+Read printer name from printer, *getPrinterName*
 **************************************************
 
-Read printer name from printer, this is stored in eeprom.
+Read printer name from printer, stored on mass storage device (sdcard, usbmemory).
 
 .. code-block:: sh
 
@@ -492,10 +503,21 @@ Things todo, nice to have
 * Python3 port (currently python 2.7).
 * Other convenient things like automatic bedleveling and so on.
 
+Thanks
++++++++++++++
+
+Thanks to all open/free software people that make this all possible.  
+
+
 Log
 ++++++++++++++++++++++++++++
 
 ::
+
+   Wed Jun 16 23:47:01 CEST 2021
+
+   Current development (cleanup, minor fixes, documentation) is done on *next* branch.
+   Adding asciinema screencast to show how to use ddPrint.
 
    Wed Jun  9 21:17:22 CEST 2021
 
@@ -515,12 +537,6 @@ Log
 
    So for now, fix-avr is the branch to use for avr/atmega based printers and master is for
    the stm32 JennyPrinter. Branch fix-avr has will be merged into master.
-
-Thanks
-+++++++++++++
-
-Thanks to all open/free software people that make this all possible.  
-
 
 
 .. raw:: html
