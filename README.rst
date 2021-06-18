@@ -210,11 +210,11 @@ Supported gcodes
 
 *Todo*
 
-Usage
-+++++++++++++
+Usage, Commandline Interface
+++++++++++++++++++++++++++++++++++
 
-Commandline Interface, CLI
------------------------------
+Machine setup and calibration
+------------------------------
 
 *setPrinterName*
 **************************************
@@ -225,16 +225,27 @@ Store printer name in printer's runtime config (on mass storage device):
 
     ./ddprint.py setPrinterName UM2-1
 
+See also: `getprintername command <#getprintername-label>`__.
+
 .. _calibrateesteps-label:
+
+*getEndstops*
+**************************************
+
+Get current endstop state.
+
+.. code-block:: sh
+
+    ./ddprint.py getEndstops
 
 *calibrateESteps*
 **************************************
 
-Automatically determine extruder *e-steps* value for printer profile:
+Machine setup and calibration: Automatically determine extruder *e-steps* value for printer profile:
 
 .. code-block:: sh
 
-    ./ddprint.py calibrateESteps
+    ./ddprint.py calibrateesteps
 
 Example screencast:
 
@@ -242,18 +253,28 @@ Example screencast:
 
     <asciinema-player src="/images/video/calestep.asc" font-size="8"></asciinema-player>  
     <noscript>
-       <a href="http://www.ibrieger.de/ddprint-3d-printer-firmware.html#calibrateesteps-label">Player not available on github, see video here.</a>
+       <a href="http://www.ibrieger.de/ddprint-3d-printer-firmware.html#calibrateesteps-label">Asciinema not available on github, see video here.</a>
     </noscript>
 
+.. _calflowratesensor-label:
 
 *calibrateFilSensor*
 **************************************
 
-Automatically determine flowrate sensor calibration value for printer profile:
+Machine setup and calibration: Automatically determine flowrate sensor calibration value for printer profile:
 
 .. code-block:: sh
 
-    ./ddprint.py calibrateFilSensor UM2-2
+    ./ddprint.py calibratefilsensor
+
+Example screencast:
+
+.. raw:: html
+
+    <asciinema-player src="/images/video/calflowratesensor.asc" font-size="8"></asciinema-player>  
+    <noscript>
+       <a href="http://www.ibrieger.de/ddprint-3d-printer-firmware.html#calflowratesensor-label">Asciinema not available on github, see video here.</a>
+    </noscript>
 
 *testFilSensor*
 **************************************
@@ -275,34 +296,13 @@ Run PID autotune to determine the hotend PID parameters:
     cd pid_tune
     PYTHONPATH=.. ./pidAutoTune.py ../autotune.raw.json
 
-Print gcode file, *print*
+*bedLeveling*
 **************************************
 
-Print a gcode file with the commandline tool:
+:Todo: describe command
 
-.. code-block:: sh
-
-    ./ddprint.py  -smat esun_petg_transparent-orange-6-922572-263079 print nozzle80 petg_1.75mm quader_10x20.gcode
-
-Preprocess gcode file, *pre*
-**************************************
-
-Preprocess a gcode file, this parses the given gcode file and runs all processing steps without actually 
-sending anything to the printer. Used for development, debugging and to check if a given gcode file can be 
-processed by ddprint.
-
-.. code-block:: sh
-
-    ./ddprint.py  -smat esun_petg_transparent-orange-6-922572-263079 pre UM2-1 nozzle80 petg_1.75mm quader_10x20.gcode
-
-*disableSteppers*
-**************************************
-
-Switch off stepper current, printer no longer homed after that.
-
-.. code-block:: sh
-
-    ./ddprint.py disableSteppers
+Material measurment
+------------------------------
 
 Measure material profile, *measureTempFlowrateCurve*
 *********************************************************
@@ -314,23 +314,15 @@ of this machine/filament combination.
 
     ./ddprint.py measureTempFlowrateCurve nozzle80 petg_1.75mm 2.5
 
-Manual movement, *moverel*
-**************************************
+Printing
+------------------------------
 
-Move axis relative to current position.
+*home*
+**************************************
 
 .. code-block:: sh
 
-    ./ddprint.py moverel X 100
-
-Manual movement, *moveabs*
-**************************************
-
-Move axis to absolute position.
-
-.. code-block:: sh
-
-    ./ddprint.py moveabs X 0
+    ./ddprint.py home
 
 *insertFilament*
 **************************************
@@ -350,24 +342,60 @@ Heat hotend and pull back/remove filament.
 
     ./ddprint.py removeFilament petg_1.75mm
 
-*bedLeveling*
+Preprocess gcode file, *pre*
 **************************************
 
-:Todo: describe command
+Preprocess a gcode file, this parses the given gcode file and runs all processing steps without actually 
+sending anything to the printer. Used for development, debugging and to check if a given gcode file can be 
+processed by ddprint.
+
+.. code-block:: sh
+
+    ./ddprint.py  -smat esun_petg_transparent-orange-6-922572-263079 pre UM2-1 nozzle80 petg_1.75mm quader_10x20.gcode
+
+Print gcode file, *print*
+**************************************
+
+Print a gcode file with the commandline tool:
+
+.. code-block:: sh
+
+    ./ddprint.py  -smat esun_petg_transparent-orange-6-922572-263079 print nozzle80 petg_1.75mm quader_10x20.gcode
+
+Misc commands
+------------------------------
+
+*disableSteppers*
+**************************************
+
+Switch off stepper current, printer no longer homed after that.
+
+.. code-block:: sh
+
+    ./ddprint.py disableSteppers
+
+Manual movement, *moverel*
+**************************************
+
+Move axis relative to current position.
+
+.. code-block:: sh
+
+    ./ddprint.py moverel X 100
+
+Manual movement, *moveabs*
+**************************************
+
+Move axis to absolute position.
+
+.. code-block:: sh
+
+    ./ddprint.py moveabs X 0
 
 *heatHotend*
 **************************************
 
 :Todo: describe command
-
-*getEndstops*
-**************************************
-
-Get current endstop state.
-
-.. code-block:: sh
-
-    ./ddprint.py getEndstops
 
 *getFilSensor*
 **************************************
@@ -396,6 +424,8 @@ Get current printer positions.
 
     ./ddprint.py getpos
 
+.. _getprintername-label:
+
 Read printer name from printer, *getPrinterName*
 **************************************************
 
@@ -403,7 +433,7 @@ Read printer name from printer, stored on mass storage device (sdcard, usbmemory
 
 .. code-block:: sh
 
-    ./ddprint.py getPrinterName
+    ./ddprint.py getprintername
 
 *getTemps*
 **************************************
@@ -422,22 +452,15 @@ Get bed- and hotend temperatures from printer.
     ./ddprint.py getStatus
 
 
-*home*
-**************************************
 
-.. code-block:: sh
-
-    ./ddprint.py home
-
-
-Print gcode file with the Userinterface (TUI)
+Usage, Userinterface (TUI)
 +++++++++++++++++++++++++++++++++++++++++++++++++
 
 Print a gcode file with the TUI:
 
 .. code-block:: sh
 
-    ./ddprintui.py  -smat esun_petg_transparent-orange-6-922572-263079 nozzle80 petg_1.75mm quader_10x20.gcode
+    ./ddprintui.py  -smat esun_petg_transparent-orange-6-922572-263079 nozzle80 petg quader_10x20.gcode
 
 Some implementation notes
 ++++++++++++++++++++++++++++
