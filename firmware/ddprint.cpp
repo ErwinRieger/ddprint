@@ -699,7 +699,7 @@ class FillBufferTask : public Protothread {
                                 timerScale = (timerScale * filamentSensor.getSlowDown()) >> 10; // scale pow(1024) -> 1024
                                 printer.underGrip = min(printer.underGrip+1, 0xffff);
 
-                                printer.sendGenericInt32(timerScale);
+                                // printer.sendGenericInt32(timerScale);
                             }
 
                             // printf("speed is limited by factor: %f\n", timerScale);
@@ -717,7 +717,7 @@ class FillBufferTask : public Protothread {
                                 limiting = true;
                                 printer.underGrip = min(printer.underGrip+1, 0xffff);
 
-                                printer.sendGenericInt32(timerScale);
+                                // printer.sendGenericInt32(timerScale);
                             }
                         }
                     }
@@ -1099,7 +1099,7 @@ class FillBufferTask : public Protothread {
                             timerScale = (timerScale * filamentSensor.getSlowDown()) >> 10; // scale pow(1024) -> 1024
                             printer.underGrip = min(printer.underGrip+1, 0xffff);
 
-                            printer.sendGenericInt32(timerScale);
+                            // printer.sendGenericInt32(timerScale);
                         }
 
                         #if ! defined(COLDEXTRUSION)
@@ -1116,7 +1116,7 @@ class FillBufferTask : public Protothread {
                             limiting = true;
                             printer.underGrip = min(printer.underGrip+1, 0xffff);
 
-                            printer.sendGenericInt32(timerScale);
+                            // printer.sendGenericInt32(timerScale);
                         }
                     }
                 }
