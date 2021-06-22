@@ -469,10 +469,10 @@ class Printer(Serial):
 
         # todo: move all settings into CmdSetHostSettings call
 
-        # Circumfence of FSR is about 10mm, so when extruding
-        # 1mm of filament we should have a measurement in the
-        # range of about 100 (1024/10 = 102.4).
-        fsrMinSteps = 1 * settings["stepsPerMMA"]
+        # We want at least 50 FRS counts for a measurement, compute the neccessary
+        # extruder stepper steps for this:
+        fsrMinSteps = int(50 / settings["filSensorCalibration"])
+
         self.sendCommandParamV(
                 CmdSetFilSensorConfig, (
                     intmath.fsCalibration(settings["filSensorCalibration"]),

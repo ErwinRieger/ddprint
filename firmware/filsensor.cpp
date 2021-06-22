@@ -51,20 +51,16 @@ FilamentSensorEMS22::FilamentSensorEMS22() {
     feedrateLimiterEnabled = true;
 
     filSensorCalibration = { 1, 0 };
-    fsrMinSteps = 1024;
-
-    frsMode = IDLE;
 
     init();
 }
 
 void FilamentSensorEMS22::init() {
 
-    lastASteps = 0;
-    sensorCount = 0;
     slip32 = 32;
     slowDown = 32*32;
     limiting = false;
+    frsMode = IDLE;
 }
 
 uint16_t FilamentSensorEMS22::readEncoderPos() {
@@ -162,8 +158,8 @@ void FilamentSensorEMS22::run() {
                     //
                     // Compute slippage
                     //
-                    //        stepperSteps calibration 
-                    // slip = ------------------------
+                    //        stepperSteps * calibration 
+                    // slip = --------------------------
                     //                frsCount
 
                     if (sensorCount) {
@@ -173,7 +169,7 @@ void FilamentSensorEMS22::run() {
                     // Ignore slip below 10%, 0.1*32 = 3.2, rounded: 3
                     uint16_t s = min( 
                             (uint16_t)max((int16_t)(slip32 - 3), (int16_t)32),
-                            (uint16_t)(4*32) );
+                            (uint16_t)(2*32) ); //  (uint16_t)(4*32) ); // max slowdown: pow(2) = 4
 
                     #if !defined(COLDEXTRUSION)
                     limiting = (s > 32) && feedrateLimiterEnabled;

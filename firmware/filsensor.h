@@ -62,6 +62,7 @@ class FilamentSensorEMS22 {
 
         uint8_t measureTimer;
 
+        // Minimal movement of extruder stepper for a measurement, set by host.
         uint16_t fsrMinSteps;
 
     public:
