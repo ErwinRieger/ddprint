@@ -1881,7 +1881,10 @@ void Printer::cmdGetStatus() {
     // Flowrate sensor
 #if defined(HASFILAMENTSENSOR) || defined(RUNFILAMENTSENSOR)
     txBuffer.sendResponseInt16(filamentSensor.getSlip32());
-    txBuffer.sendResponseUInt16(filamentSensor.getSlowDown());
+    if (filamentSensor.isLimiting())
+        txBuffer.sendResponseUInt16(filamentSensor.getSlowDown());
+    else
+        txBuffer.sendResponseUInt16(1024);
 #else
     // Ramps or other test boards without filsensor
     txBuffer.sendResponseInt16(32);
