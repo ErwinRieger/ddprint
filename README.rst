@@ -537,6 +537,16 @@ Log
 
 ::
 
+   Fri Jun 25 09:49:51 CEST 2021
+
+   Merged *next* branch into master, changes are:
+
+   * Flowrate/grip measurement:
+   * Added a experimental reprap usbserial interface using a pseudo-tty to use OctoPrint 
+     as a frontend for ddPrint. Not much functionality yet: display temperatures and some
+     SD card commands (stubs).
+   * Flowrate limiter: max. slowdown now four times instead of 16.
+
    Wed Jun 16 23:47:01 CEST 2021
 
    Current development (cleanup, minor fixes, documentation) is done on *next* branch.
