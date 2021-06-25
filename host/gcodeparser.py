@@ -441,14 +441,12 @@ class UM2GcodeParser:
         f.seek(0) # rewind
 
         if downloadTime < moveTime:
-            print "downloadTime %.2f smaller than printing time %.2f, can use preload..." % (downloadTime, moveTime)
+            print "downloadTime %.2f smaller than printing time %.2f, can use preload (#lines: %d)." % (downloadTime, moveTime, preloadLines)
         else:
-            print "downloadTime %.2f greater than printing time %.2f, no preload possible..." % (downloadTime, moveTime)
+            print "downloadTime %.2f greater than printing time %.2f, no preload possible (#lines: %d)." % (downloadTime, moveTime, preloadLines)
 
-        # return (f, max(preloadLines, 1000))
         # XXXXX hack weil download von stopfen-4mal.gcode ewig zum download dauert...
-        print "XXXX preParse(): retuning fixed preload 1000..." # return (f, max(min(preloadLines, 10000), 1000))
-        return (f, 1000)
+        return (f, max(min(preloadLines, 10000), 1000))
 
     def execute_line(self, rawLine):
 
