@@ -391,15 +391,7 @@ typedef struct {
 #if defined(AVR)
     typedef Buffer256<stepData> StepBufferBase;
 #else
-    //
-    // Good for max: (4096*(25/2))/1000.0 = 51.2 mS
-    //
-    // PS1: (timer value 25)/2 = 12.5 uS -> theoretical max allowed stepper frequency of about 80 kHz
-    // PS2: Note 50 mS buffer depth is a bit aggressive, it is not enough for some random 
-    // long USB transfers... 
-    //
     #define StepBufferLen  4096
-
     typedef CircularBuffer<stepData, uint16_t, StepBufferLen> StepBufferBase;
 #endif
 
@@ -500,10 +492,10 @@ class StepBuffer: public StepBufferBase {
                 return STD min( (upcount-d)/2000, (uint32_t)255);
             }
 
-            // Reserve 50 ms buffer depth for long usb
+            // Reserve 50+ ms buffer depth for long usb
             // transactions, this assumes 2Mhz timer clock tick.
             FWINLINE bool enough() { 
-                return full() || (timeInBuffer() >= 50); }
+                return full() || (timeInBuffer() >= 55); }
 
             void pushRef(stepData& val)  {
                 upcount += val.timer;
