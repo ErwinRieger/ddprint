@@ -480,58 +480,6 @@ class Printer(Serial):
                     )
                 )
 
-        """
-
-
-apply F(x) z.b. binary pow 
-
-input range
-
-    grip, ...........
-
-    output index into, z.b. array table 32 64 ..?
-
-        listeninhalt: multiplikator für timer prescaler
-
-
-wie kann ma timervaie 16 bit schnell hochmultipliz...
-
-
-        shift operation ist mit * 2 zu grob
-
-
-    d.h. tendenziell wieder division dabei
-
-        anderer weg: multiplikatin  per shift und divisiom per shiift
-
-        z.b. 2*1/16-tel 
-
-            das kann alls struct ,shift-up shift-down, in einer tabelle gespeichert werden
-
-
-            index   z.b. byte         , dann 256 einträge...
-            für 8 bit auflösung
-
-
-f(x)
------
-
-bereiche f(x)
-
-  eingangs wert x = slip = steps / fssteps
-  bereich x (annahme fscal so 0.3): 
-      <3 = negativer slip, grip besser 100%           "overextruding einstellung slicer/host software (fscal)"
-      =3 = kein slip, grip 100%
-      >3 = slip, grip kleiner 100%
-
-
-    ausgang wird auf werte >= 1 skaliert, spaeter grenze nach oben (grenze für verlangsamung) machen
-
-
-        es mus obere grenze festgelegt werden um f(x) besser bestimmen zu können, z.b. 25%
-        """
-
-
         (ki, maxEsum16H) = intmath.pidScaleKi(settings["Ki"])
         (kiC, maxEsum16HC) = intmath.pidScaleKi(settings["KiC"])
 

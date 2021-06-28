@@ -744,20 +744,6 @@ class Planner (object):
         if debugMoves:
             print "Streaming %d travel moves..." % len(path)
 
-# xxxx newmeasure
-        """
-        rateList = []
-        for move in path:
-            # rateList.append(move.topSpeed.speed().eSpeed)
-            rateList.append(move.topSpeed.speed()[3])
-
-        avgRate = sum(rateList) / len(rateList)
-
-        if avgRate > 0:
-            path[0].isMeasureMove = True
-            path[0].measureSpeed = avgRate
-        """
-
         for move in path:
             # xxxx check for minimal frs steps ....
             if move.eDistance() > 1.0 and move.linearTime() > 0.15:
