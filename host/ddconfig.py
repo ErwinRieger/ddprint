@@ -47,12 +47,6 @@ debugComm = False
 
 #####################################################################
 #
-# Extrusion slip compensation
-#
-UseFeederCompensation = False
-
-#####################################################################
-#
 # Smooth out extrusion rates of moves by adjusting the XY speed
 #
 SmoothExtrusionRate = True

@@ -157,17 +157,8 @@ def joinMoves2(move1, move2, advInstance): # jerk):
         #
         # Compare E-speed of moves
         #
-        # Note: normally we would compare eEndSpeed1 and eStartSpeed2 here.
-        # But this is a problem with feederCompensation and move.sanityCheck() with the
-        # increased E feedrate values (the difference of compensated endspeed/startspeed could be
-        # more than AdvanceEThreshold).
-        # Therefore we compare the compensated values here:
-        #
         # if isclose(eEndSpeed1, eStartSpeed2, AdvanceEThreshold):
-        #
-        adjEEndSpeed1 = advInstance.eComp(eEndSpeed1)
-        adjEStartSpeed2 = advInstance.eComp(eStartSpeed2)
-        if circaf(adjEEndSpeed1, adjEStartSpeed2, AdvanceEThreshold):
+        if circaf(eEndSpeed1, eStartSpeed2, AdvanceEThreshold):
 
             # E-speed difference is small enough, check X/Y jerk
             endSpeedV1 = endSpeed1.vv3()
