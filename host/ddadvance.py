@@ -253,17 +253,13 @@ class Advance (object):
 
         # First move
         v0 = path[0].startSpeed.speed()
-        # xxx use same start speed as PrintMove::sanityCheck() here!
-
         v0.setSpeed(0.0)
         path[0].startSpeed.setSpeed(v0, "planPath - startSpeed")
 
         # Last move
         lastMove = path[-1]
 
-        # xxx use same start speed as PrintMove::sanityCheck() here!
         v0 = lastMove.endSpeed.speed()
-
         v0.setSpeed(0.0)
         lastMove.endSpeed.setSpeed(v0, "planPath - endSpeed")
 
@@ -282,7 +278,7 @@ class Advance (object):
         # Sanity check
         for move in path:
             # move.pprint("sanicheck")
-            move.sanityCheck(self.planner.getJerk())
+            move.sanityCheck()
         """
 
         # Step 2: join moves backwards
@@ -291,7 +287,7 @@ class Advance (object):
         """
         # Sanity check
         for move in path:
-            move.sanityCheck(self.planner.getJerk())
+            move.sanityCheck()
         """
 
         # Step 3: plan acceleration
@@ -307,7 +303,7 @@ class Advance (object):
         # """
         # Sanity check
         for move in path:
-            move.sanityCheck(self.planner.getJerk())
+            move.sanityCheck()
         # """
         # assert(0)
 
@@ -532,22 +528,6 @@ class Advance (object):
         if self.getKAdv():
             assert(abs(self.moveEsteps) < 0.1)
 
-        """
-        # Debug, check chain
-        if debugAdvance:
-           
-            n = 2
-            m = newPath[0]
-            while m.nextMove:
-                m = m.nextMove
-                n += 1
-            m = newPath[-1]
-            while m.prevMove:
-                m = m.prevMove
-                n += 1
-            assert(n == 2*len(newPath))
-        """
-
         # Stream moves to printer
         if debugAdvance:
             print "Streaming %d moves..." % len(newPath)
@@ -560,10 +540,6 @@ class Advance (object):
 
             # self.planner.streamMove(move)
             self.planner.pathData.updateHistory(move)
-
-            # Help garbage collection
-            move.prevMove = util.StreamedMove()
-            move.nextMove = util.StreamedMove()
 
         if debugAdvance:
             print "***** End planPath() *****"
@@ -634,11 +610,12 @@ class Advance (object):
 
             move.startSpeed.setSpeed(startSpeed1, "joinMovesBwd - breaking")
 
-            if move.prevMove:
+            if index >= 0:
 
                 #
                 # Adjust endspeed of the previous move, also.
                 #
+                prevMove = moves[index]
 
                 factor = startSpeed1.feedrate3() / startSpeed1S
                 # print "factor: ", factor
@@ -648,8 +625,8 @@ class Advance (object):
 
                 # XXX einfacher algo, kann man das besser machen (z.b. mit jerk-berechnung,
                 # vector subtraktion oder so?)
-                endSpeed0 = move.prevMove.endSpeed.speed().scale(factor)
-                move.prevMove.endSpeed.setSpeed(endSpeed0, "joinMovesBwd - prevMove breaking")
+                endSpeed0 = prevMove.endSpeed.speed().scale(factor)
+                prevMove.endSpeed.setSpeed(endSpeed0, "joinMovesBwd - prevMove breaking")
 
         if debugAdvance:
             print "***** End joinMovesBwd() *****"
@@ -1391,7 +1368,7 @@ class Advance (object):
 
         if (move.advanceData.startSplits + move.advanceData.endSplits) == 0:
 
-            move.sanityCheck(self.planner.getJerk())
+            move.sanityCheck()
 
             esteps = move.advanceData.estepSum()
             # if esteps:
@@ -1467,14 +1444,6 @@ class Advance (object):
         assert(abs(move.advanceData.advStepSum) < 0.001)
 
         # print "new moves: ", newMoves
-
-        if move.prevMove:
-            move.prevMove.nextMove = newMoves[0]
-            newMoves[0].prevMove = move.prevMove
-
-        if move.nextMove:
-            move.nextMove.prevMove = newMoves[-1]
-            newMoves[-1].nextMove = move.nextMove
 
         startMove = True
         subMoves = []
@@ -1916,9 +1885,6 @@ class Advance (object):
                 moveB.topSpeed.setSpeed(topSpeed, "planStepsAdvSA()")
                 moveB.endSpeed.setSpeed(endSpeed, "planStepsAdvSA()")
 
-                moveA.nextMove = moveB
-                moveB.prevMove = moveA
-
                 newMoves.append(moveB)
 
             else:
@@ -2030,9 +1996,6 @@ class Advance (object):
             moveA.startSpeed.setSpeed(startSpeed, "planStepsAdvSD()")
             moveA.topSpeed.setSpeed(topSpeed, "planStepsAdvSD()")
             moveA.endSpeed.setSpeed(topSpeed, "planStepsAdvSD()")
-
-            moveA.nextMove = moveB
-            moveB.prevMove = moveA
 
             newMoves.insert(0, moveA)
 
@@ -2181,17 +2144,7 @@ class Advance (object):
             moveB.topSpeed.setSpeed(topSpeed, "planStepsAdvSALSD(")
             moveB.endSpeed.setSpeed(topSpeed, "planStepsAdvSALSD(")
 
-            moveA.nextMove = moveB
-            moveB.prevMove = moveA
-            moveB.nextMove = moveC
-            moveC.prevMove = moveB
-
             newMoves.insert(1, moveB)
-
-        else :
-
-            moveA.nextMove = moveC
-            moveC.prevMove = moveA
 
         # Sum up additional e-distance of this move for debugging
         esteps = displacement_vector_steps_A[A_AXIS]+displacement_vector_steps_B[A_AXIS]+displacement_vector_steps_C[A_AXIS]
@@ -2335,17 +2288,7 @@ class Advance (object):
             moveA.topSpeed.setSpeed(topSpeed, "planStepsAdvLDD()")
             moveA.endSpeed.setSpeed(topSpeed, "planStepsAdvLDD()")
 
-            # moveA.nextMove = moveB
-            # moveB.prevMove = moveA
-            # moveB.nextMove = moveC
-            # moveC.prevMove = moveB
-
             newMoves.insert(0, moveA)
-
-        # else:
-
-            # moveB.nextMove = moveC
-            # moveC.prevMove = moveB
 
         if displacement_vector_steps_B != emptyVector5:
 
@@ -2359,15 +2302,6 @@ class Advance (object):
             moveB.setSpeeds(sv, sv, ev)
 
             newMoves.insert(-1, moveB)
-
-        prevMove = None
-        nextMove = None
-        for move in newMoves:
-
-            if prevMove: 
-                prevMove.nextMove = move
-            move.prevMove = prevMove
-            prevMove = move
 
         # Sum up additional e-distance of this move for debugging
         esteps = displacement_vector_steps_A[A_AXIS]+displacement_vector_steps_B[A_AXIS]+displacement_vector_steps_C[A_AXIS]
@@ -2547,15 +2481,6 @@ class Advance (object):
             moveB.endSpeed.setSpeed(topSpeed, "planStepsAdvSALDD()")
 
             newMoves.insert(1, moveB)
-
-        prevMove = None
-        nextMove = None
-        for move in newMoves:
-
-            if prevMove: 
-                prevMove.nextMove = move
-            move.prevMove = prevMove
-            prevMove = move
 
         # Sum up additional e-distance of this move for debugging
         esteps = displacement_vector_steps_A[A_AXIS]+displacement_vector_steps_B[A_AXIS]+displacement_vector_steps_C[A_AXIS]+displacement_vector_steps_D[A_AXIS]

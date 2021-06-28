@@ -666,20 +666,13 @@ class Planner (object):
             print "***** Start addMove() *****"
             move.pprint("AddMove")
 
-        pathEnding = False
         if self.pathData.path:
+
             prevMove = self.pathData.path[-1]
-            if prevMove.isPrintMove() == move.isPrintMove():
-                # Append segment to current path
-                prevMove.nextMove = move
-                move.prevMove = prevMove
-            else:
+            if prevMove.isPrintMove() != move.isPrintMove():
                 # Trigger processing of current path and start a new path
                 # with the new segment.
-                pathEnding = True
-
-        if pathEnding:
-            self.endPath()
+                self.endPath()
 
         self.pathData.path.append(move)
 
@@ -727,7 +720,7 @@ class Planner (object):
         """
         # Sanity check
         for move in path:
-            move.sanityCheck(jerk)
+            move.sanityCheck()
         """
 
         # Step 2: join moves backwards
@@ -736,7 +729,7 @@ class Planner (object):
         """
         # Sanity check
         for move in path:
-            move.sanityCheck(jerk)
+            move.sanityCheck()
         """
 
         # Step 3: plan acceleration
@@ -745,7 +738,7 @@ class Planner (object):
 
         # Sanity check
         for move in path:
-            move.sanityCheck(jerk)
+            move.sanityCheck()
 
         # Step 4: plan steps and stream moves to printer
         if debugMoves:
@@ -780,10 +773,6 @@ class Planner (object):
             if self.planTravelSteps(move):
 
                 self.pathData.updateHistory(move)
-
-            # Help garbage collection
-            move.prevMove = util.StreamedMove()
-            move.nextMove = util.StreamedMove()
 
         if debugMoves:
             print "***** End planTravelPath() *****"
@@ -913,11 +902,12 @@ class Planner (object):
             startSpeed1.setSpeed(maxAllowedStartSpeed)
             move.startSpeed.setSpeed(startSpeed1, "joinTravelMovesBwd - breaking")
 
-            if move.prevMove:
+            if index >= 0:
 
                 #
                 # Adjust endspeed of the previous move, also.
                 #
+                prevMove = moves[index]
 
                 factor = maxAllowedStartSpeed / startSpeed1S
                 # print "factor: ", factor
@@ -927,8 +917,8 @@ class Planner (object):
 
                 # XXX einfacher algo, kann man das besser machen (z.b. mit jerk-berechnung,
                 # vector subtraktion oder so?)
-                endSpeed0 = move.prevMove.endSpeed.speed().scale(factor)
-                move.prevMove.endSpeed.setSpeed(endSpeed0, "joinMovesBwd - prevMove breaking")
+                endSpeed0 = prevMove.endSpeed.speed().scale(factor)
+                prevMove.endSpeed.setSpeed(endSpeed0, "joinMovesBwd - prevMove breaking")
 
         if debugMoves:
             print "***** End joinTravelMovesBwd() *****"

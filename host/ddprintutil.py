@@ -249,7 +249,7 @@ def joinMoves2(move1, move2, advInstance): # jerk):
                 # move1.setNominalEndFr(endSpeedS)
                 # move2.setNominalStartFr(move2.feedrateS)
 
-            move1.sanityCheck(jerk)
+            move1.sanityCheck()
             return
 
 ##################
@@ -377,7 +377,7 @@ def joinMoves3(move1, move2, advInstance): # jerk):
             # move1.setNominalEndFr(endSpeedS)
             # move2.setNominalStartFr(move2.feedrateS)
 
-        move1.sanityCheck(jerk)
+        move1.sanityCheck()
 ##################
         if debugMoves:
             move1.pprint("Move1, e-adjusted")
@@ -519,13 +519,6 @@ def joinTravelMoves(move1, move2, jerk):
             print "***** End joinTravelMoves() *****"
 
 ####################################################################################################
-
-# Move object without references to help garbage collection.
-class StreamedMove:
-        pass
-
-####################################################################################################
-
 
 class MyPoint:
 
