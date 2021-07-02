@@ -985,7 +985,7 @@ def insertFilament(args, printer, parser, planner, feedrate):
     printer.waitForState(StateInit)
 
     t1 = planner.matProfile.getHotendGoodTemp()
-    printer.heatUp(HeaterEx1, t1, wait=t1 * 0.95)
+    printer.heatUp(HeaterEx1, t1, wait=t1 * 0.95, log=True)
 
     print "\nInsert filament.\n"
     manualMoveE()
@@ -1032,7 +1032,7 @@ def removeFilament(args, printer, parser, planner, feedrate):
     printer.waitForState(StateInit)
 
     t1 = (planner.matProfile.getHotendGoodTemp() + planner.matProfile.getHotendMaxTemp()) / 2
-    printer.heatUp(HeaterEx1, t1, wait=t1)
+    printer.heatUp(HeaterEx1, t1, wait=t1, log=True)
 
     # Filament vorwärts feeden um den 'retract-pfropfen' einzuschmelzen
     manualMove(args, printer, parser, planner, A_AXIS, pp.getRetractLength() + 50, 5)
@@ -1050,7 +1050,7 @@ def removeFilament(args, printer, parser, planner, feedrate):
 def bedLeveling(args, printer, parser, planner):
 
     t1 = args.t1 or planner.matProfile.getHotendBaseTemp()
-    printer.heatUp(HeaterEx1, t1)
+    printer.heatUp(HeaterEx1, t1, log=True)
 
     # Reset bedlevel offset in printer profile
     if args.relevel:
