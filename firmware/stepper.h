@@ -495,7 +495,7 @@ class StepBuffer: public StepBufferBase {
             // Reserve 50+ ms buffer depth for long usb
             // transactions, this assumes 2Mhz timer clock tick.
             FWINLINE bool enough() { 
-                return full() || (timeInBuffer() >= 55); }
+                return full() || (timeInBuffer() >= 60); }
 
             void pushRef(stepData& val)  {
                 upcount += val.timer;
