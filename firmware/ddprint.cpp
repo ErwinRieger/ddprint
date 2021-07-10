@@ -251,41 +251,27 @@ void setup() {
     #if defined(REPRAP_DISCOUNT_SMART_CONTROLLER)
     lcd.setCursor(0, 0); 
     lcd.print("OK");
-
-    /*
-    ScaledUInt32 i;
-    i.value = 16;
-    i.shift = 4;
-
-    lcd.setCursor(0, 0); 
-    lcd.print("(16*-4)>>4:"); lcd.print(i.mul31(-4));
-
-    i.value = 2;
-    lcd.setCursor(0, 1); 
-    lcd.print("(2*-1)>>4:"); lcd.print(i.mul31(-1));
-    */
     #endif
-    
+
+    // No watchdog for debugging, dangerous!   
+    #if !defined(DEBUGVERSION) 
     WDT_ENABLE();
+    #endif
 
     TIMER_INIT();
 
-#if defined(POWER_SUPPLY_RELAY)
+    #if defined(POWER_SUPPLY_RELAY)
     // Switch on power relais to keep power
-    // SET_OUTPUT(POWER_SUPPLY_RELAY);
-    // WRITE(POWER_SUPPLY_RELAY, HIGH);
     POWER_SUPPLY_RELAY :: initActive();
-#endif
+    #endif
 
-#if defined(HOTEND_FAN_PIN)
-    // SET_OUTPUT(HOTEND_FAN_PIN);
-    // WRITE(HOTEND_FAN_PIN, ~ HOTEND_FAN_ACTIVE);
+    #if defined(HOTEND_FAN_PIN)
     HOTEND_FAN_PIN :: initDeActive();
-#endif
+    #endif
 
-#if defined(POWER_BUTTON)
+    #if defined(POWER_BUTTON)
     POWER_BUTTON :: init();
-#endif
+    #endif
 
     LED_PIN :: init();
 
@@ -318,7 +304,6 @@ void setup() {
     massert(msSizeInBlocks > 0);
     massert(swapDev.erase(1, msSizeInBlocks - 1));
 
-    // tinf_init();
     TaskStart(taskTiming, TaskIdle);
 }
 
