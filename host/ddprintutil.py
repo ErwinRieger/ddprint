@@ -1985,26 +1985,37 @@ def measureTempFlowrateCurve(args, printer, parser, planner):
     # Re-enable flowrate limit
     # printer.sendCommandParamV(CmdEnableFRLimit, [packedvalue.uint8_t(1)])
 
+    data = [[1, 1, 1], [2, 2, 2]]
     ####################################################################################################
     dfr = data[1][0] - data[0][0]
     dpwm = data[1][1] - data[0][1]
     dtemp = data[1][2] - data[0][2]
 
     # todo: create template material profile with name from commandline
-    print ""
-    print "# Material properties:"
-    print "# a1 for pwm"
-    print '"Kpwm": %.4f,' % (dfr / dpwm)
-    print "# a1 for temp"
-    print '"Ktemp": %.4f,' % (dfr / dtemp)
+    s =  """  "properties_%02d" : {\n""" % int(planner.nozzleProfile.getSizeI()*100)
+    s += """    "version": %d,\n""" % printer.printerProfile.getHwVersionI()
+    s += """    "slippage": %.2f,\n\n""" % 0.1 # xxx hardcoded
+    s +=   "    # Material properties:\n"
+    s +=   "    # a1 for pwm\n"
+    s += """    "Kpwm": %.4f,\n""" % (dfr / dpwm)
+    s +=   "    # a1 for temp\n"
+    s += """    "Ktemp": %.4f,\n""" % (dfr / dtemp)
 
-    print "# a0 for pwm"
-    print '"P0pwm": %.4f,' % data[0][1]
-    print "# a0 for temp"
-    print '"P0temp": %.4f,' % data[0][2]
+    s +=   "    # a0 for pwm\n"
+    s += """    P0pwm": %.4f,\n""" % data[0][1]
+    s +=   "    # a0 for temp\n"
+    s += """    "P0temp": %.4f,\n""" % data[0][2]
 
-    print "# feedrate at a0"
-    print '"FR0pwm": %.4f,\n' % data[0][0]
+    s +=   "    # feedrate at a0\n"
+    s += """    "FR0pwm": %.4f\n""" % data[0][0]
+    s +=   "  }"
+
+    print "\nMaterial properties:\n\n", s
+
+    fn = "./mat-profile.add"
+    f = open(fn, "w")
+    f.write(s)
+    print "Data written to: ", fn
 
     printer.sendCommand(CmdDisableSteppers)
     printer.coolDown(HeaterEx1, wait=100, log=True)
