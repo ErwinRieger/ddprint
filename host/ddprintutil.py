@@ -1985,7 +1985,6 @@ def measureTempFlowrateCurve(args, printer, parser, planner):
     # Re-enable flowrate limit
     # printer.sendCommandParamV(CmdEnableFRLimit, [packedvalue.uint8_t(1)])
 
-    data = [[1, 1, 1], [2, 2, 2]]
     ####################################################################################################
     dfr = data[1][0] - data[0][0]
     dpwm = data[1][1] - data[0][1]
