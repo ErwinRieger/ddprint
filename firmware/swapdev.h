@@ -175,6 +175,7 @@ public:
     FWINLINE bool Run() {
 
         static int res;
+        WriteState writestate;
 
         PT_BEGIN();
 
@@ -236,9 +237,10 @@ public:
 
             do { _ptLine = __LINE__; case __LINE__: {
                 TaskStart(ioStats, TaskWrite);
-                res = writeBlock(writeBlockNumber, writeBuffer);
+                writestate = writeBlock(writeBlockNumber, writeBuffer);
                 TaskEnd(ioStats, TaskWrite);
-                if (res == 1) return true; // continue thread
+                if (writestate == Wcontinue)
+                    return true; // continue thread
             }
             } while (0);
 
