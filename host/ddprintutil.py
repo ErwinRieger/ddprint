@@ -2032,6 +2032,7 @@ def measureTempFlowrateCurve(args, printer, parser, planner):
     fn = "./mat-profile.add"
     f = open(fn, "w")
     f.write(s)
+    f.close()
     print "Data written to: ", fn
 
     printer.sendCommand(CmdDisableSteppers)
