@@ -20,7 +20,7 @@
 #*/
 
 import struct, time, math, tty, termios, sys, types, json, fcntl, os
-import ddhome, ddadvance, pprint, movingavg, gcodeparser
+import ddhome, ddadvance, pprint, movingavg, gcodeparser, intmath
 
 from ddprintcommands import *
 from ddprintstates import *
@@ -1874,8 +1874,22 @@ def measureTempFlowrateCurve(args, printer, parser, planner):
     ####################################################################################################
 
     # Running average of hotend temperature
-    tempAvg = movingavg.MovingAvg(int(round(1.0/dt)))
-    flowAvg = movingavg.MovingAvgReadings(int(round(1.0/dt)), startavg = 1.0)
+    tempAvg = movingavg.MovingAvg(10)
+    # Running average of feeder grip
+    e_steps_per_mm = printer.printerProfile.getStepsPerMM(A_AXIS)
+    circum = printer.printerProfile.getFeederWheelCircumI()
+    eStepsPerRound = circum * e_steps_per_mm;
+
+    printer.sendCommandParamV(
+            CmdSetFilSensorConfig, (
+                intmath.fsCalibration(pcal),
+                packedvalue.uint16_t(int(eStepsPerRound/10))
+                )
+            )
+
+    print "eStepsPerRound:", e_steps_per_mm, circum, eStepsPerRound
+
+    flowAvg = movingavg.MovingAvgReadings(10)
 
     minGrip = 0.90
     data = []
@@ -1903,6 +1917,9 @@ def measureTempFlowrateCurve(args, printer, parser, planner):
       print "Fixed PWM:", pwm
 
       printer.setTempPWM(HeaterEx1, pwm)
+
+      tempAvg.preload(t1)
+      flowAvg.preload(1.0);
 
       while True:
 
@@ -1994,20 +2011,21 @@ def measureTempFlowrateCurve(args, printer, parser, planner):
     s =  """  "properties_%02d" : {\n""" % int(planner.nozzleProfile.getSizeI()*100)
     s += """    "version": %d,\n""" % printer.printerProfile.getHwVersionI()
     s += """    "slippage": %.2f,\n\n""" % 0.1 # xxx hardcoded
-    s +=   "    # Material properties:\n"
-    s +=   "    # a1 for pwm\n"
+    s += """    "# Material properties:",\n"""
+    s += """    "# measure 1:",\n"""
+    s += """    "# a1 for pwm",\n"""
     s += """    "Kpwm": %.4f,\n""" % (dfr / dpwm)
-    s +=   "    # a1 for temp\n"
+    s += """    "# a1 for temp",\n"""
     s += """    "Ktemp": %.4f,\n""" % (dfr / dtemp)
 
-    s +=   "    # a0 for pwm\n"
-    s += """    P0pwm": %.4f,\n""" % data[0][1]
-    s +=   "    # a0 for temp\n"
+    s += """    "# a0 for pwm",\n"""
+    s += """    "P0pwm": %.4f,\n""" % data[0][1]
+    s += """    "# a0 for temp",\n"""
     s += """    "P0temp": %.4f,\n""" % data[0][2]
 
-    s +=   "    # feedrate at a0\n"
+    s += """    "# feedrate at a0",\n"""
     s += """    "FR0pwm": %.4f\n""" % data[0][0]
-    s +=   "  }"
+    s += """  }"""
 
     print "\nMaterial properties:\n\n", s
 
@@ -2173,6 +2191,22 @@ def measureTempFlowrateCurve2(args, printer, parser, planner):
     # Running average of hotend temperature and grip
     tempAvg = movingavg.MovingAvg(nAvg, t1)
     pwmAvg = movingavg.MovingAvg(nAvg, p0pwm)
+
+    # Running average of feeder grip
+    e_steps_per_mm = printer.printerProfile.getStepsPerMM(A_AXIS)
+    circum = printer.printerProfile.getFeederWheelCircumI()
+    eStepsPerRound = circum * e_steps_per_mm;
+    pcal = printer.printerProfile.getFilSensorCalibration()
+
+    printer.sendCommandParamV(
+            CmdSetFilSensorConfig, (
+                intmath.fsCalibration(pcal),
+                packedvalue.uint16_t(int(eStepsPerRound/10))
+                )
+            )
+
+    print "eStepsPerRound:", e_steps_per_mm, circum, eStepsPerRound
+
     gripAvg = movingavg.MovingAvg(nAvg, 1.0)
     flowAvg = movingavg.MovingAvg(nAvg)
 
@@ -2212,7 +2246,7 @@ def measureTempFlowrateCurve2(args, printer, parser, planner):
         status = printer.getStatus()
         printer.ppStatus(status)
 
-        lastEPos = status["extruder_pos"]
+        lastEPos = status["ePos"]
         lastTime = time.time()
 
         time.sleep(1)
@@ -2249,7 +2283,7 @@ def measureTempFlowrateCurve2(args, printer, parser, planner):
         gAvg = gripAvg.mean()
 
         # current target flowrate
-        ePos = status["extruder_pos"]
+        ePos = status["ePos"]
         tim = time.time()
 
         deltaE = ePos - lastEPos
