@@ -1990,7 +1990,7 @@ void Printer::checkPowerOff(uint32_t m) {
 
 bool Printer::stepsAvailable() {
 
-    return sDReader.available();
+    return sDReader.available() > 512;
 }
 
 void Printer::cmdDumpMassStorage(uint32_t block) {
