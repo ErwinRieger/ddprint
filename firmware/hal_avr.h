@@ -276,6 +276,8 @@ public:
 
     bool swapInit();
 
+    enum WriteState { Wcontinue, Wstop };
+
 protected:
 
     // Number of bytes to shift the block address for non-sdhc cards
@@ -284,7 +286,7 @@ protected:
 
     SdSpiAltDriver m_spi;
 
-    bool writeBlock(uint32_t writeBlockNumber, uint8_t *src) {
+    WriteState writeBlock(uint32_t writeBlockNumber, uint8_t *src) {
 
         static WriteBlockState wbstate = WBWait1;
 
@@ -294,7 +296,7 @@ protected:
 
                 // Wait while card is busy, no timeout check!
                 if (isBusy())  // isBusy() is doing spiStart()/spiStop()
-                    return true;
+                    return Wcontinue;
 
                 if (cardCommand(CMD24, writeBlockNumber << blockShift)) { // cardCommand() is doing spiStart()
 
@@ -310,13 +312,13 @@ protected:
 
                 spiStop();
                 wbstate = WBWait2;
-                return true; // continue sub thread
+                return Wcontinue; // continue sub thread
 
             default: // WBWait2
 
                 // Wait for flash programming to complete, no timeout check!
                 if (isBusy()) // isBusy() is doing spiStart()/spiStop()
-                    return true;
+                    return Wcontinue;
 
                 if (cardCommand(CMD13, 0) || m_spi.receive()) { // cardCommand() is doing spiStart()
 
@@ -326,7 +328,7 @@ protected:
 
                 spiStop();
                 wbstate = WBWait1;
-                return false; // stop sub thread
+                return Wstop; // stop sub thread
         }
     }
 
