@@ -78,6 +78,8 @@ void disable_heater()
 
     HEATER_BED_PIN :: saveState();
     HEATER_0_PIN :: saveState();
+#if defined(HEATER_1_PIN)
     HEATER_1_PIN :: saveState();
+#endif
 }
 

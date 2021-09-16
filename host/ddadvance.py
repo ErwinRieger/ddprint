@@ -147,24 +147,8 @@ class Advance (object):
 
         print "Using kAdvance: %.2f, autotemp is %s" % (self.getKAdv(), self.useAutoTemp)
 
-        self.kFeederComp = 0.0
-        if UseFeederCompensation:
-
-            slippage = planner.matProfile.getSlippageI()
-
-            tempCurve = planner.matProfile.getTempCurve()
-
-            area = planner.matProfile._getMatArea()
-
-            flowRate = tempCurve.maxFlowrate                           # [mm³/s]
-            feedRate = flowRate / area                                 # [mm/s]
-
-            self.kFeederComp = 1.0/feedRate - 1.0/((1.0+slippage) * feedRate)
-            print "Feeder Compensation: usinge K-FeederCompensation %.3f" % self.kFeederComp
-
         self.e_steps_per_mm = planner.printer.printerProfile.getStepsPerMMI(A_AXIS)
 
-        self.maxEFeedrate = self.printer.printerProfile.getMaxFeedrateI(A_AXIS)
         self.maxFeedrateVector = self.printer.printerProfile.getMaxFeedrateVectorI()
 
     def getKAdv(self):
@@ -222,17 +206,6 @@ class Advance (object):
 
         self.setkAdvance(values["K"])
 
-    # Compensation of feeder slip
-    def eComp(self, vExtruder):
-
-        # vCorr = vExtruder / (1 - self.kFeederComp * vExtruder)
-
-        k = min(self.kFeederComp * vExtruder, 0.999)
-
-        vCorr = vExtruder / (1 - k)
-
-        return vCorr
-
     def reset(self):
 
         # Reset debug counters
@@ -253,20 +226,6 @@ class Advance (object):
 
         if SmoothExtrusionRate:
 
-
-            # Limit e flowrates for feeder slip compensation
-            # vMax = vExtruder / (1 - self.kFeederComp * vExtruder)
-            # vMax * (1 - self.kFeederComp * vExtruder) = vExtruder 
-            # vMax - vMax * self.kFeederComp * vExtruder = vExtruder 
-            # vMax/vExtruder - vMax * self.kFeederComp = 1
-            # vMax/vExtruder = 1 + vMax * self.kFeederComp
-            # vMax = (1 + vMax * self.kFeederComp) * vExtruder
-            # vExtruder = vMax / (1 + vMax * self.kFeederComp)
-
-            vExtruderMax = self.maxEFeedrate / (1.001 + self.maxEFeedrate * self.kFeederComp)
-            
-            # print "vmax:", self.maxEFeedrate, vExtruderMax
-
             # Smooth extrusion rate, compute average extrusion rate of this path and
             # scale the speed of all moves in this path to get an more even flowrate.
             # This decreases the amount of advance ramps.
@@ -279,10 +238,9 @@ class Advance (object):
                 dSum += d
 
             avgRate = rateSum / dSum
-            avgRate = min(avgRate, vExtruderMax)
 
             if debugAdvance:
-                print "avgRate:", avgRate, ", vExtruderMax:", vExtruderMax
+                print "avgRate:", avgRate
 
             for move in path:
 
@@ -295,17 +253,13 @@ class Advance (object):
 
         # First move
         v0 = path[0].startSpeed.speed()
-        # xxx use same start speed as PrintMove::sanityCheck() here!
-
         v0.setSpeed(0.0)
         path[0].startSpeed.setSpeed(v0, "planPath - startSpeed")
 
         # Last move
         lastMove = path[-1]
 
-        # xxx use same start speed as PrintMove::sanityCheck() here!
         v0 = lastMove.endSpeed.speed()
-
         v0.setSpeed(0.0)
         lastMove.endSpeed.setSpeed(v0, "planPath - endSpeed")
 
@@ -324,7 +278,7 @@ class Advance (object):
         # Sanity check
         for move in path:
             # move.pprint("sanicheck")
-            move.sanityCheck(self.planner.getJerk())
+            move.sanityCheck()
         """
 
         # Step 2: join moves backwards
@@ -333,19 +287,12 @@ class Advance (object):
         """
         # Sanity check
         for move in path:
-            move.sanityCheck(self.planner.getJerk())
+            move.sanityCheck()
         """
 
         # Step 3: plan acceleration
         for move in path:
-
             self.planAcceleration(move)
-
-            #
-            # Correct eSpeed for feeder slip
-            #
-            if UseFeederCompensation:
-                self.planFeederCorrection(move)
 
         #
         # Compute auto hotend temperature
@@ -356,7 +303,7 @@ class Advance (object):
         # """
         # Sanity check
         for move in path:
-            move.sanityCheck(self.planner.getJerk())
+            move.sanityCheck()
         # """
         # assert(0)
 
@@ -581,22 +528,6 @@ class Advance (object):
         if self.getKAdv():
             assert(abs(self.moveEsteps) < 0.1)
 
-        """
-        # Debug, check chain
-        if debugAdvance:
-           
-            n = 2
-            m = newPath[0]
-            while m.nextMove:
-                m = m.nextMove
-                n += 1
-            m = newPath[-1]
-            while m.prevMove:
-                m = m.prevMove
-                n += 1
-            assert(n == 2*len(newPath))
-        """
-
         # Stream moves to printer
         if debugAdvance:
             print "Streaming %d moves..." % len(newPath)
@@ -609,10 +540,6 @@ class Advance (object):
 
             # self.planner.streamMove(move)
             self.planner.pathData.updateHistory(move)
-
-            # Help garbage collection
-            move.prevMove = util.StreamedMove()
-            move.nextMove = util.StreamedMove()
 
         if debugAdvance:
             print "***** End planPath() *****"
@@ -683,11 +610,12 @@ class Advance (object):
 
             move.startSpeed.setSpeed(startSpeed1, "joinMovesBwd - breaking")
 
-            if move.prevMove:
+            if index >= 0:
 
                 #
                 # Adjust endspeed of the previous move, also.
                 #
+                prevMove = moves[index]
 
                 factor = startSpeed1.feedrate3() / startSpeed1S
                 # print "factor: ", factor
@@ -697,105 +625,11 @@ class Advance (object):
 
                 # XXX einfacher algo, kann man das besser machen (z.b. mit jerk-berechnung,
                 # vector subtraktion oder so?)
-                endSpeed0 = move.prevMove.endSpeed.speed().scale(factor)
-                move.prevMove.endSpeed.setSpeed(endSpeed0, "joinMovesBwd - prevMove breaking")
+                endSpeed0 = prevMove.endSpeed.speed().scale(factor)
+                prevMove.endSpeed.setSpeed(endSpeed0, "joinMovesBwd - prevMove breaking")
 
         if debugAdvance:
             print "***** End joinMovesBwd() *****"
-
-    # xxx rename to ...Compensation
-    def planFeederCorrection(self, move):
-
-        if debugAdvance:
-            print "***** Start planFeederCorrection() *****"
-            move.pprint("Start planFeederCorrection")
-
-        startSpeed = move.startSpeed.speed()
-        startSpeedS = startSpeed.eSpeed
-
-        topSpeed = move.topSpeed.speed()
-        topSpeedS = topSpeed.eSpeed
-
-        endSpeed = move.endSpeed.speed()
-        endSpeedS = endSpeed.eSpeed
-
-        ta = move.accelTime()
-        tl = move.linearTime()
-        td = move.decelTime()
-       
-        # New start speed
-        newStartSpeedS = self.eComp(startSpeedS)
-        # print "feederCorr: startSpeed %.5f -> %.5f" % (startSpeedS, newStartSpeedS)
-        startSpeed.setESpeed(newStartSpeedS)
-        move.startSpeed.setSpeed(startSpeed, "planFeederCorrection - max reachable speed")
-
-        # New const speed
-        newTopSpeedS = self.eComp(topSpeedS)
-        assert(newTopSpeedS <= self.maxEFeedrate)
-        # print "feederCorr: topSpeed %.5f -> %.5f" % (topSpeedS, newTopSpeedS)
-        topSpeed.setESpeed(newTopSpeedS)
-        move.topSpeed.setSpeed(topSpeed, "planFeederCorrection")
-
-        # New end speed
-        newEndSpeedS = self.eComp(endSpeedS)
-        # print "feederCorr: endSpeed %.5f -> %.5f" % (endSpeedS, newEndSpeedS)
-        endSpeed.setESpeed(newEndSpeedS)
-        move.endSpeed.setSpeed(endSpeed, "planFeederCorrection")
-
-        # Increase e-steps of the three phases and adjust
-        # the resulting acceleration:
-        eSteps = 0
-
-        newStartAccel = None # xxx
-
-        if ta:
-            # Aproximation of the real curve through a
-            # simple ramp XXX todo
-            a = move.startRampDistance(
-                newStartSpeedS,
-                newTopSpeedS,
-                ta) * self.e_steps_per_mm
-            # print "feederCorr: start esteps: ", a
-            eSteps += a
-
-            xyzAccel = move.startAccel.xyAccel()
-            eAccel = move.startAccel.eAccel()
-
-            newStartAccel = (newTopSpeedS - newStartSpeedS) / ta
-            # print "feederCorr: startAccel %.5f -> %.5f" % (eAccel, newStartAccel)
-            move.startAccel.setAccel(xyzAccel, newStartAccel)
-
-        if tl:
-            a = newTopSpeedS * tl * self.e_steps_per_mm
-            # print "feederCorr: const esteps: ", a
-            eSteps += a
-
-        if td:
-            # Aproximation of the real curve through a
-            # simple ramp XXX todo
-            a = move.endRampDistance(
-                newTopSpeedS,
-                newEndSpeedS,
-                td) * self.e_steps_per_mm
-            # print "feederCorr: end esteps: ", a
-            eSteps += a
-
-            xyzAccel = move.endAccel.xyAccel()
-            eAccel = move.endAccel.eAccel()
-
-            newEndAccel = (newTopSpeedS - newEndSpeedS) / td
-            # newEndAccel = max(newStartAccel, (newTopSpeedS - newEndSpeedS) / td)
-            # print "feederCorr: endAccel %.5f -> %.5f" % (eAccel, newEndAccel)
-            move.endAccel.setAccel(xyzAccel, newEndAccel)
-
-        # print "feederCorr: prev esteps: %.3f, new esteps: %.3f" % (move.eSteps, eSteps)
-        assert(move.eSteps <= eSteps)
-
-        move.eSteps = eSteps
-
-        if debugAdvance:
-            print "***** End planFeederCorrection() *****"
-            move.pprint("End planFeederCorrection")
 
     def planAcceleration(self, move):
 
@@ -1534,7 +1368,7 @@ class Advance (object):
 
         if (move.advanceData.startSplits + move.advanceData.endSplits) == 0:
 
-            move.sanityCheck(self.planner.getJerk())
+            move.sanityCheck()
 
             esteps = move.advanceData.estepSum()
             # if esteps:
@@ -1610,14 +1444,6 @@ class Advance (object):
         assert(abs(move.advanceData.advStepSum) < 0.001)
 
         # print "new moves: ", newMoves
-
-        if move.prevMove:
-            move.prevMove.nextMove = newMoves[0]
-            newMoves[0].prevMove = move.prevMove
-
-        if move.nextMove:
-            move.nextMove.prevMove = newMoves[-1]
-            newMoves[-1].nextMove = move.nextMove
 
         startMove = True
         subMoves = []
@@ -2059,9 +1885,6 @@ class Advance (object):
                 moveB.topSpeed.setSpeed(topSpeed, "planStepsAdvSA()")
                 moveB.endSpeed.setSpeed(endSpeed, "planStepsAdvSA()")
 
-                moveA.nextMove = moveB
-                moveB.prevMove = moveA
-
                 newMoves.append(moveB)
 
             else:
@@ -2173,9 +1996,6 @@ class Advance (object):
             moveA.startSpeed.setSpeed(startSpeed, "planStepsAdvSD()")
             moveA.topSpeed.setSpeed(topSpeed, "planStepsAdvSD()")
             moveA.endSpeed.setSpeed(topSpeed, "planStepsAdvSD()")
-
-            moveA.nextMove = moveB
-            moveB.prevMove = moveA
 
             newMoves.insert(0, moveA)
 
@@ -2324,17 +2144,7 @@ class Advance (object):
             moveB.topSpeed.setSpeed(topSpeed, "planStepsAdvSALSD(")
             moveB.endSpeed.setSpeed(topSpeed, "planStepsAdvSALSD(")
 
-            moveA.nextMove = moveB
-            moveB.prevMove = moveA
-            moveB.nextMove = moveC
-            moveC.prevMove = moveB
-
             newMoves.insert(1, moveB)
-
-        else :
-
-            moveA.nextMove = moveC
-            moveC.prevMove = moveA
 
         # Sum up additional e-distance of this move for debugging
         esteps = displacement_vector_steps_A[A_AXIS]+displacement_vector_steps_B[A_AXIS]+displacement_vector_steps_C[A_AXIS]
@@ -2478,17 +2288,7 @@ class Advance (object):
             moveA.topSpeed.setSpeed(topSpeed, "planStepsAdvLDD()")
             moveA.endSpeed.setSpeed(topSpeed, "planStepsAdvLDD()")
 
-            # moveA.nextMove = moveB
-            # moveB.prevMove = moveA
-            # moveB.nextMove = moveC
-            # moveC.prevMove = moveB
-
             newMoves.insert(0, moveA)
-
-        # else:
-
-            # moveB.nextMove = moveC
-            # moveC.prevMove = moveB
 
         if displacement_vector_steps_B != emptyVector5:
 
@@ -2502,15 +2302,6 @@ class Advance (object):
             moveB.setSpeeds(sv, sv, ev)
 
             newMoves.insert(-1, moveB)
-
-        prevMove = None
-        nextMove = None
-        for move in newMoves:
-
-            if prevMove: 
-                prevMove.nextMove = move
-            move.prevMove = prevMove
-            prevMove = move
 
         # Sum up additional e-distance of this move for debugging
         esteps = displacement_vector_steps_A[A_AXIS]+displacement_vector_steps_B[A_AXIS]+displacement_vector_steps_C[A_AXIS]
@@ -2690,15 +2481,6 @@ class Advance (object):
             moveB.endSpeed.setSpeed(topSpeed, "planStepsAdvSALDD()")
 
             newMoves.insert(1, moveB)
-
-        prevMove = None
-        nextMove = None
-        for move in newMoves:
-
-            if prevMove: 
-                prevMove.nextMove = move
-            move.prevMove = prevMove
-            prevMove = move
 
         # Sum up additional e-distance of this move for debugging
         esteps = displacement_vector_steps_A[A_AXIS]+displacement_vector_steps_B[A_AXIS]+displacement_vector_steps_C[A_AXIS]+displacement_vector_steps_D[A_AXIS]

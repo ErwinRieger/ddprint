@@ -185,7 +185,10 @@ void HAL_SETUP_TEMP_ADC();
 template <uint8_t PIN>
 struct DigitalOutput<PIN, ACTIVEHIGHPIN> {
     static void initActive() { myPinMode(PIN, OUTPUT) ; activate(); }
-    static void initDeActive() { myPinMode(PIN, OUTPUT) ; deActivate(); }
+    static void initDeActive() {
+        // xxx todo avoid short active state,
+        // see AVR DigitalOutput.
+        myPinMode(PIN, OUTPUT) ; deActivate(); }
     static void activate() { digitalWrite(PIN, HIGH); };
     static void deActivate() { digitalWrite(PIN, LOW); };
     static void saveState() { myPinMode(PIN, INPUT_FLOATING); }
@@ -217,12 +220,13 @@ struct DigitalInput { };
 template <uint8_t PIN, WiringPinMode PM>
 struct DigitalInput<PIN, PM, ACTIVEHIGHPIN>: DigitalInputBase<PIN, PM> {
     static bool active() { return digitalRead(PIN); }
+    static bool deActive() { return ! active(); }
 };
 
 template <uint8_t PIN, WiringPinMode PM>
 struct DigitalInput<PIN, PM, ACTIVELOWPIN>: DigitalInputBase<PIN, PM> {
     static bool active() { return digitalRead(PIN) == LOW; }
-    static bool deActive() { return digitalRead(PIN); }
+    static bool deActive() { return ! active(); }
 };
 
 // #define PWM_WRITE(p, v) pwmWrite(p, map(v, 0, 255, 0, 65535))
@@ -284,12 +288,12 @@ class MassStorage: public MassStorageBase {
     // speed up things?
     bool erase(uint32_t firstBlock, uint32_t lastBlock) { return true; }
 
-  protected:
-
     int errorCode() {
         // Todo
         return 0;
     }
+
+  protected:
 
     int errorData() {
         // Todo
@@ -302,37 +306,38 @@ class MassStorage: public MassStorageBase {
     // Returns <0 if read is done and error (return value is error code)
     // Returns 1 if we want to be called again to continue work
     //
-    int readBlockWrapper(uint32_t readBlockNumber, uint8_t *dst) {
+    ReadState readBlockWrapper(uint32_t readBlockNumber, uint8_t *dst) {
 
         USBH_Status status = USBH_MSC_Read10(
                 &USB_OTG_Core_Host, &USB_Host,
                 dst, readBlockNumber, 512);
+
         if (status == USBH_BUSY) {
-            return 1; // continue thread
+            return Rcontinue; // continue thread
         }
 
         // Todo: check errors
         // if (status != USBH_OK) ...
         massert(status == USBH_OK);
         
-        return 0; // OK, write done
+        return Rstop; // OK, write done
     }
 
-    int writeBlock(uint32_t writeBlockNumber, uint8_t *src) {
+    WriteState writeBlock(uint32_t writeBlockNumber, uint8_t *src) {
 
         USBH_Status status = USBH_MSC_Write10(
                 &USB_OTG_Core_Host, &USB_Host,
                 src, writeBlockNumber, 512);
 
         if (status == USBH_BUSY) {
-            return 1; // continue thread
+            return Wcontinue; // continue thread
         }
 
         // Todo: check errors
         // if (status != USBH_OK) ...
         massert(status == USBH_OK);
         
-        return 0; // OK, write done
+        return Wstop; // OK, write done
     }
 };
 

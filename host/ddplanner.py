@@ -247,6 +247,8 @@ class PathData (object):
 
         self.count = -10
 
+        self.wpscale = (1 - self.planner.args.workingPoint)
+
         if not planner.travelMovesOnly:
 
             mp = self.planner.matProfile
@@ -277,8 +279,8 @@ class PathData (object):
 
             # XXX simple way, use average of best and worst flowrate:
 
-            # WorkingPoint = 0: Figurine print, low tempeartures
-            # WorkingPoint = 1: Parts print, higer tempeartures for good layer bonding
+            # WorkingPoint = 0: Parts print, higer temperatures for good layer bonding
+            # WorkingPoint = 1: Figurine print, lower temperature range
             assert(self.planner.args.workingPoint >= 0 and self.planner.args.workingPoint <= 1.0)
 
             # Note: into-air extrusion not always higher rates
@@ -300,7 +302,7 @@ class PathData (object):
                 assert((abs(temp_delta) / 230) <= 0.1)
 
             temp_delta = max(temp_delta, 0.0)
-            self.tempSLE = util.SLE(x1=0, y1=sleTempPrint.c+temp_delta*(1 - self.planner.args.workingPoint), m=sleTempBest.m)
+            self.tempSLE = util.SLE(x1=0, y1=sleTempPrint.c+temp_delta*self.wpscale, m=sleTempBest.m)
 
             # Note: into-air extrusion not always higher rates
 
@@ -316,7 +318,7 @@ class PathData (object):
             assert( temp_delta >= 0.0)
             assert( pwm_delta >= 0.0)
 
-            self.pwmSLE = util.SLE(x1=0, y1=slePwmPrint.c+pwm_delta*(1 - self.planner.args.workingPoint), m=slePwmBest.m)
+            self.pwmSLE = util.SLE(x1=0, y1=slePwmPrint.c+pwm_delta*self.wpscale, m=slePwmBest.m)
 
             print "Temp sle:", self.tempSLE, self.tempSLE.y(self._goodtemp)
             print "Pwm sle:", self.pwmSLE
@@ -351,7 +353,7 @@ class PathData (object):
 
         # Floor temp is between basetemp and goodtemp, controlled by workingPoint parameter
         bt = self.planner.matProfile.getHotendBaseTemp()
-        goodtemp = bt + (self._goodtemp - bt) * self.planner.args.workingPoint + self.planner.l0TempIncrease
+        goodtemp = bt + (self._goodtemp - bt) * self.wpscale + self.planner.l0TempIncrease
 
         # Amount of flowrate above floor (that is the flowrate at goodtemp)
         rateDiff = (avgERate*adj) - self.tempSLE.y(goodtemp)
@@ -440,35 +442,40 @@ class Planner (object):
         #
         # Constants, xxx todo: query from printer and/or profile
         #
-        self.HOMING_FEEDRATE = [100, 100, 40]  # set the homing speeds (mm/s) 
-        # self.HOMING_FEEDRATE = [50, 50, 10]  # set the homing speeds (mm/s) 
         self.HOME_RETRACT_MM = 7               # [mm]
 
-        # ENDSTOP SETTINGS:
-        # Sets direction of endstops when homing; 1=MAX, -1=MIN
-        self.X_HOME_DIR = -1
-        self.Y_HOME_DIR = 1
-        self.Z_HOME_DIR = 1
-        self.HOME_DIR = (self.X_HOME_DIR, self.Y_HOME_DIR, self.Z_HOME_DIR)
-
         # Travel limits after homing
-        self.X_MIN_POS = 0
         self.X_MAX_POS = printer.printerProfile.getPlatformLengthI(X_AXIS)
-        # X_MIN_POS = 0
         self.Y_MAX_POS = printer.printerProfile.getPlatformLengthI(Y_AXIS)
-        # Y_MIN_POS = 0
-        self._Z_MAX_POS = printer.printerProfile.getPlatformLengthI(Z_AXIS)
-        # Z_MIN_POS = 0
-        self.MAX_POS = (self.X_MAX_POS, self.Y_MAX_POS, self._Z_MAX_POS)
+        self.Z_MAX_POS = printer.printerProfile.getPlatformLengthI(Z_AXIS)
+        self.MAX_POS = (self.X_MAX_POS, self.Y_MAX_POS, self.Z_MAX_POS)
 
         # Bed leveling constants
         self.LEVELING_OFFSET = 0.1                   # Assumed thickness of feeler gauge/paper used in leveling (mm)
         self.HEAD_HEIGHT = 35.0                      # Let enough room for the head.
 
-        # Homing
-        self.X_HOME_POS = self.X_MIN_POS
-        self.Y_HOME_POS = self.Y_MAX_POS
-        self._Z_HOME_POS = self._Z_MAX_POS
+        # Homing pos
+        if printer.printerProfile.getHomeDir(X_AXIS) > 0:
+            self.X_HOME_POS = self.X_MAX_POS
+        else:
+            self.X_HOME_POS = 0
+
+        if printer.printerProfile.getHomeDir(Y_AXIS) > 0:
+            self.Y_HOME_POS = self.Y_MAX_POS
+        else:
+            self.Y_HOME_POS = 0
+
+        #    
+        # add_homeing_z is the not-usable space of the z dimension of the
+        # build volume.
+        #    
+        add_homeing_z = printer.printerProfile.getBedlevelOffsetI()
+
+        if printer.printerProfile.getHomeDir(Z_AXIS) > 0:
+            self.Z_HOME_POS = self.Z_MAX_POS + add_homeing_z
+        else:
+            # Homing sets beddistance
+            self.Z_HOME_POS = 0
 
         # 40 für avr, 50khz
         # 20 für arm, 100khz
@@ -488,6 +495,8 @@ class Planner (object):
         if not travelMovesOnly:
             self.advance = Advance(self, args)
 
+        self.replay = 0
+
         self.reset()
 
     def reset(self):
@@ -503,6 +512,11 @@ class Planner (object):
         # Binary data to send to printer
         self.stepData = ""
 
+    def reconnect(self, status):
+
+        self.replay = status.swapsize / 512 
+        print "Reconnect: replaying blocks:", self.replay
+
     # @classmethod
     def get(cls):
         return cls.__single
@@ -515,24 +529,19 @@ class Planner (object):
 
         return jerk
 
-    def getHomePos(self):
-
-        # Get additional z-offset from printer profile
-        add_homeing_z = self.printer.printerProfile.getBedlevelOffsetI()
-
-        assert((add_homeing_z <= 0) and (add_homeing_z >= -35))
-
-        # print "add_homeing_z from printer profile: ", add_homeing_z
+    def getHomePos(self, liftHead = False):
 
         # Virtuelle position des druckkopfes falls 'gehomed'
+
+        if liftHead and self.printer.printerProfile.getHomeDir(Z_AXIS) <= 0:
+            z = self.Z_MAX_POS
+        else:
+            z = self.Z_HOME_POS
+
         homePosMM = util.MyPoint(
             X = self.X_HOME_POS,
             Y = self.Y_HOME_POS,
-            #    
-            # add_homeing_z is the not-usable space of the z dimension of the
-            # build volume.
-            #    
-            Z = self._Z_HOME_POS + add_homeing_z
+            Z = z
             )
 
         # Diese stepper position wird gesetzt falls der drucker 'gehomed' ist
@@ -666,20 +675,13 @@ class Planner (object):
             print "***** Start addMove() *****"
             move.pprint("AddMove")
 
-        pathEnding = False
         if self.pathData.path:
+
             prevMove = self.pathData.path[-1]
-            if prevMove.isPrintMove() == move.isPrintMove():
-                # Append segment to current path
-                prevMove.nextMove = move
-                move.prevMove = prevMove
-            else:
+            if prevMove.isPrintMove() != move.isPrintMove():
                 # Trigger processing of current path and start a new path
                 # with the new segment.
-                pathEnding = True
-
-        if pathEnding:
-            self.endPath()
+                self.endPath()
 
         self.pathData.path.append(move)
 
@@ -727,7 +729,7 @@ class Planner (object):
         """
         # Sanity check
         for move in path:
-            move.sanityCheck(jerk)
+            move.sanityCheck()
         """
 
         # Step 2: join moves backwards
@@ -736,7 +738,7 @@ class Planner (object):
         """
         # Sanity check
         for move in path:
-            move.sanityCheck(jerk)
+            move.sanityCheck()
         """
 
         # Step 3: plan acceleration
@@ -745,25 +747,11 @@ class Planner (object):
 
         # Sanity check
         for move in path:
-            move.sanityCheck(jerk)
+            move.sanityCheck()
 
         # Step 4: plan steps and stream moves to printer
         if debugMoves:
             print "Streaming %d travel moves..." % len(path)
-
-# xxxx newmeasure
-        """
-        rateList = []
-        for move in path:
-            # rateList.append(move.topSpeed.speed().eSpeed)
-            rateList.append(move.topSpeed.speed()[3])
-
-        avgRate = sum(rateList) / len(rateList)
-
-        if avgRate > 0:
-            path[0].isMeasureMove = True
-            path[0].measureSpeed = avgRate
-        """
 
         for move in path:
             # xxxx check for minimal frs steps ....
@@ -780,10 +768,6 @@ class Planner (object):
             if self.planTravelSteps(move):
 
                 self.pathData.updateHistory(move)
-
-            # Help garbage collection
-            move.prevMove = util.StreamedMove()
-            move.nextMove = util.StreamedMove()
 
         if debugMoves:
             print "***** End planTravelPath() *****"
@@ -821,8 +805,12 @@ class Planner (object):
             # print "Sending last stepdata block of size %d" % remaining
 
             # Fill sector with dummy data
-            cobsPayload = cobs.encodeCobs512(self.stepData + (cobs.SectorSize-remaining)*FillByte)
-            self.printer.sendCommand512(cobsPayload)
+            block = self.stepData + (cobs.SectorSize-remaining)*FillByte
+            if self.replay:
+                self.replay -= 1
+            else:
+                cobsPayload = cobs.encodeCobs512(block)
+                self.printer.sendCommand512(cobsPayload)
 
         self.reset()
 
@@ -852,14 +840,19 @@ class Planner (object):
         left = len(self.stepData)
         while left >= cobs.SectorSize:
 
-            cobsPayload = cobs.encodeCobs512(self.stepData[sent:sent+cobs.SectorSize])
+            block = self.stepData[sent:sent+cobs.SectorSize]
+
+            if self.replay:
+                self.replay -= 1
+            else:
+                cobsPayload = cobs.encodeCobs512(block)
     
-            assert((len(cobsPayload) >= 512) and (len(cobsPayload) <= 515))
+                assert((len(cobsPayload) >= 512) and (len(cobsPayload) <= 515))
 
-            # print "cobs encoded sector block:", cobsPayload.encode("hex")
+                # print "cobs encoded sector block:", cobsPayload.encode("hex")
 
-            if self.args.mode != "pre":
-                self.printer.sendCommand512(cobsPayload)
+                if self.args.mode != "pre":
+                    self.printer.sendCommand512(cobsPayload)
 
             sent += cobs.SectorSize
             left -= cobs.SectorSize
@@ -913,11 +906,12 @@ class Planner (object):
             startSpeed1.setSpeed(maxAllowedStartSpeed)
             move.startSpeed.setSpeed(startSpeed1, "joinTravelMovesBwd - breaking")
 
-            if move.prevMove:
+            if index >= 0:
 
                 #
                 # Adjust endspeed of the previous move, also.
                 #
+                prevMove = moves[index]
 
                 factor = maxAllowedStartSpeed / startSpeed1S
                 # print "factor: ", factor
@@ -927,8 +921,8 @@ class Planner (object):
 
                 # XXX einfacher algo, kann man das besser machen (z.b. mit jerk-berechnung,
                 # vector subtraktion oder so?)
-                endSpeed0 = move.prevMove.endSpeed.speed().scale(factor)
-                move.prevMove.endSpeed.setSpeed(endSpeed0, "joinMovesBwd - prevMove breaking")
+                endSpeed0 = prevMove.endSpeed.speed().scale(factor)
+                prevMove.endSpeed.setSpeed(endSpeed0, "joinMovesBwd - prevMove breaking")
 
         if debugMoves:
             print "***** End joinTravelMovesBwd() *****"
@@ -1391,7 +1385,7 @@ def initParser(args, mode=None, gui=None, travelMovesOnly=False):
     printer = Printer(gui=gui)
 
     # Create printer profile
-    printer.commandInit(args)
+    printer.commandInit(args) # reconn
 
     if "nozzle" in args:
         nozzle = NozzleProfile(args.nozzle)

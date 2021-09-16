@@ -29,6 +29,7 @@ import ddtest
 
 from ddplanner import Planner, initParser, initMatProfile
 from ddprinter import Printer, RxTimeout
+from ddprofile import NozzleProfile, MatProfile
 
 #
 # USB packet format:
@@ -117,9 +118,6 @@ def main():
     argParser.add_argument("-F", dest="fakeendstop", action="store", type=bool, help="Debug: fake endstops", default=False)
     argParser.add_argument("-nc", dest="noCoolDown", action="store", type=bool, help="Debug: don't wait for heater cool down after print.", default=False)
 
-    # testbatch: assume dummyTempTable, fakeendstop, noCoolDown, dont wait for print-done
-    argParser.add_argument("-testbatch", action="store", type=bool, help="Debug: testbatch.", default=False)
-
     argParser.add_argument("-pidset", dest="pidset", action="store", type=str, help="Debug: Specify PID parameter sets to use (ZNCH).", default="ZNCH")
 
     argParser.add_argument("-fr", dest="feedrate", action="store", type=float, help="Feedrate for move commands.", default=0)
@@ -127,7 +125,7 @@ def main():
     argParser.add_argument("-inctemp", dest="inctemp", action="store", type=int, help="Increase extruder temperature niveau (layer bonding).", default=0)
 
     # XXX Should we call this parameter strength, figurine-mode or parts-mode?
-    argParser.add_argument("-wp", dest="workingPoint", action="store", type=float, help="xxx temp niveau between best/worst case SLE.", default=0.5)
+    argParser.add_argument("-wp", dest="workingPoint", action="store", type=float, choices=[ArgRange(0.0, 1.0)], help="AutoTemp: Working Point in range [0.0:1.0] 0: strong parts (higher temp range), 1: figurine mode (lower temps).", default=0.5)
 
     subparsers = argParser.add_subparsers(dest="mode", help='Mode: mon(itor)|print|store|reset|pre(process).')
 
@@ -163,11 +161,13 @@ def main():
     sp.add_argument("nozzle", help="Name of nozzle profile to use [nozzle40, nozzle80...].")
     sp.add_argument("mat", help="Name of generic material profile to use [pla, petg...].")
     sp.add_argument("flowrate", action="store", help="Start-flowrate in mm³/s.", type=float)
+    sp.add_argument("mingrip", action="store", help="Minimum feeder grip when to stop measurement [0.9...0.95].", type=float)
 
     sp = subparsers.add_parser("measureTempFlowrateCurve2", help=u"Determine temperature/flowrate properties of filament.")
     sp.add_argument("nozzle", help="Name of nozzle profile to use [nozzle40, nozzle80...].")
     sp.add_argument("mat", help="Name of generic material profile to use [pla, petg...].")
     sp.add_argument("gfile", help="Measurement GCode file.")
+    sp.add_argument("mingrip", action="store", help="Minimum feeder grip when to stop measurement [0.9...0.95].", type=float)
 
     sp = subparsers.add_parser("moverel", help=u"Debug: Move axis manually, relative coords.")
     sp.add_argument("axis", help="Axis (XYZAB).", type=str)
@@ -184,6 +184,9 @@ def main():
 
     sp = subparsers.add_parser("insertfilament", help=u"Insert filament (heatup, forward filament).")
     sp.add_argument("mat", help="Name of generic material profile to use [pla, petg...].")
+
+    sp = subparsers.add_parser("fanspeed", help=u"Debug: set hotend fanspeed.")
+    sp.add_argument("fanspeed", type=int, help="Fanspeed to set [0..255].")
 
     sp = subparsers.add_parser("removefilament", help=u"Remove filament (heatup, retract filament).")
     sp.add_argument("mat", help="Name of generic material profile to use [pla, petg...].")
@@ -216,6 +219,8 @@ def main():
 
     sp = subparsers.add_parser("getTemps", help=u"Get current temperatures (Bed, Extruder1, [Extruder2]).")
 
+    sp = subparsers.add_parser("version", help=u"Get git version from firmware.")
+
     sp = subparsers.add_parser("getstatus", help=u"Get current printer status.")
     sp = subparsers.add_parser("stat", help=u"Same as getstatus.")
 
@@ -245,6 +250,8 @@ def main():
 
     sp = subparsers.add_parser("calibratefilsensor", help=u"Debug: helper to determine the ratio of stepper to flowrate sensor.")
     # sp.add_argument("printer", help="Name of printer profile to use.")
+
+    sp = subparsers.add_parser("workingpos", help=u"Move to working pos for manual tasks.")
 
     args = argParser.parse_args()
 
@@ -276,12 +283,9 @@ def main():
 
         while True:
 
-            print "\n#"
-            print "# MONITOR:", time.time()
-            print "#"
+            print "=== mon ==="
             status = printer.getStatus()
-            print "*** Status: ***"
-            pprint.pprint(status)
+            printer.printStatus(status)
 
             printer.top()
 
@@ -293,9 +297,6 @@ def main():
 
             freeMem = printer.getFreeMem()
             print "*** Free memory: %d bytes ***" % freeMem
-
-            # print "*** FRS readings: ***"
-            # pprint.pprint(printer.getFSReadings())
 
             try:
                 (cmd, payload) = printer.readResponse()        
@@ -321,7 +322,7 @@ def main():
 
                 printer.sendCommand(CmdDisableSteppers)
 
-                printer.coolDown(HeaterEx1, wait=150, log=doLog)
+                printer.coolDown(HeaterEx1, wait=100, log=doLog)
 
                 # Stop hotend fan
                 printer.sendCommandParamV(CmdFanSpeed, [packedvalue.uint8_t(0)])
@@ -329,29 +330,80 @@ def main():
             else:
             """
 
-            printer.checkStall(status)
+            # printer.checkStall(status)
+            # printer.stallwarn.lastSwap = status.Swap
+            # printer.stallwarn.lastSteps = status.StepBuffer
+            # printer.stallwarn.lastSDReader = status.SDReader
 
-            printer.stallwarn.lastSwap = status["Swap"]
-            printer.stallwarn.lastSteps = status["StepBuffer"]
-            printer.stallwarn.lastSDReader = status["SDReader"]
+            time.sleep(1)
 
     elif args.mode == "print":
 
-        if args.testbatch:
-            args.fakeendstop = True
-            args.noCoolDown = True
-            args.autotemp = False
+        # check for reconnect
+        printer = Printer()
+        printer.initSerial(args.device, args.baud)
+        status = printer.getStatus()
+        print "Status: "
+        pprint.pprint(status)
 
-        (printer, parser, planner) = initParser(args, mode=args.mode)
+        printer.initPrinterProfile(args)
+
+        if "nozzle" in args:
+            nozzle = NozzleProfile(args.nozzle)
+        else:
+            nozzle = None
+
+        if status.state >= StateInit:
+
+            print ""
+            print "Reconnecting..."
+            print ""
+            # (printer, parser, planner) = initParser(args, mode=args.mode)
+
+            # if "nozzle" in args:
+                # nozzle = NozzleProfile(args.nozzle)
+            # else:
+                # nozzle = None
+
+            # Create material profile singleton instance
+            if "mat" in args:
+                mat = initMatProfile(args, printer, nozzle)
+            else:
+                mat = None
+
+            print "nozzle, mat:", nozzle, mat
+
+            planner = Planner(args, nozzleProfile=nozzle, materialProfile=mat, printer=printer)
+            planner.reconnect(status)
+
+            parser = gcodeparser.UM2GcodeParser(planner)
+
+            t0 = planner.matProfile.getBedTemp()
+            t0Wait = min(t0, printer.printerProfile.getWeakPowerBedTemp())
+            t1 = planner.matProfile.getHotendGoodTemp() + planner.l0TempIncrease
+
+            util.printFile(args, printer, parser, planner, printer.gui,
+                    args.gfile, t0, t0Wait, t1, doLog=True, reconnect=True)
+
+            return
+                
+        # (printer, parser, planner) = initParser(args, mode=args.mode)
+        printer.commandInit(args) # reconn
+
+        # Create material profile singleton instance
+        if "mat" in args:
+            mat = initMatProfile(args, printer, nozzle)
+        else:
+            mat = None
+
+        print "nozzle, mat:", nozzle, mat
+
+        planner = Planner(args, nozzleProfile=nozzle, materialProfile=mat, printer=printer)
+        parser = gcodeparser.UM2GcodeParser(planner)
 
         t0 = planner.matProfile.getBedTemp()
         t0Wait = min(t0, printer.printerProfile.getWeakPowerBedTemp())
         t1 = planner.matProfile.getHotendGoodTemp() + planner.l0TempIncrease
-
-        if args.testbatch:
-            t0 = 25
-            t0Wait = 20
-            t1 = 30
 
         util.printFile(args, printer, parser, planner, printer.gui,
                 args.gfile, t0, t0Wait, t1, doLog=True)
@@ -416,6 +468,13 @@ def main():
 
         (printer, parser, planner) = initParser(args, mode=args.mode, travelMovesOnly=True)
         util.insertFilament(args, printer, parser, planner, args.feedrate)
+
+    elif args.mode == 'fanspeed':
+
+        # (printer, parser, planner) = initParser(args, mode=args.mode, travelMovesOnly=True)
+        printer = Printer()
+        printer.commandInit(args)
+        printer.sendCommandParamV(CmdFanSpeed, [packedvalue.uint8_t(args.fanspeed)])
 
     elif args.mode == 'removefilament':
 
@@ -497,27 +556,31 @@ def main():
         print "Printer pos [mm]:", curPosMM
         print "Virtual home pos [mm]: ", homePosMM
 
-    elif args.mode == 'getprintername':
+    elif args.mode == "getprintername":
 
         printer = Printer()
         printer.initSerial(args.device, args.baud)
         print "Printer name: '%s'" % printer.getPrinterName(args)
 
-    elif args.mode == 'getTemps':
+    elif args.mode == "getTemps":
 
         printer = Printer()
         printer.initSerial(args.device, args.baud)
         temps = printer.getTemps()
         print "temperatures: ", temps
 
+    elif args.mode == "version":
+
+        printer = Printer()
+        printer.initSerial(args.device, args.baud)
+        print "Firmware version: '%s'" % printer.getPrinterVersion(args)
+
     elif args.mode == "getstatus" or args.mode == "stat":
 
         printer = Printer()
         printer.initSerial(args.device, args.baud)
         status = printer.getStatus()
-        print "Status: "
-        pprint.pprint(status)
-        printer.ppStatus(status)
+        printer.printStatus(status)
 
     elif args.mode == "top":
 
@@ -586,6 +649,11 @@ def main():
 
         ddtest.execGcode(args)
 
+    elif args.mode == "workingpos":
+
+        (printer, parser, planner) = initParser(args, mode=args.mode, travelMovesOnly=True)
+        util.workingPos(args, printer, parser, planner)
+
     elif args.mode == "test":
 
         printer = Printer()
@@ -595,9 +663,13 @@ def main():
             # print "FSReadings:"
             # pprint.pprint(printer.getFSReadings())
             # time.sleep(1)
-        cal = printer.printerProfile.getFilSensorCalibration()
-        for (stepper, sensor) in printer.getFSReadings():
-            print "dSteps: %d, dSensor: %d, slip: %.2f" % (stepper, sensor, stepper*cal/sensor)
+
+        # cal = printer.printerProfile.getFilSensorCalibration()
+        # for (stepper, sensor) in printer.getFSReadings():
+            # print "dSteps: %d, dSensor: %d, slip: %.2f" % (stepper, sensor, stepper*cal/sensor)
+
+        #printer.erase(2048 * 250)
+        printer.erase(0)
 
     else:
         print "Unknown/not implemented command: ", args.mode

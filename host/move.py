@@ -816,9 +816,6 @@ class RealMove(MoveBase):
 
         MoveBase.__init__(self)
 
-        self.prevMove = None
-        self.nextMove = None
-
         self.comment = comment
 
         self.accelData = AccelData()
@@ -924,7 +921,7 @@ class TravelMove(RealMove):
         accelVector = self.getMaxAllowedAccelVectorNoAdv5()
         return accelVector.length() # always positive
 
-    def sanityCheck(self, jerk):
+    def sanityCheck(self):
 
         RealMove.sanityCheck(self)
 
@@ -933,29 +930,6 @@ class TravelMove(RealMove):
 
         # Check end ramp
         assert(self.topSpeed.speed().feedrate5() >= self.endSpeed.speed().feedrate5());
-
-        nullV = self.topSpeed.speed()
-        # xxx use same start speed as addMove() here!
-        # nullV.setSpeed(0.1)
-        nullV.setSpeed(0.0)
-
-        nextMove = self.nextMove
-
-        if nextMove:
-
-            endSpeed1 = self.endSpeed.speed()
-            startSpeed2 = nextMove.startSpeed.speed()
-            endSpeed1.checkJerk(startSpeed2, jerk, "#: %d" % self.moveNumber, "#: %d" % nextMove.moveNumber)
-
-        else:
-
-            # Last move
-            self.endSpeed.speed().checkJerk(nullV, jerk)
-
-        if not self.prevMove:
-
-            # First move
-            self.startSpeed.speed().checkJerk(nullV, jerk, "start 0", "#: %d" % self.moveNumber)
 
 ##################################################
 
@@ -1234,7 +1208,7 @@ class PrintMove(RealMove):
     def getExtrusionVolume(self, matProfile):
         return self.eDistance * matProfile.getMatArea()
 
-    def sanityCheck(self, jerk):
+    def sanityCheck(self):
 
         RealMove.sanityCheck(self)
 
@@ -1243,29 +1217,6 @@ class PrintMove(RealMove):
 
         # Check end ramp
         assert(self.topSpeed.speed().feedrate3() >= self.endSpeed.speed().feedrate3());
-
-        nullV = self.topSpeed.speed()
-        # xxx use same start speed as addMove() here!
-        # nullV.setSpeed(0.1)
-        nullV.setSpeed(0.0)
-
-        nextMove = self.nextMove
-
-        if nextMove:
-
-            endSpeed1 = self.endSpeed.speed()
-            startSpeed2 = nextMove.startSpeed.speed()
-            endSpeed1.checkJerk(startSpeed2, jerk, "#: %d" % self.moveNumber, "#: %d" % nextMove.moveNumber)
-
-        else:
-
-            # Last move
-            self.endSpeed.speed().checkJerk(nullV, jerk)
-
-        if not self.prevMove:
-
-            # First move
-            self.startSpeed.speed().checkJerk(nullV, jerk, "start 0", "#: %d" % self.moveNumber)
 
         self.advanceData.sanityCheck()
 
@@ -1315,9 +1266,6 @@ class SubMove(MoveBase):
         self.startSpeed = VelocityOverride(None)
         self.topSpeed = VelocityOverride(None)
         self.endSpeed = VelocityOverride(None)
-
-        self.prevMove = None
-        self.nextMove = None
 
         # self.topSpeed = parentMove.topSpeed
 

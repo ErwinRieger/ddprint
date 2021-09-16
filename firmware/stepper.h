@@ -117,22 +117,22 @@ FWINLINE bool st_endstop_pressed<XAxisSelector>(bool forward) {
     static uint8_t nPresses = 0;
 
     if (forward) {
-        #if X_HOME_DIR > 0
+        if (printer.getHostSettings().xHomeDir) {
             if (X_STOP_PIN :: active()) {
                 if (nPresses++ > (printer.getStepsPerMMX() / 4))
                     return true;
                 return false;
             }
-        #endif
+        }
     }
     else {
-        #if X_HOME_DIR < 0
+        if (! printer.getHostSettings().xHomeDir) {
             if (X_STOP_PIN :: active()) {
                 if (nPresses++ > (printer.getStepsPerMMX() / 4))
                     return true;
                 return false;
             }
-        #endif
+        }
     }
 
     nPresses = 0;
@@ -145,22 +145,22 @@ FWINLINE bool st_endstop_pressed<YAxisSelector>(bool forward) {
     static uint8_t nPresses = 0;
 
     if (forward) {
-        #if Y_HOME_DIR > 0
+        if (printer.getHostSettings().yHomeDir) {
             if (Y_STOP_PIN :: active()) {
                 if (nPresses++ > (printer.getStepsPerMMY() / 4))
                     return true;
                 return false;
             }
-        #endif
+        }
     }
     else {
-        #if Y_HOME_DIR < 0
+        if (! printer.getHostSettings().yHomeDir) {
             if (Y_STOP_PIN :: active()) {
                 if (nPresses++ > (printer.getStepsPerMMY() / 4))
                     return true;
                 return false;
             }
-        #endif
+        }
     }
 
     nPresses = 0;
@@ -173,22 +173,22 @@ FWINLINE bool st_endstop_pressed<ZAxisSelector>(bool forward) {
     static uint8_t nPresses = 0;
 
     if (forward) {
-        #if Z_HOME_DIR > 0
+        if (printer.getHostSettings().zHomeDir) {
             if (Z_STOP_PIN :: active()) {
                 if (nPresses++ > (printer.getStepsPerMMZ() / 4))
                     return true;
                 return false;
             }
-        #endif
+        }
     }
     else {
-        #if Z_HOME_DIR < 0
+        if (! printer.getHostSettings().zHomeDir) {
             if (Z_STOP_PIN :: active()) {
                 if (nPresses++ > (printer.getStepsPerMMZ() / 4))
                     return true;
                 return false;
             }
-        #endif
+        }
     }
 
     nPresses = 0;
@@ -204,22 +204,22 @@ FWINLINE bool st_endstop_released<XAxisSelector>(bool forward) {
     static uint8_t nRelease = 0;
 
     if (forward) {
-        #if X_HOME_DIR < 0
+        if (! printer.getHostSettings().xHomeDir) {
             if (X_STOP_PIN :: deActive()) {
                 if (nRelease++ > (printer.getStepsPerMMX() / 4))
                     return true;
                 return false;
             }
-        #endif
+        }
     }
     else {
-        #if X_HOME_DIR > 0
+        if (printer.getHostSettings().xHomeDir) {
             if (X_STOP_PIN :: deActive()) {
                 if (nRelease++ > (printer.getStepsPerMMX() / 4))
                     return true;
                 return false;
             }
-        #endif
+        }
     }
 
     nRelease = 0;
@@ -232,22 +232,22 @@ FWINLINE bool st_endstop_released<YAxisSelector>(bool forward) {
     static uint8_t nRelease = 0;
 
     if (forward) {
-        #if Y_HOME_DIR < 0
+        if (! printer.getHostSettings().yHomeDir) {
             if (Y_STOP_PIN :: deActive()) {
                 if (nRelease++ > (printer.getStepsPerMMY() / 4))
                     return true;
                 return false;
             }
-        #endif
+        }
     }
     else {
-        #if Y_HOME_DIR > 0
+        if (printer.getHostSettings().yHomeDir) {
             if (Y_STOP_PIN :: deActive()) {
                 if (nRelease++ > (printer.getStepsPerMMY() / 4))
                     return true;
                 return false;
             }
-        #endif
+        }
     }
 
     nRelease = 0;
@@ -260,22 +260,22 @@ FWINLINE bool st_endstop_released<ZAxisSelector>(bool forward) {
     static uint8_t nRelease = 0;
 
     if (forward) {
-        #if Z_HOME_DIR < 0
+        if (! printer.getHostSettings().zHomeDir) {
             if (Z_STOP_PIN :: deActive()) {
                 if (nRelease++ > (printer.getStepsPerMMZ() / 4))
                     return true;
                 return false;
             }
-        #endif
+        }
     }
     else {
-        #if Z_HOME_DIR > 0
+        if (printer.getHostSettings().zHomeDir) {
             if (Z_STOP_PIN :: deActive()) {
                 if (nRelease++ > (printer.getStepsPerMMZ() / 4))
                     return true;
                 return false;
             }
-        #endif
+        }
     }
 
     nRelease = 0;
@@ -391,15 +391,7 @@ typedef struct {
 #if defined(AVR)
     typedef Buffer256<stepData> StepBufferBase;
 #else
-    //
-    // Good for max: (4096*(25/2))/1000.0 = 51.2 mS
-    //
-    // PS1: (timer value 25)/2 = 12.5 uS -> theoretical max allowed stepper frequency of about 80 kHz
-    // PS2: Note 50 mS buffer depth is a bit aggressive, it is not enough for some random 
-    // long USB transfers... 
-    //
     #define StepBufferLen  4096
-
     typedef CircularBuffer<stepData, uint16_t, StepBufferLen> StepBufferBase;
 #endif
 
@@ -500,10 +492,10 @@ class StepBuffer: public StepBufferBase {
                 return STD min( (upcount-d)/2000, (uint32_t)255);
             }
 
-            // Reserve 50 ms buffer depth for long usb
+            // Reserve 50+ ms buffer depth for long usb
             // transactions, this assumes 2Mhz timer clock tick.
             FWINLINE bool enough() { 
-                return full() || (timeInBuffer() >= 50); }
+                return full() || (timeInBuffer() >= 60); }
 
             void pushRef(stepData& val)  {
                 upcount += val.timer;
@@ -544,7 +536,6 @@ class StepBuffer: public StepBufferBase {
                     massert(t >= 25);
                     #endif
 
-                    // HAL_SET_STEPPER_TIMER(t - (2*STEPPER_MINPULSE)); // correction: min step width z.b. 2uS -> 4 timer takte
                     HAL_SET_STEPPER_TIMER(t);
 
                     // Set dir bits
@@ -567,7 +558,6 @@ class StepBuffer: public StepBufferBase {
                     }
                     else {
                         linearFlag = false;
-                        // filamentSensor.stopflag = true;
                     }
                     #endif
 
@@ -588,9 +578,6 @@ class StepBuffer: public StepBufferBase {
                         st_deactivate_pin<EAxisSelector>(stepbits);
                     }
 
-                    // Set new timer value
-// HAL_SET_STEPPER_TIMER(t - (2*STEPPER_MINPULSE)); // correction: min step width z.b. 2uS -> 4 timer takte
-                    // HAL_SET_STEPPER_TIMER(t);
                 }
             }
 

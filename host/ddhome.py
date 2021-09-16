@@ -31,6 +31,9 @@ import ddprintutil as util
 
 ####################################################################################################
 
+# Return true if move was successful. That means the endstop
+# is pressed if we are moving towards the endstop and the
+# endstop is released if we are moving away from the endstop.
 def homeMove(parser, dim, direction, dist, fakeHomingEndstops, feedRateFactor=1.0):
 
     planner = parser.planner
@@ -38,12 +41,11 @@ def homeMove(parser, dim, direction, dist, fakeHomingEndstops, feedRateFactor=1.
 
     parser.setPos(planner.zeroPos)
 
-    feedRate = planner.HOMING_FEEDRATE[dim]*feedRateFactor
+    feedRate = printer.printerProfile.getHomeFeedrate(dim) * feedRateFactor
 
-    print "--- homeMove(): send %s - homing move, dist: %.2f, feedrate: %.2f mm/s" % (dimNames[dim], dist*direction * planner.HOME_DIR[dim], feedRate)
+    print "--- homeMove(): send %s - homing move, dist: %.2f, feedrate: %.2f mm/s" % (dimNames[dim], dist*direction, feedRate)
 
-    cmd = "G0 F%f %s%f" % (
-        feedRate*60, dimNames[dim], dist * direction * planner.HOME_DIR[dim])
+    cmd = "G0 F%f %s%f" % (feedRate*60, dimNames[dim], dist * direction)
 
     # print "homeMove: ", cmd
 
@@ -53,36 +55,33 @@ def homeMove(parser, dim, direction, dist, fakeHomingEndstops, feedRateFactor=1.
 
     # Send homing command
     printer.sendCommandParamV(CmdMove, [MoveTypeHoming])
-    # printer.sendCommand(CmdEOT)
 
     printer.waitForState(StateInit, wait=0.25)
 
-    if direction > 0:
-        # Move towards endstop
-        # Check, if enstop was triggered
-        if not printer.endStopTriggered(dim, fakeHomingEndstops):
-            return False
+    endstop = printer.endStopTriggered(dim, fakeHomingEndstops)
 
-    else:
-        # Move away from endstop
-        # Check, if enstop was released
-        if printer.endStopTriggered(dim):
-            return False
+    if direction > 0 and printer.printerProfile.getHomeDir(dim) > 0:
+        return endstop
 
-    return True
+    if direction < 0 and printer.printerProfile.getHomeDir(dim) <= 0:
+        return endstop
 
-def homeBounce(parser, dim, fakeHomingEndstops):
+    return not endstop
+
+def homeBounce(parser, dim, direction, fakeHomingEndstops):
 
     planner = parser.planner
-    printer = planner.printer
 
-    if not homeMove(parser, dim, -1, planner.HOME_RETRACT_MM, fakeHomingEndstops): # Back off
+    # Release endstop
+    if not homeMove(parser, dim, direction*-1, planner.HOME_RETRACT_MM, fakeHomingEndstops): # Back off
         return False
 
-    if not homeMove(parser, dim, 1, planner.HOME_RETRACT_MM * 1.5, fakeHomingEndstops, 0.33): # Move towards endstop slowly
+    # Press endstop
+    if not homeMove(parser, dim, direction, planner.HOME_RETRACT_MM * 1.5, fakeHomingEndstops, 0.33): # Move towards endstop slowly
         return False
 
-    return homeMove(parser, dim, -1, planner.HOME_RETRACT_MM * 1.5, fakeHomingEndstops, 0.33) # Back off
+    # Release endstop
+    return homeMove(parser, dim, direction*-1, planner.HOME_RETRACT_MM * 1.5, fakeHomingEndstops, 0.33) # Back off
 
 
 ####################################################################################################
@@ -92,55 +91,78 @@ def home(args, printer, parser, planner, force=False):
     print "*"
     print "* Start homing..."
     print "*"
+
+    (homePosMMLifted, homePosSteppedLifted) = planner.getHomePos(True)
+
     if printer.isHomed() and not force:
         print "Printer is homed already..."
 
         # Get current pos from printer and set our virtual pos
         curPosMM = util.getVirtualPos(printer, parser)
-
-        (homePosMM, homePosStepped) = planner.getHomePos()
-
-        # print "Printer should be at [mm]: ", homePosMM, ", [steps]: ", homePosStepped
+        parser.setPos(curPosMM)
 
         # Move to home
-        if not curPosMM.equal(homePosMM, "XYZ"):
-
+        if not curPosMM.equal(homePosMMLifted, "XYZ"):
     
             #
             # Z Achse isoliert und als erstes bewegen, um zusammenstoss mit den klammern
             # der buildplatte oder mit objekten auf der druckplatte zu vermeiden.
             #
-            if not curPosMM.equal(homePosMM, "Z"):
+            if not curPosMM.equal(homePosMMLifted, "Z"):
 
                 feedRate = printer.printerProfile.getMaxFeedrateI(util.Z_AXIS)
-                print "--- home(): homing z-move feedrate: %.2f mm/s" % (feedRate)
+                parser.execute_line("G0 F%d Z%f" % (feedRate*60, homePosMMLifted.Z))
 
-                parser.execute_line("G0 F%d Z%f" % (feedRate*60, homePosMM.Z))
-
-            if not curPosMM.equal(homePosMM, "XY"):
+            if not curPosMM.equal(homePosMMLifted, "XY"):
 
                 feedRate = printer.printerProfile.getMaxFeedrateI(util.X_AXIS)
-                print "--- home(): homing xy-move feedrate: %.2f mm/s" % (feedRate)
-
                 parser.execute_line("G0 F%d X%f Y%f" % (
                     feedRate*60, 
-                    homePosMM.X, homePosMM.Y))
+                    homePosMMLifted.X, homePosMMLifted.Y))
 
             planner.finishMoves()
             printer.sendCommandParamV(CmdMove, [MoveTypeNormal])
-            # printer.sendCommand(CmdEOT)
-
             printer.waitForState(StateInit, wait=0.25)
 
-        #
-        # Set Virtual E-pos 0:
-        #
-        parser.setPos(homePosMM)
+            #
+            # Set Virtual pos
+            #
+            parser.setPos(homePosMMLifted)
 
         print "*"
         print "* Done homing..."
         print "*"
         return
+
+    # Position directly after homing
+    (homePosMM, homePosStepped) = planner.getHomePos()
+
+    def liftHead():
+
+        print "Debug: Tell parser its position [mm]:", homePosMM
+        parser.setPos(homePosMM)
+
+        print "Debug: Tell printer its position [steps]:", homePosStepped
+        payload = struct.pack("<iiiii", *homePosStepped)
+        printer.sendCommand(CmdSetPos, binPayload=payload)
+
+        # Move bed away from nozzle
+        if homePosMM[dim] != homePosMMLifted[dim]:
+
+            feedRate = printer.printerProfile.getHomeFeedrate(dim);
+            parser.execute_line("G0 F%d %s%f" % (feedRate*60, dimNames[dim], homePosMMLifted[dim]))
+            planner.finishMoves()
+            printer.sendCommandParamV(CmdMove, [MoveTypeNormal])
+            printer.waitForState(StateInit, log=True)
+
+            homePosMM[dim] = homePosMMLifted[dim]
+            homePosStepped[dim] = homePosSteppedLifted[dim]
+
+        print "Debug: printer pos after lift:", homePosMM
+        print "Debug: parser pos after lift:", parser.getPos()
+
+
+    printer.erase(2048 * 10)
 
     #
     # Z Achse isoliert und als erstes bewegen, um zusammenstoss mit den klammern
@@ -148,32 +170,30 @@ def home(args, printer, parser, planner, force=False):
     #
     for dim in [util.Z_AXIS, util.X_AXIS, util.Y_AXIS]:
 
-        print "\nHoming axis %s" % dimNames[dim]
+        if printer.printerProfile.getHomeDir(dim) > 0:
+            direction = 1.0
+        else:
+            direction = -1.0
+
+        print "\nHoming axis %s, direction: %d" % (dimNames[dim], direction)
 
         # Try fast home if endstop is pressed
         if printer.endStopTriggered(dim, args.fakeendstop):
 
             print "Homing: %s - endstop is triggered, trying fast home." % dimNames[dim]
-            if homeBounce(parser, dim, args.fakeendstop):
+            if homeBounce(parser, dim, direction, args.fakeendstop):
+                liftHead()
                 continue
 
-        if not homeMove(parser, dim, 1, planner.MAX_POS[dim] * 1.25, args.fakeendstop): # Move towards endstop fast
+        if not homeMove(parser, dim, direction, planner.MAX_POS[dim] * 1.25, args.fakeendstop): # Move towards endstop fast
             print "Error, %s - endstop NOT hit!" % dimNames[dim]
             assert(0)
 
-        if not homeBounce(parser, dim, args.fakeendstop):
+        if not homeBounce(parser, dim, direction, args.fakeendstop):
             print "Error, Bounce %s - endstop!" % dimNames[dim]
             assert(0)
 
-    #
-    # Set position in steps on the printer side and set our 'virtual position':
-    #
-    (homePosMM, homePosStepped) = planner.getHomePos()
-    parser.setPos(homePosMM)
-
-    # print "Tell printer its position [steps]:", homePosStepped
-    payload = struct.pack("<iiiii", *homePosStepped)
-    printer.sendCommand(CmdSetHomePos, binPayload=payload)
+        liftHead()
 
     print "*"
     print "* Done homing..."
@@ -184,8 +204,16 @@ def home(args, printer, parser, planner, force=False):
 def assureIsHomed(args, printer, parser, planner):
 
     if not printer.isHomed():
+
         raw_input("Press return to start homing...")
         home(args, printer, parser, planner)
+
+    else:
+
+        # Printer is homed and knows it's position,
+        # tell parser where it is
+        curPosMM = util.getVirtualPos(printer, parser)
+        parser.setPos(curPosMM)
 
 ####################################################################################################
 

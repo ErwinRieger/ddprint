@@ -24,6 +24,7 @@
 void mAssert(uint16_t line, const char* file);
 void killMessage(uint8_t errorCode, uint8_t errorParam /* , const char *msg = "" */);
 void killMessage(uint8_t errorCode, uint8_t errorParam1, uint8_t errorParam2 /* , const char *msg = "" */);
+void genericIntMessage(int32_t msg);
 
 // #define PID_DEBUG // Sends hotend pid values as RespUnsolicitedMsg, type PidDebug
 
@@ -67,7 +68,7 @@ void killMessage(uint8_t errorCode, uint8_t errorParam1, uint8_t errorParam2 /* 
 
 #if defined(AVR)
 
-                #define STD
+#define STD
 
 extern unsigned int __bss_end;
 extern unsigned int __heap_start;
@@ -121,6 +122,10 @@ extern void *__brkval;
     #define GetTaskStart(timings, looptask) (timings[looptask].taskStart) 
     #define GetTaskDuration(timings, looptask) (millis() - timings[looptask].taskStart)
     #define TaskEnd(timings, looptask) { uint32_t taskDuration = millis() - timings[looptask].taskStart; timings[looptask].ncalls += 1; timings[looptask].sumcall += taskDuration; if (taskDuration > timings[looptask].longest) timings[looptask].longest = taskDuration; }
+
+
+    #define TaskPause(timings, looptask) { uint32_t taskDuration = millis() - timings[looptask].taskStart; timings[looptask].taskStart = taskDuration; }
+    #define TaskContinue(timings, looptask) { timings[looptask].taskStart = millis() - timings[looptask].taskStart; }
 
 #else
 

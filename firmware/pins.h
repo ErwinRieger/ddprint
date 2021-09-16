@@ -42,6 +42,11 @@
     // Rumba mega2560
     //
     #include "pins_rumba.h"
+#elif MOTHERBOARD == 5
+    //
+    // Ender 3, ender 5, atmega1284p
+    //
+    #include "pins_ender3.h"
 #else
     #error Unknown MOTHERBOARD value in pins.h
 #endif

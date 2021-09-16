@@ -12,9 +12,7 @@ MCU = atmega2560
 AVRDUDE_ARD_PROGRAMMER = wiring
 # End Mega
 
-SDFAT = ../../SdFat-1.0.5
-
-ARDUINO_LIBS = SdCard
+ARDUINO_LIBS = SdFat/src/SdCard 
 
 USER_LIB_PATH = libraries
 
@@ -30,7 +28,7 @@ OPTIMIZATION_LEVEL = 2
 
 # Mega/Ramps board
 CPPFLAGS      +=  -DMOTHERBOARD=1 -I. -Iavr -Isrc
-CPPFLAGS      +=  -I$(SDFAT)/src 
+CPPFLAGS      +=  -I./libraries/SdFat/src
 CPPFLAGS      +=  -I$(ARDUINO_PLATFORM_LIB_PATH)
 
 # Temp. fix depreciated warning in arduino:Print.cpp

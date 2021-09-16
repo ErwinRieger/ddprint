@@ -7,5 +7,5 @@ tags
 swapfile
 sim.gcode
 build*
-SdFat-*
 scratch
+gitversion.cpp

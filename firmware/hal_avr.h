@@ -72,15 +72,27 @@ constexpr uint32_t halBaudrate(const uint32_t br) { return ((F_CPU+8*br) / (16*b
 
 #define TIMER_INIT() timerInit()
 
-#define ENABLE_STEPPER_DRIVER_INTERRUPT()  TIMSK1 |= (1<<OCIE1A)
-#define DISABLE_STEPPER_DRIVER_INTERRUPT() TIMSK1 &= ~(1<<OCIE1A)
+#if defined(StepperOnTimer3)
+    #define ENABLE_STEPPER_DRIVER_INTERRUPT()  TIMSK3 |= (1<<OCIE3A)
+    #define DISABLE_STEPPER_DRIVER_INTERRUPT() TIMSK3 &= ~(1<<OCIE3A)
 
-#define ENABLE_STEPPER1_DRIVER_INTERRUPT()  TIMSK1 |= (1<<OCIE1B)
-#define DISABLE_STEPPER1_DRIVER_INTERRUPT() TIMSK1 &= ~(1<<OCIE1B)
-#define STEPPER1_DRIVER_INTERRUPT_ENABLED() (TIMSK1 & (1<<OCIE1B))
+    #define ENABLE_STEPPER1_DRIVER_INTERRUPT()  TIMSK3 |= (1<<OCIE3B)
+    #define DISABLE_STEPPER1_DRIVER_INTERRUPT() TIMSK3 &= ~(1<<OCIE3B)
+    #define STEPPER1_DRIVER_INTERRUPT_ENABLED() (TIMSK3 & (1<<OCIE3B))
 
-#define HAL_SET_STEPPER_TIMER(timerval) { OCR1A = timerval; }
-#define HAL_SET_HOMING_TIMER(timerval) { OCR1A = OCR1B = timerval; }
+    #define HAL_SET_STEPPER_TIMER(timerval) { OCR3A = timerval; }
+    #define HAL_SET_HOMING_TIMER(timerval) { OCR3A = OCR3B = timerval; }
+#else
+    #define ENABLE_STEPPER_DRIVER_INTERRUPT()  TIMSK1 |= (1<<OCIE1A)
+    #define DISABLE_STEPPER_DRIVER_INTERRUPT() TIMSK1 &= ~(1<<OCIE1A)
+
+    #define ENABLE_STEPPER1_DRIVER_INTERRUPT()  TIMSK1 |= (1<<OCIE1B)
+    #define DISABLE_STEPPER1_DRIVER_INTERRUPT() TIMSK1 &= ~(1<<OCIE1B)
+    #define STEPPER1_DRIVER_INTERRUPT_ENABLED() (TIMSK1 & (1<<OCIE1B))
+
+    #define HAL_SET_STEPPER_TIMER(timerval) { OCR1A = timerval; }
+    #define HAL_SET_HOMING_TIMER(timerval) { OCR1A = OCR1B = timerval; }
+#endif
 
 #define HAL_SPI_INIT() spiInit()
 
@@ -167,7 +179,12 @@ struct DigitalOutput<PIN, ACTIVEHIGHPIN>: AvrPin<PIN> {
 
 template <const uint8_t PIN>
 struct DigitalOutput<PIN, ACTIVELOWPIN>: AvrPin<PIN>  {
-    static void initDeActive() { AvrPin<PIN>::setOutput(); deActivate(); }
+    static void initDeActive() {
+        // Setting pin to output drives it LOW, to avoid
+        // a short active pulse, set the INPUT pin high.
+        deActivate();
+        AvrPin<PIN>::setOutput();
+        deActivate(); }
     FWINLINE static void activate() { AvrPin<PIN>::outputLow(); };
     FWINLINE static void deActivate() { AvrPin<PIN>::outputHigh(); };
 };
@@ -227,6 +244,13 @@ template <uint8_t PIN, typename ACTIVEHIGH>
 struct DigitalInput { };
 
 template <uint8_t PIN>
+struct DigitalInput<PIN, ACTIVEHIGHPIN>: AvrPin<PIN> {
+    static void init() { AvrPin<PIN>::setInput(true); }
+    FWINLINE static bool active() { return AvrPin<PIN>::read(); }
+    FWINLINE static bool deActive() { return ! active(); }
+};
+
+template <uint8_t PIN>
 struct DigitalInput<PIN, ACTIVELOWPIN>: AvrPin<PIN> {
     static void init() { AvrPin<PIN>::setInput(true); }
     FWINLINE static bool active() { return AvrPin<PIN>::read() == LOW; }
@@ -281,10 +305,11 @@ protected:
     // Number of bytes to shift the block address for non-sdhc cards
     uint8_t blockShift;
     uint8_t readRetry;
+    uint8_t writeRetry;
 
     SdSpiAltDriver m_spi;
 
-    bool writeBlock(uint32_t writeBlockNumber, uint8_t *src) {
+    WriteState writeBlock(uint32_t writeBlockNumber, uint8_t *src) {
 
         static WriteBlockState wbstate = WBWait1;
 
@@ -294,7 +319,7 @@ protected:
 
                 // Wait while card is busy, no timeout check!
                 if (isBusy())  // isBusy() is doing spiStart()/spiStop()
-                    return true;
+                    return Wcontinue;
 
                 if (cardCommand(CMD24, writeBlockNumber << blockShift)) { // cardCommand() is doing spiStart()
 
@@ -304,19 +329,26 @@ protected:
 
                 if (!writeData(DATA_START_BLOCK, src)) { // writeData() does not spiStart() but spiStop() in case of error
 
-                    killMessage(RespSDWriteError, errorCode(), errorData());
-                    // notreached
+                    //         killMessage(RespSDWriteError, errorCode(), errorData());
+                    //         // notreached
+                
+                    if (--writeRetry == 0) {
+                        killMessage(RespSDWriteError, errorCode(), errorData());
+                        // notreached
+                    }
+
+                    return Wretry; // continue sub thread / retry write
                 }
 
                 spiStop();
                 wbstate = WBWait2;
-                return true; // continue sub thread
+                return Wcontinue; // continue sub thread
 
             default: // WBWait2
 
                 // Wait for flash programming to complete, no timeout check!
                 if (isBusy()) // isBusy() is doing spiStart()/spiStop()
-                    return true;
+                    return Wcontinue;
 
                 if (cardCommand(CMD13, 0) || m_spi.receive()) { // cardCommand() is doing spiStart()
 
@@ -326,7 +358,8 @@ protected:
 
                 spiStop();
                 wbstate = WBWait1;
-                return false; // stop sub thread
+                writeRetry = 5;
+                return Wstop; // stop sub thread
         }
     }
 
@@ -336,7 +369,7 @@ protected:
     // Returns <0 if read is done and error (return value is error code)
     // Returns 1 if we want to be called again to continue work
     //
-    int readBlockWrapper(uint32_t readBlockNumber, uint8_t *dst) {
+    ReadState readBlockWrapper(uint32_t readBlockNumber, uint8_t *dst) {
 
         if (! SdSpiCard::readBlock(readBlockNumber, dst)) {
 
@@ -344,19 +377,16 @@ protected:
             // In case of SD_CARD_ERROR_CMD17 this is the return status of
             // CMD17 in Sd2Card::cardCommand().
 
-            if (readRetry++ < 5) {
-                // Log error and retry
-                // txBuffer.sendSimpleResponse(RespUnsolicitedMsg, RespSDReadError, errorCode(), errorData());
-                return 1; // continue
+            if (--readRetry == 0) {
+                killMessage(RespSDReadError, errorCode(), errorData());
+                // notreached
             }
 
-            // return -errorcode
-            killMessage(RespSDReadError, errorCode(), errorData());
-            // notreached
+            return Rretry; // Retry read
         }
 
-        readRetry = 0;
-        return 0; // done
+        readRetry = 5;
+        return Rstop; // done
     }
 };
 

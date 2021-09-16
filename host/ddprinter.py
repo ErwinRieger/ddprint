@@ -128,9 +128,9 @@ class Printer(Serial):
 
     def checkStall(self, status):
 
-        if (self.stallwarn.lastSwap == status["Swap"]):
+        if (self.stallwarn.lastSwap == status.Swap):
             print "Swap did not change..."
-        if (self.stallwarn.lastSteps == status["StepBuffer"]) and (self.stallwarn.lastSDReader == status["SDReader"]):
+        if (self.stallwarn.lastSteps == status.StepBuffer) and (self.stallwarn.lastSDReader == status.SDReader):
             print "stall ???"
 
 
@@ -295,10 +295,10 @@ class Printer(Serial):
                 elif msgType == PidDebug or msgType == PidSwitch:
                     (pid_dt, pTerm, iTerm, dTerm, pwmOutput, e, esum) = struct.unpack("<iiiiBhi", payload[1:])
                     self.gui.logComm("%s: pid_dt: %d, pTerm: %d, iTerm: %d, dTerm: %d, pwmOutput: %d, e_16: %d, esum: %d" % (((msgType == PidDebug) and "PidDebug") or "PidSwitch", pid_dt, pTerm, iTerm, dTerm, pwmOutput, e, esum))
-                elif msgType == RespSDReadError:
+                elif msgType in (RespSDReadError, RespSDWriteError):
                     # payload: SD errorcode, SPI status byte
                     (errorCode, spiStatus) = struct.unpack("<BB", payload[1:])
-                    self.gui.logError("SDReadErr: errCode: 0x%x, spiStat: 0x%x" % (errorCode, spiStatus))
+                    self.gui.logError("%s: errCode: 0x%x (0x%x), spiStat: 0x%x" % (RespCodeNames[msgType], errorCode, errorCode, spiStatus))
                 elif msgType == FilSensorDebug:
                     # payload: deltaStepperSteps(float) deltaSensorSteps(i32) filSensorCalibration(float) slip(float) s(float)
                     (deltaStepperSteps, deltaSensorSteps, filSensorCalibration, slip, s) = struct.unpack("<fifff", payload[1:])
@@ -431,7 +431,7 @@ class Printer(Serial):
         f.close()
 
         self.port = device
-        print "Setting initial baudrate to:", br
+        # print "Setting initial baudrate to:", br
         self.baudrate = br
         # Py-Serial read timeout
         self.timeout = 3
@@ -465,7 +465,7 @@ class Printer(Serial):
             self.commandInitDone = True
             return 
 
-        settings = self.printerProfile.getSettingsI(args.pidset)
+        settings = self.printerProfile.getSettings(args.pidset)
 
         # todo: move all settings into CmdSetHostSettings call
 
@@ -479,58 +479,6 @@ class Printer(Serial):
                     packedvalue.uint16_t(fsrMinSteps)
                     )
                 )
-
-        """
-
-
-apply F(x) z.b. binary pow 
-
-input range
-
-    grip, ...........
-
-    output index into, z.b. array table 32 64 ..?
-
-        listeninhalt: multiplikator für timer prescaler
-
-
-wie kann ma timervaie 16 bit schnell hochmultipliz...
-
-
-        shift operation ist mit * 2 zu grob
-
-
-    d.h. tendenziell wieder division dabei
-
-        anderer weg: multiplikatin  per shift und divisiom per shiift
-
-        z.b. 2*1/16-tel 
-
-            das kann alls struct ,shift-up shift-down, in einer tabelle gespeichert werden
-
-
-            index   z.b. byte         , dann 256 einträge...
-            für 8 bit auflösung
-
-
-f(x)
------
-
-bereiche f(x)
-
-  eingangs wert x = slip = steps / fssteps
-  bereich x (annahme fscal so 0.3): 
-      <3 = negativer slip, grip besser 100%           "overextruding einstellung slicer/host software (fscal)"
-      =3 = kein slip, grip 100%
-      >3 = slip, grip kleiner 100%
-
-
-    ausgang wird auf werte >= 1 skaliert, spaeter grenze nach oben (grenze für verlangsamung) machen
-
-
-        es mus obere grenze festgelegt werden um f(x) besser bestimmen zu können, z.b. 25%
-        """
-
 
         (ki, maxEsum16H) = intmath.pidScaleKi(settings["Ki"])
         (kiC, maxEsum16HC) = intmath.pidScaleKi(settings["KiC"])
@@ -567,7 +515,10 @@ bereiche f(x)
         self.sendCommandParamV(CmdSetHostSettings, (
             packedvalue.uint32_t(settings["buildVolX"]),
             packedvalue.uint32_t(settings["buildVolY"]),
-            packedvalue.uint32_t(settings["buildVolZ"])
+            packedvalue.uint32_t(settings["buildVolZ"]),
+            packedvalue.uint8_t(settings["xHomeDir"]),
+            packedvalue.uint8_t(settings["yHomeDir"]),
+            packedvalue.uint8_t(settings["zHomeDir"]),
             ))
 
         if not self.commandInitDone:
@@ -789,7 +740,7 @@ bereiche f(x)
         if expectedLen and len(reply[1]) != expectedLen:
             print "WARNING: reply size wrong: %d/%d" % (len(reply[1]), expectedLen)
             print "Hex dump:"
-            print reply.encode("hex")
+            print reply[1].encode("hex")
 
         return reply
 
@@ -835,7 +786,7 @@ bereiche f(x)
         while True:
 
             try:
-                (cmd, payload) = self.readResponse()        
+                (cmd, payload) = self.readResponse()
             except SERIALDISCON:
                 self.gui.logError("Line disconnected in send2(), reconnecting!")
                 self.reconnect()
@@ -935,18 +886,18 @@ bereiche f(x)
 
     def getStatus(self):
 
-        valueNames = ["state", "t0", "t1", "Swap", "SDReader", "StepBuffer", "StepBufUnderRuns", "targetT1", "pwmOutput", "slippage", "slowdown", "ePos", "minBuffer", "underTemp", "underGrip"]
+        valueNames = ["state", "t0", "t1", "Swap", "swapsize", "SDReader", "StepBuffer", "StepBufUnderRuns", "targetT0", "targetT1", "pwmOutput", "slippage", "slowdown", "ePos", "minBuffer", "underTemp", "underGrip"]
 
-        (cmd, payload) = self.query(CmdGetStatus, expectedLen=33)
+        (cmd, payload) = self.query(CmdGetStatus, expectedLen=39)
 
-        tup = struct.unpack("<BhhIHIhhBhHiBHH", payload[:33])
+        tup = struct.unpack("<BhhIIHIhhhBhHiBHH", payload[:39])
 
         statusDict = {}
         for i in range(len(valueNames)):
 
             valueName = valueNames[i]
 
-            if valueName in ["t0", "t1", "t2", "targetT1"]:
+            if valueName in ["t0", "t1", "t2", "targetT0", "targetT1"]:
                 # Temperatures in firmware are in 1/16th °C
                 statusDict[valueName] = intmath.fromFWTemp(tup[i])
             elif valueName == "slippage":
@@ -958,15 +909,13 @@ bereiche f(x)
             else:
                 statusDict[valueName] = tup[i]
 
-        # print "statusDict:", statusDict
-
         # Update print duration
         if statusDict["state"] == StateInit and self.printEndedAt == None:
             self.printEndedAt = time.time()
 
         self.gui.statusCb(statusDict)
 
-        return statusDict
+        return argparse.Namespace(**statusDict)
 
     def top(self):
 
@@ -989,19 +938,36 @@ bereiche f(x)
                 print "%15s %10d %10d %10d" % (taskname, nCalls, tSum, tup[tupindex+2])
                 tupindex+=3
 
+    def printStatus(self, ns):
+
+        s = "*** STATUS: ***:"
+
+        gripstr = "----"
+        if ns.slippage:
+            gripstr = "%4.2f" % (1.0/ns.slippage)
+
+        s += "\n    state: %d" % ns.state
+        s += "\n    Temp : T1: %.2f(%.2f pwm: %3d) bed: %.2f(%.2f)" % (ns.t1, ns.targetT1, ns.pwmOutput, ns.t0, ns.targetT0)
+        s += "\n    Buf  : swapsize: %10s swap: %10s" % (util.sizeof_fmt(ns.swapsize), util.sizeof_fmt(ns.Swap))
+        s += "\n    FRS  : grip: %.4s " % gripstr
+        s += "\n    Slow : slowdown: %.2f " % (ns.slowdown)
+        s += "\n    Misc : templow: %4d griplow: %4d epos: %5d stepbuffer: %4d bufferlow: %4d minbuffer: %4d" % (ns.underTemp, ns.underGrip, ns.ePos, ns.StepBuffer, ns.StepBufUnderRuns, ns.minBuffer)
+
+        print s
+
     # Prettyprint printer status
     def ppStatus(self, statusDict, msg=""):
 
-        slipstr = "----"
-        if statusDict["slippage"]:
-            slipstr = "%4.2f" % (1.0/statusDict["slippage"])
+        gripstr = "----"
+        if statusDict.slippage:
+            gripstr = "%4.2f" % (1.0/statusDict.slippage)
         if msg:
             print msg
-        print "Bed: %5.1f, Hotend: %5.1f(%5.1f), Pwm: %3d, Swap: %10s, MinBuffer: %3d, Underrun: %5d, Grip: %.4s, SlowDown: %4.2f, underTemp %5d, underGrip: %5d" % \
-            (statusDict["t0"], statusDict["t1"], statusDict["targetT1"], 
-             statusDict["pwmOutput"], util.sizeof_fmt(statusDict["Swap"]),
-             statusDict["minBuffer"], statusDict["StepBufUnderRuns"], slipstr, statusDict["slowdown"],
-             statusDict["underTemp"], statusDict["underGrip"])
+        print "Bed: %5.1f, Hotend: %5.1f(%5.1f), Pwm: %3d, Swap: %10s, MinBuffer: %3d, underrun: %5d, Grip: %.4s, SlowDown: %4.2f, underTemp %5d, underGrip: %5d" % \
+            (statusDict.t0, statusDict.t1, statusDict.targetT1, 
+             statusDict.pwmOutput, util.sizeof_fmt(statusDict.Swap),
+             statusDict.minBuffer, statusDict.StepBufUnderRuns, gripstr, statusDict.slowdown,
+             statusDict.underTemp, statusDict.underGrip)
 
     # Get printer (-profile) name from printer eeprom
     def getPrinterName(self, args):
@@ -1022,6 +988,15 @@ bereiche f(x)
 
         self.sendCommandParamV(CmdSetPrinterName,
             [packedvalue.pString_t(args.name)])
+
+    def getPrinterVersion(self, args):
+
+        if not self.isOpen():
+            self.initSerial(args.device, args.baud, True)
+
+        resp = self.query(CmdGetVersion)
+        pn = util.getResponseString(resp[1], 1)
+        return pn
 
     #
     # The used printer profile is normally determined by the printername
@@ -1045,7 +1020,7 @@ bereiche f(x)
         if log:
             pprint.pprint(status)
 
-        while status['state'] != destState:
+        while status.state != destState:
             time.sleep(wait)
             status = self.getStatus()
             if log:
@@ -1056,7 +1031,7 @@ bereiche f(x)
         if not status:
             status = self.getStatus()
 
-        return status['state'] == StateStart
+        return status.state == StateStart
 
     def getTemp(self, doLog = False):
 
@@ -1127,7 +1102,7 @@ bereiche f(x)
         timeConstant = self.printerProfile.getTuI() + self.printerProfile.getTgI() 
 
         status = self.getStatus()
-        startTemp = status["t1"]
+        startTemp = status.t1
         startTime = time.time()
 
         a = tdest / timeConstant
@@ -1145,7 +1120,7 @@ bereiche f(x)
         while True:
 
             status = self.getStatus()
-            temp = status["t1"]
+            temp = status.t1
 
             if temp < tdest-2:
 
@@ -1167,6 +1142,24 @@ bereiche f(x)
                 self.setTargetTemp(heater, tdest)
                 yield(temp)
                 break
+
+    ####################################################################################################
+    # Erase mass storage
+    def erase(self, nBlocks):
+
+        print "Erasing mass storage ..."
+
+        startTS = time.time()
+        if not nBlocks:
+            # Entire erase, get nuber of blocks to erase from printer
+            (cmd, payload) = self.query(CmdGetCardSize)
+            nBlocks = struct.unpack("<i", payload)[0]
+
+        self.sendCommandParamV(CmdErase, (packedvalue.uint32_t(nBlocks), ))
+
+        self.waitForState(StateInit)
+
+        print "Mass storage erase of %d blocks done, time used: %.2fs" % (nBlocks, time.time() - startTS)
 
     ####################################################################################################
     # Start printing process, and record print start time
@@ -1305,7 +1298,7 @@ bereiche f(x)
         readings = []
 
         for i in range(len(payload) / 4):
-            readings.append( struct.unpack("<HH", payload[i*4:(i+1)*4]) )
+            readings.append( struct.unpack("<Hh", payload[i*4:(i+1)*4]) )
 
         return readings
 

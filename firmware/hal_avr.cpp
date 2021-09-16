@@ -114,6 +114,26 @@
     DefineIOPinMembers(57);
     DefineIOPinMembers(59);
     DefineIOPinMembers(62);
+#elif MOTHERBOARD == 5
+    //
+    // Creality melzi
+    //
+    DefineIOPinMembers(4);
+    DefineIOPinMembers(5);
+    DefineIOPinMembers(7);
+    DefineIOPinMembers(12);
+    DefineIOPinMembers(13);
+    DefineIOPinMembers(14);
+    DefineIOPinMembers(18);
+    DefineIOPinMembers(19);
+    DefineIOPinMembers(20);
+    DefineIOPinMembers(26);
+    DefineIOPinMembers(27);
+    // DefineIOPinMembers(24);
+    DefineIOPinMembers(31);
+
+#else
+    #error UnknownBoard
 #endif // motherboard
 
 void HAL_SETUP_TEMP_ADC() {
@@ -123,26 +143,59 @@ void HAL_SETUP_TEMP_ADC() {
     //
     // Disable 'digital input register' on the ADC pins TEMP_0_PIN and TEMP_BED_PIN
     DIDR0 = 0;
+
+#if defined(DIDR2)
+    // atmega 2560
     DIDR2 = 0;
 
     #if defined(TEMP_0_PIN)
+    if (TEMP_0_PIN < 8)
+        DIDR0 |= 1<<TEMP_0_PIN;
+    else
         DIDR2 |= 1<<(TEMP_0_PIN - 8);
     #endif
 
     #if defined(TEMP_BED_PIN)
+    if (TEMP_BED_PIN < 8)
+        DIDR0 |= 1<<TEMP_BED_PIN;
+    else
         DIDR2 |= 1<<(TEMP_BED_PIN - 8);
     #endif
+#else
+    // atmega 128p4
+    #if defined(TEMP_0_PIN)
+        DIDR0 |= 1<<TEMP_0_PIN;
+    #endif
+
+    #if defined(TEMP_BED_PIN)
+        DIDR0 |= 1<<TEMP_BED_PIN;
+    #endif
+#endif
 
     // ADEN: Enable ADC
     // ADSC: Do initial conversion
-    // ADIF: Clear interrupt flag?
     // 0x07: Set 16MHz/128 = 125kHz the ADC reference clock
-    // ADCSRA = 1<<ADEN | 1<<ADSC | 1<<ADIF | 0x07;
     ADCSRA = 1<<ADEN | 1<<ADSC | 0x07;
 
     // Wait for initial conversion
     while (ADCSRA & (1<<ADSC));
 }
+
+#if defined(MUX5)
+    #define START_CONVERSION(chan) \
+        if (chan < 8) \
+            ADCSRB = 0; \
+        else \
+            ADCSRB = 1<<MUX5; \
+        ADMUX = (1 << REFS0) | (chan & 0x07); \
+        ADCSRA |= 1<<ADSC;
+
+#else
+    #define START_CONVERSION(chan) \
+        ADCSRB = 0; \
+        ADMUX = (1 << REFS0) | (chan & 0x07); \
+        ADCSRA |= 1<<ADSC;
+#endif
 
 bool TempControl::Run() {
 
@@ -151,15 +204,18 @@ bool TempControl::Run() {
     ////////////////////////////////
     // Handle hotend 
     ////////////////////////////////
+    //
+    // Start measurement
+    //
+    START_CONVERSION(TEMP_0_PIN);
 
-    //
-    // Start hotend measure
-    //
+/*
     ADCSRB = 1<<MUX5;
 
     // Set voltage reference to Avcc, set channel to temp 0
     ADMUX = ((1 << REFS0) | (TEMP_0_PIN & 0x07));
     ADCSRA |= 1<<ADSC; // Start conversion
+*/
 
     // Wait for conversion and read value
     // printf("TempControl::Run() wait for hotend\n");
@@ -168,17 +224,20 @@ bool TempControl::Run() {
     current_temperature[0] = avgHotendTemp.addValue( tempFromRawADC(ADC) );
 
     ////////////////////////////////
-    // Handle heated bed 
+    // Handle heated bed measurement
     ////////////////////////////////
+    //
+    // Start measurement
+    //
+    START_CONVERSION(TEMP_BED_PIN);
 
-    //
-    // Start bedtemp measure
-    //
+/*
     ADCSRB = 1<<MUX5;
 
     // Set voltage reference to Avcc, set channel to bedtemp
     ADMUX = ((1 << REFS0) | (TEMP_BED_PIN & 0x07));
     ADCSRA |= 1<<ADSC; // Start conversion
+*/
 
     // Wait for conversion and read value
     // printf("TempControl::Run() wait for bed\n");
@@ -210,7 +269,7 @@ void systemHardReset() {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 //
-// Initialize the spi bus
+// Initialize timers
 //
 void timerInit() {
 
@@ -221,12 +280,49 @@ void timerInit() {
 
     // 
     // Timer 0 is used by arduino (millis() ...)
+    // Timer 1 is stepper, 16 bit
     // Timer 2 is 8bit only
     // Timer 3 ist heater pwm
     // Timer 4 ist LED pin und FAN pin
     // Timer 5 ist digipot
     //
 
+#if 0
+//mega128p4
+
+  timer 0 8bit used by arduino (millis() ...) AND fan at B4?
+    B4 alternate function: OC0B (Timer/Counter 0 Output Compare Match B Output)
+
+  timer 1 16bit, heater PWM at D5
+    D5 OC1A (Timer/Counter1 Output Compare Match A Output)
+
+  timer 2 8bit
+
+  timer 3 16bit, stepper isr
+
+  [digipot not used]
+#endif
+
+#if defined(StepperOnTimer3)
+    // waveform generation = 0100 = CTC
+    TCCR3B &= ~(1<<WGM33);
+    TCCR3B |=  (1<<WGM32);
+    TCCR3A &= ~(1<<WGM31);
+    TCCR3A &= ~(1<<WGM30);
+    
+    // output mode = 00 (disconnected)
+    // Normal port operation, OCnA/OCnB/OCnC disconnected
+    TCCR3A &= ~(3<<COM3A0);
+    TCCR3A &= ~(3<<COM3B0);
+
+    // Generally we use a divider of 8, resulting in a 2MHz timer
+    // frequency on a 16MHz MCU.
+    TCCR3B = (TCCR3B & ~(0x07<<CS30)) | (2<<CS30);
+
+    OCR3A = 0x4000;
+    OCR3B = 0x4000;
+    TCNT3 = 0;
+#else
     // waveform generation = 0100 = CTC
     TCCR1B &= ~(1<<WGM13);
     TCCR1B |=  (1<<WGM12);
@@ -245,6 +341,7 @@ void timerInit() {
     OCR1A = 0x4000;
     OCR1B = 0x4000;
     TCNT1 = 0;
+#endif
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 //
@@ -260,6 +357,9 @@ void spiInit() {
     SCK_PIN :: initDeActive();
 
     MOSI_PIN :: initDeActive();
+
+    // Enable pullup on miso
+    HAL_SET_INPUT_PU(MISO);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -281,7 +381,8 @@ bool MassStorage::swapInit() {
 
     massert(eraseSingleBlockEnable());
 
-    readRetry = 0;
+    readRetry = 5;
+    writeRetry = 5;
     return true;
 }
 

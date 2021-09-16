@@ -12,7 +12,7 @@ MCU = atmega2560
 AVRDUDE_ARD_PROGRAMMER = wiring
 # End Mega
 
-SDFAT = ../../SdFat-1.0.5
+ARDUINO_LIBS = SdFat/src/SdCard 
 
 ARDUINO_LIBS = LiquidCrystal SdCard
 
@@ -35,7 +35,7 @@ OPTIMIZATION_LEVEL = 2
 
 # Mega/rumba board
 CPPFLAGS      +=  -DMOTHERBOARD=4 -I. -Iavr -Isrc 
-CPPFLAGS      +=  -I$(SDFAT)/src
+CPPFLAGS      +=  -I./libraries/SdFat/src
 CPPFLAGS      +=  -I$(ARDUINO_PLATFORM_LIB_PATH)
 CPPFLAGS      +=  $(DEBUGFLAGS)
 

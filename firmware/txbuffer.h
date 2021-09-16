@@ -286,7 +286,12 @@ public:
                 sendResponseUint8(b[i]);
         }
 
-        void flush() {
+        void flush(bool sendLeftover=false) {
+
+            while (nMessages && sendLeftover) {
+                Run();
+            }
+
             nMessages = 0;
             ringBufferInit();
         }

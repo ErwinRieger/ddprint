@@ -32,6 +32,8 @@
     //
     // Ultimaker UM2
     //
+    // Pt100 and INA826 amplifier, ADC resolution 1024
+    #define TempCircuit 2
     // Use Bourns ems22a Rotary Encoder as a flowrate sensor
     #define BournsEMS22AFS 1
 
@@ -44,11 +46,15 @@
     //
     // Ramps
     //
+    // Thermistor in series with 4.7k pullup.
+    #define TempCircuit 1
     #define REPRAP_DISCOUNT_SMART_CONTROLLER 1
 #elif MOTHERBOARD == 3
     //
     // Jennyprinter
     //
+    // Pt100 and INA826 amplifier, ADC resolution 4096
+    #define TempCircuit 3
     // Use Bourns ems22a Rotary Encoder as a flowrate sensor
     #define BournsEMS22AFS 1
     #define STEPPER_MINPULSE 2 /* µS */
@@ -57,10 +63,22 @@
     //
     // Rumba
     //
+    // Thermistor in series with 4.7k pullup.
+    #define TempCircuit 1
     #define REPRAP_DISCOUNT_SMART_CONTROLLER 1
 
     // debug
     #define COLDEXTRUSION 1
+#elif MOTHERBOARD == 5
+    //
+    // Ender 3, ender 5, atmega1284p
+    //
+    // Epcos 100k thermistor in series with 4.7k pullup.
+    #define TempCircuit 1
+    // Use Bourns ems22a Rotary Encoder as a flowrate sensor
+    #define BournsEMS22AFS 1
+    // Stepper isr running on timer3 instead of timer1
+    #define StepperOnTimer3 1 
 #else
     #error Unknown MOTHERBOARD in config.h
 #endif

@@ -72,6 +72,9 @@ def gcodeTool(fn):
     ew = float(settings.extruderwidth[0])
     spd = float(settings.defaultspeed[0]) / 60
 
+    xyspd = float(settings.rapidxyspeed[0]) / 60
+    zspd = float(settings.rapidzspeed[0]) / 60
+
     print "\nGCode info's:"
     print   "-------------"
     print "Model (STL) : %s" % settings.applytomodels
@@ -79,6 +82,7 @@ def gcodeTool(fn):
     print "LayerHeight : %.2f mm" % lh
     print "ExtrudeWidth: %.2f mm" % ew
     print "Speed       : %.2f mm/s" % spd
+    print "Travelspeed : XY: %.2f Z: %.2f mm/s" % (xyspd, zspd)
     print "starting cod: \n  %s" % "".join(settings.startinggcode).replace(";", "\n  ;")
     print "\nMax flowrate: %.2f mm³/s" % (lh*ew*spd)
 

@@ -28,7 +28,7 @@
 class FilamentSensorEMS22 {
 
         int32_t lastASteps;
-        uint16_t sensorCount;
+        int16_t sensorCount;
 
         int16_t lastEncoderPos = 0;
 

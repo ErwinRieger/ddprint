@@ -1,6 +1,8 @@
 #
 # Build firmware for jennyprinter stm32 shuttle board ("gear p1", "engine")
 #
+# Use 'make DEBUG=1 [target]' to build a debug version.
+#
 ARDUINO_BASE  = $(realpath $(DDPRINTHOME)/..)
 ARDUINO_DIR  = $(ARDUINO_BASE)/arduino-1.6.13
 
@@ -15,9 +17,13 @@ NO_CORE_MAIN_CPP = 1
 CPPFLAGS       =  -mthumb -DSTM32_HIGH_DENSITY -DSTM32F4 -DBOARD_generic_f407v
 CPPFLAGS      +=  -DMOTHERBOARD=3 -Ifw -Isrc -I$(PWD) -I$(PWD)/firmware -DCRYSTAL_FREQ=8
 
-# -O1 for debugging:
-# CPPFLAGS      +=  -O1
-#
+ifeq ($(DEBUG), 1)
+	    CPPFLAGS += -O1 -DDEBUGVERSION=1
+		ACLIFLAGS = --optimize-for-debug
+else
+	    CPPFLAGS += -O2
+endif
+
 # For USB HS Host/MSC:
 CPPFLAGS      +=  -I{build.core.path}/libmaple/usbF4/STM32_USB_OTG_Driver/inc -DUSE_HOST_MODE -DUSE_USB_OTG_HS -DUSB_OTG_HS_CORE -DOTG_HS_IRQn=77
 CPPFLAGS      +=  -DUSE_EMBEDDED_PHY -DUSB_OTG_EMBEDDED_PHY_ENABLED
@@ -25,19 +31,20 @@ CPPFLAGS      +=  -DTX0_FIFO_HS_SIZE=512 -DTX1_FIFO_HS_SIZE=512 -DTX2_FIFO_HS_SI
 CPPFLAGS      +=  -DRX_FIFO_HS_SIZE=512 -DTXH_NP_HS_FIFOSIZ=96 -DTXH_P_HS_FIFOSIZ=96
 CPPFLAGS      +=  -Wshadow
 
-
-# CPPFLAGS      +=  -I.
-# CPPFLAGS      +=  -I$(SDFAT)/src 
-# CPPFLAGS      +=  -I$(ARDUINO_PLATFORM_LIB_PATH)
-
 # Temp. fix depreciated warning in arduino:Print.cpp
 # CPPFLAGS      +=  -D"PGM_P=const char*"
 
 # Disable colored gcc output (don't confuse vim)
 # CXXFLAGS      +=  -fno-diagnostics-color
 
+
+.PHONY: all debug compile compile_nofilter do_upload upload swdupload
+
 compile:
-	echo "ARDUINO_BASE: $(ARDUINO_BASE)"
+	@echo "ARDUINO_BASE: $(ARDUINO_BASE)"
+	@echo "DEBUG: $(DEBUG)"
+	@echo "CPPFLAGS: $(CPPFLAGS)"
+	@echo "ACLIFLAGS: $(ACLIFLAGS)"
 	# Usb options: usb_cfg=usb_serial usb_cfg=usb_nc usb_cfg=usb_msc 
 	# Debug options: opt=ogstd
 	# Example: -b stm32duino:STM32F4:generic_f407v:usb_cfg=usb_msc,opt=ogstd
@@ -45,10 +52,10 @@ compile:
 	# To get vim quickfix working again, the outut of arduinoo-cli is filtered through sed here:
 	# $(ACCONFIG)/arduino-cli --config-file $(ACCONFIG) compile -v -b stm32duino:STM32F4:generic_f407v --build-properties build.extra_flags="$(CPPFLAGS)" 2>&1 | sed "s|^/tmp/arduino-sketch-[0-9a-fA-F]\+/sketch|.|"
 	# for debug:
-	$(ACCONFIG)/arduino-cli --config-file $(ACCONFIG) compile --optimize-for-debug -v -b stm32duino:STM32F4:generic_f407v:usb_cfg=usb_nc --build-properties build.extra_flags="$(CPPFLAGS)" 2>&1 | sed "s|^/tmp/arduino-sketch-[0-9a-fA-F]\+/sketch|.|"
+	$(ACCONFIG)/arduino-cli --config-file $(ACCONFIG) compile $(ACLIFLAGS) -v -b stm32duino:STM32F4:generic_f407v:usb_cfg=usb_nc --build-properties build.extra_flags="$(CPPFLAGS)" 2>&1 | sed "s|^/tmp/arduino-sketch-[0-9a-fA-F]\+/sketch|.|"
 
 compile_nofilter:
-	$(ACCONFIG)/arduino-cli --config-file $(ACCONFIG) compile --optimize-for-debug -v -b stm32duino:STM32F4:generic_f407v:usb_cfg=usb_nc --build-properties build.extra_flags="$(CPPFLAGS)"
+	$(ACCONFIG)/arduino-cli --config-file $(ACCONFIG) compile $(ACLIFLAGS) -v -b stm32duino:STM32F4:generic_f407v:usb_cfg=usb_nc --build-properties build.extra_flags="$(CPPFLAGS)"
 
 all: compile
 
@@ -59,9 +66,4 @@ upload:
 
 swdupload:
 	st-flash --reset write build/stm32duino.STM32F4.generic_f407v/firmware.ino.bin 0x08000000   
-
-build_swdupload: compile_nofilter swdupload
-
-build_upload: compile_nofilter upload
-
 

@@ -37,8 +37,8 @@
 extern void kill();
 
 TempControl::TempControl():
-            avgBedTemp(ThermistorTableLowADC + 30), 
-            avgHotendTemp(ThermistorTableLowADC + 30),
+            avgBedTemp(HEATER_0_MINTEMP),
+            avgHotendTemp(HEATER_1_MINTEMP),
             curPidSet(&pidSetHeating),
             continousPID(0),
             antiWindupMode(false),
@@ -370,8 +370,10 @@ void TempControl::setTempPWM(uint8_t heaterNum, uint8_t pwmValue) {
 
     if (heaterNum == 1) 
         HEATER_0_PIN :: write(pwmValue);
+#if defined(HEATER_1_PIN)
     else
         HEATER_1_PIN :: write(pwmValue);
+#endif
 
     continousPID = pwmValue;
 }
@@ -380,8 +382,10 @@ void TempControl::hotendOn(uint8_t heaterNum) {
 
     if (heaterNum == 1) 
         HEATER_0_PIN :: write(255);
+#if defined(HEATER_1_PIN)
     else
         HEATER_1_PIN :: write(255);
+#endif
 }
 
 void TempControl::setPIDValues(

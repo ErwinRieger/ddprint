@@ -1,21 +1,21 @@
 /*
-* This file is part of ddprint - a direct drive 3D printer firmware.
-* 
-* Copyright 2015 erwin.rieger@ibrieger.de
-* 
-* ddprint is free software: you can redistribute it and/or modify
-* it under the terms of the GNU General Public License as published by
-* the Free Software Foundation, either version 3 of the License, or
-* (at your option) any later version.
-* 
-* ddprint is distributed in the hope that it will be useful,
-* but WITHOUT ANY WARRANTY; without even the implied warranty of
-* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-* GNU General Public License for more details.
-* 
-* You should have received a copy of the GNU General Public License
-* along with ddprint.  If not, see <http://www.gnu.org/licenses/>.
-*/
+ * This file is part of ddprint - a direct drive 3D printer firmware.
+ * 
+ * Copyright 2015 erwin.rieger@ibrieger.de
+ * 
+ * ddprint is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ * 
+ * ddprint is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ * 
+ * You should have received a copy of the GNU General Public License
+ * along with ddprint.  If not, see <http://www.gnu.org/licenses/>.
+ */
 
 /*
  * Todo jennyprinter port:
@@ -41,7 +41,6 @@
 #include "ddcommands.h"
 #include "ddlcd.h"
 #include "stepper.h"
-#include "hostsettings.h"
 
 //The ASCII buffer for recieving from SD:
 #define SD_BUFFER_SIZE 512
@@ -49,9 +48,9 @@
 // Macro to read scalar types from a buffer
 #define FromBuf(typ, adr) ( * ((typ *)(adr)))
 
-#define X_SW_ENDSTOP_PRESSED ((current_pos_steps[X_AXIS] < 0) || (current_pos_steps[X_AXIS] > (int32_t)hostSettings.buildVolX))
-#define Y_SW_ENDSTOP_PRESSED ((current_pos_steps[Y_AXIS] < 0) || (current_pos_steps[Y_AXIS] > (int32_t)hostSettings.buildVolY))
-#define Z_SW_ENDSTOP_PRESSED ((current_pos_steps[Z_AXIS] < 0) || (current_pos_steps[Z_AXIS] > (int32_t)hostSettings.buildVolZ))
+#define X_SW_ENDSTOP_PRESSED ((current_pos_steps[X_AXIS] < 0) || (current_pos_steps[X_AXIS] > (int32_t)printer.getHostSettings().buildVolX))
+#define Y_SW_ENDSTOP_PRESSED ((current_pos_steps[Y_AXIS] < 0) || (current_pos_steps[Y_AXIS] > (int32_t)printer.getHostSettings().buildVolY))
+#define Z_SW_ENDSTOP_PRESSED ((current_pos_steps[Z_AXIS] < 0) || (current_pos_steps[Z_AXIS] > (int32_t)printer.getHostSettings().buildVolZ))
 
 // Debug
 #if  defined(DEBUGPROCSTAT)
@@ -204,8 +203,9 @@ void kill() {
 
     // printDebugInfo();
 
+    txBuffer.flush(true);
+
     for (int i=0; i<1000; i++) {
-        txBuffer.Run();
         delay(1);
         WDT_RESET();
     }
@@ -246,40 +246,33 @@ void killMessage(uint8_t errorCode, uint8_t errorParam1, uint8_t errorParam2 /* 
     kill();
 }
 
+// debug
+void genericIntMessage(int32_t msg) {
+    printer.sendGenericInt32(msg);
+}
+
 void setup() {
 
-    #if defined(REPRAP_DISCOUNT_SMART_CONTROLLER)
+#if defined(REPRAP_DISCOUNT_SMART_CONTROLLER)
     lcd.setCursor(0, 0); 
     lcd.print("OK");
+#endif
 
-    /*
-    ScaledUInt32 i;
-    i.value = 16;
-    i.shift = 4;
+    CLI();
 
-    lcd.setCursor(0, 0); 
-    lcd.print("(16*-4)>>4:"); lcd.print(i.mul31(-4));
-
-    i.value = 2;
-    lcd.setCursor(0, 1); 
-    lcd.print("(2*-1)>>4:"); lcd.print(i.mul31(-1));
-    */
-    #endif
-    
-    WDT_ENABLE();
+    // No watchdog for debugging, dangerous!   
+#if !defined(DEBUGVERSION) 
+    // WDT_ENABLE();
+#endif
 
     TIMER_INIT();
 
 #if defined(POWER_SUPPLY_RELAY)
     // Switch on power relais to keep power
-    // SET_OUTPUT(POWER_SUPPLY_RELAY);
-    // WRITE(POWER_SUPPLY_RELAY, HIGH);
     POWER_SUPPLY_RELAY :: initActive();
 #endif
 
 #if defined(HOTEND_FAN_PIN)
-    // SET_OUTPUT(HOTEND_FAN_PIN);
-    // WRITE(HOTEND_FAN_PIN, ~ HOTEND_FAN_ACTIVE);
     HOTEND_FAN_PIN :: initDeActive();
 #endif
 
@@ -287,7 +280,9 @@ void setup() {
     POWER_BUTTON :: init();
 #endif
 
+#if defined(LED_PIN)
     LED_PIN :: init();
+#endif
 
     FAN_PIN :: init();
 
@@ -297,28 +292,36 @@ void setup() {
 
     tp_init();    // Initialize temperature loop
 
-    st_init();    // Initialize stepper, this enables interrupts!
+    st_init();    // Initialize stepper
 
+#if defined(LED_PIN)
     LED_PIN :: write(255 * 0.5);
-
-    if (! swapDev.swapInit()) {
-        LCDMSGKILL(RespSDInit, "swapInit()", "");
-        txBuffer.sendSimpleResponse(RespKilled, RespSDInit);
-        kill();
-    }
+#endif
 
     HAL_IRQ_INIT();
 
     SEI();
 
-    //
-    // Erase sd-swap to speed up block writes.
-    //
-    uint32_t msSizeInBlocks = swapDev.cardSize();
-    massert(msSizeInBlocks > 0);
-    massert(swapDev.erase(1, msSizeInBlocks - 1));
+    uint8_t retry;
+    for (retry=0; retry<5; retry++) {
 
-    // tinf_init();
+        if (swapDev.swapInit()) {
+            break;
+        }
+
+        printer.sendGenericInt32(swapDev.errorCode()); // debug
+        txBuffer.flush(true);
+
+        WDT_RESET();
+        delay(3000);
+    }
+
+    if (retry == 5) {
+        LCDMSGKILL(RespSDInit, "swapInit()", "");
+        txBuffer.sendSimpleResponse(RespKilled, RespSDInit);
+        kill();
+    }
+
     TaskStart(taskTiming, TaskIdle);
 }
 
@@ -329,411 +332,416 @@ void setup() {
 // Block-buffered sd read
 class SDReader: public Protothread {
 
-        // Buffer for block-wise reading of swap memory
-        // uint8_t buffer[SD_BUFFER_SIZE];
-        uint8_t *buffer;
+    // Buffer for block-wise reading of swap memory
+    // uint8_t buffer[SD_BUFFER_SIZE];
+    uint8_t *buffer;
 
-        // Number of characters in buffer
-        int16_t bufferLength;
+    // Number of characters in buffer
+    int16_t bufferLength;
 
-        // Readpointer into buffer
-        uint16_t bufferPtr;
+    // Readpointer into buffer
+    uint16_t bufferPtr;
 
-        // Number of bytes to read on current thread run
-        // uint16_t bytesToRead;
-        uint8_t bytesToRead;
+    // Number of bytes to read on current thread run
+    // uint16_t bytesToRead;
+    uint8_t bytesToRead;
 
-        // Temporary buffer if we cross a block boundary,
-        // the size is 4 bytes - the length of the longest
-        // datablock to read (see setBytesToReadX())
-        uint8_t tempBuffer[4]; 
+    // Temporary buffer if we cross a block boundary,
+    // the size is 4 bytes - the length of the longest
+    // datablock to read (see setBytesToReadX())
+    uint8_t tempBuffer[4]; 
 
-        uint16_t haveBytes;
+    uint16_t haveBytes;
 
 
     public:
 
-        // Pointer to the result data, points into buffer directly or
-        // to tempBuffer.
-        uint8_t *readData;
+    // Pointer to the result data, points into buffer directly or
+    // to tempBuffer.
+    uint8_t *readData;
 
-        SDReader() {
-            bufferLength = 0;
-            bufferPtr = 0;
-        }
+    SDReader() {
+        bufferLength = 0;
+        bufferPtr = 0;
+    }
 
-        FWINLINE void setBytesToRead1() {
-            Restart();
-            bytesToRead = 1; } // Note: tempBuffer must be big enought to hold this number of bytes.
-        FWINLINE void setBytesToRead2() {
-            Restart();
-            bytesToRead = 2; } // Note: tempBuffer must be big enought to hold this number of bytes.
-        FWINLINE void setBytesToRead3() {
-            Restart();
-            bytesToRead = 3; } // Note: tempBuffer must be big enought to hold this number of bytes.
-        FWINLINE void setBytesToRead4() {
-            Restart();
-            bytesToRead = 4; } // Note: tempBuffer must be big enought to hold this number of bytes.
+    FWINLINE void setBytesToRead1() {
+        Restart();
+        bytesToRead = 1; } // Note: tempBuffer must be big enought to hold this number of bytes.
+    FWINLINE void setBytesToRead2() {
+        Restart();
+        bytesToRead = 2; } // Note: tempBuffer must be big enought to hold this number of bytes.
+    FWINLINE void setBytesToRead3() {
+        Restart();
+        bytesToRead = 3; } // Note: tempBuffer must be big enought to hold this number of bytes.
+    FWINLINE void setBytesToRead4() {
+        Restart();
+        bytesToRead = 4; } // Note: tempBuffer must be big enought to hold this number of bytes.
 
-        bool Run() {
+    bool Run() {
 
-            uint8_t i;
+        uint8_t i;
 
-            PT_BEGIN();
+        PT_BEGIN();
 
-            simassert((bytesToRead > 0) && (bytesToRead<5));
-            simassert(bufferPtr <= bufferLength);
+        simassert((bytesToRead > 0) && (bytesToRead<5));
+        simassert(bufferPtr <= bufferLength);
 
-            haveBytes = bufferLength - bufferPtr;
+        haveBytes = bufferLength - bufferPtr;
 
-            if (haveBytes < bytesToRead) {
+        if (haveBytes < bytesToRead) {
 
+            //
+            // Read data from swap memory if not enough data in buffer 
+            //
+            if (haveBytes) {
                 //
-                // Read data from swap memory if not enough data in buffer 
+                // Copy the last bytes to temp buffer
                 //
-                if (haveBytes) {
-                    //
-                    // Copy the last bytes to temp buffer
-                    //
-                    for (i=0; i<haveBytes; i++) {
-                        tempBuffer[i] = buffer[bufferPtr+i]; 
-                        bytesToRead--;
-                    }
-
-                    //
-                    // Get new block from swapmem
-                    //
-                    PT_WAIT_UNTIL(swapDev.cacheFilled);
-
-                    bufferLength = swapDev.readBlock();
-                    buffer = swapDev.readBuffer;
-
-                    for (i=0; i<bytesToRead; i++) {
-                        tempBuffer[haveBytes+i] = buffer[i]; 
-                    }
-
-                    readData = tempBuffer;
-                    bufferPtr = bytesToRead;
-                }
-                else {
-
-                    //
-                    // Buffer empty, get new block from swapmem
-                    //
-                    PT_WAIT_UNTIL(swapDev.cacheFilled);
-
-                    bufferLength = swapDev.readBlock();
-                    buffer = swapDev.readBuffer;
-
-                    readData = buffer;
-                    bufferPtr = bytesToRead;
+                for (i=0; i<haveBytes; i++) {
+                    tempBuffer[i] = buffer[bufferPtr+i]; 
+                    bytesToRead--;
                 }
 
-                // massert(bufferLength > 0);
+                //
+                // Get new block from swapmem
+                //
+                PT_WAIT_UNTIL(swapDev.cacheFilled);
+
+                bufferLength = swapDev.readBlock();
+                buffer = swapDev.readBuffer;
+
+                for (i=0; i<bytesToRead; i++) {
+                    tempBuffer[haveBytes+i] = buffer[i]; 
+                }
+
+                readData = tempBuffer;
+                bufferPtr = bytesToRead;
             }
             else {
 
-                // Enough data in buffer to satisfy request
-                readData = buffer + bufferPtr;
-                bufferPtr += bytesToRead;
+                //
+                // Buffer empty, get new block from swapmem
+                //
+                PT_WAIT_UNTIL(swapDev.cacheFilled);
+
+                bufferLength = swapDev.readBlock();
+                buffer = swapDev.readBuffer;
+
+                readData = buffer;
+                bufferPtr = bytesToRead;
             }
 
-            PT_END();
+            // massert(bufferLength > 0);
+        }
+        else {
+
+            // Enough data in buffer to satisfy request
+            readData = buffer + bufferPtr;
+            bufferPtr += bytesToRead;
         }
 
-        FWINLINE uint16_t available() {
+        PT_END();
+    }
 
-            simassert(bufferLength >= bufferPtr);
-            return bufferLength - bufferPtr;
-        }
+    FWINLINE uint16_t available() {
 
-        uint16_t getBufferPtr() { return bufferPtr; }
+        simassert(bufferLength >= bufferPtr);
+        return bufferLength - bufferPtr;
+    }
 
-        void flush() {
+    uint16_t getBufferPtr() { return bufferPtr; }
 
-            bufferLength = bufferPtr = 0;
+    void flush() {
 
-            //
-            // Restart is done in setBytesToReadX().
-            //
-            swapDev.reset();
-        }
+        bufferLength = bufferPtr = 0;
+
+        //
+        // Restart is done in setBytesToReadX().
+        //
+        swapDev.reset();
+    }
 };
 
 static SDReader sDReader;
 
 class FillBufferTask : public Protothread {
 
-        uint16_t flags;
-        uint8_t timerLoop;
-        uint16_t lastTimer;
+    uint16_t flags;
+    uint8_t timerLoop;
+    uint16_t lastTimer;
 
-        uint16_t nAccel16;
-        uint16_t nAccel8;
-        uint8_t leadAxis;
-        uint8_t leadAxisBit;
-        uint16_t tLin;
-        uint16_t nDecel16;
-        uint16_t nDecel8;
-        int32_t absSteps[5];
+    uint16_t nAccel16;
+    uint16_t nAccel8;
+    uint8_t leadAxis;
+    uint8_t leadAxisBit;
+    uint16_t tLin;
+    uint16_t nDecel16;
+    uint16_t nDecel8;
+    int32_t absSteps[5];
 
-        // Bresenham factors
-        int32_t d_axis[5];
-        int32_t d1_axis[5];
-        int32_t d2_axis[5];
+    // Bresenham factors
+    int32_t d_axis[5];
+    int32_t d1_axis[5];
+    int32_t d2_axis[5];
 
-        int32_t deltaLead, step32;
-        // uint16_t step16;
-        uint16_t count;
+    int32_t deltaLead, step32;
+    // uint16_t step16;
+    uint16_t count;
 
-        // Number of 25 mS nop segments for G4/dwell
-        uint16_t nDwell;
+    // Number of 25 mS nop segments for G4/dwell
+    uint16_t nDwell;
 
-// #if defined(__arm__)
-        uint8_t stepsThisRun;
-// #endif
+    // #if defined(__arm__)
+    uint8_t stepsThisRun;
+    // #endif
 
-        bool cmdSync;
-        bool stopRequested;
+    bool cmdSync;
+    bool stopRequested;
 
-// #if defined(USEExtrusionRateTable)
-        // Scaling factor for timerValues to implement temperature speed limit 
-        uint32_t timerScale;
-        // Timervalue of max e-speed for this move
-        ScaledUInt32    eSpeedTimer;
-        bool limiting;
-// #endif
+    // #if defined(USEExtrusionRateTable)
+    // Scaling factor for timerValues to implement temperature speed limit 
+    uint32_t timerScale;
+    // Timervalue of max e-speed for this move
+    ScaledUInt32    eSpeedTimer;
+    bool limiting;
+    // #endif
 
-        stepData sd;
+    stepData sd;
 
     public:
-        FillBufferTask() {
-            sd.dirBits = 0;
-            cmdSync = false;
-            stopRequested = false;
+    FillBufferTask() {
+        sd.dirBits = 0;
+        cmdSync = false;
+        stopRequested = false;
+    }
+
+    uint8_t decStepsThisRun() {
+
+        stepsThisRun--;
+
+        if (stepsThisRun == 0) {
+
+            stepsThisRun = (uint8_t)255 - stepBuffer.size();
+            return 0;
         }
 
-        uint8_t decStepsThisRun() {
+        return stepsThisRun;
+    }
 
-            stepsThisRun--;
+    bool Run() {
 
-            if (stepsThisRun == 0) {
+        uint8_t i, cmd;
 
-                stepsThisRun = (uint8_t)255 - stepBuffer.size();
-                return 0;
-            }
+        int32_t d;
+        int32_t d1;
+        int32_t d2;
 
-            return stepsThisRun;
+        // #if defined(USEExtrusionRateTable)
+        uint32_t maxTempSpeed;
+        // #endif
+
+        // #if debug...
+        // static uint8_t dbgcount=0;
+
+        PT_BEGIN();
+
+#if 0
+# Move segment data, new with bresenham in firmware:
+#   * Header data:
+#       + 8 flag bits
+#       + index lead axis, 8 bits
+#       + array of absolute steps, 5 * 16 bits
+#       + number of accel steps, naccel, 16 bits
+#       + constant linear timer value, 16 bits
+#       + number of decel steps, ndccel, 16 bits
+#
+#   * accel steps: naccel*(timer value(16bits)) or 16bits + (naccel-1)*8bits
+#
+#   * decel steps: ndecel*(timer value(16bits)) or 16bits + (naccel-1)*8bits
+#endif
+
+        sDReader.setBytesToRead1();
+        PT_WAIT_THREAD(sDReader);
+        cmd = *sDReader.readData;
+
+        switch (cmd) {
+
+            case CmdG1:
+                // case CmdG1Packed:
+                goto HandleCmdG1;
+
+            case CmdG1Raw:
+                // case CmdG1RawPacked:
+                goto HandleCmdG1Raw;
+
+            case CmdSyncFanSpeed:
+                goto HandleCmdSyncFanSpeed;
+
+            case CmdSyncTargetTemp:
+                goto HandleCmdSyncTargetTemp;
+
+            case CmdDwellMS:
+                goto HandleCmdDwellMS;
+
+            case CmdSuggestPwm:
+                goto HandleCmdSuggestPwm;
+
+            case CmdNop:
+                goto HandleCmdNop;
+
+            default:
+                killMessage(RespUnknownBCommand, cmd);
         }
 
-        bool Run() {
+HandleCmdG1:
 
-            uint8_t i, cmd;
+        PT_WAIT_WHILE( (stepsThisRun = ((uint8_t)255 - stepBuffer.size())) == 0 );
 
-            int32_t d;
-            int32_t d1;
-            int32_t d2;
+        // Read flag word and stepper direction bits
+        sDReader.setBytesToRead2();
+        PT_WAIT_THREAD(sDReader);
+        flags = FromBuf(uint16_t, sDReader.readData);
+
+        if (flags & 0x80)
+            // Change stepper direction(s)
+            sd.dirBits = flags & 0x9F;
+
+        cmdSync = true;
+
+        //
+        // Read index of lead axis
+        //
+        sDReader.setBytesToRead1();
+        PT_WAIT_THREAD(sDReader);
+        leadAxis = *sDReader.readData;
+
+        leadAxisBit = 1 << leadAxis;
+
+        //
+        // Read array of absolute step distances of the 5 axes
+        //
+        sDReader.setBytesToRead4();
+        PT_WAIT_THREAD(sDReader);
+        absSteps[0] = FromBuf(int32_t, sDReader.readData);
+
+        sDReader.setBytesToRead4();
+        PT_WAIT_THREAD(sDReader);
+        absSteps[1] = FromBuf(int32_t, sDReader.readData);
+
+        sDReader.setBytesToRead4();
+        PT_WAIT_THREAD(sDReader);
+        absSteps[2] = FromBuf(int32_t, sDReader.readData);
+
+        sDReader.setBytesToRead4();
+        PT_WAIT_THREAD(sDReader);
+        absSteps[3] = FromBuf(int32_t, sDReader.readData);
+
+        sDReader.setBytesToRead4();
+        PT_WAIT_THREAD(sDReader);
+        absSteps[4] = FromBuf(int32_t, sDReader.readData);
+
+        sDReader.setBytesToRead2();
+        PT_WAIT_THREAD(sDReader);
+        nAccel16 = FromBuf(uint16_t, sDReader.readData);
+
+        sDReader.setBytesToRead2();
+        PT_WAIT_THREAD(sDReader);
+        nAccel8 = FromBuf(uint16_t, sDReader.readData);
 
 // #if defined(USEExtrusionRateTable)
-            uint32_t maxTempSpeed;
-// #endif
+        //////////////////////////////////////////////////////
+        limiting = false;
 
-            // #if debug...
-                // static uint8_t dbgcount=0;
+        // Check beginning of new base move
+        if (flags & 0x100) {
 
-            PT_BEGIN();
-
-            #if 0
-            # Move segment data, new with bresenham in firmware:
-            #   * Header data:
-            #       + 8 flag bits
-            #       + index lead axis, 8 bits
-            #       + array of absolute steps, 5 * 16 bits
-            #       + number of accel steps, naccel, 16 bits
-            #       + constant linear timer value, 16 bits
-            #       + number of decel steps, ndccel, 16 bits
-            #
-            #   * accel steps: naccel*(timer value(16bits)) or 16bits + (naccel-1)*8bits
-            #
-            #   * decel steps: ndecel*(timer value(16bits)) or 16bits + (naccel-1)*8bits
-            #endif
+            sDReader.setBytesToRead4();
+            PT_WAIT_THREAD(sDReader);
+            eSpeedTimer.value = FromBuf(uint32_t, sDReader.readData);
 
             sDReader.setBytesToRead1();
             PT_WAIT_THREAD(sDReader);
-            cmd = *sDReader.readData;
+            eSpeedTimer.shift = *sDReader.readData;
 
-            switch (cmd) {
+            // printf("eSpeedTimer: %d\n", eSpeedTimer);
 
-                case CmdG1:
-                // case CmdG1Packed:
-                    goto HandleCmdG1;
+            if (eSpeedTimer.value > 0) {
 
-                case CmdG1Raw:
-                // case CmdG1RawPacked:
-                    goto HandleCmdG1Raw;
+                // Lookup this e-speed in the extrusion rate table
+                int16_t curTempIndex = fromFWTemp( current_temperature[0] ) - extrusionLimitBaseTemp;
 
-                case CmdSyncFanSpeed:
-                    goto HandleCmdSyncFanSpeed;
+                // printf("curTempIndex: %d\n", curTempIndex);
 
-                case CmdSyncTargetTemp:
-                    goto HandleCmdSyncTargetTemp;
+                if (curTempIndex < 0) {
 
-                case CmdDwellMS:
-                    goto HandleCmdDwellMS;
+                    // printf("temp low, use first entry\n");
+                    maxTempSpeed = tempExtrusionRateTable[0];
+                }
+                else if (curTempIndex >= NExtrusionLimit) {
 
-                case CmdSuggestPwm:
-                    goto HandleCmdSuggestPwm;
+                    // printf("temp high, use last entry\n");
+                    maxTempSpeed = tempExtrusionRateTable[NExtrusionLimit-1];
+                }
+                else {
 
-                case CmdNop:
-                    goto HandleCmdNop;
+                    // printf("temp in range\n");
+                    maxTempSpeed = tempExtrusionRateTable[curTempIndex];
+                }
 
-                default:
-                    killMessage(RespUnknownBCommand, cmd);
-            }
+                // Speed is limited by temperature
+                timerScale = min( 
+                        (maxTempSpeed * eSpeedTimer.value) >> eSpeedTimer.shift,
+                        (uint32_t)(4*1024) );       // scale 1024
 
-            HandleCmdG1:
+                if (timerScale > 1024) {
 
-                PT_WAIT_WHILE( (stepsThisRun = ((uint8_t)255 - stepBuffer.size())) == 0 );
+                    if (filamentSensor.isLimiting()) {
 
-                // Read flag word and stepper direction bits
-                sDReader.setBytesToRead2();
-                PT_WAIT_THREAD(sDReader);
-                flags = FromBuf(uint16_t, sDReader.readData);
+                        // Speed is additionally limited by feeder grip/slip, up to 16 times limit
+                        timerScale = (timerScale * filamentSensor.getSlowDown()) >> 10; // scale pow(1024) -> 1024
+                        printer.underGrip = min(printer.underGrip+1, 0xffff);
 
-                if (flags & 0x80)
-                    // Change stepper direction(s)
-                    sd.dirBits = flags & 0x9F;
-
-                cmdSync = true;
-
-                //
-                // Read index of lead axis
-                //
-                sDReader.setBytesToRead1();
-                PT_WAIT_THREAD(sDReader);
-                leadAxis = *sDReader.readData;
-
-                leadAxisBit = 1 << leadAxis;
-
-                //
-                // Read array of absolute step distances of the 5 axes
-                //
-                sDReader.setBytesToRead4();
-                PT_WAIT_THREAD(sDReader);
-                absSteps[0] = FromBuf(int32_t, sDReader.readData);
-
-                sDReader.setBytesToRead4();
-                PT_WAIT_THREAD(sDReader);
-                absSteps[1] = FromBuf(int32_t, sDReader.readData);
-
-                sDReader.setBytesToRead4();
-                PT_WAIT_THREAD(sDReader);
-                absSteps[2] = FromBuf(int32_t, sDReader.readData);
-
-                sDReader.setBytesToRead4();
-                PT_WAIT_THREAD(sDReader);
-                absSteps[3] = FromBuf(int32_t, sDReader.readData);
-
-                sDReader.setBytesToRead4();
-                PT_WAIT_THREAD(sDReader);
-                absSteps[4] = FromBuf(int32_t, sDReader.readData);
-
-                sDReader.setBytesToRead2();
-                PT_WAIT_THREAD(sDReader);
-                nAccel16 = FromBuf(uint16_t, sDReader.readData);
-
-                sDReader.setBytesToRead2();
-                PT_WAIT_THREAD(sDReader);
-                nAccel8 = FromBuf(uint16_t, sDReader.readData);
-
-// #if defined(USEExtrusionRateTable)
-                //////////////////////////////////////////////////////
-                limiting = false;
-
-                // Check beginning of new base move
-                if (flags & 0x100) {
-
-                    sDReader.setBytesToRead4();
-                    PT_WAIT_THREAD(sDReader);
-                    eSpeedTimer.value = FromBuf(uint32_t, sDReader.readData);
-
-                    sDReader.setBytesToRead1();
-                    PT_WAIT_THREAD(sDReader);
-                    eSpeedTimer.shift = *sDReader.readData;
-
-                    // printf("eSpeedTimer: %d\n", eSpeedTimer);
-
-                    if (eSpeedTimer.value > 0) {
-
-                        // Lookup this e-speed in the extrusion rate table
-                        int16_t curTempIndex = fromFWTemp( current_temperature[0] ) - extrusionLimitBaseTemp;
-
-                        // printf("curTempIndex: %d\n", curTempIndex);
-
-                        if (curTempIndex < 0) {
-
-                            // printf("temp very low, use first entry\n");
-                            maxTempSpeed = tempExtrusionRateTable[0];
-                        }
-                        else if (curTempIndex >= NExtrusionLimit) {
-
-                            // printf("temp very high, use last entry\n");
-                            maxTempSpeed = tempExtrusionRateTable[NExtrusionLimit-1];
-                        }
-                        else {
-
-                            // printf("temp in range\n");
-                            maxTempSpeed = tempExtrusionRateTable[curTempIndex];
-                        }
-
-                        // Speed is limited by temperature
-                        timerScale = min( 
-                                (maxTempSpeed * eSpeedTimer.value) >> eSpeedTimer.shift,
-                                (uint32_t)(4*1024) );       // scale 1024
-
-                        if (timerScale > 1024) {
-
-                            if (filamentSensor.isLimiting()) {
-
-                                // Speed is additionally limited by feeder grip/slip, up to 16 times limit
-                                timerScale = (timerScale * filamentSensor.getSlowDown()) >> 10; // scale pow(1024) -> 1024
-                                printer.underGrip = min(printer.underGrip+1, 0xffff);
-
-                                // printer.sendGenericInt32(timerScale);
-                            }
-
-                            // printf("speed is limited by factor: %f\n", timerScale);
-                            #if ! defined(COLDEXTRUSION)
-                            limiting = true;
-                            printer.underTemp = min(printer.underTemp+1, 0xffff);
-                            #endif
-                        }
-                        else {
-
-                            // Speed is not limited by temperature
-                            if (filamentSensor.isLimiting()) {
-
-                                timerScale = filamentSensor.getSlowDown();       // scale 1024
-                                limiting = true;
-                                printer.underGrip = min(printer.underGrip+1, 0xffff);
-
-                                // printer.sendGenericInt32(timerScale);
-                            }
-                        }
+                        // printer.sendGenericInt32(timerScale);
                     }
+
+                    #if ! defined(COLDEXTRUSION)
+                    limiting = true;
+                    printer.underTemp = min(printer.underTemp+1, 0xffff);
+                    #endif
+                }
+                else {
+
+                    // Speed is not limited by temperature
+                    if (filamentSensor.isLimiting()) {
+
+                        timerScale = filamentSensor.getSlowDown();       // scale 1024
+                        limiting = true;
+                        printer.underGrip = min(printer.underGrip+1, 0xffff);
+
+                        // printer.sendGenericInt32(timerScale);
+                    }
+                    else if (printer.isLimiting()) {
+                        timerScale = printer.getSlowDown();       // scale 1024
+                        limiting = true;
+                        // dont update statistic value underGrip if in debug/
+                        // measurement mode.
+                    }
+                }
+            }
                     // else {
                         // Non-printmove
                         // timerScale = 1.0;
                     // }
-                }
-// #endif
+        }
+// #endif   // #if defined(USEExtrusionRateTable)
 
 // #if defined(HEAVYDEBUG)
                 if (limiting) {
                     // if ((dbgcount++ & 0xf) == 0) {
                         // printer.sendGenericInt32(timerScale);
                     // }
-                    massert(timerScale > 1024);
+                    massert(timerScale >= 512);
                 }
                 // #endif
                 //////////////////////////////////////////////////////
@@ -1073,12 +1081,12 @@ class FillBufferTask : public Protothread {
 
                     if (curTempIndex < 0) {
 
-                        // printf("temp very low, use first entry\n");
+                        // printf("temp low, use first entry\n");
                         maxTempSpeed = tempExtrusionRateTable[0];
                     }
                     else if (curTempIndex >= NExtrusionLimit) {
 
-                        // printf("temp very high, use last entry\n");
+                        // printf("temp high, use last entry\n");
                         maxTempSpeed = tempExtrusionRateTable[NExtrusionLimit-1];
                     }
                     else {
@@ -1118,6 +1126,12 @@ class FillBufferTask : public Protothread {
 
                             // printer.sendGenericInt32(timerScale);
                         }
+                        else if (printer.isLimiting()) {
+                            timerScale = printer.getSlowDown();       // scale 1024
+                            limiting = true;
+                            // dont update statistic value underGrip if in debug/
+                            // measurement mode.
+                        }
                     }
                 }
     
@@ -1126,11 +1140,11 @@ class FillBufferTask : public Protothread {
                     // if ((dbgcount++ & 0xf) == 0) {
                         // printer.sendGenericInt32(timerScale);
                     // }
-                    massert(timerScale > 1024);
+                    massert(timerScale >= 512);
                 }
                 // #endif
                 //////////////////////////////////////////////////////
-// #endif
+// #endif // #if defined(USEExtrusionRateTable)
 
                 sDReader.setBytesToRead2();
                 PT_WAIT_THREAD(sDReader);
@@ -1481,9 +1495,32 @@ void Printer::printerInit() {
 
     printerState = StateInit;
 
+#if defined(LED_PIN)
     LED_PIN :: write(255);
+#endif
+
+    slowdown = 1024;
 }
 
+void Printer::runErase() {
+
+    //
+    // Erase sd-swap to speed up block writes.
+    //
+    if (printerState == StateErasing) {
+
+        // Erase in 100mb chunks
+        uint32_t blocksThisRun = min((uint32_t)2048*100, blocksToErase);
+
+        massert(swapDev.erase(eraseStartBlock, (eraseStartBlock+blocksThisRun) - 1));
+
+        eraseStartBlock += blocksThisRun;
+        blocksToErase -= blocksThisRun;
+
+        if (blocksToErase == 0)
+            printerState = StateInit; // Erase done
+    }
+}
 
 void Printer::sendGenericMessage(const char *s, uint8_t l) {
 
@@ -1577,7 +1614,7 @@ void Printer::cmdMove(MoveType mt) {
     }
 }
 
-void Printer::setHomePos(int32_t x, int32_t y, int32_t z) {
+void Printer::setPos(int32_t x, int32_t y, int32_t z) {
          
     homed = true;
 
@@ -1636,6 +1673,26 @@ void Printer::cmdSetStepsPerMM(uint16_t spmmX, uint16_t spmmY, uint16_t spmmZ) {
     stepsPerMMX = spmmX;
     stepsPerMMY = spmmY;
     stepsPerMMZ = spmmZ;
+}
+
+void Printer::cmdSetHostSettings(HostSettings &hs) {
+
+    hostSettings = hs;
+}
+
+void Printer::cmdGetCardSize() {
+
+    txBuffer.sendResponseStart(CmdGetCardSize);
+    txBuffer.sendResponseInt32((int32_t)swapDev.cardSize() - 1);
+    txBuffer.sendResponseEnd();
+}
+
+void Printer::cmdErase(uint32_t nBlocks) {
+
+    massert(printerState == StateInit);
+    eraseStartBlock = 1;
+    blocksToErase = nBlocks;
+    printerState = StateErasing;
 }
 
 void Printer::cmdFanSpeed(uint8_t speed, uint8_t blipTime) {
@@ -1736,6 +1793,16 @@ void Printer::cmdGetPrinterName() {
     txBuffer.sendResponseEnd();
 }
 
+void Printer::cmdGetVersion() {
+
+    txBuffer.sendResponseStart(CmdGetVersion);
+    txBuffer.sendResponseUint8(RespOK);
+
+    txBuffer.sendResponseString( gitversion, strlen(gitversion) );
+
+    txBuffer.sendResponseEnd();
+}
+
 void Printer::checkPrintFinished() {
 
     //
@@ -1768,6 +1835,8 @@ void Printer::checkPrintFinished() {
                 DISABLE_STEPPER_DRIVER_INTERRUPT();
                 DISABLE_STEPPER1_DRIVER_INTERRUPT();
 
+                swapDev.reset();
+
                 printerState = StateInit;
                 moveType = MoveTypeNone;
 
@@ -1783,7 +1852,12 @@ void Printer::disableSteppers() {
     st_disableSteppers();
 
     homed = false;
+
+#if defined(LED_PIN)
     LED_PIN :: write(255 * 0.5);
+#endif
+
+    printerState = StateIdle;
 }
 
 void Printer::cmdDisableSteppers() {
@@ -1872,9 +1946,11 @@ void Printer::cmdGetStatus() {
     txBuffer.sendResponseInt16(current_temperature_bed);
     txBuffer.sendResponseInt16(current_temperature[0]);
     txBuffer.sendResponseUInt32(swapDev.available());
+    txBuffer.sendResponseUInt32(swapDev.getSize());
     txBuffer.sendResponseUInt16(sDReader.available());
     txBuffer.sendResponseUInt32(stepBuffer.size());
     txBuffer.sendResponseInt16(bufferLow);
+    txBuffer.sendResponseUInt16(target_temperature_bed);
     txBuffer.sendResponseUInt16(target_temperature[0]);
     txBuffer.sendResponseUint8(tempControl.getPwmOutput());
 
@@ -2005,7 +2081,7 @@ void Printer::checkPowerOff(uint32_t m) {
 
 bool Printer::stepsAvailable() {
 
-    return sDReader.available();
+    return sDReader.available() > 512;
 }
 
 void Printer::cmdDumpMassStorage(uint32_t block) {
@@ -2313,17 +2389,7 @@ class UsbCommand : public Protothread {
                         printer.cmdMove((Printer::MoveType)rxBuffer.readNoCheckCobs());
                         txBuffer.sendACK();
                         break;
-                    case CmdSetHomePos:
-                        //
-                        // Following call does NOT work - oder of argument evaluation
-                        // is unspecified:
-                        //
-                        /*
-                        printer.setHomePos(
-                                rxBuffer.serReadInt32(),
-                                rxBuffer.serReadInt32(),
-                                rxBuffer.serReadInt32());
-                        */
+                    case CmdSetPos:
                         {
                             int32_t x = rxBuffer.readInt32NoCheckCobs();
                             int32_t y = rxBuffer.readInt32NoCheckCobs();
@@ -2333,7 +2399,7 @@ class UsbCommand : public Protothread {
                             rxBuffer.readInt32NoCheckCobs();
                             rxBuffer.readInt32NoCheckCobs();
 
-                            printer.setHomePos(x, y, z);
+                            printer.setPos(x, y, z);
                             txBuffer.sendACK();
                         }
                         break;
@@ -2359,6 +2425,13 @@ class UsbCommand : public Protothread {
                         break;
                     case CmdSoftStop:
                         fillBufferTask.requestSoftStop();
+                        txBuffer.sendACK();
+                        break;
+                    case CmdGetCardSize:
+                        printer.cmdGetCardSize();
+                        break;
+                    case CmdErase:
+                        printer.cmdErase(rxBuffer.readUInt32NoCheckCobs());
                         txBuffer.sendACK();
                         break;
                     case CmdFanSpeed:
@@ -2452,6 +2525,13 @@ class UsbCommand : public Protothread {
                         printer.cmdGetIOStats();
                         break;
 #endif
+                    case CmdSetSlowDown: {
+                        uint32_t scale = rxBuffer.readUInt32NoCheckCobs();
+                        printer.cmdSetSlowDown(scale);
+                        txBuffer.sendACK();
+                        }
+                        break;
+
                     case CmdSetBaudRate: {
                         uint32_t br = rxBuffer.readUInt32NoCheckCobs();
                         printer.cmdSetBaudRate(br);
@@ -2564,11 +2644,17 @@ class UsbCommand : public Protothread {
                         }
                         break;
 
-                    case CmdSetHostSettings:
-                            hostSettings.buildVolX = rxBuffer.readUInt32NoCheckCobs();
-                            hostSettings.buildVolY = rxBuffer.readUInt32NoCheckCobs();
-                            hostSettings.buildVolZ = rxBuffer.readUInt32NoCheckCobs();
+                    case CmdSetHostSettings: {
+                            HostSettings hs;
+                            hs.buildVolX = rxBuffer.readUInt32NoCheckCobs();
+                            hs.buildVolY = rxBuffer.readUInt32NoCheckCobs();
+                            hs.buildVolZ = rxBuffer.readUInt32NoCheckCobs();
+                            hs.xHomeDir = rxBuffer.readNoCheckCobs();
+                            hs.yHomeDir = rxBuffer.readNoCheckCobs();
+                            hs.zHomeDir = rxBuffer.readNoCheckCobs();
+                            printer.cmdSetHostSettings(hs);
                             txBuffer.sendACK();
+                        }
                         break;
 
                     case CmdSystemReset:
@@ -2598,6 +2684,10 @@ class UsbCommand : public Protothread {
                     case CmdGetFSReadings: {
                         filamentSensor.cmdGetFSReadings(10);
                         }
+                        break;
+
+                    case CmdGetVersion:
+                        printer.cmdGetVersion();
                         break;
 
                     default:
@@ -2666,7 +2756,6 @@ void loop() {
     // Timer for slow running tasks (temp, encoder)
     static uint32_t timer10mS = m + TIMER10MS;
     static uint32_t timer100mS = m + TIMER100MS;
-    // static uint32_t timerBufferLow = m;
 
     TaskStart(taskTiming, TaskSum);
 
@@ -2727,7 +2816,6 @@ void loop() {
         filamentSensor.run();
         TaskEnd(taskTiming, TaskFilSensor);
 #endif
-
     }
 
     m = millis();
@@ -2741,6 +2829,11 @@ void loop() {
         TaskStart(taskTiming,  TaskHeater);
         tempControl.heater();
         TaskEnd(taskTiming,  TaskHeater);
+
+        // Dont pollute process info with blocking task
+        TaskPause(taskTiming, TaskSum);
+        printer.runErase();
+        TaskContinue(taskTiming, TaskSum);
 
         printer.checkPrintFinished();
 

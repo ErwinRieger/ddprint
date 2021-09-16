@@ -34,10 +34,10 @@
 #if defined(HASFILAMENTSENSOR) || defined(RUNFILAMENTSENSOR)
     typedef struct {
         uint16_t       deltaStepper;
-        uint16_t       deltaSensor;
+        int16_t        deltaSensor;
     } FilsensorReading;
 
-    static CircularBuffer<FilsensorReading, uint8_t, 10> filsensorReadings;
+    static CircularBuffer<FilsensorReading, uint8_t, 16> filsensorReadings;
 #endif
 
 FilamentSensorEMS22 filamentSensor;
@@ -81,17 +81,23 @@ uint16_t FilamentSensorEMS22::readEncoderPos() {
 
     FILSENSNCS :: deActivate();
 
-    // Check status bits
-    if ((byte2 & 0x3E) != 0x20) {
-        massert(0);
-    }
+    uint16_t dataWord = (((uint16_t)byte1) << 8) | byte2;
 
     // Check parity
-    uint16_t dataWord = (((uint16_t)byte1) << 8) | byte2;
     uint8_t p = __builtin_parity(dataWord);
     massert(p == 0);
 
-    return (((uint16_t)byte1) << 2) | (byte2 >> 6);
+    uint16_t pos = (((uint16_t)byte1) << 2) | (byte2 >> 6);
+
+    // Check status bits
+    if ((byte2 & 0x3E) != 0x20) {
+
+        massert((byte2 & 0x3E) == 0);
+
+        printer.sendGenericInt32( pos );
+    }
+
+    return pos;
 }
 
 int16_t FilamentSensorEMS22::getDY() {
@@ -135,6 +141,57 @@ void FilamentSensorEMS22::run() {
             sensorCount = 0;
             measureTimer = 10; // 0.1s measuring interval
         }
+        else {
+
+            CRITICAL_SECTION_START;
+            int32_t astep = current_pos_steps[E_AXIS];
+            CRITICAL_SECTION_END;
+
+            int32_t deltaStepperSteps = astep - lastASteps; // Requested extruded length
+
+            HAL_FILSENSOR_BEGINTRANS();
+            sensorCount += getDY(); // read distance delta from filament sensor
+
+            if (deltaStepperSteps >= fsrMinSteps) {
+
+                if (sensorCount > 0) {
+
+                    int16_t slip32_short = ((deltaStepperSteps * filSensorCalibration.value) / sensorCount) >> filSensorCalibration.shift;
+
+                    // debug
+                    if (slip32_short < 0) {
+                        printer.sendGenericInt32( slip32_short );
+                    }
+
+                    // cut short moves to 100%
+                    if (slip32_short <= 32) {
+                        slip32_short = 32;
+                    }
+
+                    if (slip32_short < slip32) {
+
+                        // Ignore slip below 10%, 0.1*32 = 3.2, rounded: 3
+                        uint16_t s = min( 
+                            (uint16_t)max((int16_t)(slip32_short - 3), (int16_t)32),
+                            (uint16_t)(2*32) ); //  (uint16_t)(4*32) ); // max slowdown: pow(2) = 4
+
+                        #if !defined(COLDEXTRUSION)
+                        limiting = (s > 32) && feedrateLimiterEnabled;
+                        #endif
+
+                        if (limiting) {
+                            // s in range 32 .. 64
+                            slowDown = s * 32;
+                        }
+
+                        slip32 = slip32_short;
+                    }
+                }
+
+                lastASteps = astep;
+                sensorCount = 0;
+            }
+        }
     }
     else {
 
@@ -147,7 +204,7 @@ void FilamentSensorEMS22::run() {
                 int32_t astep = current_pos_steps[E_AXIS];
                 CRITICAL_SECTION_END;
 
-                uint32_t deltaStepperSteps = astep - lastASteps; // Requested extruded length
+                int32_t deltaStepperSteps = astep - lastASteps; // Requested extruded length
 
                 HAL_FILSENSOR_BEGINTRANS();
                 sensorCount += getDY(); // read distance delta from filament sensor
@@ -162,8 +219,14 @@ void FilamentSensorEMS22::run() {
                     // slip = --------------------------
                     //                frsCount
 
-                    if (sensorCount) {
+                    if (sensorCount > 0) {
+
                         slip32 = ((deltaStepperSteps * filSensorCalibration.value) / sensorCount) >> filSensorCalibration.shift;
+
+                        // deug
+                        if (slip32 < 0) {
+                            printer.sendGenericInt32( slip32 );
+                        }
                     }
 
                     // Ignore slip below 10%, 0.1*32 = 3.2, rounded: 3
@@ -176,8 +239,9 @@ void FilamentSensorEMS22::run() {
                     #endif
 
                     if (limiting) {
-                        // pow() is using floating point: slowDown = pow(s, 2);
-                        slowDown = s * s;
+
+                        // s in range 32 .. 64
+                        slowDown = s * 32;
                     }
 
                     if (filsensorReadings.full())
@@ -211,7 +275,7 @@ void FilamentSensorEMS22::cmdGetFSReadings(uint8_t nr) {
     for (uint8_t i=0; i<n; i++) {
         FilsensorReading &fsr = filsensorReadings.pop();
         txBuffer.sendResponseUInt16(fsr.deltaStepper);
-        txBuffer.sendResponseUInt16(fsr.deltaSensor);
+        txBuffer.sendResponseInt16(fsr.deltaSensor);
     }
 
     txBuffer.sendResponseEnd();

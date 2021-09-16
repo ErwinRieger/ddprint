@@ -29,7 +29,12 @@ struct HostSettings {
     uint32_t buildVolX;
     uint32_t buildVolY;
     uint32_t buildVolZ;
+    //
+    // Homing direction: 1: positive direction, 0: negative direction
+    //
+    uint8_t xHomeDir;
+    uint8_t yHomeDir;
+    uint8_t zHomeDir;
 };
 
-extern HostSettings hostSettings;
 

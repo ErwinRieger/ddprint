@@ -153,17 +153,27 @@ void st_disableSteppers() {
     //
     // AVR
     //
-   
-    // Stepper irq routine
-    ISR(TIMER1_COMPA_vect) {
+    #if defined(StepperOnTimer3)
+        // Stepper irq routine
+        ISR(TIMER3_COMPA_vect) {
+            stepBuffer.runPrintSteps();
+        }
 
-        stepBuffer.runPrintSteps();
-    }
+        // Stepper irq routine for homing steps
+        ISR(TIMER3_COMPB_vect) {
+            stepBuffer.runMiscSteps();
+        }
+    #else
+        // Stepper irq routine
+        ISR(TIMER1_COMPA_vect) {
+            stepBuffer.runPrintSteps();
+        }
 
-    // Stepper irq routine for homing steps
-    ISR(TIMER1_COMPB_vect) {
+        // Stepper irq routine for homing steps
+        ISR(TIMER1_COMPB_vect) {
+            stepBuffer.runMiscSteps();
+        }
+    #endif
 
-        stepBuffer.runMiscSteps();
-    }
 #endif
 

@@ -52,13 +52,13 @@ CmdUnknown       = 0x7f # Unknown command for debugging
 CmdPrinterInit = 128
 # * start move, print
 CmdMove = 129               # Parameters: MoveType
-# * End of text, all moves have been sent
-# CmdEOT = 130
 CmdResetLineNr = 131
 # free: 132
-CmdSetHomePos = 133
+CmdSetPos = 133
 # Set heater target temp
 CmdSetTargetTemp = 134 # Parameters: heater, temp
+CmdGetCardSize     = 135      # Get size of mass storage, number of 512b blocks
+CmdErase           = 136      # Erase mass storage, parameter: number of 512b blocks
 CmdFanSpeed = 137
 CmdStopMove = 138
 
@@ -105,6 +105,8 @@ CmdGetTaskStatus   = 188 #
 CmdGetIOStats      = 189 # 
 CmdDumpMassStorage = 190 # Dump a 512 bytes sector from sdcard/usb.
 CmdSetBaudRate     = 191 # Autobaudrate
+CmdSetSlowDown     = 192 # Slowdown print, for filament measurement
+CmdGetVersion      = 193 # Get git version.
 
 CommandNames = {
 }
@@ -138,11 +140,11 @@ for (cmd, cmdName) in [
     (CmdPrinterInit, "CmdPrinterInit",),
     # * start move, print
     (CmdMove, "CmdMove",),
-    # * End of text, all moves have been sent
-    # (CmdEOT, "CmdEOT",),
     (CmdResetLineNr, "CmdResetLineNr",),
-    (CmdSetHomePos, "CmdSetHomePos",),
+    (CmdSetPos, "CmdSetPos",),
     (CmdSetTargetTemp, "CmdSetTargetTemp",),
+    (CmdGetCardSize, "CmdGetCardSize",),
+    (CmdErase, "CmdErase",),
     (CmdSyncFanSpeed, "CmdSyncFanSpeed",),
     (CmdFanSpeed, "CmdFanSpeed",),
     (CmdStopMove, "CmdStopMove",),
@@ -186,6 +188,8 @@ for (cmd, cmdName) in [
     (CmdGetTaskStatus, "CmdGetTaskStatus",),
     (CmdGetIOStats, "CmdGetIOStats",),
     (CmdSetBaudRate, "CmdSetBaudRate",),
+    (CmdSetSlowDown, "CmdSetSlowDown",),
+    (CmdGetVersion, "CmdGetVersion",),
     ]:
 
         insertCommandName(cmd, cmdName)

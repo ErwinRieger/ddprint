@@ -5,3 +5,4 @@ scratch
 fit.log
 Makefile
 make.sh
+*.add

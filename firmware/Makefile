@@ -17,6 +17,8 @@
 # along with ddprint.  If not, see <http://www.gnu.org/licenses/>.
 #*/
 
+# .PHONY: build
+
 all: fw
 
 fw:
@@ -51,3 +53,8 @@ clean:
 
 reset: 
 	echo "yeah reset"
+
+gitversion.cpp: ../.git/HEAD ../.git/index
+	echo "const char *gitversion = \"$(shell git rev-parse --short HEAD)\";" > gitversion.cpp
+
+

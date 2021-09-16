@@ -77,7 +77,7 @@ class SDSwap: public MassStorage, public Protothread {
     // excluding the first eeprom sector.
     uint32_t readPos;
     // Number of consecutive read attempts
-    uint8_t  readRetry;
+    // uint8_t  readRetry;
     // uint8_t *readBuffer;
     uint16_t readBytes;
 
@@ -119,7 +119,7 @@ public:
         while (busy())
             Run();
 
-        readRetry = 0;
+        // readRetry = 0;
 
         size = 0;
         writePos = 0;
@@ -174,7 +174,8 @@ public:
     // Async block read/write.
     FWINLINE bool Run() {
 
-        static int res;
+        ReadState readstate;
+        WriteState writestate;
 
         PT_BEGIN();
 
@@ -184,32 +185,26 @@ public:
             TaskStart(ioStats, TaskReadSum);
 
             do { _ptLine = __LINE__; case __LINE__: {
-                TaskStart(ioStats, TaskRead);
 
-                if (readBuffer == b1)
-                    res = readBlockWrapper((readPos >> 9)+1, b2);
-                else
-                    res = readBlockWrapper((readPos >> 9)+1, b1);
+                    TaskStart(ioStats, TaskRead);
+                    if (readBuffer == b1)
+                        readstate = readBlockWrapper((readPos >> 9)+1, b2);
+                    else
+                        readstate = readBlockWrapper((readPos >> 9)+1, b1);
+                    TaskEnd(ioStats, TaskRead);
 
-                TaskEnd(ioStats, TaskRead);
-                if (res == 1) return true; // continue thread
-                if (res == -1) { // error
+                    if (readstate == Rcontinue)
+                        return true; // continue thread
 
-                    // Return Sd2Card error code and SPI status byte from sd card.
-                    // In case of SD_CARD_ERROR_CMD17 this is the return status of
-                    // CMD17 in Sd2Card::cardCommand().
-                    if (readRetry++ < 5) {
+                    if (readstate == Rretry) { // error
+
                         // Log error and retry
                         txBuffer.sendSimpleResponse(RespUnsolicitedMsg, RespSDReadError, errorCode(), errorData());
-                        return true;
+                        return true; // continue thread
                     }
 
-                    killMessage(RespSDReadError, errorCode(), errorData());
-                    // notreached
+                    // (readstate == Rstop), fall-through
                 }
-
-                // (res == 0), fall-through
-            }
             } while (0);
 
             TaskEnd(ioStats, TaskReadSum);
@@ -222,8 +217,8 @@ public:
             // Done in readBlock()
             // readPos += readBytes;
 
-            // Cache read successful, reset retry count
-            readRetry = 0;
+            // // Cache read successful, reset retry count
+            // readRetry = 0;
             busyState = idle;
             cacheFilled = true;
         }
@@ -235,11 +230,20 @@ public:
             TaskStart(ioStats, TaskWriteSum);
 
             do { _ptLine = __LINE__; case __LINE__: {
-                TaskStart(ioStats, TaskWrite);
-                res = writeBlock(writeBlockNumber, writeBuffer);
-                TaskEnd(ioStats, TaskWrite);
-                if (res == 1) return true; // continue thread
-            }
+
+                    TaskStart(ioStats, TaskWrite);
+                    writestate = writeBlock(writeBlockNumber, writeBuffer);
+                    TaskEnd(ioStats, TaskWrite);
+
+                    if (writestate == Wcontinue)
+                        return true; // continue thread
+
+                    if (writestate == Wretry)  {
+                        // Log error and retry
+                        txBuffer.sendSimpleResponse(RespUnsolicitedMsg, RespSDWriteError, errorCode(), errorData());
+                        return true; // continue thread
+                    }
+                }
             } while (0);
 
             TaskEnd(ioStats, TaskWriteSum);
@@ -267,17 +271,15 @@ public:
 
     void writeConfig(MSConfigBlock &config) { 
 
-        int res;  
-
         TaskStart(ioStats, TaskWriteSum);
 
         while (true) {
            
             TaskStart(ioStats, TaskWrite);
-            res = writeBlock(0, config.sector);
+            WriteState writestate = writeBlock(0, config.sector);
             TaskEnd(ioStats, TaskWrite);
 
-            if (res == 0) { // Done
+            if (writestate == Wstop) { // Done
                 TaskEnd(ioStats, TaskWriteSum);
                 return;
             }
@@ -288,29 +290,19 @@ public:
     // Read first 512 byte block, the *config block*.
     void readConfig(MSConfigBlock &config) {
 
-        int res;  
-
         TaskStart(ioStats, TaskReadSum);
 
         // BLOCKING loop for config read!
         while (true) {
            
             TaskStart(ioStats, TaskRead);
-            res = readBlockWrapper(0, config.sector);
-
+            ReadState readstate = readBlockWrapper(0, config.sector);
             TaskEnd(ioStats, TaskRead);
 
-            if (res == 1) { // Continue calling
-                continue;
-            }
-
-            if (res == 0) { // Done
+            if (readstate == Rstop) { // Done
                 TaskEnd(ioStats, TaskReadSum);
                 return;
             }
-
-            // Error, nothandled yet
-            massert(0);
         }
         TaskEnd(ioStats, TaskReadSum);
     }

@@ -21,8 +21,8 @@
 
 // Buffer and sector size reading and writing to the storage device
 #define SwapSectorSize 512
-// Mask to implement ring-buffer
-#define SwapSectorMask (SwapSectorSize - 1) 
+// // Mask to implement ring-buffer
+// #define SwapSectorMask (SwapSectorSize - 1) 
 
 //
 // First sector of mass storage is configuration/eeprom emulation
@@ -37,5 +37,12 @@ union MSConfigBlock {
 //
 // Common base class for MassStorage classes
 //
-class MassStorageBase { };
+class MassStorageBase {
+
+  protected:
+    enum ReadState { Rcontinue, Rretry, Rstop };
+    enum WriteState { Wcontinue, Wretry, Wstop };
+
+};
+
 

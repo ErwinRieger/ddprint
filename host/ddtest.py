@@ -331,7 +331,6 @@ def testFeederUniformity(args, parser):
     # Start feeder motor
     parser.execute_line("G0 F%d %s%f" % (feedrate*60, util.dimNames[A_AXIS], startPos + d))
     planner.finishMoves()
-    # printer.sendCommand(CmdEOT)
     printer.sendCommandParamV(CmdMove, [MoveTypeNormal])
 
     tWait = 0.75
@@ -438,7 +437,6 @@ def execGcode(args):
             parser.execute_line(g)
 
     planner.finishMoves()
-    # printer.sendCommand(CmdEOT)
 
     printer.sendCommandParamV(CmdMove, [MoveTypeNormal])
 

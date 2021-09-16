@@ -33,6 +33,8 @@
 #include "swapdev.h"
 #include "rxbuffer.h"
 
+#include "hostsettings.h"
+
 #if defined(DDSim)
     #include <unistd.h>
     #include <fcntl.h>
@@ -43,6 +45,8 @@
 // Number of entries in ExtrusionRateLimit table, this must match the value
 // in the host (ddprintconstants.py).
 #define NExtrusionLimit 100
+
+extern const char *gitversion; // From gitversion.cpp
 
 void kill();
 
@@ -70,6 +74,17 @@ class Printer {
         // Steps per mm
         uint16_t stepsPerMMX, stepsPerMMY, stepsPerMMZ;
 
+        // Host settings: buildvolume, homing directions
+        HostSettings hostSettings;
+
+        bool limiting;
+        uint32_t slowdown;
+
+        // Mass storage erase: first block to erase
+        uint32_t eraseStartBlock;
+        // Mass storage erase: number of blocks to erase
+        uint32_t blocksToErase;
+
     public:
 
         uint8_t minBuffer;
@@ -82,6 +97,7 @@ class Printer {
             StateIdle,       // The state when printer is turned on.
             StateInit,       // Host part has initialized the printer and has
                              // done printer setup.
+            StateErasing,    // Mass storage erase in progress
             StateStart,      // We are printing.
             } printerState;
 
@@ -97,6 +113,8 @@ class Printer {
 
         Printer();
         void printerInit();
+        void runErase();
+
         void sendGenericMessage(const char *s, uint8_t l);
         void sendGenericInt32(int32_t v);
 
@@ -108,10 +126,15 @@ class Printer {
         uint16_t getStepsPerMMY() { return stepsPerMMY; }
         uint16_t getStepsPerMMZ() { return stepsPerMMZ; }
 
+        HostSettings & getHostSettings() { return hostSettings; }
+
+        uint32_t getSlowDown() { return slowdown; }
+        uint32_t isLimiting() { return limiting; }
+
         void cmdMove(MoveType);
         void underrunError();
 
-        void setHomePos( int32_t x, int32_t y, int32_t z);
+        void setPos( int32_t x, int32_t y, int32_t z);
         void cmdSetTargetTemp(uint8_t heater, int16_t temp, uint8_t pwmOverride=0);
         void cmdSetIncTemp(uint8_t heater, int16_t incTemp);
         void cmdGetFreeMem();
@@ -133,6 +156,9 @@ class Printer {
                 ScaledUInt32 &kiSwitchToCooling,
                 uint16_t Tu);
         void cmdSetStepsPerMM(uint16_t spmmX, uint16_t spmmY, uint16_t spmmZ);
+        void cmdSetHostSettings(HostSettings &hs);
+        void cmdGetCardSize();
+        void cmdErase(uint32_t nBlocks); // Erase sd-swap to speed up block writes.
         void cmdFanSpeed(uint8_t speed, uint8_t blipTime);
         void cmdContinuousE(uint16_t timerValue);
         void cmdSetFilSensorConfig(ScaledUInt16 & cal, uint16_t fsrMinSteps);
@@ -157,6 +183,12 @@ class Printer {
         void cmdDumpMassStorage(uint32_t block);
         bool stepsAvailable();
         void cmdSetBaudRate(uint32_t br);
+        void cmdSetSlowDown(uint32_t scale) { 
+            slowdown = scale;
+            limiting = slowdown != 1024;
+        }
+
+        void cmdGetVersion();
 };
 
 extern Printer printer;

@@ -73,12 +73,6 @@
 // PID settings:
 #define PID_MAX 255 // limits current to nozzle while PID is active (see PID_FUNCTIONAL_RANGE below); 255=full current
 
-// ENDSTOP SETTINGS:
-// Sets direction of endstops when homing; 1=MAX, -1=MIN
-#define X_HOME_DIR -1
-#define Y_HOME_DIR 1
-#define Z_HOME_DIR 1
-
 //// MOVEMENT SETTINGS
 #define NUM_AXIS 4 // The axis order in all axis related arrays is X, Y, Z, E
 

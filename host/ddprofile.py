@@ -75,18 +75,18 @@ class ProfileBase(object):
         #
         # Directory search order:
         # * working directory
-        # * $DDPRINTPROFILES
-        # [* $HOME/.ddprint]
+        # * directories listed in $DDPRINTPROFILES path
         #
-        # searchpath = ["", "mat-profiles", "nozzle-profiles", "machine-profiles", os.path.join(os.environ["HOME"], ".ddprint")]
-        searchpath = [""]
+        searchpath = []
 
-        for p in ["mat-profiles", "nozzle-profiles", "machine-profiles"]:
-            searchpath.append(os.path.join(".", p))
-            try:
-                searchpath.append(os.path.join(os.environ["DDPRINTPROFILES"], p))
-            except KeyError:
-                pass
+        try:
+            dirlist = ["."] + os.environ["DDPRINTPROFILES"].split(":")
+        except KeyError:
+            dirlist = ["."]
+
+        for d in dirlist:
+            for p in ["mat-profiles", "nozzle-profiles", "machine-profiles"]:
+                searchpath.append(os.path.join(d, p))
 
         for searchdir in searchpath:
 
@@ -158,6 +158,12 @@ class PrinterProfile(ProfileBase):
 
     def getStepsPerMMI(self, axisNr):
         return int(self.getValue("axes")[dimNames[axisNr]]["steps_per_mm"])
+
+    def getHomeDir(self, axisNr):
+        return int(self.getValue("axes")[dimNames[axisNr]]["home_dir"])
+
+    def getHomeFeedrate(self, axisNr):
+        return int(self.getValue("axes")[dimNames[axisNr]]["home_feedrate"])
 
     @classmethod
     def getStepsPerMMVector(cls):
@@ -234,12 +240,12 @@ class PrinterProfile(ProfileBase):
     def getFilSensorIntervalI(self):
         return float(self.getValue("filSensorInterval"))
 
-    def getSettingsI(self, pidSet):
+    def getSettings(self, pidSet):
 
         pidSetHeating = pidSet[:2]
         pidSetCooling = pidSet[2:]
 
-        print "getSettingsI(): pidset to use: %s, heating: %s, cooling: %s" % (pidSet, pidSetHeating, pidSetCooling)
+        print "getSettings(): pidset to use: %s, heating: %s, cooling: %s" % (pidSet, pidSetHeating, pidSetCooling)
 
         return {
             "filSensorCalibration": self.getFilSensorCalibration(),
@@ -258,6 +264,9 @@ class PrinterProfile(ProfileBase):
             "buildVolX": int(self.getPlatformLengthI(X_AXIS) * self.getStepsPerMMI(X_AXIS)),
             "buildVolY": int(self.getPlatformLengthI(Y_AXIS) * self.getStepsPerMMI(Y_AXIS)),
             "buildVolZ": int(self.getPlatformLengthI(Z_AXIS) * self.getStepsPerMMI(Z_AXIS)),
+            "xHomeDir": int(self.getHomeDir(X_AXIS)),
+            "yHomeDir": int(self.getHomeDir(Y_AXIS)),
+            "zHomeDir": int(self.getHomeDir(Z_AXIS)),
             }
 
     def getTuI(self):

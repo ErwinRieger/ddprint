@@ -65,11 +65,12 @@
 
 #define CmdPrinterInit          128
 #define CmdMove                 129
-// #define CmdEOT                  130
 #define CmdResetLineNr          131
 
-#define CmdSetHomePos           133
+#define CmdSetPos               133
 #define CmdSetTargetTemp        134
+#define CmdGetCardSize          135 // Get size of mass storage, number of 512b blocks
+#define CmdErase                136 // Erase mass storage, parameter: number of 512b blocks
 #define CmdFanSpeed             137
 #define CmdStopMove             138
 
@@ -121,6 +122,8 @@
 #define CmdGetIOStats           189 //
 #define CmdDumpMassStorage      190 // Dump a 512 bytes sector from sdcard/usb.
 #define CmdSetBaudRate          191 // Autobaudrate
+#define CmdSetSlowDown          192 // Slowdown print, for filament measurement
+#define CmdGetVersion           193 // Get git version of build.
 
 //
 // Response types 
