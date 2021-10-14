@@ -3,15 +3,22 @@
 
    <link rel="stylesheet" href="/images/js_css/asciinema-player.css"" type="text/css"/>
 
+ddPrint - Adding Process control to FDM printers
+=================================================
 
 :tags: FDM, 3DDruck, 3dprinting, python, ddprint
 :slug: ddprint-3d-printer-firmware
 
+.. image:: /images/um2-1/20200421_212447.jpg
+   :width: 75px
+   :target: /images/um2-1/20200421_212447.jpg
+
+.. image:: /images/flowsensor_red.jpg
+   :width: 150px
+   :target: /images/flowsensor_red.jpg
+
 **Note: Experimental and work in progress, documentation is incomplete and outdated.**
 
-
-ddPrint - Adding Process control to FDM printers.
-=================================================
 
 Overview
 ++++++++++
