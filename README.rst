@@ -3,13 +3,126 @@
 
    <link rel="stylesheet" href="/images/js_css/asciinema-player.css"" type="text/css"/>
 
-FDM 3d printer firmware with host preprocessing and *closed loop E*
-=====================================================================
 
 :tags: FDM, 3DDruck, 3dprinting, python, ddprint
 :slug: ddprint-3d-printer-firmware
 
 **Note: Experimental and work in progress, documentation is incomplete and outdated.**
+
+
+ddPrint - Adding Process control to FDM printers.
+=================================================
+
+Overview
+++++++++++
+
+..
+   XXX LEVEL 1 XXX
+
+DDPrint adds process control to FDM printer.
+
+The process that is to be controled is the process of extruding plastic.
+
+This includes the feeder, a bowden tube (*) and the hotend with its heater, lets call
+this the *extruder*.
+
+Most FDM printers have no feedback on the extruder part of the printer - they are running *open loop*.
+
+That means to find the balance of printing speed (better: volumetric flow) and hotend temperature
+is difficult. Another problem of this *open loop* extrusion system is that the printer cannot react when the
+hotend has difficulties to deliver the current demand of flow (for example when printing the first layer or when
+the hotend is not hot enough yet).
+
+To close the control loop we add a `sensor <#flowratesensor-label>`__ to measure the performance of the extruder
+und use this data to control the temperature of the hotend and the speed of the printer.
+
+The control loop is closed in two ways, an acvitve way where the speed of the printer is lowered if the hotend cannot 
+deliver the demanded flowrate and the feeder begins to slip.
+The other is a *feed forward* way: The flowrate sensor is used to measure the characteristics of a given filament - extruder
+combination. The result of this measurement is a so called `*material profile* <#matprofile-label>`__.
+
+Control of hotend temperature is called `atutotemp <#autotemp-label>`__.
+
+Control of printer speed is done with the `temperature limiter <#templimiter-label>`__ and the `flowrate limiter <#flowratelimiter-label>`__
+.
+
+
+
+
+
+
+(*) For the moment `bowden style printers only. <#bowdenstyle-label>`__
+
+.. contents::
+
+..
+   XXX LEVEL 2 XXX
+
+.. _flowratesensor-label:
+
+Flowratesensor
+++++++++++++++
+
+.. image:: /images/flowsensor_red.jpg
+   :width: 100px
+   :target: /images/flowsensor_red.jpg
+
+.. image:: /images/flowsensor1.jpg
+   :width: 50
+   :target: /images/flowsensor1.jpg
+
+.. image:: /images/ender5/flowrate_sensor_ender5.jpg
+   :width: 80px
+   :target: /images/ender5/flowrate_sensor_ender5.jpg
+
+.. _bowdenstyle-label:
+
+Bowden style printers only?
++++++++++++++++++++++++++++
+
+For best results, the flowrate sensor has to be placed *after* the feeder. This is easy for a bowden style printer.
+
+For direct driver printers it should be possible but it is more difficult to add the flowrate sensor into the print head (because of
+space requirements, heat, added weight and so on).
+
+.. _matprofile-label:
+
+Material Profiles
+++++++++++++++++++
+
+TBD
+
+.. _autotemp-label:
+
+Auto Temp
++++++++++++++
+
+TBD
+
+.. _templimiter-label:
+
+Temperature limiter
+++++++++++++++++++++
+
+TBD
+
+.. _flowratelimiter-label:
+
+Flowrate limiter
++++++++++++++++++
+
+TBD
+
+..
+   XXX LEVEL 3 XXX
+
+---------------------------------------------------------------------------------------------
+
+** Following stuff has to be reviewed **
+
+
+FDM 3d printer firmware with host preprocessing and *closed loop E*
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 See last chapter in this document for a log/history.
 
@@ -23,8 +136,6 @@ This firmware is part of the *ddprint printing system*, which immproves a common
 
 Reference printer is a Ultimaker 2 with ddprint installed and some hardware
 modifications: http://www.ibrieger.de/pimped-ultimaker-2.html, and a jennyprinter X340 now too.
-
-.. contents::
 
 Github Mirror, project Homepage
 ++++++++++++++++++++++++++++++++
