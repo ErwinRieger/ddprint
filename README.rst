@@ -28,7 +28,7 @@ Overview
 
 DDPrint adds process control to FDM printer.
 
-The process that is to be controled is the process of extruding plastic.
+The process that is to be controlled is the process of extruding plastic.
 
 This includes the feeder, a bowden tube (*) and the hotend with its heater, lets call
 this the *extruder*.
