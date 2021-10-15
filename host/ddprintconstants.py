@@ -114,11 +114,17 @@ PidPrecision = 10   # Number of bits
 #
 # Gcode Parser
 #
-# gcode types : s3d, ulti, unknown
+# gcode types : s3d, unknown
 GCODEUNKNOWN="unknown"
-GCODEULTI="ulti"
 GCODES3D="s3d"
 
+############################################################################
+#
+# Homing
+#
+# When homing to zero (nozzle at printbed), this is the amount of z-lift
+# after Z is homed.
+HOMEZLIFT=50
 
 
 

@@ -177,22 +177,12 @@ class Advance (object):
 
             return self.printer.printerProfile.getMaxAxisAccelerationI()
 
-    # Implement gradual advance on part change (sequential print)
-    def newPart(self, nParts=None):
-
-        # self.planner.gui.log("Advance: start new part #: ", nParts)
-
-        # if nParts==None and self.startAdvance != None:
-            # self.startAdvance += self.advIncrease
-            # self.setkAdvance(self.startAdvance)
-
-        pass
-
+    # Implement gradual advance on layer change (used to determine lin-advance k-value).
     def layerChange(self, layer):
 
         # self.planner.gui.log("Advance: layer changed: ", layer)
 
-        if layer != None and self.startAdvance != None:
+        if self.startAdvance != None:
             self.setkAdvance(self.startAdvance + (layer / self.advStepHeight) * self.advIncrease)
             self.planner.gui.log("Advance: layer changed, new k-adv: ", self.getKAdv())
 

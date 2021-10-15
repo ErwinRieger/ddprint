@@ -922,9 +922,24 @@ def printFile(args, printer, parser, planner, logObj, gfile, t0, t0_wait, t1, do
     logObj.log( "Print finished, duration: %s" % printer.getPrintDuration() )
 
     printer.coolDown(HeaterEx1)
-    printer.coolDown(HeaterBed)
 
-    print "reconnect: don't home" # ddhome.home(args, printer, parser, planner)
+    if printer.printerProfile.getBedSurface() == "glass":
+
+        t0 = planner.matProfile.getKeepBedtemp()
+        printer.heatUp(HeaterBed, t0, log=doLog)
+
+        if t0:
+            print "*** Warning: ***"
+            print "Keeping bed heater running at temp %d °C to avoid glass-chipping..." % t0
+            print "****************"
+
+        printer.setTargetTemp(HeaterBed, t0)
+
+    else:
+
+        printer.coolDown(HeaterBed)
+
+    print "Debug: printFile(): don't home" # ddhome.home(args, printer, parser, planner)
 
     printer.sendCommand(CmdDisableSteppers)
 
@@ -1064,11 +1079,10 @@ def bedLeveling(args, printer, parser, planner):
         printer.printerProfile.override("add_homeing_z", 0)
         head_height = planner.HEAD_HEIGHT
 
-    # printer.commandInit(args)
     ddhome.home(args, printer, parser, planner)
 
     zFeedrate = printer.printerProfile.getMaxFeedrateI(Z_AXIS)
-    kbd = GetChar("Enter (u)p (d)own (U)p 1mm (D)own 1mm (2-5) Up Xmm (q)uit")
+    kbd = GetChar("Enter (u)p (d)own (U)p 1mm (D)own 1mm (1-5) Up Xmm (q)uit")
 
     # "bedLevelMode": "Triangle3Point"
     levelMode = printer.printerProfile.getBedLevelMode()
@@ -1124,7 +1138,7 @@ def bedLeveling(args, printer, parser, planner):
                     o = int(ch) # up x mmm
                 except ValueError:
                     continue
-                if o < 2 or o > 5:
+                if o < 1 or o > 5:
                     continue
                 zofs -= o
 
@@ -1138,6 +1152,8 @@ def bedLeveling(args, printer, parser, planner):
     printer.heatUp(HeaterEx1, t1, wait=t1-5, log=True)
 
     feedrate = printer.printerProfile.getMaxFeedrateI(X_AXIS)
+
+    print "Please level bead to <=%.2f mm distance." % planner.LEVELING_OFFSET
 
     pointNumber = 0
     for (x, y, z, pointName) in levelPoints:
@@ -1162,7 +1178,7 @@ def bedLeveling(args, printer, parser, planner):
             current_position = parser.getPos()
             print "curz: ", current_position[Z_AXIS]
 
-            add_homeing_z = (current_position[Z_AXIS] * -1) + planner.LEVELING_OFFSET
+            add_homeing_z = current_position[Z_AXIS] - planner.LEVELING_OFFSET
 
             # Store into printer profile (not persistent, just for the rest of the levelling procedure):
             printer.printerProfile.override("add_homeing_z", add_homeing_z)
@@ -1185,13 +1201,10 @@ def bedLeveling(args, printer, parser, planner):
         pointNumber += 1
 
     ddhome.home(args, printer, parser, planner)
-
-    # Todo: move bed away from nozzle if z_home_dir is 0
-
     printer.sendCommand(CmdDisableSteppers) # Force homing/reset
 
     if not args.relevel:
-        raw_input("\n! Please update your Z-Offset (add_homeing_z) in printer profile: %.3f\n" % add_homeing_z)
+        print "\n! Please update your Z-Offset (add_homeing_z) in printer profile: %.3f\n" % add_homeing_z
 
     if not args.noCoolDown:
         printer.coolDown(HeaterEx1, wait=100, log=True)
@@ -1236,6 +1249,23 @@ def stopMove(args, parser):
     printer.sendCommand(CmdDisableSteppers)
 
 ####################################################################################################
+
+def heatBed(args, matProfile, printer):
+
+    t0 = args.t0 or matProfile.getBedTemp()
+
+    startTime = time.time()
+    printer.heatUp(HeaterBed, t0, wait=t0, log=True)
+
+    kbd = GetChar()
+    print("\nTemp %d reached in %.2f sec. Press return to stop heating...\n" % (t0, time.time() - startTime))
+    while not kbd.getcNB():
+        status = printer.getStatus()
+        printer.ppStatus(status, msg="T %.2f" % (time.time() - startTime))
+        time.sleep(1)
+
+    if not args.noCoolDown:
+        printer.coolDown(HeaterBed, wait=100, log=True)
 
 def heatHotend(args, matProfile, printer):
 

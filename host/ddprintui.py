@@ -160,7 +160,7 @@ class MainForm(npyscreen.FormBaseNew):
         self.reprapServer = reprap_svr.ReprapServer(self)
 
         self.printerState = None
-        self.stateNames = ["IDLE", "INIT", "PRINTING"]
+        self.stateNames = ["IDLE", "INIT", "ERASING", "PRINTING"]
 
         self.lastEPos = None
         self.lastTime = None

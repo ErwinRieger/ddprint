@@ -23,7 +23,7 @@ import packedvalue
 import shutil, os, re
 
 from ddprintcommands import CmdUnknown
-from ddprintconstants import dimNames, GCODEUNKNOWN, GCODEULTI, GCODES3D, X_AXIS, Y_AXIS, Z_AXIS, A_AXIS, B_AXIS, Uint8Max
+from ddprintconstants import dimNames, GCODEUNKNOWN, GCODES3D, X_AXIS, Y_AXIS, Z_AXIS, A_AXIS, B_AXIS, Uint8Max
 from ddconfig import *
 from move import TravelMove, PrintMove
 from ddvector import Vector, vectorDistance, vectorLength
@@ -64,7 +64,7 @@ def getCuraLayer(line):
     return None
 
 
-S3DLayerRE = re.compile("; \s layer \s (\d+), \s Z \s = \s (\d+ [\.,] \d+) $", re.VERBOSE)
+S3DLayerRE = re.compile("; \s LAYER \s (\d+), \s Z \s = \s (\d+ [\.,] \d+) $", re.VERBOSE)
 
 #
 # Get layer number from simplify3d gcode comment
@@ -188,8 +188,6 @@ class UM2GcodeParser:
                 "U": self.unknown, # unknown command for testing purposes
                 }
 
-        self.e_to_filament_length = 1.0
-
         self.steps_per_mm = planner.printer.printerProfile.getStepsPerMMVectorI()
         self.mm_per_step = map(lambda dim: 1.0 / self.steps_per_mm[dim], range(5))
         self.maxFeedrateVector = planner.printer.printerProfile.getMaxFeedrateVectorI()
@@ -204,7 +202,6 @@ class UM2GcodeParser:
 
         self.position = util.MyPoint()
         self.feedrate = None
-        self.numParts = 1
 
         self.absolute = {
                 X_AXIS: True,
@@ -214,8 +211,7 @@ class UM2GcodeParser:
                 B_AXIS: True,
                 }
 
-        # self.ultiGcodeFlavor = False
-        # types : s3d, ulti, unknown
+        # types : s3d, unknown
         self.gcodeType = GCODEUNKNOWN
         self.layerPart = "unknown"
         self.layerHeight = None             # Read from gcode comments
@@ -288,8 +284,6 @@ class UM2GcodeParser:
         self.logger.log("Unlinking temp. copy of gcode input: ", tmpfname)
         os.unlink(tmpfname)
 
-        self.numParts = 0
-
         # preload
         moveTime = 0.0
         downloadTime = 0.0
@@ -315,31 +309,7 @@ class UM2GcodeParser:
 
                 upperLine = line.upper()
 
-                # Cura: "LAYER:"
-                layerNum = getCuraLayer(line)
-                if layerNum == 1:
-                    self.numParts += 1
-                    self.planner.newPart(self.numParts)
-
-                # layerNum = getSimplifyLayer(line)
-                # if layerNum == 1:
-                    # self.numParts += 1
-                    # self.planner.newPart(self.numParts)
-
-                # Simplify3D: "; skirt "
-                elif upperLine.startswith("; SKIRT") or "FEATURE SKIRT" in upperLine:
-                    self.numParts += 1
-                    self.planner.newPart(self.numParts)
-
-                # ;FLAVOR:UltiGCode
-                elif "FLAVOR:ULTIGCODE" in upperLine:
-                    self.gcodeType = GCODEULTI
-                    # To compute extrude length from volume (see getValues()):
-                    # V = A * h, h = V / A, A = pi/4 * diameter²
-                    aFilament = self.planner.matProfile.getMatArea()
-                    self.e_to_filament_length = 1.0 / aFilament
-
-                elif "SIMPLIFY3D" in upperLine:
+                if "SIMPLIFY3D" in upperLine:
                     self.gcodeType = GCODES3D
 
                 elif "LAYERHEIGHT," in upperLine:
@@ -437,7 +407,6 @@ class UM2GcodeParser:
 
                         pos[dim] = values[dimC]
 
-        self.logger.log("pre-parsing # parts:", self.numParts)
         f.seek(0) # rewind
 
         if downloadTime < moveTime:
@@ -459,17 +428,17 @@ class UM2GcodeParser:
             cmd = tokens[0]
             if cmd.startswith(";"):
 
-                layerNum = getCuraLayer(line)
-                if layerNum != None:
-                    self.planner.layerChange(layerNum)
-                    return
-
-                layerNum = getSimplifyLayer(line)
-                if layerNum != None:
-                    self.planner.layerChange(layerNum)
-                    return
-
                 upperLine = line.upper()
+
+                layerNum = getCuraLayer(upperLine)
+                if layerNum != None:
+                    self.planner.layerChange(layerNum)
+                    return
+
+                layerNum = getSimplifyLayer(upperLine)
+                if layerNum != None:
+                    self.planner.layerChange(layerNum)
+                    return
 
                 if upperLine.endswith("INFILL"):
                     # print "gcodeparser: Starting infill..."
@@ -493,7 +462,7 @@ class UM2GcodeParser:
                     # print "gcodeparser: Starting single extrusion..."
                     self.layerPart = "single extrusion"
                 elif upperLine.endswith("SKIRT"):
-                    self.planner.newPart()
+                    self.layerPart = "skirt"
                 elif upperLine.endswith("SUMMARY"):
                     self.layerPart = "unknown"
                 elif len(tokens) > 1 and tokens[1].upper() in [ "PURGING:", "PROCESS", "FEATURE" ]:
@@ -543,9 +512,7 @@ class UM2GcodeParser:
 
             factor = 1.0
 
-            # XXX assuming ultiGcode here !!! --> parse ;FLAVOR:UltiGCode
             if valueChar == "E":
-                factor = self.e_to_filament_length
                 # print "replacing ", param, " --> A", float(param[1:]) * factor
                 valueChar = "A"
 
@@ -592,10 +559,6 @@ class UM2GcodeParser:
 
         if "B" in values:
             blipTime = int(values["B"] * 1000)
-
-        # "Blip fan" for Cura (S3D supports blip fan)
-        if fanSpeed < 50 and self.gcodeType==GCODEULTI:
-            blipTime = 250
 
         # self.planner.addSynchronizedCommand(CmdSyncFanSpeed, p1=packedvalue.uint8_t(fanSpeed))
         self.planner.fanOn(fanSpeed, min(blipTime, Uint8Max))

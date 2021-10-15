@@ -209,12 +209,15 @@ class PrinterProfile(ProfileBase):
     def getFilSensorCalibration(self):
         return self.getValues()["filSensorCalibration"]
 
-    @classmethod
-    def getBedlevelOffset(cls):
-        return cls.getValues()["add_homeing_z"]
+    def getBedlevelOffset(self):
 
-    def getBedlevelOffsetI(self):
-        return self.getValue("add_homeing_z")
+        ofs = float(self.getValue("add_homeing_z"))
+
+        if ofs < 0:
+            print "Warning: negative add_homeing_z is deprecated (%f)" % ofs
+            return abs(ofs)
+
+        return ofs
 
     @classmethod
     def getFeederWheelDiam(cls):
@@ -291,6 +294,13 @@ class PrinterProfile(ProfileBase):
     def getWeakPowerBedTemp(self):
         return int(self.getValues()["weakPowerBedTemp"])
 
+    def getBedSurface(self):
+
+        if self.hasValue("bedSurface"):
+            return self.getValue("bedSurface")
+
+        return None
+
     @classmethod
     def getPlatformLength(cls, axisNr):
         return cls.get().getValue("axes")[dimNames[axisNr]]["platform_length"]
@@ -355,6 +365,13 @@ class MatProfile(ProfileBase):
 
     def getBedTempReduced(self):
         return int(self.getValue("bedTempReduced"))
+
+    def getKeepBedtemp(self):
+
+        if self.hasValue("keepBedtemp"):
+            return int(self.getValue("keepBedtemp"))
+
+        return 0
 
     def getMatArea(self):
         return self.matArea

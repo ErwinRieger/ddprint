@@ -135,7 +135,7 @@ def home(args, printer, parser, planner, force=False):
         return
 
     # Position directly after homing
-    (homePosMM, homePosStepped) = planner.getHomePos()
+    (homePosMM, homePosStepped) = planner.getHomePos() # z at 0.1
 
     def liftHead():
 

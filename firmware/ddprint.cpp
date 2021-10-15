@@ -262,7 +262,7 @@ void setup() {
 
     // No watchdog for debugging, dangerous!   
 #if !defined(DEBUGVERSION) 
-    // WDT_ENABLE();
+    WDT_ENABLE();
 #endif
 
     TIMER_INIT();
@@ -1505,12 +1505,13 @@ void Printer::printerInit() {
 void Printer::runErase() {
 
     //
-    // Erase sd-swap to speed up block writes.
+    // Erase sdcard to speed up block writes.
     //
     if (printerState == StateErasing) {
 
-        // Erase in 100mb chunks
-        uint32_t blocksThisRun = min((uint32_t)2048*100, blocksToErase);
+#if defined(AVR)
+        // Erase in 50mb chunks
+        uint32_t blocksThisRun = min((uint32_t)2048*50, blocksToErase);
 
         massert(swapDev.erase(eraseStartBlock, (eraseStartBlock+blocksThisRun) - 1));
 
@@ -1519,6 +1520,9 @@ void Printer::runErase() {
 
         if (blocksToErase == 0)
             printerState = StateInit; // Erase done
+#else
+        printerState = StateInit; // Nop Erase done
+#endif
     }
 }
 
@@ -1584,10 +1588,6 @@ void Printer::cmdMove(MoveType mt) {
     minBuffer = 255;
 
     underTemp = underGrip = 0;
-
-    // if (mt == MoveTypeNormal) {
-        // armrun massert(homed);
-    // }
 
 #if ! defined(COLDMovement)
     enable_x();

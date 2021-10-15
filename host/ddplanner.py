@@ -465,18 +465,6 @@ class Planner (object):
         else:
             self.Y_HOME_POS = 0
 
-        #    
-        # add_homeing_z is the not-usable space of the z dimension of the
-        # build volume.
-        #    
-        add_homeing_z = printer.printerProfile.getBedlevelOffsetI()
-
-        if printer.printerProfile.getHomeDir(Z_AXIS) > 0:
-            self.Z_HOME_POS = self.Z_MAX_POS + add_homeing_z
-        else:
-            # Homing sets beddistance
-            self.Z_HOME_POS = 0
-
         # 40 für avr, 50khz
         # 20 für arm, 100khz
         self.minTimerValue = int(fTimer / printer.printerProfile.getMaxStepperFreq())
@@ -488,6 +476,11 @@ class Planner (object):
 
         # Temp. increase for layer 0
         self.l0TempIncrease = Layer0TempIncrease
+
+        # Bed temperatures
+        self.bedTemp = materialProfile.getBedTemp()
+        self.bedTempReduced = materialProfile.getBedTempReduced()
+        self.curBedTemp = self.bedTemp
 
         self.plotfile = None
         self.travelMovesOnly = travelMovesOnly
@@ -502,8 +495,6 @@ class Planner (object):
     def reset(self):
 
         self.pathData = PathData(self)
-
-        self.partNumber = 1
 
         self.stepRounders = StepRounders()
 
@@ -529,14 +520,33 @@ class Planner (object):
 
         return jerk
 
+
+    # Z position after hw endstop was hit and we did some back-off.
+    def getZHomePos(self):
+
+        if self.printer.printerProfile.getHomeDir(Z_AXIS) > 0:
+            #
+            # Printer z-homes in positive direction
+            #
+            #    
+            # add_homeing_z is the not-usable space of the z dimension of the
+            # build volume.
+            #    
+            add_homeing_z = self.printer.printerProfile.getBedlevelOffset()
+            return self.Z_MAX_POS - add_homeing_z
+        
+        # Bed is levelled at home pos, homing sets
+        # bed-level-distance.
+        return self.LEVELING_OFFSET
+
     def getHomePos(self, liftHead = False):
 
         # Virtuelle position des druckkopfes falls 'gehomed'
 
         if liftHead and self.printer.printerProfile.getHomeDir(Z_AXIS) <= 0:
-            z = self.Z_MAX_POS
+            z = HOMEZLIFT
         else:
-            z = self.Z_HOME_POS
+            z = self.getZHomePos()
 
         homePosMM = util.MyPoint(
             X = self.X_HOME_POS,
@@ -550,43 +560,51 @@ class Planner (object):
         return (homePosMM, homePosStepped)
 
     # Called from gcode parser
-    def newPart(self, partNumber=None):
-
-        if partNumber:
-            self.partNumber = partNumber
-        self.advance.newPart(partNumber)
-
-    # Called from gcode parser
     def layerChange(self, layer):
 
         self.advance.layerChange(layer)
 
         if layer == 0:
 
+            # Print first layer hotter (hotend)
             self.gui.log("Layer 0, increasing hotend temp by ", Layer0TempIncrease)
             self.l0TempIncrease = Layer0TempIncrease
 
+            if self.curBedTemp != self.bedTemp:
+
+                # Set bed temp to normal bedtemp
+                self.gui.log("Layer %d, setting bedtemp to: " % layer, self.bedTemp)
+
+                cmd = SyncedCommand(
+                    CmdSyncTargetTemp, 
+                    0.0, [
+                    packedvalue.uint8_t(HeaterBed),
+                    packedvalue.uint16_t(intmath.toFWTemp(self.bedTemp)) ])
+
+                self.pathData.updateHistory(cmd)
+
+                self.curBedTemp = self.bedTemp
+
         else:
 
-            self.l0TempIncrease = 0
+            if self.l0TempIncrease:
+                self.gui.log("Layer %d, lowering hotend temp by " % layer, Layer0TempIncrease)
+                self.l0TempIncrease = 0
 
-        if layer == 2:
+            if self.curBedTemp != self.bedTempReduced:
 
-            self.partNumber -= 1
-            if self.partNumber:
-                return
+                # Set bed temp to reduced bedtemp
+                self.gui.log("Layer %d, reducing bedtemp to: " % layer, self.bedTempReduced)
 
-            # Reduce bedtemp
-            bedTemp = self.matProfile.getBedTempReduced()
-            self.gui.log("Layer2, reducing bedtemp to: ", bedTemp)
+                cmd = SyncedCommand(
+                    CmdSyncTargetTemp, 
+                    0.0, [
+                    packedvalue.uint8_t(HeaterBed),
+                    packedvalue.uint16_t(intmath.toFWTemp(self.bedTempReduced)) ])
 
-            cmd = SyncedCommand(
-                CmdSyncTargetTemp, 
-                0.0, [
-                packedvalue.uint8_t(HeaterBed),
-                packedvalue.uint16_t(intmath.toFWTemp(bedTemp)) ])
+                self.pathData.updateHistory(cmd)
 
-            self.pathData.updateHistory(cmd)
+                self.curBedTemp = self.bedTempReduced
 
     # Called from gcode parser
     def g92(self, values):

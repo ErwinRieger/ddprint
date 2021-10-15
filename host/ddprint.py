@@ -203,8 +203,10 @@ def main():
     sp.add_argument("-rl", dest="relevel", action="store", type=bool, help="Releveling, don't adjust bedlevel offset, just turn screws.", default=False)
     sp.add_argument("mat", help="Name of generic material profile to use [pla, petg...].")
 
-    sp = subparsers.add_parser("heathotend", help=u"Heat up hotend (to clean it, etc).")
-    # sp.add_argument("printer", help="Name of printer profile to use.")
+    sp = subparsers.add_parser("heathotend", help=u"Heat up hotend.")
+    sp.add_argument("mat", help="Name of generic material profile to use [pla, petg...].")
+
+    sp = subparsers.add_parser("heatbed", help=u"Heat up bed.")
     sp.add_argument("mat", help="Name of generic material profile to use [pla, petg...].")
 
     sp = subparsers.add_parser("getendstops", help=u"Get current endstop state.")
@@ -510,6 +512,13 @@ def main():
         printer.commandInit(args)
         matProfile = initMatProfile(args, printer, None)
         util.heatHotend(args, matProfile, printer)
+
+    elif args.mode == 'heatbed':
+
+        printer = Printer()
+        printer.commandInit(args)
+        matProfile = initMatProfile(args, printer, None)
+        util.heatBed(args, matProfile, printer)
 
     elif args.mode == 'getendstops':
 
