@@ -630,6 +630,58 @@ Log
 
 ::
 
+   Fri Oct 15 18:32:30 CEST 2021
+   -----------------------------
+
+   Merged *next branch* into master with the following changes:
+
+   Porting ddprint to Ender5 (pro):
+
+     * Changes for the Creality melzi board (atmega1284p based).
+     * Added thermistor table for epcos 100k ntc.
+     * Declared IO-pins in firmware/pins_ender3.h
+     * Rework homing:
+       + use feedrate and direction for homing from printerprofile.
+       + Move away from nozzle after z is homed (for printers that 
+         home at z=0. This is to avoid scratching over the bed when
+         homing X and Y.
+       + Homing: added "4 point mode" for ender.
+     * Added new script *thermistor_table.py* to generate thermistor
+       tables (c-code).
+
+   Other changes:
+
+     * Host: rework *getstatus* and *mon* commands.
+     * Host: filament profile measurement:
+       + measure2: increase printing speed with fixed
+         temperature while monitoring feeder grip.
+       + measure2: changes to reduce heating effect of
+         heated bed, start measurement on fifth layer.
+       + specify minimum grip value on commandline (instead of
+         hardcoded value).
+       + write measured material profile to ./mat-profile2.add.
+     * Host, *removefilament* command: changed feeding
+       sequence to avoid filament plug.
+     * Host, Experimental: added *reconnect* command.
+       To reconnect to a running printer, works after
+       download is complete, but not if disconnected
+       while downloading stepper data.
+     * Host: Added *ddprint version* command.
+
+     * Firmware: cleanup flowrate measurement,
+       measure short moves, too.
+     * Firmware: added CmdGetVersion command.
+     * Firmware, Makefile: new target *make gitversion.cpp*
+     * Firmware: set printer state to idle if steppers are
+       disabled (cmd *disablesteppers*).
+     * Firmware: Update to SdFat-1.1.4 library (USE_SD_CRC enabled).
+     * Firmware: Rework mass storage erase: new commands CmdGetCardSize
+       and CmdErase. Call erase before printing.
+     * Firmware: Sd card init: retry up to 5 times.
+
+     * Many smaller fixes/improvements
+
+
    Fri Oct 15 13:18:01 CEST 2021
    -----------------------------
 
