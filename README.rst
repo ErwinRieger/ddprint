@@ -158,32 +158,7 @@ HackadayIO project: https://hackaday.io/project/170695-ddprint.
 Current state
 +++++++++++++++++++++++++++++++
 
-Works for me, experimental.
-
-Update Mar 31 2021:
-
-Merged *next branch* into master with the following changes:
-
-* Feed forward temp control (*PID hinting*, *guided PID*) :-o
-  AutoTemp algorithm: set new temperature some time before the new flowrate demand, 
-  using the information from the material profile.
-* Added a experimental gcode (M901) for part strength (along with new *workingpoint* command line parameter) :-o
-* Asymmetric PID temperature control: switch between different PID control sets for
-  heating (fast) and cooling (a slower PID set to avoid temperature underruns).
-* Deflate/zip data downloaded to printer to increase download speed over usb-serial.
-  Using python's zlib on the host and uzlib (https://github.com/pfalcon/uzlib) on
-  the firmware side.
-* Added a second step to material profile measurement (measuretempflowratecurve2):
-  Measure hotend performance while doing a real print, in addition to the *into-the-air* extrusion measurement.
-* Some smaller improvements:
-   + Moved printer-, nozzle- and material-profiles into their own repository (https://github.com/ErwinRieger/ddprint-profiles).
-   + Show print time in CLI and terminal UI (TUI).
-   + Show the number of *under-temperature* and *under-grip* warnings in TUI.
-   + Added a *printlog* to ddprintui.py: log information about the current printjob (gcode info, timestamp,
-     printing time, slicersettings).
-   + Added some tools and scripts (plot_mat_profile, ddtool, wrapperscripts).
-   + Removed usage of eeprom, configuration now stored on mass storage device (sdcard, usb).
-   + And many more...
+Works for me.
 
 Key features
 +++++++++++++
@@ -655,7 +630,21 @@ Log
 
 ::
 
+   Fri Oct 15 13:18:01 CEST 2021
+   -----------------------------
+
+   Reworked flowrate sensor housing:
+
+    * Rotated design to shorten filament path between
+      feeder gear wheel and rotary encoder for better response.
+    * Made it i bit more compact.
+
+   STL files are here: github.com/ErwinRieger/ddprint/tree/master/stl
+   See some images here: github.com/ErwinRieger/ddprint/blob/master/images
+
+
    Fri Jun 25 09:49:51 CEST 2021
+   -----------------------------
 
    Merged *next* branch into master, changes are:
 
@@ -665,16 +654,22 @@ Log
      SD card commands (stubs).
    * Flowrate limiter: max. slowdown now four times instead of 16.
 
+
    Wed Jun 16 23:47:01 CEST 2021
+   -----------------------------
 
    Current development (cleanup, minor fixes, documentation) is done on *next* branch.
    Adding asciinema screencast to show how to use ddPrint.
 
+
    Wed Jun  9 21:17:22 CEST 2021
+   -----------------------------
 
    Merged *fix-avr* branch into master.
 
+
    Tue Jun  8 14:41:41 CEST 2021
+   -----------------------------
 
    Pushed fix-avr branch to github. The JennyPrinter port made the avr/atmega side to slow.
    Changes are:
