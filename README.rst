@@ -74,9 +74,9 @@ Flowratesensor
    :width: 100px
    :target: /images/flowsensor_red.jpg
 
-.. image:: /images/flowsensor1.jpg
+.. image:: /images/flowratesensor/flowsensor1.jpg
    :width: 50
-   :target: /images/flowsensor1.jpg
+   :target: /images/flowratesensor/flowsensor1.jpg
 
 .. image:: /images/ender5/flowrate_sensor_ender5.jpg
    :width: 80px
