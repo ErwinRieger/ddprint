@@ -40,17 +40,17 @@ is difficult. Another problem of this *open loop* extrusion system is that the p
 hotend has difficulties to deliver the current demand of flow (for example when printing the first layer or when
 the hotend is not hot enough yet).
 
-To close the control loop we add a `sensor <#flowratesensor-label>`__ to measure the performance of the extruder
+To close the control loop we add a `sensor <#flowratesensor>`__ to measure the performance of the extruder
 und use this data to control the temperature of the hotend and the speed of the printer.
 
 The control loop is closed in two ways, an acvitve way where the speed of the printer is lowered if the hotend cannot 
 deliver the demanded flowrate and the feeder begins to slip.
 The other is a *feed forward* way: The flowrate sensor is used to measure the characteristics of a given filament - extruder
-combination. The result of this measurement is a so called `*material profile* <#matprofile-label>`__.
+combination. The result of this measurement is a so called `*material profile* <#material-profiles>`__.
 
-Control of hotend temperature is called `atutotemp <#autotemp-label>`__.
+Control of hotend temperature is called `autotemp <#auto-temp>`__.
 
-Control of printer speed is done with the `temperature limiter <#templimiter-label>`__ and the `flowrate limiter <#flowratelimiter-label>`__
+Control of printer speed is done with the `temperature limiter <#temperature-limiter>`__ and the `flowrate limiter <#flowrate-limiter>`__
 .
 
 
@@ -58,14 +58,12 @@ Control of printer speed is done with the `temperature limiter <#templimiter-lab
 
 
 
-(*) For the moment `bowden style printers only. <#bowdenstyle-label>`__
+(*) For the moment `bowden style printers only. <#bowden-style-printers-only>`__
 
 .. contents::
 
 ..
    XXX LEVEL 2 XXX
-
-.. _flowratesensor-label:
 
 Flowratesensor
 ++++++++++++++
@@ -82,8 +80,6 @@ Flowratesensor
    :width: 80px
    :target: /images/ender5/flowrate_sensor_ender5.jpg
 
-.. _bowdenstyle-label:
-
 Bowden style printers only?
 +++++++++++++++++++++++++++
 
@@ -92,28 +88,20 @@ For best results, the flowrate sensor has to be placed *after* the feeder. This 
 For direct driver printers it should be possible but it is more difficult to add the flowrate sensor into the print head (because of
 space requirements, heat, added weight and so on).
 
-.. _matprofile-label:
-
 Material Profiles
 ++++++++++++++++++
 
 TBD
-
-.. _autotemp-label:
 
 Auto Temp
 +++++++++++++
 
 TBD
 
-.. _templimiter-label:
-
 Temperature limiter
 ++++++++++++++++++++
 
 TBD
-
-.. _flowratelimiter-label:
 
 Flowrate limiter
 +++++++++++++++++
