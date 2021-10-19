@@ -3,6 +3,9 @@
 
    <link rel="stylesheet" href="/images/js_css/asciinema-player.css"" type="text/css"/>
 
+..
+   todo: fix labels
+
 ddPrint - Adding Process control to FDM printers
 =================================================
 
@@ -617,6 +620,14 @@ Log
 ++++++++++++++++++++++++++++
 
 ::
+
+
+   Tue Oct 19 22:19:57 CEST 2021
+   -----------------------------
+
+   Drafted a page with some notes about installing ddPrint on an
+   Ender5 (pro): https://ibrieger.de/ddprint-ender-5.html
+
 
    Fri Oct 15 18:32:30 CEST 2021
    -----------------------------
