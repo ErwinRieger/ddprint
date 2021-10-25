@@ -1072,8 +1072,12 @@ def bedLeveling(args, printer, parser, planner):
     t1 = args.t1 or planner.matProfile.getHotendBaseTemp()
     printer.heatUp(HeaterEx1, t1, log=True)
 
+    # Re-leveling: don't adjust head offset, just let the user turn screws.
+    # If homing to zero, we're always releveling here.
+    relevel = args.relevel or printer.printerProfile.homingToZero()
+
     # Reset bedlevel offset in printer profile
-    if args.relevel:
+    if relevel:
         head_height = planner.LEVELING_OFFSET
     else:
         printer.printerProfile.override("add_homeing_z", 0)
@@ -1171,7 +1175,7 @@ def bedLeveling(args, printer, parser, planner):
         printer.sendCommandParamV(CmdMove, [MoveTypeNormal])
         printer.waitForState(StateInit, wait=0.1)
 
-        if (pointNumber == 0) and (not args.relevel):
+        if (pointNumber == 0) and (not relevel):
 
             manualMoveZ()
 
@@ -1203,7 +1207,7 @@ def bedLeveling(args, printer, parser, planner):
     ddhome.home(args, printer, parser, planner)
     printer.sendCommand(CmdDisableSteppers) # Force homing/reset
 
-    if not args.relevel:
+    if not relevel:
         print "\n! Please update your Z-Offset (add_homeing_z) in printer profile: %.3f\n" % add_homeing_z
 
     if not args.noCoolDown:
@@ -2251,7 +2255,7 @@ def workingPos(args, printer, parser, planner):
     ddhome.assureIsHomed(args, printer, parser, planner)
 
     # Move z away from nozzle and to x/y to mid-position
-    if printer.printerProfile.getHomeDir(Z_AXIS) <= 0:
+    if printer.printerProfile.homingToZero():
         feedrate = printer.printerProfile.getMaxFeedrateI(Z_AXIS)
         parser.execute_line("G0 F%d Z%f" % (feedrate*60, planner.MAX_POS[Z_AXIS] * 0.8))
 

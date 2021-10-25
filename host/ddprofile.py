@@ -323,6 +323,10 @@ class PrinterProfile(ProfileBase):
     def getXo(self):
         return int(self.getValue("Xo"))
 
+    # True if Z-endstop is at Z zero position
+    def homingToZero(self):
+        return self.getHomeDir(Z_AXIS) <= 0
+
 ####################################################################################################
 #
 # Material profile, singleton
