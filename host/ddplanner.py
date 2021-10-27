@@ -478,9 +478,10 @@ class Planner (object):
         self.l0TempIncrease = Layer0TempIncrease
 
         # Bed temperatures
-        self.bedTemp = materialProfile.getBedTemp()
-        self.bedTempReduced = materialProfile.getBedTempReduced()
-        self.curBedTemp = self.bedTemp
+        if materialProfile:
+            self.bedTemp = materialProfile.getBedTemp()
+            self.bedTempReduced = materialProfile.getBedTempReduced()
+            self.curBedTemp = self.bedTemp
 
         self.plotfile = None
         self.travelMovesOnly = travelMovesOnly
