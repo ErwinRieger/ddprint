@@ -117,6 +117,7 @@ PidPrecision = 10   # Number of bits
 # gcode types : s3d, unknown
 GCODEUNKNOWN="unknown"
 GCODES3D="s3d"
+GCODEPRUSA="prusaslicer"
 
 ############################################################################
 #

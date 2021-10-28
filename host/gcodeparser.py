@@ -23,7 +23,8 @@ import packedvalue
 import shutil, os, re
 
 from ddprintcommands import CmdUnknown
-from ddprintconstants import dimNames, GCODEUNKNOWN, GCODES3D, X_AXIS, Y_AXIS, Z_AXIS, A_AXIS, B_AXIS, Uint8Max
+from ddprintconstants import dimNames, GCODEUNKNOWN, GCODES3D, GCODEPRUSA
+from ddprintconstants import X_AXIS, Y_AXIS, Z_AXIS, A_AXIS, B_AXIS, Uint8Max
 from ddconfig import *
 from move import TravelMove, PrintMove
 from ddvector import Vector, vectorDistance, vectorLength
@@ -312,8 +313,15 @@ class UM2GcodeParser:
                 if "SIMPLIFY3D" in upperLine:
                     self.gcodeType = GCODES3D
 
+                elif "PRUSASLICER" in upperLine:
+                    self.gcodeType = GCODEPRUSA
+
                 elif "LAYERHEIGHT," in upperLine:
                     self.layerHeight = float(upperLine.split(",")[1])
+                    print "layerheight:", self.layerHeight
+
+                elif "HEIGHT:" in upperLine:
+                    self.layerHeight = float(upperLine.split(":")[1])
                     print "layerheight:", self.layerHeight
 
             elif line:
@@ -463,12 +471,16 @@ class UM2GcodeParser:
                     self.layerPart = "single extrusion"
                 elif upperLine.endswith("SKIRT"):
                     self.layerPart = "skirt"
+                elif upperLine.endswith("CUSTOM"):
+                    self.layerPart = "custom"
                 elif upperLine.endswith("SUMMARY"):
+                    self.layerPart = "unknown"
+                elif upperLine.startswith(";Z:"):
                     self.layerPart = "unknown"
                 elif len(tokens) > 1 and tokens[1].upper() in [ "PURGING:", "PROCESS", "FEATURE" ]:
                     pass
                 else:
-                    if not (("LAYER" in upperLine) or ("TOOL" in upperLine)):
+                    if not (("LAYER" in upperLine) or ("TOOL" in upperLine) or ("WIDTH" in upperLine) or ("HEIGHT:" in upperLine)):
 
                         self.logger.log("gcodeparser comment:", line)
 
