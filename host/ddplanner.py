@@ -525,7 +525,7 @@ class Planner (object):
     # Z position after hw endstop was hit and we did some back-off.
     def getZHomePos(self):
 
-        if self.printer.printerProfile.getHomeDir(Z_AXIS) > 0:
+        if not self.printer.printerProfile.homingToZero():
             #
             # Printer z-homes in positive direction
             #
@@ -542,9 +542,8 @@ class Planner (object):
 
     def getHomePos(self, liftHead = False):
 
-        # Virtuelle position des druckkopfes falls 'gehomed'
-
-        if liftHead and self.printer.printerProfile.getHomeDir(Z_AXIS) <= 0:
+        # Z-height after homing
+        if liftHead and self.printer.printerProfile.homingToZero():
             z = HOMEZLIFT
         else:
             z = self.getZHomePos()
