@@ -98,7 +98,12 @@ BufDebug          = 0x4
 PidSwitch         = 0x5
 GenericInt32      = 0x6
 
-
+############################################################################
+#
+# Printing modes
+#
+PrintModeManual   = 0 # Manual moves, no control of bed/hotend temp
+PrintModePrinting = 1 # Normal printing, control bed/hotend on layer change
 
 
 

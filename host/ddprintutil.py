@@ -811,6 +811,8 @@ def printFile(args, printer, parser, planner, logObj, gfile, t0, t0_wait, t1, do
 
         printer.erase(0)
 
+    planner.setPrintMode(PrintModePrinting)
+
     (f, preloadLines) = parser.preParse(gfile, args.baud)
 
     logObj.log( "Nuber of lines to preload: %d" % preloadLines)
@@ -1922,6 +1924,8 @@ def xstartPrint(args, printer, parser, planner, t1):
         printer.heatUp(HeaterBed, t0, log=True)
 
         printer.erase(0)
+
+        planner.setPrintMode(PrintModePrinting)
 
         # Disable flowrate limit
         printer.sendCommandParamV(CmdEnableFRLimit, [packedvalue.uint8_t(0)])

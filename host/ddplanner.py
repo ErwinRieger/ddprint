@@ -19,7 +19,7 @@
 # along with ddprint.  If not, see <http://www.gnu.org/licenses/>.
 #*/
 
-import math, collections, types, pprint
+import math, collections, types, pprint, bisect
 from argparse import Namespace
 
 import ddprintutil as util, dddumbui, packedvalue
@@ -31,7 +31,7 @@ from ddconfig import *
 from ddprinter import Printer
 from ddprintcommands import CmdSyncTargetTemp, CmdDwellMS, CmdSyncFanSpeed, CmdSuggestPwm
 from ddprintcommands import CmdNop
-from ddprintstates import HeaterEx1, HeaterBed
+from ddprintstates import HeaterEx1, HeaterBed, PrintModeManual, PrintModePrinting
 from ddadvance import Advance
 from ddprofile import NozzleProfile, MatProfile
 
@@ -392,6 +392,36 @@ class PathData (object):
 
 #####################################################################
 
+# Helper to detect layer changes
+class Layers (object):
+
+    def __init__(self, planner):
+
+        self.planner = planner
+        self.layerList = []
+        self.curLayer = None
+
+        self.zStep = planner.printer.printerProfile.getStepsPerMMI(Z_AXIS)
+
+    def addMove(self, move):
+
+        zpos = move.getPos()[Z_AXIS]
+        zstep = int(zpos * self.zStep)
+
+        try:
+            layer = self.layerList.index(zstep)
+        except ValueError:
+            # Z value not in list
+            bisect.insort(self.layerList, zstep)
+            layer = self.layerList.index(zstep)
+
+        if layer != self.curLayer:
+            if layer > 0:
+                self.planner.layerChange(layer-1)
+            self.curLayer = layer
+
+#####################################################################
+
 class DebugPlot (object):
 
     def __init__(self, nr):
@@ -504,6 +534,10 @@ class Planner (object):
         # Binary data to send to printer
         self.stepData = ""
 
+        self.printMode = PrintModeManual
+
+        self.layers = Layers(self)
+
     def reconnect(self, status):
 
         self.replay = status.swapsize / 512 
@@ -512,6 +546,9 @@ class Planner (object):
     # @classmethod
     def get(cls):
         return cls.__single
+
+    def setPrintMode(self, mode):
+        self.printMode = mode
 
     def getJerk(self):
 
@@ -561,6 +598,9 @@ class Planner (object):
 
     # Called from gcode parser
     def layerChange(self, layer):
+
+        if not self.printMode == PrintModePrinting:
+            return
 
         self.advance.layerChange(layer)
 
@@ -649,6 +689,10 @@ class Planner (object):
         cmd = SyncedCommand(CmdSyncFanSpeed, blipTime / 1000.0, [ packedvalue.uint8_t(fanSpeed), packedvalue.uint8_t(blipTime) ])
         self.pathData.updateHistory(cmd)
 
+    # xxxxxxxxxxxxx# Called from gcode parser, set new position
+    # xxxxxxxxxxxxxdef setPos(self, oldPos, newPos):
+        # xxxxxxxxxxxxxself.layers.setPos(oldPos, newPos)
+
     # Start planning of this path
     def endPath(self):
 
@@ -692,6 +736,8 @@ class Planner (object):
         if debugMoves:
             print "***** Start addMove() *****"
             move.pprint("AddMove")
+
+        self.layers.addMove(move)
 
         if self.pathData.path:
 

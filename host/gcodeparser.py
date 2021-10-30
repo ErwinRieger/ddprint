@@ -309,11 +309,11 @@ class UM2GcodeParser:
 
                 if "LAYERHEIGHT," in upperLine:
                     self.layerHeight = float(upperLine.split(",")[1])
-                    print "layerheight:", self.layerHeight
+                    # print "layerheight:", self.layerHeight
 
                 elif "HEIGHT:" in upperLine:
                     self.layerHeight = float(upperLine.split(":")[1])
-                    print "layerheight:", self.layerHeight
+                    # print "layerheight:", self.layerHeight
 
             elif line:
 
@@ -431,12 +431,14 @@ class UM2GcodeParser:
 
                 layerNum = getCuraLayer(upperLine)
                 if layerNum != None:
-                    self.planner.layerChange(layerNum)
+                    print "XXX remove layerChange..."
+                    # self.planner.layerChange(layerNum)
                     return
 
                 layerNum = getSimplifyLayer(upperLine)
                 if layerNum != None:
-                    self.planner.layerChange(layerNum)
+                    print "XXX remove layerChange..."
+                    # self.planner.layerChange(layerNum)
                     return
 
                 if upperLine.endswith("INFILL"):
@@ -445,7 +447,7 @@ class UM2GcodeParser:
                 elif upperLine.endswith("PERIMETER"):
                     # print "gcodeparser: Starting perimeter..."
                     self.layerPart = "perimeter"
-                elif upperLine.endswith("SUPPORT"):
+                elif "SUPPORT" in upperLine:
                     # print "gcodeparser: Starting support..."
                     self.layerPart = "support"
                 elif upperLine.endswith("BRIDGE"):
@@ -751,6 +753,7 @@ class UM2GcodeParser:
                 feedrate=feedrate, # mm/s
                 layerPart=self.layerPart,
                 maxAccelV = self.planner.advance.maxAxisAcceleration(self.layerPart != "infill"),
+                pos = curRealPos,
                 ))
         else:
             self.planner.addMove(TravelMove(
@@ -759,6 +762,7 @@ class UM2GcodeParser:
                 displacement_vector_steps=displacement_vector_steps,
                 feedrate=feedrate, # mm/s
                 layerPart=self.layerPart,
+                pos = curRealPos,
                 ))
             
         # print "newRealPos: ", newRealPos

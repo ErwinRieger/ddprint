@@ -418,6 +418,8 @@ def main():
         homePosMM = planner.getHomePos()[0]
         parser.setPos(homePosMM)
 
+        planner.setPrintMode(PrintModePrinting)
+
         (f, preloadLines) = parser.preParse(args.gfile, args.baud)
         lineNr = 0
         for line in f:

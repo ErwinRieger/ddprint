@@ -24,7 +24,7 @@ import ddprintcommands, cobs, cStringIO, intmath, packedvalue
 
 import ddprintutil as util
 
-from ddprintconstants import maxTimerValue16, fTimer, _MAX_ACCELERATION, X_AXIS, Y_AXIS, A_AXIS
+from ddprintconstants import maxTimerValue16, fTimer, _MAX_ACCELERATION, X_AXIS, Y_AXIS, Z_AXIS, A_AXIS
 from ddprintconstants import AdvanceEThreshold, StepDataTypeBresenham, StepDataTypeRaw
 from ddvector import Vector, VelocityVector32, VelocityVector5, vectorLength, vectorSub, vectorAbs
 from ddprintcommands import CommandNames, DirBitsBit, DirBitsBitRaw, MoveStartBit
@@ -812,7 +812,7 @@ class MoveBase(object):
 # Base class for TravelMove and PrintMove
 class RealMove(MoveBase):
 
-    def __init__(self, comment, layerPart):
+    def __init__(self, comment, layerPart, pos):
 
         MoveBase.__init__(self)
 
@@ -821,6 +821,8 @@ class RealMove(MoveBase):
         self.accelData = AccelData()
 
         self.layerPart = layerPart
+
+        self.pos = pos
 
         # assert(self.layerPart != "infill")
 
@@ -855,6 +857,9 @@ class RealMove(MoveBase):
     def hasAdvance(self):
         return not self.isInfill()
 
+    def getPos(self):
+        return self.pos
+
 class TravelMove(RealMove):
 
     def __init__(self,
@@ -863,10 +868,11 @@ class TravelMove(RealMove):
                  displacement_vector_steps,
                  feedrate, # mm/s
                  layerPart,
+                 pos
                  ):
 
         # assert(layerPart != "infill")
-        RealMove.__init__(self, comment, layerPart)
+        RealMove.__init__(self, comment, layerPart, pos)
 
         # self.displacement_vector_raw = displacement_vector
 
@@ -942,10 +948,11 @@ class PrintMove(RealMove):
                  feedrate, # mm/s
                  layerPart,
                  maxAccelV,
+                 pos
                  ):
 
         # assert(layerPart != "infill")
-        RealMove.__init__(self, comment, layerPart)
+        RealMove.__init__(self, comment, layerPart, pos)
 
         #
         # Move distance in XYZ plane
