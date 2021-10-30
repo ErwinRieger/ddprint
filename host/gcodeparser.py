@@ -23,7 +23,7 @@ import packedvalue
 import shutil, os, re
 
 from ddprintcommands import CmdUnknown
-from ddprintconstants import dimNames, GCODEUNKNOWN, GCODES3D, GCODEPRUSA
+from ddprintconstants import dimNames
 from ddprintconstants import X_AXIS, Y_AXIS, Z_AXIS, A_AXIS, B_AXIS, Uint8Max
 from ddconfig import *
 from move import TravelMove, PrintMove
@@ -212,8 +212,6 @@ class UM2GcodeParser:
                 B_AXIS: True,
                 }
 
-        # types : s3d, unknown
-        self.gcodeType = GCODEUNKNOWN
         self.layerPart = "unknown"
         self.layerHeight = None             # Read from gcode comments
 
@@ -225,7 +223,6 @@ class UM2GcodeParser:
         return self.position.copy()
 
     # Preprocess gcode to
-    # * determine gcode type (cura, simplify3d)
     # * determine number of parts
     # * compute amount of preload data
     # 
@@ -310,13 +307,7 @@ class UM2GcodeParser:
 
                 upperLine = line.upper()
 
-                if "SIMPLIFY3D" in upperLine:
-                    self.gcodeType = GCODES3D
-
-                elif "PRUSASLICER" in upperLine:
-                    self.gcodeType = GCODEPRUSA
-
-                elif "LAYERHEIGHT," in upperLine:
+                if "LAYERHEIGHT," in upperLine:
                     self.layerHeight = float(upperLine.split(",")[1])
                     print "layerheight:", self.layerHeight
 
