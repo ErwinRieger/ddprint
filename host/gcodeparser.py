@@ -20,7 +20,7 @@
 
 import math
 import packedvalue
-import shutil, os, re
+import shutil, os
 
 from ddprintcommands import CmdUnknown
 from ddprintconstants import dimNames
@@ -45,44 +45,6 @@ class GcodeException(Exception):
 
     def __str__(self):
         return "Gcode parser error: " + self.msg
-
-CuraLayerRE = re.compile("; \s* LAYER \s* : \s* (\d+) $", re.VERBOSE)
-
-#
-# Get layer number from cura gcode comment
-# Example:
-# ;LAYER:0
-#
-def getCuraLayer(line):
-
-    m = re.match(CuraLayerRE, line)
-
-    if m:
-        # Note: Cura layer numbering starts with 0
-        layer = int(m.groups()[0])
-        return layer
-
-    return None
-
-
-S3DLayerRE = re.compile("; \s LAYER \s (\d+), \s Z \s = \s (\d+ [\.,] \d+) $", re.VERBOSE)
-
-#
-# Get layer number from simplify3d gcode comment
-# Example: 
-# ; layer 1, Z = 0.225
-#
-def getSimplifyLayer(line):
-
-    m = re.match(S3DLayerRE, line)
-
-    if m:
-        # Note: S3D layer numbering starts with 1
-        layer = int(m.groups()[0])
-        assert(layer > 0)
-        return layer - 1
-
-    return None
 
 #####################################################################################################################################################
 # Move-type, Matrix aller möglichen kombinationen:
@@ -428,18 +390,6 @@ class UM2GcodeParser:
             if cmd.startswith(";"):
 
                 upperLine = line.upper()
-
-                layerNum = getCuraLayer(upperLine)
-                if layerNum != None:
-                    print "XXX remove layerChange..."
-                    # self.planner.layerChange(layerNum)
-                    return
-
-                layerNum = getSimplifyLayer(upperLine)
-                if layerNum != None:
-                    print "XXX remove layerChange..."
-                    # self.planner.layerChange(layerNum)
-                    return
 
                 if upperLine.endswith("INFILL"):
                     # print "gcodeparser: Starting infill..."
