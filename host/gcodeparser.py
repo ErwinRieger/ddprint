@@ -175,7 +175,6 @@ class UM2GcodeParser:
                 }
 
         self.layerPart = "unknown"
-        self.layerHeight = None             # Read from gcode comments
 
     # Set current virtual printer position
     def setPos(self, point):
@@ -265,19 +264,7 @@ class UM2GcodeParser:
             lineNumber += 1
             line = line.strip()
 
-            if line.startswith(";"): # Gcode comments
-
-                upperLine = line.upper()
-
-                if "LAYERHEIGHT," in upperLine:
-                    self.layerHeight = float(upperLine.split(",")[1])
-                    # print "layerheight:", self.layerHeight
-
-                elif "HEIGHT:" in upperLine:
-                    self.layerHeight = float(upperLine.split(":")[1])
-                    # print "layerheight:", self.layerHeight
-
-            elif line:
+            if line and not line.startswith(";"): # Gcode comments
 
                 # Look for movement codes
                 tokens = line.split()
@@ -583,6 +570,7 @@ class UM2GcodeParser:
             displacement_vector_steps=[0.0, 0.0, 0.0, rl * self.steps_per_mm[A_AXIS], 0.0],
             feedrate=min(self.planner.printer.printerProfile.getRetractFeedrate(), self.planner.printer.printerProfile.getMaxFeedrateI(3)),
             layerPart=self.layerPart,
+            pos = self.getPos(),
             ))
 
         self.setPos(current_position)
@@ -603,6 +591,7 @@ class UM2GcodeParser:
             displacement_vector_steps=[0.0, 0.0, 0.0, rl * self.steps_per_mm[A_AXIS], 0.0],
             feedrate=min(self.planner.printer.printerProfile.getRetractFeedrate(), self.planner.printer.printerProfile.getMaxFeedrateI(3)),
             layerPart=self.layerPart,
+            pos = self.getPos(),
             ))
 
         self.setPos(current_position)

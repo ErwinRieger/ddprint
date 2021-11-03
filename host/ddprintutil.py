@@ -2080,19 +2080,19 @@ def measureTempFlowrateCurve2(args, printer, parser, planner):
     #
     xstartPrint(args, printer, parser, planner, t1)
 
-    # Assure we have read layerheight from gcode comments
-    assert(parser.layerHeight)
-
     lastEPos = 0.0
     lastTime = 0.0
 
     #
-    # Wait until nozzle lowered/bed lifted
+    # Wait until nozzle lowered/bed lifted.
+    #
+    # Assuming first layer starts when Z-pos is below 1mm, this will
+    # not work if first layer is thicker than 1mm.
     #
     # XXX add timeout here, deadlock 
     print "\nPrint started, waiting for start of first layer..."
     curPosMM = getVirtualPos(printer, parser)
-    while curPosMM.Z >= parser.layerHeight:
+    while curPosMM.Z > 1.0:
         print "waiting for first layer, Z pos:", curPosMM.Z
         status = printer.getStatus()
         printer.ppStatus(status)
@@ -2102,11 +2102,13 @@ def measureTempFlowrateCurve2(args, printer, parser, planner):
         curPosMM = getVirtualPos(printer, parser)
 
     #
-    # Wait for fifth layer to reduce heating effect of bed
+    # Wait till print reaches some height to reduce heating effect of bed.
+    #
+    # Hardcoded height of 3 mm.
     #
     print "\nWaiting for start of fifth layer..."
     # XXX add timeout here, deadlock 
-    while curPosMM.Z < (parser.layerHeight * 5):
+    while curPosMM.Z < 3:
         print "waiting for fifth layer, Z pos:", curPosMM.Z
         status = printer.getStatus()
         printer.ppStatus(status)
