@@ -19,8 +19,8 @@ function runTest() {
     local inp=$2
     local id=$3
 
-    echo "nice python -u ddprint.py -kadvance $kadv pre UM2_profile_template nozzle40 pla $inp"
-    nice python ddprint.py -kadvance $kadv pre UM2_profile_template nozzle40 pla $inp
+    echo "nice python -u ddprint.py -kadvance $kadv pre UM2-1 nozzle40 pla $inp"
+    nice python ddprint.py -kadvance $kadv pre UM2-1 nozzle40 pla $inp
 
     if [ "$?" != "0" ]; then
         fn=/tmp/parserTest_error_${id}
