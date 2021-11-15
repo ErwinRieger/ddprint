@@ -946,7 +946,7 @@ class Printer(Serial):
         if ns.slippage:
             gripstr = "%4.2f" % (1.0/ns.slippage)
 
-        s += "\n    state: %d" % ns.state
+        s += "\n    State: %s" % StateNames[ns.state]
         s += "\n    Temp : T1: %.2f(%.2f pwm: %3d) bed: %.2f(%.2f)" % (ns.t1, ns.targetT1, ns.pwmOutput, ns.t0, ns.targetT0)
         s += "\n    Buf  : swapsize: %10s swap: %10s" % (util.sizeof_fmt(ns.swapsize), util.sizeof_fmt(ns.Swap))
         s += "\n    FRS  : grip: %.4s " % gripstr

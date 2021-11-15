@@ -28,6 +28,13 @@ StateInit    = 1
 StateErasing = 2
 StateStart   = 3
 
+StateNames = {
+        StateIdle: "Idle",
+        StateInit: "Init",
+        StateErasing: "Erasing",
+        StateStart: "Printing",
+}
+
 ############################################################################
 #
 # Serial send result:
