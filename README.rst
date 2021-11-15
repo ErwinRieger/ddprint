@@ -331,7 +331,7 @@ Machine setup and calibration: Automatically determine extruder *e-steps* value 
 
     ./ddprint.py calibrateesteps
 
-Example screencast:
+Explanatory screencast:
 
 .. raw:: html
 
@@ -351,7 +351,7 @@ Machine setup and calibration: Automatically determine flowrate sensor calibrati
 
     ./ddprint.py calibratefilsensor
 
-Example screencast:
+Explanatory screencast:
 
 .. raw:: html
 
@@ -528,14 +528,29 @@ Get bed- and hotend temperatures from printer.
 
     ./ddprint.py getTemps
 
+.. _getstatus-label:
+
 *getStatus*
 **************************************
 
+Machine status: The *ddprint getstatus* command is used to query the current state of the printer.
+
+A short form of this commmand is the *ddprint stat* command.
+
 .. code-block:: sh
 
-    ./ddprint.py getStatus
+    ./ddprint.py getstatus
+    # Or
+    ./ddprint.py stat
 
+Explanatory screencast:
 
+.. raw:: html
+
+    <asciinema-player src="/images/video/getstatus.asc" font-size="8"></asciinema-player>
+    <noscript>
+       <a href="http://www.ibrieger.de/ddprint-3d-printer-firmware.html#getstatus-label">Asciinema not available on github, see video here.</a>
+    </noscript>
 
 Usage, Userinterface (TUI)
 +++++++++++++++++++++++++++++++++++++++++++++++++
@@ -621,12 +636,17 @@ Log
 
 ::
 
+   Mon Nov 15 19:41:23 CET 2021
+   -----------------------------
+
+   Adding explanatory asciinema screencast for the following ddPrint commands:
+   * ddprint getstatus (shortform: ddprint stat)
 
    Tue Oct 19 22:19:57 CEST 2021
    -----------------------------
 
    Drafted a page with some notes about installing ddPrint on an
-   Ender5 (pro): https://ibrieger.de/ddprint-ender-5.html
+   Ender5 (pro): ibrieger.de/ddprint-ender-5.html
 
 
    Fri Oct 15 18:32:30 CEST 2021
