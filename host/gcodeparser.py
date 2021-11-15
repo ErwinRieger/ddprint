@@ -141,7 +141,10 @@ class UM2GcodeParser:
                 "M117": self.m117_message,
                 "M140": self.m140_bed_temp,
                 "M190": self.m190_bed_temp_wait,
+                "M201": self.m201_set_accel,
+                "M203": self.m203_set_speed,
                 "M204": self.m204_set_accel,
+                "M205": self.m205_set_jerk,
                 "M501": self.m501_reset_params,
                 "M502": self.m502_reset_params,
                 "M900": self.m900_set_kAdvance,
@@ -401,6 +404,8 @@ class UM2GcodeParser:
                     self.layerPart = "single extrusion"
                 elif upperLine.endswith("SKIRT"):
                     self.layerPart = "skirt"
+                elif upperLine.endswith("THIN WALL"):
+                    self.layerPart = "thinwall"
                 elif upperLine.endswith("CUSTOM"):
                     self.layerPart = "custom"
                 elif upperLine.endswith("SUMMARY"):
@@ -521,8 +526,17 @@ class UM2GcodeParser:
     def m190_bed_temp_wait(self, line, values):
         self.logger.log("ignoring m190 (wait for bed temp)")
 
+    def m201_set_accel(self, line, values):
+        self.logger.log("ignoring m201 (set acceleration)")
+
+    def m203_set_speed(self, line, values):
+        self.logger.log("ignoring m203 (set max speed)")
+
     def m204_set_accel(self, line, values):
         self.logger.log("ignoring m204 (set acceleration)")
+
+    def m205_set_jerk(self, line, values):
+        self.logger.log("ignoring m205 (set acceleration)")
 
     def m501_reset_params(self, line, values):
         self.logger.log("ignoring m501 (reset params)")
@@ -571,6 +585,7 @@ class UM2GcodeParser:
             feedrate=min(self.planner.printer.printerProfile.getRetractFeedrate(), self.planner.printer.printerProfile.getMaxFeedrateI(3)),
             layerPart=self.layerPart,
             pos = self.getPos(),
+            printerProfile = self.planner.printer.printerProfile,
             ))
 
         self.setPos(current_position)
@@ -592,6 +607,7 @@ class UM2GcodeParser:
             feedrate=min(self.planner.printer.printerProfile.getRetractFeedrate(), self.planner.printer.printerProfile.getMaxFeedrateI(3)),
             layerPart=self.layerPart,
             pos = self.getPos(),
+            printerProfile = self.planner.printer.printerProfile,
             ))
 
         self.setPos(current_position)
@@ -693,6 +709,7 @@ class UM2GcodeParser:
                 layerPart=self.layerPart,
                 maxAccelV = self.planner.advance.maxAxisAcceleration(self.layerPart != "infill"),
                 pos = curRealPos,
+                printerProfile = self.planner.printer.printerProfile,
                 ))
         else:
             self.planner.addMove(TravelMove(
@@ -702,6 +719,7 @@ class UM2GcodeParser:
                 feedrate=feedrate, # mm/s
                 layerPart=self.layerPart,
                 pos = curRealPos,
+                printerProfile = self.planner.printer.printerProfile,
                 ))
             
         # print "newRealPos: ", newRealPos

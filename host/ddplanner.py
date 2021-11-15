@@ -271,11 +271,11 @@ class PathData (object):
 
             # Interpolate best case flowrate (into air)
             (sleTempBest, slePwmBest) = mp.getFrSLE()
-            print "best case flowrate:", sleTempBest, slePwmBest
+            # print "best case flowrate:", sleTempBest, slePwmBest
 
-            # Interpolate worst case flowrate (100% fill with small nozzle)
+            # Interpolate worst case flowrate (100% fill with small layerheight)
             (sleTempPrint, slePwmPrint) = mp.getFrSLEPrint()
-            print "worst case flowrate:", sleTempPrint, slePwmPrint
+            # print "worst case flowrate:", sleTempPrint, slePwmPrint
 
             # XXX simple way, use average of best and worst flowrate:
 
@@ -285,10 +285,8 @@ class PathData (object):
 
             # Note: into-air extrusion not always higher rates
 
-
-
             temp_delta = sleTempBest.c-sleTempPrint.c
-            print "Delta temp :", temp_delta
+            # print "Delta temp :", temp_delta
 
             # if the temperatue needed to print is lower than the 
             # into-air temperature, the we assume some
@@ -307,7 +305,7 @@ class PathData (object):
             # Note: into-air extrusion not always higher rates
 
             pwm_delta = slePwmBest.c-slePwmPrint.c
-            print "Delta pwm :", pwm_delta
+            # print "Delta pwm :", pwm_delta
 
             # but check if error is small (<=10%)
             if pwm_delta < 0:
@@ -320,8 +318,8 @@ class PathData (object):
 
             self.pwmSLE = util.SLE(x1=0, y1=slePwmPrint.c+pwm_delta*self.wpscale, m=slePwmBest.m)
 
-            print "Temp sle:", self.tempSLE, self.tempSLE.y(self._goodtemp)
-            print "Pwm sle:", self.pwmSLE
+            # print "Temp sle:", self.tempSLE, self.tempSLE.y(self._goodtemp)
+            # print "Pwm sle:", self.pwmSLE
 
     def updateHistory(self, move):
         self.history.append(move)

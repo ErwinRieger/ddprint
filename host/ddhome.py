@@ -139,10 +139,10 @@ def home(args, printer, parser, planner, force=False):
 
     def liftHead():
 
-        print "Debug: Tell parser its position [mm]:", homePosMM
+        # print "Debug: Tell parser its position [mm]:", homePosMM
         parser.setPos(homePosMM)
 
-        print "Debug: Tell printer its position [steps]:", homePosStepped
+        # print "Debug: Tell printer its position [steps]:", homePosStepped
         payload = struct.pack("<iiiii", *homePosStepped)
         printer.sendCommand(CmdSetPos, binPayload=payload)
 
@@ -158,8 +158,8 @@ def home(args, printer, parser, planner, force=False):
             homePosMM[dim] = homePosMMLifted[dim]
             homePosStepped[dim] = homePosSteppedLifted[dim]
 
-        print "Debug: printer pos after lift:", homePosMM
-        print "Debug: parser pos after lift:", parser.getPos()
+        # print "Debug: printer pos after lift:", homePosMM
+        # print "Debug: parser pos after lift:", parser.getPos()
 
 
     printer.erase(2048 * 10)

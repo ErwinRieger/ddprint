@@ -743,7 +743,7 @@ def zRepeatability(parser):
 
     printer.commandInit(args, PrinterProfile.getSettings())
 
-    feedrate = PrinterProfile.getMaxFeedrate(Z_AXIS)
+    feedrate = printer.printerProfile.getMaxFeedrateI(Z_AXIS)
 
     assert(0) # commandInit
     ddhome.home(args, printer, parser, planner)
@@ -1326,7 +1326,7 @@ def changeNozzle(args, parser):
 
     retract(args, parser, doCooldown = False)
 
-    feedrate = PrinterProfile.getMaxFeedrate(X_AXIS)
+    feedrate = printer.printerProfile.getMaxFeedrateI(X_AXIS)
     execSingleGcode(parser, "G0 F%d X%f Y%f" % (feedrate*60, planner.MAX_POS[X_AXIS]/2, planner.MAX_POS[Y_AXIS]*0.1))
 
     raw_input("Now change nozzle, Press return to stop heating...")
@@ -1587,18 +1587,18 @@ def genTempTable(printerProfile, nozzleProfile, matProfile):
     # xxx same as in PathData
     # Interpolate best case flowrate (into air)
     (sleTempBest, slePwmBest) = matProfile.getFrSLE()
-    print "best case flowrate:", sleTempBest, slePwmBest
+    # print "best case flowrate:", sleTempBest, slePwmBest
 
     # Interpolate worst case flowrate (100% fill with small nozzle)
     (sleTempPrint, slePwmPrint) = matProfile.getFrSLEPrint()
-    print "worst case flowrate:", sleTempPrint, slePwmPrint
+    # print "worst case flowrate:", sleTempPrint, slePwmPrint
 
     # XXX simple way, use average of best and worst flowrate:
     tempSLE = SLE(x1=0, y1=(sleTempBest.c+sleTempPrint.c)/2, m=sleTempBest.m)
     pwmSLE = SLE(x1=0, y1=(slePwmBest.c+slePwmPrint.c)/2, m=slePwmBest.m)
 
-    print "Temp sle:", tempSLE
-    print "Pwm sle:", pwmSLE
+    # print "Temp sle:", tempSLE
+    # print "Pwm sle:", pwmSLE
 
     table = []
     for i in range(NExtrusionLimit):
@@ -1627,29 +1627,6 @@ def eTimerValue(printer, eSpeed):
     steprate = eSpeed * spm
     timerValue = int(fTimer / steprate)
     return timerValue
-
-####################################################################################################
-
-def printTempTable(temp, tempTable):
-
-    assert(0) # todo: transition to printer.printerProfile...
-
-    print "TempTable for 1.75mm filament:"
-    print "Basetemp: %d:" % temp
-
-    filamentArea = math.pi*pow(1.75, 2) / 4.0
-    spm = PrinterProfile.getStepsPerMM(A_AXIS)
-
-    for timerValue in tempTable:
-
-        steprate = fTimer / timerValue
-
-        speed = (steprate / spm) * filamentArea
-
-        print "    Temp: %d, max extrusion: %.1f mm³/s, steps/s: %d, timervalue: %d" % (temp, speed, int(steprate), timerValue)
-
-        # temp += 2
-        temp += 1
 
 ####################################################################################################
 
@@ -1717,7 +1694,7 @@ def measureTempFlowrateCurve(args, printer, parser, planner):
     # Running average of hotend temperature
     tempAvg = movingavg.MovingAvg(10)
     # Running average of feeder grip
-    e_steps_per_mm = printer.printerProfile.getStepsPerMM(A_AXIS)
+    e_steps_per_mm = printer.printerProfile.getStepsPerMMI(A_AXIS)
     circum = printer.printerProfile.getFeederWheelCircumI()
     eStepsPerRound = circum * e_steps_per_mm;
 
@@ -2021,7 +1998,7 @@ def measureTempFlowrateCurve2(args, printer, parser, planner):
 
     aFilament = planner.matProfile.getMatArea()
 
-    e_steps_per_mm = printer.printerProfile.getStepsPerMM(A_AXIS)
+    e_steps_per_mm = printer.printerProfile.getStepsPerMMI(A_AXIS)
 
     nAvg = 10
     print "navg:", nAvg
@@ -2031,7 +2008,7 @@ def measureTempFlowrateCurve2(args, printer, parser, planner):
     pwmAvg = movingavg.MovingAvg(nAvg, 128)
 
     # Running average of feeder grip
-    e_steps_per_mm = printer.printerProfile.getStepsPerMM(A_AXIS)
+    e_steps_per_mm = printer.printerProfile.getStepsPerMMI(A_AXIS)
     circum = printer.printerProfile.getFeederWheelCircumI()
     eStepsPerRound = circum * e_steps_per_mm;
     pcal = printer.printerProfile.getFilSensorCalibration()

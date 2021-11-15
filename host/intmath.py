@@ -51,7 +51,7 @@ def pidScaleKp(kP):
 
     kPScaled = int(kPMult * kPScale + 0.5)
 
-    print "kP: %.4f, kPMult: %f, shiftBits: %d, kPScaled: %d" % (kP, kPMult, shiftBits, kPScaled)
+    # print "kP: %.4f, kPMult: %f, shiftBits: %d, kPScaled: %d" % (kP, kPMult, shiftBits, kPScaled)
 
     return packedvalue.scaledint_t(kPScaled, shiftBits)
 
@@ -77,7 +77,7 @@ def pidScaleKi(kI):
 
     kIScaled = int(kIMult * kIScale + 0.5)
 
-    print "kI: %.4f, kIMult: %f, shiftBits: %d(of %d), kIScaled: %d, maxEsum16: %d" % (kI, kIMult, shiftBits, maxBits, kIScaled, maxEsum16)
+    # print "kI: %.4f, kIMult: %f, shiftBits: %d(of %d), kIScaled: %d, maxEsum16: %d" % (kI, kIMult, shiftBits, maxBits, kIScaled, maxEsum16)
 
     assert(shiftBits <= maxBits)
 
@@ -106,7 +106,7 @@ def pidScaleKd(kD):
 
     kDScaled = int(kDMult * kDScale + 0.5)
 
-    print "kD: %.4f, kDMult: %f, shiftBits: %d(of %d), kDScaled: %d" % (kD, kDMult, shiftBits, maxBits, kDScaled)
+    # print "kD: %.4f, kDMult: %f, shiftBits: %d(of %d), kDScaled: %d" % (kD, kDMult, shiftBits, maxBits, kDScaled)
 
     return packedvalue.scaledint_t(kDScaled, shiftBits)
 
@@ -123,7 +123,7 @@ def pidSwitch(kiOld, kiNew):
 
     swScaled = int(swMult * swScale + 0.5)
 
-    print "swMult: %.4f, shiftBits: %d, swScaled: %d" % (swMult, shiftBits, swScaled)
+    # print "swMult: %.4f, shiftBits: %d, swScaled: %d" % (swMult, shiftBits, swScaled)
 
     return packedvalue.scaledint_t(swScaled, shiftBits)
 
@@ -142,7 +142,7 @@ def fsCalibration(fsc):
 
     Scaled = int(fsc32 * Scale + 0.5)
 
-    print "fsc32: %.4f, shiftBits: %d, Scaled: %d" % (fsc32, shiftBits, Scaled)
+    # print "fsc32: %.4f, shiftBits: %d, Scaled: %d" % (fsc32, shiftBits, Scaled)
 
     return packedvalue.scaledint16_t(Scaled, shiftBits)
 

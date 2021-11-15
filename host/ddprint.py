@@ -551,7 +551,7 @@ def main():
 
         res = printer.getPos()
 
-        steps_per_mm = printer.printerProfile.getStepsPerMMVector()
+        steps_per_mm = printer.printerProfile.getStepsPerMMVectorI()
 
         curPosMM = util.MyPoint(
             X = res[0] / float(steps_per_mm[0]),

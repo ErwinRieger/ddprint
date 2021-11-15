@@ -22,11 +22,6 @@ import ddprintutil as util
 
 from ddprintconstants import dimNames, X_AXIS, Y_AXIS, Z_AXIS, A_AXIS, B_AXIS
 
-#
-# Some methods are duplicated, one class instance (singleton) version and one 
-# instance version. This has the goal to slowly remove the singletons.
-#
-
 class ProfileException(Exception):
 
     def __init__(self, msg):
@@ -114,47 +109,13 @@ class ProfileBase(object):
 
 ####################################################################################################
 #
-# Printer profile, singleton
+# Printer profile
 #
 ####################################################################################################
 class PrinterProfile(ProfileBase):
 
-    _single = None 
-
     def __init__(self, name):
-
-        if PrinterProfile._single:
-            raise RuntimeError('Error: a PrinterProfile instance already exists')
-
-        PrinterProfile._single = self
-
         super(PrinterProfile, self).__init__(name)
-
-    @classmethod
-    def get(cls):
-
-        if not cls._single:
-            raise RuntimeError('PrinterProfile instance not created, yet')
-
-        return cls._single
-
-    @classmethod
-    def overrideEJerk(cls, jerk):
-        cls.get().values["axes"]["A"]["jerk"] = jerk
-        cls.get().values["axes"]["B"]["jerk"] = jerk
-
-    @classmethod
-    def overrideEAccel(cls, accel):
-        cls.get().values["MaxAxisAcceleration"][A_AXIS] = accel
-        cls.get().values["MaxAxisAcceleration"][B_AXIS] = accel
-
-    @classmethod
-    def getValues(cls):
-        return cls.get().values
-
-    @classmethod
-    def getStepsPerMM(cls, axisNr):
-        return cls.getValues()["axes"][dimNames[axisNr]]["steps_per_mm"]
 
     def getStepsPerMMI(self, axisNr):
         return int(self.getValue("axes")[dimNames[axisNr]]["steps_per_mm"])
@@ -165,23 +126,11 @@ class PrinterProfile(ProfileBase):
     def getHomeFeedrate(self, axisNr):
         return int(self.getValue("axes")[dimNames[axisNr]]["home_feedrate"])
 
-    @classmethod
-    def getStepsPerMMVector(cls):
-        return map(lambda d: cls.getStepsPerMM(d), range(5))
-
     def getStepsPerMMVectorI(self):
-        return map(lambda d: self.getStepsPerMM(d), range(5))
-
-    @classmethod
-    def getMaxFeedrate(cls, axisNr):
-        return cls.getValues()["axes"][dimNames[axisNr]]["max_feedrate"]
+        return map(lambda d: self.getStepsPerMMI(d), range(5))
 
     def getMaxFeedrateI(self, axisNr):
         return self.getValue("axes")[dimNames[axisNr]]["max_feedrate"]
-
-    @classmethod
-    def getMaxFeedrateVector(cls):
-        return map(lambda d: cls.getMaxFeedrate(d), range(5))
 
     def getMaxFeedrateVectorI(self):
         return map(lambda d: self.getMaxFeedrateI(d), range(5))
@@ -192,22 +141,14 @@ class PrinterProfile(ProfileBase):
     def getRetractLength(self):
         return float(self.getValue("RetractLength"))
 
-    @classmethod
-    def getMaxAxisAcceleration(cls):
-        return cls.getValues()["MaxAxisAcceleration"]
-
     def getMaxAxisAccelerationI(self):
         return self.getValue("MaxAxisAcceleration")
-
-    @classmethod
-    def getHwVersion(cls):
-        return cls.getValues()["hwVersion"]
 
     def getHwVersionI(self):
         return self.getValue("hwVersion")
 
     def getFilSensorCalibration(self):
-        return self.getValues()["filSensorCalibration"]
+        return self.getValue("filSensorCalibration")
 
     def getBedlevelOffset(self):
 
@@ -219,26 +160,14 @@ class PrinterProfile(ProfileBase):
 
         return ofs
 
-    @classmethod
-    def getFeederWheelDiam(cls):
-        return cls.getValues()["feederWheelDiam"]
-
     def getFeederWheelDiamI(self):
         return float(self.getValue("feederWheelDiam"))
-
-    @classmethod
-    def getFeederWheelCircum(cls):
-        return cls.getFeederWheelDiam() * math.pi
 
     def getFeederWheelCircumI(self):
         return self.getFeederWheelDiamI() * math.pi
 
     def getFilSensorCountsPerMM(self):
         return self.getValue("filSensorCountsPerMM")
-
-    @classmethod
-    def getFilSensorInterval(cls):
-        return cls.getValues()["filSensorInterval"]
 
     def getFilSensorIntervalI(self):
         return float(self.getValue("filSensorInterval"))
@@ -292,7 +221,7 @@ class PrinterProfile(ProfileBase):
         return howlong / tRound
 
     def getWeakPowerBedTemp(self):
-        return int(self.getValues()["weakPowerBedTemp"])
+        return int(self.getValue("weakPowerBedTemp"))
 
     def getBedSurface(self):
 
@@ -300,10 +229,6 @@ class PrinterProfile(ProfileBase):
             return self.getValue("bedSurface")
 
         return None
-
-    @classmethod
-    def getPlatformLength(cls, axisNr):
-        return cls.get().getValue("axes")[dimNames[axisNr]]["platform_length"]
 
     def getPlatformLengthI(self, axisNr):
         return self.getValue("axes")[dimNames[axisNr]]["platform_length"]
@@ -329,7 +254,7 @@ class PrinterProfile(ProfileBase):
 
 ####################################################################################################
 #
-# Material profile, singleton
+# Material profile
 #
 ####################################################################################################
 class MatProfile(ProfileBase):
@@ -448,45 +373,14 @@ class MatProfile(ProfileBase):
 
 ####################################################################################################
 #
-# Nozzle profile, singleton
+# Nozzle profile
 #
 ####################################################################################################
 class NozzleProfile(ProfileBase):
 
-    # _single = None 
-
     def __init__(self, name):
 
-        # if NozzleProfile._single:
-            # raise RuntimeError('Error: a NozzleProfile instance already exists')
-        # NozzleProfile._single = self
-
         super(NozzleProfile, self).__init__(name)
-
-    # @classmethod
-    # def get(cls):
-        # if not cls._single:
-            # raise RuntimeError('NozzleProfile instance not created, yet')
-        # return cls._single
-
-    @classmethod
-    def getValues(cls):
-        return cls.get().values
-
-    @classmethod
-    def getSize(cls):
-        return float(cls.getValues()["size"])
-
-    def getSizeI(self):
-        return float(self.getValues("size"))
-
-    @classmethod
-    def getMaxExtrusionRate(cls):
-        return float(cls.getValues()["maxExtrusionRate"])
-
-    @classmethod
-    def getArea(cls):
-        return (math.pi/4) * pow(cls.getSize(), 2)
 
     def getSizeI(self):
         return float(self.getValue("size"))
@@ -495,7 +389,7 @@ class NozzleProfile(ProfileBase):
         return float(self.getValue("maxExtrusionRate"))
 
     def getAreaI(self):
-        return (math.pi/4) * pow(self.getSize(), 2)
+        return (math.pi/4) * pow(self.getSizeI(), 2)
 
 
 

@@ -528,7 +528,7 @@ class MainForm(npyscreen.FormBaseNew):
         ePos = status["ePos"]
         t = time.time()
 
-        e_steps_per_mm = self.printer.printerProfile.getStepsPerMM(A_AXIS)
+        e_steps_per_mm = self.printer.printerProfile.getStepsPerMMI(A_AXIS)
 
         if self.lastEPos != None:
 

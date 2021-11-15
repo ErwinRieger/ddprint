@@ -812,7 +812,7 @@ class MoveBase(object):
 # Base class for TravelMove and PrintMove
 class RealMove(MoveBase):
 
-    def __init__(self, comment, layerPart, pos):
+    def __init__(self, comment, layerPart, pos, printerProfile):
 
         MoveBase.__init__(self)
 
@@ -824,12 +824,14 @@ class RealMove(MoveBase):
 
         self.pos = pos
 
+        self.printerProfile = printerProfile
+
         # assert(self.layerPart != "infill")
 
         # debug
         self.state = 0 # 1: joined, 2: accel planned, 3: steps planned
 
-        self.e_steps_per_mm = PrinterProfile.getStepsPerMM(A_AXIS)
+        self.e_steps_per_mm = printerProfile.getStepsPerMMI(A_AXIS)
 
     def getJerkSpeed(self, jerk):
 
@@ -868,11 +870,12 @@ class TravelMove(RealMove):
                  displacement_vector_steps,
                  feedrate, # mm/s
                  layerPart,
-                 pos
+                 pos,
+                 printerProfile,
                  ):
 
         # assert(layerPart != "infill")
-        RealMove.__init__(self, comment, layerPart, pos)
+        RealMove.__init__(self, comment, layerPart, pos, printerProfile)
 
         # self.displacement_vector_raw = displacement_vector
 
@@ -919,7 +922,7 @@ class TravelMove(RealMove):
     def getMaxAllowedAccelVectorNoAdv5(self):
 
         accelVector = self.direction5.scale(_MAX_ACCELERATION)
-        return abs(accelVector.constrain(PrinterProfile.getMaxAxisAcceleration()) or accelVector)
+        return abs(accelVector.constrain(self.printerProfile.getMaxAxisAccelerationI()) or accelVector)
 
     # Note: always positive
     def getMaxAllowedAccelNoAdv5(self):
@@ -948,11 +951,12 @@ class PrintMove(RealMove):
                  feedrate, # mm/s
                  layerPart,
                  maxAccelV,
-                 pos
+                 pos,
+                 printerProfile
                  ):
 
         # assert(layerPart != "infill")
-        RealMove.__init__(self, comment, layerPart, pos)
+        RealMove.__init__(self, comment, layerPart, pos, printerProfile)
 
         #
         # Move distance in XYZ plane
