@@ -552,6 +552,30 @@ Explanatory screencast:
        <a href="http://www.ibrieger.de/ddprint-3d-printer-firmware.html#getstatus-label">Asciinema not available on github, see video here.</a>
     </noscript>
 
+.. _top-label:
+
+*top*
+**************************************
+
+Machine status: The *ddprint top* command is used to query statistics about the timing
+of the tasks running in the firmware.
+
+It is used to profile the firmware and to check if the mass storage
+device (sdcard or usb-storage) is fast enough.
+
+.. code-block:: sh
+
+    ./ddprint.py top
+
+Explanatory screencast:
+
+.. raw:: html
+
+    <asciinema-player src="/images/video/top.asc" font-size="8"></asciinema-player>
+    <noscript>
+       <a href="http://www.ibrieger.de/ddprint-3d-printer-firmware.html#top-label">Asciinema not available on github, see video here.</a>
+    </noscript>
+
 Usage, Userinterface (TUI)
 +++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -641,6 +665,7 @@ Log
 
    Adding explanatory asciinema screencast for the following ddPrint commands:
    * ddprint getstatus (shortform: ddprint stat)
+   * ddprint top
 
    Tue Oct 19 22:19:57 CEST 2021
    -----------------------------
