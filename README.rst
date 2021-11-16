@@ -458,6 +458,28 @@ Switch off stepper current, printer no longer homed after that.
 
     ./ddprint.py disableSteppers
 
+.. _mon-label:
+
+*mon*
+*****
+
+Machine status: The *ddprint mon* command is a combination of the `ddprint getstatus <#getstatus-label>`__ and the                          
+`ddprint top <#top-label>`__ command. They are called periodically until the *ddprint mon* command
+is terminated (using Control-C).
+
+.. code-block:: sh
+
+    ./ddprint.py mon
+
+Explanatory screencast:
+
+.. raw:: html
+
+    <asciinema-player src="/images/video/mon.asc" font-size="8"></asciinema-player>
+    <noscript>
+       <a href="http://www.ibrieger.de/ddprint-3d-printer-firmware.html#mon-label">Asciinema not available on github, see video here.</a>
+    </noscript>
+
 Manual movement, *moverel*
 **************************************
 
@@ -666,6 +688,7 @@ Log
    Adding explanatory asciinema screencast for the following ddPrint commands:
    * ddprint getstatus (shortform: ddprint stat)
    * ddprint top
+   * ddprint mon
 
    Tue Oct 19 22:19:57 CEST 2021
    -----------------------------
