@@ -101,6 +101,7 @@ def main():
     argParser.add_argument("-d", dest="device", action="store", type=str, help="Device to use, default: %s." % defaultSerialDev, default=defaultSerialDev)
 
     argParser.add_argument("-t0", dest="t0", action="store", type=int, help="Temp 0 (heated bed), default comes from mat. profile.")
+    argParser.add_argument("-t0-reduced", dest="t0_reduced", action="store", type=int, help="Reduced temp 0 (heated bed), default comes from mat. profile.")
     argParser.add_argument("-t1", dest="t1", action="store", type=int, help="Temp 1 (hotend 1), default comes from mat. profile.")
 
     # todo: describe limit k-advance

@@ -1434,6 +1434,9 @@ def initMatProfile(args, printer, nozzleProfile):
     # Overwrite settings from material profile with command line arguments:
     if args.t0:
         mat.override("bedTemp", args.t0)
+    if args.t0_reduced:
+        mat.override("bedTempReduced", args.t0_reduced)
+    else:
         mat.override("bedTempReduced", args.t0)
     if args.t1:
         mat.override("hotendGoodTemp", args.t1)
