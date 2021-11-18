@@ -260,7 +260,7 @@ class UM2GcodeParser:
         bitsPerMove = 5.0 * 50.0 * 10.0
         timePerMove = bitsPerMove / baudrate
 
-        self.logger.log("Pre-parsing ", fn, tmpfname)
+        self.logger.log("Pre-parsing ", tmpfname)
 
         for line in f:
 
