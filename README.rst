@@ -43,17 +43,17 @@ is difficult. Another problem of this *open loop* extrusion system is that the p
 hotend has difficulties to deliver the current demand of flow (for example when printing the first layer or when
 the hotend is not hot enough yet).
 
-To close the control loop we add a `sensor <#flowratesensor>`__ to measure the performance of the extruder
+To close the control loop we add a `sensor <#flowratesensor>`_ to measure the performance of the extruder
 und use this data to control the temperature of the hotend and the speed of the printer.
 
 The control loop is closed in two ways, an acvitve way where the speed of the printer is lowered if the hotend cannot 
 deliver the demanded flowrate and the feeder begins to slip.
 The other is a *feed forward* way: The flowrate sensor is used to measure the characteristics of a given filament - extruder
-combination. The result of this measurement is a so called `*material profile* <#material-profiles>`__.
+combination. The result of this measurement is a so called `*material profile* <#material-profiles>`_.
 
-Control of hotend temperature is called `autotemp <#auto-temp>`__.
+Control of hotend temperature is called `autotemp <#auto-temp>`_.
 
-Control of printer speed is done with the `temperature limiter <#temperature-limiter>`__ and the `flowrate limiter <#flowrate-limiter>`__
+Control of printer speed is done with the `temperature limiter <#temperature-limiter>`_ and the `flowrate limiter <#flowrate-limiter>`_
 .
 
 
@@ -61,7 +61,7 @@ Control of printer speed is done with the `temperature limiter <#temperature-lim
 
 
 
-(*) For the moment `bowden style printers only. <#bowden-style-printers-only>`__
+(*) For the moment `bowden style printers only. <#bowden-style-printers-only>`_
 
 .. contents::
 
@@ -198,9 +198,6 @@ directory structure looks like this:
     ├── Arduino-Makefile
     │   ├── Arduino.mk
     │   ...
-    ├── SdFat-1.0.5
-    │   ...
-    │   └── src
     ├── protothreads-cpp
     │   ├── LICENSE.txt
     │   ...
@@ -216,9 +213,6 @@ The following versions are used at the moment (maybe newer versions will also wo
         Merge: 7a26a86 6d3d973
         Author: Simon John <git@the-jedi.co.uk>
         Date:   Thu Dec 28 18:05:18 2017 +0000
-
-    SdFat-1.0.5, installed from downloaded zip archive (downloads.arduino.cc/libraries/github.com/greiman/SdFat-1.0.5.zip),
-    apply ddprint/patches/SdFat-1.0.5.patch.
 
     Protothreads from https://github.com/benhoyt/protothreads-cpp.git
         commit 984aa540dd4325b7e23dc76135ca28a36526f0c6
@@ -309,9 +303,7 @@ Store printer name in printer's runtime config (on mass storage device):
 
     ./ddprint.py setPrinterName UM2-1
 
-See also: `getprintername command <#getprintername-label>`__.
-
-.. _calibrateesteps-label:
+See also: `getprintername command <#read-printer-name-from-printer-getprintername>`_.
 
 *getEndstops*
 **************************************
@@ -337,10 +329,8 @@ Explanatory screencast:
 
     <asciinema-player src="/images/video/calestep.asc" font-size="8"></asciinema-player>  
     <noscript>
-       <a href="http://www.ibrieger.de/ddprint-3d-printer-firmware.html#calibrateesteps-label">Asciinema not available on github, see video here.</a>
+       <a href="http://www.ibrieger.de/ddprint-3d-printer-firmware.html#calibrateesteps">Asciinema not available on github, see video here.</a>
     </noscript>
-
-.. _calflowratesensor-label:
 
 *calibrateFilSensor*
 **************************************
@@ -357,7 +347,7 @@ Explanatory screencast:
 
     <asciinema-player src="/images/video/calflowratesensor.asc" font-size="8"></asciinema-player>  
     <noscript>
-       <a href="http://www.ibrieger.de/ddprint-3d-printer-firmware.html#calflowratesensor-label">Asciinema not available on github, see video here.</a>
+       <a href="http://www.ibrieger.de/ddprint-3d-printer-firmware.html#calibratefilsensor">Asciinema not available on github, see video here.</a>
     </noscript>
 
 *testFilSensor*
@@ -458,13 +448,11 @@ Switch off stepper current, printer no longer homed after that.
 
     ./ddprint.py disableSteppers
 
-.. _mon-label:
+Monitor status, *mon*
+*********************
 
-*mon*
-*****
-
-Machine status: The *ddprint mon* command is a combination of the `ddprint getstatus <#getstatus-label>`__ and the                          
-`ddprint top <#top-label>`__ command. They are called periodically until the *ddprint mon* command
+Machine status: The *ddprint mon* command is a combination of the `ddprint getstatus <#getstatus>`_ and the                          
+`ddprint top <#firmware-task-status-top>`_ command. They are called periodically until the *ddprint mon* command
 is terminated (using Control-C).
 
 .. code-block:: sh
@@ -477,7 +465,7 @@ Explanatory screencast:
 
     <asciinema-player src="/images/video/mon.asc" font-size="8"></asciinema-player>
     <noscript>
-       <a href="http://www.ibrieger.de/ddprint-3d-printer-firmware.html#mon-label">Asciinema not available on github, see video here.</a>
+       <a href="http://www.ibrieger.de/ddprint-3d-printer-firmware.html#monitor-status-mon">Asciinema not available on github, see video here.</a>
     </noscript>
 
 Manual movement, *moverel*
@@ -530,8 +518,6 @@ Get current printer positions.
 
     ./ddprint.py getpos
 
-.. _getprintername-label:
-
 Read printer name from printer, *getPrinterName*
 **************************************************
 
@@ -549,8 +535,6 @@ Get bed- and hotend temperatures from printer.
 .. code-block:: sh
 
     ./ddprint.py getTemps
-
-.. _getstatus-label:
 
 *getStatus*
 **************************************
@@ -571,12 +555,10 @@ Explanatory screencast:
 
     <asciinema-player src="/images/video/getstatus.asc" font-size="8"></asciinema-player>
     <noscript>
-       <a href="http://www.ibrieger.de/ddprint-3d-printer-firmware.html#getstatus-label">Asciinema not available on github, see video here.</a>
+       <a href="http://www.ibrieger.de/ddprint-3d-printer-firmware.html#getstatus">Asciinema not available on github, see video here.</a>
     </noscript>
 
-.. _top-label:
-
-*top*
+Firmware task status, *top*
 **************************************
 
 Machine status: The *ddprint top* command is used to query statistics about the timing
@@ -595,7 +577,7 @@ Explanatory screencast:
 
     <asciinema-player src="/images/video/top.asc" font-size="8"></asciinema-player>
     <noscript>
-       <a href="http://www.ibrieger.de/ddprint-3d-printer-firmware.html#top-label">Asciinema not available on github, see video here.</a>
+       <a href="http://www.ibrieger.de/ddprint-3d-printer-firmware.html#firmware-task-status-top">Asciinema not available on github, see video here.</a>
     </noscript>
 
 Usage, Userinterface (TUI)
@@ -685,7 +667,7 @@ Log
    Mon Nov 15 19:41:23 CET 2021
    -----------------------------
 
-   Adding explanatory asciinema screencast for the following ddPrint commands:
+   Added explanatory asciinema screencast for the following ddPrint commands:
    * ddprint getstatus (shortform: ddprint stat)
    * ddprint top
    * ddprint mon
@@ -778,7 +760,7 @@ Log
    -----------------------------
 
    Current development (cleanup, minor fixes, documentation) is done on *next* branch.
-   Adding asciinema screencast to show how to use ddPrint.
+   Added asciinema screencast to show how to use ddPrint.
 
 
    Wed Jun  9 21:17:22 CEST 2021
