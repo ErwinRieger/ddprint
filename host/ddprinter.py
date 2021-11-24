@@ -66,17 +66,10 @@ class RxChecksumError(Exception):
 
 class Printer(Serial):
 
-    _single = None 
-
     # maxTXErrors = 10
     maxTXErrors = 3
 
     def __init__(self, gui=None):
-
-        if Printer._single:
-            raise RuntimeError('Error: a Printer instance already exists')
-
-        Printer._single = self
 
         if gui:
             self.gui = gui
@@ -118,21 +111,12 @@ class Printer(Serial):
         # for i in [250000, 500000, 1000000]:
             # print "BRR value for baudrate %d: %d" % (i, (fCPU+i*8)/(i*16)-1)
 
-    @classmethod
-    def get(cls):
-
-        if not cls._single:
-            raise RuntimeError('Printer instance not created, yet')
-
-        return cls._single
-
     def checkStall(self, status):
 
         if (self.stallwarn.lastSwap == status.Swap):
             print "Swap did not change..."
         if (self.stallwarn.lastSteps == status.StepBuffer) and (self.stallwarn.lastSDReader == status.SDReader):
             print "stall ???"
-
 
     def commandResend(self, lastLine):
 

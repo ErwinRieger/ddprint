@@ -443,14 +443,7 @@ class DebugPlot (object):
 
 class Planner (object):
 
-    __single = None 
-
     def __init__(self, args, printer, nozzleProfile=None, materialProfile=None, travelMovesOnly=False):
-
-        if Planner.__single:
-            raise RuntimeError('A Planner already exists')
-
-        Planner.__single = self
 
         # if gui:
             # self.gui = gui
@@ -540,10 +533,6 @@ class Planner (object):
 
         self.replay = status.swapsize / 512 
         print "Reconnect: replaying blocks:", self.replay
-
-    # @classmethod
-    def get(cls):
-        return cls.__single
 
     def setPrintMode(self, mode):
         self.printMode = mode
