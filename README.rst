@@ -99,7 +99,14 @@ TBD
 Auto Temp
 +++++++++++++
 
-TBD
+While parsing/pathplanning the gcode input, the needed volumetric flowrate is computed. Then the required (minimum) temperature
+for this flowrate is determined using a (automatically measured) `*material profile* <#material-profiles>`_ of the used filament.
+
+So when printing, the temperature of the hotend is dynamically changed in respect to the currently requested flowrate.
+This is done in a feed-forward manner because there is a delay between controlling the hotend heater and the change of
+temperature in the melting zone/nozzle, of course.
+
+:Note: because of this automatic temperature control ddPrint ignores temperature related commands (M104, M140...) in the gcode input file.
 
 Temperature limiter
 ++++++++++++++++++++
