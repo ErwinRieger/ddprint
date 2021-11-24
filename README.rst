@@ -106,7 +106,8 @@ So when printing, the temperature of the hotend is dynamically changed in respec
 This is done in a feed-forward manner because there is a delay between controlling the hotend heater and the change of
 temperature in the melting zone/nozzle, of course.
 
-:Note: because of this automatic temperature control ddPrint ignores temperature related commands (M104, M140...) in the gcode input file.
+:Note: because of this automatic temperature control ddPrint ignores temperature related commands (M104, M140...) in the gcode input file. When slicing
+       your models to be printed with ddPrint you can forget about all the temperature settings there.
 
 Temperature limiter
 ++++++++++++++++++++
