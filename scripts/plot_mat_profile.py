@@ -36,6 +36,14 @@ from ddprofile import MatProfile, PrinterProfile, NozzleProfile
 
 #########################################################################################
 
+# Straight-line equation, y = x*m + y0 
+def sleY(x, m, y0):
+    return m*x + y0
+
+# Straight-line equation, x = y/m + x0
+def sleX(y, m, x0):
+    return y/m + x0
+
 if __name__ == "__main__":
 
     printerName = sys.argv[1]
@@ -54,9 +62,17 @@ if __name__ == "__main__":
             printerName=printerName,
             hwVersion=pp.getHwVersionI(),
             nozzleDiam=nozzleDiam)
-    goodTemp = bp.getHotendGoodTemp()
 
-    for specificProfile in sys.argv[4:]:
+    baseTemp = bp.getHotendBaseTemp()
+    goodTemp = bp.getHotendGoodTemp()
+    maxTemp = bp.getHotendMaxTemp()
+
+    windowTitle = "Mat. Profile"
+
+    specificProfiles = sys.argv[4:]
+    for specificProfile in specificProfiles:
+
+        windowTitle += " " + specificProfile
 
         mp = MatProfile(
                 name=baseProfile, smatName=specificProfile,
@@ -64,95 +80,109 @@ if __name__ == "__main__":
                 hwVersion=pp.getHwVersionI(),
                 nozzleDiam=nozzleDiam)
 
-        kpwm = mp.getKpwm()
-        ktemp = mp.getKtemp()
-
-        p0 = mp.getP0pwm()
-        p0Temp = mp.getP0temp()
-        fr0 = mp.getFR0pwm()
-
         flowrateData = mp.getFlowrateData()
         hasPrintingValues = "P0tempPrint" in flowrateData
 
+        #
+        # Two into-air graphs, flowrate vs temperature and flowrate vs pwm
+        #
+        # Into-air graph, flowrate at p0Temp
+        fr0 = mp.getFR0pwm()
+
+        # Into-air graph, temperature
+        ktemp = mp.getKtemp()
+        p0Temp = mp.getP0temp()
+
+        # Into-air graph, pwm
+        kpwm = mp.getKpwm()
+        p0Pwm = mp.getP0pwm()
+
+        xTemp = [baseTemp, maxTemp]
+
+        frBaseTemp = sleY(baseTemp-p0Temp, ktemp, fr0)
+        frMaxTemp = sleY(maxTemp-p0Temp, ktemp, fr0)
+        yAirTemp = [frBaseTemp, frMaxTemp]
+
+        tempGraphs.append((xTemp, yAirTemp, specificProfile+" air", (p0Temp, fr0), None))
+
+        pwmMin1 = pwmMin2 = sleX(frBaseTemp-fr0, kpwm, p0Pwm)
+        pwmMax1 = pwmMax2 = sleX(frMaxTemp-fr0, kpwm, p0Pwm)
+
+        xAirPwm = [pwmMin1, pwmMax1]
+        yAirPwm = [frBaseTemp, frMaxTemp]
+
+        pwmGraphs.append((xAirPwm, yAirPwm, specificProfile+" air", (p0Pwm, fr0)))
+
         if hasPrintingValues:
-            p0Print = mp.getP0pwmPrint()
+
+            #
+            # Two print graphs, flowrate vs temperature and flowrate vs pwm
+            #
+            p0PwmPrint = mp.getP0pwmPrint()
             p0TempPrint = mp.getP0tempPrint()
             fr0Print = mp.getFR0pwmPrint()
 
-        maxTemp = mp.getHotendMaxTemp()
+            frBaseTemp = sleY(baseTemp-p0TempPrint, ktemp, fr0Print)
+            frMaxTemp = sleY(maxTemp-p0TempPrint, ktemp, fr0Print)
+            yPrintTemp = [frBaseTemp, frMaxTemp]
 
-        xser = []
-        tser = []
-        pser = []
-        xserPrint = []
-        tserPrint = []
-        pserPrint = []
+            fill = None
+            if len(specificProfiles) == 1:
+                fill = (xTemp, (yAirTemp), (yPrintTemp))
 
-        fr = fr0 
-        if hasPrintingValues:
-            fr = fr0Print - (p0TempPrint-p0Temp) * ktemp
+            tempGraphs.append((xTemp, yPrintTemp, specificProfile+" print", (p0TempPrint, fr0Print), fill))
 
-        while True:
+            pwmMin2 = sleX(frBaseTemp-fr0Print, kpwm, p0PwmPrint)
+            pwmMax2 = sleX(frMaxTemp-fr0Print, kpwm, p0PwmPrint)
 
-            t = p0Temp + (fr - fr0)/ktemp
-            p = p0 + (fr - fr0)/kpwm
+            xPrintPwm = [pwmMin2, pwmMax2]
+            yPrintPwm = [frBaseTemp, frMaxTemp]
 
-            if (fr >= fr0):
-                xser.append(fr)
-                tser.append(t)
-                pser.append(p)
+            fill = (xTemp, (), ())
 
-            if hasPrintingValues:
-                tPrint = p0TempPrint + (fr - fr0Print)/ktemp
-                pPrint = p0Print + (fr - fr0Print)/kpwm
+            pwmGraphs.append((xPrintPwm, yPrintPwm, specificProfile+" print", (p0PwmPrint, fr0Print)))
 
-                if (tPrint <= maxTemp):
-                    xserPrint.append(fr)
-                    tserPrint.append(tPrint)
-                    pserPrint.append(pPrint)
+    plt.figure(windowTitle, figsize=(10, 8))
+    plt.subplots_adjust(hspace=0.5)
 
-            if t > maxTemp:
-                break
-
-            fr += 0.1
-
-        tempGraphs.append((xser, tser, specificProfile))
-        pwmGraphs.append((xser, pser, specificProfile))
-
-        if hasPrintingValues:
-            tempGraphs.append((xserPrint, tserPrint, specificProfile+" print"))
-            pwmGraphs.append((xserPrint, pserPrint, specificProfile+" print"))
-
-    plot1 = plt.subplot(2,1,1)
-    plt.title("Flowrate vs Temp")
+    ax = plt.subplot(2,1,1)
+    plt.title("Flowrate vs Temperature")
     plt.xlabel(u'temp [°C]')
-    plt.ylabel(u'flowrate [mm³/s]')
+    plt.ylabel(u'Flowrate [mm³/s]')
     plt.grid()
-    plt.axvline(x=goodTemp, color='r', linestyle='-')
+    plt.axvline(x=baseTemp, color='grey', linestyle=':')
+    plt.axvline(x=goodTemp, color='r', linestyle=':')
+    plt.axvline(x=maxTemp, color='grey', linestyle=':')
 
-    for (xser, tser, specificProfile) in tempGraphs:
-        plt.plot(tser, xser, label=specificProfile)
+    for (p1, p2, specificProfile, marker, fill) in tempGraphs:
+        plt.plot(p1, p2, label=specificProfile)
+        plt.plot(marker[0], marker[1], 'x', markeredgecolor="grey")
+        if fill:
+            plt.fill_between(fill[0], fill[1], fill[2], color='grey', alpha='0.2')
 
     plt.legend(loc="upper left")
 
-    # plt.plot(t, ba)
-    # plt.plot(t, x)
+    border = (baseTemp + maxTemp)/40
+    ax.set_xlim(baseTemp-border, maxTemp+border)
+
     plt.ylim(0)
 
-    plt.subplot(2,1,2, sharex=plot1)
+    ax = plt.subplot(2,1,2) #  sharex=plot1)
     plt.title("Flowrate vs PWM")
     plt.xlabel(u'PWM')
-    plt.ylabel(u'flowrate [mm³/s]')
+    plt.ylabel(u'Flowrate [mm³/s]')
     plt.grid()
-    # plt.axhline(y=avg, color='r', linestyle='-')
-    # plt.axvline(x=crossingAvg.locked[1], color='r', linestyle='-')
-    # plt.plot(t, la)
-    # plt.plot(t, ba)
     
-    for (xser, pser, specificProfile) in pwmGraphs:
-        plt.plot(pser, xser, label=specificProfile)
+    for (p1, p2, specificProfile, marker) in pwmGraphs:
+        plt.plot(p1, p2, label=specificProfile)
+        plt.plot(marker[0], marker[1], 'x', markeredgecolor="grey")
 
     plt.legend(loc="upper left")
+
+    pwmMin = min(pwmMin1, pwmMin2)
+    pwmMax = max(pwmMax1, pwmMax2)
+    border = (pwmMin + pwmMax)/40
+    ax.set_xlim(pwmMin-border, pwmMax+border)
 
     plt.show()
 
