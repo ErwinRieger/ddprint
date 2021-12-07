@@ -3,9 +3,6 @@
 
    <link rel="stylesheet" href="/images/js_css/asciinema-player.css"" type="text/css"/>
 
-..
-   todo: fix labels
-
 ddPrint - Adding Process control to FDM printers
 =================================================
 
@@ -43,17 +40,17 @@ is difficult. Another problem of this *open loop* extrusion system is that the p
 hotend has difficulties to deliver the current demand of flow (for example when printing the first layer or when
 the hotend is not hot enough yet).
 
-To close the control loop we add a `sensor <#flowratesensor>`_ to measure the performance of the extruder
+To close the control loop we add a `sensor <#flowratesensor>`__ to measure the performance of the extruder
 und use this data to control the temperature of the hotend and the speed of the printer.
 
 The control loop is closed in two ways, an acvitve way where the speed of the printer is lowered if the hotend cannot 
 deliver the demanded flowrate and the feeder begins to slip.
 The other is a *feed forward* way: The flowrate sensor is used to measure the characteristics of a given filament - extruder
-combination. The result of this measurement is a so called `*material profile* <#material-profiles>`_.
+combination. The result of this measurement is a so called `*material profile* <#material-profiles>`__.
 
-Control of hotend temperature is called `autotemp <#auto-temp>`_.
+Control of hotend temperature is called `autotemp <#auto-temp>`__.
 
-Control of printer speed is done with the `temperature limiter <#temperature-limiter>`_ and the `flowrate limiter <#flowrate-limiter>`_
+Control of printer speed is done with the `temperature limiter <#temperature-limiter>`__ and the `flowrate limiter <#flowrate-limiter>`__
 .
 
 
@@ -61,7 +58,7 @@ Control of printer speed is done with the `temperature limiter <#temperature-lim
 
 
 
-(*) For the moment `bowden style printers only. <#bowden-style-printers-only>`_
+(*) For the moment `bowden style printers only. <#bowden-style-printers-only>`__
 
 .. contents::
 
@@ -71,17 +68,34 @@ Control of printer speed is done with the `temperature limiter <#temperature-lim
 Flowratesensor
 ++++++++++++++
 
-.. image:: /images/flowsensor_red.jpg
+.. image:: /images/ender5/flowrate_sensor_ender5_assembled.jpg
    :width: 100px
-   :target: /images/flowsensor_red.jpg
+   :target: /images/ender5/flowrate_sensor_ender5_assembled.jpg
+
+.. image:: /images/ender5/20210814_123443.jpg
+   :width: 100px
+   :target: /images/ender5/20210814_123443.jpg
 
 .. image:: /images/flowratesensor/flowsensor1.jpg
-   :width: 50
+   :width: 65
    :target: /images/flowratesensor/flowsensor1.jpg
 
 .. image:: /images/ender5/flowrate_sensor_ender5.jpg
-   :width: 80px
+   :width: 100px
    :target: /images/ender5/flowrate_sensor_ender5.jpg
+
+The flowrate sensor (FRS) is used to measure the movement of the filament. It consists of a incremental rotary encoder (Bourns EMS22) and a 3d printed housing.
+The axle of the encoder is pressed onto the moving filament using a spring that is part of the FRS housing.
+
+The distance-information from the FRS is continuously read by the firmware and is used for several tasks:
+
+* Compute the speed of the filament and the resulting volumetric flowrate (taking filament diameter into account).
+* Compare the actual volumetric flow with the nominal volumetric flow to implement the `flowrate limiter <#flowrate-limiter>`__.
+* Automatically record `material profiles <#material-profiles>`__.
+* Automatically `calibrate the feeder "esteps" <#calibrateesteps>`__ (for the machine profile).
+* Automatically `calibrate the FRS <#calibratefilsensor>`__ (for the machine profile, too).
+
+More details `are here <#flowratesensor-1>`__.
 
 Bowden style printers only?
 +++++++++++++++++++++++++++
@@ -92,35 +106,121 @@ For direct driver printers it should be possible but it is more difficult to add
 space requirements, heat, added weight and so on).
 
 Material Profiles
-++++++++++++++++++
++++++++++++++++++
 
-TBD
+Material (filament) profiles are used for two things in ddprint:
+
+* They define the hotend temperature necessary to melt a given volumetric flow of filament, see `autotemp feature <#auto-temp>`__.
+* The `temperature limiter <#temperature-limiter>`__ uses the information in the material profile to slow down the print in cases
+  where the hotend is not hot enough (yet) to melt the requestet amount of filament.
+
+With other words: the material profile gives a picture of the hotend melting capacity for a given machine/filament combination - "*the printer knows its filament*".
+
+A material profile for a given filament is created automatically by ddPrint and stored in JSON format for later use.
+
+This filament-measurement is done in two steps:
+
+* A best-case scenario where filament is extruded *into air*.
+* And a worst-case scenario where a small testpart is printed under difficult circumstances (high backpressure because of 100% infill and small layerheight).
+
+ddPrint comes with a python script to plot material profiles (plot_mat_profile). Here are two examples of material profiles, one
+for a PLA filament and one for a PETg filament:
+
+.. image:: /images/mat-profile/Mat._Profile_esun_pla_glass-purple.json.png
+   :width: 250px
+   :target: /images/mat-profile/Mat._Profile_esun_pla_glass-purple.json.png
+
+.. image:: /images/mat-profile/Mat._Profile_herz_petg-black-5800070.json.png
+   :width: 250px
+   :target: /images/mat-profile/Mat._Profile_herz_petg-black-5800070.json.png
+
+
+For more details `see here <#material-profiles-1>`__.
 
 Auto Temp
 +++++++++++++
 
 While parsing/pathplanning the gcode input, the needed volumetric flowrate is computed. Then the required (minimum) temperature
-for this flowrate is determined using a (automatically measured) `*material profile* <#material-profiles>`_ of the used filament.
+for this flowrate is determined using a (automatically measured) `*material profile* <#material-profiles>`__ of the used filament.
 
 So when printing, the temperature of the hotend is dynamically changed in respect to the currently requested flowrate.
 This is done in a feed-forward manner because there is a delay between controlling the hotend heater and the change of
 temperature in the melting zone/nozzle, of course.
 
-:Note: because of this automatic temperature control ddPrint ignores temperature related commands (M104, M140...) in the gcode input file. When slicing
+:Note: because of this automatic temperature control, ddPrint ignores bed- and hotend-temperature related commands (M104, M140...) in the gcode input file. When slicing
        your models to be printed with ddPrint you can forget about all the temperature settings there.
+
+The hotend temperature follows the volumentric flow demand given in the input gcode file, is increased for parts of the model where high
+flow rates are required and vice-versa.
 
 Temperature limiter
 ++++++++++++++++++++
 
 TBD
 
+.. _refname:
+
 Flowrate limiter
-+++++++++++++++++
+++++++++++++++++
 
 TBD
 
 ..
    XXX LEVEL 3 XXX
+
+More in detail
+++++++++++++++
+
+Flowratesensor
+--------------
+
+.. image:: /images/ender5/flowrate_sensor_ender5_assembled.jpg
+   :width: 100px
+   :target: /images/ender5/flowrate_sensor_ender5_assembled.jpg
+
+.. image:: /images/ender5/20210814_123443.jpg
+   :width: 100px
+   :target: /images/ender5/20210814_123443.jpg
+
+.. image:: /stl/feedsensor_v2_preview_cutopen.png
+   :width: 185px
+   :target: /stl/feedsensor_v2_preview_cutopen.png
+
+The FRS consists of the following components:
+
+* A 3d printed housing (PETg).
+* The incremental rotary encoder (EMS22).
+* A ptfe inliner with a small cutout to allow the encoder axle to touch the filament.
+* A pneumatic coupler to connect the extruder bowden tube to the FRS.
+* Depending on the type of the feeder a short piece of a M6 heatbreak to mount the FRS
+  at the feeder outlet.
+* A cable to connect the FRS to the mainboard of the printer (SPI bus).
+
+The EMS22 rotary encoder has a resolution of 1024 counts per revolution. The diameter of the axle is 3.17mm, this equates
+to a overall resolution of about 10µm (0.0097mm) of filament movement per count.
+
+The nominal accuracy of the sensor is 0.7° (about 0.2%), worst case accuracy is 1.4° (about 0.4%). You can find a copy of the EMS22
+datasheet (PDF) `here </doc/datasheets/EMS22A.pdf>`__.
+
+The firmware reads the rotary encoder every 10mS, meaning a sample rate of 100Hz.
+
+.. image:: images/flowratesensor/um2-feeder-adapter.jpg
+   :width: 65px
+   :target: images/flowratesensor/um2-feeder-adapter.jpg
+
+.. image:: /images/ender5/flowrate_sensor_ender5_with_feeder.jpg
+   :width: 100px
+   :target: /images/ender5/flowrate_sensor_ender5_with_feeder.jpg
+
+The FRS is mounted at the feeder outlet with an adapter that is part of the FRS housing (BMG or UM2 feeder) or with
+a short piece of a M6 heatbreak (Anycubic or Ender feeder) (todo: add bmg style picture).
+
+`Here are some STL files <https://github.com/ErwinRieger/ddprint/tree/master/stl>`__ of the FRS housing.
+
+Material Profiles
+-----------------
+
+TBD. (describe filament measurement and plotted graphs, workingpoint setting)
 
 ---------------------------------------------------------------------------------------------
 
@@ -146,9 +246,9 @@ modifications: http://www.ibrieger.de/pimped-ultimaker-2.html, and a jennyprinte
 Github Mirror, project Homepage
 ++++++++++++++++++++++++++++++++
 
-DDPrint FDM firmware: `github.com/ErwinRieger/ddprint <http://github.com/ErwinRieger/ddprint>`_, mirrored here: http://www.ibrieger.de/ddprint-3d-printer-firmware.html.
+DDPrint FDM firmware: `github.com/ErwinRieger/ddprint <http://github.com/ErwinRieger/ddprint>`__, mirrored here: http://www.ibrieger.de/ddprint-3d-printer-firmware.html.
 
-DDprint system project homepage: `ibrieger.de/close_the_loop_for_e.html <http://www.ibrieger.de/close_the_loop_for_e.html>`_.
+DDprint system project homepage: `ibrieger.de/close_the_loop_for_e.html <http://www.ibrieger.de/close_the_loop_for_e.html>`__.
 
 Video: https://youtu.be/1Kbl9AZd10Y, ddprint playlist: https://www.youtube.com/playlist?list=PLzn7lnnZpS7XP-JhLw_o7p27ayv5bJ29o.
 
@@ -174,8 +274,8 @@ Key features
   has not (yet) the right temperature for the requested flowrate.
 * Extruder pressure advance, of course ;-)
 
-Main part is the Flowrate Sensor realized with a Bourns EMS22AFS incremental
-encoder: http://www.ibrieger.de/pimped-ultimaker-2.html#feeder-flowratesensor.
+Main part is the `Flowrate Sensor <#flowratesensor>`__ realized with a Bourns EMS22AFS incremental
+encoder.
 
 Installation
 +++++++++++++
@@ -283,7 +383,7 @@ Easier slicing, simple gcode
 
 :Note: Simplify3d is used as of this writing.
 
-Use mostly plain gcode with ddprint, many of the *advanced features* of the slicers (i call it *slicer hacks*) are not
+Use mostly plain gcode with ddprint, many of the *advanced features* of the slicers (like coasting or acceleration control) are not
 needed, see http://www.ibrieger.de/close_the_loop_for_e.html#simpler-gcode.
 
 The (automatically measured) material profile gives a picture of the hotend melting capacity for a given machine/filament combination.
@@ -311,7 +411,7 @@ Store printer name in printer's runtime config (on mass storage device):
 
     ./ddprint.py setPrinterName UM2-1
 
-See also: `getprintername command <#read-printer-name-from-printer-getprintername>`_.
+See also: `getprintername command <#read-printer-name-from-printer-getprintername>`__.
 
 *getEndstops*
 **************************************
@@ -459,8 +559,8 @@ Switch off stepper current, printer no longer homed after that.
 Monitor status, *mon*
 *********************
 
-Machine status: The *ddprint mon* command is a combination of the `ddprint getstatus <#getstatus>`_ and the                          
-`ddprint top <#firmware-task-status-top>`_ command. They are called periodically until the *ddprint mon* command
+Machine status: The *ddprint mon* command is a combination of the `ddprint getstatus <#getstatus>`__ and the
+`ddprint top <#firmware-task-status-top>`__ command. They are called periodically until the *ddprint mon* command
 is terminated (using Control-C).
 
 .. code-block:: sh
@@ -634,11 +734,6 @@ Some working ones:
 Not working ones:
 
 * MediaRange, 4Gb, SDHC, Class 10
-
-AutoTemp
------------
-
-AutoTemp algorithm: the hotend temperature is increased for parts of the model where high printing speeds are reached and vice-versa.
 
 Protothreads
 ------------
