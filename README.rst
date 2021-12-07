@@ -767,8 +767,24 @@ Log
 
 ::
 
+   Tue Dec  7 10:41:32 CET 2021
+   ----------------------------
+
+   Did some project updates on github.com:ErwinRieger/ddprint:
+
+   * Some smaller code fixes and code cleanup.
+   * plot_mat_profile script: cleanup and improved display
+      of material profiles.
+   * Documentation update (README):
+      + Update section about auto-temp feature.
+      + Added information in flowratesensor section.
+      + Added flowratesensor details section.
+      + Added information in material profile section, added some example plots.
+      + Added example plots of material profiles.
+      + Added more images.
+
    Mon Nov 15 19:41:23 CET 2021
-   -----------------------------
+   ----------------------------
 
    Added explanatory asciinema screencast for the following ddPrint commands:
    * ddprint getstatus (shortform: ddprint stat)
