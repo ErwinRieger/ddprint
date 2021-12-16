@@ -46,11 +46,11 @@ und use this data to control the temperature of the hotend and the speed of the 
 The control loop is closed in two ways, an acvitve way where the speed of the printer is lowered if the hotend cannot 
 deliver the demanded flowrate and the feeder begins to slip.
 The other is a *feed forward* way: The flowrate sensor is used to measure the characteristics of a given filament - extruder
-combination. The result of this measurement is a so called `*material profile* <#material-profiles>`__.
+combination. The result of this measurement is a so called `material profile <#material-profiles>`__.
 
 Control of hotend temperature is called `autotemp <#auto-temp>`__.
 
-Control of printer speed is done with the `temperature limiter <#temperature-limiter>`__ and the `flowrate limiter <#flowrate-limiter>`__
+Control of printer speed is done with the `temperature-limiter <#temperature-limiter>`__ and the `flowrate-limiter <#flowrate-limiter>`__
 .
 
 
@@ -90,7 +90,7 @@ The axle of the encoder is pressed onto the moving filament using a spring that 
 The distance-information from the FRS is continuously read by the firmware and is used for several tasks:
 
 * Compute the speed of the filament and the resulting volumetric flowrate (taking filament diameter into account).
-* Compare the actual volumetric flow with the nominal volumetric flow to implement the `flowrate limiter <#flowrate-limiter>`__.
+* Compare the actual volumetric flow with the nominal volumetric flow to implement the `flowrate-limiter <#flowrate-limiter>`__.
 * Automatically record `material profiles <#material-profiles>`__.
 * Automatically `calibrate the feeder "esteps" <#calibrateesteps>`__ (for the machine profile).
 * Automatically `calibrate the FRS <#calibratefilsensor>`__ (for the machine profile, too).
@@ -111,7 +111,7 @@ Material Profiles
 Material (filament) profiles are used for two things in ddprint:
 
 * They define the hotend temperature necessary to melt a given volumetric flow of filament, see `autotemp feature <#auto-temp>`__.
-* The `temperature limiter <#temperature-limiter>`__ uses the information in the material profile to slow down the print in cases
+* The `temperature-limiter <#temperature-limiter>`__ uses the information in the material profile to slow down the print in cases
   where the hotend is not hot enough (yet) to melt the requestet amount of filament.
 
 With other words: the material profile gives a picture of the hotend melting capacity for a given machine/filament combination - "*the printer knows its filament*".
@@ -141,7 +141,7 @@ Auto Temp
 +++++++++++++
 
 While parsing/pathplanning the gcode input, the needed volumetric flowrate is computed. Then the required (minimum) temperature
-for this flowrate is determined using a (automatically measured) `*material profile* <#material-profiles>`__ of the used filament.
+for this flowrate is determined using a (automatically measured) `material profile <#material-profiles>`__ of the used filament.
 
 So when printing, the temperature of the hotend is dynamically changed in respect to the currently requested flowrate.
 This is done in a feed-forward manner because there is a delay between controlling the hotend heater and the change of
@@ -156,14 +156,36 @@ flow rates are required and vice-versa.
 Temperature limiter
 ++++++++++++++++++++
 
-TBD
+The firmware part of ddPrint running on the printer maintains a *temperature-flowrate* table. This table is downloaded from the host to the firmware before
+a print is done.
 
-.. _refname:
+The *temperature-flowrate table* maps hotend temperatures to the max. volumetric flowrates (extruder speed) allowed at a given temperature (for the used
+filament). This table is generated from the information found in the material-profile of the used filament (see `material profile <#material-profiles>`__) by the host
+part of ddPrint.
+
+If the current hotend temperature is too low for the requested extrusion speed, the speed of the printer (feedrate) is scaled down so that it matches
+the achievable flowrate value in the table. This avoids underextrusion (thogether with filament-grinding) and the many problemns related to it.
+
+This is called *temperature limiting*. The temperature-limiter works on a per-printing-move basis, that means this check and a possible slowdown is done
+for every straight line of the printhead (essentially for every printing gcode line).
+
+With other words: The *temperature-limiter* together with the `autotemp <#auto-temp>`__ feature ensures that the hotend is always hot enough to
+be able to melt the requeste amount of filament.
 
 Flowrate limiter
 ++++++++++++++++
 
-TBD
+Similar to the `temperature-limiter <#temperature-limiter>`__ the *flowrate-limiter* slows down the print to avoid underextrusion and grinding of the filament.
+
+It starts to limit the feedrate when the feeder slip is above some threshold, so it uses the *grip value* measured by the `volumetric flowrate sensor <#flowratesensor>`__ (FRS).
+
+Up to 10% of feeder slippage (90% grip) is allowed before the firmware begins to slow down the print. Below 90% grip the feedrate is decreased linearly until reaches
+one quater (25%) of the nominal speed, see following plot.
+
+.. image:: /images/ddprint/flowrate-limiter-plot.png
+   :width: 150px
+   :target: /images/ddprint/flowrate-limiter-plot.png
+
 
 ..
    XXX LEVEL 3 XXX
@@ -270,7 +292,7 @@ Key features
   profiles .
 * "Auto temperature algorithm": hotend temperature depends on the
   gcode-requested flowrate. 
-* "Temperature-flowrate limiter": speed of printer is limited if hotend
+* "Temperature-flowrate-limiter": speed of printer is limited if hotend
   has not (yet) the right temperature for the requested flowrate.
 * Extruder pressure advance, of course ;-)
 
