@@ -2083,10 +2083,10 @@ def measureTempFlowrateCurve2(args, printer, parser, planner):
     #
     # Hardcoded height of 3 mm.
     #
-    print "\nWaiting for start of fifth layer..."
+    print "\nWaiting for layerheight 2mm ..."
     # XXX add timeout here, deadlock 
-    while curPosMM.Z < 3:
-        print "waiting for fifth layer, Z pos:", curPosMM.Z
+    while curPosMM.Z < 2:
+        print "waiting for layerheight 2mm , Z pos:", curPosMM.Z
         status = printer.getStatus()
         printer.ppStatus(status)
         pwmAvg.add(status.pwmOutput)
