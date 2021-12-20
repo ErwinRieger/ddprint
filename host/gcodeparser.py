@@ -241,7 +241,7 @@ class UM2GcodeParser:
         # feedrate = 0.0
         pos = [0.0, 0.0, 0.0] # use vector 3 here
         lineNumber = 0
-        preloadLines = 0
+        preloadLines = 1000 # Download 1000 lines before print-start, at least.
         preloadMinLen = 0.10
 
         # Time to send one move at given baudrate:
@@ -304,7 +304,7 @@ class UM2GcodeParser:
 
                     # lenavg.add(l)
 
-                    print "move distance:", displacement_vector, l # , feedrate
+                    # print "move distance:", displacement_vector, l # , feedrate
                     # print "move distance:", l, lenavg.mean()
 
                     if l < preloadMinLen:
@@ -361,11 +361,11 @@ class UM2GcodeParser:
         # else:
             # print "downloadTime %.2f greater than printing time %.2f, no preload possible (#lines: %d)." % (downloadTime, moveTime, preloadLines)
 
-        pl = max(preloadLines, 1000)
-        print "Using preload (preloadLines: %d): %d (%.1f %%)" % (preloadLines, pl, preloadLines*100.0/lineNumber)
-        # XXXXX hack weil download von stopfen-4mal.gcode ewig zum download dauert...
+        preloadLines = min(preloadLines, lineNumber)
+
+        print "Using preload: preloadLines: %d (%.1f %%)" % (preloadLines, preloadLines*100.0/lineNumber)
         # return (f, max(min(preloadLines, 10000), 1000))
-        return (f, pl)
+        return (f, preloadLines)
 
     def execute_line(self, rawLine):
 
