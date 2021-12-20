@@ -242,7 +242,7 @@ class UM2GcodeParser:
         pos = [0.0, 0.0, 0.0] # use vector 3 here
         lineNumber = 0
         preloadLines = 0
-        preloadMinLen = 0.15
+        preloadMinLen = 0.10
 
         # Time to send one move at given baudrate:
         # * assume we send 10 bits for a byte
