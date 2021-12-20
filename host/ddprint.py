@@ -126,7 +126,7 @@ def main():
     argParser.add_argument("-inctemp", dest="inctemp", action="store", type=int, help="Increase extruder temperature niveau (layer bonding).", default=0)
 
     # XXX Should we call this parameter strength, figurine-mode or parts-mode?
-    argParser.add_argument("-wp", dest="workingPoint", action="store", type=float, choices=[ArgRange(0.0, 1.0)], help="AutoTemp: Working Point in range [0.0:1.0] 0: strong parts (higher temp range), 1: figurine mode (lower temps).", default=0.5)
+    argParser.add_argument("-wp", dest="workingPoint", action="store", type=float, choices=[ArgRange(0.0, 1.0)], help="AutoTemp: Working Point in range [0.0:1.0] 0: strong parts (higher temp range), 1: figurine mode (lower temps). Default: 0.5.", default=0.5)
 
     subparsers = argParser.add_subparsers(dest="mode", help='Mode: mon(itor)|print|store|reset|pre(process).')
 

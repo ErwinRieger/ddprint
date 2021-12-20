@@ -247,6 +247,8 @@ class PathData (object):
 
         self.count = -10
 
+        # WorkingPoint = 0: Parts print, higer temperatures for good layer bonding, wpscale = 1.0
+        # WorkingPoint = 1: Figurine print, lower temperature range, wpscale = 0.0
         self.wpscale = (1 - self.planner.args.workingPoint)
 
         if not planner.travelMovesOnly:
@@ -269,54 +271,27 @@ class PathData (object):
 
             # xxx same as in genTempTable
 
-            # Interpolate best case flowrate (into air)
+            # Best case flowrate (into air)
             (sleTempBest, slePwmBest) = mp.getFrSLE()
             # print "best case flowrate:", sleTempBest, slePwmBest
 
-            # Interpolate worst case flowrate (100% fill with small layerheight)
+            # Worst case flowrate (100% fill with small layerheight)
             (sleTempPrint, slePwmPrint) = mp.getFrSLEPrint()
             # print "worst case flowrate:", sleTempPrint, slePwmPrint
-
-            # XXX simple way, use average of best and worst flowrate:
-
-            # WorkingPoint = 0: Parts print, higer temperatures for good layer bonding
-            # WorkingPoint = 1: Figurine print, lower temperature range
-            assert(self.planner.args.workingPoint >= 0 and self.planner.args.workingPoint <= 1.0)
-
-            # Note: into-air extrusion not always higher rates
 
             temp_delta = sleTempBest.c-sleTempPrint.c
             # print "Delta temp :", temp_delta
 
-            # if the temperatue needed to print is lower than the 
-            # into-air temperature, the we assume some
-            # cooling-, environmental-, bed-temperature- or some material effects that
-            # makes it flow better when really printing.
-            # But we can not count on this effect, so ignore this
-            # here:
+            assert(temp_delta > 0)
 
-            # but check if error is small (<=10%)
-            if temp_delta < 0:
-                assert((abs(temp_delta) / 230) <= 0.1)
-
-            temp_delta = max(temp_delta, 0.0)
-            self.tempSLE = util.SLE(x1=0, y1=sleTempPrint.c+temp_delta*self.wpscale, m=sleTempBest.m)
-
-            # Note: into-air extrusion not always higher rates
+            self.tempSLE = util.SLE(x1=0, y1=sleTempPrint.c+temp_delta*self.planner.args.workingPoint, m=sleTempBest.m)
 
             pwm_delta = slePwmBest.c-slePwmPrint.c
             # print "Delta pwm :", pwm_delta
 
-            # but check if error is small (<=10%)
-            if pwm_delta < 0:
-                assert((abs(pwm_delta) / 255) <= 0.1)
+            assert(pwm_delta > 0)
 
-            pwm_delta = max(pwm_delta, 0.0)
-
-            assert( temp_delta >= 0.0)
-            assert( pwm_delta >= 0.0)
-
-            self.pwmSLE = util.SLE(x1=0, y1=slePwmPrint.c+pwm_delta*self.wpscale, m=slePwmBest.m)
+            self.pwmSLE = util.SLE(x1=0, y1=slePwmPrint.c+pwm_delta*self.planner.args.workingPoint, m=slePwmBest.m)
 
             # print "Temp sle:", self.tempSLE, self.tempSLE.y(self._goodtemp)
             # print "Pwm sle:", self.pwmSLE
@@ -647,7 +622,7 @@ class Planner (object):
     # set strength aka workingpoint
     def m901(self, values):
         
-        print "XXX m901 set workingpoint or set whatever ddprint option not implemented", values
+        print "XXX m901 set workingpoint not implemented", values
 
     # Called from gcode parser, pause the print for the specified amount
     # of time.
