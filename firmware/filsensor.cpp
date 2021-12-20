@@ -173,14 +173,14 @@ void FilamentSensorEMS22::run() {
                         // Ignore slip below 10%, 0.1*32 = 3.2, rounded: 3
                         uint16_t s = min( 
                             (uint16_t)max((int16_t)(slip32_short - 3), (int16_t)32),
-                            (uint16_t)(2*32) ); //  (uint16_t)(4*32) ); // max slowdown: pow(2) = 4
+                            (uint16_t)(4*32) ); // max slowdown: 4 times
 
                         #if !defined(COLDEXTRUSION)
                         limiting = (s > 32) && feedrateLimiterEnabled;
                         #endif
 
                         if (limiting) {
-                            // s in range 32 .. 64
+                            // s in range 32 .. 128
                             slowDown = s * 32;
                         }
 
@@ -232,7 +232,7 @@ void FilamentSensorEMS22::run() {
                     // Ignore slip below 10%, 0.1*32 = 3.2, rounded: 3
                     uint16_t s = min( 
                             (uint16_t)max((int16_t)(slip32 - 3), (int16_t)32),
-                            (uint16_t)(2*32) ); //  (uint16_t)(4*32) ); // max slowdown: pow(2) = 4
+                            (uint16_t)(4*32) ); // max slowdown: 4 times
 
                     #if !defined(COLDEXTRUSION)
                     limiting = (s > 32) && feedrateLimiterEnabled;
@@ -240,7 +240,7 @@ void FilamentSensorEMS22::run() {
 
                     if (limiting) {
 
-                        // s in range 32 .. 64
+                        // s in range 32 .. 128
                         slowDown = s * 32;
                     }
 
