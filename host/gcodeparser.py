@@ -221,7 +221,7 @@ class UM2GcodeParser:
 
     Entire packet about 43 bytes -> round up to 50 bytes
     """
-    def preParse(self, fn, baudrate):
+    def preParse(self, fn, nu_baudrate):
 
         # lenavg = movingavg.MovingAvg(100)
 
@@ -236,18 +236,19 @@ class UM2GcodeParser:
         os.unlink(tmpfname)
 
         # preload
-        moveTime = 0.0
-        downloadTime = 0.0
-        feedrate = 0.0
+        # moveTime = 0.0
+        # downloadTime = 0.0
+        # feedrate = 0.0
         pos = [0.0, 0.0, 0.0] # use vector 3 here
         lineNumber = 0
         preloadLines = 0
+        preloadMinLen = 0.15
 
         # Time to send one move at given baudrate:
         # * assume we send 10 bits for a byte
         # * multiply by 5 to account for raw moves
-        bitsPerMove = 5.0 * 50.0 * 10.0
-        timePerMove = bitsPerMove / baudrate
+        # bitsPerMove = 5.0 * 50.0 * 10.0
+        # timePerMove = bitsPerMove / baudrate
 
         self.logger.log("Pre-parsing ", tmpfname)
 
@@ -266,15 +267,15 @@ class UM2GcodeParser:
                 
                     values = self.getValues(tokens[1:])
 
-                    if 'F' in values:
-                        feedrate = values['F']
+                    # if 'F' in values:
+                        # feedrate = values['F']
 
                     if not ("X" in values or "Y" in values or "Z" in values):
                         # Nothing to move, F-Only gcode or invalid
                         continue
 
                     displacement_vector = [0.0, 0.0, 0.0]
-                    newPos = [0.0, 0.0, 0.0]
+                    # newPos = [0.0, 0.0, 0.0]
 
                     for dim in range(3):
 
@@ -284,7 +285,8 @@ class UM2GcodeParser:
 
                         # if self.absolute[dim]:
                         rDiff = values[dimC] - pos[dim]
-                        newPos[dim] = values[dimC]
+                        # newPos[dim] = values[dimC]
+                        pos[dim] = values[dimC]
                         # else:
                             # rDiff = values[dimC]
                             # newPos[dim] += values[dimC]
@@ -302,9 +304,13 @@ class UM2GcodeParser:
 
                     # lenavg.add(l)
 
-                    # print "move distance:", displacement_vector, l, feedrate
+                    print "move distance:", displacement_vector, l # , feedrate
                     # print "move distance:", l, lenavg.mean()
 
+                    if l < preloadMinLen:
+                        preloadLines += 1
+                   
+                    """
                     t = l / feedrate
 
                     moveTime += t
@@ -323,8 +329,9 @@ class UM2GcodeParser:
 
                     if downloadTime > moveTime:
                         preloadLines = lineNumber
+                    """
 
-                    pos = newPos
+                    # pos = newPos
 
                 elif cmd == "G2" or cmd == "G3":
 
@@ -349,13 +356,16 @@ class UM2GcodeParser:
 
         f.seek(0) # rewind
 
-        if downloadTime < moveTime:
-            print "downloadTime %.2f smaller than printing time %.2f, can use preload (#lines: %d)." % (downloadTime, moveTime, preloadLines)
-        else:
-            print "downloadTime %.2f greater than printing time %.2f, no preload possible (#lines: %d)." % (downloadTime, moveTime, preloadLines)
+        # if downloadTime < moveTime:
+            # print "downloadTime %.2f smaller than printing time %.2f, can use preload (#lines: %d)." % (downloadTime, moveTime, preloadLines)
+        # else:
+            # print "downloadTime %.2f greater than printing time %.2f, no preload possible (#lines: %d)." % (downloadTime, moveTime, preloadLines)
 
+        pl = max(preloadLines, 1000)
+        print "Using preload (preloadLines: %d): %d (%.1f %%)" % (preloadLines, pl, preloadLines*100.0/lineNumber)
         # XXXXX hack weil download von stopfen-4mal.gcode ewig zum download dauert...
-        return (f, max(min(preloadLines, 10000), 1000))
+        # return (f, max(min(preloadLines, 10000), 1000))
+        return (f, pl)
 
     def execute_line(self, rawLine):
 
