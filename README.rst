@@ -242,7 +242,114 @@ a short piece of a M6 heatbreak (Anycubic or Ender feeder) (todo: add bmg style 
 Material Profiles
 -----------------
 
-TBD. (describe filament measurement and plotted graphs, workingpoint setting)
+.. image:: /images/mat-profile/Mat._Profile_esun_pla_glass-purple.json-cut.png
+   :width: 350px
+   :target: /images/mat-profile/Mat._Profile_esun_pla_glass-purple.json-cut.png
+
+A material profile defines the "melting-capabilites" of a given machine/nozzle/filament combination. It is used by the ddPrint
+software to implement the `autotemp <#auto-temp>`__ and the `temperature-limiter <#temperature-limiter>`__ features. The material profile
+determines the volumetric flowrate at a given temperature and vice-versa.
+
+Material profiles are generated automatically by ddPrint using the `flowrate sensor <#flowratesensor>`__. This measurement is done
+in two steps. This gives us a range of achievable volumetric flowrates for a given filament ("working field", the grey area in the profile plot).
+
+In a first measurement the maximum volumetric flowrate for a given temperature is determined. This is done by extruding some plastic `into-air <#into-air-filament-measurement>`__, 
+without any flow restriction of a printed part. This gives us a best-case flowrate.
+
+The the other end of the flowrate range is measured doing a `real print <#real-print-filament-measurement>`__. In this case the flow through the nozzle is restricted by the part
+thats printed. The testpart is sliced using 100% infill and a very low layerheight. This gives us the worst-case flowrate.
+
+:Note: To display a material profile graphically, use the `plot_mat_profile utility <#profile-plotting-utility>`__.
+
+Into-air filament measurement
+*****************************
+
+.. image:: /images/mat-profile/Mat._Profile_esun_pla_glass-purple.json-cut.png
+   :width: 350px
+   :target: /images/mat-profile/Mat._Profile_esun_pla_glass-purple.json-cut.png
+
+Into-air flowrate (blue line in plot above) is determined using the `measureTempFlowrateCurve <#measure-material-profile-measuretempflowratecurve>`__ command
+of the ddPrint program.
+
+To save filament, only two temperature/flowrate points are measured (P1 and P2). One at the lower end of the usable temperature range and one at the top
+end (for example, at 200° and 260°). The temperature-flowrate graph is then aproximated using this two points, they define a straight line equation y = M*x + C1.
+
+The steps to measure *into-air flowrate data* are are:
+
+* User loads the filament to test and starts measurement.
+* ddPrint heats the hotend to the lower temperature.
+* When start-temperature is reached, the PWM value of the hotend heater is fixed (PID temp control is disabled) and
+  ddPrint starts to extrude filament at a low flowrate.
+* Then in a loop, the flowrate is increased while watching the feeder grip.
+* While increasing the flowrate, the feeder grip will decrease because of the rising
+  backpressure from the filament pressed through the nozzle.
+* At some point, feeder grip drops below a pre-defined value called *minGrip*, 90% for example.
+* Flowrate is no longer increased, the first measurement point P1 is determined.
+* PID temperature control is re-enabled and hotend is heated to the upper temp.
+* When this upper temperature is reached, the measurement loop starts again. PWM is fixed and
+  flowrate is increased while watching feeder grip.
+* When feeder grip falls below *minGrip* the second time, we have determined the second
+  measurement point P2.
+* Hotend is switched off and the speed of the extruder is gracefully decreased until stop.
+* The final step is to compute the values of M and C1 and write the *into-air flowrate data* to a material profile template file.
+
+
+Real print filament measurement
+********************************
+
+.. image:: /images/mat-profile/Mat._Profile_esun_pla_glass-purple.json-cut.png
+   :width: 350px
+   :target: /images/mat-profile/Mat._Profile_esun_pla_glass-purple.json-cut.png
+
+This is similar to the *into-air* measurement, but this time doing a real print. The result is the *worst case flowrate data* (the green line in the plot above).
+
+The ddPrint command for this measurement is `measureTempFlowrateCurve2 <#measure-material-profile-measuretempflowratecurve2>`__.
+
+Again a straight line equation y = M*x + C2 is determined. To save filament, only one temperature/flowrate point is measured (P3). As a simplification,
+we assume the same slope as in the *into-air* measurement.
+
+.. image:: /images/mat-profile/measure2.png
+   :width: 100px
+   :target: /images/mat-profile/measure2.png
+
+The test-part printed is designed and sliced as follows:
+
+* The part is tall to quickly gain height, this is to minimize the heating influence of the heated bed.
+* It is long in one direction to help the flowrate measurement (long straight lines with constant extrusion, minimize acceleration effects).
+* It is sliced with 100% infill for high nozzle backpressure.
+* It is sliced with a small layer-height for high nozzle backpressure.
+* It is sliced with a high feedrate, again for high nozzle backpressure.
+
+:Note: The test-part is not printed to its full height, measurement will stop before.
+
+The steps to measure *printing flowrate data* are are:
+
+* Filament to test is loaded, printer is prepared to do a print and user starts measurement.
+* ddPrint heats the hotend to a temperature in the middle of the usable temperature range.
+* When start-temperature is reached, the PWM value of the hotend heater is fixed (PID temp control is disabled) and
+  ddPrint starts to print the testpart using a low speed/flowrate.
+* Print until some height is reached to minimize heating bed effects.
+* Then in a loop, the flowrate is increased on every layer while watching the feeder grip.
+* While increasing the flowrate, the feeder grip will decrease because of the rising
+  backpressure from the filament pressed through the nozzle (additionally restricted by the part thats printed).
+* At some point, feeder grip drops below a pre-defined value called *minGrip*, 90% for example.
+* Measurement ends, datapoint P3 is determined.
+* Print is gracefully stopped.
+* The final step is to write the *printing flowrate data* (together with the *into-air data*) to a material profile template file.
+
+After editing the newly measured material-profile (.json file) it can be renamed and stored somewhere in a profiles folder for
+later view (`plot_mat_profile utility <#profile-plotting-utility>`__) or use (printing).
+
+Workingpoint (strength) parameter
+**********************************
+
+TBD. (describe plotted graphs, workingpoint setting)
+
+
+Profile plotting utility
+********************************
+
+TBD: describe *plot_mat_profile* utility.
 
 ---------------------------------------------------------------------------------------------
 
@@ -517,6 +624,18 @@ of this machine/filament combination.
 .. code-block:: sh
 
     ./ddprint.py measureTempFlowrateCurve nozzle80 petg_1.75mm 2.5
+
+Measure material profile, *measureTempFlowrateCurve2*
+*********************************************************
+
+Second step to measure the material properties (melting capacity, temperatures)
+of this machine/filament combination doing a real print.
+
+TBD: update section
+
+.. code-block:: sh
+
+    ./ddprint.py measureTempFlowrateCurve2 ...
 
 Printing
 ------------------------------
