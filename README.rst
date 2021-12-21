@@ -123,7 +123,7 @@ This filament-measurement is done in two steps:
 * A best-case scenario where filament is extruded *into air*.
 * And a worst-case scenario where a small testpart is printed under difficult circumstances (high backpressure because of 100% infill and small layerheight).
 
-ddPrint comes with a python script to plot material profiles (plot_mat_profile). Here are two examples of material profiles, one
+ddPrint comes with a python script to plot material profiles (`plot_mat_profile utility <#profile-plotting-utility>`__). Here are two examples of material profiles, one
 for a PLA filament and one for a PETg filament:
 
 .. image:: /images/mat-profile/Mat._Profile_esun_pla_glass-purple.json.png
@@ -907,6 +907,27 @@ Log
 ++++++++++++++++++++++++++++
 
 ::
+
+   Tue Dec 21 14:40:15 CET 2021
+   ----------------------------
+
+   Project updates on github.com:ErwinRieger/ddprint:
+
+   Documentation:
+
+   * Describe material profiles in more detail.
+   * Describe automatic material profile measurement,
+     determine *into-air* and *printing* volumetric flowrate data.
+   * Update section about temperatuer-limiter.
+   * Update section about flowrate-limiter.
+   * Added more pictures and data plots.
+
+   Code fixes:
+
+   * Auto-temp: fix workingpoint commandline parameter, worked the wrong way.
+   * Preload: test another way to compute amout of data to pre-download
+     to the printer, simply count small moves.
+   * Some cleanup.
 
    Tue Dec  7 10:41:32 CET 2021
    ----------------------------
