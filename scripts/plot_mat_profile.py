@@ -20,10 +20,12 @@
 # along with ddprint.  If not, see <http://www.gnu.org/licenses/>.
 #*/
 
+#
+# Program to plot ddPrint material profiles.
+#
 
 import sys, os
-import numpy as np
-from argparse import Namespace
+import argparse, ddargs
 
 import matplotlib.pyplot as plt
 
@@ -31,8 +33,6 @@ sys.path.append(os.path.join(os.path.dirname(sys.argv[0]), "../host"))
 
 import ddprintutil
 from ddprofile import MatProfile, PrinterProfile, NozzleProfile
-
-#########################################################################################
 
 #########################################################################################
 
@@ -46,20 +46,26 @@ def sleX(y, m, x0):
 
 if __name__ == "__main__":
 
-    printerName = sys.argv[1]
-    nozzleProfile = sys.argv[2]
-    baseProfile = sys.argv[3]
+    argParser = argparse.ArgumentParser(description='%s - plot ddPrint material profiles.' % os.path.basename(sys.argv[0]))
 
-    pp = PrinterProfile(printerName)
-    nozzle = NozzleProfile(nozzleProfile)
+    ddargs.addPrinterArgument(argParser)
+    ddargs.addNozzleArgument(argParser)
+    ddargs.addMatArgument(argParser)
+
+    argParser.add_argument("smat", help="Material profile(s) to plot.", nargs='+')
+
+    args = argParser.parse_args()
+
+    pp = PrinterProfile(args.printer)
+    nozzle = NozzleProfile(args.nozzle)
     nozzleDiam = nozzle.getSizeI()
 
     tempGraphs = []
     pwmGraphs = []
 
     bp = MatProfile(
-            name=baseProfile, smatName=None,
-            printerName=printerName,
+            name=args.mat, smatName=None,
+            printerName=args.printer,
             hwVersion=pp.getHwVersionI(),
             nozzleDiam=nozzleDiam)
 
@@ -69,14 +75,13 @@ if __name__ == "__main__":
 
     windowTitle = "Mat. Profile"
 
-    specificProfiles = sys.argv[4:]
-    for specificProfile in specificProfiles:
+    for specificProfile in args.smat:
 
         windowTitle += " " + specificProfile
 
         mp = MatProfile(
-                name=baseProfile, smatName=specificProfile,
-                printerName=printerName,
+                name=args.mat, smatName=specificProfile,
+                printerName=args.printer,
                 hwVersion=pp.getHwVersionI(),
                 nozzleDiam=nozzleDiam)
 
@@ -127,7 +132,7 @@ if __name__ == "__main__":
             yPrintTemp = [frBaseTemp, frMaxTemp]
 
             fill = None
-            if len(specificProfiles) == 1:
+            if len(args.smat) == 1:
                 fill = (xTemp, (yAirTemp), (yPrintTemp))
 
             tempGraphs.append((xTemp, yPrintTemp, specificProfile+" print", (p0TempPrint, fr0Print), fill))
