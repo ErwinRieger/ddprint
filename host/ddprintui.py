@@ -24,7 +24,7 @@ logging.basicConfig(filename=datetime.datetime.now().strftime("/tmp/ddprint_%y.%
 
 import npyscreen, time, curses, sys, threading, Queue
 import argparse
-import stoppableThread, ddhome, movingavg
+import stoppableThread, ddhome, movingavg, ddargs
 import ddprintutil as util
 
 # from serial import SerialException
@@ -94,6 +94,12 @@ class TitleTempAdjSlider(npyscreen.TitleSlider):
 
 # Main TUI class
 class MainForm(npyscreen.FormBaseNew): 
+
+    def __init__(self, name, args):
+
+        super(npyscreen.FormBaseNew, self).__init__(name)
+
+        self.args = args
 
     # Preheat bed (90%) and heater (50%)
     class Preheat_Button(npyscreen.MiniButtonPress):
@@ -356,37 +362,6 @@ class MainForm(npyscreen.FormBaseNew):
 
       try:
 
-        parser = argparse.ArgumentParser(description='%s, ddprint ui.' % sys.argv[0])
-        parser.add_argument("-b", dest="baud", action="store", type=int, help="Baudrate, default 1Mbaud.", default=1000000)
-        defaultSerialDev = os.getenv("DDPRINTDEV") or os.getenv("dev") or "/dev/ttyACM"
-        parser.add_argument("-d", dest="device", action="store", type=str, help="Device to use, default: %s." % defaultSerialDev, default=defaultSerialDev)
-        parser.add_argument("-dt", dest="dummyTempTable", action="store", type=bool, help="Debug: download dummy temperature table, don't limit speeed.", default=False)
-        parser.add_argument("-F", dest="fakeendstop", action="store", type=bool, help="fake endstops", default=False)
-        parser.add_argument("-nc", dest="noCoolDown", action="store", type=bool, help="Debug: don't wait for heater cool down after print.", default=False)
-        parser.add_argument("-t0", dest="t0", action="store", type=int, help="Temp 0 (heated bed), default comes from mat. profile.")
-        parser.add_argument("-t1", dest="t1", action="store", type=int, help="Temp 1 (hotend 1), default comes from mat. profile.")
-        parser.add_argument("-kadvance", dest="kadvance", action="store", type=float, help="K-Advance factor, default comes from mat. profile.")
-        parser.add_argument("-autotemp", dest="autotemp", action="store", type=bool, help="Use autotemp algorithm, default is True.", default=True)
-        parser.add_argument("-pidset", dest="pidset", action="store", type=str, help="Debug: Specify PID parameter sets to use (ZNCH).", default="ZNCH")
-        parser.add_argument("-rl", dest="retractLength", action="store", type=float, help="Retraction length, default comes from printer profile.", default=0)
-        parser.add_argument("-inctemp", dest="inctemp", action="store", type=int, help="Increase extruder temperature niveau (layer bonding).", default=0)
-        parser.add_argument("-wp", dest="workingPoint", action="store", type=float, help="xxx temp niveau between best/worst case SLE.", default=0.5)
-
-
-        parser.add_argument("-smat", dest="smat", action="store", help="Name of specific material profile to use.")
-        # parser.add_argument("-noz", dest="nozzle", action="store", help="Name of nozzle profile to use [nozzle40, nozzle80...], default is nozzle40.", default="nozzle40")
-        # parser.add_argument("-mat", dest="mat", action="store", help="Name of material profile to use [pla, abs...], default is pla.", default="pla_1.75mm")
-        # parser.add_argument("-f", dest="file", action="store", type=str, help="Gcode to print")
-
-        parser.add_argument("nozzle", help="Name of nozzle profile to use [nozzle40, nozzle80...].")
-        parser.add_argument("mat", help="Name of generic material profile to use [pla, abs...].")
-        parser.add_argument("file", help="Input GCode file.")
-
-        self.args = parser.parse_args()
-        self.args.mode = "dlprint"
-
-        # print "args: ", self.args
-
         try:
             (self.printer, self.parser, self.planner) = initParser(self.args, gui=self)
         except IOError, ex:
@@ -408,7 +383,7 @@ class MainForm(npyscreen.FormBaseNew):
             self.guiQueue.put(SyncCallUpdate(self.smatProfile.set_value, "---"))
         self.guiQueue.put(SyncCallUpdate(self.kAdvance.set_value, self.planner.advance.getKAdv()))
         self.guiQueue.put(SyncCallUpdate(self.wp.set_value, self.args.workingPoint))
-        self.guiQueue.put(SyncCallUpdate(self.fn.set_value, self.args.file))
+        self.guiQueue.put(SyncCallUpdate(self.fn.set_value, self.args.gfile))
         
         # try:
         self.printer.commandInit(self.args)
@@ -779,9 +754,22 @@ class MainForm(npyscreen.FormBaseNew):
 
 class Application(npyscreen.NPSAppManaged):
 
+    def __init__(self):
+
+        super(npyscreen.NPSAppManaged, self).__init__()
+
+        parser = argparse.ArgumentParser(description='%s - ddPrint TUI application.' % os.path.basename(sys.argv[0]))
+
+        ddargs.addCommonArguments(parser)
+        ddargs.addPrintArguments(parser)
+
+        self.args = parser.parse_args()
+
+        self.args.mode = "uiprint"
+
     def main(self): 
 
-        F  = MainForm(name = "DDPrint UI")
+        F  = MainForm(name = "DDPrint UI", args=self.args)
 
         # Stdout redirection, xxx can be removed if all print's are replaced by log() calls...
         sys.stdout = F
@@ -836,6 +824,8 @@ class Application(npyscreen.NPSAppManaged):
         F.edit() 
 
 if __name__ == "__main__": 
+
+
 
     App = Application() 
     App.run() 
