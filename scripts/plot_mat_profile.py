@@ -151,7 +151,8 @@ if __name__ == "__main__":
     plt.subplots_adjust(hspace=0.5)
 
     ax = plt.subplot(2,1,1)
-    plt.title("Flowrate vs Temperature")
+    plt.title("Printer: %s, nozzle: %.2f, generic mat: %s\nFlowrate vs Temperature" %
+        (args.printer, nozzleDiam, args.mat))
     plt.xlabel(u'temp [°C]')
     plt.ylabel(u'Flowrate [mm³/s]')
     plt.grid()
