@@ -253,11 +253,11 @@ determines the volumetric flowrate at a given temperature and vice-versa.
 Material profiles are generated automatically by ddPrint using the `flowrate sensor <#flowratesensor>`__. This measurement is done
 in two steps. This gives us a range of achievable volumetric flowrates for a given filament ("working field", the grey area in the profile plot).
 
-In a first measurement the maximum volumetric flowrate for a given temperature is determined. This is done by extruding some plastic `into-air <#into-air-filament-measurement>`__, 
+In a first measurement the maximum volumetric flowrate for a given temperature is determined (blue line in material profile plot). This is done by extruding some plastic `into-air <#into-air-filament-measurement>`__, 
 without any flow restriction of a printed part. This gives us a best-case flowrate.
 
 The the other end of the flowrate range is measured doing a `real print <#real-print-filament-measurement>`__. In this case the flow through the nozzle is restricted by the part
-thats printed. The testpart is sliced using 100% infill and a very low layerheight. This gives us the worst-case flowrate.
+thats printed. The testpart is sliced using 100% infill and a very low layerheight. This gives us the worst-case flowrate (green line in material profile plot).
 
 :Note: To display a material profile graphically, use the `plot_mat_profile utility <#profile-plotting-utility>`__.
 
@@ -350,6 +350,21 @@ Profile plotting utility
 ********************************
 
 TBD: describe *plot_mat_profile* utility.
+
+.. code-block:: sh
+
+      usage: plot_mat_profile.py [-h] printer nozzle mat smat [smat ...]
+
+      plot_mat_profile.py - plot ddPrint material profiles.
+
+      positional arguments:
+        printer     Name of printer to select profiles.
+        nozzle      Name of nozzle profile to use [nozzle40, nozzle80...].
+        mat         Name of generic material profile to use [pla, petg...].
+        smat        Material profile(s) to plot.
+
+      optional arguments:
+        -h, --help  show this help message and exit
 
 ---------------------------------------------------------------------------------------------
 
@@ -902,6 +917,16 @@ Thanks
 
 Thanks to all open/free software people that make this all possible.  
 
+Unsorted
+++++++++++++++++++++++++++++++++
+
+This has to be included into the documentation:
+
+Installation, dependencies
+
+.. code-block:: sh
+
+   apt-get install python[3]-serial
 
 Log
 ++++++++++++++++++++++++++++
