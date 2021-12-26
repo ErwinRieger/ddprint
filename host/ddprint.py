@@ -174,6 +174,7 @@ def main():
 
     sp = subparsers.add_parser("pre", help=u"Preprocess gcode, for debugging purpose.")
     # sp.add_argument("printer", help="Name of printer profile to use.")
+    ddargs.addPrinterArgument(sp)
     ddargs.addPrintArguments(sp)
     # sp.add_argument("nozzle", help="Name of nozzle profile to use [nozzle40, nozzle80...].")
     # sp.add_argument("mat", help="Name of generic material profile to use [pla, petg...].")
