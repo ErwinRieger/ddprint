@@ -39,7 +39,7 @@ OPTIMIZATION_LEVEL = 2
 # DEBUGFLAGS    =  -g3 -ggdb
 # LDFLAGS += -g
 
-CPPFLAGS      +=  -I. -Iavr -Isrc
+CPPFLAGS      +=  -I. -Iavr -Isrc -Ipins
 CPPFLAGS      +=  -I./libraries/SdFat/src
 CPPFLAGS      +=  -I$(ARDUINO_PLATFORM_LIB_PATH)
 CPPFLAGS      +=  $(DEBUGFLAGS)
