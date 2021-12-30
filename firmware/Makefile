@@ -1,5 +1,5 @@
 #/*
-# This file is part of ddprint - a direct drive 3D printer firmware.
+# This file is part of ddprint - a 3D printer firmware.
 # 
 # Copyright 2015 erwin.rieger@ibrieger.de
 # 
@@ -17,42 +17,17 @@
 # along with ddprint.  If not, see <http://www.gnu.org/licenses/>.
 #*/
 
-# .PHONY: build
+FIRMWARES = um2 ender3 ramps rumba jp
 
-all: fw
+# .PHONY: $(FIRMWARES)
 
-fw:
-	make -f Makefile.fw 
+all: $(FIRMWARES)
 
-fwupload:
-	make -f Makefile.fw do_upload
-
-fwall: fw fwupload
-	echo "build and upload done"
-
-ramps:
-	make -f Makefile.ramps 
-
-jp:
-	make -f Makefile.jp 
-
-jpupload:
-	echo "Don't forget to boot into bootloader and hold power button."
-	make -f Makefile.jp upload
-
-jpall: jp jpupload
-	echo "build and upload done"
-
-world: fw ramps jp
-	make -f Makefile.sim 
+$(FIRMWARES):
+	make -f build_files/Makefile.$@
 
 clean: 
-	make -f Makefile.ramps clean
-	make -f Makefile.fw clean
-	make -f Makefile.sim clean
-
-reset: 
-	echo "yeah reset"
+	$(foreach fw, $(FIRMWARES), make -f build_files/Makefile.$(fw) clean;)
 
 gitversion.cpp: ../.git/HEAD ../.git/index
 	echo "const char *gitversion = \"$(shell git rev-parse --short HEAD)\";" > gitversion.cpp
