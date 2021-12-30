@@ -30,15 +30,11 @@ Cmd5             = 0x5
 # CmdBlock         = 0x6 # A 512byte block of a lager command
 CmdG1            = 0x7
 # CmdDirG1         = 0x8 # CmdDirBits and CmdG1 combined
-CmdG1Packed      = 0x9 # CmdG1, zlib compressed
 
 CmdSyncTargetTemp= 0xb # Parameters: heater, temp 
 CmdDwellMS       = 0xc # Parameters: number of 25 mS dwell NOP moves
 CmdG1Raw         = 0xd # Raw print move steps, bresenham algo already done.
 # CMDDirG1Raw      = 0xe # CmdDirBits and CmdG1Raw combined
-CmdG1RawPacked   = 0xf # CmdG1Raw, zlib compressed
-CmdBlockPacked   = 0x10 # CmdBlock, zlib compressed
-
 
 CmdSuggestPwm    = 0x11 # Parameters: heater, target temp, pwm value
 
@@ -130,9 +126,6 @@ for (cmd, cmdName) in [
     (CmdDwellMS, "CmdDwellMS",),
     (CmdSuggestPwm, "CmdSuggestPwm",),
     (CmdUnknown, "CmdUnknown",),
-    (CmdG1Packed, "CmdG1Packed",),
-    (CmdG1RawPacked, "CmdG1RawPacked",),
-    (CmdBlockPacked, "CmdBlockPacked",),
     #
     # Direct commands:
     # ----------------------

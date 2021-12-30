@@ -59,47 +59,6 @@ NullBytes = bytes(1)
 # Todo: check cobs-R for more optimization:
 # https://pythonhosted.org/cobs/cobsr-intro.html, https://pypi.org/project/cobs/
 #
-def encodeCobs_cmd_packed(cmd, packedCmd, stream):
-
-# xxx debug
-    print("XXXX no zip in encodeCobs_cmd_packed")
-    return (cmd, encodeCobs512(stream))
-
-    cobsBody = ""
-    cobsResult = ""
-
-    fpos = stream.tell()
-
-    rawdata = stream.read(blockLen)
-    if not rawdata:
-        return (cmd, None)
-
-    compressor = zlib.compressobj(9, zlib.DEFLATED, -15)
-    compressor.compress(rawdata)
-    data = compressor.flush()
-    # print "encodeCobs_cmd_packed compressed %d blocksize into %d bytes..." % (len(rawdata), len(data))
-
-    if len(data) > len(rawdata)*0.95:
-        # xxx ugly, do this compressible test in move.py...
-        stream.seek(fpos)
-        return (cmd, encodeCobs512(stream)) # , blockLen))
-
-    # xxx waste one byte if lastbyte is not 0x0
-    if data[-1] != nullByte:
-        data += nullByte
-
-    for c in data:
-        if c == nullByte:
-            cobsResult += chr(len(cobsBody)+1)
-            cobsResult += cobsBody
-            cobsBody = ""
-        else:
-            cobsBody += c
-
-    assert(len(cobsResult) <= blockLen)
-    assert(len(cobsResult) == len(data))
-    return (packedCmd, cobsResult)
-
 # Encode up to 512 bytes payload
 def encodeCobs512(payload):
 

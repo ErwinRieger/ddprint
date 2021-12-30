@@ -18,7 +18,7 @@
 # along with ddprint.  If not, see <http://www.gnu.org/licenses/>.
 #*/
 
-import math, struct, zlib
+import struct
 
 import ddprintcommands, cobs, io, intmath, packedvalue
 
@@ -238,38 +238,7 @@ class StepData:
 
         # print "size of payload:", len(payLoad)
 
-        """
-        rawPayloadSize = len(payLoad)
-
-        # Test if compression gives smaller packet
-        # XXX reuse compressor object?
-        compressor = zlib.compressobj(9, zlib.DEFLATED, -15)
-        compressedPayload = compressor.compress(payLoad)
-        compressedPayload += compressor.flush()
-        print "encodeCobs_cmd_packed compressed %d blocksize into %d bytes..." % (rawPayloadSize, len(compressedPayload))
-
-        if len(compressedPayload) > rawPayloadSize*0.95:
-            print "fixme Sending uncompressed..."
-            # return chr(ddprintcommands.CmdG1Packed) + compressedPayload
-        """
-
         return payLoad
-
-        # stream = cStringIO.StringIO(payLoad)
-
-        cmds = [ cobs.encodeCobs_cmd_packed(ddprintcommands.CmdG1, ddprintcommands.CmdG1Packed, stream) ]
-
-        while True:
-
-            (cmd, cobsBlock) = cobs.encodeCobs_cmd_packed(ddprintcommands.CmdBlock, ddprintcommands.CmdBlockPacked, stream)
-
-            if not cobsBlock:
-                break
-
-            # cmds.append(( ddprintcommands.CmdBlock, cobsBlock ))
-            cmds.append( (cmd, cobsBlock) )
-
-        return cmds
 
     def debugPlot(self):
 
@@ -394,41 +363,7 @@ class RawStepData:
 
         # print "size of payload:", len(payLoad)
 
-        """
-        rawPayloadSize = len(payLoad)
-
-        # Test if compression gives smaller packet
-        # XXX reuse compressor object?
-        compressor = zlib.compressobj(9, zlib.DEFLATED, -15)
-        compressor.compress(payLoad)
-        compressedPayload = compressor.flush()
-        print "encodeCobs_cmd_packed compressed %d blocksize into %d bytes..." % (rawPayloadSize, len(compressedPayload))
-
-        if len(compressedPayload) > rawPayloadSize*0.95:
-            print "fixme Sending uncompressed..."
-            # return chr(ddprintcommands.CmdG1RawPacked) + compressedPayload
-        """
-
         return payLoad
-
-        # stream = cStringIO.StringIO(payLoad)
-        # cobsBlock = cobs.encodeCobs_cmd_packed(stream)
-        # cmds = [( ddprintcommands.CmdG1Raw, cobsBlock )]
-
-        cmds = [ cobs.encodeCobs_cmd_packed(ddprintcommands.CmdG1Raw, ddprintcommands.CmdG1RawPacked, stream) ]
-
-        while True:
-
-            # cobsBlock = cobs.encodeCobs_cmd_packed(stream)
-            (cmd, cobsBlock) = cobs.encodeCobs_cmd_packed(ddprintcommands.CmdBlock, ddprintcommands.CmdBlockPacked, stream)
-
-            if not cobsBlock:
-                break
-
-            # cmds.append(( ddprintcommands.CmdBlock, cobsBlock ))
-            cmds.append( (cmd, cobsBlock) )
-
-        return cmds
 
     def debugPlot(self):
 

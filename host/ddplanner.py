@@ -42,7 +42,7 @@ if debugPlot:
 
 emptyVector5 = [0] * 5
 
-FillByte = bytes([CmdNop])
+FillByte = bytes((CmdNop,))
 
 #####################################################################
 
@@ -824,14 +824,15 @@ class Planner (object):
         self.pathData.history.finishMoves()
 
         # Send last partial 512 bytes block
-        if self.args.mode != "pre":
-        
-            # Fill sector with dummy data
-            block = self.stepData.ljust(cobs.SectorSize, FillByte)
-            if self.replay:
-                self.replay -= 1
-            else:
-                cobsPayload = cobs.encodeCobs512(block)
+        # Fill sector with dummy data
+        block = self.stepData.ljust(cobs.SectorSize, FillByte)
+        if self.replay:
+            self.replay -= 1
+        else:
+            cobsPayload = cobs.encodeCobs512(block)
+
+            # Send stepdata to printer, but not in preprocessing mode
+            if self.args.mode != "pre":
                 self.printer.sendCommand512(cobsPayload)
 
         self.reset()
@@ -873,6 +874,7 @@ class Planner (object):
 
                 # print "cobs encoded sector block:", cobsPayload.encode("hex")
 
+                # Send stepdata to printer, but not in preprocessing mode
                 if self.args.mode != "pre":
                     self.printer.sendCommand512(cobsPayload)
 
