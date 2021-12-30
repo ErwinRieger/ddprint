@@ -18,8 +18,6 @@
 # along with ddprint.  If not, see <http://www.gnu.org/licenses/>.
 #*/
 
-import sys, struct, crc16, zlib
-
 LenLen    = 1
 LenHeader = 1+1+1+LenLen+1+2
 
@@ -54,7 +52,8 @@ SectorSize = 512
 # 0x4: high und lowbyte sind 0   : (0, 0) -> (1, 1)
 #
 
-nullByte = chr(0)
+NullByte = 0x0
+NullBytes = bytes(1)
 
 #
 # Todo: check cobs-R for more optimization:
@@ -63,7 +62,7 @@ nullByte = chr(0)
 def encodeCobs_cmd_packed(cmd, packedCmd, stream):
 
 # xxx debug
-    print "XXXX no zip in encodeCobs_cmd_packed"
+    print("XXXX no zip in encodeCobs_cmd_packed")
     return (cmd, encodeCobs512(stream))
 
     cobsBody = ""
@@ -106,30 +105,30 @@ def encodeCobs512(payload):
 
     assert(len(payload) <= SectorSize)
 
-    cobsBody = ""
-    cobsResult = ""
+    cobsBody = bytearray()
+    cobsResult = bytearray()
     # lastIsZero = payload[-1] == nullByte
 
     lCobsBody = 0
     for c in payload:
-        if c == nullByte:
-            cobsResult += chr(len(cobsBody)+1)
+        if c == NullByte:
+            cobsResult.append(len(cobsBody)+1)
             cobsResult += cobsBody
-            cobsBody = ""
+            cobsBody = bytearray()
             lCobsBody = 0
         else:
-            cobsBody += c
+            cobsBody.append(c)
             lCobsBody += 1
 
             if lCobsBody == MaxCobsBlock:
-                cobsResult += chr(0xff) # Special max. length block
+                cobsResult.append(0xff) # Special max. length block
                 cobsResult += cobsBody
-                cobsBody = ""
+                cobsBody = bytearray()
                 lCobsBody = 0
 
     # Handle "no null at end" case
     if cobsBody:
-        cobsResult += chr(len(cobsBody)+1)
+        cobsResult.append(len(cobsBody)+1)
         cobsResult += cobsBody
 
     # print "cobs    :", len(cobsResult), cobsResult.encode("hex")
@@ -142,25 +141,22 @@ def encodeCobs512(payload):
 
 def decodeCobs(data):
 
-    result = ""
+    result = bytearray()
 
     pos = 0
     l = len(data)
     while pos < l:
-        cobsCode = ord(data[pos])
+        cobsCode = data[pos]
         pos += 1
         for i in range(cobsCode-1):
             if pos < l:
-                result += data[pos]
+                result.append(data[pos])
                 pos += 1
             else:
                 # break
                 return result
 
-        # if pos < l:
-            # result += nullByte
-        # if cobsCode != 0xff:
-        result += nullByte
+        result += NullBytes
 
     return result
 

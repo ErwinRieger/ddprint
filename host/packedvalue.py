@@ -35,38 +35,38 @@ class PackedValue:
 
 class uint8_t(PackedValue):
     def __init__(self, value):
-        assertType(value, types.IntType)
+        assertType(value, int)
         PackedValue.__init__(self, value, "B")
 
 class int16_t(PackedValue):
     def __init__(self, value):
-        assertType(value, types.IntType)
+        assertType(value, int)
         PackedValue.__init__(self, value, "h")
 
 class uint16_t(PackedValue):
     def __init__(self, value):
-        assertType(value, types.IntType)
+        assertType(value, int)
         PackedValue.__init__(self, value, "H")
 
 class int32_t(PackedValue):
     def __init__(self, value):
-        assertType(value, types.IntType)
+        assertType(value, int)
         PackedValue.__init__(self, value, "i")
 
 class uint32_t(PackedValue):
     def __init__(self, value):
-        assertType(value, types.IntType)
+        assertType(value, int)
         PackedValue.__init__(self, value, "I")
 
 class float_t(PackedValue):
     def __init__(self, value):
-        assertType(value, types.FloatType)
+        assertType(value, float)
         PackedValue.__init__(self, value, "f")
 
 class pString_t(PackedValue):
 
     def __init__(self, value):
-        self.value = value
+        self.value = value.encode()
 
     def pack(self):
         return struct.pack("<%dp" % (len(self.value)+1), self.value)

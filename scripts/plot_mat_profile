@@ -5,6 +5,6 @@
 envscript="$(realpath -m ${0}/../ddprint.env)"
 . $envscript
 
-python $DDPRINTHOME/scripts/plot_mat_profile.py $*
+$DDPYTHON $DDPRINTHOME/scripts/plot_mat_profile.py $*
 
 

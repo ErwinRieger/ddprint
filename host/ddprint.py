@@ -90,64 +90,64 @@ def main():
 
     subparsers = argParser.add_subparsers(dest="mode", help='Mode: mon(itor)|print|store|reset|pre(process).')
 
-    sp = subparsers.add_parser("autotune", help=u"Measure open loop step resopnse of hotend. Used to autotune hotend PID values (open-loop).")
+    sp = subparsers.add_parser("autotune", help="Measure open loop step resopnse of hotend. Used to autotune hotend PID values (open-loop).")
     # sp.add_argument("mat", help="Name of generic material profile to use [pla, petg...].")
     ddargs.addMatArgument(sp)
 
-    sp = subparsers.add_parser("bedleveling", help=u"Do bed leveling sequence.")
+    sp = subparsers.add_parser("bedleveling", help="Do bed leveling sequence.")
     sp.add_argument("-rl", dest="relevel", action="store", type=bool, help="Releveling, don't adjust bedlevel offset, just turn screws.", default=False)
     # sp.add_argument("mat", help="Name of generic material profile to use [pla, petg...].")
     ddargs.addMatArgument(sp)
 
-    sp = subparsers.add_parser("bootbootloader", help=u"ARM/stm32: boot into bootloader mode for firmware download.")
+    sp = subparsers.add_parser("bootbootloader", help="ARM/stm32: boot into bootloader mode for firmware download.")
 
-    sp = subparsers.add_parser("calibrateesteps", help=u"Debug: helper to determine the e-steps value.")
+    sp = subparsers.add_parser("calibrateesteps", help="Debug: helper to determine the e-steps value.")
 
-    sp = subparsers.add_parser("calibratefilsensor", help=u"Debug: helper to determine the ratio of stepper to flowrate sensor.")
+    sp = subparsers.add_parser("calibratefilsensor", help="Debug: helper to determine the ratio of stepper to flowrate sensor.")
 
-    sp = subparsers.add_parser("changenozzle", help=u"Heat hotend and change nozzle.")
+    sp = subparsers.add_parser("changenozzle", help="Heat hotend and change nozzle.")
 
-    sp = subparsers.add_parser("disablesteppers", help=u"Disable stepper current (this dis-homes the printer).")
+    sp = subparsers.add_parser("disablesteppers", help="Disable stepper current (this dis-homes the printer).")
 
-    sp = subparsers.add_parser("exec", help=u"Debug: exec gcode.")
+    sp = subparsers.add_parser("exec", help="Debug: exec gcode.")
     # sp.add_argument("nozzle", help="Name of nozzle profile to use [nozzle40, nozzle80...].")
     ddargs.addNozzleArgument(sp)
     # sp.add_argument("mat", help="Name of generic material profile to use [pla, petg...].")
     ddargs.addMatArgument(sp)
     sp.add_argument("gcode", action="store", help="G-Code string.", type=str)
 
-    sp = subparsers.add_parser("fanspeed", help=u"Debug: set hotend fanspeed.")
+    sp = subparsers.add_parser("fanspeed", help="Debug: set hotend fanspeed.")
     sp.add_argument("fanspeed", type=int, help="Fanspeed to set [0..255].")
 
-    sp = subparsers.add_parser("getTemps", help=u"Get current temperatures (Bed, Extruder1, [Extruder2]).")
+    sp = subparsers.add_parser("getTemps", help="Get current temperatures (Bed, Extruder1, [Extruder2]).")
 
-    sp = subparsers.add_parser("getendstops", help=u"Get current endstop state.")
+    sp = subparsers.add_parser("getendstops", help="Get current endstop state.")
 
-    sp = subparsers.add_parser("getfilsensor", help=u"Get current filament position.")
+    sp = subparsers.add_parser("getfilsensor", help="Get current filament position.")
 
-    sp = subparsers.add_parser("getfreemem", help=u"Get printer free memory.")
+    sp = subparsers.add_parser("getfreemem", help="Get printer free memory.")
 
-    sp = subparsers.add_parser("getpos", help=u"Get current printer and virtual position.")
+    sp = subparsers.add_parser("getpos", help="Get current printer and virtual position.")
 
-    sp = subparsers.add_parser("getprintername", help=u"Get printer name from eeprom.")
+    sp = subparsers.add_parser("getprintername", help="Get printer name from eeprom.")
 
-    sp = subparsers.add_parser("getstatus", help=u"Get current printer status.")
+    sp = subparsers.add_parser("getstatus", help="Get current printer status.")
 
-    sp = subparsers.add_parser("heatbed", help=u"Heat up bed.")
+    sp = subparsers.add_parser("heatbed", help="Heat up bed.")
     # sp.add_argument("mat", help="Name of generic material profile to use [pla, petg...].")
     ddargs.addMatArgument(sp)
 
-    sp = subparsers.add_parser("heathotend", help=u"Heat up hotend.")
+    sp = subparsers.add_parser("heathotend", help="Heat up hotend.")
     # sp.add_argument("mat", help="Name of generic material profile to use [pla, petg...].")
     ddargs.addMatArgument(sp)
 
-    sp = subparsers.add_parser("home", help=u"Home the printer.")
+    sp = subparsers.add_parser("home", help="Home the printer.")
 
-    sp = subparsers.add_parser("insertfilament", help=u"Insert filament (heatup, forward filament).")
+    sp = subparsers.add_parser("insertfilament", help="Insert filament (heatup, forward filament).")
     # sp.add_argument("mat", help="Name of generic material profile to use [pla, petg...].")
     ddargs.addMatArgument(sp)
 
-    sp = subparsers.add_parser("measureTempFlowrateCurve", help=u"Determine temperature/flowrate properties of filament.")
+    sp = subparsers.add_parser("measureTempFlowrateCurve", help="Determine temperature/flowrate properties of filament.")
     # sp.add_argument("nozzle", help="Name of nozzle profile to use [nozzle40, nozzle80...].")
     ddargs.addNozzleArgument(sp)
     # sp.add_argument("mat", help="Name of generic material profile to use [pla, petg...].")
@@ -155,24 +155,24 @@ def main():
     sp.add_argument("flowrate", action="store", help="Start-flowrate in mm³/s.", type=float)
     sp.add_argument("mingrip", action="store", help="Minimum feeder grip when to stop measurement [0.9...0.95].", type=float)
 
-    sp = subparsers.add_parser("measureTempFlowrateCurve2", help=u"Determine temperature/flowrate properties of filament.")
+    sp = subparsers.add_parser("measureTempFlowrateCurve2", help="Determine temperature/flowrate properties of filament.")
     ddargs.addPrintArguments(sp)
     # sp.add_argument("nozzle", help="Name of nozzle profile to use [nozzle40, nozzle80...].")
     # sp.add_argument("mat", help="Name of generic material profile to use [pla, petg...].")
     # sp.add_argument("gfile", help="Measurement GCode file.")
     sp.add_argument("mingrip", action="store", help="Minimum feeder grip when to stop measurement [0.9...0.95].", type=float)
 
-    sp = subparsers.add_parser("mon", help=u"Monitor printer state.")
+    sp = subparsers.add_parser("mon", help="Monitor printer state.")
 
-    sp = subparsers.add_parser("moveabs", help=u"Debug: Move axis manually, absolute coords.")
+    sp = subparsers.add_parser("moveabs", help="Debug: Move axis manually, absolute coords.")
     sp.add_argument("axis", help="Axis (XYZAB).", type=str)
     sp.add_argument("distance", action="store", help="Move-distance (+/-) in mm.", type=float)
 
-    sp = subparsers.add_parser("moverel", help=u"Debug: Move axis manually, relative coords.")
+    sp = subparsers.add_parser("moverel", help="Debug: Move axis manually, relative coords.")
     sp.add_argument("axis", help="Axis (XYZAB).", type=str)
     sp.add_argument("distance", action="store", help="Move-distance (+/-) in mm.", type=float)
 
-    sp = subparsers.add_parser("pre", help=u"Preprocess gcode, for debugging purpose.")
+    sp = subparsers.add_parser("pre", help="Preprocess gcode, for debugging purpose.")
     # sp.add_argument("printer", help="Name of printer profile to use.")
     ddargs.addPrinterArgument(sp)
     ddargs.addPrintArguments(sp)
@@ -180,53 +180,53 @@ def main():
     # sp.add_argument("mat", help="Name of generic material profile to use [pla, petg...].")
     # sp.add_argument("gfile", help="Input GCode file.")
 
-    sp = subparsers.add_parser("print", help=u"Parse gcode file, download and print it.")
+    sp = subparsers.add_parser("print", help="Parse gcode file, download and print it.")
     ddargs.addPrintArguments(sp)
     # sp.add_argument("nozzle", help="Name of nozzle profile to use [nozzle40, nozzle80...].")
     # sp.add_argument("mat", help="Name of generic material profile to use [pla, petg...].")
     # sp.add_argument("gfile", help="Input GCode file.")
 
-    sp = subparsers.add_parser("readAnalogGpio", help=u"Debug: Set gpio pin to INPUT_ANALOG and read value.")
+    sp = subparsers.add_parser("readAnalogGpio", help="Debug: Set gpio pin to INPUT_ANALOG and read value.")
     sp.add_argument("pin", type=int, help="Pin number to read.")
 
-    sp = subparsers.add_parser("readGpio", help=u"Debug: Set gpio pin to INPUT and read value.")
+    sp = subparsers.add_parser("readGpio", help="Debug: Set gpio pin to INPUT and read value.")
     sp.add_argument("pin", type=int, help="Pin number to read.")
 
-    sp = subparsers.add_parser("removefilament", help=u"Remove filament (heatup, retract filament).")
+    sp = subparsers.add_parser("removefilament", help="Remove filament (heatup, retract filament).")
     # sp.add_argument("mat", help="Name of generic material profile to use [pla, petg...].")
     ddargs.addMatArgument(sp)
 
-    sp = subparsers.add_parser("reset", help=u"Emergency hard reset printer.")
+    sp = subparsers.add_parser("reset", help="Emergency hard reset printer.")
 
-    sp = subparsers.add_parser("setGpio", help=u"Debug: Set GPIO pin - dangerous.")
+    sp = subparsers.add_parser("setGpio", help="Debug: Set GPIO pin - dangerous.")
     sp.add_argument("pin", type=int, help="Pin number to set.")
     sp.add_argument("value", type=int, help="Value to set.")
 
-    sp = subparsers.add_parser("setprintername", help=u"Store printer name in eeprom.")
+    sp = subparsers.add_parser("setprintername", help="Store printer name in eeprom.")
     sp.add_argument("name", help="Printer name.")
 
-    sp = subparsers.add_parser("stat", help=u"Same as getstatus.")
+    sp = subparsers.add_parser("stat", help="Same as getstatus.")
 
-    sp = subparsers.add_parser("stepResponse", help=u"Measure and plot stepResponse of hotend PID (closed-loop).")
+    sp = subparsers.add_parser("stepResponse", help="Measure and plot stepResponse of hotend PID (closed-loop).")
 
-    sp = subparsers.add_parser("stop", help=u"Stop print, cooldown, home, disable steppers.")
+    sp = subparsers.add_parser("stop", help="Stop print, cooldown, home, disable steppers.")
 
-    sp = subparsers.add_parser("test", help=u"Debug: tests for debugging purpose.")
+    sp = subparsers.add_parser("test", help="Debug: tests for debugging purpose.")
 
-    sp = subparsers.add_parser("testFeederUniformity", help=u"Debug: check smoothness/roundness of feeder measurements.")
+    sp = subparsers.add_parser("testFeederUniformity", help="Debug: check smoothness/roundness of feeder measurements.")
 
-    sp = subparsers.add_parser("testFilSensor", help=u"Debug: move filament manually, output filament sensor measurement.")
+    sp = subparsers.add_parser("testFilSensor", help="Debug: move filament manually, output filament sensor measurement.")
     # sp.add_argument("printer", help="Name of printer profile to use.")
     ddargs.addPrinterArgument(sp)
     sp.add_argument("distance", action="store", help="Move-distance (+/-) in mm.", type=float)
 
-    sp = subparsers.add_parser("top", help=u"Get 'process stats' from printer.")
+    sp = subparsers.add_parser("top", help="Get 'process stats' from printer.")
 
-    sp = subparsers.add_parser("version", help=u"Get git version from firmware.")
+    sp = subparsers.add_parser("version", help="Get git version from firmware.")
 
-    sp = subparsers.add_parser("workingpos", help=u"Move to working pos for manual tasks.")
+    sp = subparsers.add_parser("workingpos", help="Move to working pos for manual tasks.")
 
-    sp = subparsers.add_parser("zRepeatability", help=u"Debug: Move Z to 10 random positions to test repeatability.")
+    sp = subparsers.add_parser("zRepeatability", help="Debug: Move Z to 10 random positions to test repeatability.")
 
     args = argParser.parse_args()
 
@@ -248,7 +248,7 @@ def main():
     elif args.mode == 'changenozzle':
 
         # xxx todo create printer/profile singletons ...
-        print "command %s currently disabled, exiting" % args.mode
+        print("command %s currently disabled, exiting" % args.mode)
         return
         util.changeNozzle(args, parser)
 
@@ -259,28 +259,28 @@ def main():
 
         while True:
 
-            print "=== mon ==="
+            print("=== mon ===")
             status = printer.getStatus()
             printer.printStatus(status)
 
             printer.top()
 
             pos = printer.getPos()
-            print "*** Printer POS: %s ***" % str(pos)
+            print("*** Printer POS: %s ***" % str(pos))
 
             # counts = printer.getFilSensor()
             # print "*** Filament pos: %s ***" % str(counts)
 
             freeMem = printer.getFreeMem()
-            print "*** Free memory: %d bytes ***" % freeMem
+            print("*** Free memory: %d bytes ***" % freeMem)
 
             try:
                 (cmd, payload) = printer.readResponse()        
             except RxTimeout:
                 pass
             else:
-                print "Response cmd    :", cmd
-                print "Response payload:", payload.encode("hex")
+                print("Response cmd    :", cmd)
+                print("Response payload:", payload.encode("hex"))
                 printer.checkErrorResponse(cmd, payload, False)
 
 
@@ -319,7 +319,7 @@ def main():
         printer = Printer()
         printer.initSerial(args.device, args.baud)
         status = printer.getStatus()
-        print "Status: "
+        print("Status: ")
         pprint.pprint(status)
 
         printer.initPrinterProfile(args)
@@ -331,9 +331,9 @@ def main():
 
         if status.state >= StateInit:
 
-            print ""
-            print "Reconnecting..."
-            print ""
+            print("")
+            print("Reconnecting...")
+            print("")
             # (printer, parser, planner) = initParser(args, mode=args.mode)
 
             # if "nozzle" in args:
@@ -347,7 +347,7 @@ def main():
             else:
                 mat = None
 
-            print "nozzle, mat:", nozzle, mat
+            print("nozzle, mat:", nozzle, mat)
 
             planner = Planner(args, nozzleProfile=nozzle, materialProfile=mat, printer=printer)
             planner.reconnect(status)
@@ -372,7 +372,7 @@ def main():
         else:
             mat = None
 
-        print "nozzle, mat:", nozzle, mat
+        print("nozzle, mat:", nozzle, mat)
 
         planner = Planner(args, nozzleProfile=nozzle, materialProfile=mat, printer=printer)
         parser = gcodeparser.UM2GcodeParser(planner)
@@ -400,7 +400,7 @@ def main():
             parser.execute_line(line)
             lineNr += 1
 
-        print "Parsed %d gcode lines." % lineNr
+        print("Parsed %d gcode lines." % lineNr)
 
         planner.finishMoves()
 
@@ -463,13 +463,13 @@ def main():
         printer = Printer()
         printer.initSerial(args.device, args.baud)
         val = printer.readGpio(args.pin)
-        print val
+        print(val)
 
     elif args.mode == 'readAnalogGpio':
         printer = Printer()
         printer.initSerial(args.device, args.baud)
         val = printer.readAnalogGpio(args.pin)
-        print val
+        print(val)
 
     elif args.mode == 'reset':
 
@@ -501,21 +501,21 @@ def main():
         printer = Printer()
         printer.initSerial(args.device, args.baud)
         res = printer.getEndstops()
-        print "Endstop state: ", res
+        print("Endstop state: ", res)
     
     elif args.mode == 'getfilsensor':
 
         printer = Printer()
         printer.initSerial(args.device, args.baud)
         counts = printer.getFilSensor()
-        print "Filament pos:", counts
+        print("Filament pos:", counts)
 
     elif args.mode == 'getfreemem':
 
         printer = Printer()
         printer.initSerial(args.device, args.baud)
         freeMem = printer.getFreeMem()
-        print "Free memory: %d bytes" % freeMem
+        print("Free memory: %d bytes" % freeMem)
 
     elif args.mode == "getpos":
 
@@ -537,28 +537,28 @@ def main():
 
         (homePosMM, homePosStepped) = planner.getHomePos()
 
-        print "Printer pos [steps]:", res
-        print "Printer pos [mm]:", curPosMM
-        print "Virtual home pos [mm]: ", homePosMM
+        print("Printer pos [steps]:", res)
+        print("Printer pos [mm]:", curPosMM)
+        print("Virtual home pos [mm]: ", homePosMM)
 
     elif args.mode == "getprintername":
 
         printer = Printer()
         printer.initSerial(args.device, args.baud)
-        print "Printer name: '%s'" % printer.getPrinterName(args)
+        print("Printer name: '%s'" % printer.getPrinterName(args))
 
     elif args.mode == "getTemps":
 
         printer = Printer()
         printer.initSerial(args.device, args.baud)
         temps = printer.getTemps()
-        print "temperatures: ", temps
+        print("temperatures: ", temps)
 
     elif args.mode == "version":
 
         printer = Printer()
         printer.initSerial(args.device, args.baud)
-        print "Firmware version: '%s'" % printer.getPrinterVersion(args)
+        print("Firmware version: '%s'" % printer.getPrinterVersion(args))
 
     elif args.mode == "getstatus" or args.mode == "stat":
 
@@ -657,7 +657,7 @@ def main():
         printer.erase(0)
 
     else:
-        print "Unknown/not implemented command: ", args.mode
+        print("Unknown/not implemented command: ", args.mode)
         assert(0)
 
 if __name__ == "__main__":

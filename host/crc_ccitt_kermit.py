@@ -59,18 +59,18 @@ def crc16_kermit(data, crc=0):
     tab = CRC16_KERMIT_TAB  # minor optimization (now in locals)
 
     for c in data:
-        tbl_idx = (crc ^ ord(c)) & 0xff
+        tbl_idx = (crc ^ c) & 0xff
         crc = (tab[tbl_idx] ^ (crc >> 8)) & 0xffff
     return crc & 0xffff
 
 if __name__ == "__main__":
 
-    s = "123456789"
+    s = b"123456789"
     crc = 0xffff
 
     crc = crc16_kermit(s,  crc)
 
-    print "crc: 0x%x" % crc
+    print("crc: 0x%x" % crc)
 
 
 

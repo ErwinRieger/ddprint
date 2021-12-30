@@ -25,8 +25,6 @@
 
 import time, math, pprint, sys
 
-import numpy as np
-
 import ddhome, movingavg, gcodeparser, ddprintutil as util
 import intmath
 from ddprofile import MatProfile
@@ -55,13 +53,13 @@ def testFilSensor(args, printer, parser):
 
     steps_per_mm = printer.printerProfile.getStepsPerMMI(A_AXIS)
 
-    print "steps_per_mm  E:", steps_per_mm
+    print("steps_per_mm  E:", steps_per_mm)
 
     cal = diff / (steps_per_mm * args.distance) 
 
-    print "Commanded steps: ", (steps_per_mm * args.distance)
-    print "Filament pos in counts old:", startPos, ", new:", endPos, "difference: %d counts" % diff
-    print "Calibration value from profile: %f, measured ratio: %f" % (pcal, cal)
+    print("Commanded steps: ", (steps_per_mm * args.distance))
+    print("Filament pos in counts old:", startPos, ", new:", endPos, "difference: %d counts" % diff)
+    print("Calibration value from profile: %f, measured ratio: %f" % (pcal, cal))
 
 #
 # Measure/calibrate feeder e-steps value
@@ -87,16 +85,16 @@ def calibrateESteps(args, printer, planner):
     p = intmath.fsCalibration(1.0)
     printer.sendCommandParamV(CmdSetFilSensorCal, (p, ))
 
-    print "\n*"
-    print "* Machine Calibration: Measeure e-steps"
-    print "*"
+    print("\n*")
+    print("* Machine Calibration: Measeure e-steps")
+    print("*")
 
     # Time for one revolution
     tRound = printer.printerProfile.getFeederWheelCircumI() / feedrate
     tStartup = util.getStartupTime(printer, feedrate)
-    print "tRound:", tRound, "tStartup:", tStartup
+    print("tRound:", tRound, "tStartup:", tStartup)
 
-    print "running %.2f seconds with %.2f mm/s" % (tRound, feedrate)
+    print("running %.2f seconds with %.2f mm/s" % (tRound, feedrate))
 
     printer.sendCommandParamV(CmdContinuousE, [packedvalue.uint16_t(maxTimerValue16)])
 
@@ -127,12 +125,12 @@ def calibrateESteps(args, printer, planner):
 
         if crossAvg.getNValues():
 
-            print "\r# %s, %d(%d), avg short term: %.3f, long term: %.3f" % ((crossAvg.started and "Measure" or "Starting"), crossAvg.getNValues(), crossAvg.nLongPeriod, crossAvg.shortAvg(), crossAvg.longAvg()),
+            print("\r# %s, %d(%d), avg short term: %.3f, long term: %.3f" % ((crossAvg.started and "Measure" or "Starting"), crossAvg.getNValues(), crossAvg.nLongPeriod, crossAvg.shortAvg(), crossAvg.longAvg()), end=' ')
             sys.stdout.flush()
 
         time.sleep(0.25)
 
-    print ""
+    print("")
 
     dFeederWheel = printer.printerProfile.getFeederWheelDiamI()
 
@@ -140,15 +138,15 @@ def calibrateESteps(args, printer, planner):
 
         avg = crossAvg.shortAvg()
         meanLong = crossAvg.longAvg()
-        print "\nAvg converged after %d seconds:" % int(time.time()-tStart), meanLong, avg, "%.5f%%" % ((((meanLong/avg)-1.0))*100)
+        print("\nAvg converged after %d seconds:" % int(time.time()-tStart), meanLong, avg, "%.5f%%" % ((((meanLong/avg)-1.0))*100))
    
         measuredEsteps = printer.printerProfile.getFilSensorCountsPerMM() / avg
 
         esteps = printer.printerProfile.getStepsPerMMI(A_AXIS)
-        print "Measured e-steps: %.3f (%d)" % (measuredEsteps, esteps)
+        print("Measured e-steps: %.3f (%d)" % (measuredEsteps, esteps))
 
     else:
-        print "Error avg did not converge."
+        print("Error avg did not converge.")
 
     printer.sendCommandParamV(CmdContinuousE, [packedvalue.uint16_t(maxTimerValue16)])
     printer.sendCommandParamV(CmdContinuousE, [packedvalue.uint16_t(0)])
@@ -200,17 +198,17 @@ def calibrateFilSensor(args, printer, planner):
 
     dFeederWheel = printer.printerProfile.getFeederWheelDiamI()
 
-    print "\n*"
-    print "* Machine Calibration: Measeure flowrate sensor calibration value"
-    print "*"
+    print("\n*")
+    print("* Machine Calibration: Measeure flowrate sensor calibration value")
+    print("*")
     while feedrate <= maxFeedrate:
 
         # Time for one revolution
         tRound = printer.printerProfile.getFeederWheelCircumI() / feedrate
         tStartup = util.getStartupTime(printer, feedrate)
-        print "tRound:", tRound, "tStartup:", tStartup
+        print("tRound:", tRound, "tStartup:", tStartup)
 
-        print "running %.2f seconds with %.2f mm/s" % (tRound, feedrate)
+        print("running %.2f seconds with %.2f mm/s" % (tRound, feedrate))
 
         # set new feedrate:
         stepperVal = util.eTimerValue(printer, feedrate)
@@ -241,21 +239,21 @@ def calibrateFilSensor(args, printer, planner):
                     treading = (t-tStart) / crossAvg.getNValues()
                     crossAvg.started = True
 
-            print "\r# %s, %d(%d), avg short term: %.3f, long term: %.3f" % ((crossAvg.started and "Measure" or "Starting"), crossAvg.nLongPeriod, crossAvg.getNValues(), crossAvg.shortAvg(), crossAvg.longAvg()),
+            print("\r# %s, %d(%d), avg short term: %.3f, long term: %.3f" % ((crossAvg.started and "Measure" or "Starting"), crossAvg.nLongPeriod, crossAvg.getNValues(), crossAvg.shortAvg(), crossAvg.longAvg()), end=' ')
             sys.stdout.flush()
 
             time.sleep(0.25)
 
-        print ""
+        print("")
 
         if crossAvg.converged:
 
             avg = crossAvg.shortAvg()
             meanLong = crossAvg.longAvg()
-            print "\nAvg converged after %d seconds:" % int(time.time()-tStart), meanLong, avg, "%.5f%%" % (((meanLong/avg)-1.0)*100)
+            print("\nAvg converged after %d seconds:" % int(time.time()-tStart), meanLong, avg, "%.5f%%" % (((meanLong/avg)-1.0)*100))
    
         else:
-            print "Error avg did not converge."
+            print("Error avg did not converge.")
             break
 
         stepindex += 1
@@ -277,7 +275,7 @@ def calibrateFilSensor(args, printer, planner):
     if printer.printerProfile.hasValue("filSensorCalibration"):
         fscal = "%.4f" % printer.printerProfile.getFilSensorCalibration()
 
-    print "Done, average ratio/calibration value: %.4f (%s)" % (crossAvg.longAvg(), fscal)
+    print("Done, average ratio/calibration value: %.4f (%s)" % (crossAvg.longAvg(), fscal))
 
     # Re-enable flowrate limit
     printer.sendCommandParamV(CmdEnableFRLimit, [packedvalue.uint8_t(1)])
@@ -311,7 +309,7 @@ def testFeederUniformity(args, parser):
     tRound = 10
     feedrate = args.feedrate or (circ / tRound)
 
-    print "circum:", circ, "feedrate:", feedrate
+    print("circum:", circ, "feedrate:", feedrate)
 
     printer.commandInit(args)
 
@@ -326,7 +324,7 @@ def testFeederUniformity(args, parser):
     readings = {}
     measurements = []
 
-    print "running feeder with %.2f mm/s and %.2f mm distance" % (feedrate, d)
+    print("running feeder with %.2f mm/s and %.2f mm distance" % (feedrate, d))
 
     # Start feeder motor
     parser.execute_line("G0 F%d %s%f" % (feedrate*60, util.dimNames[A_AXIS], startPos + d))
@@ -347,7 +345,7 @@ def testFeederUniformity(args, parser):
 
         fsreadings = printer.getFSReadings()
 
-        print "fsreadings:"
+        print("fsreadings:")
         pprint.pprint(fsreadings)
 
         allZero = True
@@ -363,7 +361,7 @@ def testFeederUniformity(args, parser):
 
         t = time.time()
 
-    timeStamps = readings.keys()
+    timeStamps = list(readings.keys())
     timeStamps.sort()
     lastTs = timeStamps[0] - 100
     for ts in timeStamps:
@@ -387,7 +385,7 @@ def testFeederUniformity(args, parser):
         del measurements[-1]
     """
 
-    print "writing testFeederUniformity_dataset.py:"
+    print("writing testFeederUniformity_dataset.py:")
     with open("testFeederUniformity_dataset.py", "w") as f:
         f.write("dFeederWheel = %f\n" % dFeederWheel)
         f.write("feedrate = %f\n" % feedrate)
@@ -433,7 +431,7 @@ def execGcode(args):
 
     for gcode in args.gcode.split("\n"):
         for g in gcode.split(";"):
-            print "Exec gcode: '%s'" % g
+            print("Exec gcode: '%s'" % g)
             parser.execute_line(g)
 
     planner.finishMoves()

@@ -43,7 +43,7 @@ def homeMove(parser, dim, direction, dist, fakeHomingEndstops, feedRateFactor=1.
 
     feedRate = printer.printerProfile.getHomeFeedrate(dim) * feedRateFactor
 
-    print "--- homeMove(): send %s - homing move, dist: %.2f, feedrate: %.2f mm/s" % (dimNames[dim], dist*direction, feedRate)
+    print("--- homeMove(): send %s - homing move, dist: %.2f, feedrate: %.2f mm/s" % (dimNames[dim], dist*direction, feedRate))
 
     cmd = "G0 F%f %s%f" % (feedRate*60, dimNames[dim], dist * direction)
 
@@ -88,14 +88,14 @@ def homeBounce(parser, dim, direction, fakeHomingEndstops):
 
 def home(args, printer, parser, planner, force=False):
 
-    print "*"
-    print "* Start homing..."
-    print "*"
+    print("*")
+    print("* Start homing...")
+    print("*")
 
     (homePosMMLifted, homePosSteppedLifted) = planner.getHomePos(True)
 
     if printer.isHomed() and not force:
-        print "Printer is homed already..."
+        print("Printer is homed already...")
 
         # Get current pos from printer and set our virtual pos
         curPosMM = util.getVirtualPos(printer, parser)
@@ -129,9 +129,9 @@ def home(args, printer, parser, planner, force=False):
             #
             parser.setPos(homePosMMLifted)
 
-        print "*"
-        print "* Done homing..."
-        print "*"
+        print("*")
+        print("* Done homing...")
+        print("*")
         return
 
     # Position directly after homing
@@ -175,29 +175,29 @@ def home(args, printer, parser, planner, force=False):
         else:
             direction = -1.0
 
-        print "\nHoming axis %s, direction: %d" % (dimNames[dim], direction)
+        print("\nHoming axis %s, direction: %d" % (dimNames[dim], direction))
 
         # Try fast home if endstop is pressed
         if printer.endStopTriggered(dim, args.fakeendstop):
 
-            print "Homing: %s - endstop is triggered, trying fast home." % dimNames[dim]
+            print("Homing: %s - endstop is triggered, trying fast home." % dimNames[dim])
             if homeBounce(parser, dim, direction, args.fakeendstop):
                 liftHead()
                 continue
 
         if not homeMove(parser, dim, direction, planner.MAX_POS[dim] * 1.25, args.fakeendstop): # Move towards endstop fast
-            print "Error, %s - endstop NOT hit!" % dimNames[dim]
+            print("Error, %s - endstop NOT hit!" % dimNames[dim])
             assert(0)
 
         if not homeBounce(parser, dim, direction, args.fakeendstop):
-            print "Error, Bounce %s - endstop!" % dimNames[dim]
+            print("Error, Bounce %s - endstop!" % dimNames[dim])
             assert(0)
 
         liftHead()
 
-    print "*"
-    print "* Done homing..."
-    print "*"
+    print("*")
+    print("* Done homing...")
+    print("*")
 
 ####################################################################################################
 
@@ -205,7 +205,7 @@ def assureIsHomed(args, printer, parser, planner):
 
     if not printer.isHomed():
 
-        raw_input("Press return to start homing...")
+        input("Press return to start homing...")
         home(args, printer, parser, planner)
 
     else:

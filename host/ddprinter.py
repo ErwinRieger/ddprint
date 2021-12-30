@@ -114,9 +114,9 @@ class Printer(Serial):
     def checkStall(self, status):
 
         if (self.stallwarn.lastSwap == status.Swap):
-            print "Swap did not change..."
+            print("Swap did not change...")
         if (self.stallwarn.lastSteps == status.StepBuffer) and (self.stallwarn.lastSDReader == status.SDReader):
-            print "stall ???"
+            print("stall ???")
 
     def commandResend(self, lastLine):
 
@@ -141,13 +141,13 @@ class Printer(Serial):
 
         if respCode == RespUnknownCommand:
 
-            self.gui.logError("ERROR: RespUnknownCommand '0x%x'" % ord(payload))
+            self.gui.logError("ERROR: RespUnknownCommand '0x%x'" % payload[0])
             if handleError:
                 raise FatalPrinterError(ResponseNames[respCode])
 
         elif respCode == RespKilled:
 
-            reason = ord(payload[0])
+            reason = payload[0]
             if reason in [RespHardwareEndstop, RespSoftwareEndstop]:
 
                 (x, y, z, xtrig, ytrig, ztrig) = struct.unpack("<iiiBBB", payload[1:])
@@ -155,7 +155,7 @@ class Printer(Serial):
 
             elif reason == RespUnknownBCommand:
 
-                self.gui.logError("ERROR: PRINTER KILLED! Reason: %s, command: 0x%x" % (RespCodeNames[reason], ord(payload[1])))
+                self.gui.logError("ERROR: PRINTER KILLED! Reason: %s, command: 0x%x" % (RespCodeNames[reason], payload[1]))
 
             elif reason == RespAssertion:
 
@@ -205,7 +205,7 @@ class Printer(Serial):
 
         elif respCode == RespRXCRCError:
 
-            lastLine = ord(payload)
+            lastLine = payload[0]
             self.gui.logComm("RespRXCRCError:", lastLine)
 
             if handleError:
@@ -220,14 +220,14 @@ class Printer(Serial):
 
         elif respCode == RespSerNumberError:
 
-            lastLine = ord(payload)
+            lastLine = payload[0]
             self.gui.logComm("RespSerNumberError:", lastLine)
             if handleError:
                 return self.commandResend(lastLine)
 
         elif respCode == RespRXTimeoutError:
 
-            lastLine = ord(payload)
+            lastLine = payload[0]
             self.gui.logComm("RespRXTimeoutError:", lastLine)
             if handleError:
 
@@ -241,7 +241,7 @@ class Printer(Serial):
 
         # elif respCode == RespRXFullError:
 
-            # lastLine = ord(payload)
+            # lastLine = payload[0]
             # self.gui.logComm("RespRXTFullEror:", lastLine)
             # if handleError:
                 # return self.commandResend(lastLine)
@@ -268,7 +268,7 @@ class Printer(Serial):
 
         if respCode == RespUnsolicitedMsg:
 
-            msgType = ord(payload[0])
+            msgType = payload[0]
             self.gui.logComm("RespUnsolicitedMsg:", msgType)
 
             try:
@@ -337,31 +337,26 @@ class Printer(Serial):
     def readResponse(self):
 
         startByte = self.readWithTimeout(1)
-        while (startByte != cobs.nullByte):
-            print "waiting for SOH, read garbage: 0x%x" % ord(startByte)
+        while (startByte != cobs.NullBytes):
+            print("waiting for SOH, read garbage: 0x%x" % startByte[0])
             startByte = self.readWithTimeout(1)
 
         header = self.readWithTimeout(2) # SOH + RC + lenbyte
 
-        # Todo: loop til SOH found and/or proper errorhandling
-        # assert(header[0] == cobs.nullByte)
-
         # Response code
-        rc = header[0]
-        cmd = ord(rc)
+        cmd = header[0]
 
         # Length byte
         l = header[1]
-        length = ord(l) - 1
+        length = l - 1
 
         # if debugComm:
             # self.gui.logComm("Response 0x%x, reading %d b" % (cmd, length))
 
         # Checksum
-        crc = crc_ccitt_kermit.crc16_kermit(rc, 0xffff)
-        crc = crc_ccitt_kermit.crc16_kermit(l, crc)
+        crc = crc_ccitt_kermit.crc16_kermit(header, 0xffff)
 
-        payload = ""
+        payload = b""
         if length:
             payload = self.readWithTimeout(length) # read payload
             crc = crc_ccitt_kermit.crc16_kermit(payload, crc)
@@ -376,7 +371,7 @@ class Printer(Serial):
             checkSum -= 0x101;
 
         if checkSum != crc:
-            print "RxChecksumError our: 0x%x, fw: 0x%x, payload: %s, cflags: 0x%x" % (crc, checkSum, (rc + l + payload).encode("hex"), cflags)
+            print("RxChecksumError our: 0x%x, fw: 0x%x, payload: %s (hex), cflags: 0x%x" % (crc, checkSum, (header + payload).hex(), cflags))
             """
             # Drain input
             try:
@@ -403,7 +398,7 @@ class Printer(Serial):
     def initSerial(self, device, br, bootloaderWait=False):
 
         if self.isOpen():
-            print "\nWARNING: initSerial() already done."
+            print("\nWARNING: initSerial() already done.")
             self.resetLineNumber()
             return
 
@@ -513,11 +508,11 @@ class Printer(Serial):
     def setBaudRate(self):
 
         baudrate = self.baudrates[self.baudrateIndex]
-        lowbyte = (fCPU+baudrate*8) / (baudrate*16) - 1;
-        print "Auto-Baudrate: set to %d (lowbyte: %d)" % (baudrate, lowbyte)
+        lowbyte = (fCPU+baudrate*8) // (baudrate*16) - 1;
+        print("Auto-Baudrate: set to %d (lowbyte: %d)" % (baudrate, lowbyte))
         payload = struct.pack("<I", lowbyte)
         self.sendCommand(CmdSetBaudRate, binPayload=payload)
-        print "Baudrate command successful"
+        print("Baudrate command successful")
 
         self.baudrate = baudrate
         time.sleep(0.1)
@@ -544,10 +539,6 @@ class Printer(Serial):
 
             try:
                 self.write(cmd)
-                # self.write(cmd[:256])
-                # if (len(cmd) > 256):
-                    # time.sleep(0.01)
-                    # self.write(cmd[256:])
             except SerialTimeoutException:
                 self.gui.log("Tryed sending %d bytes: " % len(cmd), cmd[:10].encode("hex"))
                 self.gui.log("SerialTimeoutException on send!!!")
@@ -677,11 +668,12 @@ class Printer(Serial):
         """
         # print "sendCommand512 done2"
 
+    # todo: python3
     def dbgCommand512(self, binary):
 
         assert(ord(binary[0]) == SOH)
         pnum = ord(binary[1])
-        print "packet num:", pnum
+        print("packet num:", pnum)
         assert(ord(binary[2]) == CmdG1)
 
         (payload, lenread) = cobs.decodeCobs512(binary[3:])
@@ -689,18 +681,18 @@ class Printer(Serial):
         assert(len(payload) == 512)
 
         flags = ord(binary[3+lenread])
-        print "flags:", flags
+        print("flags:", flags)
 
         c1 = ord(binary[4+lenread])
-        print "c1: 0x%x" % c1
+        print("c1: 0x%x" % c1)
         c2 = ord(binary[5+lenread])
-        print "c2: 0x%x" % c2
+        print("c2: 0x%x" % c2)
 
     # Use query() if you need the result of the command
     def sendCommandParamV(self, cmd, params):
 
         assert(params[0] != None)
-        payload = ""
+        payload = bytearray()
         for p in params:
             if p:
                 payload += p.pack()
@@ -722,9 +714,9 @@ class Printer(Serial):
 
         # Debug 
         if expectedLen and len(reply[1]) != expectedLen:
-            print "WARNING: reply size wrong: %d/%d" % (len(reply[1]), expectedLen)
-            print "Hex dump:"
-            print reply[1].encode("hex")
+            print("WARNING: reply size wrong: %d/%d" % (len(reply[1]), expectedLen))
+            print("Hex dump:")
+            print(reply[1].encode("hex"))
 
         return reply
 
@@ -863,7 +855,7 @@ class Printer(Serial):
                 # print "got reply:", payload
                 return (cmd, payload)
 
-            print "unknown reply: 0x%x" % cmd, payload
+            print("unknown reply: 0x%x" % cmd, payload)
             assert(0)
 
         # Notreached
@@ -910,16 +902,16 @@ class Printer(Serial):
 
             # print "cmd, len payload:", cmd, len(payload)
 
-            structFmt = "<" + "I" * (len(payload) / 4)
+            structFmt = "<" + "I" * (len(payload) // 4)
             tup = struct.unpack(structFmt, payload)
 
             tupindex = 0
-            print statusName
-            print "%15s %10s %10s %10s" % ("Task", "#Calls", "TSum", "TLongest")
+            print(statusName)
+            print("%15s %10s %10s %10s" % ("Task", "#Calls", "TSum", "TLongest"))
             for taskname in tasknames:
                 nCalls = tup[tupindex]
                 tSum = tup[tupindex+1]
-                print "%15s %10d %10d %10d" % (taskname, nCalls, tSum, tup[tupindex+2])
+                print("%15s %10d %10d %10d" % (taskname, nCalls, tSum, tup[tupindex+2]))
                 tupindex+=3
 
     def printStatus(self, ns):
@@ -937,7 +929,7 @@ class Printer(Serial):
         s += "\n    Slow : slowdown: %.2f " % (ns.slowdown)
         s += "\n    Misc : templow: %4d griplow: %4d epos: %5d stepbuffer: %4d bufferlow: %4d minbuffer: %4d" % (ns.underTemp, ns.underGrip, ns.ePos, ns.StepBuffer, ns.StepBufUnderRuns, ns.minBuffer)
 
-        print s
+        print(s)
 
     # Prettyprint printer status
     def ppStatus(self, statusDict, msg=""):
@@ -946,12 +938,12 @@ class Printer(Serial):
         if statusDict.slippage:
             gripstr = "%4.2f" % (1.0/statusDict.slippage)
         if msg:
-            print msg
-        print "Bed: %5.1f, Hotend: %5.1f(%5.1f), Pwm: %3d, Swap: %10s, MinBuffer: %3d, underrun: %5d, Grip: %.4s, SlowDown: %4.2f, underTemp %5d, underGrip: %5d" % \
+            print(msg)
+        print("Bed: %5.1f, Hotend: %5.1f(%5.1f), Pwm: %3d, Swap: %10s, MinBuffer: %3d, underrun: %5d, Grip: %.4s, SlowDown: %4.2f, underTemp %5d, underGrip: %5d" % \
             (statusDict.t0, statusDict.t1, statusDict.targetT1, 
              statusDict.pwmOutput, util.sizeof_fmt(statusDict.Swap),
              statusDict.minBuffer, statusDict.StepBufUnderRuns, gripstr, statusDict.slowdown,
-             statusDict.underTemp, statusDict.underGrip)
+             statusDict.underTemp, statusDict.underGrip))
 
     # Get printer (-profile) name from printer eeprom
     def getPrinterName(self, args):
@@ -964,7 +956,7 @@ class Printer(Serial):
 
         resp = self.query(CmdGetPrinterName)
         pn = util.getResponseString(resp[1], 1)
-        return pn
+        return pn.decode()
 
     def setPrinterName(self, args):
 
@@ -980,7 +972,7 @@ class Printer(Serial):
 
         resp = self.query(CmdGetVersion)
         pn = util.getResponseString(resp[1], 1)
-        return pn
+        return pn.decode()
 
     #
     # The used printer profile is normally determined by the printername
@@ -1027,11 +1019,11 @@ class Printer(Serial):
             temps = struct.unpack("<hh", payload)
         else:
             if len(payload) != 6:
-                print "WARNING: getTemp(): payload size wrong: %d/12" % len(payload)
+                print("WARNING: getTemp(): payload size wrong: %d/12" % len(payload))
 
             temps = struct.unpack("<hhh", payload)
 
-        return map(lambda t: intmath.fromFWTemp(t), temps)
+        return [intmath.fromFWTemp(t) for t in temps]
 
     def getTemps(self, doLog = False):
 
@@ -1042,7 +1034,7 @@ class Printer(Serial):
         else:
             targetTemps = struct.unpack("<hhh", payload)
 
-        targetTemps = map(lambda t: intmath.fromFWTemp(t), targetTemps)
+        targetTemps = [intmath.fromFWTemp(t) for t in targetTemps]
 
         self.gui.tempCb(temps[0], temps[1], targetTemps[1])
         return temps
@@ -1051,7 +1043,7 @@ class Printer(Serial):
 
     def heatUp(self, heater, temp, wait=None, log=False):
 
-        assert(type(temp) == types.IntType)
+        assert(type(temp) == int)
 
         # payload = struct.pack("<BH", heater, temp) # Parameters: heater, temp
         # self.sendCommand(CmdSetTargetTemp, binPayload=payload)
@@ -1062,13 +1054,13 @@ class Printer(Serial):
             temps = self.getTemps()
 
             if log:
-                print "\rTemp: %.2f (%.2f)" % (temps[heater], wait),
+                print("\rTemp: %.2f (%.2f)" % (temps[heater], wait), end=' ')
                 sys.stdout.flush()
 
             if temps[heater] >= wait:
                 break
 
-        print "\n"
+        print("\n")
 
     ####################################################################################################
     #
@@ -1080,7 +1072,7 @@ class Printer(Serial):
     #
     def heatUpRamp(self, heater, tdest, log=False):
 
-        assert(type(tdest) == types.IntType)
+        assert(type(tdest) == int)
 
         # Ramp up time: tu+tg from the autotune step response.
         timeConstant = self.printerProfile.getTuI() + self.printerProfile.getTgI() 
@@ -1091,15 +1083,11 @@ class Printer(Serial):
 
         a = tdest / timeConstant
 
-        print "Start temprapmp...", tdest, timeConstant, a
+        print("Start tempramp...", tdest, timeConstant, a)
 
         if a <= 0:
-            # payload = struct.pack("<BH", heater, tdest)
-            # self.sendCommand(CmdSetTargetTemp, binPayload=payload)
             self.setTargetTemp(heater, tdest)
             return
-
-        step = 1
 
         while True:
 
@@ -1108,21 +1096,16 @@ class Printer(Serial):
 
             if temp < tdest-2:
 
-                t = min(startTemp + (time.time() - startTime) * a, tdest)
+                t = min(round(startTemp + (time.time() - startTime) * a), tdest)
 
-                print "temp is below dest", temp, t, tdest
+                print("temp is below dest", temp, t, tdest)
 
-                # payload = struct.pack("<BH", heater, t)
-                # self.sendCommand(CmdSetTargetTemp, binPayload=payload)
                 self.setTargetTemp(heater, t)
-
                 yield(temp)
 
             else:
 
                 # print "temp reached"
-                # payload = struct.pack("<BH", heater, tdest)
-                # self.sendCommand(CmdSetTargetTemp, binPayload=payload)
                 self.setTargetTemp(heater, tdest)
                 yield(temp)
                 break
@@ -1131,7 +1114,7 @@ class Printer(Serial):
     # Erase mass storage
     def erase(self, nBlocks):
 
-        print "Erasing mass storage ..."
+        print("Erasing mass storage ...")
 
         startTS = time.time()
         if not nBlocks:
@@ -1143,7 +1126,7 @@ class Printer(Serial):
 
         self.waitForState(StateInit)
 
-        print "Mass storage erase of %d blocks done, time used: %.2fs" % (nBlocks, time.time() - startTS)
+        print("Mass storage erase of %d blocks done, time used: %.2fs" % (nBlocks, time.time() - startTS))
 
     ####################################################################################################
     # Start printing process, and record print start time
@@ -1192,10 +1175,10 @@ class Printer(Serial):
 
     def coolDown(self, heater, temp=0, wait=None, log=False):
 
-        assert(type(temp) == types.IntType)
+        assert(type(temp) == int)
 
         if log:
-            print "coolDown(): cooling down hotend..."
+            print("coolDown(): cooling down hotend...")
 
         if heater > HeaterBed:
             # Switch on PID mode
@@ -1212,14 +1195,14 @@ class Printer(Serial):
             temps = self.getTemps()
 
             if log:
-                print "\rTemp: %.2f (%.2f)" % (temps[heater], wait),
+                print("\rTemp: %.2f (%.2f)" % (temps[heater], wait), end=' ')
                 sys.stdout.flush()
 
             if temps[heater] <= wait:
                 break
 
         if log:
-            print ""
+            print("")
 
     ####################################################################################################
 
@@ -1253,10 +1236,10 @@ class Printer(Serial):
         tup = self.getEndstops()
 
         if tup[dim*2] or fakeHomingEndstops:
-            print "Endstop %s hit at position: %d" % (dimNames[dim], tup[dim*2+1])
+            print("Endstop %s hit at position: %d" % (dimNames[dim], tup[dim*2+1]))
             return True
 
-        print "Endstop %s open at position: %d" % (dimNames[dim], tup[dim*2+1])
+        print("Endstop %s open at position: %d" % (dimNames[dim], tup[dim*2+1]))
         return False
 
     ####################################################################################################

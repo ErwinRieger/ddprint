@@ -50,7 +50,7 @@ class ProfileBase(object):
         if specificName:
             f = self.openJson(specificName)
             specificValues = util.jsonLoad(f)
-            for k in specificValues.keys():
+            for k in list(specificValues.keys()):
                 self.values[k] = specificValues[k]
 
     def getBaseName(self):
@@ -103,7 +103,7 @@ class ProfileBase(object):
         logger.logPrintLog("\n%s: %s\n" % (heading, self.name))
         if self.specificName:
             logger.logPrintLog("  Specific profile: %s\n" % self.specificName)
-        for key in self.values.keys():
+        for key in list(self.values.keys()):
             logger.logPrintLog("  %s: %s\n" % (key, str(self.values[key])))
 
 
@@ -127,13 +127,13 @@ class PrinterProfile(ProfileBase):
         return int(self.getValue("axes")[dimNames[axisNr]]["home_feedrate"])
 
     def getStepsPerMMVectorI(self):
-        return map(lambda d: self.getStepsPerMMI(d), range(5))
+        return [self.getStepsPerMMI(d) for d in range(5)]
 
     def getMaxFeedrateI(self, axisNr):
         return self.getValue("axes")[dimNames[axisNr]]["max_feedrate"]
 
     def getMaxFeedrateVectorI(self):
-        return map(lambda d: self.getMaxFeedrateI(d), range(5))
+        return [self.getMaxFeedrateI(d) for d in range(5)]
 
     def getRetractFeedrate(self):
         return self.getValue("RetractFeedrate")
@@ -155,7 +155,7 @@ class PrinterProfile(ProfileBase):
         ofs = float(self.getValue("add_homeing_z"))
 
         if ofs < 0:
-            print "Warning: negative add_homeing_z is deprecated (%f)" % ofs
+            print("Warning: negative add_homeing_z is deprecated (%f)" % ofs)
             return abs(ofs)
 
         return ofs
@@ -177,7 +177,7 @@ class PrinterProfile(ProfileBase):
         pidSetHeating = pidSet[:2]
         pidSetCooling = pidSet[2:]
 
-        print "getSettings(): pidset to use: %s, heating: %s, cooling: %s" % (pidSet, pidSetHeating, pidSetCooling)
+        print("getSettings(): pidset to use: %s, heating: %s, cooling: %s" % (pidSet, pidSetHeating, pidSetCooling))
 
         return {
             "filSensorCalibration": self.getFilSensorCalibration(),

@@ -58,6 +58,15 @@ def vectorMul(v1, v2):
     return product
 
 ####################################################################################################
+def vectorMulInt(v1, v2):
+
+    product = []
+    for i in range(len(v2)):
+        product.append(round(v1[i] * v2[i]))
+
+    return product
+
+####################################################################################################
 def vectorDiv(v1, v2):
 
     product = []
@@ -96,7 +105,7 @@ class Vector(object):
 
         dim = dim.upper()
         if dim not in "XYZAB":
-            print "unknown dimension requested: ", dim
+            print("unknown dimension requested: ", dim)
             assert(0)
 
         return self.vv["XYZAB".index(dim)]
@@ -137,9 +146,9 @@ class Vector(object):
         for dim in range(len(self.vv)):
             j = abs(other[dim] - self[dim])
             if (j / jerk[dim]) > 1.1:
-                print "Join '%s' <-> '%s': dimension %d %f verletzt max jerk %f" % (selfName, otherName, dim, j, jerk[dim])
-                print "V1: ", self
-                print "V2: ", other
+                print("Join '%s' <-> '%s': dimension %d %f verletzt max jerk %f" % (selfName, otherName, dim, j, jerk[dim]))
+                print("V1: ", self)
+                print("V2: ", other)
                 assert(0)
 
     def length(self, nelem=None):
@@ -298,9 +307,9 @@ class VelocityVector5(object):
         for dim in range(len(thisv)):
             j = abs(otherv[dim] - thisv[dim])
             if (j / jerk[dim]) > 1.001:
-                print "Join '%s' <-> '%s': dimension %d %f verletzt max jerk %f" % (selfName, otherName, dim, j, jerk[dim])
-                print "V1: ", self
-                print "V2: ", other
+                print("Join '%s' <-> '%s': dimension %d %f verletzt max jerk %f" % (selfName, otherName, dim, j, jerk[dim]))
+                print("V1: ", self)
+                print("V2: ", other)
                 assert(0)
 
 ##################################################
@@ -391,15 +400,15 @@ class VelocityVector32(object):
         for dim in range(len(thisv)):
             j = abs(otherv[dim] - thisv[dim])
             if (j / jerk[dim]) > 1.001:
-                print "Join '%s' <-> '%s': dimension %d %f verletzt max jerk %f" % (selfName, otherName, dim, j, jerk[dim])
-                print "V1: ", self
-                print "V2: ", other
+                print("Join '%s' <-> '%s': dimension %d %f verletzt max jerk %f" % (selfName, otherName, dim, j, jerk[dim]))
+                print("V1: ", self)
+                print("V2: ", other)
                 assert(0)
 
         eJerk = self.eSpeed - other.eSpeed
         if not abs(eJerk) <= AdvanceEThreshold:
        
-            print "Error, E-AXIS jerk: ", eJerk, self, other
+            print("Error, E-AXIS jerk: ", eJerk, self, other)
             assert(0)
 
 ##################################################

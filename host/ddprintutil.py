@@ -107,7 +107,7 @@ def accelPerDist(v1, v2, s):
 def joinMoves(move1, move2, advInstance): # jerk, maxAccelV):
 
         if debugMoves:
-            print "***** Start joinMoves() *****"
+            print("***** Start joinMoves() *****")
             move1.pprint("JoinSpeed - Move1")
             move2.pprint("JoinSpeed - Move2")
 
@@ -128,7 +128,7 @@ def joinMoves(move1, move2, advInstance): # jerk, maxAccelV):
 
             # Endspeed of move 1 not reachable, lowering it to the max. reachable speed
             if debugMoves:
-                print "Max. reachable endspeed: %.3f < feedrate: %.3f" % (maxEndSpeed1, endSpeedS1)
+                print("Max. reachable endspeed: %.3f < feedrate: %.3f" % (maxEndSpeed1, endSpeedS1))
 
             endSpeed1.setSpeed(maxEndSpeed1)
 
@@ -191,7 +191,7 @@ def joinMoves2(move1, move2, advInstance): # jerk):
             if speedDiff:
 
                 if debugMoves:
-                    print "E-speed ok, XY-speedDiff:", speedDiff
+                    print("E-speed ok, XY-speedDiff:", speedDiff)
 
                 # 
                 # Der geschwindigkeitsunterschied mindestens einer achse ist grösser als der 
@@ -214,7 +214,7 @@ def joinMoves2(move1, move2, advInstance): # jerk):
                 #
 
                 speedScale = 1.0
-                for dim in speedDiff.keys():
+                for dim in list(speedDiff.keys()):
                     # print "diff: ", differenceVector[dim], jerk[dim]
                     if abs(differenceVector[dim]) > jerk[dim]:
                         # print "mindiff: ", dimNames[dim], differenceVector[dim], jerk[dim]
@@ -223,28 +223,28 @@ def joinMoves2(move1, move2, advInstance): # jerk):
                 if debugMoves:
                     move1.pprint("JoinMoves - Move1")
                     move2.pprint("JoinMoves - Move2")
-                    print "speedScale: ", speedScale
+                    print("speedScale: ", speedScale)
 
                 assert(speedScale <= 1.0)
 
                 endSpeed1 = endSpeed1.scale(speedScale)
 
                 if debugMoves:
-                    print "set nominal endspeed of move1:", endSpeed1
+                    print("set nominal endspeed of move1:", endSpeed1)
 
                 move1.endSpeed.setSpeed(endSpeed1, "joinMoves2 - adjust jerk")
 
                 startSpeed2 = startSpeed2.scale(speedScale)
 
                 if debugMoves:
-                    print "set nominal startspeed of move2:", speedScale
+                    print("set nominal startspeed of move2:", speedScale)
 
                 move2.startSpeed.setSpeed(startSpeed2, "joinMoves2 - adjust jerk")
 
             else:
 
                 if debugMoves:
-                    print "Doing a full speed join between move %d and %d" % (move1.moveNumber, move2.moveNumber)
+                    print("Doing a full speed join between move %d and %d" % (move1.moveNumber, move2.moveNumber))
 
                 # move1.setNominalEndFr(endSpeedS)
                 # move2.setNominalStartFr(move2.feedrateS)
@@ -316,7 +316,7 @@ def joinMoves3(move1, move2, advInstance): # jerk):
         if speedDiff:
 
             if debugMoves:
-                print "E-speed angepasst, XY-speedDiff:", speedDiff
+                print("E-speed angepasst, XY-speedDiff:", speedDiff)
 
             differenceVector = endSpeedV1.subVVector(startSpeedV2)
             # print "differenceVector, jerk:", differenceVector, jerk
@@ -342,7 +342,7 @@ def joinMoves3(move1, move2, advInstance): # jerk):
             #
 
             speedScale = 1.0
-            for dim in speedDiff.keys():
+            for dim in list(speedDiff.keys()):
                 # print "diff: ", differenceVector[dim], jerk[dim]
                 if abs(differenceVector[dim]) > jerk[dim]:
                     # print "mindiff: ", dimNames[dim], differenceVector[dim], jerk[dim]
@@ -351,28 +351,28 @@ def joinMoves3(move1, move2, advInstance): # jerk):
             if debugMoves:
                 move1.pprint("JoinMoves - Move1")
                 move2.pprint("JoinMoves - Move2")
-                print "speedScale: ", speedScale
+                print("speedScale: ", speedScale)
 
             assert(speedScale <= 1.0)
 
             endSpeed1 = endSpeed1.scale(speedScale)
 
             if debugMoves:
-                print "set nominal endspeed of move1:", endSpeed1
+                print("set nominal endspeed of move1:", endSpeed1)
 
             move1.endSpeed.setSpeed(endSpeed1, "joinMoves3 - adjust jerk")
 
             startSpeed2 = startSpeed2.scale(speedScale)
 
             if debugMoves:
-                print "set nominal startspeed of move2:", speedScale
+                print("set nominal startspeed of move2:", speedScale)
 
             move2.startSpeed.setSpeed(startSpeed2, "joinMoves3 - adjust jerk")
 
         else:
 
             if debugMoves:
-                print "Doing a full speed join between move %d and %d" % (move1.moveNumber, move2.moveNumber)
+                print("Doing a full speed join between move %d and %d" % (move1.moveNumber, move2.moveNumber))
 
             # move1.setNominalEndFr(endSpeedS)
             # move2.setNominalStartFr(move2.feedrateS)
@@ -382,7 +382,7 @@ def joinMoves3(move1, move2, advInstance): # jerk):
         if debugMoves:
             move1.pprint("Move1, e-adjusted")
             move2.pprint("Move2, e-adjusted")
-            print "***** End joinMoves() *****"
+            print("***** End joinMoves() *****")
 
 
 ####################################################################################################
@@ -394,7 +394,7 @@ def joinMoves3(move1, move2, advInstance): # jerk):
 def joinTravelMoves(move1, move2, jerk):
 
         if debugMoves:
-            print "***** Start joinTravelMoves() *****"
+            print("***** Start joinTravelMoves() *****")
 
         allowedAccel = move1.getMaxAllowedAccelNoAdv5()
 
@@ -432,7 +432,7 @@ def joinTravelMoves(move1, move2, jerk):
         if maxEndSpeed < endSpeedMove1S:
 
             if debugMoves:
-                print "Max. reachable endspeed: %.3f < feedrate: %.3f" % (maxEndSpeed, endSpeedMove1S)
+                print("Max. reachable endspeed: %.3f < feedrate: %.3f" % (maxEndSpeed, endSpeedMove1S))
 
             endSpeedMove1S = maxEndSpeed
             endSpeedMove1.setSpeed(endSpeedMove1S)
@@ -463,7 +463,7 @@ def joinTravelMoves(move1, move2, jerk):
         if speedDiff:
 
             if debugMoves:
-                print "speedDiff:", speedDiff
+                print("speedDiff:", speedDiff)
 
             # 
             # Der geschwindigkeitsunterschied mindestens einer achse ist grösser als der 
@@ -486,7 +486,7 @@ def joinTravelMoves(move1, move2, jerk):
             #
 
             speedScale = 1.0
-            for dim in speedDiff.keys():
+            for dim in list(speedDiff.keys()):
                 # print "diff: ", differenceVector[dim], jerk[dim]
                 if abs(differenceVector[dim]) > jerk[dim]:
                     # print "mindiff: ", dimNames[dim], differenceVector[dim], jerk[dim]
@@ -495,28 +495,28 @@ def joinTravelMoves(move1, move2, jerk):
             if debugMoves:
                 move1.pprint("joinTravelMoves - Move1")
                 move2.pprint("joinTravelMoves - Move2")
-                print "speedScale: ", speedScale
+                print("speedScale: ", speedScale)
 
             assert(speedScale <= 1.0)
 
             if debugMoves:
-                print "set nominal endspeed of move1:", endSpeedMove1S * speedScale
+                print("set nominal endspeed of move1:", endSpeedMove1S * speedScale)
             move1.endSpeed.setSpeed(endSpeedMove1.scale(speedScale), "joinTravelMoves - adjust jerk")
 
             if debugMoves:
-                print "set nominal startspeed of move2:", startSpeedMove2.feedrate5() * speedScale
+                print("set nominal startspeed of move2:", startSpeedMove2.feedrate5() * speedScale)
             move2.startSpeed.setSpeed(startSpeedMove2.scale(speedScale), "joinTravelMoves - adjust jerk")
 
         else:
 
             if debugMoves:
-                print "Doing a full speed join between move %d and %d" % (move1.moveNumber, move2.moveNumber)
+                print("Doing a full speed join between move %d and %d" % (move1.moveNumber, move2.moveNumber))
 
             # move1.setNominalEndFr(endSpeedMove1S)
             # move2.setNominalStartFr(move2.feedrateS)
       
         if debugMoves:
-            print "***** End joinTravelMoves() *****"
+            print("***** End joinTravelMoves() *****")
 
 ####################################################################################################
 
@@ -542,52 +542,58 @@ class MyPoint:
 
     def __getitem__(self, dim):
 
-        if type(dim) == types.StringType:
-            return getattr(self, dim)
-
-        if type(dim) == types.SliceType:
+        if type(dim) == slice:
             if not dim.start and dim.stop == 3 and dim.step == None:
                 return [self.X, self.Y, self.Z]
-            print "slice: ", dim
+            print("slice: ", dim)
             assert(0)
 
-        if dim == 0:
-            return self.X
-        elif dim == 1:
-            return self.Y
-        elif dim == 2:
-            return self.Z
-        elif dim == 3:
-            return self.A
-        elif dim == 4:
-            return self.B
+        if type(dim) == int:
 
-        print "unknown index:", dim
-        assert(0)
+            if dim == 0:
+                return self.X
+            elif dim == 1:
+                return self.Y
+            elif dim == 2:
+                return self.Z
+            elif dim == 3:
+                return self.A
+            elif dim == 4:
+                return self.B
+
+            print("Error, unknown index:", dim, type(dim))
+            assert(0)
+
+        return getattr(self, dim)
+
 
     def __setitem__(self, dim, val):
 
-        if type(dim) == types.StringType:
-            return setattr(self, dim, val)
+        if type(dim) == int:
 
-        if dim == 0:
-            self.X = val
-        elif dim == 1:
-            self.Y = val
-        elif dim == 2:
-            self.Z = val
-        elif dim == 3:
-            self.A = val
-        elif dim == 4:
-            self.B = val
+            if dim == 0:
+                self.X = val
+            elif dim == 1:
+                self.Y = val
+            elif dim == 2:
+                self.Z = val
+            elif dim == 3:
+                self.A = val
+            elif dim == 4:
+                self.B = val
+            else:
+                print("Error, unknown index:", dim, type(dim))
+                assert(0)
+
         else:
-            assert(0)
+
+            setattr(self, dim, val)
 
     def __repr__(self):
         return str(self.vector())
 
     def vector(self):
-        return map(lambda dim: self[dim], range(5))
+        return [self[dim] for dim in range(5)]
 
     def copy(self):
 
@@ -611,7 +617,7 @@ class GetChar:
 
     def getc(self):
 
-        print self.msg
+        print(self.msg)
         try:
             tty.setcbreak(self.fd)
         except termios.error:
@@ -872,8 +878,8 @@ def printFile(args, printer, parser, planner, logObj, gfile, t0, t0_wait, t1, do
                 
                 if status.t0 >= t0_wait:
                     # Start pre-heating of hotend, bed is still heating
-                    logObj.log( "Pre-Heating extruder %.2f (t1: %d)...\n" % (t1/2.0, t1))
-                    printer.heatUp(HeaterEx1, t1/2)
+                    logObj.log( "Pre-Heating extruder %d (t1: %d)...\n" % (t1//2.0, t1))
+                    printer.heatUp(HeaterEx1, t1//2)
                     state = StatePreload
 
             elif state == StatePreload:
@@ -900,7 +906,7 @@ def printFile(args, printer, parser, planner, logObj, gfile, t0, t0_wait, t1, do
             elif state == StateStarting:
 
                 try:
-                    tempRamp.next()
+                    next(tempRamp)
                 except StopIteration:
                     logObj.log("Starting print...\n" )
 
@@ -931,9 +937,9 @@ def printFile(args, printer, parser, planner, logObj, gfile, t0, t0_wait, t1, do
         printer.heatUp(HeaterBed, t0, log=doLog)
 
         if t0:
-            print "*** Warning: ***"
-            print "Keeping bed heater running at temp %d °C to avoid glass-chipping..." % t0
-            print "****************"
+            print("*** Warning: ***")
+            print("Keeping bed heater running at temp %d °C to avoid glass-chipping..." % t0)
+            print("****************")
 
         printer.setTargetTemp(HeaterBed, t0)
 
@@ -941,7 +947,7 @@ def printFile(args, printer, parser, planner, logObj, gfile, t0, t0_wait, t1, do
 
         printer.coolDown(HeaterBed)
 
-    print "Debug: printFile(): don't home" # ddhome.home(args, printer, parser, planner)
+    print("Debug: printFile(): don't home") # ddhome.home(args, printer, parser, planner)
 
     printer.sendCommand(CmdDisableSteppers)
 
@@ -965,7 +971,7 @@ def insertFilament(args, printer, parser, planner, feedrate):
 
         current_position = parser.getPos()
         aofs = current_position[A_AXIS]
-        print "cura: ", aofs
+        print("cura: ", aofs)
 
         kbd = GetChar("Enter (f)orward (b)ackwards (F)orward 10mm (B)ackwards 10mm (q)uit")
 
@@ -973,7 +979,7 @@ def insertFilament(args, printer, parser, planner, feedrate):
         while ch not in "q\n":
             ch = kbd.getc()
 
-            print "ch: ", ch
+            print("ch: ", ch)
             if ch == "f":       # filament forward, 'small' step
                 aofs += 1
             elif ch == "F":     # filament forward, 'big' step
@@ -1003,13 +1009,13 @@ def insertFilament(args, printer, parser, planner, feedrate):
     t1 = planner.matProfile.getHotendGoodTemp()
     printer.heatUp(HeaterEx1, t1, wait=t1 * 0.95, log=True)
 
-    print "\nInsert filament.\n"
+    print("\nInsert filament.\n")
     manualMoveE()
 
-    print "\nForwarding filament.\n"
+    print("\nForwarding filament.\n")
     manualMove(args, printer, parser, planner, A_AXIS, pp.getBowdenLength(), feedrate)
 
-    print "\nExtrude filament.\n"
+    print("\nExtrude filament.\n")
     manualMoveE()
 
     #
@@ -1048,16 +1054,16 @@ def removeFilament(args, printer, parser, planner, feedrate):
 
     # Filament vorwärts feeden um den 'filament-pfropfen' einzuschmelzen
     # TODO: make nozzle dependent, 5mm/s means 12mm³/s, this is very fast for a 0.4 nozzle.
-    print "forward %d with 5mm/s" % (pp.getRetractLength() + 50)
+    print("forward %d with 5mm/s" % (pp.getRetractLength() + 50))
     manualMove(args, printer, parser, planner, A_AXIS, pp.getRetractLength() + 30, 5)
 
-    print "forward 20 with 1mm/s"
+    print("forward 20 with 1mm/s")
     manualMove(args, printer, parser, planner, A_AXIS, 20, 1)
 
-    print "wait 10"
+    print("wait 10")
     time.sleep(10)
 
-    print "retract"
+    print("retract")
 
     # Retract filament
     manualMove(args, printer, parser, planner, A_AXIS, -1.25 * pp.getBowdenLength(), feedrate)
@@ -1124,13 +1130,13 @@ def bedLeveling(args, printer, parser, planner):
 
         current_position = parser.getPos()
         zofs = current_position[Z_AXIS]
-        print "curz: ", zofs
+        print("curz: ", zofs)
 
         ch = " "
         while ch not in "q\n":
             ch = kbd.getc()
 
-            print "ch: ", ch
+            print("ch: ", ch)
             if ch == "u":       # head down, 'small' step
                 zofs -= 0.05
             elif ch == "U":     # head down, 'big' step
@@ -1159,12 +1165,12 @@ def bedLeveling(args, printer, parser, planner):
 
     feedrate = printer.printerProfile.getMaxFeedrateI(X_AXIS)
 
-    print "Please level bead to <=%.2f mm distance." % planner.LEVELING_OFFSET
+    print("Please level bead to <=%.2f mm distance." % planner.LEVELING_OFFSET)
 
     pointNumber = 0
     for (x, y, z, pointName) in levelPoints:
 
-        print "Leveling point %d/%d" % (pointNumber+1, len(levelPoints))
+        print("Leveling point %d/%d" % (pointNumber+1, len(levelPoints)))
 
         if pointNumber == 0:
             parser.execute_line("G0 F%d X%f Y%f Z%f" % (feedrate*60, x, y, z))
@@ -1182,7 +1188,7 @@ def bedLeveling(args, printer, parser, planner):
             manualMoveZ()
 
             current_position = parser.getPos()
-            print "curz: ", current_position[Z_AXIS]
+            print("curz: ", current_position[Z_AXIS])
 
             add_homeing_z = current_position[Z_AXIS] - planner.LEVELING_OFFSET
 
@@ -1202,7 +1208,7 @@ def bedLeveling(args, printer, parser, planner):
 
         else:
         
-            raw_input("\nAdjust %s buildplate screw and press <Return>\n" % pointName)
+            input("\nAdjust %s buildplate screw and press <Return>\n" % pointName)
 
         pointNumber += 1
 
@@ -1210,7 +1216,7 @@ def bedLeveling(args, printer, parser, planner):
     printer.sendCommand(CmdDisableSteppers) # Force homing/reset
 
     if not relevel:
-        print "\n! Please update your Z-Offset (add_homeing_z) in printer profile: %.3f\n" % add_homeing_z
+        print("\n! Please update your Z-Offset (add_homeing_z) in printer profile: %.3f\n" % add_homeing_z)
 
     if not args.noCoolDown:
         printer.coolDown(HeaterEx1, wait=100, log=True)
@@ -1220,7 +1226,7 @@ def bedLeveling(args, printer, parser, planner):
 def stringFromArgs(*args):
     r = ""
     for a in args:
-        if type(a) == types.StringType:
+        if type(a) == bytes:
             r += a
         else:
             r += str(a)
@@ -1264,7 +1270,7 @@ def heatBed(args, matProfile, printer):
     printer.heatUp(HeaterBed, t0, wait=t0, log=True)
 
     kbd = GetChar()
-    print("\nTemp %d reached in %.2f sec. Press return to stop heating...\n" % (t0, time.time() - startTime))
+    print(("\nTemp %d reached in %.2f sec. Press return to stop heating...\n" % (t0, time.time() - startTime)))
     while not kbd.getcNB():
         status = printer.getStatus()
         printer.ppStatus(status, msg="T %.2f" % (time.time() - startTime))
@@ -1281,7 +1287,7 @@ def heatHotend(args, matProfile, printer):
     printer.heatUp(HeaterEx1, t1, wait=t1, log=True)
 
     kbd = GetChar()
-    print("\nTemp %d reached in %.2f sec. Press return to stop heating...\n" % (t1, time.time() - startTime))
+    print(("\nTemp %d reached in %.2f sec. Press return to stop heating...\n" % (t1, time.time() - startTime)))
     while not kbd.getcNB():
         status = printer.getStatus()
         printer.ppStatus(status, msg="T %.2f" % (time.time() - startTime))
@@ -1329,7 +1335,7 @@ def changeNozzle(args, parser):
     feedrate = printer.printerProfile.getMaxFeedrateI(X_AXIS)
     execSingleGcode(parser, "G0 F%d X%f Y%f" % (feedrate*60, planner.MAX_POS[X_AXIS]/2, planner.MAX_POS[Y_AXIS]*0.1))
 
-    raw_input("Now change nozzle, Press return to stop heating...")
+    input("Now change nozzle, Press return to stop heating...")
 
     execSingleGcode(parser, "G11")
 
@@ -1369,15 +1375,14 @@ def stepResponse(args, printer):
     f.write("%d title \"tDest1\", %d title \"tDest2\", %d title \"tDest3\"\n" % (tDest1, tDest2, tDest3))
 
     # Do the first step
-    print "Starting input step to %d °" % tDest1
-    # printer.heatUp(HeaterEx1, tDest1)
+    print("Starting input step to %d °" % tDest1)
     printer.sendCommandParamV(CmdFanSpeed, [packedvalue.uint8_t(100)])
 
     timeStart = time.time()
     status = printer.getStatus()
     tempStart = status.t1
 
-    print "Temp:", tempStart
+    print("Temp:", tempStart)
     f.write("0 %f\n" % tempStart)
 
     temp = tempStart
@@ -1390,14 +1395,14 @@ def stepResponse(args, printer):
         flatReached = False
 
         # Do the n-th temperature step
-        print "Setting input step to %d °" % tDest
+        print("Setting input step to %d °" % tDest)
         printer.heatUp(HeaterEx1, tDest)
         # tempRamp = printer.heatUpRamp(HeaterEx1, tDest)
 
         while True:
         
             if temp > tmax:
-                print "Error, max temp (%d) reached: " % tmax, temp
+                print("Error, max temp (%d) reached: " % tmax, temp)
                 # stopHeater()
                 # return
 
@@ -1414,7 +1419,7 @@ def stepResponse(args, printer):
 
             status = printer.getStatus()
 
-            print "\ntemp: %.2f/%.2f, avg: %.2f, pwm: %d\n" % (temp, tDest, tempAvg.mean(), status.pwmOutput)
+            print("\ntemp: %.2f/%.2f, avg: %.2f, pwm: %d\n" % (temp, tDest, tempAvg.mean(), status.pwmOutput))
 
             temp = status.t1
 
@@ -1423,7 +1428,7 @@ def stepResponse(args, printer):
             f.write("%f %f\n" % (relTime, temp))
 
             if tempAvg.valid() and tempAvg.near(0.05, tDest):
-                print "Temp is in 5% range, this temp done..."
+                print("Temp is in 5% range, this temp done...")
                 break
 
         # Do the second step...
@@ -1435,10 +1440,10 @@ def stepResponse(args, printer):
 
 def measureHotendStepResponse(args, printer, matProfile):
 
-    print "*************************************************************"
-    print "* Record open loop step response of hotend to determine     *"
-    print "* the pid control parameters for temperature control.       *"
-    print "*************************************************************"
+    print("*************************************************************")
+    print("* Record open loop step response of hotend to determine     *")
+    print("* the pid control parameters for temperature control.       *")
+    print("*************************************************************")
 
     def stopHeater():
         printer.setTempPWM(HeaterEx1, 0)
@@ -1453,7 +1458,7 @@ def measureHotendStepResponse(args, printer, matProfile):
     navg = int(round(30/interval))
     tempAvg = movingavg.MovingAvg( navg )
 
-    print "Starting input step with pwm value: %d, tmax is: %.2f, nAvg: %d" % (Xo, tmax, navg)
+    print("Starting input step with pwm value: %d, tmax is: %.2f, nAvg: %d" % (Xo, tmax, navg))
 
     # Fan is running while printing (and filament has to be molten), so run fan 
     # at max speed to simulate this energy-loss.
@@ -1463,7 +1468,7 @@ def measureHotendStepResponse(args, printer, matProfile):
 
     temp = printer.getTemp(doLog = False)[HeaterEx1] # current temp
     if temp > maxStartTemp:
-        print "Current hotend temp %.2f, this is higher than the max. starting temp of %.2f." % (temp, maxStartTemp)
+        print("Current hotend temp %.2f, this is higher than the max. starting temp of %.2f." % (temp, maxStartTemp))
         printer.coolDown(HeaterEx1, 0, wait=maxStartTemp, log=True)
 
     temp = tempStart = printer.getTemp(doLog = False)[HeaterEx1] # current temp
@@ -1478,7 +1483,7 @@ def measureHotendStepResponse(args, printer, matProfile):
     "columns":  "time temperature",
     """ % (printer.getPrinterName(args), Xo, interval, tempStart))
 
-    print "Current hotend temp: %.f" % tempStart
+    print("Current hotend temp: %.f" % tempStart)
 
     # Apply input step:
     printer.setTempPWM(HeaterEx1, Xo)
@@ -1491,7 +1496,7 @@ def measureHotendStepResponse(args, printer, matProfile):
     while True:
 
         if temp > tmax:
-            print "Error, max temp (%d) reached (you should decrease Xo): " % tmax, temp
+            print("Error, max temp (%d) reached (you should decrease Xo): " % tmax, temp)
             stopHeater()
             return
 
@@ -1508,12 +1513,12 @@ def measureHotendStepResponse(args, printer, matProfile):
 
         tempAvg.add(Mu)
 
-        print "\rTime %.2f, temp: %.2f, Mu: %.2f, navg: %d, moving temp avg: %.2f" % (relTime, temp, Mu, navg, tempAvg.mean()),
+        print("\rTime %.2f, temp: %.2f, Mu: %.2f, navg: %d, moving temp avg: %.2f" % (relTime, temp, Mu, navg, tempAvg.mean()), end='')
         sys.stdout.flush()
 
         # Window for running average to detect steady state is 5%
         if tempAvg.valid() and tempAvg.near(0.05):
-            print "\nTemp reached 5% steady state...", relTime, Mu, tempAvg.mean()
+            print("\nTemp reached 5% steady state...", relTime, Mu, tempAvg.mean())
             break
 
         navg = int(round(max( len(data)/3, 30/interval )))
@@ -1531,7 +1536,7 @@ def measureHotendStepResponse(args, printer, matProfile):
     fraw.write("    ]\n}\n")
     fraw.close()
 
-    print "Step response done, result in file ./autotune.raw.json, evaluate it with pidAutoTune.py."
+    print("Step response done, result in file ./autotune.raw.json, evaluate it with pidAutoTune.py.")
 
     printer.coolDown(HeaterEx1, wait=100, log=True)
     printer.sendCommandParamV(CmdFanSpeed, [packedvalue.uint8_t(0)])
@@ -1555,11 +1560,12 @@ def jsonLoad(f):
 ####################################################################################################
 
 def handleGenericResponse(resp):
-    (cmd, payload) = resp
 
-    code = ord(payload[0])
+    (cmd, payload) = resp
+    code = payload[0]
+
     if code != RespOK:
-        print "Command '%s' returned code '%s'." % (CommandNames[cmd], RespCodeNames[code])
+        print("Command '%s' returned code '%s'." % (CommandNames[cmd], RespCodeNames[code]))
         return False
 
     return True
@@ -1568,7 +1574,7 @@ def handleGenericResponse(resp):
 
 def getResponseString(s, offset):
 
-    length = ord(s[offset])
+    length = s[offset]
     return s[offset+1:offset+1+length]
 
 ####################################################################################################
@@ -1614,7 +1620,7 @@ def genTempTable(printerProfile, nozzleProfile, matProfile):
         tvs = 1.0/steprate
         timerValue = min(int(fTimer / steprate), 0xffff) 
 
-        print "    Temp: %f, max flowrate: %.2f mm³/s, max espeed: %.2f mm/s, steps/s: %d, steprate: %d us, timervalue: %d" % (t, flowrate, espeed, int(steprate), int(tvs*1000000), timerValue)
+        print("    Temp: %f, max flowrate: %.2f mm³/s, max espeed: %.2f mm/s, steps/s: %d, steprate: %d us, timervalue: %d" % (t, flowrate, espeed, int(steprate), int(tvs*1000000), timerValue))
         table.append(timerValue)
 
     return (170, table)
@@ -1634,7 +1640,7 @@ def downloadTempTable(printer, nozzleProfile, matProfile):
 
     (startTemp, tempTable) = genTempTable(printer.printerProfile, nozzleProfile, matProfile)
 
-    print "Downloading TempTable..."
+    print("Downloading TempTable...")
 
     printer.setTempTable(startTemp, NExtrusionLimit, tempTable)
 
@@ -1648,7 +1654,7 @@ def downloadDummyTempTable(printer):
     for i in range(NExtrusionLimit):
         tempTable.append( timerValue )
 
-    print "Downloading Dummy TempTable..."
+    print("Downloading Dummy TempTable...")
 
     # todo: use maxtemp - NExtrusionLimit as startvalue
     printer.setTempTable(170, NExtrusionLimit, tempTable)
@@ -1705,7 +1711,7 @@ def measureTempFlowrateCurve(args, printer, parser, planner):
                 )
             )
 
-    print "eStepsPerRound:", e_steps_per_mm, circum, eStepsPerRound
+    print("eStepsPerRound:", e_steps_per_mm, circum, eStepsPerRound)
 
     flowAvg = movingavg.MovingAvgReadings(10)
 
@@ -1717,12 +1723,12 @@ def measureTempFlowrateCurve(args, printer, parser, planner):
 
     for t1 in [planner.matProfile.getHotendBaseTemp(), planner.matProfile.getHotendMaxTemp()]:
 
-      print "\nHeating up to target temp:", t1
+      print("\nHeating up to target temp:", t1)
       # printer.heatUp(HeaterEx1, t1, wait=round(t1 - t1*.01), log=True) # Wait until 99% of temp reached
       printer.heatUp(HeaterEx1, int(round(t1*1.025)), wait=t1, log=True)
 
       # Set extruder motor speed
-      print "\nRunning extruder motor with %.2f mm/s" % feedrate
+      print("\nRunning extruder motor with %.2f mm/s" % feedrate)
       printer.sendCommandParamV(CmdContinuousE, [packedvalue.uint16_t(eTimerValue(printer, feedrate))])
 
       tStart = time.time()
@@ -1731,7 +1737,7 @@ def measureTempFlowrateCurve(args, printer, parser, planner):
       # Fix pwm value, enter *pwmMode*
       status = printer.getStatus()
       pwm = status.pwmOutput
-      print "Fixed PWM:", pwm
+      print("Fixed PWM:", pwm)
 
       printer.setTempPWM(HeaterEx1, pwm)
 
@@ -1753,20 +1759,20 @@ def measureTempFlowrateCurve(args, printer, parser, planner):
 
         currentFlowrate = targetFlowRate * r
 
-        print "\rt: %.2f, TempAvg: %.1f, fixed pwm: %d, target flowrate: %.3f mm³/s, actual flowrate: %.2f mm³/s, current ratio: %.2f" % \
-                (time.time()-tStart, t1Avg, pwm, targetFlowRate, currentFlowrate, r),
+        print("\rt: %.2f, TempAvg: %.1f, fixed pwm: %d, target flowrate: %.3f mm³/s, actual flowrate: %.2f mm³/s, current ratio: %.2f" % \
+                (time.time()-tStart, t1Avg, pwm, targetFlowRate, currentFlowrate, r), end=' ')
         sys.stdout.flush()
 
         if r > 2:
 
-            print "mean, pcal", pcal
+            print("mean, pcal", pcal)
 
-            print "fsreadings:", fsreadings
+            print("fsreadings:", fsreadings)
 
-            print "index:", flowAvg.index
-            print "navg:", flowAvg.navg
-            print "nValues:", flowAvg.nValues
-            print "array:", flowAvg.array
+            print("index:", flowAvg.index)
+            print("navg:", flowAvg.navg)
+            print("nValues:", flowAvg.nValues)
+            print("array:", flowAvg.array)
             assert(0)
 
         if startup > 0:
@@ -1791,8 +1797,8 @@ def measureTempFlowrateCurve(args, printer, parser, planner):
             #
             # Flowrate got to high for this PWM/temperature values, do next step or exit measurement.
             #
-            print "\nEnd step, average flowrate: %.2f mm³/s at pwm: %d, temp: %.1f °C, ratio: %.2f, break" % \
-                    (lastGoodFlowrate, pwm, t1Avg, r)
+            print("\nEnd step, average flowrate: %.2f mm³/s at pwm: %d, temp: %.1f °C, ratio: %.2f, break" % \
+                    (lastGoodFlowrate, pwm, t1Avg, r))
             data.append( (lastGoodFlowrate, pwm, t1Avg) )
 
             # Enable PID mode, leave *pwmMode*
@@ -1837,13 +1843,13 @@ def measureTempFlowrateCurve(args, printer, parser, planner):
     s += """    "# feedrate at a0",\n"""
     s += """    "FR0pwm": %.4f,\n""" % data[0][0]
 
-    print "\nMaterial properties:\n\n", s
+    print("\nMaterial properties:\n\n", s)
 
     fn = "./mat-profile1.add"
     f = open(fn, "w")
     f.write(s)
     f.close()
-    print "Data written to: ", fn
+    print("Data written to: ", fn)
 
     printer.sendCommand(CmdDisableSteppers)
     printer.coolDown(HeaterEx1, wait=100, log=True)
@@ -1897,7 +1903,7 @@ def xstartPrint(args, printer, parser, planner, t1):
         t0Wait = min(t0, printer.printerProfile.getWeakPowerBedTemp())
 
         # Send heat up  command
-        print "\nHeating bed (t0: %d)...\n" % t0
+        print("\nHeating bed (t0: %d)...\n" % t0)
         printer.heatUp(HeaterBed, t0, log=True)
 
         printer.erase(0)
@@ -1928,7 +1934,7 @@ def xstartPrint(args, printer, parser, planner, t1):
                     parser.execute_line(line)
                 else:
                     # Reading done
-                    print "Parsed all gcode lines."
+                    print("Parsed all gcode lines.")
                     planner.finishMoves()
                     f = None
             else:
@@ -1947,8 +1953,8 @@ def xstartPrint(args, printer, parser, planner, t1):
                     
                     if status.t0 >= t0Wait:
                         # Start pre-heating of hotend, bed is still heating
-                        print "\nPre-Heating extruder %.2f (t1: %d)...\n" % (t1/2.0, t1)
-                        printer.heatUp(HeaterEx1, t1/2)
+                        print("\nPre-Heating extruder %.2f (t1: %d)...\n" % (t1/2.0, t1))
+                        printer.heatUp(HeaterEx1, t1//2)
                         state = StateHeatBed
 
                 elif state == StateHeatBed:
@@ -1957,16 +1963,16 @@ def xstartPrint(args, printer, parser, planner, t1):
                     # heated.
                     if (not f) and (status.t0 >= t0):
                         # Heat hotend if bed is at temp
-                        print "\nHeating extruder (t1: %d)...\n" % t1
+                        print("\nHeating extruder (t1: %d)...\n" % t1)
                         tempRamp = printer.heatUpRamp(HeaterEx1, t1)
                         state = StateStarting
 
                 elif state == StateStarting:
 
                     try:
-                        tempRamp.next()
+                        next(tempRamp)
                     except StopIteration:
-                        print "\nStarting print...\n"
+                        print("\nStarting print...\n")
 
                         # Send print start command
                         printer.startPrint()
@@ -1981,9 +1987,9 @@ def measureTempFlowrateCurve2(args, printer, parser, planner):
     def tempGood(t, t1, percent):
         return abs(t1 - t) <= (t1*percent)
 
-    print ""
-    print "measureTempFlowrateCurve2():"
-    print ""
+    print("")
+    print("measureTempFlowrateCurve2():")
+    print("")
 
     # * start print slowed down
     # * increase flowrate on each layer
@@ -2001,7 +2007,7 @@ def measureTempFlowrateCurve2(args, printer, parser, planner):
     e_steps_per_mm = printer.printerProfile.getStepsPerMMI(A_AXIS)
 
     nAvg = 10
-    print "navg:", nAvg
+    print("navg:", nAvg)
 
     # Running average of hotend temperature and pwm
     tempAvg = movingavg.MovingAvg(nAvg, t1)
@@ -2020,7 +2026,7 @@ def measureTempFlowrateCurve2(args, printer, parser, planner):
                 )
             )
 
-    print "eStepsPerRound:", e_steps_per_mm, circum, eStepsPerRound
+    print("eStepsPerRound:", e_steps_per_mm, circum, eStepsPerRound)
 
     gripAvg = movingavg.MovingAvg(nAvg, 1.0)
     flowAvg = movingavg.MovingAvg(nAvg)
@@ -2043,7 +2049,7 @@ def measureTempFlowrateCurve2(args, printer, parser, planner):
 
     x = x0
     y = A / x
-    print "x, y:", x, y
+    print("x, y:", x, y)
     printer.sendCommandParamV(CmdSetSlowDown, [packedvalue.uint32_t(int(y))])
 
     # # Code below assumes nozzle comes from above
@@ -2067,14 +2073,14 @@ def measureTempFlowrateCurve2(args, printer, parser, planner):
     # not work if first layer is thicker than 1mm.
     #
     # XXX add timeout here, deadlock 
-    print "\nPrint started, waiting for start of first layer..."
+    print("\nPrint started, waiting for start of first layer...")
     curPosMM = getVirtualPos(printer, parser)
     while curPosMM.Z > 1.0:
-        print "waiting for first layer, Z pos:", curPosMM.Z
+        print("waiting for first layer, Z pos:", curPosMM.Z)
         status = printer.getStatus()
         printer.ppStatus(status)
         pwmAvg.add(status.pwmOutput)
-        print "pwm: ", pwmAvg.mean()
+        print("pwm: ", pwmAvg.mean())
         time.sleep(1)
         curPosMM = getVirtualPos(printer, parser)
 
@@ -2083,14 +2089,14 @@ def measureTempFlowrateCurve2(args, printer, parser, planner):
     #
     # Hardcoded height of 3 mm.
     #
-    print "\nWaiting for layerheight 2mm ..."
+    print("\nWaiting for layerheight 2mm ...")
     # XXX add timeout here, deadlock 
     while curPosMM.Z < 2:
-        print "waiting for layerheight 2mm , Z pos:", curPosMM.Z
+        print("waiting for layerheight 2mm , Z pos:", curPosMM.Z)
         status = printer.getStatus()
         printer.ppStatus(status)
         pwmAvg.add(status.pwmOutput)
-        print "pwm: ", pwmAvg.mean()
+        print("pwm: ", pwmAvg.mean())
 
         lastEPos = status.ePos
         lastTime = time.time()
@@ -2100,7 +2106,7 @@ def measureTempFlowrateCurve2(args, printer, parser, planner):
 
     # Fix pwm value, enter *pwmMode*
     pAvg = pwmAvg.mean()
-    print "Setting fixed pwm:", pAvg
+    print("Setting fixed pwm:", pAvg)
     printer.setTempPWM(HeaterEx1, pAvg)
 
     #
@@ -2139,18 +2145,18 @@ def measureTempFlowrateCurve2(args, printer, parser, planner):
         # Current measured flowrate
         frAvg = flowAvg.mean() * gAvg
 
-        print deltaE, deltaTime, deltaEmm, flowrate
+        print(deltaE, deltaTime, deltaEmm, flowrate)
 
-        print "Avg: temp: %.2f, pwm: %.2f, grip: %.2f, flowrate: %.2f mm³/s, slowdown: %5d" % (t1Avg, pAvg, gAvg, frAvg, y)
+        print("Avg: temp: %.2f, pwm: %.2f, grip: %.2f, flowrate: %.2f mm³/s, slowdown: %5d" % (t1Avg, pAvg, gAvg, frAvg, y))
 
         if tempAvg.valid():
 
             if not printer.stateMoving(status):
-                print "XXX testprint ended before measurement done!"
+                print("XXX testprint ended before measurement done!")
                 break
 
             if gAvg <= args.mingrip:
-                print "break loop, avg grip: %.2f, mingrip %.2f" % (gAvg, args.mingrip)
+                print("break loop, avg grip: %.2f, mingrip %.2f" % (gAvg, args.mingrip))
                 break
 
             pos = getVirtualPos(printer, parser)
@@ -2159,7 +2165,7 @@ def measureTempFlowrateCurve2(args, printer, parser, planner):
                 # layer change, speed up print
                 x = x+x_step
                 y = max(int(A / x), 1024/2)
-                print "x, y:", x, y
+                print("x, y:", x, y)
                 printer.sendCommandParamV(CmdSetSlowDown, [packedvalue.uint32_t(y)])
                 curPosMM = pos
 
@@ -2171,7 +2177,7 @@ def measureTempFlowrateCurve2(args, printer, parser, planner):
     ####################################################################################################
 
     # Stop print
-    print "soft-stop..."
+    print("soft-stop...")
     if printer.stateMoving(status):
         printer.sendCommand(CmdSoftStop)
 
@@ -2191,7 +2197,7 @@ def measureTempFlowrateCurve2(args, printer, parser, planner):
 
     ####################################################################################################
 
-    print "# Avg: P0temp: %.2f, P0pwm: %.2f, grip: %.2f, FR0pwm: %.2f mm³/s" % (t1Avg, pAvg, gAvg, frAvg)
+    print("# Avg: P0temp: %.2f, P0pwm: %.2f, grip: %.2f, FR0pwm: %.2f mm³/s" % (t1Avg, pAvg, gAvg, frAvg))
 
     fn = "./mat-profile1.add"
     s = ""
@@ -2202,7 +2208,7 @@ def measureTempFlowrateCurve2(args, printer, parser, planner):
     else:
         s = f.read()
         f.close()
-        print "Data read from measure1: ", fn, s
+        print("Data read from measure1: ", fn, s)
     
     s += """\n"""
     s += """    "# measure 2 (printing):",\n"""
@@ -2214,13 +2220,13 @@ def measureTempFlowrateCurve2(args, printer, parser, planner):
     s += """    "FR0pwmPrint": %.4f\n""" % frAvg
     s += """  }"""
 
-    print "\nMaterial properties (printing):\n\n", s
+    print("\nMaterial properties (printing):\n\n", s)
 
     fn = "./mat-profile2.add"
     f = open(fn, "w")
     f.write(s)
     f.close()
-    print "Data written to: ", fn
+    print("Data written to: ", fn)
 
     # Re-enable flowrate limit
     printer.sendCommandParamV(CmdEnableFRLimit, [packedvalue.uint8_t(1)])

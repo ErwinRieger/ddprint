@@ -86,12 +86,12 @@ def isPrintMove(displacement_vector):
     # Note: some Cura versions generate gcode with a initial G11 and without the matching G10 for it,
     # this triggers this test.
     if printMove and ((displacement_vector[A_AXIS] < 0) or (displacement_vector[B_AXIS] < 0)):
-        print "ERROR: printmove with reversing E:", displacement_vector.vv
+        print("ERROR: printmove with reversing E:", displacement_vector.vv)
         assert(0)
 
     # Printmoves in X, Y AND Z are not tested
     if printMove and _isZMove(displacement_vector):
-        print "ERROR: printmove with z-part:", displacement_vector.vv
+        print("ERROR: printmove with z-part:", displacement_vector.vv)
         assert(0)
 
     return printMove
@@ -148,7 +148,7 @@ class UM2GcodeParser:
                 }
 
         self.steps_per_mm = planner.printer.printerProfile.getStepsPerMMVectorI()
-        self.mm_per_step = map(lambda dim: 1.0 / self.steps_per_mm[dim], range(5))
+        self.mm_per_step = [1.0 / self.steps_per_mm[dim] for dim in range(5)]
         self.maxFeedrateVector = planner.printer.printerProfile.getMaxFeedrateVectorI()
 
         self.planner = planner
@@ -335,7 +335,7 @@ class UM2GcodeParser:
 
                 elif cmd == "G2" or cmd == "G3":
 
-                    print "line:", line
+                    print("line:", line)
                     assert(0) # not implemented
 
                 elif cmd == "G92":
@@ -363,7 +363,7 @@ class UM2GcodeParser:
 
         preloadLines = min(preloadLines, lineNumber)
 
-        print "Using preload: preloadLines: %d (%.1f %%)" % (preloadLines, preloadLines*100.0/lineNumber)
+        print("Using preload: preloadLines: %d (%.1f %%)" % (preloadLines, preloadLines*100.0/lineNumber))
         # return (f, max(min(preloadLines, 10000), 1000))
         return (f, preloadLines)
 
@@ -424,7 +424,7 @@ class UM2GcodeParser:
                             self.logger.logPrintLog(rawLine)
 
                         if self.layerPart == "infill":
-                            print "unhandled comment type while infill active, gcodeparser comment:", line
+                            print("unhandled comment type while infill active, gcodeparser comment:", line)
                             assert(0)
 
                 # print "skipping comment: ", line
@@ -478,7 +478,7 @@ class UM2GcodeParser:
         return values
 
     def m25_stop_reading(self, line, values):
-        print "ignoring m25 (stop reading)"
+        print("ignoring m25 (stop reading)")
 
     def m82_extruder_abs_values(self, line, values):
 
@@ -613,20 +613,20 @@ class UM2GcodeParser:
 
     def g21_metric_values(self, line, values):
         # We're always using metric values...
-        print "ignoring g21 (metric values)"
+        print("ignoring g21 (metric values)")
 
     # Homing is done by the host part of ddprint. Because it would be
     # difficult get things in the right order, g28 is ignored and done
     # implicitly by ddprint.
     def g28_home(self, line, values):
-        print "ignoring g28 (homing)"
+        print("ignoring g28 (homing)")
 
     def g29_autolevel(self, line, values):
         # Autoleveling not implemented
-        print "ignoring g29 (autolevel)"
+        print("ignoring g29 (autolevel)")
 
     def g80_bed_leveling(self, line, values):
-        print "ignoring g80 (bedlevel)"
+        print("ignoring g80 (bedlevel)")
 
     def g90_abs_values(self, line, values):
 

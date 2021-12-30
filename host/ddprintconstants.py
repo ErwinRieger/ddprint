@@ -37,7 +37,7 @@ StepDataTypeRaw       = 1
 #
 # Board config, move to printer-profile ?
 #
-fCPU =  16000000.0 # F_CPU, Hz
+fCPU =  16000000 # F_CPU, Hz
 fTimer = 2000000.0
 maxTimerValue16 = Uint16Max
 

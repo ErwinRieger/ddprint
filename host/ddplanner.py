@@ -25,7 +25,7 @@ from argparse import Namespace
 import ddprintutil as util, dddumbui, packedvalue
 import gcodeparser, cobs, intmath
 
-from ddvector import Vector, vectorMul, vectorAbs
+from ddvector import Vector, vectorMulInt, vectorAbs
 from ddprintconstants import *
 from ddconfig import *
 from ddprinter import Printer
@@ -42,7 +42,7 @@ if debugPlot:
 
 emptyVector5 = [0] * 5
 
-FillByte = chr(CmdNop)
+FillByte = bytes([CmdNop])
 
 #####################################################################
 
@@ -65,7 +65,7 @@ class SyncedCommand(object):
 
     def streamCommand(self, planner):
 
-        payload = chr(self.cmd)
+        payload = bytearray((self.cmd,))
         for p in self.params:
             if p:
                 payload += p.pack()
@@ -89,7 +89,7 @@ class StepRounder(object):
 
     def round(self, f):
 
-        assert(type(f) == types.FloatType)
+        assert(type(f) == float)
 
         self.f = f
 
@@ -117,7 +117,7 @@ class StepRounder(object):
     def pprint(self):
 
         assert(self.f == 0)
-        print "Reminder axis %s: %f" % (dimNames[self.axis], self.roundError)
+        print("Reminder axis %s: %f" % (dimNames[self.axis], self.roundError))
 
         
     def check(self):
@@ -139,7 +139,7 @@ class StepRounders(object):
 
     def g92(self, values):
 
-        for dim in values.keys():
+        for dim in list(values.keys()):
             self.stepRounders[dimNames.index(dim)].g92()
 
     def round(self, dispF):
@@ -498,7 +498,7 @@ class Planner (object):
         self.curDirBits = None
 
         # Binary data to send to printer
-        self.stepData = ""
+        self.stepData = bytearray()
 
         self.printMode = PrintModeManual
 
@@ -507,7 +507,7 @@ class Planner (object):
     def reconnect(self, status):
 
         self.replay = status.swapsize / 512 
-        print "Reconnect: replaying blocks:", self.replay
+        print("Reconnect: replaying blocks:", self.replay)
 
     def setPrintMode(self, mode):
         self.printMode = mode
@@ -554,7 +554,7 @@ class Planner (object):
             )
 
         # Diese stepper position wird gesetzt falls der drucker 'gehomed' ist
-        homePosStepped = vectorMul(homePosMM.vector(), self.printer.printerProfile.getStepsPerMMVectorI())
+        homePosStepped = vectorMulInt(homePosMM.vector(), self.printer.printerProfile.getStepsPerMMVectorI())
 
         return (homePosMM, homePosStepped)
 
@@ -622,7 +622,7 @@ class Planner (object):
     # set strength aka workingpoint
     def m901(self, values):
         
-        print "XXX m901 set workingpoint not implemented", values
+        print("XXX m901 set workingpoint not implemented", values)
 
     # Called from gcode parser, pause the print for the specified amount
     # of time.
@@ -696,7 +696,7 @@ class Planner (object):
 
         # print "addmove ...", move.comment
         if debugMoves:
-            print "***** Start addMove() *****"
+            print("***** Start addMove() *****")
             move.pprint("AddMove")
 
         self.layers.addMove(move)
@@ -712,12 +712,12 @@ class Planner (object):
         self.pathData.path.append(move)
 
         if debugMoves:
-            print "***** End addMove() *****"
+            print("***** End addMove() *****")
         
     def planTravelPath(self, path):
 
         if debugMoves:
-            print "***** Start planTravelPath() *****"
+            print("***** Start planTravelPath() *****")
 
         jerk = self.getJerk()
 
@@ -777,12 +777,12 @@ class Planner (object):
 
         # Step 4: plan steps and stream moves to printer
         if debugMoves:
-            print "Streaming %d travel moves..." % len(path)
+            print("Streaming %d travel moves..." % len(path))
 
         for move in path:
             # xxxx check for minimal frs steps ....
             if move.eDistance() > 1.0 and move.linearTime() > 0.15:
-                print "FRS: e-dist, linear time:", move.eDistance(), move.linearTime()
+                print("FRS: e-dist, linear time:", move.eDistance(), move.linearTime())
                 move.isMeasureMove = True
 
         # Move timeline housekeeping
@@ -796,7 +796,7 @@ class Planner (object):
                 self.pathData.updateHistory(move)
 
         if debugMoves:
-            print "***** End planTravelPath() *****"
+            print("***** End planTravelPath() *****")
 
     # Todo: should be called finishPath()
     def finishMoves(self):
@@ -824,14 +824,10 @@ class Planner (object):
         self.pathData.history.finishMoves()
 
         # Send last partial 512 bytes block
-        remaining = len(self.stepData)
-
         if self.args.mode != "pre":
         
-            # print "Sending last stepdata block of size %d" % remaining
-
             # Fill sector with dummy data
-            block = self.stepData + (cobs.SectorSize-remaining)*FillByte
+            block = self.stepData.ljust(cobs.SectorSize, FillByte)
             if self.replay:
                 self.replay -= 1
             else:
@@ -845,9 +841,9 @@ class Planner (object):
 
         if debugMoves:
             if move.isSubMove():
-                print "Streaming sub-move:", move.moveNumber, move.parentMove.moveNumber
+                print("Streaming sub-move:", move.moveNumber, move.parentMove.moveNumber)
             else:
-                print "Streaming move:", move.moveNumber
+                print("Streaming move:", move.moveNumber)
 
         if debugPlot:
 
@@ -892,7 +888,7 @@ class Planner (object):
     def joinTravelMovesBwd(self, moves):
 
         if debugMoves:
-            print "***** Start joinTravelMovesBwd() *****"
+            print("***** Start joinTravelMovesBwd() *****")
 
         index = len(moves) - 1
         while index >= 0:
@@ -925,8 +921,8 @@ class Planner (object):
                 continue
 
             if debugMoves: 
-                print "Startspeed of %.5f is to high to reach the desired endspeed." % startSpeed1S
-                print "Max. allowed startspeed: %.5f." % maxAllowedStartSpeed
+                print("Startspeed of %.5f is to high to reach the desired endspeed." % startSpeed1S)
+                print("Max. allowed startspeed: %.5f." % maxAllowedStartSpeed)
 
             # Adjust startspeed of this move:
             startSpeed1.setSpeed(maxAllowedStartSpeed)
@@ -951,12 +947,12 @@ class Planner (object):
                 prevMove.endSpeed.setSpeed(endSpeed0, "joinMovesBwd - prevMove breaking")
 
         if debugMoves:
-            print "***** End joinTravelMovesBwd() *****"
+            print("***** End joinTravelMovesBwd() *****")
 
     def planTravelAcceleration(self, move):
 
         if debugMoves: 
-            print "***** Start planTravelAcceleration() *****"
+            print("***** Start planTravelAcceleration() *****")
             move.pprint("planTravelAcceleration")
 
         move.state = 2
@@ -984,8 +980,8 @@ class Planner (object):
                 sa = util.accelDist(startSpeedS, -allowedAccel, ta)
       
             if (sa - move.distance5) > 0.001:
-                print "VStart %f mm/s kann nicht innerhalb von %f mm auf Endgeschwindigkeit %f mm/s gebracht werden!" % (startSpeedS, move.distance5, endSpeedS)
-                print "Dafür werden %f mm benötigt" % sa
+                print("VStart %f mm/s kann nicht innerhalb von %f mm auf Endgeschwindigkeit %f mm/s gebracht werden!" % (startSpeedS, move.distance5, endSpeedS))
+                print("Dafür werden %f mm benötigt" % sa)
                 assert(0)
 
         #
@@ -1009,7 +1005,7 @@ class Planner (object):
             for dim in range(5):
                 dimAccel = abs(deltaSpeedV[dim]) / ta
                 if (dimAccel / maxAccel[dim]) > 1.001:
-                    print "dim %d verletzt max accel: " % dim, dimAccel, " > ", maxAccel[dim]
+                    print("dim %d verletzt max accel: " % dim, dimAccel, " > ", maxAccel[dim])
                     assert(0)
             #end debug
 
@@ -1033,7 +1029,7 @@ class Planner (object):
             for dim in range(5):
                 dimDecel = abs(deltaSpeedV[dim]) / tb  
                 if (dimDecel / maxAccel[dim]) > 1.001:
-                    print "dim %d verletzt max accel: " % dim, dimDecel, " [mm/s] > ", maxAccel[dim], " [mm/s]"
+                    print("dim %d verletzt max accel: " % dim, dimDecel, " [mm/s] > ", maxAccel[dim], " [mm/s]")
                     assert(0)
             # end debug
 
@@ -1047,7 +1043,7 @@ class Planner (object):
             # Strecke zu kurz, Trapez nicht möglich, geschwindigkeit muss abgesenkt werden.
             #
             if debugMoves:
-                print "Trapez nicht möglich: s: %f, sbeschl (%f) + sbrems (%f) = %f" % (move.distance5, sa, sb, sa+sb)
+                print("Trapez nicht möglich: s: %f, sbeschl (%f) + sbrems (%f) = %f" % (move.distance5, sa, sb, sa+sb))
 
             # ??? 
             assert(sa>0 and sb>0)
@@ -1058,7 +1054,7 @@ class Planner (object):
             sb = move.distance5 - sa
 
             if debugMoves:
-                print "sbeschl, sbrems neu: %f, %f" % (sa, sb)
+                print("sbeschl, sbrems neu: %f, %f" % (sa, sb))
 
             # 
             # Geschwindigkeit, die auf strecke sa mit erreicht werden kann
@@ -1100,8 +1096,8 @@ class Planner (object):
 
             if debugMoves:
                 move.pprint("planTravelAcceleration")
-                print 
-                print "***** End planTravelAcceleration() *****"
+                print() 
+                print("***** End planTravelAcceleration() *****")
 
             return
 
@@ -1120,8 +1116,8 @@ class Planner (object):
 
         if debugMoves:
             move.pprint("planTravelAcceleration")
-            print 
-            print "***** End planTravelAcceleration() *****"
+            print() 
+            print("***** End planTravelAcceleration() *****")
 
     def packAxesBits(self, bitList):
 
@@ -1133,7 +1129,7 @@ class Planner (object):
     def planTravelSteps(self, move):
 
         if debugMoves:
-            print "***** Start planTravelSteps() *****"
+            print("***** Start planTravelSteps() *****")
             move.pprint("planTravelSTeps:")
 
         move.state = 3
@@ -1147,8 +1143,8 @@ class Planner (object):
         if dispS == emptyVector5:
 
             if debugMoves:
-                print "Empty move..."
-                print "***** End planTravelSteps() *****"
+                print("Empty move...")
+                print("***** End planTravelSteps() *****")
 
             self.stepRounders.rollback()
             return False
@@ -1258,14 +1254,14 @@ class Planner (object):
             move.stepData.setLinTimer(0xffff)
 
         if debugMoves:
-            print "# of steps for move: ", leadAxis_steps
+            print("# of steps for move: ", leadAxis_steps)
             move.pprint("move:")
-            print 
+            print() 
 
         move.stepData.checkLen(leadAxis_steps)
 
         if debugMoves:
-            print "***** End planTravelSteps() *****"
+            print("***** End planTravelSteps() *****")
 
         return True
     
@@ -1273,11 +1269,11 @@ class Planner (object):
     def timerLimit(self, timer):
 
         if timer < self.minTimerValue:
-            print "Warning, timervalue %d to low (%d)!" % (timer, self.minTimerValue)
+            print("Warning, timervalue %d to low (%d)!" % (timer, self.minTimerValue))
             timer = self.minTimerValue
 
         elif timer > self.maxTimerValue:
-            print "Warning, timervalue %d to high (%d)!" % (timer, self.maxTimerValue)
+            print("Warning, timervalue %d to high (%d)!" % (timer, self.maxTimerValue))
             timer = self.maxTimerValue
 
         return timer
@@ -1427,7 +1423,7 @@ def initParser(args, mode=None, gui=None, travelMovesOnly=False):
     else:
         mat = None
 
-    print "nozzle, mat:", nozzle, mat
+    print("nozzle, mat:", nozzle, mat)
 
     # Create planner singleton instance
     planner = Planner(args, nozzleProfile=nozzle, materialProfile=mat, printer=printer, travelMovesOnly=travelMovesOnly)

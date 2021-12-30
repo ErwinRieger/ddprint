@@ -20,7 +20,7 @@
 
 import math, struct, zlib
 
-import ddprintcommands, cobs, cStringIO, intmath, packedvalue
+import ddprintcommands, cobs, io, intmath, packedvalue
 
 import ddprintutil as util
 
@@ -31,7 +31,6 @@ from ddprintcommands import CommandNames, DirBitsBit, DirBitsBitRaw, MoveStartBi
 from ddprintcommands import MeasureStartBit, MeasureStartBitRaw, EndMoveBit, EndMoveBitRaw
 from ddprintcommands import TimerByteFlagBit, MoveStartBitRaw
 from ddprofile import PrinterProfile
-from types import ListType
 
 from ddconfig import *
 
@@ -140,7 +139,7 @@ class StepData:
         return "StepData:" + \
            "\n  SetDirbits: %s, Direction bits: 0x%x" % (self.setDirBits, self.dirBits) + \
            "\n  # leadAxis: %d" % self.leadAxis + \
-           "\n  # abs_vector_steps: %s" % `self.abs_vector_steps` + \
+           "\n  # abs_vector_steps: %s" % repr(self.abs_vector_steps) + \
            "\n  # accelPulses: %d" % len(self.accelPulses) + \
            "\n  # linearPulses: %d" % (self.abs_vector_steps[self.leadAxis] - (len(self.accelPulses) + len(self.decelPulses))) + \
            "\n  # decelPulses: %d" % len(self.decelPulses)
@@ -188,7 +187,8 @@ class StepData:
 
         # print "ald:", len(self.accelPulses), self.abs_vector_steps[self.leadAxis]-(len(self.accelPulses)+len(self.decelPulses)), len(self.decelPulses)
 
-        payLoad = struct.pack("<HBiiiiiHH",
+        payLoad = struct.pack("<BHBiiiiiHH",
+                ddprintcommands.CmdG1,
                 flags | startMoveFlag | measureStartBit | endMoveBit,
                 self.leadAxis,
                 self.abs_vector_steps[0],
@@ -236,11 +236,11 @@ class StepData:
         for timer in self.decelPulses[nDecel8:]:
             payLoad += struct.pack("<H", timer)
 
-        rawPayloadSize = len(payLoad)
-
         # print "size of payload:", len(payLoad)
 
         """
+        rawPayloadSize = len(payLoad)
+
         # Test if compression gives smaller packet
         # XXX reuse compressor object?
         compressor = zlib.compressobj(9, zlib.DEFLATED, -15)
@@ -253,7 +253,7 @@ class StepData:
             # return chr(ddprintcommands.CmdG1Packed) + compressedPayload
         """
 
-        return chr(ddprintcommands.CmdG1) + payLoad
+        return payLoad
 
         # stream = cStringIO.StringIO(payLoad)
 
@@ -299,7 +299,7 @@ class RawStepData:
         assert(timerValue <= maxTimerValue16)
 
         if timerValue < 25:
-            print "timervalue:", timerValue, pulse
+            print("timervalue:", timerValue, pulse)
 
         assert(timerValue >= 25) # xxx hardcoded 100khz avr
         self.pulses.append((timerValue, pulse))
@@ -358,7 +358,8 @@ class RawStepData:
         if move.isEndMove:
             endMoveBit = EndMoveBitRaw
 
-        payLoad = struct.pack("<HH",
+        payLoad = struct.pack("<BHH",
+                ddprintcommands.CmdG1Raw,
                 flags | timerByteFlag | startMoveFlag | measureStartBit | endMoveBit,
                 len(self.pulses))
 
@@ -391,11 +392,11 @@ class RawStepData:
                 assert(etimer >= 25)
                 payLoad += struct.pack("<HB", etimer, self.stepBits(stepBits))
 
-        rawPayloadSize = len(payLoad)
-
         # print "size of payload:", len(payLoad)
 
         """
+        rawPayloadSize = len(payLoad)
+
         # Test if compression gives smaller packet
         # XXX reuse compressor object?
         compressor = zlib.compressobj(9, zlib.DEFLATED, -15)
@@ -408,7 +409,7 @@ class RawStepData:
             # return chr(ddprintcommands.CmdG1RawPacked) + compressedPayload
         """
 
-        return chr(ddprintcommands.CmdG1Raw) + payLoad
+        return payLoad
 
         # stream = cStringIO.StringIO(payLoad)
         # cobsBlock = cobs.encodeCobs_cmd_packed(stream)
@@ -608,7 +609,7 @@ class VelocityOverride(object):
 
         # debug
         if speed == self.speeds[-1]:
-            print "duplicate speed: ", speed, comment
+            print("duplicate speed: ", speed, comment)
             assert(0)
 
         if speed != self.speeds[-1]:
@@ -783,31 +784,31 @@ class MoveBase(object):
 
     def pprint(self, title):
 
-        print "\n------ Move %s, #: %d, '%s' ------" % (title, self.moveNumber, self.comment)
+        print("\n------ Move %s, #: %d, '%s' ------" % (title, self.moveNumber, self.comment))
 
         if self.isPrintMove():
-            print "Print-move, distance: %s" % self.distanceStr()
+            print("Print-move, distance: %s" % self.distanceStr())
         else:
-            print "Travel-move, distance: %s" % self.distanceStr()
+            print("Travel-move, distance: %s" % self.distanceStr())
 
-        print "displacement_vector:", self.rawDisplacementStr(), "_steps:", self.rawDisplacementStepsStr()
+        print("displacement_vector:", self.rawDisplacementStr(), "_steps:", self.rawDisplacementStepsStr())
 
-        print "Startspeed: ",
-        print self.startSpeed
-        print "Top  speed: ",
-        print self.topSpeed
-        print "End  speed: ",
-        print self.endSpeed
+        print("Startspeed: ", end=' ')
+        print(self.startSpeed)
+        print("Top  speed: ", end=' ')
+        print(self.topSpeed)
+        print("End  speed: ", end=' ')
+        print(self.endSpeed)
 
         if self.state > 1:
-            print ""
-            print self.accelData
+            print("")
+            print(self.accelData)
 
         if self.state > 2:
-            print ""
-            print self.stepData
+            print("")
+            print(self.stepData)
 
-        print "---------------------"
+        print("---------------------")
 
 # Base class for TravelMove and PrintMove
 class RealMove(MoveBase):
@@ -1243,18 +1244,18 @@ class PrintMove(RealMove):
 
         RealMove.pprint(self, title)
 
-        print "Start ESpeed: " + self.startSpeed.speed().eSpeedStr()
-        print "  End ESpeed: " + self.endSpeed.speed().eSpeedStr()
+        print("Start ESpeed: " + self.startSpeed.speed().eSpeedStr())
+        print("  End ESpeed: " + self.endSpeed.speed().eSpeedStr())
 
-        print "Allowed Start Acceleration: ",
-        print self.startAccel
-        print "Allowed End Acceleration: ",
-        print self.endAccel
+        print("Allowed Start Acceleration: ", end=' ')
+        print(self.startAccel)
+        print("Allowed End Acceleration: ", end=' ')
+        print(self.endAccel)
 
         if self.state > 1:
-            print self.advanceData
+            print(self.advanceData)
 
-        print "---------------------"
+        print("---------------------")
 
 ##################################################
 
@@ -1330,35 +1331,35 @@ class SubMove(MoveBase):
 
     def pprint(self, title):
 
-        print "\n------ SubMove # %d: %s, Parent #: %d ------" % (self.moveNumber, title, self.parentMove.moveNumber)
+        print("\n------ SubMove # %d: %s, Parent #: %d ------" % (self.moveNumber, title, self.parentMove.moveNumber))
 
         # print "Print-move, distance: %.2f" % self.distance
 
-        print "displacement_vector_steps:", self.displacement_vector_steps_raw3, self.eSteps
+        print("displacement_vector_steps:", self.displacement_vector_steps_raw3, self.eSteps)
 
-        print "Startspeed: ",
-        print self.startSpeed
-        print "Top  speed: ",
-        print self.topSpeed
-        print "End  speed: ",
-        print self.endSpeed
+        print("Startspeed: ", end=' ')
+        print(self.startSpeed)
+        print("Top  speed: ", end=' ')
+        print(self.topSpeed)
+        print("End  speed: ", end=' ')
+        print(self.endSpeed)
 
         if self.state > 1:
-            print ""
-            print self.accelData
+            print("")
+            print(self.accelData)
 
         if self.state > 2:
-            print ""
-            print self.stepData
+            print("")
+            print(self.stepData)
 
-        print "---------------------"
+        print("---------------------")
 
     def sanityCheck(self):
 
         # MoveBase.sanityCheck(self, checkDirection=False) # directionCheck not true for advanced moves
 
         if self.displacement_vector_steps_raw3 == [0, 0, 0] and self.eSteps == 0:
-            print "ERROR: null move:"
+            print("ERROR: null move:")
             self.pprint("Nullmove")
             assert(0)
 
