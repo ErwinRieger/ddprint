@@ -926,7 +926,7 @@ Installation, dependencies
 
 .. code-block:: sh
 
-   apt-get install python[3]-serial
+   sudo apt-get install python3-serial python3-numpy
 
 Log
 ++++++++++++++++++++++++++++
