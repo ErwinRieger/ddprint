@@ -234,14 +234,14 @@ void mAssert(uint16_t line, const char* file) {
 
 void killMessage(uint8_t errorCode, uint8_t errorParam /*, const char *msg */) {
 
-    // LCDMSGKILL(errorCode, errorParam, msg);
+    LCDMSGKILL(errorCode, errorParam, "");
     txBuffer.sendSimpleResponse(RespKilled, errorCode, errorParam);
     kill();
 }
 
 void killMessage(uint8_t errorCode, uint8_t errorParam1, uint8_t errorParam2 /* , const char *msg */) {
 
-    LCDMSGKILL(errorCode, errorParam1, msg);
+    LCDMSGKILL(errorCode, errorParam1, "");
     txBuffer.sendSimpleResponse(RespKilled, errorCode, errorParam1, errorParam2);
     kill();
 }
