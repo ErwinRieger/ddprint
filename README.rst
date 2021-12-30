@@ -17,7 +17,8 @@ ddPrint - Adding Process control to FDM printers
    :width: 150px
    :target: /images/flowsensor_red.jpg
 
-**Note: Experimental and work in progress, documentation is incomplete and outdated.**
+:Note: Work in progress, documentation is incomplete and partly outdated.
+:Note: Development takes place on the *next branch on github*, code and documentation (this readme) may be more up to date there.
 
 
 Overview
