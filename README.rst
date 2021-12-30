@@ -934,6 +934,13 @@ Log
 
 ::
 
+   Thu Dec 30 14:53:31 CET 2021
+   ----------------------------
+
+   * Merged python3 port into next branch.
+   * Restructured project, moved test gcode files into it's own
+     repository: https://github.com/ErwinRieger/ddprint-test-gcode.
+
    Tue Dec 21 14:40:15 CET 2021
    ----------------------------
 
