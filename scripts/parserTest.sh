@@ -22,8 +22,8 @@ function runTest() {
     local inp=$2
     local id=$3
 
-    echo "nice $DDPYTHON -u ddprint.py -kadvance $kadv pre UM2-1 nozzle40 pla $inp"
-    nice $DDPYTHON ddprint.py -kadvance $kadv pre UM2-1 nozzle40 pla $inp
+    echo "nice ddprint -kadvance $kadv pre UM2-1 nozzle40 pla $inp"
+    nice ddprint -kadvance $kadv pre UM2-1 nozzle40 pla $inp
 
     if [ "$?" != "0" ]; then
         fn=/tmp/parserTest_error_${id}
@@ -56,7 +56,7 @@ for inp in $*; do
         done
 
         echo "###################################"
-        echo "$0: running test $((nTests+1)): $DDPYTHON ddprint.py pre $inp" >&2
+        echo "$0: running test $((nTests+1)): ddprint pre $inp" >&2
         echo "###################################"
 
         fn=/tmp/parserTest_$(basename $inp)_${id}.run
