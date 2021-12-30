@@ -832,8 +832,7 @@ class Planner (object):
             cobsPayload = cobs.encodeCobs512(block)
 
             # Send stepdata to printer, but not in preprocessing mode
-            if self.args.mode != "pre":
-                self.printer.sendCommand512(cobsPayload)
+            self.printer.sendCommand512(cobsPayload)
 
         self.reset()
 
@@ -875,8 +874,7 @@ class Planner (object):
                 # print "cobs encoded sector block:", cobsPayload.encode("hex")
 
                 # Send stepdata to printer, but not in preprocessing mode
-                if self.args.mode != "pre":
-                    self.printer.sendCommand512(cobsPayload)
+                self.printer.sendCommand512(cobsPayload)
 
             sent += cobs.SectorSize
             left -= cobs.SectorSize
@@ -1388,7 +1386,7 @@ def initMatProfile(args, printer, nozzleProfile):
 
     mat = MatProfile(
             args.mat, args.smat,
-            printer.getPrinterName(args),
+            printer.getPrinterName(),
             printer.printerProfile.getHwVersionI(),
             nozzle
             )
@@ -1409,10 +1407,10 @@ def initMatProfile(args, printer, nozzleProfile):
 def initParser(args, mode=None, gui=None, travelMovesOnly=False):
 
     # Create the Printer singleton instance
-    printer = Printer(gui=gui)
+    printer = Printer(args, gui=gui)
 
     # Create printer profile
-    printer.commandInit(args) # reconn
+    printer.commandInit() # reconn
 
     if "nozzle" in args:
         nozzle = NozzleProfile(args.nozzle)

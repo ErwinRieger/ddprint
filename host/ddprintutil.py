@@ -747,7 +747,7 @@ def zRepeatability(parser):
 
     assert(0) # todo: transition to printer.printerProfile...
 
-    printer.commandInit(args, PrinterProfile.getSettings())
+    printer.commandInit()
 
     feedrate = printer.printerProfile.getMaxFeedrateI(Z_AXIS)
 
@@ -1481,7 +1481,7 @@ def measureHotendStepResponse(args, printer, matProfile):
     "dt": %f,
     "startTemp": %f,
     "columns":  "time temperature",
-    """ % (printer.getPrinterName(args), Xo, interval, tempStart))
+    """ % (printer.getPrinterName(), Xo, interval, tempStart))
 
     print("Current hotend temp: %.f" % tempStart)
 

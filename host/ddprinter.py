@@ -69,7 +69,7 @@ class Printer(Serial):
     # maxTXErrors = 10
     maxTXErrors = 3
 
-    def __init__(self, gui=None):
+    def __init__(self, args, gui=None):
 
         if gui:
             self.gui = gui
@@ -77,6 +77,8 @@ class Printer(Serial):
             self.gui = dddumbui.DumbGui()
 
         Serial.__init__(self)
+
+        self.args = args
 
         # Command sequence number [1..255]
         self.lineNr = 1
@@ -432,19 +434,19 @@ class Printer(Serial):
         self.resetLineNumber()
 
     # Initialize serial interface and download printer settings.
-    def commandInit(self, args):
+    def commandInit(self):
 
-        if not self.isOpen() and args.mode != "pre":
-            self.initSerial(args.device, args.baud, True)
+        if not self.isOpen() and self.args.mode != "pre":
+            self.initSerial(self.args.device, self.args.baud, True)
 
         if not self.printerProfile:
-            self.initPrinterProfile(args)
+            self.initPrinterProfile()
 
-        if args.mode == "pre":
+        if self.args.mode == "pre":
             self.commandInitDone = True
             return 
 
-        settings = self.printerProfile.getSettings(args.pidset)
+        settings = self.printerProfile.getSettings(self.args.pidset)
 
         # todo: move all settings into CmdSetHostSettings call
 
@@ -483,7 +485,7 @@ class Printer(Serial):
             packedvalue.uint16_t(int(settings["Tu"] * 1000)), # xxx Tu < 65 s
             ))
 
-        self.adjTemp(HeaterEx1, args.inctemp)
+        self.adjTemp(HeaterEx1, self.args.inctemp)
 
         self.sendCommandParamV(CmdSetStepsPerMM, (
             packedvalue.uint16_t(settings["stepsPerMMX"]),
@@ -650,42 +652,32 @@ class Printer(Serial):
 
         binary = self.buildBinaryCommand512(cobsBlock)
 
-        # print "sendCommand512 dbg: decoding command.."
+        # print "Dbg: sendCommand512 dbg: decoding command.."
         # self.dbgCommand512(binary)
 
         # print "sendCommand512.."
-        self.send2(cmd, binary)
+        if self.args.mode != "pre":
+            self.send2(cmd, binary)
 
-        """
-        tosend = len(binary)
-        start = 0
-        while tosend > 0:
-
-            print "sendCommand512: sending chunk...", start, tosend
-            self.send2(cmd, binary[start:start+255])
-            start += 255
-            tosend -= 255
-        """
         # print "sendCommand512 done2"
 
-    # todo: python3
     def dbgCommand512(self, binary):
 
-        assert(ord(binary[0]) == SOH)
-        pnum = ord(binary[1])
+        assert(binary[0] == SOH)
+        pnum = binary[1]
         print("packet num:", pnum)
-        assert(ord(binary[2]) == CmdG1)
+        assert(binary[2] == CmdG1)
 
         (payload, lenread) = cobs.decodeCobs512(binary[3:])
 
         assert(len(payload) == 512)
 
-        flags = ord(binary[3+lenread])
+        flags = binary[3+lenread]
         print("flags:", flags)
 
-        c1 = ord(binary[4+lenread])
+        c1 = binary[4+lenread]
         print("c1: 0x%x" % c1)
-        c2 = ord(binary[5+lenread])
+        c2 = binary[5+lenread]
         print("c2: 0x%x" % c2)
 
     # Use query() if you need the result of the command
@@ -946,29 +938,24 @@ class Printer(Serial):
              statusDict.underTemp, statusDict.underGrip))
 
     # Get printer (-profile) name from printer eeprom
-    def getPrinterName(self, args):
+    def getPrinterName(self):
 
-        if args.mode == "pre":
-            return args.printer
+        if self.args.mode == "pre":
+            return self.args.printer
 
         if not self.isOpen():
-            self.initSerial(args.device, args.baud, True)
+            self.initSerial(self.args.device, self.args.baud, True)
 
         resp = self.query(CmdGetPrinterName)
         pn = util.getResponseString(resp[1], 1)
         return pn.decode()
 
-    def setPrinterName(self, args):
-
-        self.initSerial(args.device, args.baud, True)
+    def setPrinterName(self):
 
         self.sendCommandParamV(CmdSetPrinterName,
-            [packedvalue.pString_t(args.name)])
+            [packedvalue.pString_t(self.args.name)])
 
-    def getPrinterVersion(self, args):
-
-        if not self.isOpen():
-            self.initSerial(args.device, args.baud, True)
+    def getPrinterVersion(self):
 
         resp = self.query(CmdGetVersion)
         pn = util.getResponseString(resp[1], 1)
@@ -981,9 +968,9 @@ class Printer(Serial):
     #
     # To read from printer, initSerial() has to be called before.
     #
-    def initPrinterProfile(self, args):
+    def initPrinterProfile(self):
 
-        self.printerProfile = PrinterProfile(self.getPrinterName(args))
+        self.printerProfile = PrinterProfile(self.getPrinterName())
 
     # Set a gpio port on printer
     def setGpio(self, pin, value):

@@ -92,7 +92,8 @@ def encodeCobs512(payload):
 
     # print "cobs    :", len(cobsResult), cobsResult.encode("hex")
 
-    # print "encodeCobs512(): todo remove decode-test!"
+    # Debug, decode and compare packet
+    # print("encodeCobs512(): todo remove decode-test!")
     # (deco, _) = decodeCobs512(cobsResult)
     # assert(deco == payload)
 
@@ -123,21 +124,21 @@ def decodeCobs512(data):
 
     assert(len(data) >= 512)
 
-    result = ""
+    result = bytearray()
     pos = 0
     bytesRead = 0
     bytesWritten = 0
 
     while bytesWritten < SectorSize:
 
-        cobsCode = ord(data[pos])
+        cobsCode = data[pos]
         bytesRead += 1
         pos += 1
 
         for i in range(cobsCode-1):
 
             assert(bytesWritten < SectorSize)# if bytesWritten < SectorSize:
-            result += data[pos]
+            result.append(data[pos])
             bytesRead += 1
             bytesWritten +=1
             pos += 1
@@ -145,7 +146,7 @@ def decodeCobs512(data):
         # Length of last cobs subblock points
         # intentionally beyond the end
         if bytesWritten < SectorSize and cobsCode != 0xff:
-            result += nullByte
+            result.append(NullByte)
             bytesWritten +=1
 
     return (result, bytesRead)

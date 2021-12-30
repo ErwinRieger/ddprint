@@ -386,7 +386,7 @@ class MainForm(npyscreen.FormBaseNew):
         self.guiQueue.put(SyncCallUpdate(self.fn.set_value, self.args.gfile))
         
         # try:
-        self.printer.commandInit(self.args)
+        self.printer.commandInit()
         # except SerialException, ex:
             # msg = "Can't open serial device '%s' (baudrate: %d)!" % (self.args.device, self.args.baud)
             # self.guiQueue.put(SyncCall(self.quit, msg, ex))

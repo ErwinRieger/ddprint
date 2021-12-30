@@ -45,7 +45,7 @@ def testFilSensor(args, printer, parser):
 
     feedrate = args.feedrate or 1.0
 
-    printer.commandInit(args)
+    printer.commandInit()
     startPos = printer.getFilSensor()
     util.manualMove(parser, util.dimIndex['A'], args.distance, feedrate=feedrate)
     endPos = printer.getFilSensor()
@@ -73,7 +73,7 @@ def calibrateESteps(args, printer, planner):
     feedrate = args.feedrate or 5.0
     feedrate = min(feedrate, printer.printerProfile.getJerk("A"))
 
-    printer.commandInit(args)
+    printer.commandInit()
 
     # Disable flowrate limit
     printer.sendCommandParamV(CmdEnableFRLimit, [packedvalue.uint8_t(0)])
@@ -166,7 +166,7 @@ def calibrateFilSensor(args, printer, planner):
 
     maxFeedrate = args.feedrate or 10.0 # mm/s
 
-    printer.commandInit(args)
+    printer.commandInit()
 
     # Disable flowrate limit
     printer.sendCommandParamV(CmdEnableFRLimit, [packedvalue.uint8_t(0)])
@@ -311,7 +311,7 @@ def testFeederUniformity(args, parser):
 
     print("circum:", circ, "feedrate:", feedrate)
 
-    printer.commandInit(args)
+    printer.commandInit()
 
     # Disable flowrate limit
     printer.sendCommandParamV(CmdEnableFRLimit, [packedvalue.uint8_t(0)])
