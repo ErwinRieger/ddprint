@@ -17,56 +17,16 @@
 # along with ddprint.  If not, see <http://www.gnu.org/licenses/>.
 #*/
 
-# ARDUINO_DIR  = /usr/share/arduino
-ARDUINO_DIR  = ../../arduino-1.6.13
 
-TARGET       = firmware.rumba
+FW_NAME = rumba
 
-OBJDIR := build.rumba
+ARDUINO_LIBS += LiquidCrystal
 
-# Mega/rumba board
-BOARD_TAG    = mega
-MCU = atmega2560
-AVRDUDE_ARD_PROGRAMMER = wiring
-# End Mega
-
-ARDUINO_LIBS = LiquidCrystal SdFat/src/SdCard
-
-USER_LIB_PATH = libraries
+include build_files/mega2560.mk
+include build_files/arduino_mk.mk
 
 ARDUINO_PORT = /dev/ttyACM0
 
-AVRDUDE_ARD_BAUDRATE = 115200
+CPPFLAGS      +=  -DMOTHERBOARD=4
 
-NO_CORE_MAIN_CPP = 1
-
-include ../../Arduino-Makefile/Arduino.mk
-
-# Release version
-OPTIMIZATION_LEVEL = 2
-# Debug version
-# OPTIMIZATION_LEVEL = s
-# DEBUGFLAGS    =  -g3 -ggdb
-# LDFLAGS += -g
-
-# Mega/rumba board
-CPPFLAGS      +=  -DMOTHERBOARD=4 -I. -Iavr -Isrc 
-CPPFLAGS      +=  -I./libraries/SdFat/src
-CPPFLAGS      +=  -I$(ARDUINO_PLATFORM_LIB_PATH)
-CPPFLAGS      +=  $(DEBUGFLAGS)
-
-# Temp. fix depreciated warning in arduino:Print.cpp
-CPPFLAGS      +=  -D"PGM_P=const char*"
-
-# Disable colored gcc output (don't confuse vim)
-CXXFLAGS      +=  -fno-diagnostics-color $(DEBUGFLAGS)
-
-CXXFLAGS      +=  -ffat-lto-objects -save-temps=obj -fverbose-asm 
-
-LDFLAGS 	  += -mrelax
-
-# Create map file
-OTHER_LIBS      += -Wl,-Map,build.rumba/build.map
-
-# End Mega
 

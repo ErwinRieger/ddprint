@@ -17,14 +17,10 @@
 # along with ddprint.  If not, see <http://www.gnu.org/licenses/>.
 #*/
 
-FW_NAME = ramps
+# Creality melzi board
+ALTERNATE_CORE_PATH = $(ARDUINO_DIR)/../Sanguino-master/avr
+BOARD_TAG  = sanguino
+MCU        = atmega1284p
+F_CPU      = 16000000L
 
-ARDUINO_LIBS += LiquidCrystal
-
-include build_files/mega2560.mk
-include build_files/arduino_mk.mk
-
-ARDUINO_PORT = /dev/ttyACM0
-
-CPPFLAGS      +=  -DMOTHERBOARD=2
 

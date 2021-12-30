@@ -17,57 +17,12 @@
 # along with ddprint.  If not, see <http://www.gnu.org/licenses/>.
 #*/
 
-# ARDUINO_DIR  = /usr/share/arduino
-ARDUINO_DIR  = ../../arduino-1.6.13
+FW_NAME = um2
 
-TARGET       = firmware.um2
-
-OBJDIR := build.um2
-
-# Mega/Ramps board
-BOARD_TAG    = mega
-MCU = atmega2560
-AVRDUDE_ARD_PROGRAMMER = wiring
-# End Mega
-
-ARDUINO_LIBS = SdFat/src/SdCard 
-
-USER_LIB_PATH = libraries
+include build_files/mega2560.mk
+include build_files/arduino_mk.mk
 
 ARDUINO_PORT = /dev/ttyACM0
 
-AVRDUDE_ARD_BAUDRATE = 115200
-
-NO_CORE_MAIN_CPP = 1
-
-include ../../Arduino-Makefile/Arduino.mk
-
-OPTIMIZATION_LEVEL = 2
-
-# Mega/Ramps board
-CPPFLAGS      +=  -DMOTHERBOARD=1 -I. -Iavr -Isrc
-CPPFLAGS      +=  -I./libraries/SdFat/src
-CPPFLAGS      +=  -I$(ARDUINO_PLATFORM_LIB_PATH)
-
-# Temp. fix depreciated warning in arduino:Print.cpp
-CPPFLAGS      +=  -D"PGM_P=const char*"
-
-# Disable colored gcc output (don't confuse vim)
-CXXFLAGS      +=  -fno-diagnostics-color
-
-CXXFLAGS      +=  -ffat-lto-objects -save-temps=obj -fverbose-asm
-
-# Dump assembler with line information for debugging
-# CXXFLAGS      +=  -g -Wa,-adhln
-
-LDFLAGS 	  += -mrelax
-
-# Create map file
-OTHER_LIBS      += -Wl,-Map,build.um2/build.map
-
-# End Mega
-
-floatcheck:
-	@echo "\nGrepping for soft math functions, watch out for divsf and mulsf:\n"
-	grep -E "call.*divs|call.*muls" build.um2/*.s|sort -u
+CPPFLAGS      +=  -DMOTHERBOARD=1
 

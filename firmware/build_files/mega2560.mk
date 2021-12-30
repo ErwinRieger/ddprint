@@ -17,14 +17,8 @@
 # along with ddprint.  If not, see <http://www.gnu.org/licenses/>.
 #*/
 
-FW_NAME = ramps
-
-ARDUINO_LIBS += LiquidCrystal
-
-include build_files/mega2560.mk
-include build_files/arduino_mk.mk
-
-ARDUINO_PORT = /dev/ttyACM0
-
-CPPFLAGS      +=  -DMOTHERBOARD=2
+# Mega/Ramps board
+BOARD_TAG    = mega
+MCU = atmega2560
+AVRDUDE_ARD_PROGRAMMER = wiring
 
