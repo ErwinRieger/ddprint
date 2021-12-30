@@ -941,7 +941,8 @@ Log
    * Restructured project, moved test gcode files into it's own
      repository: https://github.com/ErwinRieger/ddprint-test-gcode.
    * Build: cleanup Makefiles, added license and moved firmware
-     Makefiles into its own folder.
+     Makefiles into its own folder. Moved common makefile stuff
+     into include files.
 
    Tue Dec 21 14:40:15 CET 2021
    ----------------------------
