@@ -5,6 +5,6 @@
 envscript="$(realpath -m ${0}/../ddprint.env)"
 . $envscript
 
-python $DDPRINTHOME/host/ddtool.py $*
+python3 $DDPRINTHOME/host/ddtool.py $*
 
 

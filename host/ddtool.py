@@ -75,16 +75,16 @@ def gcodeTool(fn):
     xyspd = float(settings.rapidxyspeed[0]) / 60
     zspd = float(settings.rapidzspeed[0]) / 60
 
-    print "\nGCode info's:"
-    print   "-------------"
-    print "Model (STL) : %s" % settings.applytomodels
-    print "Generator   : %s" % settings.generator
-    print "LayerHeight : %.2f mm" % lh
-    print "ExtrudeWidth: %.2f mm" % ew
-    print "Speed       : %.2f mm/s" % spd
-    print "Travelspeed : XY: %.2f Z: %.2f mm/s" % (xyspd, zspd)
-    print "starting cod: \n  %s" % "".join(settings.startinggcode).replace(";", "\n  ;")
-    print "\nMax flowrate: %.2f mm³/s" % (lh*ew*spd)
+    print("\nGCode info's:")
+    print("-------------")
+    print("Model (STL) : %s" % settings.applytomodels)
+    print("Generator   : %s" % settings.generator)
+    print("LayerHeight : %.2f mm" % lh)
+    print("ExtrudeWidth: %.2f mm" % ew)
+    print("Speed       : %.2f mm/s" % spd)
+    print("Travelspeed : XY: %.2f Z: %.2f mm/s" % (xyspd, zspd))
+    print("starting cod: \n  %s" % "".join(settings.startinggcode).replace(";", "\n  ;"))
+    print("\nMax flowrate: %.2f mm³/s" % (lh*ew*spd))
 
 
 if len(sys.argv) == 2:
@@ -100,6 +100,6 @@ if len(sys.argv) == 2:
         # gcodetool
         gcodeTool(fn)
     else:
-        print "unknown file/extension", ext
+        print("unknown file/extension", ext)
 
 
