@@ -173,12 +173,12 @@ class Printer(Serial):
 
             elif reason == RespMinTemp:
 
-                (heater,) = struct.unpack("<B", payload[1])
+                heater = payload[1]
                 self.gui.logError("ERROR: PRINTER KILLED! Reason: %s, Heater: %d" % (RespCodeNames[reason], heater))
 
             elif reason == RespMaxTemp:
 
-                (heater,) = struct.unpack("<B", payload[1])
+                heater = payload[1]
                 self.gui.logError("ERROR: PRINTER KILLED! Reason: %s, Heater: %d" % (RespCodeNames[reason], heater))
 
             else:
