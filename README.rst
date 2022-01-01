@@ -910,7 +910,6 @@ Things todo, nice to have
 
 * Improve documentation, examples, videos.
 * Cleanup and stabilisation, make binary releases.
-* Python3 port (currently python 2.7).
 * Other convenient things like automatic bedleveling and so on.
 
 Thanks
@@ -933,6 +932,11 @@ Log
 ++++++++++++++++++++++++++++
 
 ::
+
+   Sat Jan  1 10:45:26 CET 2022
+   ----------------------------
+
+   * Merged next into master, biggest change: ported ddPrint to use python3.
 
    Thu Dec 30 14:53:31 CET 2021
    ----------------------------
