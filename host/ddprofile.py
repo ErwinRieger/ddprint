@@ -225,7 +225,11 @@ class PrinterProfile(ProfileBase):
         return howlong / tRound
 
     def getWeakPowerBedTemp(self):
-        return int(self.getValue("weakPowerBedTemp"))
+        
+        if self.hasValue("weakPowerBedTemp"):
+            return int(self.getValue("weakPowerBedTemp"))
+
+        return 0
 
     def getBedSurface(self):
 
