@@ -45,7 +45,7 @@
 // #define Y_STEP_PIN         DigitalOutput<60, ACTIVEHIGHPIN>
 #define Y_STEP_PIN         FastDigitalOutput<PORTADDR(PORTF), 6, ACTIVEHIGHPIN>  /* Arduino pin 60, PF6 */
 // #define Y_DIR_PIN          DigitalOutput<61, ACTIVELOWPIN>
-#define Y_DIR_PIN          FastDigitalOutput<PORTADDR(PORTF), 7, ACTIVELOWPIN>  /* Arduino pin 61, PF7 */
+#define Y_DIR_PIN          FastDigitalOutput<PORTADDR(PORTF), 7, ACTIVEHIGHPIN>  /* Arduino pin 61, PF7 */
 #define Y_STOP_PIN         DigitalInput<42, ACTIVELOWPIN>  // PL7
 #define Y_ENABLE_PIN       DigitalOutput<56, ACTIVELOWPIN> // PF2
 
