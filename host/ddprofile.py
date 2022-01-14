@@ -152,13 +152,17 @@ class PrinterProfile(ProfileBase):
 
     def getBedlevelOffset(self):
 
-        ofs = float(self.getValue("add_homeing_z"))
+        if self.hasValue("add_homeing_z"):
 
-        if ofs < 0:
-            print("Warning: negative add_homeing_z is deprecated (%f)" % ofs)
-            return abs(ofs)
+            ofs = float(self.getValue("add_homeing_z"))
 
-        return ofs
+            if ofs < 0:
+                print("Warning: negative add_homeing_z is deprecated (%f)" % ofs)
+                return abs(ofs)
+
+            return ofs
+
+        return 0.0
 
     def getFeederWheelDiamI(self):
         return float(self.getValue("feederWheelDiam"))
