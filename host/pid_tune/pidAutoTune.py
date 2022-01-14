@@ -32,8 +32,8 @@ raw = util.jsonLoad(f)
 d = raw["data"]
 
 # Get timestamps, sampling frequency
-rawXValues = np.array(map(lambda x: x[0], d), dtype=float) # [:,0]
-rawYValues = np.array(map(lambda x: x[1], d), dtype=float)
+rawXValues = np.array([x[0] for x in d], dtype=float) # [:,0]
+rawYValues = np.array([x[1] for x in d], dtype=float)
 
 times = np.diff(rawXValues)
 
@@ -48,19 +48,19 @@ rawTMax = np.max(rawYValues)
 # Ks = raw["tEnd"]/Xo # Ks is also normalized endtemp
 Ks = rawTMax / Xo # Ks is also normalized endtemp
 
-print "# raw endtemp, endtemp:", raw["tEnd"], rawTMax, Ks
+print("# raw endtemp, endtemp:", raw["tEnd"], rawTMax, Ks)
 
 t033 = getPercentT(normData, Ks/3.0)
 t066 = getPercentT(normData, Ks*2/3.0)
 
-print "##################################################"
-print "## PID Parameter aus Sprungantwort              ##"
-print "##################################################"
-print "# Max time between samples: %.4f s" % np.max(times)
+print("##################################################")
+print("## PID Parameter aus Sprungantwort              ##")
+print("##################################################")
+print("# Max time between samples: %.4f s" % np.max(times))
 fs = 1.0 / np.mean(times)
-print "# Mean sampling freq %.4f s, %.4f Hz" % (np.mean(times), fs)
-print "# Ks,Kp is:", Ks
-print "# Tg/Tu nach Gregory Reeves, https://www.youtube.com/watch?v=4o4cqsu8JnE:"
+print("# Mean sampling freq %.4f s, %.4f Hz" % (np.mean(times), fs))
+print("# Ks,Kp is:", Ks)
+print("# Tg/Tu nach Gregory Reeves, https://www.youtube.com/watch?v=4o4cqsu8JnE:")
 # "Time Constant"
 Tg1 = (t066-t033) / 0.7
 # print '"Tg": %.4f'% Tg1
@@ -99,18 +99,18 @@ while i < len(normData)-1:
     tangentAvg.add(s)
 
     if tangentAvg.valid():
-        tforavg = normData[i+1-nAvgShortterm/2][0]
+        tforavg = normData[i+1-nAvgShortterm//2][0]
         tangente.append((tforavg, s, tangentAvg.mean()))
     else:
-        if (i < nAvgShortterm/2):
+        if (i < nAvgShortterm//2):
             tangente.append((t, s, 0))
 
     i += 1
     last = (t, y)
 
 # max steigung tangente:
-tts = np.array(map(lambda x: x[0], tangente), dtype=float)
-ty = np.array(map(lambda x: x[2], tangente), dtype=float)
+tts = np.array([x[0] for x in tangente], dtype=float)
+ty = np.array([x[2] for x in tangente], dtype=float)
 
 smax = np.max(ty)
 idx = np.argmax(ty)
@@ -125,13 +125,13 @@ ttg = tts[idx] + ((Ks - tempidx) / smax)
 #end # tangente über steigung
 
 # Mittelwert Tg, Tu:
-print "# Average Tg/Tu:"
+print("# Average Tg/Tu:")
 Tg = (Tg1+Tg2+ttg)/3.0
 Tu = (Tu1+Tu2+ttu)/3.0
 # print "Tu:", Tu
 # print "Tg:", Tg
-print '"Tu": %.4f,' % Tu
-print '"Tg": %.4f, "ZN": {'% Tg
+print('"Tu": %.4f,' % Tu)
+print('"Tg": %.4f, "ZN": {'% Tg)
 
 # print "\nZiegler PI:"
 # Kr = (0.9 / Ks) * (Tg / Tu)
@@ -139,21 +139,21 @@ print '"Tg": %.4f, "ZN": {'% Tg
 # print '"Kp": %.4f,' % Kr
 # print '"Ki": %.4f,' % (Kr / Tn)
 
-print "#Ziegler PID 1.2:"
+print("#Ziegler PID 1.2:")
 Kr = (1.2 / Ks) * (Tg / Tu)
 Tn = 2.0 * Tu 
 Tv = 0.5 * Tu
-print '"Kp": %.4f,' % Kr
-print '"Ki": %.4f,' % (Kr / Tn)
-print '"Kd": %.4f} , "CH": {' % (Kr / Tv)
+print('"Kp": %.4f,' % Kr)
+print('"Ki": %.4f,' % (Kr / Tn))
+print('"Kd": %.4f} , "CH": {' % (Kr / Tv))
 
-print "#Chien aperiodisch PID, gute führung:"
+print("#Chien aperiodisch PID, gute führung:")
 Kr = (0.6 / Ks) * (Tg / Tu) 
 Tn = Tg 
 Tv = 0.5 * Tu
-print '"Kp": %.4f,' % Kr
-print '"Ki": %.4f,' % (Kr / Tn)
-print '"Kd": %.4f},' % (Kr / Tv)
+print('"Kp": %.4f,' % Kr)
+print('"Ki": %.4f,' % (Kr / Tn))
+print('"Kd": %.4f},' % (Kr / Tv))
 
 ##################################################
 
@@ -164,7 +164,7 @@ print '"Kd": %.4f},' % (Kr / Tv)
 areaA = 0.0
 areaB = 0.0
 
-inversY = np.array(map(lambda x: rawTMax - x[1], d), dtype=float)
+inversY = np.array([rawTMax - x[1] for x in d], dtype=float)
 
 for i in range(len(rawXValues)-1):
     areaA = np.trapz(y=rawYValues[:i], x=rawXValues[:i])
@@ -176,14 +176,14 @@ for i in range(len(rawXValues)-1):
         tSum = rawXValues[i]
         break
 
-print "\nT-Sum method PID parameters (fast):"
-print "Tsum: ", tSum
+print("\nT-Sum method PID parameters (fast):")
+print("Tsum: ", tSum)
 Kr = 2.0 / Ks
 Tn = 0.8 * tSum
 Tv = 0.194 * tSum
-print '"Kp": %.4f,' % Kr
-print '"Ki": %.4f,' % (Kr / Tn)
-print '"Kd": %.4f,' % (Kr / Tv)
+print('"Kp": %.4f,' % Kr)
+print('"Ki": %.4f,' % (Kr / Tn))
+print('"Kd": %.4f,' % (Kr / Tv))
 
 # print "\nT-Sum method PI parameters (fast):"
 # Kr = 1.0 / Ks
@@ -198,18 +198,18 @@ plt.subplot(3,1,1)
 plt.title('Raw temperature step response')
 plt.grid(True)
 # plt.plot(map(lambda t: t[0], d), map(lambda t: t[1], d), '-')
-plt.plot(rawXValues, map(lambda t: t[1], d), '-')
+plt.plot(rawXValues, [t[1] for t in d], '-')
 
 plt.subplot(3,1,2)
 plt.title('Tangente')
 plt.grid(True)
-plt.plot(map(lambda t: t[0], tangente), map(lambda t: t[2], tangente), '-')
+plt.plot([t[0] for t in tangente], [t[2] for t in tangente], '-')
 plt.plot((tts[idx], tts[idx]), (0, smax*1.1))
 
 plt.subplot(3,1,3)
 plt.title('Step response')
 plt.grid(True)
-plt.plot(map(lambda t: t[0], normData), map(lambda t: t[1], normData), '-')
+plt.plot([t[0] for t in normData], [t[1] for t in normData], '-')
 plt.plot([0, normData[-1][0]], [Ks, Ks])
 
 plt.plot([t033, t033], [0, 0.4*Ks])
