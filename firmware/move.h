@@ -21,11 +21,12 @@
 
 #include "Configuration.h"
 
-enum AxisEnum {X_AXIS=0, Y_AXIS=1, Z_AXIS=2, E_AXIS=3};
+enum AxisEnum { X_AXIS, Y_AXIS, Z_AXIS, E_AXIS, };
 
 struct XAxisSelector { };
 struct YAxisSelector { };
 struct ZAxisSelector { };
+struct Z1AxisSelector { };
 struct EAxisSelector { };
 
 template<typename MOVE>
@@ -45,19 +46,23 @@ void activate_dir_pin();
 
 template<>
 FWINLINE void activate_dir_pin<XAxisSelector>() {
-     X_DIR_PIN :: activate();
+    X_DIR_PIN :: activate();
 }
 template<>
 FWINLINE void activate_dir_pin<YAxisSelector>() {
-     Y_DIR_PIN :: activate();
+    Y_DIR_PIN :: activate();
 }
 template<>
 FWINLINE void activate_dir_pin<ZAxisSelector>() {
-     Z_DIR_PIN :: activate();
+    Z_DIR_PIN :: activate();
+#if defined(DualZStepper)
+    Z1_DIR_PIN :: activate();
+#endif
 }
+
 template<>
 FWINLINE void activate_dir_pin<EAxisSelector>() {
-     E0_DIR_PIN :: activate();
+    E0_DIR_PIN :: activate();
 }
 
 template<typename MOVE>
@@ -65,19 +70,22 @@ void deactivate_dir_pin();
 
 template<>
 FWINLINE void deactivate_dir_pin<XAxisSelector>() {
-     X_DIR_PIN :: deActivate();
+    X_DIR_PIN :: deActivate();
 }
 template<>
 FWINLINE void deactivate_dir_pin<YAxisSelector>() {
-     Y_DIR_PIN :: deActivate();
+    Y_DIR_PIN :: deActivate();
 }
 template<>
 FWINLINE void deactivate_dir_pin<ZAxisSelector>() {
-     Z_DIR_PIN :: deActivate();
+    Z_DIR_PIN :: deActivate();
+#if defined(DualZStepper)
+    Z1_DIR_PIN :: deActivate();
+#endif
 }
 template<>
 FWINLINE void deactivate_dir_pin<EAxisSelector>() {
-     E0_DIR_PIN :: deActivate();
+    E0_DIR_PIN :: deActivate();
 }
 
 template<typename MOVE>
@@ -94,6 +102,9 @@ FWINLINE void activate_step_pin<YAxisSelector>() {
 template<>
 FWINLINE void activate_step_pin<ZAxisSelector>() {
     Z_STEP_PIN :: activate();
+    #if defined(DualZStepper)
+        Z1_STEP_PIN :: activate();
+    #endif
 }
 template<>
 FWINLINE void activate_step_pin<EAxisSelector>() {
@@ -114,6 +125,9 @@ FWINLINE void deactivate_step_pin<YAxisSelector>() {
 template<>
 FWINLINE void deactivate_step_pin<ZAxisSelector>() {
     Z_STEP_PIN :: deActivate();
+    #if defined(DualZStepper)
+        Z1_STEP_PIN :: deActivate();
+    #endif
 }
 template<>
 FWINLINE void deactivate_step_pin<EAxisSelector>() {

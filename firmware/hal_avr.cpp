@@ -25,7 +25,11 @@
 #include "pins.h"
 #include "thermistortables.h"
 
+// Thermistortable Bed
+static ThermistorTable<TempCircuitBed> thermistorTableBed;
 
+// Thermistortable Hotend
+static ThermistorTable<TempCircuitHotend> thermistorTableHotend;
 
 // Common for all avr boards (um2, ramps, rumba)
 #if defined(AVR)
@@ -43,6 +47,8 @@
     DefineIOPinMembers(4);
     DefineIOPinMembers(7);
     DefineIOPinMembers(8);
+    DefineIOPinMembers(18);
+    DefineIOPinMembers(19);
     DefineIOPinMembers(22);
     DefineIOPinMembers(23);
     DefineIOPinMembers(25);
@@ -51,14 +57,13 @@
     DefineIOPinMembers(29);
     DefineIOPinMembers(30);
     DefineIOPinMembers(31);
-    DefineIOPinMembers(32);
     DefineIOPinMembers(33);
     DefineIOPinMembers(34);
     DefineIOPinMembers(35);
     DefineIOPinMembers(36);
     DefineIOPinMembers(37);
     DefineIOPinMembers(42);
-    DefineIOPinMembers(43);
+    DefineIOPinMembers(32);
     DefineIOPinMembers(44);
     DefineIOPinMembers(45);
     DefineIOPinMembers(46);
@@ -131,7 +136,26 @@
     DefineIOPinMembers(27);
     // DefineIOPinMembers(24);
     DefineIOPinMembers(31);
-
+#elif MOTHERBOARD == 6
+    //
+    // Anycubic I3 trigorilla
+    //
+    DefineIOPinMembers(5);
+    DefineIOPinMembers(7);
+    DefineIOPinMembers(8);
+    DefineIOPinMembers(9);
+    DefineIOPinMembers(10);
+    DefineIOPinMembers(11);
+    // DefineIOPinMembers(15);
+    DefineIOPinMembers(18);
+    DefineIOPinMembers(24);
+    DefineIOPinMembers(30);
+    DefineIOPinMembers(38);
+    DefineIOPinMembers(42);
+    DefineIOPinMembers(43);
+    DefineIOPinMembers(44);
+    DefineIOPinMembers(56);
+    DefineIOPinMembers(62);
 #else
     #error UnknownBoard
 #endif // motherboard
@@ -221,7 +245,7 @@ bool TempControl::Run() {
     // printf("TempControl::Run() wait for hotend\n");
     PT_WAIT_WHILE( ADCSRA & (1<<ADSC) );
 
-    current_temperature[0] = avgHotendTemp.addValue( tempFromRawADC(ADC) );
+    current_temperature[0] = avgHotendTemp.addValue( thermistorTableHotend.tempFromRawADC(ADC) );
 
     ////////////////////////////////
     // Handle heated bed measurement
@@ -243,7 +267,7 @@ bool TempControl::Run() {
     // printf("TempControl::Run() wait for bed\n");
     PT_WAIT_WHILE( ADCSRA & (1<<ADSC) );
 
-    current_temperature_bed = avgBedTemp.addValue( tempFromRawADC(ADC) );
+    current_temperature_bed = avgBedTemp.addValue( thermistorTableBed.tempFromRawADC(ADC) );
 
     PT_RESTART();
         

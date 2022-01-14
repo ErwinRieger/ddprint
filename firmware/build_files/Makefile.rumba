@@ -25,8 +25,6 @@ ARDUINO_LIBS += LiquidCrystal
 include build_files/mega2560.mk
 include build_files/arduino_mk.mk
 
-ARDUINO_PORT = /dev/ttyACM0
-
 CPPFLAGS      +=  -DMOTHERBOARD=4
 
 

@@ -252,6 +252,13 @@ class PrinterProfile(ProfileBase):
     def homingToZero(self):
         return self.getHomeDir(Z_AXIS) <= 0
 
+    def getBautRateLimit(self):
+
+        if self.hasValue("baudRateLimit"):
+            return int(self.getValue("baudRateLimit"))
+        else:
+            return 1000000
+
 ####################################################################################################
 #
 # Material profile

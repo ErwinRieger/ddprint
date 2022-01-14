@@ -1,7 +1,7 @@
 #/*
 # This file is part of ddprint - a 3D printer firmware.
 # 
-# Copyright 2015 erwin.rieger@ibrieger.de
+# Copyright 2021 erwin.rieger@ibrieger.de
 # 
 # ddprint is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -17,19 +17,10 @@
 # along with ddprint.  If not, see <http://www.gnu.org/licenses/>.
 #*/
 
-FIRMWARES = um2 ender3 ai3m ramps rumba jp
+FW_NAME = anycubic_ai3m
 
-# .PHONY: $(FIRMWARES)
+include build_files/mega2560.mk
+include build_files/arduino_mk.mk
 
-all: $(FIRMWARES)
-
-$(FIRMWARES):
-	make -f build_files/Makefile.$@
-
-clean: 
-	$(foreach fw, $(FIRMWARES), make -f build_files/Makefile.$(fw) clean;)
-
-gitversion.cpp: ../.git/HEAD ../.git/index
-	echo "const char *gitversion = \"$(shell git rev-parse --short HEAD)\";" > gitversion.cpp
-
+CPPFLAGS      +=  -DMOTHERBOARD=6
 

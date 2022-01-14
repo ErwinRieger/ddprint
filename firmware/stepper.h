@@ -24,27 +24,11 @@
 #include "ringbuffer.h"
 #include "filsensor.h"
 
-#define  enable_x() (X_ENABLE_PIN :: activate())
-#define disable_x() (X_ENABLE_PIN :: deActivate())
-
-#define  enable_y() (Y_ENABLE_PIN :: activate())
-#define disable_y() (Y_ENABLE_PIN :: deActivate())
-
-#ifdef Z_DUAL_STEPPER_DRIVERS
-  #define  enable_z() { Z_ENABLE_PIN :: activate(); Z2_ENABLE_PIN :: activate(); }
-  #define disable_z() { Z_ENABLE_PIN :: deActivate(); Z2_ENABLE_PIN :: deActivate(); }
-#else
-  #define  enable_z() (Z_ENABLE_PIN :: activate())
-  #define disable_z() (Z_ENABLE_PIN :: deActivate())
-#endif
-
-#define enable_e0() (E0_ENABLE_PIN :: activate())
-#define disable_e0() (E0_ENABLE_PIN :: deActivate())
-
 extern int32_t current_pos_steps[NUM_AXIS];
 
 // Initialize and start the stepper motor subsystem
 void st_init();
+void st_enableSteppers(uint8_t stepperMask);
 void st_disableSteppers();
 
 //
@@ -100,6 +84,22 @@ FWINLINE void st_dec_current_pos_steps<EAxisSelector>() {
 }
 
 template<typename MOVE>
+uint8_t getHomeDir();
+
+template<>
+FWINLINE uint8_t getHomeDir<XAxisSelector>() {
+    return printer.getHostSettings().xHomeDir;
+}
+template<>
+FWINLINE uint8_t getHomeDir<YAxisSelector>() {
+    return printer.getHostSettings().yHomeDir;
+}
+template<>
+FWINLINE uint8_t getHomeDir<ZAxisSelector>() {
+    return printer.getHostSettings().zHomeDir;
+}
+
+template<typename MOVE>
 FWINLINE void st_set_direction(uint8_t dirbits) {
 
     if (dirbits & st_get_move_bit_mask<MOVE>())
@@ -108,118 +108,95 @@ FWINLINE void st_set_direction(uint8_t dirbits) {
         deactivate_dir_pin<MOVE>();
 }
 
-template<typename MOVE>
-bool st_endstop_pressed(bool);
-
-template<>
-FWINLINE bool st_endstop_pressed<XAxisSelector>(bool forward) {
-
-    static uint8_t nPresses = 0;
-
-    if (forward) {
-        if (printer.getHostSettings().xHomeDir) {
-            if (X_STOP_PIN :: active()) {
-                if (nPresses++ > (printer.getStepsPerMMX() / 4))
-                    return true;
-                return false;
-            }
-        }
-    }
-    else {
-        if (! printer.getHostSettings().xHomeDir) {
-            if (X_STOP_PIN :: active()) {
-                if (nPresses++ > (printer.getStepsPerMMX() / 4))
-                    return true;
-                return false;
-            }
-        }
-    }
-
-    nPresses = 0;
-    return false;
-}
-
-template<>
-FWINLINE bool st_endstop_pressed<YAxisSelector>(bool forward) {
-
-    static uint8_t nPresses = 0;
-
-    if (forward) {
-        if (printer.getHostSettings().yHomeDir) {
-            if (Y_STOP_PIN :: active()) {
-                if (nPresses++ > (printer.getStepsPerMMY() / 4))
-                    return true;
-                return false;
-            }
-        }
-    }
-    else {
-        if (! printer.getHostSettings().yHomeDir) {
-            if (Y_STOP_PIN :: active()) {
-                if (nPresses++ > (printer.getStepsPerMMY() / 4))
-                    return true;
-                return false;
-            }
-        }
-    }
-
-    nPresses = 0;
-    return false;
-}
-
-template<>
-FWINLINE bool st_endstop_pressed<ZAxisSelector>(bool forward) {
-
-    static uint8_t nPresses = 0;
-
-    if (forward) {
-        if (printer.getHostSettings().zHomeDir) {
-            if (Z_STOP_PIN :: active()) {
-                if (nPresses++ > (printer.getStepsPerMMZ() / 4))
-                    return true;
-                return false;
-            }
-        }
-    }
-    else {
-        if (! printer.getHostSettings().zHomeDir) {
-            if (Z_STOP_PIN :: active()) {
-                if (nPresses++ > (printer.getStepsPerMMZ() / 4))
-                    return true;
-                return false;
-            }
-        }
-    }
-
-    nPresses = 0;
-    return false;
-}
+#define EndstopDebounce(spmm) max(spmm/64, 2)
 
 template<typename MOVE>
-bool st_endstop_released(bool);
+bool st_endstop_pressed();
 
 template<>
-FWINLINE bool st_endstop_released<XAxisSelector>(bool forward) {
+FWINLINE bool st_endstop_pressed<XAxisSelector>() {
+
+    static uint8_t nPresses = 0;
+
+    if (X_STOP_PIN :: active()) {
+        if (++nPresses >= EndstopDebounce(printer.getStepsPerMMX())) {
+            nPresses = 0;
+            return true;
+        }
+        return false;
+    }
+
+    nPresses = 0;
+    return false;
+}
+
+template<>
+FWINLINE bool st_endstop_pressed<YAxisSelector>() {
+
+    static uint8_t nPresses = 0;
+
+    if (Y_STOP_PIN :: active()) {
+        if (++nPresses >= EndstopDebounce(printer.getStepsPerMMY())) {
+            nPresses = 0;
+            return true;
+        }
+        return false;
+    }
+
+    nPresses = 0;
+    return false;
+}
+
+template<>
+FWINLINE bool st_endstop_pressed<ZAxisSelector>() {
+
+    static uint8_t nPresses = 0;
+
+    if (Z_STOP_PIN :: active()) {
+        if (++nPresses >= EndstopDebounce(printer.getStepsPerMMZ())) {
+            nPresses = 0;
+            return true;
+        }
+        return false;
+    }
+
+    nPresses = 0;
+    return false;
+}
+
+#if defined(DualZStepper)
+template<>
+FWINLINE bool st_endstop_pressed<Z1AxisSelector>() {
+
+    static uint8_t nPresses = 0;
+
+    if (Z1_STOP_PIN :: active()) {
+        if (++nPresses >= EndstopDebounce(printer.getStepsPerMMZ())) {
+            nPresses = 0;
+            return true;
+        }
+        return false;
+    }
+
+    nPresses = 0;
+    return false;
+}
+#endif
+
+template<typename MOVE>
+bool st_endstop_released();
+
+template<>
+FWINLINE bool st_endstop_released<XAxisSelector>() {
 
     static uint8_t nRelease = 0;
 
-    if (forward) {
-        if (! printer.getHostSettings().xHomeDir) {
-            if (X_STOP_PIN :: deActive()) {
-                if (nRelease++ > (printer.getStepsPerMMX() / 4))
-                    return true;
-                return false;
-            }
+    if (X_STOP_PIN :: deActive()) {
+        if (++nRelease >= EndstopDebounce(printer.getStepsPerMMX())) {
+            nRelease = 0;
+            return true;
         }
-    }
-    else {
-        if (printer.getHostSettings().xHomeDir) {
-            if (X_STOP_PIN :: deActive()) {
-                if (nRelease++ > (printer.getStepsPerMMX() / 4))
-                    return true;
-                return false;
-            }
-        }
+        return false;
     }
 
     nRelease = 0;
@@ -227,27 +204,16 @@ FWINLINE bool st_endstop_released<XAxisSelector>(bool forward) {
 }
 
 template<>
-FWINLINE bool st_endstop_released<YAxisSelector>(bool forward) {
+FWINLINE bool st_endstop_released<YAxisSelector>() {
 
     static uint8_t nRelease = 0;
 
-    if (forward) {
-        if (! printer.getHostSettings().yHomeDir) {
-            if (Y_STOP_PIN :: deActive()) {
-                if (nRelease++ > (printer.getStepsPerMMY() / 4))
-                    return true;
-                return false;
-            }
+    if (Y_STOP_PIN :: deActive()) {
+        if (++nRelease >= EndstopDebounce(printer.getStepsPerMMY())) {
+            nRelease = 0;
+            return true;
         }
-    }
-    else {
-        if (printer.getHostSettings().yHomeDir) {
-            if (Y_STOP_PIN :: deActive()) {
-                if (nRelease++ > (printer.getStepsPerMMY() / 4))
-                    return true;
-                return false;
-            }
-        }
+        return false;
     }
 
     nRelease = 0;
@@ -255,32 +221,40 @@ FWINLINE bool st_endstop_released<YAxisSelector>(bool forward) {
 }
 
 template<>
-FWINLINE bool st_endstop_released<ZAxisSelector>(bool forward) {
+FWINLINE bool st_endstop_released<ZAxisSelector>() {
 
     static uint8_t nRelease = 0;
 
-    if (forward) {
-        if (! printer.getHostSettings().zHomeDir) {
-            if (Z_STOP_PIN :: deActive()) {
-                if (nRelease++ > (printer.getStepsPerMMZ() / 4))
-                    return true;
-                return false;
-            }
+    if (Z_STOP_PIN :: deActive()) {
+        if (++nRelease >= EndstopDebounce(printer.getStepsPerMMZ())) {
+            nRelease = 0;
+            return true;
         }
-    }
-    else {
-        if (printer.getHostSettings().zHomeDir) {
-            if (Z_STOP_PIN :: deActive()) {
-                if (nRelease++ > (printer.getStepsPerMMZ() / 4))
-                    return true;
-                return false;
-            }
-        }
+        return false;
     }
 
     nRelease = 0;
     return false;
 }
+
+#if defined(DualZStepper)
+template<>
+FWINLINE bool st_endstop_released<Z1AxisSelector>() {
+
+    static uint8_t nRelease = 0;
+
+    if (Z1_STOP_PIN :: deActive()) {
+        if (++nRelease >= EndstopDebounce(printer.getStepsPerMMZ())) {
+            nRelease = 0;
+            return true;
+        }
+        return false;
+    }
+
+    nRelease = 0;
+    return false;
+}
+#endif
 
 template<typename MOVE>
 FWINLINE void st_step_motor(uint8_t stepBits, uint8_t dirbits) {
@@ -329,17 +303,16 @@ FWINLINE void st_step_motor_es(uint8_t stepBits, uint8_t dirbits) {
     if (stepBits & mask) {
 
         bool forward = dirbits & mask;
+        uint8_t homeDir = getHomeDir<MOVE>();
 
-        bool endStop = st_endstop_pressed<MOVE>(forward);
+        bool towardsEndstop = (forward == homeDir);
 
-        if (endStop) {
+        if (towardsEndstop && st_endstop_pressed<MOVE>()) {
             DISABLE_STEPPER1_DRIVER_INTERRUPT();
             return;
         }
 
-        endStop = st_endstop_released<MOVE>(forward);
-
-        if (endStop) {
+        if (!towardsEndstop && st_endstop_released<MOVE>()) {
             DISABLE_STEPPER1_DRIVER_INTERRUPT();
             return;
         }
@@ -358,6 +331,93 @@ FWINLINE void st_step_motor_es(uint8_t stepBits, uint8_t dirbits) {
         deactivate_step_pin<MOVE>();
     }
 }
+
+#if defined(DualZStepper)
+//
+// Like st_step_motor, but check endstops
+// Version for dual steppers/endstops:
+// When moving towards endstop, then:
+// * move both motors
+// * stop motor Zx that belongs to endstop Zx and continue to move the other
+// * stop move if both endstops are pressed
+//
+
+template<>
+FWINLINE void st_step_motor_es<ZAxisSelector>(uint8_t stepBits, uint8_t dirbits) {
+
+    // State of z-homing
+    static enum {
+        MOVEBOTH, // Move both motors
+        MOVEZ0,   // Z1 endtop triggered, move Z0 only
+        MOVEZ1    // Z0 endtop triggered, move Z1 only
+    } zHomingMode = MOVEBOTH;
+
+    constexpr uint8_t mask = st_get_move_bit_mask<ZAxisSelector>();
+
+    if (stepBits & mask) {
+
+        bool forward = dirbits & mask;
+        uint8_t homeDir = getHomeDir<ZAxisSelector>();
+
+        bool towardsEndstop = (forward == homeDir);
+
+        if (towardsEndstop && st_endstop_pressed<ZAxisSelector>()) {
+
+            if (zHomingMode == MOVEBOTH) {
+              zHomingMode = MOVEZ1;
+            }
+            else if (zHomingMode == MOVEZ0) {
+                DISABLE_STEPPER1_DRIVER_INTERRUPT();
+                zHomingMode = MOVEBOTH;
+                return;
+            }
+        }
+
+        if (towardsEndstop && st_endstop_pressed<Z1AxisSelector>()) {
+
+            if (zHomingMode == MOVEBOTH) {
+              zHomingMode = MOVEZ0;
+            }
+            else if (zHomingMode == MOVEZ1) {
+                DISABLE_STEPPER1_DRIVER_INTERRUPT();
+                zHomingMode = MOVEBOTH;
+                return;
+            }
+        }
+
+        if (!towardsEndstop && st_endstop_released<ZAxisSelector>() && st_endstop_released<Z1AxisSelector>()) {
+            DISABLE_STEPPER1_DRIVER_INTERRUPT();
+            zHomingMode = MOVEBOTH;
+            return;
+        }
+
+        switch (zHomingMode) {
+          case MOVEBOTH:
+            activate_step_pin<ZAxisSelector>();
+            break;
+          case MOVEZ0:
+            Z_STEP_PIN :: activate();
+            break;
+          case MOVEZ1:
+            Z1_STEP_PIN :: activate();
+            break;
+        }
+
+        #if defined(STEPPER_MINPULSE)
+            delayMicroseconds(STEPPER_MINPULSE);
+        #endif
+
+        if (zHomingMode == MOVEBOTH) {
+            if (forward)
+                st_inc_current_pos_steps<ZAxisSelector>();
+            else
+                st_dec_current_pos_steps<ZAxisSelector>();
+        }
+
+        deactivate_step_pin<ZAxisSelector>();
+    }
+}
+#endif
 
 /*
 #
@@ -412,6 +472,9 @@ class StepBuffer: public StepBufferBase {
             uint32_t upcount;
             uint32_t downcount;
 
+            // Steppers to run in continuos mode
+            uint8_t contStepBits;
+
         public:
 
             bool linearFlag;
@@ -426,9 +489,19 @@ class StepBuffer: public StepBufferBase {
 
             void setContinuosTimer(uint16_t timerValue) {
     
-                CRITICAL_SECTION_START;
-                continuosTimer = timerValue;
-                CRITICAL_SECTION_END;
+                if (timerValue > 0) {
+
+                    CRITICAL_SECTION_START;
+                    continuosTimer = timerValue;
+                    CRITICAL_SECTION_END;
+                }
+                else {
+
+                  // Stop continuos move
+                  linearFlag = false;
+                  st_disableSteppers();
+                  DISABLE_STEPPER1_DRIVER_INTERRUPT();
+                }
             }
 
             FWINLINE void sync() {
@@ -454,30 +527,26 @@ class StepBuffer: public StepBufferBase {
                 ENABLE_STEPPER1_DRIVER_INTERRUPT();
             }
 
-            void continuosMode(uint16_t timerValue) {
+            void continuosMode(uint8_t stepperMask, uint16_t timerValue) {
 
-                if (timerValue > 0) {
+                miscStepperMode = CONTINUOSMODE;
+                contStepBits = stepperMask;
+                continuosTimer = timerValue;
 
-                    miscStepperMode = CONTINUOSMODE;
-                    continuosTimer = timerValue;
+                st_enableSteppers(stepperMask);
 
-                    enable_e0();
+                // Direction forward
+                // E0_DIR_PIN :: activate();
+                // Set direction bits
+                st_set_direction<XAxisSelector>(stepperMask);
+                st_set_direction<YAxisSelector>(stepperMask);
+                st_set_direction<ZAxisSelector>(stepperMask);
+                st_set_direction<EAxisSelector>(stepperMask);
 
-                    // Direction forward
-                    E0_DIR_PIN :: activate();
+                // Start interrupt
+                ENABLE_STEPPER1_DRIVER_INTERRUPT();
 
-                    // Start interrupt
-                    ENABLE_STEPPER1_DRIVER_INTERRUPT();
-
-                    linearFlag = true;
-                }
-                else {
-
-                    linearFlag = false;
-
-                    disable_e0();
-                    DISABLE_STEPPER1_DRIVER_INTERRUPT();
-                }
+                linearFlag = true;
             }
 
             // Compute clocktics available in stepper
@@ -625,11 +694,26 @@ class StepBuffer: public StepBufferBase {
         FWINLINE void runContinuosSteps() {
 
             HAL_SET_HOMING_TIMER(continuosTimer);
-            st_step_motor<EAxisSelector>(st_get_move_bit_mask<EAxisSelector>(), st_get_move_bit_mask<EAxisSelector>());
+
+            // st_step_motor<EAxisSelector>(st_get_move_bit_mask<EAxisSelector>(), st_get_move_bit_mask<EAxisSelector>());
+            // #if defined(STEPPER_MINPULSE)
+                // delayMicroseconds(STEPPER_MINPULSE);
+            // #endif
+            // st_deactivate_pin<EAxisSelector>(st_get_move_bit_mask<EAxisSelector>());
+
+            st_step_motor<XAxisSelector>(contStepBits, contStepBits);
+            st_step_motor<YAxisSelector>(contStepBits, contStepBits);
+            st_step_motor<ZAxisSelector>(contStepBits, contStepBits);
+            st_step_motor<EAxisSelector>(contStepBits, contStepBits);
+
             #if defined(STEPPER_MINPULSE)
                 delayMicroseconds(STEPPER_MINPULSE);
             #endif
-            st_deactivate_pin<EAxisSelector>(st_get_move_bit_mask<EAxisSelector>());
+
+            st_deactivate_pin<XAxisSelector>(contStepBits);
+            st_deactivate_pin<YAxisSelector>(contStepBits);
+            st_deactivate_pin<ZAxisSelector>(contStepBits);
+            st_deactivate_pin<EAxisSelector>(contStepBits);
         }
 };
 

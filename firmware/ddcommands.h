@@ -96,8 +96,8 @@
 #define CmdSetTempTable         164 // ExtrusionLimit: set tempTable
 #define CmdEnableFRLimit        165 // Enable/disable flowrate limit
 
-#define CmdSetContTimer         166 // Timer value for CmdContinuousE -> E-Speed
-#define CmdContinuousE          167 // Start/Stop continuous e-move for filament measurement
+#define CmdSetContTimer         166 // Timer value for CmdContinuousE move (set speed), set to 0 for stop.
+#define CmdContinuous           167 // Start/Stop continuous stepper move for debugging/measurement
 #define CmdSetFilSensorConfig   168 // Flowrate sensor: Set steps per mm value and calibration value.
 #define CmdSetFilSensorCal      169 // Flowrate sensor: set calibration value.
 

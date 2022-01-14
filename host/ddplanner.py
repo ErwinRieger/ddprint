@@ -1159,7 +1159,7 @@ class Planner (object):
         leadAxis = move.leadAxis(disp=dispS)
         leadAxis_steps = abs_displacement_vector_steps[leadAxis]
 
-        dirBits = util.directionBits(dispS)
+        dirBits = util.bitMask(dispS)
 
         if dirBits != self.curDirBits:
             move.stepData.setDirBits = True

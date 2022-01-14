@@ -29,7 +29,15 @@
   // const int motor_current_setting[3] = DEFAULT_PWM_MOTOR_CURRENT;
 // #endif
 
-int32_t current_pos_steps[NUM_AXIS] = { 0, 0, 0, 0};
+int32_t current_pos_steps[NUM_AXIS] = {
+  0, // X
+  0, // Y
+  0, // Z
+  0, // A
+// #if defined(DualZStepper)
+  // 0  // Z1
+// #endif
+};
 
 StepBuffer stepBuffer;
 
@@ -67,6 +75,9 @@ void st_init() {
     X_DIR_PIN :: initDeActive();
     Y_DIR_PIN :: initDeActive();
     Z_DIR_PIN :: initDeActive();
+#if defined(DualZStepper)
+    Z1_DIR_PIN :: initDeActive();
+#endif
     E0_DIR_PIN :: initDeActive();
 
     // #if defined(E1_DIR_PIN)
@@ -77,6 +88,9 @@ void st_init() {
     X_ENABLE_PIN :: initDeActive();
     Y_ENABLE_PIN :: initDeActive();
     Z_ENABLE_PIN :: initDeActive();
+#if defined(DualZStepper)
+    Z1_ENABLE_PIN :: initDeActive();
+#endif
     E0_ENABLE_PIN :: initDeActive();
 
     // #if defined(E1_ENABLE_PIN)
@@ -87,24 +101,54 @@ void st_init() {
     X_STOP_PIN :: init();
     Y_STOP_PIN :: init();
     Z_STOP_PIN :: init();
+#if defined(DualZStepper)
+    Z1_STOP_PIN :: init();
+#endif
 
     //Initialize Step Pins
     X_STEP_PIN :: initDeActive();
-    disable_x();
     Y_STEP_PIN :: initDeActive();
-    disable_y();
     Z_STEP_PIN :: initDeActive();
-    disable_z();
+#if defined(DualZStepper)
+    Z1_STEP_PIN :: initDeActive();
+#endif
     E0_STEP_PIN :: initDeActive();
-    disable_e0();
+}
+
+void st_enableSteppers(uint8_t stepperMask) {
+
+#if defined(MB_FAN_PIN)
+    if (stepperMask)
+      MB_FAN_PIN :: activate();
+#endif
+
+    if (stepperMask & st_get_move_bit_mask<XAxisSelector>())
+        X_ENABLE_PIN :: activate();
+    if (stepperMask & st_get_move_bit_mask<YAxisSelector>())
+        Y_ENABLE_PIN :: activate();
+    if (stepperMask & st_get_move_bit_mask<ZAxisSelector>()) {
+        Z_ENABLE_PIN :: activate();
+        #if defined(DualZStepper)
+        Z1_ENABLE_PIN :: activate();
+        #endif
+    }
+    if (stepperMask & st_get_move_bit_mask<EAxisSelector>())
+        E0_ENABLE_PIN :: activate();
 }
 
 void st_disableSteppers() {
 
-    disable_x();
-    disable_y();
-    disable_z();
-    disable_e0();
+    X_ENABLE_PIN :: deActivate();
+    Y_ENABLE_PIN :: deActivate();
+    Z_ENABLE_PIN :: deActivate();
+#if defined(DualZStepper)
+    Z1_ENABLE_PIN :: deActivate();
+#endif
+    E0_ENABLE_PIN :: deActivate();
+
+#if defined(MB_FAN_PIN)
+    MB_FAN_PIN :: deActivate();
+#endif
 }
 
 //

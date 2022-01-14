@@ -6,6 +6,7 @@ applet*
 tags
 swapfile
 sim.gcode
-build*
+build
+build.*
 scratch
 gitversion.cpp

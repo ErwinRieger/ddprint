@@ -29,7 +29,8 @@ import ddtest, ddargs
 
 from ddplanner import Planner, initParser, initMatProfile
 from ddprinter import Printer, RxTimeout
-from ddprofile import NozzleProfile, MatProfile
+from ddprofile import NozzleProfile
+from ddprintconstants import dimNames
 
 #
 # USB packet format:
@@ -107,6 +108,9 @@ def main():
 
     sp = subparsers.add_parser("changenozzle", help="Heat hotend and change nozzle.")
 
+    sp = subparsers.add_parser("continuosmove", help="Debug: Run stepper, no endstop check, no acceleration, dangerous.")
+    sp.add_argument("axis", help="Axis (XYZAB).", type=str, choices=["X", "Y", "Z", "A", "B"])
+
     sp = subparsers.add_parser("disablesteppers", help="Disable stepper current (this dis-homes the printer).")
 
     sp = subparsers.add_parser("exec", help="Debug: exec gcode.")
@@ -165,11 +169,11 @@ def main():
     sp = subparsers.add_parser("mon", help="Monitor printer state.")
 
     sp = subparsers.add_parser("moveabs", help="Debug: Move axis manually, absolute coords.")
-    sp.add_argument("axis", help="Axis (XYZAB).", type=str)
+    sp.add_argument("axis", help="Axis (XYZAB).", type=str, choices=["X", "Y", "Z", "A", "B"])
     sp.add_argument("distance", action="store", help="Move-distance (+/-) in mm.", type=float)
 
     sp = subparsers.add_parser("moverel", help="Debug: Move axis manually, relative coords.")
-    sp.add_argument("axis", help="Axis (XYZAB).", type=str)
+    sp.add_argument("axis", help="Axis (XYZAB).", type=str, choices=["X", "Y", "Z", "A", "B"])
     sp.add_argument("distance", action="store", help="Move-distance (+/-) in mm.", type=float)
 
     sp = subparsers.add_parser("pre", help="Preprocess gcode, for debugging purpose.")
@@ -242,7 +246,7 @@ def main():
     elif args.mode == 'bootbootloader':
 
         printer = Printer(args)
-        printer.initSerial(args.device, args.baud)
+        printer.initSerial(args.device)
         printer.sendCommand(CmdBootBootloader)
 
     elif args.mode == 'changenozzle':
@@ -252,10 +256,16 @@ def main():
         return
         util.changeNozzle(args, parser)
 
+    elif args.mode == 'continuosmove':
+
+        printer = Printer(args)
+        printer.commandInit()
+        util.continuosmove(args, printer)
+
     elif args.mode == "mon":
 
         printer = Printer(args)
-        printer.initSerial(args.device, args.baud)
+        printer.initSerial(args.device)
 
         while True:
 
@@ -317,7 +327,7 @@ def main():
 
         # check for reconnect
         printer = Printer(args)
-        printer.initSerial(args.device, args.baud)
+        printer.initSerial(args.device)
         status = printer.getStatus()
         print("Status: ")
         pprint.pprint(status)
@@ -394,7 +404,7 @@ def main():
 
         planner.setPrintMode(PrintModePrinting)
 
-        (f, preloadLines) = parser.preParse(args.gfile, args.baud)
+        (f, preloadLines) = parser.preParse(args.gfile)
         lineNr = 0
         for line in f:
             parser.execute_line(line)
@@ -407,7 +417,7 @@ def main():
     elif args.mode == 'disablesteppers':
 
         printer = Printer(args)
-        printer.initSerial(args.device, args.baud)
+        printer.initSerial(args.device)
         printer.sendCommand(CmdDisableSteppers)
 
     elif args.mode == 'measureTempFlowrateCurve':
@@ -430,14 +440,10 @@ def main():
 
     elif args.mode == 'moverel':
 
-        assert(args.axis.upper() in "XYZAB")
-
         (printer, parser, planner) = initParser(args, mode=args.mode, travelMovesOnly=True)
         util.manualMove(args, printer, parser, planner, util.dimIndex[args.axis.upper()], args.distance, args.feedrate)
 
     elif args.mode == 'moveabs':
-
-        assert(args.axis.upper() in "XYZAB")
 
         (printer, parser, planner) = initParser(args, mode=args.mode, travelMovesOnly=True)
         util.manualMove(args, printer, parser, planner, util.dimIndex[args.axis.upper()], args.distance, args.feedrate, True)
@@ -449,9 +455,8 @@ def main():
 
     elif args.mode == 'fanspeed':
 
-        # (printer, parser, planner) = initParser(args, mode=args.mode, travelMovesOnly=True)
         printer = Printer(args)
-        printer.commandInit()
+        printer.initSerial(args.device)
         printer.sendCommandParamV(CmdFanSpeed, [packedvalue.uint8_t(args.fanspeed)])
 
     elif args.mode == 'removefilament':
@@ -461,20 +466,20 @@ def main():
 
     elif args.mode == 'readGpio':
         printer = Printer(args)
-        printer.initSerial(args.device, args.baud)
+        printer.initSerial(args.device)
         val = printer.readGpio(args.pin)
         print(val)
 
     elif args.mode == 'readAnalogGpio':
         printer = Printer(args)
-        printer.initSerial(args.device, args.baud)
+        printer.initSerial(args.device)
         val = printer.readAnalogGpio(args.pin)
         print(val)
 
     elif args.mode == 'reset':
 
         printer = Printer(args)
-        printer.initSerial(args.device, args.baud)
+        printer.initSerial(args.device)
         printer.systemReset()
 
     elif args.mode == 'bedleveling':
@@ -499,21 +504,29 @@ def main():
     elif args.mode == 'getendstops':
 
         printer = Printer(args)
-        printer.initSerial(args.device, args.baud)
+        printer.initSerial(args.device)
         res = printer.getEndstops()
-        print("Endstop state: ", res)
+
+        print("Endstop state: ")
+        for i in range(len(res)//2):
+            state = res[i*2]
+            pos = res[i*2+1]
+            if i < 3:
+                print(f"{i} {dimNames[i]}: state: {state}, pos: {pos}")
+            else:
+                print(f"{i}  : state: {state}, pos: {pos}")
     
     elif args.mode == 'getfilsensor':
 
         printer = Printer(args)
-        printer.initSerial(args.device, args.baud)
+        printer.initSerial(args.device)
         counts = printer.getFilSensor()
         print("Filament pos:", counts)
 
     elif args.mode == 'getfreemem':
 
         printer = Printer(args)
-        printer.initSerial(args.device, args.baud)
+        printer.initSerial(args.device)
         freeMem = printer.getFreeMem()
         print("Free memory: %d bytes" % freeMem)
 
@@ -544,33 +557,33 @@ def main():
     elif args.mode == "getprintername":
 
         printer = Printer(args)
-        printer.initSerial(args.device, args.baud)
+        printer.initSerial(args.device)
         print("Printer name: '%s'" % printer.getPrinterName())
 
     elif args.mode == "getTemps":
 
         printer = Printer(args)
-        printer.initSerial(args.device, args.baud)
+        printer.initSerial(args.device)
         temps = printer.getTemps()
         print("temperatures: ", temps)
 
     elif args.mode == "version":
 
         printer = Printer(args)
-        printer.initSerial(args.device, args.baud)
+        printer.initSerial(args.device)
         print("Firmware version: '%s'" % printer.getPrinterVersion())
 
     elif args.mode == "getstatus" or args.mode == "stat":
 
         printer = Printer(args)
-        printer.initSerial(args.device, args.baud)
+        printer.initSerial(args.device)
         status = printer.getStatus()
         printer.printStatus(status)
 
     elif args.mode == "top":
 
         printer = Printer(args)
-        printer.initSerial(args.device, args.baud)
+        printer.initSerial(args.device)
         printer.top()
 
     elif args.mode == 'home':
@@ -596,12 +609,12 @@ def main():
     elif args.mode == "setprintername":
 
         printer = Printer(args)
-        printer.initSerial(args.device, args.baud)
+        printer.initSerial(args.device)
         printer.setPrinterName()
 
     elif args.mode == 'setGpio':
         printer = Printer(args)
-        printer.initSerial(args.device, args.baud)
+        printer.initSerial(args.device)
         val = printer.setGpio(args.pin, args.value)
 
     elif args.mode == 'todo testFeederUniformity':

@@ -22,7 +22,5 @@ FW_NAME = um2
 include build_files/mega2560.mk
 include build_files/arduino_mk.mk
 
-ARDUINO_PORT = /dev/ttyACM0
-
 CPPFLAGS      +=  -DMOTHERBOARD=1
 

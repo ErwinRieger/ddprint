@@ -276,6 +276,10 @@ void setup() {
     HOTEND_FAN_PIN :: initDeActive();
 #endif
 
+#if defined(MB_FAN_PIN)
+    MB_FAN_PIN :: initDeActive();
+#endif
+
 #if defined(POWER_BUTTON)
     POWER_BUTTON :: init();
 #endif
@@ -1498,6 +1502,9 @@ void Printer::printerInit() {
 #if defined(LED_PIN)
     LED_PIN :: write(255);
 #endif
+#if defined(MB_FAN_PIN)
+    MB_FAN_PIN :: activate();
+#endif
 
     slowdown = 1024;
 }
@@ -1589,15 +1596,19 @@ void Printer::cmdMove(MoveType mt) {
 
     underTemp = underGrip = 0;
 
+    uint8_t stepperMask = 0;
+
 #if ! defined(COLDMovement)
-    enable_x();
-    enable_y();
-    enable_z();
+    stepperMask |= st_get_move_bit_mask<XAxisSelector>();
+    stepperMask |= st_get_move_bit_mask<YAxisSelector>();
+    stepperMask |= st_get_move_bit_mask<ZAxisSelector>();
 #endif
 
 #if ! defined(COLDEXTRUSION)
-    enable_e0();
+    stepperMask |= st_get_move_bit_mask<EAxisSelector>();
 #endif
+
+    st_enableSteppers(stepperMask);
 
     bufferLow = 0;
 
@@ -1709,11 +1720,6 @@ void Printer::cmdFanSpeed(uint8_t speed, uint8_t blipTime) {
 
     timer.endFanTimer();
     FAN_PIN :: write(speed);
-}
-
-void Printer::cmdContinuousE(uint16_t timerValue) {
-
-    stepBuffer.continuosMode(timerValue);
 }
 
 /*
@@ -1893,6 +1899,14 @@ void Printer::cmdGetEndstops() {
 
     txBuffer.sendResponseUint8(Z_STOP_PIN :: active());
     txBuffer.sendResponseInt32(current_pos_steps[Z_AXIS]);
+
+#if defined(DualZStepper)
+    txBuffer.sendResponseUint8(Z1_STOP_PIN :: active());
+    txBuffer.sendResponseInt32(current_pos_steps[Z_AXIS]);
+#else
+    txBuffer.sendResponseUint8(0);
+    txBuffer.sendResponseInt32(0);
+#endif
 
     txBuffer.sendResponseEnd();
 }
@@ -2458,9 +2472,12 @@ class UsbCommand : public Protothread {
                         stepBuffer.setContinuosTimer(rxBuffer.readUInt16NoCheckCobs());
                         txBuffer.sendACK();
                         break;
-                    case CmdContinuousE:
-                        printer.cmdContinuousE(rxBuffer.readUInt16NoCheckCobs());
+                    case CmdContinuous: {
+                        uint8_t stepperMask = rxBuffer.readNoCheckCobs();
+                        uint16_t timerValue = rxBuffer.readUInt16NoCheckCobs();
+                        stepBuffer.continuosMode(stepperMask, timerValue);
                         txBuffer.sendACK();
+                        }
                         break;
                     case CmdSetFilSensorConfig: {
                         // float value = rxBuffer.readFloatNoCheckCobs();
@@ -2766,7 +2783,11 @@ void loop() {
         // Check hardware and software endstops:
         if (printer.moveType == Printer::MoveTypeNormal) {
 
-            if (X_STOP_PIN :: active() || Y_STOP_PIN :: active() || Z_STOP_PIN :: active()) {
+            if (X_STOP_PIN :: active() || Y_STOP_PIN :: active() || Z_STOP_PIN :: active() 
+                #if defined(DualZStepper)
+                    || Z1_STOP_PIN :: active()
+                #endif
+                ) {
 
                 LCDMSGKILL(RespHardwareEndstop, "", "");
                 txBuffer.sendResponseStart(RespKilled);
@@ -2774,7 +2795,11 @@ void loop() {
                 txBuffer.sendResponseBlob((uint8_t*)current_pos_steps, 3*sizeof(int32_t));
                 txBuffer.sendResponseUint8(X_STOP_PIN :: active());
                 txBuffer.sendResponseUint8(Y_STOP_PIN :: active());
-                txBuffer.sendResponseUint8(Z_STOP_PIN :: active());
+                txBuffer.sendResponseUint8(Z_STOP_PIN :: active()
+                    #if defined(DualZStepper)
+                        || Z1_STOP_PIN :: active()
+                    #endif
+                    );
                 txBuffer.sendResponseEnd();
                 kill();
             }

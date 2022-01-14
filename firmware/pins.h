@@ -47,6 +47,11 @@
     // Ender 3, ender 5, atmega1284p
     //
     #include "pins_ender3.h"
+#elif MOTHERBOARD == 6
+    //
+    // Anycubic I3 trigorilla
+    //
+    #include "pins_ai3m.h"
 #else
     #error Unknown MOTHERBOARD value in pins.h
 #endif

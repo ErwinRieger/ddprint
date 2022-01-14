@@ -27,7 +27,6 @@ from ddprintstates import *
 from ddprinter import Printer
 from ddprintconstants import *
 from ddconfig import *
-from ddprofile import NozzleProfile, MatProfile
 from ddvector import vectorMul
 
 ####################################################################################################
@@ -706,15 +705,14 @@ class SLE:
 ####################################################################################################
 
 # Compute new stepper direction bits
-def directionBits(disp):
+def bitMask(disp):
 
     dirbits = 0
 
     for i in range(5):
 
         if disp[i] >= 0:
-            mask = 1 << i
-            dirbits += mask
+            dirbits += dimBits[i]
 
     return dirbits
 
@@ -819,7 +817,7 @@ def printFile(args, printer, parser, planner, logObj, gfile, t0, t0_wait, t1, do
 
     planner.setPrintMode(PrintModePrinting)
 
-    (f, preloadLines) = parser.preParse(gfile, args.baud)
+    (f, preloadLines) = parser.preParse(gfile)
 
     logObj.log( "Nuber of lines to preload: %d" % preloadLines)
 
@@ -1729,7 +1727,9 @@ def measureTempFlowrateCurve(args, printer, parser, planner):
 
       # Set extruder motor speed
       print("\nRunning extruder motor with %.2f mm/s" % feedrate)
-      printer.sendCommandParamV(CmdContinuousE, [packedvalue.uint16_t(eTimerValue(printer, feedrate))])
+      printer.sendCommandParamV(CmdContinuous,
+            [ packedvalue.uint8_t(dimBitsIndex["A"]),
+              packedvalue.uint16_t(eTimerValue(printer, feedrate))])
 
       tStart = time.time()
       startup = 5.0       # initial time for averages to settle
@@ -1818,7 +1818,7 @@ def measureTempFlowrateCurve(args, printer, parser, planner):
         time.sleep(0.1)
 
     # Stop continuos e-mode
-    printer.sendCommandParamV(CmdContinuousE, [packedvalue.uint16_t(0)])
+    printer.sendCommandParamV(CmdSetContTimer, [packedvalue.uint16_t(0)])
 
     ####################################################################################################
     dfr = data[1][0] - data[0][0]
@@ -1916,7 +1916,7 @@ def xstartPrint(args, printer, parser, planner, t1):
         # Disable temp-flowrate limit
         downloadDummyTempTable(printer)
 
-        (f, _) = parser.preParse(args.gfile, args.baud)
+        (f, _) = parser.preParse(args.gfile)
 
         checkTime = time.time() + 2
 
@@ -2257,6 +2257,27 @@ def workingPos(args, printer, parser, planner):
 
 ####################################################################################################
 
+# Run stepper motor in continuos mode, no acceleration, no endstop
+# check. For debugging
+def continuosmove(args, printer):
+
+    feedrate = args.feedrate or printer.printerProfile.getJerk(args.axis)
+    timerVal = eTimerValue(printer, feedrate)
+
+    print("fr: %f, tv: %d" % (feedrate, timerVal))
+
+    # Start continuos mode
+    printer.sendCommandParamV(
+            CmdContinuous, 
+            [ packedvalue.uint8_t(dimBitsIndex[args.axis]),
+              packedvalue.uint16_t(timerVal)])
+
+    input("\n%s-Axis Motor started, press <Return> to stop...\n" % args.axis)
+
+    # Stop continuos mode
+    printer.sendCommandParamV(CmdSetContTimer, [packedvalue.uint16_t(0)])
+
+####################################################################################################
 
 
 

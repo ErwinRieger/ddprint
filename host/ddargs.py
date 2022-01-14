@@ -42,9 +42,8 @@ class ArgRange(object):
 def addCommonArguments(argParser):
 
     # Serial device
-    defaultSerialDev = os.getenv("DDPRINTDEV") or os.getenv("dev") or "/dev/ttyACM0"
-    argParser.add_argument("-d", dest="device", action="store", type=str, help="Device to use, default: %s." % defaultSerialDev, default=defaultSerialDev)
-    argParser.add_argument("-b", dest="baud", action="store", type=int, help="Baudrate, default 1Mbaud.", default=1000000)
+    defaultSerialDev = os.getenv("DDPRINTDEV")
+    argParser.add_argument("-d", dest="device", action="store", type=str, help="Device to use, default: '%s' (env. var $DDPRINTDEV)." % defaultSerialDev, default=defaultSerialDev)
 
     # Temperatures, auto-temp
     argParser.add_argument("-t0", dest="t0", action="store", type=int, help="Temp 0 (heated bed), default comes from mat. profile.")

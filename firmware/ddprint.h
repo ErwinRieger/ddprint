@@ -160,7 +160,6 @@ class Printer {
         void cmdGetCardSize();
         void cmdErase(uint32_t nBlocks); // Erase sd-swap to speed up block writes.
         void cmdFanSpeed(uint8_t speed, uint8_t blipTime);
-        void cmdContinuousE(uint16_t timerValue);
         void cmdSetFilSensorConfig(ScaledUInt16 & cal, uint16_t fsrMinSteps);
         void cmdSetFilSensorCal(ScaledUInt16 & cal);
         void cmdSetStepsPerMME(uint16_t steps);

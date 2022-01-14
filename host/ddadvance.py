@@ -1510,7 +1510,7 @@ class Advance (object):
         #
         move.stepData.setBresenhamParameters(leadAxis, abs_displacement_vector_steps)
 
-        dirBits = util.directionBits(dispS)
+        dirBits = util.bitMask(dispS)
 
         if dirBits != self.planner.curDirBits:
             move.stepData.setDirBits = True
@@ -1663,7 +1663,7 @@ class Advance (object):
 
         abs_displacement_vector_steps = vectorAbs(dispS)
 
-        dirBits = util.directionBits(dispS)
+        dirBits = util.bitMask(dispS)
 
         if dirBits != self.planner.curDirBits:
             move.stepData.setDirBits = True

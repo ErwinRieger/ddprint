@@ -365,7 +365,7 @@ class MainForm(npyscreen.FormBaseNew):
         try:
             (self.printer, self.parser, self.planner) = initParser(self.args, gui=self)
         except IOError, ex:
-            msg = "Can't open serial device '%s' (baudrate: %d)." % (self.args.device, self.args.baud)
+            msg = "Can't open serial device '%s'." % self.args.device
             self.guiQueue.put(SyncCall(self.quit, msg, ex))
             return
 
@@ -388,7 +388,7 @@ class MainForm(npyscreen.FormBaseNew):
         # try:
         self.printer.commandInit()
         # except SerialException, ex:
-            # msg = "Can't open serial device '%s' (baudrate: %d)!" % (self.args.device, self.args.baud)
+            # msg = "Can't open serial device '%s'!" % self.args.device
             # self.guiQueue.put(SyncCall(self.quit, msg, ex))
             # return
         ddhome.home(self.args, self.printer, self.parser, self.planner)

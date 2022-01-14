@@ -22,7 +22,5 @@ FW_NAME = ender3
 include build_files/mega1284p.mk
 include build_files/arduino_mk.mk
 
-ARDUINO_PORT = /dev/ttyUSB0
-
 CPPFLAGS      +=  -DMOTHERBOARD=5
 

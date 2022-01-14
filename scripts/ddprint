@@ -5,6 +5,15 @@
 envscript="$(realpath -m ${0}/../ddprint.env)"
 . $envscript
 
+# Hack for cp210x linux driver, avoid reset of printer on 
+# device open (even if using '-hupcl').
+if [ -n "$DDPRINTDEV" ] && udevadm info -q property /dev/ttyUSB0|grep -q cp210x; then
+    if ! keep_serial_open.sh "$DDPRINTDEV" running; then
+        keep_serial_open.sh "$DDPRINTDEV" &
+        sleep 1
+    fi
+fi
+
 $DDPYTHON -u $DDPRINTHOME/host/ddprint.py $*
 
 

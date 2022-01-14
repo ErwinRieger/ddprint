@@ -105,13 +105,18 @@ class Printer(Serial):
             )
 
         self.baudrates = [1000000, 500000, 250000]
-        self.baudrateIndex = 0 # Start with 1000Kbaud
+        self.minBaudrateIndex = 1 # Start with 500 Kbaud
+        self.baudrateIndex = self.minBaudrateIndex
         self.lastAutobaud = 0
         self.throttleAutoBaud = 60
 
         # debug
         # for i in [250000, 500000, 1000000]:
             # print "BRR value for baudrate %d: %d" % (i, (fCPU+i*8)/(i*16)-1)
+
+        br = self.baudrates[self.baudrateIndex]
+        print("Setting initial baudrate to:", br)
+        self.baudrate = br
 
     def checkStall(self, status):
 
@@ -397,7 +402,7 @@ class Printer(Serial):
 
         return (cmd, payload)
 
-    def initSerial(self, device, br, bootloaderWait=False):
+    def initSerial(self, device, bootloaderWait=False):
 
         if self.isOpen():
             print("\nWARNING: initSerial() already done.")
@@ -405,6 +410,10 @@ class Printer(Serial):
             return
 
         # Avoid reset of (arduino like) printer boards
+        # Note: the first open() of the device will still do a reset
+        #       because HUPCL not cleared, yet.
+        # Note: some linux drivers (cp210x) still toggle DTR on open
+        #       even with the HUPCL hack :-(
         f = open(device)
         attrs = termios.tcgetattr(f)
         attrs[2] = attrs[2] & ~termios.HUPCL
@@ -412,12 +421,9 @@ class Printer(Serial):
         f.close()
 
         self.port = device
-        # print "Setting initial baudrate to:", br
-        self.baudrate = br
         # Py-Serial read timeout
         self.timeout = 3
         self.writeTimeout = 10
-        # self.setDTR(False) # does not work?
         self.open()
 
         if bootloaderWait:
@@ -437,7 +443,7 @@ class Printer(Serial):
     def commandInit(self):
 
         if not self.isOpen() and self.args.mode != "pre":
-            self.initSerial(self.args.device, self.args.baud, True)
+            self.initSerial(self.args.device, True)
 
         if not self.printerProfile:
             self.initPrinterProfile()
@@ -718,7 +724,7 @@ class Printer(Serial):
         self.close()
 
         try:
-            self.initSerial(self.port, br=self.baudrate)
+            self.initSerial(self.port)
         except SerialException as ex:
             self.gui.log("reconnect() Exception raised:", ex)
             time.sleep(1)
@@ -788,31 +794,28 @@ class Printer(Serial):
                 if debugComm:
                     self.gui.logComm("ACK, Sent %d bytes in %.2f ms, %.2f Kb/s" % (n, dt*1000, n/(dt*1000)))
 
-                
+                # Do 'auto-baudrate'
                 if time.time() > (self.lastAutobaud + self.throttleAutoBaud):
 
                     self.lastAutobaud = time.time()
 
                     if (self.sendErrors > 10*(self.throttleAutoBaud/60)) and self.baudrateIndex < len(self.baudrates)-1:
 
-                            self.baudrateIndex += 1;
-
                             if self.throttleAutoBaud < 300:
                                 self.throttleAutoBaud += 60
 
+                            self.baudrateIndex += 1;
                             self.setBaudRate()
 
                             # if self.lineNr != lineNr:
-                                # print "resitting linenr from %d to %d'" % (self.lineNr, lineNr);
+                                # print "resetting linenr from %d to %d'" % (self.lineNr, lineNr);
                                 # self.lineNr = lineNr
 
                     else:
                         
-                        if self.baudrateIndex > 0:
+                        if self.baudrateIndex > self.minBaudrateIndex:
 
                             self.baudrateIndex -= 1;
-                            baudrate = self.baudrates[self.baudrateIndex]
-
                             self.setBaudRate()
 
                     self.sendErrors = 0
@@ -944,7 +947,7 @@ class Printer(Serial):
             return self.args.printer
 
         if not self.isOpen():
-            self.initSerial(self.args.device, self.args.baud, True)
+            self.initSerial(self.args.device, True)
 
         resp = self.query(CmdGetPrinterName)
         pn = util.getResponseString(resp[1], 1)
@@ -971,6 +974,20 @@ class Printer(Serial):
     def initPrinterProfile(self):
 
         self.printerProfile = PrinterProfile(self.getPrinterName())
+
+        # See if we can extend the range of usable baudrates
+        brLimit = self.printerProfile.getBautRateLimit()
+        brIndex = self.baudrates.index(brLimit) # xxx todo: catch exception
+
+        if self.minBaudrateIndex != brIndex:
+
+            print("extend baudrate range to ", brLimit, brIndex)
+
+            self.minBaudrateIndex = brIndex
+
+            if brIndex > self.baudrateIndex:
+                self.baudrateIndex = brIndex
+                self.setBaudRate()
 
     # Set a gpio port on printer
     def setGpio(self, pin, value):
@@ -1212,7 +1229,7 @@ class Printer(Serial):
 
         # Check, if enstop was pressed
         (cmd, payload) = self.query(CmdGetEndstops)
-        tup = struct.unpack("<BiBiBi", payload)
+        tup = struct.unpack("<BiBiBiBi", payload)
         return tup
 
     ####################################################################################################

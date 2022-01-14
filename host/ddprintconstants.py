@@ -52,8 +52,10 @@ A_AXIS = 3
 B_AXIS = 4
 
 dimNames = ["X", "Y", "Z", "A", "B"]
-
 dimIndex = { "X": X_AXIS, "Y": Y_AXIS, "Z": Z_AXIS, "A": A_AXIS, "B": B_AXIS }
+
+dimBits = [0x1, 0x2, 0x4, 0x8, 0x10]
+dimBitsIndex = { "X": 0x1, "Y": 0x2, "Z": 0x4, "A": 0x8, "B": 0x10 }
 
 ############################################################################
 #

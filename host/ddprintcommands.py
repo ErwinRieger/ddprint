@@ -76,8 +76,8 @@ CmdGetFilSensor = 162 # Get raw value of filament sensor pos
 CmdSetTempTable = 164 # ExtrusionLimit: set tempTable
 CmdEnableFRLimit = 165 # Enable/disable flowrate limit
 
-CmdSetContTimer =    166 # Timer value for CmdContinuousE -> E-Speed
-CmdContinuousE =     167 # Start/Stop continuous e-move for filament measurement
+CmdSetContTimer =    166 # Timer value for CmdContinuous mode (speed), use timer=0 to stop move.
+CmdContinuous  =     167 # Start continuous move for debug/measurement moves (params: axis, timer)
 CmdSetFilSensorConfig = 168 # Flowrate sensor: Set steps per mm value and calibration value.
 CmdSetFilSensorCal = 169 # Flowrate sensor: set calibration value.
 CmdSetPrinterName =  170 # Set printer (-profile) name from printer eeprom, payload is a 'pascal string'
@@ -159,7 +159,7 @@ for (cmd, cmdName) in [
     (CmdSetTempTable, "CmdSetTempTable",),
     (CmdEnableFRLimit, "CmdEnableFRLimit",),
     (CmdSetContTimer, "CmdSetContTimer",),
-    (CmdContinuousE, "CmdContinuousE",),
+    (CmdContinuous, "CmdContinuous",),
     (CmdSetFilSensorConfig, "CmdSetFilSensorConfig",),
     # (CmdSetStepsPerMME, "CmdSetStepsPerMME",),
     (CmdSetPrinterName, "CmdSetPrinterName",),

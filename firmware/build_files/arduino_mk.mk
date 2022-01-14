@@ -31,6 +31,8 @@ NO_CORE_MAIN_CPP = 1
 
 AVRDUDE_ARD_BAUDRATE = 115200
 
+ARDUINO_PORT = $(DDPRINTDEV)
+
 include ../../Arduino-Makefile/Arduino.mk
 
 OPTIMIZATION_LEVEL = 2

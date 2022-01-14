@@ -27,7 +27,6 @@ import time, math, pprint, sys
 
 import ddhome, movingavg, gcodeparser, ddprintutil as util
 import intmath
-from ddprofile import MatProfile
 from ddprinter import Printer
 from ddplanner import Planner, initParser
 from ddprintcommands import *
@@ -96,7 +95,9 @@ def calibrateESteps(args, printer, planner):
 
     print("running %.2f seconds with %.2f mm/s" % (tRound, feedrate))
 
-    printer.sendCommandParamV(CmdContinuousE, [packedvalue.uint16_t(maxTimerValue16)])
+    printer.sendCommandParamV(CmdContinuous,
+            [ packedvalue.uint8_t(dimBitsIndex["A"]),
+              packedvalue.uint16_t(maxTimerValue16)])
 
     stepperVal = util.eTimerValue(printer, feedrate)
     printer.sendCommandParamV(CmdSetContTimer, [packedvalue.uint16_t(stepperVal)])
@@ -148,8 +149,7 @@ def calibrateESteps(args, printer, planner):
     else:
         print("Error avg did not converge.")
 
-    printer.sendCommandParamV(CmdContinuousE, [packedvalue.uint16_t(maxTimerValue16)])
-    printer.sendCommandParamV(CmdContinuousE, [packedvalue.uint16_t(0)])
+    printer.sendCommandParamV(CmdSetContTimer, [packedvalue.uint16_t(0)])
 
     # Re-enable flowrate limit
     printer.sendCommandParamV(CmdEnableFRLimit, [packedvalue.uint8_t(1)])
@@ -184,7 +184,9 @@ def calibrateFilSensor(args, printer, planner):
     # valueSum = 0
 
     # Start feeder 
-    printer.sendCommandParamV(CmdContinuousE, [packedvalue.uint16_t(maxTimerValue16)])
+    printer.sendCommandParamV(CmdContinuous, 
+            [ packedvalue.uint8_t(dimBitsIndex["A"]),
+              packedvalue.uint16_t(maxTimerValue16)])
 
     stepperValues = []
 
@@ -269,7 +271,8 @@ def calibrateFilSensor(args, printer, planner):
         printer.sendCommandParamV(CmdSetContTimer, [packedvalue.uint16_t(stepperVal)])
         time.sleep(0.1)
 
-    printer.sendCommandParamV(CmdContinuousE, [packedvalue.uint16_t(0)])
+    # Stop continuos e-mode
+    printer.sendCommandParamV(CmdSetContTimer, [packedvalue.uint16_t(0)])
 
     fscal = "---"
     if printer.printerProfile.hasValue("filSensorCalibration"):

@@ -28,6 +28,12 @@
 // extern const uint8 adc_map[];
 extern uint8 *adc_map;
 
+// Thermistortable Bed
+static ThermistorTable<TempCircuitBed> thermistorTableBed;
+
+// Thermistortable Hotend
+static ThermistorTable<TempCircuitHotend> thermistorTableHotend;
+
 /*
  * Derived from (the disabled) stm32duino:timerDefaultConfig().
  * This possibly only works if there is no timersetup in arduino:init().
@@ -337,7 +343,7 @@ bool TempControl::Run() {
 
     PT_WAIT_UNTIL( TEMP_BED_PIN :: conversionDone() );
 
-    current_temperature_bed = avgBedTemp.addValue( tempFromRawADC( TEMP_BED_PIN :: read() ) );
+    current_temperature_bed = avgBedTemp.addValue( thermistorTableBed.tempFromRawADC( TEMP_BED_PIN :: read() ) );
 
     ////////////////////////////////
     // Read hotend temp
@@ -346,7 +352,7 @@ bool TempControl::Run() {
 
     PT_WAIT_UNTIL( TEMP_0_PIN :: conversionDone() );
 
-    current_temperature[0] = avgHotendTemp.addValue( tempFromRawADC( TEMP_0_PIN :: read() ) );
+    current_temperature[0] = avgHotendTemp.addValue( thermistorTableHotend.tempFromRawADC( TEMP_0_PIN :: read() ) );
 
     PT_RESTART();
         

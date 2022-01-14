@@ -10,12 +10,13 @@
 // This determines the communication speed of the printer
 
 //
-// Initial baudrate
+// Initial baudrate, host software may switch to an other
+// baudrate.
 //
-// Baud 1000000
-#define BAUDRATE halBaudrate(1000000)
+// Baud 1000000, too high for anycubic i3
+// #define BAUDRATE halBaudrate(1000000)
 // Baud 500000
-// #define BAUDRATE halBaudrate(500000)
+#define BAUDRATE halBaudrate(500000)
 // Baud 250000
 // #define BAUDRATE halBaudrate(250000)
 
@@ -73,8 +74,12 @@
 // PID settings:
 #define PID_MAX 255 // limits current to nozzle while PID is active (see PID_FUNCTIONAL_RANGE below); 255=full current
 
-//// MOVEMENT SETTINGS
-#define NUM_AXIS 4 // The axis order in all axis related arrays is X, Y, Z, E
+// #if defined(DualZStepper)
+    // #define ADDZAXIS 1
+// #else
+    #define ADDZAXIS 0
+// #endif
+#define NUM_AXIS (4+ADDZAXIS) // The axis order in all axis related arrays is X, Y, Z, E [, Z1]
 
 // Default motor current for XY,Z,E in mA
 #define DEFAULT_PWM_MOTOR_CURRENT 1300

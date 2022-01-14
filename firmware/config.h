@@ -33,7 +33,10 @@
     // Ultimaker UM2
     //
     // Pt100 and INA826 amplifier, ADC resolution 1024
-    #define TempCircuit 2
+    #define TempCircuitBed Pt100_INA826_1024
+    // Pt100 and INA826 amplifier, ADC resolution 1024
+    #define TempCircuitHotend Pt100_INA826_1024
+
     // Use Bourns ems22a Rotary Encoder as a flowrate sensor
     #define BournsEMS22AFS 1
 
@@ -46,15 +49,20 @@
     //
     // Ramps
     //
-    // Thermistor in series with 4.7k pullup.
-    #define TempCircuit 1
+    // Bed: Epcos 100k thermistor in series with 4.7k pullup.
+    #define TempCircuitBed EPCOS_100k_4_7k
+    // Hotend: Epcos 100k thermistor in series with 4.7k pullup.
+    #define TempCircuitHotend EPCOS_100k_4_7k
     #define REPRAP_DISCOUNT_SMART_CONTROLLER 1
 #elif MOTHERBOARD == 3
     //
     // Jennyprinter
     //
     // Pt100 and INA826 amplifier, ADC resolution 4096
-    #define TempCircuit 3
+    #define TempCircuitBed Pt100_INA826_4096
+    // Pt100 and INA826 amplifier, ADC resolution 4096
+    #define TempCircuitHotend Pt100_INA826_4096
+
     // Use Bourns ems22a Rotary Encoder as a flowrate sensor
     #define BournsEMS22AFS 1
     #define STEPPER_MINPULSE 2 /* µS */
@@ -63,8 +71,10 @@
     //
     // Rumba
     //
-    // Thermistor in series with 4.7k pullup.
-    #define TempCircuit 1
+    // Bed: Epcos 100k thermistor in series with 4.7k pullup.
+    #define TempCircuitBed EPCOS_100k_4_7k
+    // Hotend: Epcos 100k thermistor in series with 4.7k pullup.
+    #define TempCircuitHotend EPCOS_100k_4_7k
     #define REPRAP_DISCOUNT_SMART_CONTROLLER 1
 
     // debug
@@ -73,12 +83,27 @@
     //
     // Ender 3, ender 5, atmega1284p
     //
-    // Epcos 100k thermistor in series with 4.7k pullup.
-    #define TempCircuit 1
+    // Bed: Epcos 100k thermistor in series with 4.7k pullup.
+    #define TempCircuitBed EPCOS_100k_4_7k
+    // Hotend: Epcos 100k thermistor in series with 4.7k pullup.
+    #define TempCircuitHotend EPCOS_100k_4_7k
+
     // Use Bourns ems22a Rotary Encoder as a flowrate sensor
     #define BournsEMS22AFS 1
     // Stepper isr running on timer3 instead of timer1
     #define StepperOnTimer3 1 
+#elif MOTHERBOARD == 6
+    //
+    // Anycubic I3 trigorilla
+    //
+    // Bed: Epcos 100k thermistor in series with 4.7k pullup.
+    #define TempCircuitBed EPCOS_100k_4_7k
+    // Hotend: ATC Semitec 104GT-2/104NT-4-R025H42G (4.7k pullup)
+    #define TempCircuitHotend ATC_Semitec_104NT_4_7k
+    // Use Bourns ems22a Rotary Encoder as a flowrate sensor
+    #define BournsEMS22AFS 1
+    // Two z-motors and two z-endstops
+    #define DualZStepper 1
 #else
     #error Unknown MOTHERBOARD in config.h
 #endif

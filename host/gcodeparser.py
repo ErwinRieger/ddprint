@@ -221,7 +221,7 @@ class UM2GcodeParser:
 
     Entire packet about 43 bytes -> round up to 50 bytes
     """
-    def preParse(self, fn, nu_baudrate):
+    def preParse(self, fn):
 
         # lenavg = movingavg.MovingAvg(100)
 
