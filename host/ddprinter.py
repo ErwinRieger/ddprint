@@ -1268,7 +1268,7 @@ class Printer(Serial):
 
         readings = []
 
-        for i in range(len(payload) / 4):
+        for i in range(len(payload) // 4):
             readings.append( struct.unpack("<Hh", payload[i*4:(i+1)*4]) )
 
         return readings
