@@ -31,7 +31,7 @@ from ddprinter import Printer
 from ddplanner import Planner, initParser
 from ddprintcommands import *
 from ddprintstates import *
-from ddprintconstants import A_AXIS, maxTimerValue16
+from ddprintconstants import A_AXIS, maxTimerValue16, dimBitsIndex
 
 # Write data for gnuplot
 def writeData(f, measurements):
@@ -88,12 +88,13 @@ def calibrateESteps(args, printer, planner):
     print("* Machine Calibration: Measeure e-steps")
     print("*")
 
-    # Time for one revolution
-    tRound = printer.printerProfile.getFeederWheelCircumI() / feedrate
+    # Time for n revolutions
+    nRound = 5
+    tShortAvg = (printer.printerProfile.getFeederWheelCircumI() / feedrate) * nRound
     tStartup = util.getStartupTime(printer, feedrate)
-    print("tRound:", tRound, "tStartup:", tStartup)
+    print("tShortAvg:", tShortAvg, "tStartup:", tStartup)
 
-    print("running %.2f seconds with %.2f mm/s" % (tRound, feedrate))
+    print("running %.2f seconds with %.2f mm/s" % (tShortAvg, feedrate))
 
     printer.sendCommandParamV(CmdContinuous,
             [ packedvalue.uint8_t(dimBitsIndex["A"]),
@@ -110,18 +111,18 @@ def calibrateESteps(args, printer, planner):
 
     while not crossAvg.converged:
 
-        if crossAvg.converged:
-            break
+        # if crossAvg.converged:
+            # break
 
         fsreadings = printer.getFSReadings()
         crossAvg.addReadings(fsreadings, 1.0)
 
         t = time.time()
-        if t > (tStart + tRound):
+        if t > (tStart + tShortAvg):
 
             if not crossAvg.started:
 
-                treading = (t-tStart) / crossAvg.getNValues()
+                # treading = (t-tStart) / crossAvg.getNValues()
                 crossAvg.started = True
 
         if crossAvg.getNValues():
@@ -132,8 +133,6 @@ def calibrateESteps(args, printer, planner):
         time.sleep(0.25)
 
     print("")
-
-    dFeederWheel = printer.printerProfile.getFeederWheelDiamI()
 
     if crossAvg.converged:
 
@@ -198,8 +197,6 @@ def calibrateFilSensor(args, printer, planner):
     # Start feedrate
     feedrate = steps[0] * stepfactor
 
-    dFeederWheel = printer.printerProfile.getFeederWheelDiamI()
-
     print("\n*")
     print("* Machine Calibration: Measeure flowrate sensor calibration value")
     print("*")
@@ -227,8 +224,8 @@ def calibrateFilSensor(args, printer, planner):
 
         while not crossAvg.converged:
 
-            if crossAvg.converged:
-                break
+            # if crossAvg.converged:
+                # break
 
             fsreadings = printer.getFSReadings()
             crossAvg.addReadings(fsreadings, 1.0)
@@ -238,7 +235,7 @@ def calibrateFilSensor(args, printer, planner):
 
                 if not crossAvg.started and crossAvg.getNValues():
 
-                    treading = (t-tStart) / crossAvg.getNValues()
+                    # treading = (t-tStart) / crossAvg.getNValues()
                     crossAvg.started = True
 
             print("\r# %s, %d(%d), avg short term: %.3f, long term: %.3f" % ((crossAvg.started and "Measure" or "Starting"), crossAvg.nLongPeriod, crossAvg.getNValues(), crossAvg.shortAvg(), crossAvg.longAvg()), end=' ')

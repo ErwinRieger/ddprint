@@ -186,8 +186,8 @@ class CrossingAverage:
             self.nLongPeriod = nLongPeriod
             nShortPeriod = max(int(round(nLongPeriod / 8.0)), 2)
 
-            # print "# of samples per round (long period):", nLongPeriod
-            # print "# of samples short period:", nShortPeriod
+            # print("# of samples per round (long period):", nLongPeriod)
+            # print("# of samples short period:", nShortPeriod)
 
             self.avgLong.trim(nLongPeriod)
             self.avgShort.trim(nShortPeriod)
