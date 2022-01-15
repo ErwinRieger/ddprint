@@ -1047,7 +1047,7 @@ def removeFilament(args, printer, parser, planner, feedrate):
     printer.sendCommandParamV(CmdMove, [MoveTypeNormal])
     printer.waitForState(StateInit)
 
-    t1 = (planner.matProfile.getHotendGoodTemp() + planner.matProfile.getHotendMaxTemp()) / 2
+    t1 = (planner.matProfile.getHotendGoodTemp() + planner.matProfile.getHotendMaxTemp()) // 2
     printer.heatUp(HeaterEx1, t1, wait=t1, log=True)
 
     # Filament vorwärts feeden um den 'filament-pfropfen' einzuschmelzen
@@ -1910,9 +1910,6 @@ def xstartPrint(args, printer, parser, planner, t1):
 
         planner.setPrintMode(PrintModePrinting)
 
-        # Disable flowrate limit
-        printer.sendCommandParamV(CmdEnableFRLimit, [packedvalue.uint8_t(0)])
-
         # Disable temp-flowrate limit
         downloadDummyTempTable(printer)
 
@@ -2104,10 +2101,16 @@ def measureTempFlowrateCurve2(args, printer, parser, planner):
         time.sleep(1)
         curPosMM = getVirtualPos(printer, parser)
 
+    # Disable flowrate limit
+    print("Disable flowrate limiter...:")
+    printer.sendCommandParamV(CmdEnableFRLimit, [packedvalue.uint8_t(0)])
+
     # Fix pwm value, enter *pwmMode*
-    pAvg = pwmAvg.mean()
+    pAvg = int(pwmAvg.mean())
     print("Setting fixed pwm:", pAvg)
     printer.setTempPWM(HeaterEx1, pAvg)
+
+    testOk = False
 
     #
     # Increase speed while monitoring feeder slippage
@@ -2145,18 +2148,19 @@ def measureTempFlowrateCurve2(args, printer, parser, planner):
         # Current measured flowrate
         frAvg = flowAvg.mean() * gAvg
 
-        print(deltaE, deltaTime, deltaEmm, flowrate)
+        # print(deltaE, deltaTime, deltaEmm, flowrate)
 
         print("Avg: temp: %.2f, pwm: %.2f, grip: %.2f, flowrate: %.2f mm³/s, slowdown: %5d" % (t1Avg, pAvg, gAvg, frAvg, y))
 
         if tempAvg.valid():
 
             if not printer.stateMoving(status):
-                print("XXX testprint ended before measurement done!")
+                print("Error: testprint ended before measurement was done!")
                 break
 
             if gAvg <= args.mingrip:
-                print("break loop, avg grip: %.2f, mingrip %.2f" % (gAvg, args.mingrip))
+                print("Break loop, avg grip: %.2f, mingrip %.2f" % (gAvg, args.mingrip))
+                testOk = True
                 break
 
             pos = getVirtualPos(printer, parser)
@@ -2164,8 +2168,15 @@ def measureTempFlowrateCurve2(args, printer, parser, planner):
 
                 # layer change, speed up print
                 x = x+x_step
-                y = max(int(A / x), 1024/2)
-                print("x, y:", x, y)
+                y = int(A / x)
+
+                if y < (1024/2): # cap at two times speedup 
+                    # Test did not converge even with two times speedup, flowrate in gcode to low
+                    print("Error: test did not converge, even with %.2f times spedup!" % (1024/y))
+                    print("Increase flowrate in sliced model to fix this.")
+                    break
+
+                # print("x, y:", x, y)
                 printer.sendCommandParamV(CmdSetSlowDown, [packedvalue.uint32_t(y)])
                 curPosMM = pos
 
@@ -2199,34 +2210,40 @@ def measureTempFlowrateCurve2(args, printer, parser, planner):
 
     print("# Avg: P0temp: %.2f, P0pwm: %.2f, grip: %.2f, FR0pwm: %.2f mm³/s" % (t1Avg, pAvg, gAvg, frAvg))
 
-    fn = "./mat-profile1.add"
-    s = ""
-    try:
-        f = open(fn)
-    except IOError:
-        pass
-    else:
-        s = f.read()
-        f.close()
-        print("Data read from measure1: ", fn, s)
+    if testOk:
+
+        fn = "./mat-profile1.add"
+        s = ""
+        try:
+            f = open(fn)
+        except IOError:
+            pass
+        else:
+            s = f.read()
+            f.close()
+            print("Data read from measure1: ", fn, s)
     
-    s += """\n"""
-    s += """    "# measure 2 (printing):",\n"""
-    s += """    "# a0 for pwm:",\n"""
-    s += """    "P0pwmPrint": %.4f,\n""" % pAvg
-    s += """    "# a0 for temp",\n"""
-    s += """    "P0tempPrint": %.4f,\n""" % t1Avg
-    s += """    "# feedrate at a0",\n"""
-    s += """    "FR0pwmPrint": %.4f\n""" % frAvg
-    s += """  }"""
+        s += """\n"""
+        s += """    "# measure 2 (printing):",\n"""
+        s += """    "# a0 for pwm:",\n"""
+        s += """    "P0pwmPrint": %.4f,\n""" % pAvg
+        s += """    "# a0 for temp",\n"""
+        s += """    "P0tempPrint": %.4f,\n""" % t1Avg
+        s += """    "# feedrate at a0",\n"""
+        s += """    "FR0pwmPrint": %.4f\n""" % frAvg
+        s += """  }"""
 
-    print("\nMaterial properties (printing):\n\n", s)
+        print("\nMaterial properties (printing):\n\n", s)
 
-    fn = "./mat-profile2.add"
-    f = open(fn, "w")
-    f.write(s)
-    f.close()
-    print("Data written to: ", fn)
+        fn = "./mat-profile2.add"
+        f = open(fn, "w")
+        f.write(s)
+        f.close()
+        print("Data written to: ", fn)
+
+    else:
+
+        print("Test was not successful!")
 
     # Re-enable flowrate limit
     printer.sendCommandParamV(CmdEnableFRLimit, [packedvalue.uint8_t(1)])
