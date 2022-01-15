@@ -108,7 +108,7 @@ FWINLINE void st_set_direction(uint8_t dirbits) {
         deactivate_dir_pin<MOVE>();
 }
 
-#define EndstopDebounce(spmm) max(spmm/64, 2)
+#define EndstopDebounce(spmm) max(spmm/32, 2)
 
 template<typename MOVE>
 bool st_endstop_pressed();
