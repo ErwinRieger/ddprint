@@ -1423,7 +1423,7 @@ def initParser(args, mode=None, gui=None, travelMovesOnly=False):
     else:
         mat = None
 
-    print("nozzle, mat:", nozzle, mat)
+    # print("nozzle, mat:", nozzle, mat)
 
     # Create planner singleton instance
     planner = Planner(args, nozzleProfile=nozzle, materialProfile=mat, printer=printer, travelMovesOnly=travelMovesOnly)

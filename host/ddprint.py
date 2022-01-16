@@ -357,7 +357,7 @@ def main():
             else:
                 mat = None
 
-            print("nozzle, mat:", nozzle, mat)
+            # print("nozzle, mat:", nozzle, mat)
 
             planner = Planner(args, nozzleProfile=nozzle, materialProfile=mat, printer=printer)
             planner.reconnect(status)
@@ -382,7 +382,7 @@ def main():
         else:
             mat = None
 
-        print("nozzle, mat:", nozzle, mat)
+        # print("nozzle, mat:", nozzle, mat)
 
         planner = Planner(args, nozzleProfile=nozzle, materialProfile=mat, printer=printer)
         parser = gcodeparser.UM2GcodeParser(planner)
