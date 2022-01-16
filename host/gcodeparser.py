@@ -232,7 +232,7 @@ class UM2GcodeParser:
 
         f = open(tmpfname)
 
-        self.logger.log("Unlinking temp. copy of gcode input: ", tmpfname)
+        # self.logger.log("Unlinking temp. copy of gcode input: ", tmpfname)
         os.unlink(tmpfname)
 
         # preload
@@ -454,6 +454,10 @@ class UM2GcodeParser:
                 # Skip rest of line/comment
                 break
 
+            if len(param) < 2:
+                # Param without value
+                continue
+
             rest = param[1:]
 
             factor = 1.0
@@ -466,14 +470,19 @@ class UM2GcodeParser:
                 # print "replace feedrate in mm/min with mm/sec..."
                 factor = 1.0 / 60
 
-            if not rest:
-                # Param without value
-                continue
+            # if not rest:
+                # # Param without value
+                # continue
 
             try:
-                values[valueChar] = float(rest) * factor
+                value = float(rest)
             except ValueError:
                 raise GcodeException("Error converting '%s' to float!" % rest)
+
+            if math.isnan(value):
+                raise GcodeException("Error converting '%s' to float!" % rest)
+
+            values[valueChar] = value * factor
 
         return values
 
