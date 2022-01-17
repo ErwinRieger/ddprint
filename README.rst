@@ -933,6 +933,52 @@ Log
 
 ::
 
+   Mon Jan 17 17:45:47 CET 2022
+   ----------------------------
+
+   Committed the following changes into the *next* branch on github:
+
+   + Python3 port of ddPrint:
+       * Converting python files with 2to3 script.
+       * Fix integer divisions.
+       * Use bytes() and bytearray() instead of strings for binary
+         data.
+       * Converted scripts and 'ddtool' utility to use python3.
+
+   + Ported ddPrint to Anycubic I3M printer:
+       * Pin changes for anycubic i3m.
+       * Add support for ATC Semitec 104GT thermocouple.
+       * Rework temperature measurement: allow
+         different thermocouple types for heated bed
+         and hotend.
+       * Homing: add support for additional Z1 stepper motor and endstop.
+       * Homing: implement dual-z homing.
+       * Adjust getendstops command for the additional Z-endstop.
+       * Control mainboard cooling fan (anycubic i3m).
+       * Changed initial baudrate to 500 kbaud, 1 Mbaud is to fast for
+         Anycubic i3m.
+       * Auto-baudrate: added new printer profile setting
+         'baudRateLimit' for the Anycubic i3m (it does not work
+         with 1 Mbaud baudrate).
+       * Rework and cleanup ddPrint scripts: Added workaround for
+         a problem with the linux cp210x driver used for the
+         Anycubic i3m (CP2102 usb-serial chip): avoid reset of
+         printer on device-open (cp210x seems to toggle DTR line
+         even if '-hupcl' is used).
+   
+   + Other changes:
+       * Environment: renamed env. var $DDDEVICE to $DDPRINTDEV.
+       * Firmware build: Set ARDUINO_PORT from DDPRINTDEV environment var.
+       * Added new command "continuosmove" for testing, allow
+         simple movements of the printer (without homing) for
+         debugging/initial setup.
+         Note: no acceleration and no endstop-check - dangerous.
+       * Removed unused baudrate commandline switch.
+       * Cleanup handling of printer-device ($DDPRINTENV).
+       * Firmware: moved pins include files into its own folder.
+       * Improved plot_mat_profile.py scipt: use python-argparse, display
+         more information.
+
    Sat Jan  1 10:45:26 CET 2022
    ----------------------------
 
