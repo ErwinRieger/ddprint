@@ -8,7 +8,7 @@ menuItems() {
     for dev in $*; do echo "$dev $(basename $dev)"; done
 }
 
-devices="$(find /dev/serial/by-id/ -type l)"
+devices="$(find /dev/serial/by-id/ -type l 2>/dev/null)"
 ndev="$(echo "$devices" | wc -l)"
 
 if [ "$ndev" == "1" ]; then
