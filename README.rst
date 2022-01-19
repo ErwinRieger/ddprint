@@ -922,11 +922,12 @@ Unsorted
 
 This has to be included into the documentation:
 
-Installation, dependencies
+Installation, dependencies, note about ddinstall.sh
 
 .. code-block:: sh
 
    sudo apt-get install python3-serial python3-numpy
+
 
 Log
 ++++++++++++++++++++++++++++
