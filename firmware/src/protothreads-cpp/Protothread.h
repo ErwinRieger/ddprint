@@ -78,7 +78,12 @@ public:
     // Run next part of protothread or return immediately if it's still
     // waiting. Return true if protothread is still running, false if it
     // has finished. Implement this method in your Protothread subclass.
-    virtual bool Run() = 0;
+    //
+    // Note: changed abstract virtual Run() method to normal method to
+    // save the overhead of the virtual call.
+    //
+    // virtual bool Run() = 0;
+    bool Run();
 
 protected:
     // Used to store a protothread's position (what Dunkels calls a
