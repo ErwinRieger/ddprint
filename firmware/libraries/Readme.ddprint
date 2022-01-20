@@ -1,2 +1,5 @@
 This directory is searched by arduino.mk for additional libraries.
 This is used for the arduino/avr-mega build (ultimaker, ramps...).
+
+Origin of SdFat is: https://github.com/greiman/SdFat
+
