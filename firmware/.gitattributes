@@ -1,0 +1,2 @@
+build.*/*.hex binary
+build/*/*.bin binary
