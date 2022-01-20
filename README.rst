@@ -428,13 +428,11 @@ Installation
 Firmware part
 -------------
 
-Requirements
-************
+Requirements, dependencies
+**************************
 
 * Arduino code/libraries and avr compiler
 * Arduino-Makefile
-* SdCard library
-* Protothreads header
 
 Install them along the checked out ddprint sources so that the
 directory structure looks like this:
@@ -450,9 +448,6 @@ directory structure looks like this:
     │   ...
     ├── Arduino-Makefile
     │   ├── Arduino.mk
-    │   ...
-    ├── protothreads-cpp
-    │   ├── LICENSE.txt
     │   ...
 
 The following versions are used at the moment (maybe newer versions will also work):
@@ -471,8 +466,6 @@ The following versions are used at the moment (maybe newer versions will also wo
         commit 984aa540dd4325b7e23dc76135ca28a36526f0c6
         Author: Ben Hoyt <benhoyt@gmail.com>
         Date:   Tue Dec 4 16:48:52 2018 -0500
-
-        Apply ddprint/patches/protothreads-cpp.patch
 
 
 Build and upload firmware
