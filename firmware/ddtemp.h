@@ -21,9 +21,10 @@
 
 #include "config.h"
 #include "Configuration.h"
-#include "Protothread.h"
 #include "intmath.h"
 #include "mdebug.h"
+
+#include "protothreads-cpp/Protothread.h"
 
 // Window size running average of temperature.
 // Poll rate is 10ms (see ddprint.cpp).

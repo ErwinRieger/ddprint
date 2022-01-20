@@ -28,7 +28,6 @@
 
 #include <limits.h>
 
-#include "Protothread.h"
 #include "crc16.h"
 
 #include "ddprint.h"
@@ -41,6 +40,8 @@
 #include "ddcommands.h"
 #include "ddlcd.h"
 #include "stepper.h"
+
+#include "protothreads-cpp/Protothread.h"
 
 //The ASCII buffer for recieving from SD:
 #define SD_BUFFER_SIZE 512

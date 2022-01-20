@@ -21,13 +21,14 @@
 
 #include <Arduino.h>
 
-#include "Protothread.h"
 #include "Configuration.h"
 #include "pins.h"
 
 #include "txbuffer.h"
 #include "ddcommands.h"
 #include "ddlcd.h"
+
+#include "protothreads-cpp/Protothread.h"
 
 // Redefined here from ddcommands.h
 #define RespSDReadError         9  

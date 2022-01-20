@@ -27,10 +27,11 @@
 #endif
 
 #include "hal.h"
-#include "Protothread.h"
 #include "mdebug.h"
 #include "crc16.h"
 #include "ringbuffer.h"
+
+#include "protothreads-cpp/Protothread.h"
 
 // Size of tx buffer in bytes.
 // #define TxBufferLen  256
