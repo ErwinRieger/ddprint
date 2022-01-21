@@ -77,11 +77,11 @@ def homeBounce(parser, dim, direction, fakeHomingEndstops):
         return False
 
     # Press endstop
-    if not homeMove(parser, dim, direction, planner.HOME_RETRACT_MM * 1.5, fakeHomingEndstops, 0.33): # Move towards endstop slowly
+    if not homeMove(parser, dim, direction, planner.HOME_RETRACT_MM * 1.5, fakeHomingEndstops, 0.1): # Move towards endstop slowly
         return False
 
     # Release endstop
-    return homeMove(parser, dim, direction*-1, planner.HOME_RETRACT_MM * 1.5, fakeHomingEndstops, 0.33) # Back off
+    return homeMove(parser, dim, direction*-1, planner.HOME_RETRACT_MM * 1.5, fakeHomingEndstops, 0.1) # Back off
 
 
 ####################################################################################################
