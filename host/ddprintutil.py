@@ -27,7 +27,7 @@ from ddprintstates import *
 from ddprinter import Printer
 from ddprintconstants import *
 from ddconfig import *
-from ddvector import vectorMul
+from ddvector import vectorMulInt
 
 ####################################################################################################
 def sign(x):
@@ -1200,7 +1200,7 @@ def bedLeveling(args, printer, parser, planner):
             parser.setPos(current_position)
 
             # Adjust the printer position in firmware part
-            posStepped = vectorMul(current_position, parser.steps_per_mm)
+            posStepped = vectorMulInt(current_position, parser.steps_per_mm)
             payload = struct.pack("<iiiii", *posStepped)
             printer.sendCommand(CmdSetPos, binPayload=payload)
 
