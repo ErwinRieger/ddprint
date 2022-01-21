@@ -513,14 +513,20 @@ class Printer(Serial):
 
         self.commandInitDone = True
 
-    def setBaudRate(self):
+    def setBaudRate(self, brIndex, setInFirmware=True):
 
-        baudrate = self.baudrates[self.baudrateIndex]
-        lowbyte = (fCPU+baudrate*8) // (baudrate*16) - 1;
-        print("Auto-Baudrate: set to %d (lowbyte: %d)" % (baudrate, lowbyte))
-        payload = struct.pack("<I", lowbyte)
-        self.sendCommand(CmdSetBaudRate, binPayload=payload)
-        print("Baudrate command successful")
+        self.baudrateIndex = brIndex
+        baudrate = self.baudrates[brIndex]
+
+        if setInFirmware:
+
+            lowbyte = (fCPU+baudrate*8) // (baudrate*16) - 1;
+            print("Auto-Baudrate: set to %d (lowbyte: %d)" % (baudrate, lowbyte))
+
+            payload = struct.pack("<I", lowbyte)
+            self.sendCommand(CmdSetBaudRate, binPayload=payload)
+
+            print("Baudrate command successful")
 
         self.baudrate = baudrate
         time.sleep(0.1)
@@ -757,6 +763,10 @@ class Printer(Serial):
         # print "Waiting for reply code 0x%x (or ack)" % sendCmd
 
         # Wait for response, xxx without timeout/retry for now
+        timeouts = 0
+        baudRatesToTry = list(range(len(self.baudrates)))
+        del baudRatesToTry[self.baudrateIndex]
+
         while True:
 
             try:
@@ -771,6 +781,25 @@ class Printer(Serial):
                 continue
 
             except RxTimeout:
+
+                timeouts += 1
+
+                if timeouts > 2:
+
+                    # Try switching baudrate
+                    if baudRatesToTry:
+
+                        # print("available baudrates:", baudRatesToTry)
+
+                        brIndex = baudRatesToTry[0]
+                        del baudRatesToTry[baudRatesToTry.index(brIndex)]
+
+                        print("Set baudrate to: ", self.baudrates[brIndex])
+
+                        self.setBaudRate(brIndex, False)
+                        self.lastAutobaud = time.time()
+                        timeouts = 0
+
                 self.gui.logComm("RxTimeout, resending command...")
                 startTime = time.time()
                 if binary:
@@ -804,8 +833,7 @@ class Printer(Serial):
                             if self.throttleAutoBaud < 300:
                                 self.throttleAutoBaud += 60
 
-                            self.baudrateIndex += 1;
-                            self.setBaudRate()
+                            self.setBaudRate(self.baudrateIndex + 1)
 
                             # if self.lineNr != lineNr:
                                 # print "resetting linenr from %d to %d'" % (self.lineNr, lineNr);
@@ -815,8 +843,7 @@ class Printer(Serial):
                         
                         if self.baudrateIndex > self.minBaudrateIndex:
 
-                            self.baudrateIndex -= 1;
-                            self.setBaudRate()
+                            self.setBaudRate(self.baudrateIndex - 1)
 
                     self.sendErrors = 0
                     
@@ -986,8 +1013,7 @@ class Printer(Serial):
             self.minBaudrateIndex = brIndex
 
             if brIndex > self.baudrateIndex:
-                self.baudrateIndex = brIndex
-                self.setBaudRate()
+                self.setBaudRate(brIndex)
 
     # Set a gpio port on printer
     def setGpio(self, pin, value):
