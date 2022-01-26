@@ -238,7 +238,7 @@ The firmware reads the rotary encoder every 10mS, meaning a sample rate of 100Hz
 The FRS is mounted at the feeder outlet with an adapter that is part of the FRS housing (BMG or UM2 feeder) or with
 a short piece of a M6 heatbreak (Anycubic or Ender feeder) (todo: add bmg style picture).
 
-`Here are some STL files <https://github.com/ErwinRieger/ddprint/tree/master/stl>`__ of the FRS housing.
+`Here are some STL files <http://github.com/ErwinRieger/ddprint/tree/master/stl>`__ of the FRS housing.
 
 Material Profiles
 -----------------
@@ -395,9 +395,9 @@ DDPrint FDM firmware: `github.com/ErwinRieger/ddprint <http://github.com/ErwinRi
 
 DDprint system project homepage: `ibrieger.de/close_the_loop_for_e.html <http://www.ibrieger.de/close_the_loop_for_e.html>`__.
 
-Video: https://youtu.be/1Kbl9AZd10Y, ddprint playlist: https://www.youtube.com/playlist?list=PLzn7lnnZpS7XP-JhLw_o7p27ayv5bJ29o.
+Video: http://youtu.be/1Kbl9AZd10Y, ddprint playlist: http://www.youtube.com/playlist?list=PLzn7lnnZpS7XP-JhLw_o7p27ayv5bJ29o.
 
-HackadayIO project: https://hackaday.io/project/170695-ddprint.
+HackadayIO project: http://hackaday.io/project/170695-ddprint.
 
 Current state
 +++++++++++++++++++++++++++++++
@@ -456,13 +456,13 @@ The following versions are used at the moment (maybe newer versions will also wo
 
     Arduino IDE 1.6.13, installed from downloaded archive.
 
-    Arduino-Makefile from https://github.com/sudar/Arduino-Makefile.git
+    Arduino-Makefile from http://github.com/sudar/Arduino-Makefile.git
         commit c3fe5dcc2fbd5c895b032ca5a5a1f60af163b744
         Merge: 7a26a86 6d3d973
         Author: Simon John <git@the-jedi.co.uk>
         Date:   Thu Dec 28 18:05:18 2017 +0000
 
-    Protothreads from https://github.com/benhoyt/protothreads-cpp.git
+    Protothreads from http://github.com/benhoyt/protothreads-cpp.git
         commit 984aa540dd4325b7e23dc76135ca28a36526f0c6
         Author: Ben Hoyt <benhoyt@gmail.com>
         Date:   Tue Dec 4 16:48:52 2018 -0500
@@ -527,7 +527,10 @@ needed, see http://www.ibrieger.de/close_the_loop_for_e.html#simpler-gcode.
 The (automatically measured) material profile gives a picture of the hotend melting capacity for a given machine/filament combination.
 This eases the determination of a good printing speed. 
 
-Simplify3d example slicer settings in https://github.com/ErwinRieger/ddprint/tree/master/examples/s3d_profiles.
+Simplify3d example slicer settings in http://github.com/ErwinRieger/ddprint/tree/master/examples/s3d_profiles.
+
+:TODO: note that PrusaSlicer and SuperSlicer are used, too.
+:TODO: note about S3D profile generation from templates: http://github.com/ErwinRieger/ddprint-profiles/tree/main/s3d-profiles
 
 Supported gcodes
 -----------------
@@ -871,7 +874,7 @@ The SD card is used in 'raw/blockwise mode' without a filesystem on it.
 Working SD cards
 *******************
 
-Not all cards are working in SPI mode, some fail to initialize, some freeze after some time. See https://github.com/greiman/SdFat/issues/160, also.
+Not all cards are working in SPI mode, some fail to initialize, some freeze after some time. See http://github.com/greiman/SdFat/issues/160, also.
 
 Some working ones:
 
@@ -920,13 +923,24 @@ Installation, dependencies, note about ddinstall.sh
 .. code-block:: sh
 
    sudo apt-get install python3-serial python3-numpy
-
+   avrdude for arduino based firmware upload 
+   stm32flash for stm32 based (jennyprinter) firmware upload 
 
 Log
 ++++++++++++++++++++++++++++
 
 ::
 
+   Wed Jan 26 18:38:29 CET 2022
+   ----------------------------
+
+   * Github: merged *next* branch into *master*.
+   * Setup page with some notes about ddPrint on a Anycubic I3 Mega (S): http://ibrieger.de/ddprint-anycubic-i3.html
+   * Uploaded new sensor housing stl's, reworked stl naming scheme (http://github.com/ErwinRieger/ddprint/tree/master/stl).
+   * Added simple install script (ddinstall.sh) and a script for firmware flashing (dd-fw-upload.sh).
+   * Added firmware blobs (firmware/build\*/\*.hex)
+   * Include ProtoThreads library (github.com/benhoyt/protothreads-cpp.git) into ddPrint repository for easier firmware build.
+   
    Mon Jan 17 17:45:47 CET 2022
    ----------------------------
 
@@ -983,7 +997,7 @@ Log
 
    * Merged python3 port into next branch.
    * Restructured project, moved test gcode files into it's own
-     repository: https://github.com/ErwinRieger/ddprint-test-gcode.
+     repository: http://github.com/ErwinRieger/ddprint-test-gcode.
    * Build: cleanup Makefiles, added license and moved firmware
      Makefiles into its own folder. Moved common makefile stuff
      into include files.
