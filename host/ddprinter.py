@@ -105,7 +105,8 @@ class Printer(Serial):
             )
 
         self.baudrates = [1000000, 500000, 250000]
-        self.minBaudrateIndex = 1 # Start with 500 Kbaud
+        self.defaultBaudrateIndex = 1 # Start with 500 Kbaud
+        self.minBaudrateIndex = self.defaultBaudrateIndex
         self.baudrateIndex = self.minBaudrateIndex
         self.lastAutobaud = 0
         self.throttleAutoBaud = 60
@@ -117,6 +118,13 @@ class Printer(Serial):
         br = self.baudrates[self.baudrateIndex]
         print("Setting initial baudrate to:", br)
         self.baudrate = br
+
+    def __del__(self):
+
+        if self.baudrateIndex != self.defaultBaudrateIndex:
+            br = self.baudrates[self.defaultBaudrateIndex]
+            print("Resetting baudrate to:", br)
+            self.setBaudRate(self.defaultBaudrateIndex)
 
     def checkStall(self, status):
 
@@ -537,10 +545,59 @@ class Printer(Serial):
         time.sleep(0.1)
 
     def resetLineNumber(self):
-        # self.lineNr = 1
-        self.sendCommand(CmdResetLineNr)
-        self.lineNr = 1
+
+        # self.sendCommand(CmdResetLineNr)
+        binary = self.buildBinaryCommand(CmdResetLineNr)
+
+        # self.send2(cmd, binary)
    
+        baudRatesToTry = list(range(len(self.baudrates)))
+        del baudRatesToTry[self.baudrateIndex]
+        timeouts = 0
+
+        while True:
+
+            print("Connecting to printer...")
+            self.send(binary)
+
+            try:
+                (cmd, _) = self.readResponse()
+            except RxTimeout:
+
+                timeouts += 1
+                if timeouts > 2:
+
+                    # Try switching baudrate
+                    if baudRatesToTry:
+
+                        print("available baudrates:", baudRatesToTry)
+
+                        brIndex = baudRatesToTry[0]
+                        del baudRatesToTry[baudRatesToTry.index(brIndex)]
+
+                        print("Set baudrate to: ", self.baudrates[brIndex])
+
+                        self.setBaudRate(brIndex, False)
+                        self.lastAutobaud = time.time()
+                        timeouts = 0
+
+                    else:
+
+                        raise SerialException("unable to connect to printer")
+
+                continue
+
+            except RxChecksumError:
+
+                self.gui.logComm("RxChecksumError, resending command...")
+                continue
+
+            if cmd == 0x6:
+                print("ACK received, connection ok")
+                break
+
+        self.lineNr = 1
+
     def incLineNumber(self):
         self.lineNr += 1
         if self.lineNr == 256:
@@ -748,7 +805,6 @@ class Printer(Serial):
         startTime = time.time()
         lineNr = self.lineNr
 
-
         """
         # Simulate random checksum error
         if random.randint(0, 100) < 2:
@@ -762,65 +818,45 @@ class Printer(Serial):
         if debugComm:
             self.gui.logComm("*** sendCommand %s (0x%x, len: %d, seq: %d) *** " % (CommandNames[sendCmd], sendCmd, len(binary), self.prevLineNumber()))
         # print "send: ", binary.encode("hex")
-        if binary:
-            self.send(binary)
+        # if binary:
+        self.send(binary)
 
         # print "Waiting for reply code 0x%x (or ack)" % sendCmd
 
         # Wait for response, xxx without timeout/retry for now
-        timeouts = 0
-        baudRatesToTry = list(range(len(self.baudrates)))
-        del baudRatesToTry[self.baudrateIndex]
-
         while True:
 
             try:
                 (cmd, payload) = self.readResponse()
             except SERIALDISCON:
+
                 self.gui.logError("Line disconnected in send2(), reconnecting!")
                 self.reconnect()
 
                 startTime = time.time()
-                if binary:
-                    self.send(binary)
+                # if binary:
+                self.send(binary)
                 continue
 
             except RxTimeout:
 
-                timeouts += 1
-
-                if timeouts > 2:
-
-                    # Try switching baudrate
-                    if baudRatesToTry:
-
-                        # print("available baudrates:", baudRatesToTry)
-
-                        brIndex = baudRatesToTry[0]
-                        del baudRatesToTry[baudRatesToTry.index(brIndex)]
-
-                        print("Set baudrate to: ", self.baudrates[brIndex])
-
-                        self.setBaudRate(brIndex, False)
-                        self.lastAutobaud = time.time()
-                        timeouts = 0
-
                 self.gui.logComm("RxTimeout, resending command...")
                 startTime = time.time()
-                if binary:
-                    self.send(binary)
+                # if binary:
+                self.send(binary)
                 continue
 
             except RxChecksumError:
+
                 self.gui.logComm("RxChecksumError, resending command...")
                 startTime = time.time()
-                if binary:
-                    self.send(binary)
+                # if binary:
+                self.send(binary)
                 continue
 
-            n = 0
-            if binary:
-                n = len(binary)
+            # n = 0
+            # if binary:
+            n = len(binary)
 
             dt = time.time() - startTime
             if cmd == 0x6:

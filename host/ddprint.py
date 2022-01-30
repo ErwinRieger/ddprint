@@ -215,7 +215,7 @@ def main():
 
     sp = subparsers.add_parser("stop", help="Stop print, cooldown, home, disable steppers.")
 
-    sp = subparsers.add_parser("test", help="Debug: tests for debugging purpose.")
+    sp = subparsers.add_parser("test", help="Debug: command for debugging purposes.")
 
     sp = subparsers.add_parser("testFeederUniformity", help="Debug: check smoothness/roundness of feeder measurements.")
 
@@ -658,17 +658,9 @@ def main():
         printer = Printer(args)
         printer.commandInit()
 
-        # while True:
-            # print "FSReadings:"
-            # pprint.pprint(printer.getFSReadings())
-            # time.sleep(1)
-
-        # cal = printer.printerProfile.getFilSensorCalibration()
-        # for (stepper, sensor) in printer.getFSReadings():
-            # print "dSteps: %d, dSensor: %d, slip: %.2f" % (stepper, sensor, stepper*cal/sensor)
-
-        #printer.erase(2048 * 250)
-        printer.erase(0)
+        print("set baudrate to", printer.baudrates[2])
+        printer.setBaudRate(2)
+        time.sleep(10)
 
     else:
         print("Unknown/not implemented command: ", args.mode)
