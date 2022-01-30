@@ -477,7 +477,8 @@ class StepBuffer: public StepBufferBase {
 
         public:
 
-            bool linearFlag;
+            // Signals FRS measurement move
+            bool measureFlag;
 
             StepBuffer() {
 
@@ -498,15 +499,15 @@ class StepBuffer: public StepBufferBase {
                 else {
 
                   // Stop continuos move
-                  linearFlag = false;
+                  measureFlag = false;
                   st_disableSteppers();
                   DISABLE_STEPPER1_DRIVER_INTERRUPT();
                 }
             }
 
-            FWINLINE void sync() {
+            // FWINLINE void sync() {
                 // undo syncCount = byteSize();
-            }
+            // }
 
             // undo FWINLINE bool synced() {
                 // undo return syncCount == 0;
@@ -515,7 +516,7 @@ class StepBuffer: public StepBufferBase {
             void flush() {
                 ringBufferInit();
                 upcount = downcount = 0;
-                linearFlag = false;
+                measureFlag = false;
             }
 
             void homingMode() {
@@ -546,7 +547,7 @@ class StepBuffer: public StepBufferBase {
                 // Start interrupt
                 ENABLE_STEPPER1_DRIVER_INTERRUPT();
 
-                linearFlag = true;
+                measureFlag = true;
             }
 
             // Compute clocktics available in stepper
@@ -623,10 +624,10 @@ class StepBuffer: public StepBufferBase {
                     if (sd.dirBits & 0x40) {
                         // Start FRS measurement if not running already
                         if (filamentSensor.idle())
-                            linearFlag = true;
+                            measureFlag = true;
                     }
                     else {
-                        linearFlag = false;
+                        measureFlag = false;
                     }
                     #endif
 

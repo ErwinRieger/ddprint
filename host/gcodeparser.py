@@ -34,9 +34,12 @@ import ddprintutil as util
 import dddumbui
 
 #degug
-import movingavg
+# import movingavg
 
 ############################################################################
+
+PreloadMinLen = 0.10
+
 ############################################################################
 
 class GcodeException(Exception):
@@ -144,7 +147,6 @@ class UM2GcodeParser:
                 "M901": self.m901_set_wp,
                 "M907": self.m907_motor_current,
                 "T0": self.t0,
-                "U": self.unknown, # unknown command for testing purposes
                 }
 
         self.steps_per_mm = planner.printer.printerProfile.getStepsPerMMVectorI()
@@ -175,52 +177,20 @@ class UM2GcodeParser:
     def getPos(self):
         return self.position.copy()
 
+    #
     # Preprocess gcode to
+    #
     # * determine number of parts
     # * compute amount of preload data
     # 
-    # xxx todo: cache preprocesse data for later real parsing?
+    # Preload: number of gcode lines to process before print is started.
     #
-    # preload: ratio between time used to move head and time needed to download data
+    # Simple method: count number of small moves (length of move smaller than *PreloadMinLen*).
+    # Rationale: ratio of printing time to download time is worse for small moves, risk of 
+    # data runout.
     #
-    # to estimate move time: worst case for movetime: a move without
-    # acceleration/deceleration -> simply use the commanded
-    # feedrate.
-    #
-    # to estimate download time: 
-    # size of data packages depend on amount of acceleration/decelleration, but those
-    # moves are also slower...
-    # we use a simple estimation here: 2 times the size of a small packet
-    #
-    # todo: implement relative mode
+    # Returns: number of gcode lines to preload.
     # 
-    # Return: number of gcode lines to preload.
-    # 
-
-    """
-    Packet around data payload:
-
-        *  1 byte, SOH
-        *  3 bytes, header (linenumber, cmd, payloadsize)
-        *  3 bytes, flags + checksum
-
-        -> 7 bytes
-
-    Move payload:
-
-        * 2 + 1 + 5*4 + 2  bytes header, flags, axes
-        *               2  bytes E-timer
-        *               1  byte avg window size
-        *               4  bytes linear timer, decel pulses
-        *               2  bytes accel timer
-        *              [n] bytes accel timer delta's
-        *               2  bytes decel timer
-        *              [n] bytes decel timer delta's
-
-        -> 36 bytes 
-
-    Entire packet about 43 bytes -> round up to 50 bytes
-    """
     def preParse(self, fn):
 
         # lenavg = movingavg.MovingAvg(100)
@@ -236,19 +206,9 @@ class UM2GcodeParser:
         os.unlink(tmpfname)
 
         # preload
-        # moveTime = 0.0
-        # downloadTime = 0.0
-        # feedrate = 0.0
         pos = [0.0, 0.0, 0.0] # use vector 3 here
         lineNumber = 0
         preloadLines = 1000 # Download 1000 lines before print-start, at least.
-        preloadMinLen = 0.10
-
-        # Time to send one move at given baudrate:
-        # * assume we send 10 bits for a byte
-        # * multiply by 5 to account for raw moves
-        # bitsPerMove = 5.0 * 50.0 * 10.0
-        # timePerMove = bitsPerMove / baudrate
 
         self.logger.log("Pre-parsing ", tmpfname)
 
@@ -267,15 +227,11 @@ class UM2GcodeParser:
                 
                     values = self.getValues(tokens[1:])
 
-                    # if 'F' in values:
-                        # feedrate = values['F']
-
                     if not ("X" in values or "Y" in values or "Z" in values):
                         # Nothing to move, F-Only gcode or invalid
                         continue
 
                     displacement_vector = [0.0, 0.0, 0.0]
-                    # newPos = [0.0, 0.0, 0.0]
 
                     for dim in range(3):
 
@@ -283,13 +239,12 @@ class UM2GcodeParser:
                         if dimC not in values:
                             continue
 
-                        # if self.absolute[dim]:
-                        rDiff = values[dimC] - pos[dim]
-                        # newPos[dim] = values[dimC]
-                        pos[dim] = values[dimC]
-                        # else:
-                            # rDiff = values[dimC]
-                            # newPos[dim] += values[dimC]
+                        if self.absolute[dim]:
+                            rDiff = values[dimC] - pos[dim]
+                            pos[dim] = values[dimC]
+                        else:
+                            rDiff = values[dimC]
+                            pos[dim] += values[dimC]
 
                         displacement_vector[dim] = rDiff
 
@@ -298,41 +253,14 @@ class UM2GcodeParser:
                         # Skip this empty move.
                         continue
 
-                    # Todo: Constrain feedrate to max values
-
                     l = vectorLength(displacement_vector)
 
                     # lenavg.add(l)
-
-                    # print "move distance:", displacement_vector, l # , feedrate
                     # print "move distance:", l, lenavg.mean()
 
-                    if l < preloadMinLen:
+                    if l < PreloadMinLen:
                         preloadLines += 1
                    
-                    """
-                    t = l / feedrate
-
-                    moveTime += t
-
-                    # Weight small moves
-                    d = 1.0 - l
-                    w = 1.0
-                    if d > 0:
-                        # distance smaller than 1.0
-                        # shorter moves have a higher d value, max 1.0
-                        w = 1.0 + (d*5.0)
-
-                    downloadTime += timePerMove * w
-
-                    # print "t, tmove, tdownload:", t, moveTime, downloadTime
-
-                    if downloadTime > moveTime:
-                        preloadLines = lineNumber
-                    """
-
-                    # pos = newPos
-
                 elif cmd == "G2" or cmd == "G3":
 
                     print("line:", line)
@@ -356,15 +284,9 @@ class UM2GcodeParser:
 
         f.seek(0) # rewind
 
-        # if downloadTime < moveTime:
-            # print "downloadTime %.2f smaller than printing time %.2f, can use preload (#lines: %d)." % (downloadTime, moveTime, preloadLines)
-        # else:
-            # print "downloadTime %.2f greater than printing time %.2f, no preload possible (#lines: %d)." % (downloadTime, moveTime, preloadLines)
-
         preloadLines = min(preloadLines, lineNumber)
 
         print("Using preload: preloadLines: %d (%.1f %%)" % (preloadLines, preloadLines*100.0/lineNumber))
-        # return (f, max(min(preloadLines, 10000), 1000))
         return (f, preloadLines)
 
     def execute_line(self, rawLine):
@@ -470,10 +392,6 @@ class UM2GcodeParser:
                 # print "replace feedrate in mm/min with mm/sec..."
                 factor = 1.0 / 60
 
-            # if not rest:
-                # # Param without value
-                # continue
-
             try:
                 value = float(rest)
             except ValueError:
@@ -515,7 +433,6 @@ class UM2GcodeParser:
         if "B" in values:
             blipTime = int(values["B"] * 1000)
 
-        # self.planner.addSynchronizedCommand(CmdSyncFanSpeed, p1=packedvalue.uint8_t(fanSpeed))
         self.planner.fanOn(fanSpeed, min(blipTime, Uint8Max))
 
     def m107_fan_off(self, line, values):
@@ -732,12 +649,6 @@ class UM2GcodeParser:
             
         # print "newRealPos: ", newRealPos
         self.setPos(newRealPos)
-
-    def unknown(self, line, values):
-        self.planner.addSynchronizedCommand(CmdUnknown, p1=packedvalue.uint8_t(values["X"]))
-
-
-
 
 
 

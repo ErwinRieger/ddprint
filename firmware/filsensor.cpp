@@ -126,7 +126,7 @@ void FilamentSensorEMS22::run() {
     if (idle()) {
 
         // Keine messung aktiv
-        if (stepBuffer.linearFlag) {
+        if (stepBuffer.measureFlag) {
 
             // Messung starten
             frsMode = MEASURING;
@@ -196,7 +196,7 @@ void FilamentSensorEMS22::run() {
     else {
 
         // Messung aktiv
-        if (stepBuffer.linearFlag) {
+        if (stepBuffer.measureFlag) {
 
             if (! --measureTimer) {
 

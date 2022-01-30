@@ -132,7 +132,7 @@ class Vector(object):
             return False
 
         for dim in range(len(self.vv)):
-            if not circaf(self[dim], other[dim], 0.000001):
+            if not math.isclose(self[dim], other[dim], abs_tol=0.000001):
                 return False
 
         return True

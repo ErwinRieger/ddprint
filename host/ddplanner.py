@@ -779,20 +779,16 @@ class Planner (object):
         if debugMoves:
             print("Streaming %d travel moves..." % len(path))
 
+        # Mark extruding moves as *measurement moves*
         for move in path:
-            # xxxx check for minimal frs steps ....
-            if move.eDistance() > 1.0 and move.linearTime() > 0.15:
-                print("FRS: e-dist, linear time:", move.eDistance(), move.linearTime())
+            # if move.eDistance() > MinExtrusionForMeasurement and move.linearTime() > 0.15:
+            if move.eDistance() > 0:
+                # print("FRS: travel e-dist, linear time:", move.eDistance(), move.linearTime())
                 move.isMeasureMove = True
-
-        # Move timeline housekeeping
-        # for move in path:
-            # self.pathData.updateTimeline(move)
 
         for move in path:
 
             if self.planTravelSteps(move):
-
                 self.pathData.updateHistory(move)
 
         if debugMoves:

@@ -27,11 +27,15 @@
 #define SOH  0x0
 
 // 
-//
+// Move flags
 //
 #define AccelByteFlag (1 << 6)
 #define RawByteFlag AccelByteFlag
 #define DecelByteFlag (1 << 5)
+
+// MeasureStartBit: move is suatable for FRS measurement
+#define MeasureStartBit (1 << 9)    // 0x200
+#define MeasureStartBitRaw (1 << 8) // 0x100
 
 //
 // USB commands

@@ -120,7 +120,8 @@ PidPrecision = 10   # Number of bits
 # after Z is homed.
 HOMEZLIFT=50
 
-
+# Todo: remove, unused
+# MinExtrusionForMeasurement = 1.0
 
 
 

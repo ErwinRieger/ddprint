@@ -332,7 +332,6 @@ class Advance (object):
                 processAdvancedMoves(currentPath)
 
             """
-            xxx path
             # heavy debug
 
             plannedEsteps = 0
@@ -365,7 +364,7 @@ class Advance (object):
                         print "sbase, sadv:", sbase, sadv
                         roundError = move.advanceData.startESteps - sbase - sadv
                         print "starte:", move.advanceData.startESteps, sbase+sadv, "err:", roundError
-                        assert(util.circaf(roundError, 0, 0.001))
+                        assert(math.isclose(roundError, 0, abs_tol=0.001))
 
                         roundErrorSum += roundError
                         plannedEstepsNA += sbase
@@ -376,7 +375,7 @@ class Advance (object):
                         sbase = tl * topSpeed.eSpeed * self.e_steps_per_mm
                         roundError = move.advanceData.linESteps - sbase
                         print "lin-e:", move.advanceData.linESteps, sbase, "err:", roundError
-                        assert(util.circaf(roundError, 0, 0.001))
+                        assert(math.isclose(roundError, 0, abs_tol=0.001))
 
                         roundErrorSum += roundError
                         plannedEstepsNA += sbase
@@ -388,7 +387,7 @@ class Advance (object):
                         print "sbase, sadv:", sbase, sadv
                         roundError = move.advanceData.endESteps - sbase - sadv
                         print "ende:", move.advanceData.endESteps, sbase+sadv, "err:", roundError
-                        assert(util.circaf(roundError, 0, 0.001))
+                        assert(math.isclose(roundError, 0, abs_tol=0.001))
 
                         roundErrorSum += roundError
                         plannedEstepsNA += sbase
@@ -414,7 +413,7 @@ class Advance (object):
                         print "endStepsD: ", move.advanceData.endEStepsD, endStepsD, "err:", move.advanceData.endEStepsD-endStepsD
 
                         roundError = move.advanceData.endEStepsC + move.advanceData.endEStepsD - endStepsC - endStepsD
-                        assert(util.circaf(roundError, 0, 0.001))
+                        assert(math.isclose(roundError, 0, abs_tol=0.001))
 
                         sbase = ((td * (topSpeed.eSpeed-endSpeed.eSpeed)) / 2 + td*endSpeed.eSpeed) * self.e_steps_per_mm
 
@@ -423,7 +422,7 @@ class Advance (object):
                         estepSum -= endStepsC + endStepsD # sbase + endStepsC + endStepsD
 
                     print "recomputed estepSum:", estepSum
-                    assert(util.circaf(estepSum, 0, 0.001)) 
+                    assert(math.isclose(estepSum, 0, abs_tol=0.001)) 
 
                 else: # no advance
 
@@ -435,18 +434,18 @@ class Advance (object):
                     plannedEsteps += move.eSteps
 
                 print "\nmove steps, nasteps:", move.eSteps, plannedEstepsNA, move.eSteps - plannedEstepsNA
-                if not util.circaf(move.eSteps - plannedEstepsNA, 0, 0.001):
+                if not math.isclose(move.eSteps - plannedEstepsNA, 0, abs_tol=0.001):
                     move.pprint("error move")
 
-                assert(util.circaf(move.eSteps - plannedEstepsNA, 0, 0.001))
+                assert(math.isclose(move.eSteps - plannedEstepsNA, 0, abs_tol=0.001))
 
                 plannedEstepsNASum += plannedEstepsNA
 
             print "\nesteps %f, plannedsteps %f, diff %f" % (self.moveEsteps, plannedEsteps, self.moveEsteps - plannedEsteps)
-            assert(util.circaf( self.moveEsteps - plannedEsteps, 0, 0.001))
+            assert(math.isclose( self.moveEsteps - plannedEsteps, 0, abs_tol=0.001))
 
             print "NA esteps, plannedsteps, diff:", self.moveEsteps, plannedEstepsNASum, self.moveEsteps-plannedEstepsNASum
-            assert(util.circaf( self.moveEsteps-plannedEstepsNASum, 0, 0.001))
+            assert(math.isclose( self.moveEsteps-plannedEstepsNASum, 0, abs_tol=0.001))
 
             print "roundErrorSum:", roundErrorSum
             assert(roundErrorSum < 0.001)
@@ -456,9 +455,11 @@ class Advance (object):
         #debug if debugPlot and debugPlotLevel == "plotLevelPlanned":
             #debug self.plotPlannedPath(path)
 
+        # Mark extruding moves as *measurement moves*
         for move in path:
-            if move.eDistance > 1.0 and move.linearTime() > 0.15:
-                # print "FRS: e-dist, linear time:", move.eDistance, move.linearTime()
+            # if move.eDistance > MinExtrusionForMeasurement and move.linearTime() > 0.15:
+            if move.eDistance > 0:
+                # print("FRS: e-dist, print linear time:", move.eDistance, move.linearTime())
                 move.isMeasureMove = True
 
         newPath = []
@@ -471,7 +472,7 @@ class Advance (object):
 
             for move in newPath:
 
-                # xxx todo move to own function
+                # Todo move to own function or can we use plotPlannedPath here?
                 self.plotfile.plot1Tick(move.topSpeed.speed().feedrate3(), move.moveNumber)
 
                 at = move.accelTime()
@@ -521,10 +522,6 @@ class Advance (object):
         # Stream moves to printer
         if debugAdvance:
             print("Streaming %d moves..." % len(newPath))
-
-        # Move timeline housekeeping
-        # for move in newPath:
-            # self.pathData.updateTimeline(move)
 
         for move in newPath:
 
@@ -779,8 +776,8 @@ class Advance (object):
 
             # print "Vreached:", vReachedSquared, vReached
 
-            # assert(util.circaf(vReached, startSpeedS, 0.001))
-            # assert(util.circaf(vReached, endSpeedS, 0.001))
+            # assert(math.isclose(vReached, startSpeedS, abs_tol=0.001))
+            # assert(math.isclose(vReached, endSpeedS, abs_tol=0.001))
 
             sa = max((vReachedSquared - pow(startSpeedS, 2))/(2.0 * accel3), 0.0)
 
@@ -948,7 +945,7 @@ class Advance (object):
 
                 diff += sadv
                 posAdv += sadv
-                if util.isclose(sadv, 0, 1e-16):
+                if math.isclose(sadv, 0, abs_tol=1e-9):
                     print("sadv:", sadv)
                     assert(0)
 
@@ -964,7 +961,7 @@ class Advance (object):
                
                 diff += sdec
                 posAdv -= sdec
-                if util.isclose(sdec, 0, 2e-9):
+                if math.isclose(sdec, 0, abs_tol=1e-9):
                     print("sadv:", sdec)
                     assert(0)
 
@@ -1203,12 +1200,12 @@ class Advance (object):
 
 
         if advSum:
-            if not util.isclose(advSum, 0):
+            if not math.isclose(advSum, 0, abs_tol=1e-9):
                 print("s: advSum (should be 0): %f, f: %f, %f ppm" % ( advSum, advSum/posAdv, (advSum/(posAdv/1000000.0))))
             assert(advSum < posAdv/1000.0)
 
         if advance:
-            if not util.isclose(advance, 0):
+            if not math.isclose(advance, 0, abs_tol=1e-9):
                 print("s: advance (should be 0): %f, f: %f, %f ppm" %( advance, advSum/posAdv, (advance/(posAdv/1000000.0))))
             assert(advance < posAdv/1000.0)
 
@@ -1279,7 +1276,7 @@ class Advance (object):
 
             # print "Time to reach zero-crossing tdc:", tdc, ", tdd: ", td - tdc
             # print "tdc: %f, td: %f" % (tdc, td)
-            assert(tdc >= 0 and ((tdc < td) or util.isclose(tdc,td)))
+            assert(tdc >= 0 and ((tdc < td) or math.isclose(tdc, td, abs_tol=1e-9)))
 
             # Nominal speed at zero crossing
             if topSpeed.feedrate3() > endSpeed.feedrate3():
@@ -1310,8 +1307,8 @@ class Advance (object):
 
             v1 = advMove.advanceData.endEFeedrate()
 
-            # print "vo, v1:", v0, v1
-            assert(not util.isclose(0, v1))
+            print("vo, v1:", v0, v1)
+            assert(not math.isclose(0, v1, abs_tol=1e-9))
             
             estepsd = advMove.startRampTriangle(
                     v0 = 0,

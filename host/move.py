@@ -18,7 +18,7 @@
 # along with ddprint.  If not, see <http://www.gnu.org/licenses/>.
 #*/
 
-import struct
+import struct, math
 
 import ddprintcommands, cobs, io, intmath, packedvalue
 
@@ -48,9 +48,7 @@ MoveTypeTravel = 1
 
 class AccelData:
 
-    def __init__(self):
-
-        pass
+    # def __init__(self):
 
         # Time for the three phases of this move
         # self.accelTime = None
@@ -94,18 +92,6 @@ class StepData:
         self.leadAxis = 0
         self.abs_vector_steps = None
 
-    """
-    def addAccelPulse(self, timer):
-
-        self.checkTimerValue(timer, maxTimerValue16)
-        self.accelPulses.append(timer)
-
-    def addAccelPulsees(self, accelPulses):
-
-        for (_, _, timer) in accelPulses:
-            self.addAccelPulse(timer)
-    """
-
     def setAccelPulses(self, accelPulses):
         self.accelPulses = accelPulses
 
@@ -115,24 +101,11 @@ class StepData:
     def setDecelPulses(self, decelPulses):
         self.decelPulses = decelPulses
 
-    """
-    def addDecelPulse(self, timer):
-
-        self.checkTimerValue(timer, maxTimerValue16)
-        self.decelPulses.append(timer)
-
-    def addDecelPulsees(self, decelPulses):
-
-        for (_, _, timer) in decelPulses:
-            self.addDecelPulse(timer)
-    """
-
     def setBresenhamParameters(self, leadAxis, abs_vector_steps):
         self.leadAxis = leadAxis
         self.abs_vector_steps = abs_vector_steps
 
     def empty(self):
-        # return not self.abs_vector_steps[self.leadAxis]
         return not self.abs_vector_steps
 
     def __repr__(self):
@@ -397,22 +370,13 @@ class AdvanceData:
         self.endEStepsC = None
         self.endEStepsD = None
 
-        # self.accelGroup = []
         self.sAccel = 0.0
-        # self.sAccelSum = 0.0
-
-        # self.decelGroup = []
         self.sDecel = 0.0
-        # self.sDecelSum = 0.0
 
         # Debug, prüfung ob alle in planAdvance() berechneten e-steps in planSteps() 
         # verwendet werden. Summe ist im idealfall 0, kann aber aufgrund von rundungsfehlern
         # auch ungleich null sein.
         self.advStepSum = 0
-
-        # xxx
-        # self.hasAccelAdvance = False
-        # self.hasDecelAdvance = False
 
     def _hasStartAdvance(self):
         assert(self.move.accelTime())
@@ -450,10 +414,10 @@ class AdvanceData:
         v0 = self.endEReachedFeedrate()
         v1 = self.endEFeedrate()
 
-        if util.isclose(v0, v1):
+        if math.isclose(v0, v1, abs_tol=1e-9):
             assert(0)
 
-        if util.isclose(v0, 0) or util.isclose(v1, 0):
+        if math.isclose(v0, 0, abs_tol=1e-9) or math.isclose(v1, 0, abs_tol=1e-9):
             return False
 
         if v0 >= 0 and v1 >= 0:
@@ -504,13 +468,8 @@ class AdvanceData:
         if esteps:
             s += "\n estep sum: %.3f" % esteps
 
-        # s += "\n Group data:"
-        # s += "\n Accel group:" + str(map(lambda m: m.moveNumber, self.accelGroup))
         s += "\n sAccel: %.3f" % self.sAccel
-        # s += "\n sAccelSum: %.3f" % self.sAccelSum
-        # s += "\n Decel group:" + str(map(lambda m: m.moveNumber, self.decelGroup))
         s += "\n sDecel: %.3f" % self.sDecel
-        # s += "\n sDecelSum: %.3f" % self.sDecelSum
         return s
 
     def sanityCheck(self):
@@ -813,15 +772,8 @@ class TravelMove(RealMove):
         # assert(layerPart != "infill")
         RealMove.__init__(self, comment, layerPart, pos, printerProfile)
 
-        # self.displacement_vector_raw = displacement_vector
-
-        # self.displacement_vector3=displacement_vector[:3]
-        # self.displacement_vector_steps3=displacement_vector_steps[:3]
-        # self.extrusion_displacement_raw = displacement_vector[3:]
-        # self.extrusion_displacement_steps_raw = displacement_vector_steps[3:]
-
         #
-        # Move distance in XYZAB plane
+        # Move distance in XYZAB space
         #
         self.distance5 = displacement_vector.length()
 
@@ -837,9 +789,6 @@ class TravelMove(RealMove):
 
     def isPrintMove(self):
         return False
-
-    # def isExtrudingMove(self):
-        # return self.eDistance() > 0
 
     def eDistance(self):
         return self.displacement_vector_raw5[A_AXIS]
@@ -906,28 +855,20 @@ class PrintMove(RealMove):
 
         self.direction3 = self.displacement_vector_raw3.normalized()
 
-        ### Apply extrusion adjust
-        ### if UseExtrusionAdjust:
-
         direction5 = displacement_vector.normalized()
 
         self.eDistance = displacement_vector[A_AXIS]
 
-        # xxx todo: add override
         self.eSteps = displacement_vector_steps[A_AXIS]
 
         self.eDirection = self.eDistance / self.distance3
 
         # Compute nominal eSpeed
-
         v = VelocityVector32(feedrate*self.eDirection, feedrate = feedrate, direction = self.direction3)
 
         self.startSpeed = VelocityOverride(v)
         self.topSpeed = VelocityOverride(v)
         self.endSpeed = VelocityOverride(v)
-
-        # self.__direction5 = displacement_vector.normalized()
-        # av = self.__getMaxAllowedAccelVector5(maxAccelV)
 
         accelVector = direction5.scale(_MAX_ACCELERATION)
         av = accelVector.constrain(maxAccelV) or accelVector
@@ -939,9 +880,6 @@ class PrintMove(RealMove):
     def isPrintMove(self):
         return True
 
-    # def isExtrudingMove(self):
-        # return True
-
     def distanceStr(self):
         d = self.displacement_vector_raw3.length()
         return "%.2f mm (XYZ)" % d
@@ -951,18 +889,6 @@ class PrintMove(RealMove):
 
     def rawDisplacementStepsStr(self):
         return str(self.displacement_vector_steps_raw3) + (" [%.3f]" % self.eSteps)
-
-    # Alle achsen werden in der gleichen zeit beschleunigt.
-    # Dadurch teilen sich die zulässigen einzelbeschleunigungen
-    # im entsprechenden verhältnis auf.
-    # def __getMaxAllowedAccelVector5(self, maxAccelV):
-        # accelVector = self.__direction5.scale(_MAX_ACCELERATION)
-        # return accelVector.constrain(maxAccelV) or accelVector
-
-    ####### always positive
-    ######def __getMaxAllowedAccel5(self, maxAccelV):
-        ######accelVector = self.getMaxAllowedAccelVector5(maxAccelV)
-        ######return accelVector.length()
 
     ################################################################################
     # Area (e-distance) of advance start ramp
@@ -1148,10 +1074,6 @@ class PrintMove(RealMove):
         return esteps
     ################################################################################
 
-    # notused ?
-    # def isCrossedDecelStep(self):
-        # return False
-
     def getExtrusionVolume(self, matProfile):
         return self.eDistance * matProfile.getMatArea()
 
@@ -1166,14 +1088,6 @@ class PrintMove(RealMove):
         assert(self.topSpeed.speed().feedrate3() >= self.endSpeed.speed().feedrate3());
 
         self.advanceData.sanityCheck()
-
-    # not used
-    def checkAdvance(self):
-
-        # Check direction of start advance increase
-
-        # Check direction of end advance decrease
-        pass
 
     def pprint(self, title):
 
@@ -1214,8 +1128,6 @@ class SubMove(MoveBase):
         self.topSpeed = VelocityOverride(None)
         self.endSpeed = VelocityOverride(None)
 
-        # self.topSpeed = parentMove.topSpeed
-
         self.displacement_vector_steps_raw3 = displacement_vector_steps[:3]
         self.eSteps = displacement_vector_steps[A_AXIS]
 
@@ -1238,31 +1150,6 @@ class SubMove(MoveBase):
         self.topSpeed.setSpeed(tv, "SubMove.setSpeeds")
 
         self.endSpeed.setSpeed(ev, "SubMove.setSpeeds")
-
-    # xxx method is inlined into  planSteps()
-    """
-    def isCrossedDecelStep(self):
-
-        v_1 = self.topSpeed.speed().feedrate3()
-        v_2 = self.endSpeed.speed().feedrate3()
-        xyzSign = util.sign(abs(v_2) - abs(v_1))
-
-        # print "\nisCrossedDecelStep(): v_1: %f, v_2: %f\n" % (v_1, v_2), xyzSign
-
-        ve_1 = self.topSpeed.speed().eSpeed
-        ve_2 = self.endSpeed.speed().eSpeed
-
-        eSign = util.sign(abs(ve_2) - abs(ve_1))
-
-        # print "isCrossedDecelStep(): ve_1: %f, ve_2: %f\n" % (ve_1, ve_2), eSign
-
-        if (xyzSign != eSign):
-            # print "isCrossedDecelStep, different sign", xyzSign, eSign
-            return True
-
-        # print "isCrossedDecelStep false"
-        return False
-    """
 
     def pprint(self, title):
 
@@ -1297,20 +1184,6 @@ class SubMove(MoveBase):
             print("ERROR: null move:")
             self.pprint("Nullmove")
             assert(0)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 

@@ -501,7 +501,7 @@ class FillBufferTask : public Protothread {
     uint8_t stepsThisRun;
     // #endif
 
-    bool cmdSync;
+    // bool cmdSync;
     bool stopRequested;
 
     // #if defined(USEExtrusionRateTable)
@@ -517,7 +517,7 @@ class FillBufferTask : public Protothread {
     public:
     FillBufferTask() {
         sd.dirBits = 0;
-        cmdSync = false;
+        // cmdSync = false;
         stopRequested = false;
     }
 
@@ -612,7 +612,12 @@ HandleCmdG1:
             // Change stepper direction(s)
             sd.dirBits = flags & 0x9F;
 
-        cmdSync = true;
+        // cmdSync = true;
+
+        if (flags & MeasureStartBit) // Measurement move
+            sd.dirBits |=  0x40; // Set measurement flag
+        else
+            sd.dirBits &=  ~0x40; // Clear measurement flag
 
         //
         // Read index of lead axis
@@ -804,7 +809,7 @@ HandleCmdG1:
                 // Timer value as 16bit value
                 if (nAccel16) {
 
-                    sd.dirBits &=  ~0x40; // Cler linear flag
+                    // sd.dirBits &=  ~0x40; // Cler linear flag
 
                     sDReader.setBytesToRead2();
                     PT_WAIT_THREAD(sDReader);
@@ -851,7 +856,7 @@ HandleCmdG1:
                 // Timer value as 8bit value
                 if (nAccel8) {
 
-                    sd.dirBits &=  ~0x40; // Cler linear flag
+                    // sd.dirBits &=  ~0x40; // Cler linear flag
 
                     sDReader.setBytesToRead1();
                     PT_WAIT_THREAD(sDReader);
@@ -900,8 +905,8 @@ HandleCmdG1:
                 //
                 if (step32) {
 
-                    if (flags & 0x200)
-                        sd.dirBits |=  0x40; // Set linear flag
+                    // if (flags & 0x200) // Measurement move
+                        // sd.dirBits |=  0x40; // Set linear flag
 
                     sd.timer = tLin;
 
@@ -935,7 +940,7 @@ HandleCmdG1:
                 // Timer value as 8bit value
                 if (nDecel8) {
 
-                    sd.dirBits &=  ~0x40; // Cler linear flag
+                    // sd.dirBits &=  ~0x40; // Cler linear flag
 
                     sDReader.setBytesToRead1();
                     PT_WAIT_THREAD(sDReader);
@@ -982,7 +987,7 @@ HandleCmdG1:
                 // Timer value as 16bit value
                 if (nDecel16) {
 
-                    sd.dirBits &=  ~0x40; // Cler linear flag
+                    // sd.dirBits &=  ~0x40; // Cler linear flag
 
                     sDReader.setBytesToRead2();
                     PT_WAIT_THREAD(sDReader);
@@ -1051,6 +1056,12 @@ HandleCmdG1:
                 if (flags & 0x80)
                     // Change stepper direction(s)
                     sd.dirBits = flags & 0x9F;
+
+                // sd.dirBits &=  ~0x40; // Cler linear flag
+                if (flags & MeasureStartBitRaw) // Measurement move
+                    sd.dirBits |=  0x40; // Set measurement flag
+                else
+                    sd.dirBits &=  ~0x40; // Clear measurement flag
 
                 // ???
                 // cmdSync = true;
@@ -1172,8 +1183,6 @@ HandleCmdG1:
                 stepBuffer.pushRef(sd);
 
                 sd.dirBits &= ~0x80; // clear set-direction bit (after push)
-
-                sd.dirBits &=  ~0x40; // Cler linear flag
 
                 if (flags & RawByteFlag) {
                     //
@@ -1309,13 +1318,13 @@ HandleCmdG1:
             PT_END(); // Not reached
         }
 
-        void sync() {
-            cmdSync = false;
-        }
+        // void sync() {
+            // cmdSync = false;
+        // }
 
-        bool synced() {
-            return cmdSync;
-        }
+        // bool synced() {
+            // return cmdSync;
+        // }
 
         // Flush/init swap, swapreader, fillbuffer task and stepbuffer
         void flush() {
@@ -1324,7 +1333,7 @@ HandleCmdG1:
             // step16 = 0xFFFF;
             count = 1;
             step32 = 1;
-            cmdSync = false;
+            // cmdSync = false;
             stopRequested = false;
             Restart();
 

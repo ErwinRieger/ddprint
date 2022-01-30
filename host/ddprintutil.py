@@ -35,17 +35,9 @@ def sign(x):
     #
     # special handling of 0 and (pseudo-) -0.0
     #
-    if (x == 0): #  or ((x<0) and isclose(x, 0)):
+    if (x == 0):
         return 1.0
     return math.copysign(1, x)
-
-####################################################################################################
-def circaf(a, b, delta):
-    return isclose(a, b, delta)
-
-# def isclose(a, b, rel_tol=1e-9, abs_tol=0.0):
-def isclose(a, b, abs_tol=1e-9):
-    return abs(a-b) < abs_tol
 
 ####################################################################################################
 
@@ -137,8 +129,7 @@ def joinMoves(move1, move2, advInstance): # jerk, maxAccelV):
         # Check max reachable e endspeed
         maxAllowedEEndSpeed = vAccelPerDist(startSpeed1.eSpeed, move1.startAccel.eAccel(), move1.eDistance)
         if maxAllowedEEndSpeed < endSpeed1.eSpeed:
-            assert(circaf(maxAllowedEEndSpeed, endSpeed1.eSpeed, 0.000000001))
-            # assert(isclose(maxAllowedEEndSpeed, endSpeed1.eSpeed))
+            assert(math.isclose(maxAllowedEEndSpeed, endSpeed1.eSpeed, abs_tol=1e-09))
 
         joinMoves2(move1, move2, advInstance)
 
@@ -156,8 +147,7 @@ def joinMoves2(move1, move2, advInstance): # jerk):
         #
         # Compare E-speed of moves
         #
-        # if isclose(eEndSpeed1, eStartSpeed2, AdvanceEThreshold):
-        if circaf(eEndSpeed1, eStartSpeed2, AdvanceEThreshold):
+        if math.isclose(eEndSpeed1, eStartSpeed2, abs_tol=AdvanceEThreshold):
 
             # E-speed difference is small enough, check X/Y jerk
             endSpeedV1 = endSpeed1.vv3()
