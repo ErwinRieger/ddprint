@@ -339,6 +339,11 @@ class Printer(Serial):
             # print "timeout reading, data read: %d of %d bytes, '%s'" % (len(res), length, res)
             raise RxTimeout()
 
+        l = len(res)
+        if l < length:
+            print(f"readWithTimeout(): short read {l}/{length}, retry read")
+            return res + readWithTimeout(length - l)
+
         return res
 
     def readResponse(self):
