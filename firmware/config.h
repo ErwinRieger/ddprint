@@ -92,6 +92,9 @@
     #define BournsEMS22AFS 1
     // Stepper isr running on timer3 instead of timer1
     #define StepperOnTimer3 1 
+    // Mainboard fan in parallel with parts cooling fan, define a minimal
+    // PWM value here to keep mainboard fan running
+    #define MIN_FAN_PWM 70
 #elif MOTHERBOARD == 6
     //
     // Anycubic I3 trigorilla

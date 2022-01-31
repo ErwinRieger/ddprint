@@ -60,7 +60,7 @@
 
 // #define LED_PIN                 PWMOutput<8, ACTIVEHIGHPIN>
 
-#define FAN_PIN                 PWMOutput<4, ACTIVEHIGHPIN> // B4
+#define FAN_PIN                 PWMOutput<4, ACTIVEHIGHPIN> // PB4
 
 //
 // Filament sensor chip select pin (half duplex/3wire spi)

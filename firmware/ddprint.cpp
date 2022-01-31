@@ -291,6 +291,12 @@ void setup() {
 
     FAN_PIN :: init();
 
+#if defined(MIN_FAN_PWM)
+    // For printers where the mainboard cooling fan is connected
+    // to the parts cooling fan. Keep mainboard fan running.
+    printer.cmdFanSpeed(MIN_FAN_PWM, 100);
+#endif
+
     HAL_SPI_INIT();
 
     rxBuffer.begin(BAUDRATE);
@@ -1729,7 +1735,11 @@ void Printer::cmdFanSpeed(uint8_t speed, uint8_t blipTime) {
     }
 
     timer.endFanTimer();
+#if defined(MIN_FAN_PWM)
+    FAN_PIN :: write(max((uint8_t)MIN_FAN_PWM, speed));
+#else
     FAN_PIN :: write(speed);
+#endif
 }
 
 /*
