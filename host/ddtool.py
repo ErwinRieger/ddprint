@@ -23,7 +23,6 @@ import pprint, sys, os
 import argparse, time
 
 # import ddprintutil as util, gcodeparser, packedvalue, ddhome
-# import ddtest
 
 # from ddplanner import Planner
 # from ddprinter import Printer, RxTimeout

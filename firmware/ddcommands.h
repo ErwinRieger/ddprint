@@ -34,8 +34,8 @@
 #define DecelByteFlag (1 << 5)
 
 // MeasureStartBit: move is suatable for FRS measurement
-#define MeasureStartBit (1 << 9)    // 0x200
-#define MeasureStartBitRaw (1 << 8) // 0x100
+// #define MeasureStartBit (1 << 9)    // 0x200
+// #define MeasureStartBitRaw (1 << 8) // 0x100
 
 //
 // USB commands

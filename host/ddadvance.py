@@ -455,12 +455,12 @@ class Advance (object):
         #debug if debugPlot and debugPlotLevel == "plotLevelPlanned":
             #debug self.plotPlannedPath(path)
 
-        # Mark extruding moves as *measurement moves*
-        for move in path:
-            # if move.eDistance > MinExtrusionForMeasurement and move.linearTime() > 0.15:
-            if move.eDistance > 0:
-                # print("FRS: e-dist, print linear time:", move.eDistance, move.linearTime())
-                move.isMeasureMove = True
+        ## # Mark extruding moves as *measurement moves*
+        ## for move in path:
+            ## # if move.eDistance > MinExtrusionForMeasurement and move.linearTime() > 0.15:
+            ## if move.eDistance > 0:
+                ## # print("FRS: e-dist, print linear time:", move.eDistance, move.linearTime())
+                ## move.isMeasureMove = True
 
         newPath = []
         for move in path:
@@ -1307,7 +1307,7 @@ class Advance (object):
 
             v1 = advMove.advanceData.endEFeedrate()
 
-            print("vo, v1:", v0, v1)
+            # print("vo, v1:", v0, v1)
             assert(not math.isclose(0, v1, abs_tol=1e-9))
             
             estepsd = advMove.startRampTriangle(
@@ -1452,13 +1452,13 @@ class Advance (object):
             if xyzSign == eSign: # no crossed move
                 if self.planStepsSimple(newMove):
                     newMove.isStartMove = startMove
-                    newMove.isMeasureMove = move.isMeasureMove
+                    # newMove.isMeasureMove = move.isMeasureMove
                     startMove = False
                     subMoves.append(newMove)
             else: # crossed deceleration step
                 if self.planCrossedDecelSteps(newMove):
                     newMove.isStartMove = startMove
-                    newMove.isMeasureMove = move.isMeasureMove
+                    # newMove.isMeasureMove = move.isMeasureMove
                     startMove = False
                     subMoves.append(newMove)
 

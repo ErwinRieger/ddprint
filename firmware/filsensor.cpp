@@ -139,8 +139,9 @@ void FilamentSensorEMS22::run() {
             getDY(); // read distance delta from filament sensor
     
             sensorCount = 0;
-            measureTimer = 10; // 0.1s measuring interval
+            // measureTimer = 10; // 0.1s measuring interval
         }
+#if 0
         else {
 
             CRITICAL_SECTION_START;
@@ -192,13 +193,14 @@ void FilamentSensorEMS22::run() {
                 sensorCount = 0;
             }
         }
+#endif
     }
     else {
 
         // Messung aktiv
         if (stepBuffer.measureFlag) {
 
-            if (! --measureTimer) {
+            // if (! --measureTimer) {
 
                 CRITICAL_SECTION_START;
                 int32_t astep = current_pos_steps[E_AXIS];
@@ -254,8 +256,8 @@ void FilamentSensorEMS22::run() {
                     sensorCount = 0;
                 }
 
-                measureTimer = 10;
-            }
+                // measureTimer = 10;
+            // }
         }
         else {
 

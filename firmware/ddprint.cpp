@@ -620,10 +620,10 @@ HandleCmdG1:
 
         // cmdSync = true;
 
-        if (flags & MeasureStartBit) // Measurement move
-            sd.dirBits |=  0x40; // Set measurement flag
-        else
-            sd.dirBits &=  ~0x40; // Clear measurement flag
+        // if (flags & MeasureStartBit) // Measurement move
+            // sd.dirBits |=  0x40; // Set measurement flag
+        // else
+            // sd.dirBits &=  ~0x40; // Clear measurement flag
 
         //
         // Read index of lead axis
@@ -815,7 +815,7 @@ HandleCmdG1:
                 // Timer value as 16bit value
                 if (nAccel16) {
 
-                    // sd.dirBits &=  ~0x40; // Cler linear flag
+                    sd.dirBits &=  ~0x40; // Clear linear flag
 
                     sDReader.setBytesToRead2();
                     PT_WAIT_THREAD(sDReader);
@@ -862,7 +862,7 @@ HandleCmdG1:
                 // Timer value as 8bit value
                 if (nAccel8) {
 
-                    // sd.dirBits &=  ~0x40; // Cler linear flag
+                    sd.dirBits &=  ~0x40; // Clear linear flag
 
                     sDReader.setBytesToRead1();
                     PT_WAIT_THREAD(sDReader);
@@ -913,6 +913,12 @@ HandleCmdG1:
 
                     // if (flags & 0x200) // Measurement move
                         // sd.dirBits |=  0x40; // Set linear flag
+                    // if (flags & st_get_move_bit_mask<EAxisSelector>())
+                        // sd.dirBits |=  0x40; // Set linear flag if E is moving forwards
+
+                    // Set linear flag (start FRS measurement) if E is moving forwards
+                    if (sd.dirBits & st_get_move_bit_mask<EAxisSelector>())
+                        sd.dirBits |=  0x40;
 
                     sd.timer = tLin;
 
@@ -936,7 +942,7 @@ HandleCmdG1:
 
                     } while (--step32);
                 
-                    // sd.dirBits &=  ~0x40; // Cler linear flag
+                    sd.dirBits &=  ~0x40; // Clear linear flag
                 }
 
                 //
@@ -946,7 +952,7 @@ HandleCmdG1:
                 // Timer value as 8bit value
                 if (nDecel8) {
 
-                    // sd.dirBits &=  ~0x40; // Cler linear flag
+                    sd.dirBits &=  ~0x40; // Clear linear flag
 
                     sDReader.setBytesToRead1();
                     PT_WAIT_THREAD(sDReader);
@@ -993,7 +999,7 @@ HandleCmdG1:
                 // Timer value as 16bit value
                 if (nDecel16) {
 
-                    // sd.dirBits &=  ~0x40; // Cler linear flag
+                    sd.dirBits &=  ~0x40; // Clear linear flag
 
                     sDReader.setBytesToRead2();
                     PT_WAIT_THREAD(sDReader);
@@ -1063,11 +1069,11 @@ HandleCmdG1:
                     // Change stepper direction(s)
                     sd.dirBits = flags & 0x9F;
 
-                // sd.dirBits &=  ~0x40; // Cler linear flag
-                if (flags & MeasureStartBitRaw) // Measurement move
-                    sd.dirBits |=  0x40; // Set measurement flag
-                else
-                    sd.dirBits &=  ~0x40; // Clear measurement flag
+                sd.dirBits &=  ~0x40; // Clear linear flag
+                // if (flags & MeasureStartBitRaw) // Measurement move
+                    // sd.dirBits |=  0x40; // Set measurement flag
+                // else
+                    // sd.dirBits &=  ~0x40; // Clear measurement flag
 
                 // ???
                 // cmdSync = true;

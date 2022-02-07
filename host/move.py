@@ -28,7 +28,8 @@ from ddprintconstants import maxTimerValue16, fTimer, _MAX_ACCELERATION, X_AXIS,
 from ddprintconstants import AdvanceEThreshold, StepDataTypeBresenham, StepDataTypeRaw
 from ddvector import Vector, VelocityVector32, VelocityVector5, vectorLength, vectorSub, vectorAbs
 from ddprintcommands import CommandNames, DirBitsBit, DirBitsBitRaw, MoveStartBit
-from ddprintcommands import MeasureStartBit, MeasureStartBitRaw, EndMoveBit, EndMoveBitRaw
+# from ddprintcommands import MeasureStartBit, MeasureStartBitRaw, EndMoveBit, EndMoveBitRaw
+from ddprintcommands import EndMoveBit, EndMoveBitRaw
 from ddprintcommands import TimerByteFlagBit, MoveStartBitRaw
 from ddprofile import PrinterProfile
 
@@ -150,9 +151,9 @@ class StepData:
         if move.isStartMove:
             startMoveFlag = MoveStartBit
 
-        measureStartBit = 0
-        if move.isMeasureMove:
-            measureStartBit = MeasureStartBit
+        # measureStartBit = 0
+        # if move.isMeasureMove:
+            # measureStartBit = MeasureStartBit
 
         endMoveBit = 0
         if move.isEndMove:
@@ -162,7 +163,8 @@ class StepData:
 
         payLoad = struct.pack("<BHBiiiiiHH",
                 ddprintcommands.CmdG1,
-                flags | startMoveFlag | measureStartBit | endMoveBit,
+                # flags | startMoveFlag | measureStartBit | endMoveBit,
+                flags | startMoveFlag | endMoveBit,
                 self.leadAxis,
                 self.abs_vector_steps[0],
                 self.abs_vector_steps[1],
@@ -292,9 +294,9 @@ class RawStepData:
         if move.isStartMove:
             startMoveFlag = MoveStartBitRaw
 
-        measureStartBit = 0
-        if move.isMeasureMove:
-            measureStartBit = MeasureStartBitRaw
+        # measureStartBit = 0
+        # if move.isMeasureMove:
+            # measureStartBit = MeasureStartBitRaw
 
         endMoveBit = 0
         if move.isEndMove:
@@ -302,7 +304,8 @@ class RawStepData:
 
         payLoad = struct.pack("<BHH",
                 ddprintcommands.CmdG1Raw,
-                flags | timerByteFlag | startMoveFlag | measureStartBit | endMoveBit,
+                # flags | timerByteFlag | startMoveFlag | measureStartBit | endMoveBit,
+                flags | timerByteFlag | startMoveFlag | endMoveBit,
                 len(self.pulses))
 
         if move.isStartMove:
@@ -576,7 +579,7 @@ class MoveBase(object):
 
         self.isStartMove = False
 
-        self.isMeasureMove = False
+        # self.isMeasureMove = False
 
         # Last move of a path, used to implement
         # soft stop.

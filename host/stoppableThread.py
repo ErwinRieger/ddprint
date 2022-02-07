@@ -33,14 +33,14 @@ class StoppableThread(threading.Thread):
 
     def xrun(self):
 
-        print "ident: ", self.ident
+        print("ident: ", self.ident)
 
         while True:
             try:
 
                 i=0
                 while True:
-                    print(time.time() % 1)
+                    print((time.time() % 1))
                     time.sleep(0.1)
                     i += 1
 
@@ -48,7 +48,7 @@ class StoppableThread(threading.Thread):
                         return
 
             except StopThread:
-                print "caught StopThread, continue...."
+                print("caught StopThread, continue....")
                 self.threadStopCount += 1
 
     def stop(self):
@@ -67,10 +67,10 @@ class StoppableThread(threading.Thread):
             ctypes.pythonapi.PyThreadState_SetAsyncExc(ctypes.c_long(self.ident), NULL)
             raise SystemError("PyThreadState_SetAsyncExc failed")
 
-        print "StoppableThread.stop(): Successfully set asynchronized exception for", self.ident
+        print("StoppableThread.stop(): Successfully set asynchronized exception for", self.ident)
 
         while self.threadStopCount == stopCount:
-            print "StoppableThread.stop(): wait for stop..."
+            print("StoppableThread.stop(): wait for stop...")
             time.sleep(1)
 
     def incStopCount(self):

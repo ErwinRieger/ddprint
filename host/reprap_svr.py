@@ -88,7 +88,7 @@ class ReprapServer:
             elif cmd == "M23":
                 # M23: Select SD file
                 self.selectedFile = split[1]
-                print "file %s selected for printing..." % self.selectedFile
+                print("file %s selected for printing..." % self.selectedFile)
                 resp = "File opened:%s Size:%d" % (self.selectedFile, 1234)
                 resp += "\nFile Selected\nok"
             elif cmd == "M27":

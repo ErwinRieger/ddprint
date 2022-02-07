@@ -780,11 +780,11 @@ class Planner (object):
             print("Streaming %d travel moves..." % len(path))
 
         # Mark extruding moves as *measurement moves*
-        for move in path:
-            # if move.eDistance() > MinExtrusionForMeasurement and move.linearTime() > 0.15:
-            if move.eDistance() > 0:
-                # print("FRS: travel e-dist, linear time:", move.eDistance(), move.linearTime())
-                move.isMeasureMove = True
+        ## for move in path:
+            ## # if move.eDistance() > MinExtrusionForMeasurement and move.linearTime() > 0.15:
+            ## if move.eDistance() > 0:
+                ## # print("FRS: travel e-dist, linear time:", move.eDistance(), move.linearTime())
+                ## move.isMeasureMove = True
 
         for move in path:
 

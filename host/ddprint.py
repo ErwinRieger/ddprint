@@ -25,7 +25,7 @@ import argparse, time, cProfile
 logging.basicConfig(level=logging.DEBUG)
 
 import ddprintutil as util, gcodeparser, packedvalue, ddhome
-import ddtest, ddargs
+import measure, ddargs
 
 from ddplanner import Planner, initParser, initMatProfile
 from ddprinter import Printer, RxTimeout
@@ -426,7 +426,7 @@ def main():
         # args.pidset="CHCH"
         # args.pidset="ZNCH"
         (printer, parser, planner) = initParser(args, mode=args.mode)
-        util.measureTempFlowrateCurve(args, printer, parser, planner)
+        measure.measureTempFlowrateCurve(args, printer, parser, planner)
 
     elif args.mode == 'measureTempFlowrateCurve2':
 
@@ -436,7 +436,7 @@ def main():
         args.autotemp = False
 
         (printer, parser, planner) = initParser(args, mode=args.mode)
-        util.measureTempFlowrateCurve2(args, printer, parser, planner)
+        measure.measureTempFlowrateCurve2(args, printer, parser, planner)
 
     elif args.mode == 'moverel':
 
@@ -619,7 +619,7 @@ def main():
 
     elif args.mode == 'todo testFeederUniformity':
 
-        ddtest.testFeederUniformity(args, parser)
+        measure.testFeederUniformity(args, parser)
 
     elif args.mode == 'testFilSensor':
 
@@ -628,25 +628,25 @@ def main():
         planner = Planner(args, printer, travelMovesOnly=True)
         parser = gcodeparser.UM2GcodeParser(planner, logger=printer.gui, travelMovesOnly=True)
 
-        ddtest.testFilSensor(args, printer, parser)
+        measure.testFilSensor(args, printer, parser)
 
     elif args.mode == 'calibrateesteps':
 
         printer = Printer(args)
         printer.initPrinterProfile()
         planner = Planner(args, printer, travelMovesOnly=True)
-        ddtest.calibrateESteps(args, printer, planner)
+        measure.calibrateESteps(args, printer, planner)
 
     elif args.mode == 'calibratefilsensor':
 
         printer = Printer(args)
         printer.initPrinterProfile()
         planner = Planner(args, printer, travelMovesOnly=True)
-        ddtest.calibrateFilSensor(args, printer, planner)
+        measure.calibrateFilSensor(args, printer, planner)
 
     elif args.mode == "exec":
 
-        ddtest.execGcode(args)
+        measure.execGcode(args)
 
     elif args.mode == "workingpos":
 

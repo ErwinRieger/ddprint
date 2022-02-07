@@ -24,8 +24,6 @@
 import sys, math
 import numpy as np
 
-EPSILON = 0.000001
-
 #########################################################################################
 
 class MovingAvg:
@@ -48,7 +46,7 @@ class MovingAvg:
             self.nValues += 1
 
     def mean(self):
-        return np.mean(self.array)
+        return float(np.mean(self.array)) # avoid NP-float behaviour when rounding
 
     def preload(self, steps):
         self.array = [float(steps)] * self.navg

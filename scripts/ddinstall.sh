@@ -12,6 +12,7 @@ install_python_deps() {
 	grep -q "ModuleNotFoundError.*numpy" /tmp/ddprint.out && ask sudo apt-get install python3-numpy
 	grep -q "ModuleNotFoundError.*serial" /tmp/ddprint.out && ask sudo apt-get install python3-serial
 	grep -q "ModuleNotFoundError.*matplotlib" /tmp/ddprint.out && ask sudo apt-get install python3-matplotlib
+	grep -q "ModuleNotFoundError.*npyscreen" /tmp/ddprint.out && ask sudo pip3 install npyscreen
 }
 
 type git >/dev/null || ask sudo apt-get install git
@@ -27,6 +28,8 @@ DDPRINTDEV="none" source ddprint/scripts/ddprint.env
 DDPRINTDEV="none" ddprint -h 2>/tmp/ddprint.out > /dev/null || install_python_deps
 
 DDPRINTDEV="none" plot_mat_profile -h 2>/tmp/ddprint.out > /dev/null || install_python_deps
+
+DDPRINTDEV="none" ddprintui -h 2>/tmp/ddprint.out > /dev/null || install_python_deps
 
 echo -e "\nNote: For convenience, you shold add $DDPRINTHOME to your PATH variable."
 

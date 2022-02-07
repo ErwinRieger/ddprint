@@ -195,14 +195,14 @@ for (cmd, cmdName) in [
 # AccelByteFlagBit     = (1 << 6)  # 0x40
 DirBitsBit           = (1 << 7)  # 0x80
 MoveStartBit         = (1 << 8)  # 0x100
-MeasureStartBit      = (1 << 9)  # 0x200
+# MeasureStartBit      = (1 << 9)  # 0x200
 EndMoveBit           = (1 << 10) # 0x400
 # CompressedBit        = (1 << 11) # 0x800
 # Raw moves
 MoveStartBitRaw      = (1 << 5) # 0x20
 TimerByteFlagBit     = (1 << 6) # 0x40
 DirBitsBitRaw        = (1 << 7) # 0x80
-MeasureStartBitRaw   = (1 << 8) # 0100
+# MeasureStartBitRaw   = (1 << 8) # 0100
 EndMoveBitRaw        = (1 << 9) # 0200
 # CompressedBitRaw     = (1 << 10) # 0400
 
