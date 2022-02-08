@@ -589,8 +589,8 @@ def measureTempFlowrateCurve(args, printer, parser, planner):
 
         currentFlowrate = targetFlowRate * r
 
-        print("\rt: %.2f, TempAvg: %.1f, fixed pwm: %d, target flowrate: %.3f mm³/s, actual flowrate: %.2f mm³/s, current ratio: %.2f" % \
-                (time.time()-tStart, t1Avg, pwm, targetFlowRate, currentFlowrate, r), end='')
+        print("\rTemp: %.2f, fixed PWM: %d, target flowrate: %.2f mm³/s, actual flowrate: %.2f mm³/s, grip: %.2f" % \
+                (t1Avg, pwm, targetFlowRate, currentFlowrate, r), end='')
         sys.stdout.flush()
 
         # debug
@@ -912,7 +912,7 @@ def measureTempFlowrateCurve2(args, printer, parser, planner):
     # """
 
     # Disable flowrate limit
-    print("Disable flowrate limiter...:")
+    print("Disable flowrate limiter...")
     printer.sendCommandParamV(CmdEnableFRLimit, [packedvalue.uint8_t(0)])
 
     testOk = False
@@ -952,8 +952,8 @@ def measureTempFlowrateCurve2(args, printer, parser, planner):
         lastEPos = ePos
         lastTime = tim
 
-        print("\rAvg: temp: %.2f, pwm: %.2f, grip: %.2f, target flowrate: %.2f, flowrate: %.2f mm³/s, slowdown: %5d" % \
-                (t1Avg, fixedPwm, gAvg, flowrateAvg, frAvg, y), end='')
+        print("\rTemp: %.2f, fixed PWM: %.2f, slowdown: %5d, target flowrate: %.2f, flowrate: %.2f mm³/s, grip: %.2f" % \
+                (t1Avg, fixedPwm, y, flowrateAvg, frAvg, gAvg), end='')
 
         if tempAvg.valid():
 
