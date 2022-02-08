@@ -482,7 +482,7 @@ def heatupAndAveragePWM(printer, t1):
         status = printer.getStatus()
         pwmAvg.add(status.pwmOutput)
 
-        print("\rTemp: %.2f (%.2f)" % (status.t1, t1), end='')
+        print("\rTemp: %.2f (%.2f), PWM: %d" % (status.t1, t1, status.pwmOutput), end='')
 
         if status.t1 >= t1:
             print("\n")
@@ -652,7 +652,7 @@ def measureTempFlowrateCurve(args, printer, parser, planner):
         # feedrate -= 0.1
         # printer.sendCommandParamV(CmdSetContTimer, [packedvalue.uint16_t(util.eTimerValue(printer, feedrate))])
         # time.sleep(0.1)
-    print(f"\nSlow down extruder motor from {feedrate} mm/s to {minFeedrate} mm/s")
+    print(f"\nSlow down extruder motor from {currentFeedrate} mm/s to {minFeedrate} mm/s")
     feedrateRampDown(printer, currentFeedrate, minFeedrate)
 
     # Stop continuos e-mode
