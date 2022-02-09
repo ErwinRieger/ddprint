@@ -675,7 +675,10 @@ class SLE:
 
     def __init__(self, x1, y1, m):
 
+        self.x1 = x1
+        self.y1 = y1
         self.m = m
+
         if x1 == 0:
             self.c = y1
         else:
@@ -829,6 +832,11 @@ def printFile(args, printer, parser, planner, logObj, gfile, t0, t0_wait, t1, do
 
     tempRamp = None
 
+    # Bed temperature after print
+    eopBedTemp = 0
+    if printer.printerProfile.getBedSurface() == "glass":
+        eopBedTemp = planner.matProfile.getKeepBedtemp()
+
     while True:
 
         if f:
@@ -840,9 +848,10 @@ def printFile(args, printer, parser, planner, logObj, gfile, t0, t0_wait, t1, do
                 # Reading done
                 logObj.log( "Parsed %d gcode lines." % lineNr)
 
-                # 
+                # Add commands to switch off heaters
+                endOfPrintHeaterOff(planner, eopBedTemp)
+
                 # Add a move to lift the nozzle at end of print
-                # 
                 endOfPrintLift(printer, parser, planner)
 
                 planner.finishMoves()
@@ -917,23 +926,10 @@ def printFile(args, printer, parser, planner, logObj, gfile, t0, t0_wait, t1, do
 
     logObj.log( "Print finished, duration: %s" % printer.getPrintDuration() )
 
-    printer.coolDown(HeaterEx1)
-
-    if printer.printerProfile.getBedSurface() == "glass":
-
-        t0 = planner.matProfile.getKeepBedtemp()
-        printer.heatUp(HeaterBed, t0, log=doLog)
-
-        if t0:
-            print("*** Warning: ***")
-            print("Keeping bed heater running at temp %d °C to avoid glass-chipping..." % t0)
-            print("****************")
-
-        printer.setTargetTemp(HeaterBed, t0)
-
-    else:
-
-        printer.coolDown(HeaterBed)
+    if eopBedTemp:
+        print("*** Warning: ***")
+        print("Keeping bed heater running at temp %d °C to avoid glass-chipping..." % t0)
+        print("****************")
 
     print("Debug: printFile(): don't home") # ddhome.home(args, printer, parser, planner)
 
@@ -1219,6 +1215,14 @@ def stringFromArgs(*args):
         else:
             r += str(a)
     return r
+
+####################################################################################################
+
+# Add commands to switch off heaters
+def endOfPrintHeaterOff(planner, bedTemp):
+
+    planner.addTempCommand(HeaterEx1, 0)
+    planner.addTempCommand(HeaterBed, bedTemp)
 
 ####################################################################################################
 

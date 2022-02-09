@@ -67,7 +67,7 @@ class SyncedCommand(object):
 
         payload = bytearray((self.cmd,))
         for p in self.params:
-            if p:
+            # if p:
                 payload += p.pack()
 
         planner.streamStepData(payload)
@@ -651,9 +651,16 @@ class Planner (object):
         cmd = SyncedCommand(CmdSyncFanSpeed, blipTime / 1000.0, [ packedvalue.uint8_t(fanSpeed), packedvalue.uint8_t(blipTime) ])
         self.pathData.updateHistory(cmd)
 
-    # xxxxxxxxxxxxx# Called from gcode parser, set new position
-    # xxxxxxxxxxxxxdef setPos(self, oldPos, newPos):
-        # xxxxxxxxxxxxxself.layers.setPos(oldPos, newPos)
+    # Add a temperature command to command history
+    def addTempCommand(self, heater, temp):
+
+        cmd = SyncedCommand(
+            CmdSyncTargetTemp, 
+            0.0, [
+            packedvalue.uint8_t(heater),
+            packedvalue.uint16_t(intmath.toFWTemp(temp)) ])
+
+        self.pathData.updateHistory(cmd)
 
     # Start planning of this path
     def endPath(self):

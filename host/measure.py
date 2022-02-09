@@ -739,6 +739,10 @@ def xstartPrint(args, printer, parser, planner, t1):
                 else:
                     # Reading done
                     print("Parsed all gcode lines.")
+
+                    # Add commands to switch off heaters
+                    endOfPrintHeaterOff(planner)
+
                     planner.finishMoves()
                     f = None
             else:
@@ -999,9 +1003,6 @@ def measureTempFlowrateCurve2(args, printer, parser, planner):
 
     # Stop pwm mode
     printer.setTempPWM(HeaterEx1, 0)
-
-    printer.coolDown(HeaterEx1)
-    printer.coolDown(HeaterBed)
 
     ddhome.home(args, printer, parser, planner) #dft
 
