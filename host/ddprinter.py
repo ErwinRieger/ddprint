@@ -76,7 +76,7 @@ class Printer(Serial):
         else:
             self.gui = dddumbui.DumbGui()
 
-        Serial.__init__(self)
+        Serial.__init__(self, exclusive=True)
 
         self.args = args
 
