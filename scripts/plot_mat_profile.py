@@ -30,18 +30,50 @@ import matplotlib.pyplot as plt
 
 sys.path.append(os.path.join(os.path.dirname(sys.argv[0]), "../host"))
 
-import ddprintutil
+import ddprintutil as util
 from ddprofile import MatProfile, PrinterProfile, NozzleProfile
 
 #########################################################################################
 
 # Straight-line equation, y = x*m + y0 
-def sleY(x, m, y0):
+def nu_sleY(x, m, y0):
     return m*x + y0
 
 # Straight-line equation, x = y/m + x0
-def sleX(y, m, x0):
+def nu_sleX(y, m, x0):
     return y/m + x0
+
+# Plot additional data for documentation purposes
+plotForDoc = 0
+# workingPoint = 0.5
+# workingPoint = 0.3
+workingPoint = 0.8
+def docFrLookup(fr, sle, label, minTemp=0, maxTemp=0):
+
+    t = sle.x(fr)
+    print(sle)
+    print("t:", t)
+
+    plt.plot([0, t], [fr, fr], 'm', linewidth=3)
+    plt.plot(t, fr, 'x', markeredgecolor="m")
+    plt.plot([t, t], [0, fr], 'm:', linewidth=3)
+
+    if label == "T1" or plotForDoc == 2:
+      ax.annotate(f"flowrate={fr}mm³/s",
+            xy=(185, fr), xycoords='data',
+            xytext=(0.1, 0.7), textcoords='axes fraction',
+            arrowprops=dict(shrink=0.05, width=3), horizontalalignment='center')
+
+    lx = 0.35
+    if label == "T0":
+        lx = 0.65
+    ax.annotate(label+f"={round(t)}°C",
+            xy=(t, 0), xycoords='data',
+            xytext=(lx, -0.2), textcoords='axes fraction',
+            arrowprops=dict(shrink=0.05, width=3), horizontalalignment='center')
+
+    # Plot workingPoint graph
+    plt.plot([minTemp, maxTemp], [sle.y(minTemp), sle.y(maxTemp)], label=f"Workingpoint = {workingPoint}")
 
 if __name__ == "__main__":
 
@@ -90,27 +122,29 @@ if __name__ == "__main__":
         #
         # Two into-air graphs, flowrate vs temperature and flowrate vs pwm
         #
+        (sleAir, pwmSle) = mp.getFrSLE()
+
         # Into-air graph, flowrate at p0Temp
-        fr0 = mp.getFR0pwm()
+        fr0 = sleAir.y1 # mp.getFR0pwm()
 
         # Into-air graph, temperature
-        ktemp = mp.getKtemp()
-        p0Temp = mp.getP0temp()
+        ktemp = sleAir.m # mp.getKtemp()
+        p0Temp = sleAir.x1 # mp.getP0temp()
 
         # Into-air graph, pwm
-        kpwm = mp.getKpwm()
-        p0Pwm = mp.getP0pwm()
+        kpwm = pwmSle.m # mp.getKpwm()
+        p0Pwm = pwmSle.x1 # mp.getP0pwm()
 
         xTemp = [baseTemp, maxTemp]
 
-        frBaseTemp = sleY(baseTemp-p0Temp, ktemp, fr0)
-        frMaxTemp = sleY(maxTemp-p0Temp, ktemp, fr0)
+        frBaseTemp = sleAir.y(baseTemp) # sleY(baseTemp-p0Temp, ktemp, fr0)
+        frMaxTemp = sleAir.y(maxTemp) # sleY(maxTemp-p0Temp, ktemp, fr0)
         yAirTemp = [frBaseTemp, frMaxTemp]
 
         tempGraphs.append((xTemp, yAirTemp, specificProfile+" air", (p0Temp, fr0), None))
 
-        pwmMin1 = pwmMin2 = sleX(frBaseTemp-fr0, kpwm, p0Pwm)
-        pwmMax1 = pwmMax2 = sleX(frMaxTemp-fr0, kpwm, p0Pwm)
+        pwmMin1 = pwmMin2 = pwmSle.x(frBaseTemp) # sleX(frBaseTemp-fr0, kpwm, p0Pwm)
+        pwmMax1 = pwmMax2 = pwmSle.x(frMaxTemp) # sleX(frMaxTemp-fr0, kpwm, p0Pwm)
 
         xAirPwm = [pwmMin1, pwmMax1]
         yAirPwm = [frBaseTemp, frMaxTemp]
@@ -122,12 +156,14 @@ if __name__ == "__main__":
             #
             # Two print graphs, flowrate vs temperature and flowrate vs pwm
             #
-            p0PwmPrint = mp.getP0pwmPrint()
-            p0TempPrint = mp.getP0tempPrint()
-            fr0Print = mp.getFR0pwmPrint()
+            (slePrint, pwmSlePrint) = mp.getFrSLEPrint()
 
-            frBaseTemp = sleY(baseTemp-p0TempPrint, ktemp, fr0Print)
-            frMaxTemp = sleY(maxTemp-p0TempPrint, ktemp, fr0Print)
+            p0TempPrint = slePrint.x1 # mp.getP0tempPrint()
+            p0PwmPrint = pwmSlePrint.x1 # mp.getP0pwmPrint()
+            fr0Print = slePrint.y1 # mp.getFR0pwmPrint()
+
+            frBaseTemp = slePrint.y(baseTemp) # sleY(baseTemp-p0TempPrint, ktemp, fr0Print)
+            frMaxTemp = slePrint.y(maxTemp) # sleY(maxTemp-p0TempPrint, ktemp, fr0Print)
             yPrintTemp = [frBaseTemp, frMaxTemp]
 
             fill = None
@@ -136,8 +172,8 @@ if __name__ == "__main__":
 
             tempGraphs.append((xTemp, yPrintTemp, specificProfile+" print", (p0TempPrint, fr0Print), fill))
 
-            pwmMin2 = sleX(frBaseTemp-fr0Print, kpwm, p0PwmPrint)
-            pwmMax2 = sleX(frMaxTemp-fr0Print, kpwm, p0PwmPrint)
+            pwmMin2 = pwmSlePrint.x(frBaseTemp) # sleX(frBaseTemp-fr0Print, kpwm, p0PwmPrint)
+            pwmMax2 = pwmSlePrint.x(frMaxTemp) # sleX(frMaxTemp-fr0Print, kpwm, p0PwmPrint)
 
             xPrintPwm = [pwmMin2, pwmMax2]
             yPrintPwm = [frBaseTemp, frMaxTemp]
@@ -164,6 +200,17 @@ if __name__ == "__main__":
         plt.plot(marker[0], marker[1], 'x', markeredgecolor="grey")
         if fill:
             plt.fill_between(fill[0], fill[1], fill[2], color='grey', alpha='0.2')
+
+    ###############################
+    # To create graphs for documentation:
+    if plotForDoc == 1:
+        docFrLookup(9, sleAir, "T1")
+        docFrLookup(9, slePrint, "T0")
+
+    elif plotForDoc == 2:
+        sleWp = util.SLE(x1=0, y1=slePrint.c + (sleAir.c-slePrint.c)*workingPoint, m=sleAir.m)
+        docFrLookup(9, sleWp, "Twp", baseTemp, maxTemp)
+    ###############################
 
     plt.legend(loc="upper left")
 
