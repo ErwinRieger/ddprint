@@ -429,6 +429,7 @@ TBD: describe *plot_mat_profile* utility.
 ---------------------------------------------------------------------------------------------
 
 ** Following stuff has to be reviewed **
+++++++++++++++++++++++++++++++++++++++++
 
 
 FDM 3d printer firmware with host preprocessing and *closed loop E*
@@ -520,12 +521,6 @@ The following versions are used at the moment (maybe newer versions will also wo
         Merge: 7a26a86 6d3d973
         Author: Simon John <git@the-jedi.co.uk>
         Date:   Thu Dec 28 18:05:18 2017 +0000
-
-    Protothreads from http://github.com/benhoyt/protothreads-cpp.git
-        commit 984aa540dd4325b7e23dc76135ca28a36526f0c6
-        Author: Ben Hoyt <benhoyt@gmail.com>
-        Date:   Tue Dec 4 16:48:52 2018 -0500
-
 
 Build and upload firmware
 ***************************
