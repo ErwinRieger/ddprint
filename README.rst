@@ -31,8 +31,8 @@ DDPrint adds process control to FDM printer.
 
 The process that is to be controlled is the process of extruding plastic.
 
-This includes the feeder, a bowden tube (*) and the hotend with its heater, lets call
-this the *extruder*.
+The extrusion system includes the feeder, a bowden tube (*) and the hotend with its heater, lets call
+this system the *extruder*.
 
 Most FDM printers have no feedback on the extruder part of the printer - they are running *open loop*.
 
@@ -344,8 +344,67 @@ later view (`plot_mat_profile utility <#profile-plotting-utility>`__) or use (pr
 Workingpoint (strength) parameter
 **********************************
 
-TBD. (describe plotted graphs, workingpoint setting)
+The `autotemp <#auto-temp>`__ feature splits the print into segements and determines the necessary temperature for theese
+segments using the given material profile. It then adds the corresponding temperature control commands into the datastream
+sent to the printer. This is done in a feed-forward fashion, the temperature is set some time before the segment is
+printed.
 
+When looking up the needed temperature in the material profile, the following question arises: Which
+temperature should be used, the one belonging to the into-air measurement, the one from the real-print measurement or
+a temperature somewhere in between?
+
+The next picture illustrates this. In this example, we want to know the necessary temperature for a volumetric
+flowrate of 9 mm³/s (pink horizontal line).
+
+.. image:: /images/mat-profile/Mat._Profile_esun_pla_glass-purple.json-wp1.png
+   :width: 350
+   :target: /images/mat-profile/Mat._Profile_esun_pla_glass-purple.json-wp1.png
+
+As we can see, the into-air temperature for this flowrate would be 202 °C (T1) and the real-print temp is 231 °C (T0).
+
+This is where the *workingpoint* parameter comes into play. The workingpoint (WP) parameter tells ddPrint which temperature
+to choose. WP is a value in the range 0...1 an can be specified as a commandline parameter or through a experimental
+G-Code command (M901). When WP is 0 then the temperature belonging to the real-print graph is used and when WP is 1 then
+the into-air temperature is used. Other values of WP use the according temperature between T0 and T1.
+
+The default value of WP is 0.5, the corresponding graph looks like this:
+
+.. image:: /images/mat-profile/Mat._Profile_esun_pla_glass-purple.json-wp05-cut.png
+   :width: 350
+   :target: /images/mat-profile/Mat._Profile_esun_pla_glass-purple.json-wp05-cut.png
+
+With WP=0.5, the autotemp feature of ddPrint uses temperatures in the middle of the two graphs, the corresponding function
+is shown as the brown linegraph. Hotend temperature for flowrate 9 mm³/s in this case is 216 °C.
+
+With other words, with the workingpoint parameter we can:
+
+* Control the temperature level the autotemp feature is using througout the print.
+* Control the quality of the print, *look VS strength tradeof*.
+
+WP values towards zero are increasing the temperature level, resulting in better layerbonding and stronger
+parts (good for functional parts). WP values towards one are lowering the resulting temperatures, resulting in
+a better look of the printed parts (better for figurines and the like).
+
+Two examples with a volumetric flowrate of 9 mm³/s and working points 0.3 (hotter than default WP 0.5) and
+0.8 (cooler than default WP 0.5):
+
+.. image:: /images/mat-profile/Mat._Profile_esun_pla_glass-purple.json-wp03-cut.png
+   :width: 350
+   :target: /images/mat-profile/Mat._Profile_esun_pla_glass-purple.json-wp03-cut.png
+
+.. image:: /images/mat-profile/Mat._Profile_esun_pla_glass-purple.json-wp08-cut.png
+   :width: 350
+   :target: /images/mat-profile/Mat._Profile_esun_pla_glass-purple.json-wp08-cut.png
+
+When workingpoint value is set to zero, then the real-print measurement graph is used (brown linegraph laying on the
+green graph). Accordingly when WP is one, the into-air measurement grap is used (brown linegraph laying on the blue graph).
+
+TBD: note about PWM values/graph, link to think in terms of energy.
+
+Think in terms of energy
+********************************
+
+TBD: think more in terms of energy (hotend PWM) instead of temperature.
 
 Profile plotting utility
 ********************************
