@@ -59,7 +59,7 @@ class AdjSlider(npyscreen.Slider):
 
     def translate_value(self):
 
-        stri = "%s" %(self.value - 15)
+        stri = "%.0f" % (self.value - 15)
         return stri
 
 class TempAdjSlider(AdjSlider):
@@ -70,8 +70,9 @@ class TempAdjSlider(AdjSlider):
 
     def adjustTempLevel(self):
 
-        self.app.log("AdjustTempLevel(): %s" %  (self.value - 15))
-        self.app.printer.adjTemp(HeaterEx1, (self.value-15))
+        v = int(self.value - 15)
+        self.app.log("AdjustTempLevel(): %d" % v)
+        self.app.printer.adjTemp(HeaterEx1, v)
         # self.app.log( "Adjust temp level done")
 
     def set_value(self, val):
@@ -174,8 +175,8 @@ class MainForm(npyscreen.FormBaseNew):
         # t  = self.add(npyscreen.TitleText, name = "Text:",) 
         # t.entry_widget.add_handlers({ curses.ascii.NL: self.msgBox}) 
 
-        w = self.columns/2
-        h = self.lines/2
+        w = self.columns//2
+        h = self.lines//2
 
         #
         # Upper left side: the input/configuration area
@@ -581,9 +582,9 @@ class MainForm(npyscreen.FormBaseNew):
             self._log("display(): Ignoring exception: ", traceback.format_exc())
             return
 
-        self.curses_pad.vline( 1, self.columns/2-1, curses.ACS_VLINE, self.lines/2 - 2)
-        self.curses_pad.hline( self.lines/2-1, 1, curses.ACS_HLINE, self.columns/2-2)
-        self.curses_pad.hline( self.lines/2-1, self.columns/2, curses.ACS_HLINE, self.columns/2-1)
+        self.curses_pad.vline( 1, self.columns//2-1, curses.ACS_VLINE, self.lines//2 - 2)
+        self.curses_pad.hline( self.lines//2-1, 1, curses.ACS_HLINE, self.columns//2-2)
+        self.curses_pad.hline( self.lines//2-1, self.columns//2, curses.ACS_HLINE, self.columns//2-1)
 
     def preparePreheat(self):
 

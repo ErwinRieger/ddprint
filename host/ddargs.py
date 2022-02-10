@@ -68,6 +68,7 @@ def addCommonArguments(argParser):
     # Debug/testing
     # fake endstops as long we have no real ones
     argParser.add_argument("-F", dest="fakeendstop", action="store", type=bool, help="Debug: fake endstops", default=False)
+    argParser.add_argument("-nc", dest="noCoolDown", action="store", type=bool, help="Debug: don't wait for heater cool down after print.", default=False)
 
 def addPrinterArgument(parser):
     parser.add_argument("printer", help="Name of printer to select profiles.")
