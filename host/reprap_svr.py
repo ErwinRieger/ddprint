@@ -28,15 +28,15 @@ class ReprapServer:
 
     def setStatus(self, status):
 
-        self.printerState = status["state"]
-        self.setTemps(status["t0"], status["targetT1"], status["t1"], self.t1target)
+        self.printerState = status.state
+        self.setTemps(status.t0, status.targetT1, status.t1, self.t1target)
 
-        # self.curPWM.set_value( "%8d" % status["pwmOutput"])
-        # self.swapSize.set_value( "%8s" % util.sizeof_fmt(status["Swap"]))
-        # self.sdrSize.set_value( "%8s" % util.sizeof_fmt(status["SDReader"]))
-        # self.sbSisze.set_value( "%8s" % util.sizeof_fmt(status["StepBuffer"]))
-        # if status["StepBufUnderRuns"] > 0:
-            # self.underrun.set_value( "%8s" % str(status["StepBufUnderRuns"]))
+        # self.curPWM.set_value( "%8d" % status.pwmOutput)
+        # self.swapSize.set_value( "%8s" % util.sizeof_fmt(status.Swap))
+        # self.sdrSize.set_value( "%8s" % util.sizeof_fmt(status.SDReader))
+        # self.sbSisze.set_value( "%8s" % util.sizeof_fmt(status.StepBuffer))
+        # if status.StepBufUnderRuns > 0:
+            # self.underrun.set_value( "%8s" % str(status.StepBufUnderRuns))
         # else:
             # self.underrun.set_value( "       0" )
 

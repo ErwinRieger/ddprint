@@ -261,8 +261,10 @@ class MainForm(npyscreen.FormBaseNew):
         self.curPWM.editable = False
 
         rely += 1
-        self.swapSize = self.add(npyscreen.TitleFixedText, name = "Size Swap File      :", relx=w, rely=rely, use_two_lines=False, begin_entry_at=25)
+        self.swapSize = self.add(npyscreen.TitleFixedText, name = "Size Swap File/Swap :", relx=w, rely=rely, use_two_lines=False, begin_entry_at=23)
+        self.swap = self.add(npyscreen.TitleFixedText, relx=w+int(w*0.5), max_width=int(0.25*w), rely=rely, use_two_lines=False, begin_entry_at=0)
         self.swapSize.editable = False
+        self.swap.editable = False
 
         # rely += 1
         # self.sdrSize = self.add(npyscreen.TitleFixedText, name =  "Size SDReader       :", relx=w, rely=rely, use_two_lines=False, begin_entry_at=25)
@@ -432,37 +434,39 @@ class MainForm(npyscreen.FormBaseNew):
         if t0 != None:
 
             if self.printerState >= StateInit:
-                self.curT0.set_value("%8.1f / %.0f (%.0f) °C" % (t0, self.mat_t0, self.mat_t0_reduced))
+                self.curT0.set_value("%.1f / %.0f (%.0f) °C" % (t0, self.mat_t0, self.mat_t0_reduced))
             else:
-                self.curT0.set_value("%8.1f / 0 (0) °C" % t0)
+                self.curT0.set_value("%.1f / 0 (0) °C" % t0)
 
             self.curT0.update()
 
         if t1 != None:
-            self.curT1.set_value( "%8.1f / %.0f °C" % (t1, targetT1))
+            self.curT1.set_value( "%.1f / %.0f °C" % (t1, targetT1))
             self.curT1.update()
 
     def updateStatus(self, status):
 
-        self.printerState = status["state"]
-        self.pState.set_value( "%8s" % self.stateNames[status["state"]])
+        self.printerState = status.state
+        self.pState.set_value( "%s" % self.stateNames[status.state])
         self.pState.update()
-        self.updateTemps(status["t0"], status["t1"], status["targetT1"])
-        self.curPWM.set_value( "%8d" % status["pwmOutput"])
+        self.updateTemps(status.t0, status.t1, status.targetT1)
+        self.curPWM.set_value( "%d" % status.pwmOutput)
         self.curPWM.update()
-        self.swapSize.set_value( "%8s" % util.sizeof_fmt(status["Swap"]))
+        self.swapSize.set_value( util.sizeof_fmt(status.swapsize))
         self.swapSize.update()
-        # self.sdrSize.set_value( "%8s" % util.sizeof_fmt(status["SDReader"]))
+        self.swap.set_value( util.sizeof_fmt(status.Swap))
+        self.swap.update()
+        # self.sdrSize.set_value( util.sizeof_fmt(status.SDReader))
         # self.sdrSize.update()
-        # self.sbSisze.set_value( "%8s" % util.sizeof_fmt(status["StepBuffer"]))
+        # self.sbSisze.set_value( util.sizeof_fmt(status.StepBuffer))
         # self.sbSisze.update()
-        # if status["StepBufUnderRuns"] > 0:
-            # self.underrun.set_value( "%8s" % str(status["StepBufUnderRuns"]))
+        # if status.StepBufUnderRuns > 0:
+            # self.underrun.set_value( "%8s" % str(status.StepBufUnderRuns))
         # else:
             # self.underrun.set_value( "       0" )
         # self.underrun.update()
 
-        slippage = status["slippage"]
+        slippage = status.slippage
         self.gripAvg1.add(slippage)
         self.gripAvg10.add(slippage)
 
@@ -484,9 +488,9 @@ class MainForm(npyscreen.FormBaseNew):
             elif slippage <= (1/0.75):
                 color = "WARNING"
 
-            self.extGripC.set_value( "%8.1f" % (100.0/slippageAvg1))
+            self.extGripC.set_value( "%.1f" % (100.0/slippageAvg1))
         else:
-            self.extGripC.set_value( "      --" )
+            self.extGripC.set_value( "--" )
 
         if slippageAvg10 > 0:
             self.extGrip.set_value( "%.1f %%" % (100.0/slippageAvg10) )
@@ -498,10 +502,10 @@ class MainForm(npyscreen.FormBaseNew):
         self.extGripC.update()
         self.extGrip.update()
 
-        self.slowdown.set_value( "%8.2f" % status["slowdown"] )
+        self.slowdown.set_value( "%.2f" % status.slowdown )
         self.slowdown.update()
 
-        ePos = status["ePos"]
+        ePos = status.ePos
         t = time.time()
 
         e_steps_per_mm = self.printer.printerProfile.getStepsPerMMI(A_AXIS)
@@ -521,10 +525,10 @@ class MainForm(npyscreen.FormBaseNew):
             if slippageAvg1 > 0 and slippageAvg10 > 0:
                 fr1 = self.frAvg1.mean()
                 fr10 = self.frAvg10.mean()
-                self.extRateC.set_value("%8.1f/%.1f" % (fr1/slippageAvg1, fr1))
+                self.extRateC.set_value("%.1f/%.1f" % (fr1/slippageAvg1, fr1))
                 self.extRate.set_value("%.1f/%.1f mm³/s" % (fr10/slippageAvg10, fr10))
             else:
-                self.extRateC.set_value( "      --" )
+                self.extRateC.set_value( "--" )
                 self.extRate.set_value( "--" )
 
             self.extRateC.entry_widget.color = color
@@ -535,9 +539,9 @@ class MainForm(npyscreen.FormBaseNew):
         self.lastEPos = ePos
         self.lastTime = t
 
-        self.undergrip.set_value( "%8s" % str(status["underGrip"]))
+        self.undergrip.set_value( "%s" % str(status.underGrip))
         self.undergrip.update()
-        self.undertemp.set_value( "%8s" % str(status["underTemp"]))
+        self.undertemp.set_value( "%s" % str(status.underTemp))
         self.undertemp.update()
 
         self.printDuration.set_value(self.printer.getPrintDuration())

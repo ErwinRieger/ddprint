@@ -931,30 +931,31 @@ class Printer(Serial):
 
         tup = struct.unpack("<BhhIIHIhhhBhHiBHH", payload[:39])
 
-        statusDict = {}
+        status = argparse.Namespace()
+
         for i in range(len(valueNames)):
 
             valueName = valueNames[i]
 
             if valueName in ["t0", "t1", "t2", "targetT0", "targetT1"]:
                 # Temperatures in firmware are in 1/16th °C
-                statusDict[valueName] = intmath.fromFWTemp(tup[i])
+                status.__setattr__(valueName, intmath.fromFWTemp(tup[i]))
             elif valueName == "slippage":
                 # In firmware are in 1/32th 
-                statusDict[valueName] = tup[i] / 32.0
+                status.__setattr__(valueName, tup[i] / 32.0)
             elif valueName == "slowdown":
                 # In firmware are in 1/1024th 
-                statusDict[valueName] = (tup[i] / 1024.0) - 1.0
+                status.__setattr__(valueName, (tup[i] / 1024.0) - 1.0)
             else:
-                statusDict[valueName] = tup[i]
+                status.__setattr__(valueName, tup[i])
 
         # Update print duration
-        if statusDict["state"] == StateInit and self.printEndedAt == None:
+        if status.state == StateInit and self.printEndedAt == None:
             self.printEndedAt = time.time()
 
-        self.gui.statusCb(statusDict)
+        self.gui.statusCb(status)
 
-        return argparse.Namespace(**statusDict)
+        return status
 
     def top(self):
 
@@ -995,18 +996,18 @@ class Printer(Serial):
         print(s)
 
     # Prettyprint printer status
-    def ppStatus(self, statusDict, msg=""):
+    def ppStatus(self, status, msg=""):
 
         gripstr = "----"
-        if statusDict.slippage:
-            gripstr = "%4.2f" % (1.0/statusDict.slippage)
+        if status.slippage:
+            gripstr = "%4.2f" % (1.0/status.slippage)
         if msg:
             print(msg)
         print("Bed: %5.1f, Hotend: %5.1f(%5.1f), Pwm: %3d, Swap: %10s, MinBuffer: %3d, underrun: %5d, Grip: %.4s, SlowDown: %4.2f, underTemp %5d, underGrip: %5d" % \
-            (statusDict.t0, statusDict.t1, statusDict.targetT1, 
-             statusDict.pwmOutput, util.sizeof_fmt(statusDict.Swap),
-             statusDict.minBuffer, statusDict.StepBufUnderRuns, gripstr, statusDict.slowdown,
-             statusDict.underTemp, statusDict.underGrip))
+            (status.t0, status.t1, status.targetT1, 
+             status.pwmOutput, util.sizeof_fmt(status.Swap),
+             status.minBuffer, status.StepBufUnderRuns, gripstr, status.slowdown,
+             status.underTemp, status.underGrip))
 
     # Get printer (-profile) name from printer eeprom
     def getPrinterName(self):
