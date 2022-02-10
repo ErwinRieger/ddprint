@@ -1667,7 +1667,7 @@ void Printer::cmdSetTargetTemp(uint8_t heater, int16_t temp, uint8_t pwmOverride
 void Printer::cmdSetIncTemp(uint8_t heater, int16_t incTemp) {
 
     massert((heater >= 0) && (heater < N_HEATERS));
-    massert(abs(incTemp) <= 15);
+    massert(abs(incTemp) <= toFWTemp((int16_t)15));
 
     increaseTemp[heater] = incTemp;
 }
