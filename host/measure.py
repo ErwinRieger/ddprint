@@ -741,7 +741,7 @@ def xstartPrint(args, printer, parser, planner, t1):
                     print("Parsed all gcode lines.")
 
                     # Add commands to switch off heaters
-                    endOfPrintHeaterOff(planner)
+                    util.endOfPrintHeaterOff(planner, 0)
 
                     planner.finishMoves()
                     f = None
