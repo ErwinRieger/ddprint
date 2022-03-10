@@ -813,7 +813,7 @@ def measureTempFlowrateCurve2(args, printer, parser, planner):
     m1Data = util.jsonLoad(f)[ nozzleProp ]
     print("Data read from measure1: ", fn, m1Data)
    
-    fixedPwm = int(m1Data['P0pwm'])
+    # fixedPwm = int(m1Data['P0pwm'])
 
     t1 = planner.matProfile.getHotendGoodTemp()
 
@@ -875,8 +875,8 @@ def measureTempFlowrateCurve2(args, printer, parser, planner):
     lastTime = 0.0
 
     # Fix pwm value, enter *pwmMode*
-    print("Setting fixed pwm:", fixedPwm)
-    printer.setTempPWM(HeaterEx1, fixedPwm)
+    # print("Setting fixed pwm:", fixedPwm)
+    # printer.setTempPWM(HeaterEx1, fixedPwm)
 
     #
     # Wait until nozzle lowered/bed lifted.
@@ -897,6 +897,8 @@ def measureTempFlowrateCurve2(args, printer, parser, planner):
         curPosMM = util.getVirtualPos(printer, parser)
     # """
 
+    pwmAvg = movingavg.MovingAvg(nAvg, status.pwmOutput)
+
     #
     # Wait till print reaches some (hardcoded) height to reduce heating effect of bed.
     #
@@ -907,6 +909,8 @@ def measureTempFlowrateCurve2(args, printer, parser, planner):
         print("waiting for layerheight 2mm , Z pos:", curPosMM.Z)
         status = printer.getStatus()
         printer.ppStatus(status)
+        pwmAvg.add(status.pwmOutput)
+        print("Avg pwm: ", pwmAvg.mean())
 
         lastEPos = status.ePos
         lastTime = time.time()
@@ -918,6 +922,11 @@ def measureTempFlowrateCurve2(args, printer, parser, planner):
     # Disable flowrate limit
     print("Disable flowrate limiter...")
     printer.sendCommandParamV(CmdEnableFRLimit, [packedvalue.uint8_t(0)])
+
+    # Fix pwm value, enter *pwmMode*
+    fixedPwm = int(pwmAvg.mean())
+    print("Setting fixed pwm:", fixedPwm)
+    printer.setTempPWM(HeaterEx1, fixedPwm)
 
     testOk = False
 
@@ -1066,6 +1075,11 @@ def measureTempFlowrateCurve2(args, printer, parser, planner):
     printer.sendCommandParamV(CmdSetSlowDown, [packedvalue.uint32_t(1024)])
 
 ####################################################################################################
+
+
+
+
+
 
 
 
