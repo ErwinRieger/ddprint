@@ -928,7 +928,7 @@ def printFile(args, printer, parser, planner, logObj, gfile, t0, t0_wait, t1, do
 
     if eopBedTemp:
         print("*** Warning: ***")
-        print("Keeping bed heater running at temp %d °C to avoid glass-chipping..." % t0)
+        print("Keeping bed heater running at temp %d °C to avoid glass-chipping..." % eopBedTemp)
         print("****************")
 
     print("Debug: printFile(): don't home") # ddhome.home(args, printer, parser, planner)
