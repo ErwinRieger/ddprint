@@ -33,44 +33,6 @@ from ddprofile import NozzleProfile
 from ddprintconstants import dimNames
 
 #
-# USB packet format:
-# --------------------
-#
-# * Startbyte (SOH, 0x81)
-# * Command counter 8 bit 0
-# * Commandbyte         buffered (print) commands (G1...), direct commands (Temp, start, stop)
-#    + commands < 128: buffered commands
-#    + commands >= 128: direct commands
-# * Length of command packet 32 bits, this includes the length of the variable command payload.
-#   Or length of sub block (1-512).
-# * if length > 0: command specific parameters/data
-# * checksum 16 bits
-#
-# Speicherung eines buffered commands:
-#   - entferne startbye, commandcounter am anfang
-#   - entferne checksum am ende
-#   - speichere das kommando
-#
-# Move segment data, new with bresenham in firmware:
-#   * Header data:
-#       + flags 
-#           Bit 7: flag bits 0-4 contain stepper direction bits for X, Y, Z, A, B
-#           Bit 6: Accel step or raw timer values are compressd (one word + differences as bytes)
-#           Bit 5: Decel step values are compressd (one word + differences as bytes)
-#       + index lead axis, 8 bits
-#       + array of absolute steps, 5 * 32 bits
-#       + number of accel steps, naccel, 16 bits
-#       + constant linear timer value, 16 bits
-#       + number of deccel steps, ndeccel, 16 bits
-#
-#   * accel steps: naccel*(timer value(16bits))
-#
-#   * deccel steps: ndeccel*(timer value(16bits))
-#
-# Note: 16 bit is enough for 819mm/327mm/232mm (XY,Z,E) acceleration/linear/decceleration distances. 
-#
-
-#
 # Firmware commands: 
 #
 from ddprintcommands import *
