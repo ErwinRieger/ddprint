@@ -55,6 +55,7 @@ def addCommonArguments(argParser):
     argParser.add_argument("-dt", dest="dummyTempTable", action="store", type=bool, help="Debug: download dummy temperature table, don't limit speeed.", default=False)
     # XXX Should we call this parameter strength, figurine-mode or parts-mode?
     argParser.add_argument("-wp", dest="workingPoint", action="store", type=float, choices=[ArgRange(0.0, 1.0)], help="AutoTemp: Working Point in range [0.0:1.0] 0: strong parts (higher temp range), 1: figurine mode (lower temps). Default: 0.5.", default=0.5)
+    argParser.add_argument("-logat", dest="logat", action="store", type=str, help="Create logfile for temperatures used.", default="")
 
     # Linear advance
     argParser.add_argument("-kadvance", dest="kadvance", action="store", type=float, choices=[ArgRange(0.0, 1.0)], help="Linear Advance K-factor in range [0.0:1.0], default comes from mat. profile.")

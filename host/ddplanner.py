@@ -23,7 +23,7 @@ import math, collections, types, pprint, bisect
 from argparse import Namespace
 
 import ddprintutil as util, dddumbui, packedvalue
-import gcodeparser, cobs, intmath
+import gcodeparser, cobs, intmath, dddebug
 
 from ddvector import Vector, vectorMulInt, vectorAbs
 from ddprintconstants import *
@@ -348,10 +348,13 @@ class PathData (object):
 
         if newTemp == self.lastTemp:
             # self.planner.gui.log( "AutoTemp: temp did not change, skipping temperature command.")
+            self.planner.logAt(None, tsum)
             return 
 
         if debugAutoTemp:
             self.planner.gui.log( "AutoTemp: segment of %.2f s duration, avg. extrusion rate: %.2f mm³/s, new temp: %d, forward-PWM: %d" % (tsum, avgERate, newTemp, suggestPwm))
+
+        self.planner.logAt(newTemp, tsum)
 
         cmd = SyncedCommand(
             CmdSuggestPwm,
@@ -487,7 +490,20 @@ class Planner (object):
 
         self.replay = 0
 
+        if args.logat:
+            self.atLogger = dddebug.JsonLogger(args)
+            self.atLogger.log('  "autotemp": ')
+            self.atLog = []
+            self.time = 0
+            self.logAt(materialProfile.getHotendGoodTemp(), 0)
+
         self.reset()
+
+    def __del__(self):
+
+        if self.args.logat:
+            self.logAt(self.pathData.lastTemp, 0)
+            self.atLogger.dumps(self.atLog, indent=4)
 
     def reset(self):
 
@@ -1378,6 +1394,14 @@ class Planner (object):
         # pprint.pprint(pulses)
 
         return pulses
+
+    # Add entry to autotemp - log
+    def logAt(self, newTemp, tsum):
+
+        if self.args.logat:
+            if newTemp != None:
+                self.atLog.append((self.time, newTemp))
+            self.time += tsum
 
 ####################################################################################################
 # Create material profile singleton instance

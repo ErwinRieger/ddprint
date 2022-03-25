@@ -17,6 +17,8 @@
 # along with ddprint.  If not, see <http://www.gnu.org/licenses/>.
 #*/
 
+import json
+
 from ddconfig import debugTypes
 
 #
@@ -26,4 +28,32 @@ def assertType(value, typ):
 
     if debugTypes:
         assert(type(value) == typ)
+
+#
+# Log data in json format
+#
+class JsonLogger:
+
+    def __init__(self, args):
+
+        self.f = open(args.logat, "w")
+
+        argd = vars(args)
+
+        self.f.write("{\n")
+        self.f.write('  "args": ')
+        self.f.write(json.dumps(argd, indent=4))
+        self.f.write('\n')
+
+    def __del__(self):
+        self.f.write('}\n')
+        self.f.close()
+
+    def log(self, s):
+        self.f.write(s)
+
+    def dumps(self, d, indent=0):
+        self.f.write(json.dumps(d, indent=indent))
+
+
 
