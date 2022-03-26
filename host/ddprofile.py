@@ -301,6 +301,19 @@ class MatProfile(ProfileBase):
     def getHotendGoodTemp(self):
         return int(self.getValue("hotendGoodTemp"))
 
+    # Floor temp is between basetemp and goodtemp, controlled by workingPoint parameter
+    def getHotendFloorTemp(self, workingPoint):
+
+        bt = self.getHotendBaseTemp()
+        gt = self.getHotendGoodTemp()
+        d = gt - bt
+
+        assert(d >= 0)
+
+        ft = round(bt + d*(1.0 - workingPoint))
+        # print("getHotendFloorTemp(): ", ft)
+        return ft
+
     def getHotendMaxTemp(self):
         return int(self.getValuesI()["hotendMaxTemp"])
 

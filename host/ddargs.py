@@ -53,6 +53,8 @@ def addCommonArguments(argParser):
     argParser.add_argument("-pidset", dest="pidset", action="store", type=str, help="Debug: Specify PID parameter sets to use (ZNCH).", default="ZNCH")
     argParser.add_argument("-inctemp", dest="inctemp", action="store", type=int, help="Increase extruder temperature niveau (layer bonding).", default=0)
     argParser.add_argument("-dt", dest="dummyTempTable", action="store", type=bool, help="Debug: download dummy temperature table, don't limit speeed.", default=False)
+    # WorkingPoint = 0: Parts print, higer temperatures for good layer bonding
+    # WorkingPoint = 1: Figurine print, lower temperature range
     # XXX Should we call this parameter strength, figurine-mode or parts-mode?
     argParser.add_argument("-wp", dest="workingPoint", action="store", type=float, choices=[ArgRange(0.0, 1.0)], help="AutoTemp: Working Point in range [0.0:1.0] 0: strong parts (higher temp range), 1: figurine mode (lower temps). Default: 0.5.", default=0.5)
     argParser.add_argument("-logat", dest="logat", action="store", type=str, help="Create logfile for temperatures used.", default="")

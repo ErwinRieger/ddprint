@@ -375,7 +375,7 @@ class MainForm(npyscreen.FormBaseNew):
         self.mat_t0 = self.planner.matProfile.getBedTemp()
         self.mat_t0_reduced = self.planner.matProfile.getBedTempReduced()
         self.mat_t0_wait = self.printer.printerProfile.getWeakPowerBedTemp()
-        self.mat_t1 = self.planner.matProfile.getHotendGoodTemp() + self.planner.l0TempIncrease
+        self.mat_t1 = self.planner.floorTemp + self.planner.l0TempIncrease
 
         self.guiQueue.put(SyncCallUpdate(self.printerProfileName.set_value, self.printer.printerProfile.name))
         self.guiQueue.put(SyncCallUpdate(self.nozzleProfile.set_value, self.args.nozzle))

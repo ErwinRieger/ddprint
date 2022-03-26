@@ -327,7 +327,7 @@ def main():
 
             t0 = planner.matProfile.getBedTemp()
             t0Wait = min(t0, printer.printerProfile.getWeakPowerBedTemp())
-            t1 = planner.matProfile.getHotendGoodTemp() + planner.l0TempIncrease
+            t1 = planner.floorTemp + planner.l0TempIncrease
 
             util.printFile(args, printer, parser, planner, printer.gui,
                     args.gfile, t0, t0Wait, t1, doLog=True, reconnect=True)
@@ -350,7 +350,7 @@ def main():
 
         t0 = planner.matProfile.getBedTemp()
         t0Wait = min(t0, printer.printerProfile.getWeakPowerBedTemp())
-        t1 = planner.matProfile.getHotendGoodTemp() + planner.l0TempIncrease
+        t1 = planner.floorTemp + planner.l0TempIncrease
 
         util.printFile(args, printer, parser, planner, printer.gui,
                 args.gfile, t0, t0Wait, t1, doLog=True)
