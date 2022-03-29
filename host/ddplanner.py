@@ -262,7 +262,7 @@ class PathData (object):
             self.p0Print = mp.getP0pwmPrint() # xxx hardcoded in firmware!
             self.fr0Print = mp.getFR0pwmPrint()
 
-            self.lastTemp = planner.floorTemp
+            self.lastTemp = planner.floorTemp + planner.l0TempIncrease
 
             # xxx same as in genTempTable
 
@@ -386,8 +386,7 @@ class Layers (object):
             layer = self.layerList.index(zstep)
 
         if layer != self.curLayer:
-            if layer > 0:
-                self.planner.layerChange(layer-1)
+            self.planner.layerChange(layer)
             self.curLayer = layer
 
 #####################################################################
@@ -717,12 +716,15 @@ class Planner (object):
             print("***** Start addMove() *****")
             move.pprint("AddMove")
 
-        self.layers.addMove(move)
+        isPrintMove = move.isPrintMove()
+
+        if isPrintMove:
+            self.layers.addMove(move)
 
         if self.pathData.path:
 
             prevMove = self.pathData.path[-1]
-            if prevMove.isPrintMove() != move.isPrintMove():
+            if prevMove.isPrintMove() != isPrintMove:
                 # Trigger processing of current path and start a new path
                 # with the new segment.
                 self.endPath()
