@@ -466,15 +466,15 @@ class Planner (object):
         # End Constants
         #
 
+        # Temp. increase hotend for layer 0
+        self.l0TempIncrease = Layer0TempIncrease
+
         # Bed temperatures
         if materialProfile:
             self.bedTemp = materialProfile.getBedTemp()
             self.bedTempReduced = materialProfile.getBedTempReduced()
             self.curBedTemp = self.bedTemp
-
-        # Temp. increase for layer 0
-        self.l0TempIncrease = Layer0TempIncrease
-        self.floorTemp = materialProfile.getHotendFloorTemp(args.workingPoint)
+            self.floorTemp = materialProfile.getHotendFloorTemp(args.workingPoint)
 
         self.plotfile = None
         self.travelMovesOnly = travelMovesOnly
