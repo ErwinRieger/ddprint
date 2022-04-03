@@ -43,7 +43,6 @@ class JsonLogger:
         self.f.write("{\n")
         self.f.write('  "args": ')
         self.f.write(json.dumps(argd, indent=4))
-        self.f.write('\n')
 
     def __del__(self):
         self.f.write('}\n')

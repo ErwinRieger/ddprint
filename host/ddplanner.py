@@ -486,7 +486,7 @@ class Planner (object):
 
         if args.logat:
             self.atLogger = dddebug.JsonLogger(args)
-            self.atLogger.log('  "autotemp": ')
+            self.atLogger.log(',\n  "autotemp": ')
             self.atLog = []
             self.time = 0
             self.logAt(self.floorTemp+Layer0TempIncrease, 0)
