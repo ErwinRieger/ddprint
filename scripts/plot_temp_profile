@@ -1,0 +1,10 @@
+
+#
+# Simple wrapper for plot_temp_profile.py
+#
+envscript="$(realpath -m ${0}/../ddprint.env)"
+. $envscript
+
+$DDPYTHON $DDPRINTHOME/scripts/plot_temp_profile.py $*
+
+
