@@ -34,8 +34,6 @@
 #define SERIAL_TX_COMPLETE() ( true )
 #define SERIAL_TX_DR_PUTC(c) ( UDR0 = c )
 
-constexpr uint32_t halBaudrate(const uint32_t br) { return ((F_CPU+8*br) / (16*br)) - 1; }
-
 #define HAL_SET_INPUT_PU(pin) pinMode(pin, INPUT_PULLUP)
 #define HAL_SET_INPUT_ANALOG(pin) /* */
 

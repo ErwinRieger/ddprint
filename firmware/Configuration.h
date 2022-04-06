@@ -14,11 +14,11 @@
 // baudrate.
 //
 // Baud 1000000, too high for anycubic i3
-// #define BAUDRATE halBaudrate(1000000)
+// #define BAUDRATE 1000000
 // Baud 500000
-#define BAUDRATE halBaudrate(500000)
+#define BAUDRATE 500000
 // Baud 250000
-// #define BAUDRATE halBaudrate(250000)
+// #define BAUDRATE 250000
 
 // This defines the number of extruders
 #define EXTRUDERS 1

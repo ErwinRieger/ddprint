@@ -123,7 +123,6 @@ class Printer(Serial):
 
         if self.baudrateIndex != self.defaultBaudrateIndex:
             br = self.baudrates[self.defaultBaudrateIndex]
-            print("Resetting baudrate to:", br)
             self.setBaudRate(self.defaultBaudrateIndex)
 
     def checkStall(self, status):
@@ -531,12 +530,11 @@ class Printer(Serial):
         self.baudrateIndex = brIndex
         baudrate = self.baudrates[brIndex]
 
+        print("Setting baudrate to: ", baudrate)
+
         if setInFirmware:
 
-            lowbyte = (fCPU+baudrate*8) // (baudrate*16) - 1;
-            print("Auto-Baudrate: set to %d (lowbyte: %d)" % (baudrate, lowbyte))
-
-            payload = struct.pack("<I", lowbyte)
+            payload = struct.pack("<I", baudrate)
             self.sendCommand(CmdSetBaudRate, binPayload=payload)
 
             print("Baudrate command successful")
@@ -574,8 +572,6 @@ class Printer(Serial):
 
                         brIndex = baudRatesToTry[0]
                         del baudRatesToTry[baudRatesToTry.index(brIndex)]
-
-                        print("Set baudrate to: ", self.baudrates[brIndex])
 
                         self.setBaudRate(brIndex, False)
                         self.lastAutobaud = time.time()

@@ -25,7 +25,6 @@
 #include "crc16.h"
 #include "hal.h"
 
-
 void RxBuffer::peekChecksum(uint16_t *checksum, uint8_t count) {
 
     for (uint8_t i=0; i<count; i++)
@@ -143,12 +142,12 @@ void RxBuffer::begin(uint32_t baud)
   sbi(M_UCSRxB, M_RXCIEx);
 }
 
-// Parameter baud is just the lowbyte of the 
-// UBRR register.
+constexpr uint32_t avrBaudrate(const uint32_t br) { return ((F_CPU+8*br) / (16*br)) - 1; }
+
 void RxBuffer::setBaudrate(uint32_t baudRate) {
 
     M_UBRRxH = 0;
-    M_UBRRxL = baudRate;
+    M_UBRRxL = avrBaudrate(baudRate);
 }
 
 // Serial interrupt routine
