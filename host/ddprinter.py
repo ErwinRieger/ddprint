@@ -349,7 +349,7 @@ class Printer(Serial):
         l = len(res)
         if l < length:
             print(f"readWithTimeout(): short read {l}/{length}, retry read")
-            return res + readWithTimeout(length - l)
+            return res + self.readWithTimeout(length - l)
 
         return res
 
