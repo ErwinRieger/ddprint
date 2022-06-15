@@ -1297,10 +1297,9 @@ class Printer(Serial):
         return tup
 
     ####################################################################################################
-
+    # Check, if enstop was pressed
     def endStopTriggered(self, dim, fakeHomingEndstops=False):
 
-        # Check, if enstop was pressed
         tup = self.getEndstops()
 
         if tup[dim*2] or fakeHomingEndstops:
@@ -1308,6 +1307,19 @@ class Printer(Serial):
             return True
 
         print("Endstop %s open at position: %d" % (dimNames[dim], tup[dim*2+1]))
+        return False
+
+    ####################################################################################################
+    # Check, if enstop was released
+    def endStopReleased(self, dim, fakeHomingEndstops=False):
+
+        tup = self.getEndstops()
+
+        if not tup[dim*2] or fakeHomingEndstops:
+            print("Endstop %s open at position: %d" % (dimNames[dim], tup[dim*2+1]))
+            return True
+
+        print("Endstop %s hit at position: %d" % (dimNames[dim], tup[dim*2+1]))
         return False
 
     ####################################################################################################
