@@ -1225,8 +1225,7 @@ HandleCmdG1:
 
                         sDReader.setBytesToRead1();
                         PT_WAIT_THREAD(sDReader);
-                        // lastTimer += FromBuf(int8_t, sDReader.readData);
-                        lastTimer = ((int32_t)lastTimer) + FromBuf(int8_t, sDReader.readData);
+                        lastTimer += (uint16_t)FromBuf(int8_t, sDReader.readData);
 
                         if (limiting)
                             sd.timer = STD min ( 
