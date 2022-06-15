@@ -245,7 +245,6 @@ class RawStepData:
         if timerValue < 25:
             print("timervalue:", timerValue, pulse)
 
-        assert(timerValue >= 25) # xxx hardcoded 100khz avr
         self.pulses.append((timerValue, pulse))
 
     def empty(self):
@@ -327,7 +326,7 @@ class RawStepData:
             payLoad += struct.pack("<HB", lastTimer, self.stepBits(stepBits))
 
             for (tv, stepBits) in self.pulses[1:]:
-                dtv = lastTimer - tv
+                dtv = tv - lastTimer 
                 payLoad += struct.pack("<bB", dtv, self.stepBits(stepBits))
                 lastTimer = tv
 
