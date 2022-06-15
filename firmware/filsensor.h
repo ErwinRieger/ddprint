@@ -101,12 +101,17 @@ class FilamentSensorEMS22 {
 class FilamentSensorEMS22 {
     public:
         FilamentSensorEMS22() { };
+        void init() {}
+        void run() {}
         void enableFeedrateLimiter(bool /* flag */) { }
+        void setFilSensorConfig(ScaledUInt16 &, uint16_t) { }
+        int32_t getSensorCount() { return 0; }
         bool isLimiting() { return false; }
         uint16_t getSlowDown() { return 0; }
+        int16_t getSlip32() { return 32; }
         void cmdGetFSReadings(uint8_t nr) {
             txBuffer.sendResponseStart(CmdGetFSReadings);
-            uint8_t n = min(10, nr);
+            uint8_t n = min((uint8_t)10, nr);
 
             for (uint8_t i=n; i>0; i--) {
                 txBuffer.sendResponseUInt32(0);
