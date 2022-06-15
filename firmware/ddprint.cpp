@@ -827,6 +827,8 @@ HandleCmdG1:
                     else
                         sd.timer = FromBuf(uint16_t, sDReader.readData);
 
+                    DEBUGSDTIMER();
+
                     computeStepBits();
 
                     // PT_WAIT_WHILE(stepBuffer.enough());
@@ -848,6 +850,8 @@ HandleCmdG1:
                                 (uint16_t)0xffff );
                         else
                             sd.timer = FromBuf(uint16_t, sDReader.readData);
+
+                        DEBUGSDTIMER();
 
                         computeStepBits();
 
@@ -874,6 +878,8 @@ HandleCmdG1:
                     else
                         sd.timer = *sDReader.readData;
 
+                        DEBUGSDTIMER();
+
                     computeStepBits();
 
                     // PT_WAIT_WHILE(stepBuffer.enough());
@@ -895,6 +901,8 @@ HandleCmdG1:
                                 (uint16_t)0xffff );
                         else
                             sd.timer = *sDReader.readData;
+
+                        DEBUGSDTIMER();
 
                         computeStepBits();
 
@@ -921,6 +929,8 @@ HandleCmdG1:
                         sd.dirBits |=  0x40;
 
                     sd.timer = tLin;
+
+                    DEBUGSDTIMER();
 
                     computeStepBits();
 
@@ -964,6 +974,8 @@ HandleCmdG1:
                     else
                         sd.timer = *sDReader.readData;
 
+                    DEBUGSDTIMER();
+
                     computeStepBits();
 
                     // PT_WAIT_WHILE(stepBuffer.enough());
@@ -985,6 +997,8 @@ HandleCmdG1:
                                 (uint16_t)0xffff );
                         else
                             sd.timer = *sDReader.readData;
+
+                        DEBUGSDTIMER();
 
                         computeStepBits();
 
@@ -1011,6 +1025,8 @@ HandleCmdG1:
                     else
                         sd.timer = FromBuf(uint16_t, sDReader.readData);
 
+                    DEBUGSDTIMER();
+
                     computeStepBits();
 
                     // PT_WAIT_WHILE(stepBuffer.enough());
@@ -1032,6 +1048,8 @@ HandleCmdG1:
                                 (uint16_t)0xffff );
                         else
                             sd.timer = FromBuf(uint16_t, sDReader.readData);
+
+                        DEBUGSDTIMER();
 
                         computeStepBits();
 
@@ -1185,6 +1203,8 @@ HandleCmdG1:
                 else 
                     sd.timer = lastTimer;
 
+                DEBUGSDTIMER();
+
                 sDReader.setBytesToRead1();
                 PT_WAIT_THREAD(sDReader);
                 sd.stepBits = *sDReader.readData;
@@ -1205,14 +1225,17 @@ HandleCmdG1:
 
                         sDReader.setBytesToRead1();
                         PT_WAIT_THREAD(sDReader);
-                        lastTimer += FromBuf(int8_t, sDReader.readData);
+                        // lastTimer += FromBuf(int8_t, sDReader.readData);
+                        lastTimer = ((int32_t)lastTimer) + FromBuf(int8_t, sDReader.readData);
 
-                        if (limiting) 
+                        if (limiting)
                             sd.timer = STD min ( 
                                 (uint16_t)( ((uint32_t)lastTimer * timerScale) >> 10 ),
                                 (uint16_t)0xffff);
-                        else 
+                        else
                             sd.timer = lastTimer;
+
+                        DEBUGSDTIMER();
 
                         sDReader.setBytesToRead1();
                         PT_WAIT_THREAD(sDReader);
@@ -1240,6 +1263,8 @@ HandleCmdG1:
                                 (uint16_t)0xffff);
                         else 
                             sd.timer = FromBuf(uint16_t, sDReader.readData);
+
+                        DEBUGSDTIMER();
 
                         sDReader.setBytesToRead1();
                         PT_WAIT_THREAD(sDReader);
