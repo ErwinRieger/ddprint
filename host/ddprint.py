@@ -181,8 +181,6 @@ def main():
     sp = subparsers.add_parser("testFeederUniformity", help="Debug: check smoothness/roundness of feeder measurements.")
 
     sp = subparsers.add_parser("testFilSensor", help="Debug: move filament manually, output filament sensor measurement.")
-    # sp.add_argument("printer", help="Name of printer profile to use.")
-    ddargs.addPrinterArgument(sp)
     sp.add_argument("distance", action="store", help="Move-distance (+/-) in mm.", type=float)
 
     sp = subparsers.add_parser("top", help="Get 'process stats' from printer.")
@@ -585,11 +583,11 @@ def main():
     elif args.mode == 'testFilSensor':
 
         printer = Printer(args)
-        initPrinterProfile()
+        printer.initPrinterProfile()
         planner = Planner(args, printer, travelMovesOnly=True)
         parser = gcodeparser.UM2GcodeParser(planner, logger=printer.gui, travelMovesOnly=True)
 
-        measure.testFilSensor(args, printer, parser)
+        measure.testFilSensor(args, printer, parser, planner)
 
     elif args.mode == 'calibrateesteps':
 
