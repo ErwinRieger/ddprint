@@ -40,17 +40,22 @@ def writeData(f, measurements):
         f.write("%f %f\n" % (t, s))
     f.write("E\n")
 
-def testFilSensor(args, printer, parser):
+def testFilSensor(args, printer, parser, planner):
 
     feedrate = args.feedrate or 1.0
 
     printer.commandInit()
+
+    # Disable flowrate limit
+    printer.sendCommandParamV(CmdEnableFRLimit, [packedvalue.uint8_t(0)])
+
     startPos = printer.getFilSensor()
-    util.manualMove(parser, util.dimIndex['A'], args.distance, feedrate=feedrate)
+    util.manualMove(args, printer, parser, planner, util.dimIndex['A'], args.distance, feedrate=feedrate)
     endPos = printer.getFilSensor()
     diff = endPos - startPos
 
     steps_per_mm = printer.printerProfile.getStepsPerMMI(A_AXIS)
+    pcal = printer.printerProfile.getFilSensorCalibration()
 
     print("steps_per_mm  E:", steps_per_mm)
 
@@ -59,6 +64,9 @@ def testFilSensor(args, printer, parser):
     print("Commanded steps: ", (steps_per_mm * args.distance))
     print("Filament pos in counts old:", startPos, ", new:", endPos, "difference: %d counts" % diff)
     print("Calibration value from profile: %f, measured ratio: %f" % (pcal, cal))
+
+    # Re-enable flowrate limit
+    printer.sendCommandParamV(CmdEnableFRLimit, [packedvalue.uint8_t(1)])
 
 #
 # Measure/calibrate feeder e-steps value
@@ -448,9 +456,16 @@ def feedrateRampUp(printer, startSpeed, endSpeed):
 
         print(f"feedrateRampUp(): set speed: {startSpeed}")
 
+        tv = util.eTimerValue(printer, startSpeed)
+        if tv < 25: # debug
+            print("xxx fix tv in feedrateRampUp()", tv)
+            tv = 25;
+        elif tv > 0xffff:
+            print("xxx fix tv in feedrateRampUp()", tv)
+            tv = 0xffff;
         printer.sendCommandParamV(CmdContinuous,
             [ packedvalue.uint8_t(dimBitsIndex["A"]),
-              packedvalue.uint16_t(util.eTimerValue(printer, startSpeed))])
+              packedvalue.uint16_t(tv)])
 
         startSpeed += 0.25
         time.sleep(0.1)
@@ -943,8 +958,6 @@ def measureTempFlowrateCurve2(args, printer, parser, planner):
 
         t1Avg = tempAvg.mean()
         gAvg = gripAvg.mean()
-
-        t1Avg = tempAvg.mean()
 
         # Current target flowrate
         ePos = status.ePos
