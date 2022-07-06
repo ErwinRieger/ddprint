@@ -213,7 +213,7 @@ if __name__ == "__main__":
     ###############################
 
     # Plot workingPoint=0.5 graph if only one material profile is given
-    if len(args.smat) == 1:
+    if hasPrintingValues and len(args.smat) == 1:
         sleWp = util.SLE(x1=0, y1=slePrint.c + (sleAir.c-slePrint.c)*0.5, m=sleAir.m)
         plt.plot([baseTemp, maxTemp], [sleWp.y(baseTemp), sleWp.y(maxTemp)], label="Workingpoint = 0.5")
 
