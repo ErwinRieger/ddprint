@@ -1151,7 +1151,7 @@ class Printer(Serial):
 
         a = tdest / timeConstant
 
-        print("Start tempramp...", tdest, timeConstant, a)
+        print(f"Ramp up '{HeaterNames[heater]}' to {tdest} °C")
 
         if a <= 0:
             self.setTargetTemp(heater, tdest)
@@ -1165,9 +1165,7 @@ class Printer(Serial):
             if temp < tdest-2:
 
                 t = min(round(startTemp + (time.time() - startTime) * a), tdest)
-
-                print("temp is below dest", temp, t, tdest)
-
+                print(f"Ramp up '{HeaterNames[heater]}' {temp:.2f}/{t:.2f} °C")
                 self.setTargetTemp(heater, t)
                 yield(temp)
 

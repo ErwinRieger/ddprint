@@ -59,6 +59,12 @@ HeaterBed = 0 # Heated bed
 HeaterEx1 = 1 # Extruder 1
 HeaterEx2 = 2 # Extruder 2
 
+HeaterNames = {
+        HeaterBed: "HeaterBed",
+        HeaterEx1: "HeaterEx1",
+        HeaterEx2: "HeaterEx2",
+}
+
 ############################################################################
 #
 # Response error codes
