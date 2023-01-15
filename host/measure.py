@@ -454,7 +454,7 @@ def feedrateRampUp(printer, startSpeed, endSpeed):
 
     while startSpeed < endSpeed:
 
-        print(f"feedrateRampUp(): set speed: {startSpeed}")
+        # print(f"feedrateRampUp(): set speed: {startSpeed}")
 
         tv = util.eTimerValue(printer, startSpeed)
         if tv < 25: # debug
@@ -476,7 +476,7 @@ def feedrateRampDown(printer, startSpeed, endSpeed):
 
     while startSpeed > endSpeed:
 
-        print(f"feedrateRampDown(): set speed: {startSpeed}")
+        # print(f"feedrateRampDown(): set speed: {startSpeed}")
 
         printer.sendCommandParamV(CmdContinuous,
             [ packedvalue.uint8_t(dimBitsIndex["A"]),
@@ -648,7 +648,7 @@ def measureTempFlowrateCurve(args, printer, parser, planner):
             data.append( (lastGoodFlowrate, pwm, t1Avg) )
 
             # Slow down extruder while heating to upper temp to save filament
-            print(f"\nSlow down extruder motor from {feedrate} mm/s to {startFeedrate} mm/s")
+            print(f"\nSlow down extruder motor from {feedrate} mm/s to {startFeedrate/2} mm/s")
             feedrateRampDown(printer, feedrate, startFeedrate/2)
             currentFeedrate = startFeedrate/2
 
