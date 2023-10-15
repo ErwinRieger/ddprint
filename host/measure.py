@@ -948,16 +948,23 @@ def measureTempFlowrateCurve2(args, printer, parser, planner):
     #
     # Increase speed while monitoring feeder slippage
     #
+    gAvg = 1.0
+
     while True:
 
         status = printer.getStatus()
-        tempAvg.add(status.t1)
+        # tempAvg.add(status.t1)
 
         fsreadings = printer.getFSReadings()
         gripAvg.addReadings(fsreadings, pcal)
 
+        if tempAvg.valid():
+            gAvg = gripAvg.mean()
+        else:
+            print("staring period, nvalues: ", tempAvg.nValues)
+
+        tempAvg.add(status.t1)
         t1Avg = tempAvg.mean()
-        gAvg = gripAvg.mean()
 
         # Current target flowrate
         ePos = status.ePos
