@@ -85,7 +85,10 @@ uint16_t FilamentSensorEMS22::readEncoderPos() {
 
     // Check parity
     uint8_t p = __builtin_parity(dataWord);
-    massert(p == 0);
+    if (p != 0) {
+        // Parity Error, skip this read
+        return lastEncoderPos;
+    }
 
     uint16_t pos = (((uint16_t)byte1) << 2) | (byte2 >> 6);
 
