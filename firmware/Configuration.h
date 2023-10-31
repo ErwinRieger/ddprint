@@ -63,8 +63,8 @@
 // This feature exists to protect your hotend from overheating accidentally, but *NOT* from thermistor short/failure!
 // You should use MINTEMP for thermistor short/failure protection.
 #define HEATER_0_MAXTEMP toFWTemp((int16_t)125)
-#define HEATER_1_MAXTEMP toFWTemp((int16_t)285)
-#define HEATER_2_MAXTEMP toFWTemp((int16_t)285)
+#define HEATER_1_MAXTEMP toFWTemp((int16_t)290)
+#define HEATER_2_MAXTEMP toFWTemp((int16_t)290)
 
 //Check if the heater heats up MAX_HEATING_TEMPERATURE_INCREASE within MAX_HEATING_CHECK_MILLIS while the PID was at the maximum.
 // If not, raise an error because most likely the heater is not heating up the temperature sensor. Indicating an issue in the system.
