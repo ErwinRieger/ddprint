@@ -28,60 +28,60 @@
 
 // Note: Pin nubers are the logical/mapped pins, not the physical chip pins.
 
-#define POWER_BUTTON            DigitalInput<15, INPUT_PULLDOWN, ACTIVEHIGHPIN>  // ["GPIOA","D15","PA15"], # Known: Input, Power button
+#define POWER_BUTTON            DigitalInput<15, INPUT_PULLDOWN, ACTIVEHIGHPIN>  // ["GPIOA","D15","PA15"], # Power button
 
-#define POWER_SUPPLY_RELAY      DigitalOutput<28, ACTIVEHIGHPIN>  // ["GPIOB","D28","PB12"], # Known: Output, Power-Relais  
+#define POWER_SUPPLY_RELAY      DigitalOutput<28, ACTIVEHIGHPIN>  // ["GPIOB","D28","PB12"], # Power-Relais  
 
-#define X_STEP_PIN              DigitalOutput<18, ACTIVEHIGHPIN>  // ["GPIOB","D18","PB2"],  # Known: Output, X-Step
+#define X_STEP_PIN              DigitalOutput<18, ACTIVEHIGHPIN>  // ["GPIOB","D18","PB2"],  # X-Step
 // Active state is forward direction (positive)
-#define X_DIR_PIN               DigitalOutput<0, ACTIVEHIGHPIN>  // ["GPIOA","D00","PA0"],  # Known: Output, X-Dir
-#define X_ENABLE_PIN            DigitalOutput<66, ACTIVELOWPIN>  // ["GPIOE","D66","PE2"],  # Known: Output, X-Enable, active low
+#define X_DIR_PIN               DigitalOutput<0, ACTIVEHIGHPIN>  // ["GPIOA","D00","PA0"],  # X-Dir
+#define X_ENABLE_PIN            DigitalOutput<66, ACTIVELOWPIN>  // ["GPIOE","D66","PE2"],  # X-Enable, active low
 #define X_STOP_PIN              DigitalInput<11, INPUT_PULLUP, ACTIVELOWPIN>  // ["GPIOA","D11","PA11"], # Known: Input, X-Endstop, active low
 //#define X_ENABLE_ACTIVE     LOW
 
-#define Y_STEP_PIN              DigitalOutput<46, ACTIVEHIGHPIN>  // ["GPIOC","D46","PC14"], # Known: Output, Y-Step
+#define Y_STEP_PIN              DigitalOutput<46, ACTIVEHIGHPIN>  // ["GPIOC","D46","PC14"], # Y-Step
 // Active state is forward direction (positive)
-#define Y_DIR_PIN               DigitalOutput<70, ACTIVELOWPIN>  // ["GPIOE","D70","PE6"],  # Known: Output, Y-Dir
-#define Y_ENABLE_PIN            DigitalOutput<47, ACTIVELOWPIN>  // ["GPIOC","D47","PC15"], # Known: Output, Y-Enable, active low
+#define Y_DIR_PIN               DigitalOutput<70, ACTIVELOWPIN>  // ["GPIOE","D70","PE6"],  # Y-Dir
+#define Y_ENABLE_PIN            DigitalOutput<47, ACTIVELOWPIN>  // ["GPIOC","D47","PC15"], # Y-Enable, active low
 #define Y_STOP_PIN              DigitalInput<60, INPUT_PULLUP, ACTIVELOWPIN>  // ["GPIOD","D60","PD12"], # Known: Input, Y-Endstop, active low
 // #define Y_ENABLE_ACTIVE     LOW
 
-#define Z_STEP_PIN              DigitalOutput<69, ACTIVEHIGHPIN>  // ["GPIOE","D69","PE5"],  # Known: Output, Z-Step
+#define Z_STEP_PIN              DigitalOutput<69, ACTIVEHIGHPIN>  // ["GPIOE","D69","PE5"],  # Z-Step
 // Active state is forward direction (positive)
-#define Z_DIR_PIN               DigitalOutput<68, ACTIVEHIGHPIN>  // ["GPIOE","D68","PE4"],  # Known: Output, Z-Dir
-#define Z_ENABLE_PIN            DigitalOutput<45, ACTIVELOWPIN>  // ["GPIOC","D45","PC13"], # Known: Output, Z-Enable, active low
+#define Z_DIR_PIN               DigitalOutput<68, ACTIVEHIGHPIN>  // ["GPIOE","D68","PE4"],  # Z-Dir
+#define Z_ENABLE_PIN            DigitalOutput<45, ACTIVELOWPIN>  // ["GPIOC","D45","PC13"], # Z-Enable, active low
 #define Z_STOP_PIN              DigitalInput<65, INPUT_PULLUP, ACTIVELOWPIN>  // ["GPIOE","D65","PE1"],  # Known: Input, Z-Endstop, active low
 // #define Z_ENABLE_ACTIVE     LOW
 
-#define E0_STEP_PIN             DigitalOutput<1, ACTIVEHIGHPIN>  // ["GPIOA","D01","PA1"],  # Known: Output, E0-Step
+#define E0_STEP_PIN             DigitalOutput<1, ACTIVEHIGHPIN>  // ["GPIOA","D01","PA1"],  # E0-Step
 // Active state is forward direction (positive)
-#define E0_DIR_PIN              DigitalOutput<16, ACTIVEHIGHPIN>  // ["GPIOB","D16","PB0"],  # Known: Output, E0-Dir
-#define E0_ENABLE_PIN           DigitalOutput<37, ACTIVELOWPIN>  // ["GPIOC","D37","PC5"],  # Known: Output, E0-Enable, active low
+#define E0_DIR_PIN              DigitalOutput<16, ACTIVELOWPIN>  // ["GPIOB","D16","PB0"],  # E0-Dir
+#define E0_ENABLE_PIN           DigitalOutput<37, ACTIVELOWPIN>  // ["GPIOC","D37","PC5"],  # E0-Enable, active low
 // #define E0_ENABLE_ACTIVE    LOW
 
 // Second extruder not used 
-//#define E1_STEP_PIN         36  // ["GPIOC","D36","PC4"],  # Known: Output, E1-Step
+//#define E1_STEP_PIN         36  // ["GPIOC","D36","PC4"],  # E1-Step
 // Active state is forward direction (positive)
-//#define E1_DIR_PIN          67  // ["GPIOE","D67","PE3"],  # Known: Output, E1-Dir
-//#define E1_ENABLE_PIN       17  // ["GPIOB","D17","PB1"],  # Known: Output, E1-Enable, active low
+//#define E1_DIR_PIN          67  // ["GPIOE","D67","PE3"],  # E1-Dir
+//#define E1_ENABLE_PIN       17  // ["GPIOB","D17","PB1"],  # E1-Enable, active low
 //#define E1_ENABLE_ACTIVE    LOW
 
 // Small fan behind hotend cooler, software switchable on newer UM2 boards.
 #define HOTEND_FAN_PIN          DigitalOutput<24, ACTIVELOWPIN> // ["GPIOB","D24","PB8"],  # Known, Output, Hotend Fan (Fan 1), active low
 // #define HOTEND_FAN_ACTIVE   LOW
 
-#define LED_PIN                 PWMOutput<3, ACTIVELOWPIN>   // ["GPIOA","D03","PA3"],  # Known: Output, Case LED, active low
+#define LED_PIN                 PWMOutput<3, ACTIVELOWPIN>   // ["GPIOA","D03","PA3"],  # Case LED, active low
 
 // Note: PB13 has no associated timer in stm32duino -> use bitbang temp control
-#define HEATER_BED_PIN          DigitalOutput<29, ACTIVELOWPIN>  // ["GPIOB","D29","PB13"], # Known: Output, Heater Bed, active low
+#define HEATER_BED_PIN          DigitalOutput<29, ACTIVELOWPIN>  // ["GPIOB","D29","PB13"], # Heater Bed, active low
 
-#define HEATER_0_PIN            PWMOutput<38, ACTIVELOWPIN>  // ["GPIOC","D38","PC6"],  # Known: Output, Heater Head 0, active low
+#define HEATER_0_PIN            PWMOutput<38, ACTIVELOWPIN>  // ["GPIOC","D38","PC6"],  # Heater Head 0, active low
 
-#define HEATER_1_PIN            PWMOutput<39, ACTIVELOWPIN>  // ["GPIOC","D39","PC7"],  # Known: Output, Heater Head 1, active low
+#define HEATER_1_PIN            PWMOutput<39, ACTIVELOWPIN>  // ["GPIOC","D39","PC7"],  # Heater Head 1, active low
 
 // #define HEATER_2_PIN        -1
 
-#define FAN_PIN                 PWMOutput<22, ACTIVELOWPIN>  // ["GPIOB","D22","PB6"],  # Known: Output, Fan 0, Part cooling fan, active low
+#define FAN_PIN                 PWMOutput<22, ACTIVELOWPIN>  // ["GPIOB","D22","PB6"],  # Fan 0, Part cooling fan, active low
 
 #define TEMP_BED_PIN            AnalogInput<33, 11> // ["GPIOC","D33","PC1"],  # Known: Analog Input, Temp. PT100 Sensor BED
 #define TEMP_0_PIN              AnalogInput<32, 10> // ["GPIOC","D32","PC0"],  # Known: Analog Input, Temp. PT100 Sensor X
@@ -162,26 +162,26 @@
 
 #if 0
 
-        ["GPIOB","D19","PB3"],  # Known: Output, E2-Step
+        ["GPIOB","D19","PB3"],  # E2-Step
 
         ["GPIOA","D02","PA2"],
         ["GPIOA","D05","PA5"],
         ["GPIOA","D06","PA6"],
         ["GPIOA","D07","PA7"],
         ["GPIOA","D08","PA8"],  # ???: Input, changes with power-on relais ???
-        ["GPIOA","D09","PA9"],  # Known: Output, USART1 Tx
+        ["GPIOA","D09","PA9"],  # USART1 Tx
         ["GPIOA","D10","PA10"], # Known: Input, USART1 Rx
         ["GPIOA","D12","PA12"],
         ["GPIOA","D13","PA13"],
         ["GPIOA","D14","PA14"],
         ["GPIOA","D15","PA15"], # Known: Input, Power button
-        ["GPIOB","D20","PB4"],  # Known: Output, E2-Dir
-        ["GPIOB","D21","PB5"],  # Known: Output, E2-Enable
+        ["GPIOB","D20","PB4"],  # E2-Dir
+        ["GPIOB","D21","PB5"],  # E2-Enable
         ["GPIOB","D23","PB7"],  # ???: Input, changes with power-on relais ???
         ["GPIOB","D25","PB9"],  # Known, Output, Fan 2, not connected
         ["GPIOB","D26","PB10"], # ???: Input, changes with power-on relais ???
         ["GPIOB","D27","PB11"], # ???: Input, changes with power-on relais ???
-        ["GPIOB","D28","PB12"], # Known: Output, Power-Relais
+        ["GPIOB","D28","PB12"], # Power-Relais
         ["GPIOC","D40","PC8"],
         ["GPIOC","D41","PC9"],
         ["GPIOC","D42","PC10"],

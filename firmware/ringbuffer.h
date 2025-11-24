@@ -38,7 +38,7 @@ struct CircularBuffer {
     IndexType mask(IndexType val)  { return val & (BufferSize - 1); }
 
     bool empty()    { return _ringbuffer_head == _ringbuffer_tail; }
-    bool full()     { return size() == BufferSize; }
+    bool full()     { return size() == (BufferSize - 1); }
     IndexType size()     { return _ringbuffer_head - _ringbuffer_tail; }
 
     void pushRef(ElementType& val)  {

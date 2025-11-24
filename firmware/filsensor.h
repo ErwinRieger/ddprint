@@ -29,6 +29,7 @@ class FilamentSensorEMS22 {
 
         int32_t lastASteps;
         int16_t sensorCount;
+        uint32_t startAt;
 
         int16_t lastEncoderPos = 0;
 
@@ -39,7 +40,7 @@ class FilamentSensorEMS22 {
         uint16_t slowDown;
 
         int32_t sensorCountAbs;
-        int16_t slip32;
+        int16_t slip128;
 
         // Ratio between measured filament sensor counts and the 
         // extruder stepper motor steps.
@@ -55,10 +56,10 @@ class FilamentSensorEMS22 {
         // Mode we are in. If *IDLE*, a measurement can be started by
         // the stepper-isr. Mode is *MEASURING* when a measurement is
         // currently in progress.
-        enum {
-            IDLE,
-            MEASURING
-        } frsMode;
+        // enum {
+            // IDLE,
+            // MEASURING
+        // } frsMode;
 
         // uint8_t measureTimer;
 
@@ -69,13 +70,12 @@ class FilamentSensorEMS22 {
 
         FilamentSensorEMS22();
 
-        void init();
-        void reset();
+        void start();
 
         // The polling method
         void run();
 
-        bool idle() { return frsMode == IDLE; }
+        // bool idle() { return frsMode == IDLE; }
 
         void enableFeedrateLimiter(bool flag) { feedrateLimiterEnabled = flag; }
         void setFilSensorConfig(ScaledUInt16 & fc, uint16_t minsteps) {
@@ -90,9 +90,9 @@ class FilamentSensorEMS22 {
         int32_t getSensorCount() { return sensorCountAbs; }
         bool isLimiting() { return limiting; }
         uint16_t getSlowDown() { return slowDown; }
-        int16_t getSlip32() { return slip32; }
+        int16_t getSlip128() { return slip128; }
 
-        void cmdGetFSReadings(uint8_t nr);
+        void cmdGetFSReadings();
 };
 
 #else // #if defined(BournsEMS22AFS)
@@ -101,12 +101,17 @@ class FilamentSensorEMS22 {
 class FilamentSensorEMS22 {
     public:
         FilamentSensorEMS22() { };
+        void start() {}
+        void run() {}
         void enableFeedrateLimiter(bool /* flag */) { }
+        void setFilSensorConfig(ScaledUInt16 &, uint16_t) { }
+        int32_t getSensorCount() { return 0; }
         bool isLimiting() { return false; }
         uint16_t getSlowDown() { return 0; }
+        int16_t getSlip128() { return 128; }
         void cmdGetFSReadings(uint8_t nr) {
             txBuffer.sendResponseStart(CmdGetFSReadings);
-            uint8_t n = min(10, nr);
+            uint8_t n = min((uint8_t)10, nr);
 
             for (uint8_t i=n; i>0; i--) {
                 txBuffer.sendResponseUInt32(0);

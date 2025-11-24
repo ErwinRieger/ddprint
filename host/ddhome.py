@@ -66,7 +66,7 @@ def homeMove(parser, dim, direction, dist, fakeHomingEndstops, feedRateFactor=1.
     if direction < 0 and printer.printerProfile.getHomeDir(dim) <= 0:
         return endstop
 
-    return not endstop
+    return printer.endStopReleased(dim, fakeHomingEndstops)
 
 def homeBounce(parser, dim, direction, fakeHomingEndstops):
 

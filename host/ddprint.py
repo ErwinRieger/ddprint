@@ -117,7 +117,7 @@ def main():
     ddargs.addNozzleArgument(sp)
     # sp.add_argument("mat", help="Name of generic material profile to use [pla, petg...].")
     ddargs.addMatArgument(sp)
-    sp.add_argument("flowrate", action="store", help="Start-flowrate in mm³/s.", type=float)
+    sp.add_argument("flowrate", action="store", help="Start-flowrate in mm³/s.", type=float, default=0.5)
     sp.add_argument("mingrip", action="store", help="Minimum feeder grip when to stop measurement [0.9...0.95].", type=float)
 
     sp = subparsers.add_parser("measureTempFlowrateCurve2", help="Determine temperature/flowrate properties of filament.")
@@ -126,6 +126,8 @@ def main():
     # sp.add_argument("mat", help="Name of generic material profile to use [pla, petg...].")
     # sp.add_argument("gfile", help="Measurement GCode file.")
     sp.add_argument("mingrip", action="store", help="Minimum feeder grip when to stop measurement [0.9...0.95].", type=float)
+    sp.add_argument("startfr", action="store", type=float, help="Gradual flowrate: flowrate factor startvalue (default=0.5).", default=0.5)
+    sp.add_argument("frincrease", action="store", type=float, help="Gradual flowrate: flowrate factor increase after each layer (default=0.05).", default=0.05)
 
     sp = subparsers.add_parser("mon", help="Monitor printer state.")
 
@@ -181,8 +183,6 @@ def main():
     sp = subparsers.add_parser("testFeederUniformity", help="Debug: check smoothness/roundness of feeder measurements.")
 
     sp = subparsers.add_parser("testFilSensor", help="Debug: move filament manually, output filament sensor measurement.")
-    # sp.add_argument("printer", help="Name of printer profile to use.")
-    ddargs.addPrinterArgument(sp)
     sp.add_argument("distance", action="store", help="Move-distance (+/-) in mm.", type=float)
 
     sp = subparsers.add_parser("top", help="Get 'process stats' from printer.")
@@ -397,6 +397,7 @@ def main():
         args.autotemp = False
 
         (printer, parser, planner) = initParser(args, mode=args.mode)
+        printer.setFlowrateAdjust(args.startfr, args.frincrease)
         measure.measureTempFlowrateCurve2(args, printer, parser, planner)
 
     elif args.mode == 'moverel':
@@ -585,11 +586,11 @@ def main():
     elif args.mode == 'testFilSensor':
 
         printer = Printer(args)
-        initPrinterProfile()
+        printer.initPrinterProfile()
         planner = Planner(args, printer, travelMovesOnly=True)
         parser = gcodeparser.UM2GcodeParser(planner, logger=printer.gui, travelMovesOnly=True)
 
-        measure.testFilSensor(args, printer, parser)
+        measure.testFilSensor(args, printer, parser, planner)
 
     elif args.mode == 'calibrateesteps':
 
@@ -617,11 +618,16 @@ def main():
     elif args.mode == "test":
 
         printer = Printer(args)
-        printer.commandInit()
+        printer.initPrinterProfile()
 
-        print("set baudrate to", printer.baudrates[2])
-        printer.setBaudRate(2)
-        time.sleep(10)
+        tm = 0
+        while True:
+            fsr = printer.getFSReadings()
+            for (dt, ds, dy) in fsr:
+
+                tm += dt
+                print(f"raw reading: {dt} {tm} {ds} {dy}")
+            time.sleep(0.5)
 
     else:
         print("Unknown/not implemented command: ", args.mode)

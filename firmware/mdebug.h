@@ -133,7 +133,11 @@ extern void *__brkval;
     #define TaskEnd(timings, looptask) 
 #endif
 
-
+#if defined(HEAVYDEBUG)
+    #define DEBUGSDTIMER() { massert(sd.timer >= 25); }
+#else
+    #define DEBUGSDTIMER()
+#endif
 
 
 

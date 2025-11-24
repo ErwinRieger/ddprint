@@ -759,7 +759,10 @@ def zRepeatability(parser):
 
 def manualMove(args, printer, parser, planner, axis, distance, feedrate=0, absolute=False):
 
-    ddhome.assureIsHomed(args, printer, parser, planner)
+    if axis != A_AXIS:
+        ddhome.assureIsHomed(args, printer, parser, planner)
+    else:
+        print("manualMove(): no homing for manual filament move.")
 
     if not feedrate:
         feedrate = printer.printerProfile.getMaxFeedrateI(axis)
@@ -836,6 +839,9 @@ def printFile(args, printer, parser, planner, logObj, gfile, t0, t0_wait, t1, do
     eopBedTemp = 0
     if printer.printerProfile.getBedSurface() == "glass":
         eopBedTemp = planner.matProfile.getKeepBedtemp()
+        print("*** Warning: ***")
+        print("Keeping bed heater running after printing at temp %d °C to avoid glass-chipping..." % eopBedTemp)
+        print("****************")
 
     while True:
 
@@ -928,7 +934,7 @@ def printFile(args, printer, parser, planner, logObj, gfile, t0, t0_wait, t1, do
 
     if eopBedTemp:
         print("*** Warning: ***")
-        print("Keeping bed heater running at temp %d °C to avoid glass-chipping..." % eopBedTemp)
+        print("Keeping bed heater running after printing at temp %d °C to avoid glass-chipping..." % eopBedTemp)
         print("****************")
 
     print("Debug: printFile(): don't home") # ddhome.home(args, printer, parser, planner)

@@ -31,7 +31,7 @@ from ddprintcommands import CommandNames, DirBitsBit, DirBitsBitRaw, MoveStartBi
 # from ddprintcommands import MeasureStartBit, MeasureStartBitRaw, EndMoveBit, EndMoveBitRaw
 from ddprintcommands import EndMoveBit, EndMoveBitRaw
 from ddprintcommands import TimerByteFlagBit, MoveStartBitRaw
-from ddprofile import PrinterProfile
+# from ddprofile import PrinterProfile
 
 from ddconfig import *
 
@@ -245,7 +245,6 @@ class RawStepData:
         if timerValue < 25:
             print("timervalue:", timerValue, pulse)
 
-        assert(timerValue >= 25) # xxx hardcoded 100khz avr
         self.pulses.append((timerValue, pulse))
 
     def empty(self):
@@ -327,7 +326,7 @@ class RawStepData:
             payLoad += struct.pack("<HB", lastTimer, self.stepBits(stepBits))
 
             for (tv, stepBits) in self.pulses[1:]:
-                dtv = lastTimer - tv
+                dtv = tv - lastTimer 
                 payLoad += struct.pack("<bB", dtv, self.stepBits(stepBits))
                 lastTimer = tv
 
@@ -769,11 +768,11 @@ class TravelMove(RealMove):
                  feedrate, # mm/s
                  layerPart,
                  pos,
-                 printerProfile,
+                 printer # printerProfile,
                  ):
 
         # assert(layerPart != "infill")
-        RealMove.__init__(self, comment, layerPart, pos, printerProfile)
+        RealMove.__init__(self, comment, layerPart, pos, printer.printerProfile)
 
         #
         # Move distance in XYZAB space
@@ -840,11 +839,11 @@ class PrintMove(RealMove):
                  layerPart,
                  maxAccelV,
                  pos,
-                 printerProfile
+                 printer
                  ):
 
         # assert(layerPart != "infill")
-        RealMove.__init__(self, comment, layerPart, pos, printerProfile)
+        RealMove.__init__(self, comment, layerPart, pos, printer.printerProfile)
 
         #
         # Move distance in XYZ plane
@@ -867,6 +866,7 @@ class PrintMove(RealMove):
         self.eDirection = self.eDistance / self.distance3
 
         # Compute nominal eSpeed
+        feedrate *= printer.flowrateAdjust
         v = VelocityVector32(feedrate*self.eDirection, feedrate = feedrate, direction = self.direction3)
 
         self.startSpeed = VelocityOverride(v)

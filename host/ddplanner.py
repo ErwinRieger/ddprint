@@ -574,6 +574,8 @@ class Planner (object):
         if not self.printMode == PrintModePrinting:
             return
 
+        self.printer.layerChange(layer)
+
         self.advance.layerChange(layer)
 
         if layer == 0:

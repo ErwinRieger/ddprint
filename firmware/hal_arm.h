@@ -51,8 +51,6 @@ extern "C" {
 #define SERIAL_TX_COMPLETE() ( USART1->regs->SR & USART_SR_TC )
 #define SERIAL_TX_DR_PUTC(c) ( USART1->regs->DR = c )
 
-constexpr uint32_t halBaudrate(const uint32_t br) { return br; }
-
 // #define SET_INPUT(pin) pinMode(pin, INPUT_FLOATING)
 // #define SET_INPUT_PD(pin) pinMode(pin, INPUT_PULLDOWN)
 #define HAL_SET_INPUT_PU(pin) myPinMode(pin, INPUT_PULLUP)

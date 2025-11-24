@@ -199,7 +199,7 @@ if __name__ == "__main__":
         plt.plot(p1, p2, label=specificProfile)
         plt.plot(marker[0], marker[1], 'x', markeredgecolor="grey")
         if fill:
-            plt.fill_between(fill[0], fill[1], fill[2], color='grey', alpha='0.2')
+            plt.fill_between(fill[0], fill[1], fill[2], color='grey', alpha=0.2)
 
     ###############################
     # To create graphs for documentation:
@@ -211,6 +211,11 @@ if __name__ == "__main__":
         sleWp = util.SLE(x1=0, y1=slePrint.c + (sleAir.c-slePrint.c)*workingPoint, m=sleAir.m)
         docFrLookup(9, sleWp, "Twp", baseTemp, maxTemp)
     ###############################
+
+    # Plot workingPoint=0.5 graph if only one material profile is given
+    if hasPrintingValues and len(args.smat) == 1:
+        sleWp = util.SLE(x1=0, y1=slePrint.c + (sleAir.c-slePrint.c)*0.5, m=sleAir.m)
+        plt.plot([baseTemp, maxTemp], [sleWp.y(baseTemp), sleWp.y(maxTemp)], label="Workingpoint = 0.5")
 
     plt.legend(loc="upper left")
 

@@ -333,6 +333,8 @@ void setup() {
         kill();
     }
 
+    filamentSensor.start();
+
     TaskStart(taskTiming, TaskIdle);
 }
 
@@ -757,7 +759,7 @@ HandleCmdG1:
                     // if ((dbgcount++ & 0xf) == 0) {
                         // printer.sendGenericInt32(timerScale);
                     // }
-                    massert(timerScale >= 512);
+                    massert(timerScale >= 256);
                 }
                 // #endif
                 //////////////////////////////////////////////////////
@@ -827,6 +829,8 @@ HandleCmdG1:
                     else
                         sd.timer = FromBuf(uint16_t, sDReader.readData);
 
+                    DEBUGSDTIMER();
+
                     computeStepBits();
 
                     // PT_WAIT_WHILE(stepBuffer.enough());
@@ -848,6 +852,8 @@ HandleCmdG1:
                                 (uint16_t)0xffff );
                         else
                             sd.timer = FromBuf(uint16_t, sDReader.readData);
+
+                        DEBUGSDTIMER();
 
                         computeStepBits();
 
@@ -874,6 +880,8 @@ HandleCmdG1:
                     else
                         sd.timer = *sDReader.readData;
 
+                        DEBUGSDTIMER();
+
                     computeStepBits();
 
                     // PT_WAIT_WHILE(stepBuffer.enough());
@@ -895,6 +903,8 @@ HandleCmdG1:
                                 (uint16_t)0xffff );
                         else
                             sd.timer = *sDReader.readData;
+
+                        DEBUGSDTIMER();
 
                         computeStepBits();
 
@@ -921,6 +931,8 @@ HandleCmdG1:
                         sd.dirBits |=  0x40;
 
                     sd.timer = tLin;
+
+                    DEBUGSDTIMER();
 
                     computeStepBits();
 
@@ -964,6 +976,8 @@ HandleCmdG1:
                     else
                         sd.timer = *sDReader.readData;
 
+                    DEBUGSDTIMER();
+
                     computeStepBits();
 
                     // PT_WAIT_WHILE(stepBuffer.enough());
@@ -985,6 +999,8 @@ HandleCmdG1:
                                 (uint16_t)0xffff );
                         else
                             sd.timer = *sDReader.readData;
+
+                        DEBUGSDTIMER();
 
                         computeStepBits();
 
@@ -1011,6 +1027,8 @@ HandleCmdG1:
                     else
                         sd.timer = FromBuf(uint16_t, sDReader.readData);
 
+                    DEBUGSDTIMER();
+
                     computeStepBits();
 
                     // PT_WAIT_WHILE(stepBuffer.enough());
@@ -1032,6 +1050,8 @@ HandleCmdG1:
                                 (uint16_t)0xffff );
                         else
                             sd.timer = FromBuf(uint16_t, sDReader.readData);
+
+                        DEBUGSDTIMER();
 
                         computeStepBits();
 
@@ -1168,7 +1188,7 @@ HandleCmdG1:
                     // if ((dbgcount++ & 0xf) == 0) {
                         // printer.sendGenericInt32(timerScale);
                     // }
-                    massert(timerScale >= 512);
+                    massert(timerScale >= 256);
                 }
                 // #endif
                 //////////////////////////////////////////////////////
@@ -1184,6 +1204,8 @@ HandleCmdG1:
                         (uint16_t)0xffff);
                 else 
                     sd.timer = lastTimer;
+
+                DEBUGSDTIMER();
 
                 sDReader.setBytesToRead1();
                 PT_WAIT_THREAD(sDReader);
@@ -1205,14 +1227,16 @@ HandleCmdG1:
 
                         sDReader.setBytesToRead1();
                         PT_WAIT_THREAD(sDReader);
-                        lastTimer += FromBuf(int8_t, sDReader.readData);
+                        lastTimer += (uint16_t)FromBuf(int8_t, sDReader.readData);
 
-                        if (limiting) 
+                        if (limiting)
                             sd.timer = STD min ( 
                                 (uint16_t)( ((uint32_t)lastTimer * timerScale) >> 10 ),
                                 (uint16_t)0xffff);
-                        else 
+                        else
                             sd.timer = lastTimer;
+
+                        DEBUGSDTIMER();
 
                         sDReader.setBytesToRead1();
                         PT_WAIT_THREAD(sDReader);
@@ -1240,6 +1264,8 @@ HandleCmdG1:
                                 (uint16_t)0xffff);
                         else 
                             sd.timer = FromBuf(uint16_t, sDReader.readData);
+
+                        DEBUGSDTIMER();
 
                         sDReader.setBytesToRead1();
                         PT_WAIT_THREAD(sDReader);
@@ -1635,7 +1661,7 @@ void Printer::cmdMove(MoveType mt) {
     bufferLow = 0;
 
 #if defined(HASFILAMENTSENSOR) || defined(RUNFILAMENTSENSOR)
-    filamentSensor.init();
+    filamentSensor.start();
 #endif
 
     if (mt == MoveTypeHoming) {
@@ -1996,7 +2022,7 @@ void Printer::cmdGetStatus() {
 
     // Flowrate sensor
 #if defined(HASFILAMENTSENSOR) || defined(RUNFILAMENTSENSOR)
-    txBuffer.sendResponseInt16(filamentSensor.getSlip32());
+    txBuffer.sendResponseInt16(filamentSensor.getSlip128());
     if (filamentSensor.isLimiting())
         txBuffer.sendResponseUInt16(filamentSensor.getSlowDown());
     else
@@ -2725,7 +2751,7 @@ class UsbCommand : public Protothread {
                         break;
 
                     case CmdGetFSReadings: {
-                        filamentSensor.cmdGetFSReadings(10);
+                        filamentSensor.cmdGetFSReadings();
                         }
                         break;
 

@@ -24,6 +24,7 @@
 #
 
 import time, math, pprint, sys
+import numpy.polynomial.polynomial as poly
 
 import ddhome, movingavg, ddprintutil as util
 import intmath
@@ -33,6 +34,8 @@ from ddprintcommands import *
 from ddprintstates import *
 from ddprintconstants import A_AXIS, maxTimerValue16, dimBitsIndex, fTimer
 
+nmodel = 2
+
 # Write data for gnuplot
 def writeData(f, measurements):
 
@@ -40,17 +43,22 @@ def writeData(f, measurements):
         f.write("%f %f\n" % (t, s))
     f.write("E\n")
 
-def testFilSensor(args, printer, parser):
+def testFilSensor(args, printer, parser, planner):
 
     feedrate = args.feedrate or 1.0
 
     printer.commandInit()
+
+    # Disable flowrate limit
+    printer.sendCommandParamV(CmdEnableFRLimit, [packedvalue.uint8_t(0)])
+
     startPos = printer.getFilSensor()
-    util.manualMove(parser, util.dimIndex['A'], args.distance, feedrate=feedrate)
+    util.manualMove(args, printer, parser, planner, util.dimIndex['A'], args.distance, feedrate=feedrate)
     endPos = printer.getFilSensor()
     diff = endPos - startPos
 
     steps_per_mm = printer.printerProfile.getStepsPerMMI(A_AXIS)
+    pcal = printer.printerProfile.getFilSensorCalibration()
 
     print("steps_per_mm  E:", steps_per_mm)
 
@@ -59,6 +67,9 @@ def testFilSensor(args, printer, parser):
     print("Commanded steps: ", (steps_per_mm * args.distance))
     print("Filament pos in counts old:", startPos, ", new:", endPos, "difference: %d counts" % diff)
     print("Calibration value from profile: %f, measured ratio: %f" % (pcal, cal))
+
+    # Re-enable flowrate limit
+    printer.sendCommandParamV(CmdEnableFRLimit, [packedvalue.uint8_t(1)])
 
 #
 # Measure/calibrate feeder e-steps value
@@ -371,7 +382,7 @@ def testFeederUniformity(args, parser):
 
         # print "dt:", ts, lastTs, dt, v
 
-        assert(abs(dt) < 150)
+        assert(abs(dt) < 300)
 
         measurements.append((ts, v))
 
@@ -446,11 +457,18 @@ def feedrateRampUp(printer, startSpeed, endSpeed):
 
     while startSpeed < endSpeed:
 
-        print(f"feedrateRampUp(): set speed: {startSpeed}")
+        # print(f"feedrateRampUp(): set speed: {startSpeed}")
 
+        tv = util.eTimerValue(printer, startSpeed)
+        if tv < 25: # debug
+            print("xxx fix tv in feedrateRampUp()", tv)
+            tv = 25;
+        elif tv > 0xffff:
+            print("xxx fix tv in feedrateRampUp()", tv)
+            tv = 0xffff;
         printer.sendCommandParamV(CmdContinuous,
             [ packedvalue.uint8_t(dimBitsIndex["A"]),
-              packedvalue.uint16_t(util.eTimerValue(printer, startSpeed))])
+              packedvalue.uint16_t(tv)])
 
         startSpeed += 0.25
         time.sleep(0.1)
@@ -461,7 +479,7 @@ def feedrateRampDown(printer, startSpeed, endSpeed):
 
     while startSpeed > endSpeed:
 
-        print(f"feedrateRampDown(): set speed: {startSpeed}")
+        # print(f"feedrateRampDown(): set speed: {startSpeed}")
 
         printer.sendCommandParamV(CmdContinuous,
             [ packedvalue.uint8_t(dimBitsIndex["A"]),
@@ -496,6 +514,8 @@ def measureTempFlowrateCurve(args, printer, parser, planner):
 
     util.workingPos(args, printer, parser, planner) #dft
 
+    dt = printer.printerProfile.getFilSensorIntervalI()
+    pcal = printer.printerProfile.getFilSensorCalibration()
     aFilament = planner.matProfile.getMatArea()
 
     # Disable temp-flowrate limit
@@ -503,17 +523,12 @@ def measureTempFlowrateCurve(args, printer, parser, planner):
 
     printer.sendCommandParamV(CmdFanSpeed, [packedvalue.uint8_t(100)])
 
-    # start with 1mm³/s
+    # start with 1mm³/s, [mm/s]
     # XXX speed too high for small nozzles!?
-    startFeedrate = (args.flowrate or 1.0) / aFilament
+    startFeedrate = (args.flowrate or 1.0) / aFilament 
+    maxFeedrate = 31 # xxx hardcoded
 
-    dt = printer.printerProfile.getFilSensorIntervalI()
-    pcal = printer.printerProfile.getFilSensorCalibration()
-
-    ####################################################################################################
-    # * set initial temp wait for min temp
-    # * start measurement loop
-    ####################################################################################################
+    frincrease = (maxFeedrate - startFeedrate) / (150 / dt) # ramp up in 150s
 
     # Running average of hotend temperature
     tempAvg = movingavg.MovingAvg(10)
@@ -531,7 +546,8 @@ def measureTempFlowrateCurve(args, printer, parser, planner):
 
     print("eStepsPerRound:", e_steps_per_mm, circum, eStepsPerRound)
 
-    flowAvg = movingavg.MovingAvgReadings(10)
+    targetAvg = movingavg.MovingAvg(10)
+    # flowAvg = movingavg.MovingAvgReadings(10)
 
     data = []
 
@@ -563,60 +579,71 @@ def measureTempFlowrateCurve(args, printer, parser, planner):
       tStart = time.time()
       startup = 5.0       # initial time for averages to settle
 
-      # Fix pwm value, enter *pwmMode*
-      # status = printer.getStatus()
-      # pwm = status.pwmOutput
-
       print("Fixed PWM:", pwm)
 
       printer.setTempPWM(HeaterEx1, pwm)
 
       tempAvg.preload(t1)
-      flowAvg.preload(1.0);
+      targetAvg.preload(feedrate)
+      # flowAvg.preload(1.0)
 
+      logfile = open(f"/tmp/measure1_{t1}.data", "w")
+      logfile2 = open(f"/tmp/measure1_{t1}.raw.data", "w")
+
+      times = []
+      slides = []
+
+      tm = 0
+      slide = 0
+      slideFit = 0
       while True:
 
         status = printer.getStatus()
         tempAvg.add(status.t1)
 
         fsreadings = printer.getFSReadings()
-        flowAvg.addReadings(fsreadings, pcal)
+
+        for (tmeasure, ds, dy) in fsreadings:
+
+            tm += tmeasure
+
+            slide = 1 - (dy / (ds * pcal))
+
+            times.append(tm)
+            slides.append(slide)
+
+            if len(times) > 1:
+                model = poly.Polynomial(poly.polyfit(times, slides, nmodel))
+                slideFit = model(tm)
+
+                # print(f"raw readings: {tmeasure} {tm} {ds} {dy} {slide} {slideFit}")
+                logfile2.write(f"{tm} {ds} {dy} {slide} {slideFit}\n")
+
+        # flowAvg.addReadings(fsreadings, pcal)
 
         t1Avg = tempAvg.mean()
-        r = flowAvg.mean()
+        # r = flowAvg.mean()
 
         targetFlowRate = feedrate * aFilament
+        targetAvg.add(targetFlowRate)
 
-        currentFlowrate = targetFlowRate * r
+        target = targetAvg.mean()
+        currentFlowrate = target * (1-slideFit)
 
-        print("\rTemp: %.2f, fixed PWM: %d, target flowrate: %.2f mm³/s, actual flowrate: %.2f mm³/s, grip: %.2f" % \
-                (t1Avg, pwm, targetFlowRate, currentFlowrate, r), end='')
+        print("\rTemp: %.2f, PWM: %d, target flowrate: %.2f mm³/s, actual flowrate: %.2f mm³/s, slide: %.23f, fit: %.23f" % \
+                (t1Avg, pwm, target, currentFlowrate, slide, slideFit), end='')
         sys.stdout.flush()
 
-        # debug
-        if r > 2:
-
-            print("mean, pcal", pcal)
-
-            print("fsreadings:", fsreadings)
-
-            print("index:", flowAvg.index)
-            print("navg:", flowAvg.navg)
-            print("nValues:", flowAvg.nValues)
-            print("array:", flowAvg.array)
-            assert(0)
+        logfile.write(f"{time.time()-tStart} {target} {currentFlowrate} {slide} {slideFit}\n")
 
         if startup > 0:
             time.sleep(dt)
             startup -= dt
             continue
 
-        if r >= args.mingrip:
+        if slideFit < (1-args.mingrip):
 
-            # Increase feedrate by max 1% and min 0.01% mm per second
-            frincrease = feedrate * max(0.01 * (max(r, args.mingrip) - args.mingrip), 0.0001)
             feedrate += frincrease
-            # print "\nincreased feedrate by %.3f to %.3f" % (frincrease, feedrate)
         
             # Set new feedrate:
             printer.sendCommandParamV(CmdSetContTimer, [packedvalue.uint16_t(util.eTimerValue(printer, feedrate))])
@@ -628,12 +655,12 @@ def measureTempFlowrateCurve(args, printer, parser, planner):
             #
             # Flowrate got to high for this PWM/temperature values, do next step or exit measurement.
             #
-            print("\nEnd step, average flowrate: %.2f mm³/s at pwm: %d, temp: %.1f °C, ratio: %.2f, break" % \
-                    (lastGoodFlowrate, pwm, t1Avg, r))
+            print("\nEnd step, average flowrate: %.2f mm³/s at pwm: %d, temp: %.1f °C, slide: %.2f, fit: %.2f, break" % \
+                    (lastGoodFlowrate, pwm, t1Avg, slide, slideFit))
             data.append( (lastGoodFlowrate, pwm, t1Avg) )
 
             # Slow down extruder while heating to upper temp to save filament
-            print(f"\nSlow down extruder motor from {feedrate} mm/s to {startFeedrate} mm/s")
+            print(f"\nSlow down extruder motor from {feedrate} mm/s to {startFeedrate/2} mm/s")
             feedrateRampDown(printer, feedrate, startFeedrate/2)
             currentFeedrate = startFeedrate/2
 
@@ -647,11 +674,6 @@ def measureTempFlowrateCurve(args, printer, parser, planner):
 
     printer.coolDown(HeaterEx1) #dft
 
-    # Slow down E move
-    # while feedrate > 1:
-        # feedrate -= 0.1
-        # printer.sendCommandParamV(CmdSetContTimer, [packedvalue.uint16_t(util.eTimerValue(printer, feedrate))])
-        # time.sleep(0.1)
     print(f"\nSlow down extruder motor from {currentFeedrate} mm/s to {minFeedrate} mm/s")
     feedrateRampDown(printer, currentFeedrate, minFeedrate)
 
@@ -698,6 +720,7 @@ def measureTempFlowrateCurve(args, printer, parser, planner):
     printer.sendCommand(CmdDisableSteppers)
     printer.coolDown(HeaterEx1, wait=100, log=True)
     printer.sendCommandParamV(CmdFanSpeed, [packedvalue.uint8_t(0)])
+
 
 ####################################################################################################
 
@@ -783,12 +806,29 @@ def xstartPrint(args, printer, parser, planner, t1):
                         print("\nStarting print...\n")
 
                         # Send print start command
+                        print("Stopping bed heater")
+                        printer.coolDown(HeaterBed, log=True)
                         printer.startPrint()
                         break
 
                 checkTime = time.time() + 1.5
 
 ####################################################################################################
+#
+# * auflösung grip/filsensor, skalierung momentan 32 -> 128, done
+
+# * rampup/slope linear, steuerung über slowdown parameter, wird in firmware mit timer-value 
+#   multipliziert und durch 1024 geteilt, 1024 -> 1, 2028 -> 2 mal langsamer, 512 -> 2 mal schneller
+#   -> done
+
+# * target flowrate nicht mehr vom drucker, sondern theoretischer wert, durchschnitt muss bei
+#   jedem layer zurückgesetzt werden um negative spitze im grip zu verhindern.
+# --> geht nicht, da gcode mit beschleunigung/abbremsen gedruckt wird, wir müssen also
+#     tatsächliches e-move vom drucker abfragen.
+
+# * abbruchkriterium erweitern um slope/steigung?
+#
+#        logfile.write(f"{time.time()} {targetFlowRate} {currentFlowrate} {r}\n")
 def measureTempFlowrateCurve2(args, printer, parser, planner):
 
     print("")
@@ -813,8 +853,6 @@ def measureTempFlowrateCurve2(args, printer, parser, planner):
     m1Data = util.jsonLoad(f)[ nozzleProp ]
     print("Data read from measure1: ", fn, m1Data)
    
-    # fixedPwm = int(m1Data['P0pwm'])
-
     t1 = planner.matProfile.getHotendGoodTemp()
 
     ####################################################################################################
@@ -823,7 +861,7 @@ def measureTempFlowrateCurve2(args, printer, parser, planner):
 
     e_steps_per_mm = printer.printerProfile.getStepsPerMMI(A_AXIS)
 
-    nAvg = 10
+    nAvg = 15
 
     # Running average of hotend temperature and pwm
     tempAvg = movingavg.MovingAvg(nAvg, t1)
@@ -835,6 +873,7 @@ def measureTempFlowrateCurve2(args, printer, parser, planner):
     circum = printer.printerProfile.getFeederWheelCircumI()
     eStepsPerRound = circum * e_steps_per_mm;
     pcal = printer.printerProfile.getFilSensorCalibration()
+    dt = printer.printerProfile.getFilSensorIntervalI()
 
     print(f"pcal: {pcal}")
 
@@ -850,20 +889,21 @@ def measureTempFlowrateCurve2(args, printer, parser, planner):
     ####################################################################################################
 
     # slow down firmware
-    A = 2000000
-    y0 = 2.5 * 1024.0
-    y1 = 1024.0
+    # A = 2000000
+    # y0 = 2.5 * 1024.0
+    # y1 = 1024.0
 
-    x0 = A / y0
-    x1 = A / y1
+    # x0 = A / y0
+    # x1 = A / y1
 
-    x_range = x1 - x0
-    x_step = x_range / 20
+    # x_range = x1 - x0
+    # x_step = x_range / 20
 
-    x = x0
-    y = A / x
-    print("x, y:", x, y)
-    printer.sendCommandParamV(CmdSetSlowDown, [packedvalue.uint32_t(int(y))])
+    # x = x0
+    # y = A / x
+    # print("x, y:", x, y)
+    slowdown = 2.5
+    ####printer.sendCommandParamV(CmdSetSlowDown, [packedvalue.uint32_t(int(slowdown*1024))])
 
     ####################################################################################################
     #
@@ -902,11 +942,11 @@ def measureTempFlowrateCurve2(args, printer, parser, planner):
     #
     # Wait till print reaches some (hardcoded) height to reduce heating effect of bed.
     #
-    print("\nWaiting for layerheight 2mm ...")
+    print("\nXXX Waiting for layerheight 2mm ...")
     # XXX add timeout here, deadlock 
     # """
-    while curPosMM.Z < 2: #dft
-        print("waiting for layerheight 2mm , Z pos:", curPosMM.Z)
+    while curPosMM.Z < 0.25: # 1: # 2: #dft
+        print("xxx waiting for layerheight 0.25mm , Z pos:", curPosMM.Z)
         status = printer.getStatus()
         printer.ppStatus(status)
         pwmAvg.add(status.pwmOutput)
@@ -930,20 +970,46 @@ def measureTempFlowrateCurve2(args, printer, parser, planner):
 
     testOk = False
 
+    logfile = open(f"/tmp/measure2.data", "w")
+    logfile2 = open(f"/tmp/measure2.raw.data", "w")
+
     #
     # Increase speed while monitoring feeder slippage
     #
+    gAvg = 1.0
+
     while True:
 
         status = printer.getStatus()
-        tempAvg.add(status.t1)
+        # tempAvg.add(status.t1)
 
         fsreadings = printer.getFSReadings()
+
+        if not fsreadings:
+            print("Warning, No fsreadings")
+            time.sleep(dt)
+            continue
+
+        dsteps = 0
+        dsens = 0
+        for (ds, dy) in fsreadings:
+            print(f"raw readings: {ds} {dy}")
+            dsteps += ds
+            dsens += dy
+        if dsteps:
+            r = dsens / (dsteps * pcal)
+            logfile2.write(f"{time.time()} {dsteps} {dsens} {r}\n")
+        else:
+            assert(0)
+
         gripAvg.addReadings(fsreadings, pcal)
 
-        t1Avg = tempAvg.mean()
-        gAvg = gripAvg.mean()
+        if tempAvg.valid():
+            gAvg = gripAvg.mean()
+        else:
+            print("staring period, nvalues: ", tempAvg.nValues)
 
+        tempAvg.add(status.t1)
         t1Avg = tempAvg.mean()
 
         # Current target flowrate
@@ -965,8 +1031,8 @@ def measureTempFlowrateCurve2(args, printer, parser, planner):
         lastEPos = ePos
         lastTime = tim
 
-        print("\rTemp: %.2f, fixed PWM: %.2f, slowdown: %5d, target flowrate: %.2f, flowrate: %.2f mm³/s, grip: %.2f" % \
-                (t1Avg, fixedPwm, y, flowrateAvg, frAvg, gAvg), end='')
+        print("\rTemp: %.2f, fixed PWM: %.2f, slowdown: %.2f, target flowrate: %.2f, flowrate: %.2f mm³/s, grip: %.2f" % \
+                (t1Avg, fixedPwm, slowdown, flowrateAvg, frAvg, gAvg), end='')
 
         if tempAvg.valid():
 
@@ -982,20 +1048,24 @@ def measureTempFlowrateCurve2(args, printer, parser, planner):
             pos = util.getVirtualPos(printer, parser)
             if pos.Z > curPosMM.Z:
 
-                # layer change, speed up print
-                x = x+x_step
-                y = int(A / x)
+                logfile.write(f"{tim} {flowrateAvg} {frAvg} {gAvg}\n")
 
-                if y < (1024/2): # cap at two times speedup 
-                    # Test did not converge even with two times speedup, flowrate in gcode to low
-                    print("\nError: test did not converge, even with %.2f times spedup!" % (1024/y))
-                    print("Increase flowrate in sliced model to fix this.")
-                    break
+                # layer change, speed up print by 10%
+                ####slowdown -= 0.1
+                # x = x+x_step
+                # y = int(A / x)
 
-                printer.sendCommandParamV(CmdSetSlowDown, [packedvalue.uint32_t(y)])
+                # if slowdown <= 0.25: # cap at 4 times speedup 
+                    # # Test did not converge even with two times speedup, flowrate in gcode to low
+                    # # print("\nError: test did not converge, with %.2f times spedup" % (1/slowdown))
+                    # print("Increase flowrate in sliced model to fix this.")
+                    # break
+
+                # printer.sendCommandParamV(CmdSetSlowDown, [packedvalue.uint32_t(y)])
+                ####printer.sendCommandParamV(CmdSetSlowDown, [packedvalue.uint32_t(int(slowdown*1024))])
                 curPosMM = pos
 
-        time.sleep(1)
+        time.sleep(dt)
 
     ####################################################################################################
 

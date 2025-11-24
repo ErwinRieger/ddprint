@@ -40,7 +40,7 @@ CPPFLAGS       =  -mthumb -DSTM32_HIGH_DENSITY -DSTM32F4 -DBOARD_generic_f407v
 CPPFLAGS      +=  -DMOTHERBOARD=3 -Ifw -Isrc -Ipins -I$(PWD) -I$(PWD)/firmware -DCRYSTAL_FREQ=8
 
 ifeq ($(DEBUG), 1)
-	    CPPFLAGS += -O1 -DDEBUGVERSION=1
+	    CPPFLAGS += -O1 -DDEBUGVERSION=1 -DUSBDEBUG=1 -DDEBUGUSB=1
 		ACLIFLAGS = --optimize-for-debug
 else
 	    CPPFLAGS += -O2

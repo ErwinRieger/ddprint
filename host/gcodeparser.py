@@ -510,7 +510,7 @@ class UM2GcodeParser:
             feedrate=min(self.planner.printer.printerProfile.getRetractFeedrate(), self.planner.printer.printerProfile.getMaxFeedrateI(3)),
             layerPart=self.layerPart,
             pos = self.getPos(),
-            printerProfile = self.planner.printer.printerProfile,
+            printer = self.planner.printer,
             ))
 
         self.setPos(current_position)
@@ -532,7 +532,7 @@ class UM2GcodeParser:
             feedrate=min(self.planner.printer.printerProfile.getRetractFeedrate(), self.planner.printer.printerProfile.getMaxFeedrateI(3)),
             layerPart=self.layerPart,
             pos = self.getPos(),
-            printerProfile = self.planner.printer.printerProfile,
+            printer = self.planner.printer,
             ))
 
         self.setPos(current_position)
@@ -634,7 +634,7 @@ class UM2GcodeParser:
                 layerPart=self.layerPart,
                 maxAccelV = self.planner.advance.maxAxisAcceleration(self.layerPart != "infill"),
                 pos = curRealPos,
-                printerProfile = self.planner.printer.printerProfile,
+                printer = self.planner.printer,
                 ))
         else:
             self.planner.addMove(TravelMove(
@@ -644,7 +644,7 @@ class UM2GcodeParser:
                 feedrate=feedrate, # mm/s
                 layerPart=self.layerPart,
                 pos = curRealPos,
-                printerProfile = self.planner.printer.printerProfile,
+                printer = self.planner.printer,
                 ))
             
         # print "newRealPos: ", newRealPos

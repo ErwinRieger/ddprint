@@ -108,7 +108,8 @@ FWINLINE void st_set_direction(uint8_t dirbits) {
         deactivate_dir_pin<MOVE>();
 }
 
-#define EndstopDebounce(spmm) max(spmm/32, 2)
+#define EndstopPressDebounce(spmm) max(spmm/32, 2)
+#define EndstopReleaseDebounce(spmm) max(spmm/2, 2)
 
 template<typename MOVE>
 bool st_endstop_pressed();
@@ -116,10 +117,10 @@ bool st_endstop_pressed();
 template<>
 FWINLINE bool st_endstop_pressed<XAxisSelector>() {
 
-    static uint8_t nPresses = 0;
+    static uint16_t nPresses = 0;
 
     if (X_STOP_PIN :: active()) {
-        if (++nPresses >= EndstopDebounce(printer.getStepsPerMMX())) {
+        if (++nPresses >= EndstopPressDebounce(printer.getStepsPerMMX())) {
             nPresses = 0;
             return true;
         }
@@ -133,10 +134,10 @@ FWINLINE bool st_endstop_pressed<XAxisSelector>() {
 template<>
 FWINLINE bool st_endstop_pressed<YAxisSelector>() {
 
-    static uint8_t nPresses = 0;
+    static uint16_t nPresses = 0;
 
     if (Y_STOP_PIN :: active()) {
-        if (++nPresses >= EndstopDebounce(printer.getStepsPerMMY())) {
+        if (++nPresses >= EndstopPressDebounce(printer.getStepsPerMMY())) {
             nPresses = 0;
             return true;
         }
@@ -150,10 +151,10 @@ FWINLINE bool st_endstop_pressed<YAxisSelector>() {
 template<>
 FWINLINE bool st_endstop_pressed<ZAxisSelector>() {
 
-    static uint8_t nPresses = 0;
+    static uint16_t nPresses = 0;
 
     if (Z_STOP_PIN :: active()) {
-        if (++nPresses >= EndstopDebounce(printer.getStepsPerMMZ())) {
+        if (++nPresses >= EndstopPressDebounce(printer.getStepsPerMMZ())) {
             nPresses = 0;
             return true;
         }
@@ -168,10 +169,10 @@ FWINLINE bool st_endstop_pressed<ZAxisSelector>() {
 template<>
 FWINLINE bool st_endstop_pressed<Z1AxisSelector>() {
 
-    static uint8_t nPresses = 0;
+    static uint16_t nPresses = 0;
 
     if (Z1_STOP_PIN :: active()) {
-        if (++nPresses >= EndstopDebounce(printer.getStepsPerMMZ())) {
+        if (++nPresses >= EndstopPressDebounce(printer.getStepsPerMMZ())) {
             nPresses = 0;
             return true;
         }
@@ -189,10 +190,10 @@ bool st_endstop_released();
 template<>
 FWINLINE bool st_endstop_released<XAxisSelector>() {
 
-    static uint8_t nRelease = 0;
+    static uint16_t nRelease = 0;
 
     if (X_STOP_PIN :: deActive()) {
-        if (++nRelease >= EndstopDebounce(printer.getStepsPerMMX())) {
+        if (++nRelease >= EndstopReleaseDebounce(printer.getStepsPerMMX())) {
             nRelease = 0;
             return true;
         }
@@ -206,10 +207,10 @@ FWINLINE bool st_endstop_released<XAxisSelector>() {
 template<>
 FWINLINE bool st_endstop_released<YAxisSelector>() {
 
-    static uint8_t nRelease = 0;
+    static uint16_t nRelease = 0;
 
     if (Y_STOP_PIN :: deActive()) {
-        if (++nRelease >= EndstopDebounce(printer.getStepsPerMMY())) {
+        if (++nRelease >= EndstopReleaseDebounce(printer.getStepsPerMMY())) {
             nRelease = 0;
             return true;
         }
@@ -223,10 +224,10 @@ FWINLINE bool st_endstop_released<YAxisSelector>() {
 template<>
 FWINLINE bool st_endstop_released<ZAxisSelector>() {
 
-    static uint8_t nRelease = 0;
+    static uint16_t nRelease = 0;
 
     if (Z_STOP_PIN :: deActive()) {
-        if (++nRelease >= EndstopDebounce(printer.getStepsPerMMZ())) {
+        if (++nRelease >= EndstopReleaseDebounce(printer.getStepsPerMMZ())) {
             nRelease = 0;
             return true;
         }
@@ -241,10 +242,10 @@ FWINLINE bool st_endstop_released<ZAxisSelector>() {
 template<>
 FWINLINE bool st_endstop_released<Z1AxisSelector>() {
 
-    static uint8_t nRelease = 0;
+    static uint16_t nRelease = 0;
 
     if (Z1_STOP_PIN :: deActive()) {
-        if (++nRelease >= EndstopDebounce(printer.getStepsPerMMZ())) {
+        if (++nRelease >= EndstopReleaseDebounce(printer.getStepsPerMMZ())) {
             nRelease = 0;
             return true;
         }
@@ -307,14 +308,17 @@ FWINLINE void st_step_motor_es(uint8_t stepBits, uint8_t dirbits) {
 
         bool towardsEndstop = (forward == homeDir);
 
-        if (towardsEndstop && st_endstop_pressed<MOVE>()) {
-            DISABLE_STEPPER1_DRIVER_INTERRUPT();
-            return;
+        if (towardsEndstop) {
+            if (st_endstop_pressed<MOVE>()) {
+                DISABLE_STEPPER1_DRIVER_INTERRUPT();
+                return;
+            }
         }
-
-        if (!towardsEndstop && st_endstop_released<MOVE>()) {
-            DISABLE_STEPPER1_DRIVER_INTERRUPT();
-            return;
+        else {
+            if (st_endstop_released<MOVE>()) {
+                DISABLE_STEPPER1_DRIVER_INTERRUPT();
+                return;
+            }
         }
 
         activate_step_pin<MOVE>();
@@ -478,7 +482,7 @@ class StepBuffer: public StepBufferBase {
         public:
 
             // Signals FRS measurement move
-            bool measureFlag;
+            // bool measureFlag;
 
             StepBuffer() {
 
@@ -499,7 +503,7 @@ class StepBuffer: public StepBufferBase {
                 else {
 
                   // Stop continuos move
-                  measureFlag = false;
+                  // measureFlag = false;
                   st_disableSteppers();
                   DISABLE_STEPPER1_DRIVER_INTERRUPT();
                 }
@@ -516,7 +520,7 @@ class StepBuffer: public StepBufferBase {
             void flush() {
                 ringBufferInit();
                 upcount = downcount = 0;
-                measureFlag = false;
+                // measureFlag = false;
             }
 
             void homingMode() {
@@ -547,7 +551,7 @@ class StepBuffer: public StepBufferBase {
                 // Start interrupt
                 ENABLE_STEPPER1_DRIVER_INTERRUPT();
 
-                measureFlag = true;
+                // measureFlag = true;
             }
 
             // Compute clocktics available in stepper
@@ -621,14 +625,14 @@ class StepBuffer: public StepBufferBase {
                     uint8_t stepbits = sd.stepBits;
 
                     #if defined(HASFILAMENTSENSOR)
-                    if (sd.dirBits & 0x40) {
-                        // Start FRS measurement if not running already
-                        if (filamentSensor.idle())
-                            measureFlag = true;
-                    }
-                    else {
-                        measureFlag = false;
-                    }
+                    // if (sd.dirBits & 0x40) {
+                        // // Start FRS measurement if not running already
+                        // // if (filamentSensor.idle())
+                            // measureFlag = true;
+                    // }
+                    // else {
+                        // measureFlag = false;
+                    // }
                     #endif
 
                     if (stepbits) {

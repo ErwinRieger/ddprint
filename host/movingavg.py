@@ -122,7 +122,7 @@ class MovingAvgReadings(MovingAvg):
 
     def addReadings(self, readings, fscal):
 
-        for (ds, dy) in readings:
+        for (_, ds, dy) in readings:
 
             ratio = dy / (ds * fscal)
             self.add(ratio)

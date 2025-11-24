@@ -131,18 +131,18 @@ def pidSwitch(kiOld, kiNew):
 
 def fsCalibration(fsc):
 
-    fsScale = 32 # Hardcoded in firmware
+    fsScale = 128 # 32 # Hardcoded in firmware
     FSPrecision = 8
 
-    fsc32 = fsc * fsScale
+    fsc128 = fsc * fsScale
 
-    shiftBits = int(FSPrecision - math.floor(math.log(fsc32, 2)))
+    shiftBits = int(FSPrecision - math.floor(math.log(fsc128, 2)))
 
     Scale = pow(2, shiftBits)
 
-    Scaled = int(fsc32 * Scale + 0.5)
+    Scaled = int(fsc128 * Scale + 0.5)
 
-    # print "fsc32: %.4f, shiftBits: %d, Scaled: %d" % (fsc32, shiftBits, Scaled)
+    print(f"value: {fsc}, fsc128: %.4f, shiftBits: %d, Scaled: %d" % (fsc128, shiftBits, Scaled))
 
     return packedvalue.scaledint16_t(Scaled, shiftBits)
 
@@ -169,7 +169,16 @@ def eTimer(eTimer):
 
 
 
+if __name__ == "__main__":
 
+    fsc = fsCalibration(0.25)
+    print(fsc)
+    fsc = fsCalibration(0.35)
+    print(fsc)
+    fsc = fsCalibration(1.35)
+    print(fsc)
+    fsc = fsCalibration(0.01)
+    print(fsc)
 
 
 

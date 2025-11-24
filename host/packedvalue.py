@@ -90,5 +90,8 @@ class scaledint16_t(PackedValue):
     def pack(self):
         return struct.pack("<HB", self.value, self.bits)
 
+    def __repr__(self):
+        return f"scaledint16_t: value: {self.value}, shift: {self.bits}"
+
 ####################################################################################################
 

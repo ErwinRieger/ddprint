@@ -78,7 +78,8 @@ static SCSI_SenseTypeDef sensKey;
 struct DebugCalls {
     int unitReadyCalls;
     int reqSenseCalls;
-    int stallErrors;
+    int urbErrors;
+    int urbStallErrors;
 };
 
 static struct DebugCalls debugCalls = { 0, 0, 0};
@@ -442,6 +443,10 @@ USBH_Status dd_USBH_MSC_HandleBOTXfer (USB_OTG_CORE_HANDLE *pdev ,USBH_HOST *pho
         /* Nack received from device, resend last packet */
         usbh_msc.BOTState = USBH_BOTSTATE_BOT_DATAOUT_STATE;
       }
+      else if (URB_Status == URB_ERROR)
+      {
+        massert(0); 
+      }
       else if (URB_Status == URB_STALL)
       {
         massert(0);
@@ -507,13 +512,23 @@ USBH_Status dd_USBH_MSC_HandleBOTXfer (USB_OTG_CORE_HANDLE *pdev ,USBH_HOST *pho
       }     
       else if(URB_Status == URB_ERROR) // error or stall
       {
-          massert(0);
+          // If the host receives a CSW which is not valid, then the host shall perform a
+          // Reset Recovery. If the host receives
+          // a CSW which is not meaningful, then the host may perform a Reset Recovery.
+
+          // usbh_msc.BOTState  = USBH_BOTSTATE_BOT_ERROR_OUT;
           usbh_msc.BOTState  = USBH_BOTSTATE_BOT_ERROR_IN;
+          /// status = USBH_MSC_PHASE_ERROR;
+          // status = USBH_FAIL;
+          #if defined(USBDEBUG)
+          debugCalls.urbErrors++;
+          #endif
       }
       else if(URB_Status == URB_STALL) {
-          usbh_msc.BOTState  = USBH_BOTSTATE_BOT_ERROR_OUT;
+          // usbh_msc.BOTState  = USBH_BOTSTATE_BOT_ERROR_OUT;
+          usbh_msc.BOTState  = USBH_BOTSTATE_BOT_ERROR_IN;
           #if defined(USBDEBUG)
-          debugCalls.stallErrors++;
+          debugCalls.urbStallErrors++;
           #endif
       }
       break;

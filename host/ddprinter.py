@@ -64,6 +64,9 @@ class RxChecksumError(Exception):
     def __str__(self):
         return "RxChecksumError: " + self.msg
 
+def calculate_rtt(avg, rtt, scale=0.2):
+    return avg * (1.0-scale) + rtt * scale
+
 class Printer(Serial):
 
     # maxTXErrors = 10
@@ -119,12 +122,24 @@ class Printer(Serial):
         print("Setting initial baudrate to:", br)
         self.baudrate = br
 
+        self.flowrateAdjust = 1.0
+        self.flowrateIncrease = 0
+
     def __del__(self):
 
         if self.baudrateIndex != self.defaultBaudrateIndex:
             br = self.baudrates[self.defaultBaudrateIndex]
-            print("Resetting baudrate to:", br)
             self.setBaudRate(self.defaultBaudrateIndex)
+
+    def setFlowrateAdjust(self, fra, fri=None):
+        self.flowrateAdjust = fra
+        if fri != None:
+            self.flowrateIncrease = fri
+
+    def layerChange(self, layer):
+        if self.flowrateIncrease and self.flowrateAdjust < 2.5:
+            self.gui.log(f"flowrateAdjust: {self.flowrateAdjust} + {self.flowrateIncrease}")
+            self.flowrateAdjust += self.flowrateIncrease
 
     def checkStall(self, status):
 
@@ -350,7 +365,7 @@ class Printer(Serial):
         l = len(res)
         if l < length:
             print(f"readWithTimeout(): short read {l}/{length}, retry read")
-            return res + readWithTimeout(length - l)
+            return res + self.readWithTimeout(length - l)
 
         return res
 
@@ -469,9 +484,9 @@ class Printer(Serial):
 
         # todo: move all settings into CmdSetHostSettings call
 
-        # We want at least 50 FRS counts for a measurement, compute the neccessary
-        # extruder stepper steps for this:
-        fsrMinSteps = int(50 / settings["filSensorCalibration"])
+        # For accuracy, we want at a minimum amount of flowrate 
+        # sensor (FRS) counts for a measurement.
+        fsrMinSteps = 128
 
         self.sendCommandParamV(
                 CmdSetFilSensorConfig, (
@@ -531,12 +546,11 @@ class Printer(Serial):
         self.baudrateIndex = brIndex
         baudrate = self.baudrates[brIndex]
 
+        print("Setting baudrate to: ", baudrate)
+
         if setInFirmware:
 
-            lowbyte = (fCPU+baudrate*8) // (baudrate*16) - 1;
-            print("Auto-Baudrate: set to %d (lowbyte: %d)" % (baudrate, lowbyte))
-
-            payload = struct.pack("<I", lowbyte)
+            payload = struct.pack("<I", baudrate)
             self.sendCommand(CmdSetBaudRate, binPayload=payload)
 
             print("Baudrate command successful")
@@ -574,8 +588,6 @@ class Printer(Serial):
 
                         brIndex = baudRatesToTry[0]
                         del baudRatesToTry[baudRatesToTry.index(brIndex)]
-
-                        print("Set baudrate to: ", self.baudrates[brIndex])
 
                         self.setBaudRate(brIndex, False)
                         self.lastAutobaud = time.time()
@@ -941,8 +953,8 @@ class Printer(Serial):
                 # Temperatures in firmware are in 1/16th °C
                 status.__setattr__(valueName, intmath.fromFWTemp(tup[i]))
             elif valueName == "slippage":
-                # In firmware are in 1/32th 
-                status.__setattr__(valueName, tup[i] / 32.0)
+                # In firmware are in 1/128th 
+                status.__setattr__(valueName, tup[i] / 128.0) # 32 -> 128
             elif valueName == "slowdown":
                 # In firmware are in 1/1024th 
                 status.__setattr__(valueName, (tup[i] / 1024.0) - 1.0)
@@ -1155,7 +1167,7 @@ class Printer(Serial):
 
         a = tdest / timeConstant
 
-        print("Start tempramp...", tdest, timeConstant, a)
+        print(f"Ramp up '{HeaterNames[heater]}' to {tdest} °C")
 
         if a <= 0:
             self.setTargetTemp(heater, tdest)
@@ -1169,9 +1181,7 @@ class Printer(Serial):
             if temp < tdest-2:
 
                 t = min(round(startTemp + (time.time() - startTime) * a), tdest)
-
-                print("temp is below dest", temp, t, tdest)
-
+                print(f"Ramp up '{HeaterNames[heater]}' {temp:.2f}/{t:.2f} °C")
                 self.setTargetTemp(heater, t)
                 yield(temp)
 
@@ -1301,10 +1311,9 @@ class Printer(Serial):
         return tup
 
     ####################################################################################################
-
+    # Check, if enstop was pressed
     def endStopTriggered(self, dim, fakeHomingEndstops=False):
 
-        # Check, if enstop was pressed
         tup = self.getEndstops()
 
         if tup[dim*2] or fakeHomingEndstops:
@@ -1312,6 +1321,19 @@ class Printer(Serial):
             return True
 
         print("Endstop %s open at position: %d" % (dimNames[dim], tup[dim*2+1]))
+        return False
+
+    ####################################################################################################
+    # Check, if enstop was released
+    def endStopReleased(self, dim, fakeHomingEndstops=False):
+
+        tup = self.getEndstops()
+
+        if not tup[dim*2] or fakeHomingEndstops:
+            print("Endstop %s open at position: %d" % (dimNames[dim], tup[dim*2+1]))
+            return True
+
+        print("Endstop %s hit at position: %d" % (dimNames[dim], tup[dim*2+1]))
         return False
 
     ####################################################################################################
@@ -1335,9 +1357,8 @@ class Printer(Serial):
         (cmd, payload) = self.query(CmdGetFSReadings)
 
         readings = []
-
-        for i in range(len(payload) // 4):
-            readings.append( struct.unpack("<Hh", payload[i*4:(i+1)*4]) )
+        for i in range(len(payload) // 6):
+            readings.append( struct.unpack("<Hhh", payload[i*6:(i+1)*6]) )
 
         return readings
 
