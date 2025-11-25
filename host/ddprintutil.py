@@ -20,6 +20,7 @@
 #*/
 
 import struct, time, math, tty, termios, sys, json, fcntl, os
+import subprocess
 import ddhome, pprint, movingavg
 
 from ddprintcommands import *
@@ -1733,5 +1734,30 @@ def continuosmove(args, printer):
 
 ####################################################################################################
 
+# Run scripts/getversion.sh to get version of current source code.
+def getLocalSourceVersion():
 
+    script_path = os.path.join(os.environ.get('DDPRINTHOME'), 'scripts', 'getversion.sh')
+
+    try:
+        result = subprocess.run(
+            ["sh", script_path],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            universal_newlines=True,
+            check=True,
+        )
+        script_output = result.stdout.strip()
+        return script_output
+
+    except FileNotFoundError:
+        print(f"Error: Script not found at {script_path}")
+    except subprocess.CalledProcessError as e:
+        print(f"Error executing script: {e}")
+        print(f"Stderr: {e.stderr}")
+    except Exception as e:
+        print(f"An unexpected error occurred: {e}")
+
+
+####################################################################################################
 

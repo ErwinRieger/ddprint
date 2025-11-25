@@ -531,9 +531,18 @@ def main():
 
     elif args.mode == "version":
 
+        # Local version
+        localVer = util.getLocalSourceVersion()
+        print(f"Local version: '{localVer}'")
+
         printer = Printer(args)
         printer.initSerial(args.device)
-        print("Firmware version: '%s'" % printer.getPrinterVersion())
+        (version, date) = printer.getPrinterVersion()
+        print(f"Firmware version: '{version}'")
+        print(f"Firmware date: '{date}'")
+
+        if localVer != version:
+            print(f"WARNING: version mismatch! Source version: '{localVer}' != Firmware version: '{version}'")
 
     elif args.mode == "getstatus" or args.mode == "stat":
 

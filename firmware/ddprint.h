@@ -46,7 +46,8 @@
 // in the host (ddprintconstants.py).
 #define NExtrusionLimit 100
 
-extern const char *gitversion; // From gitversion.cpp
+extern const char *buildversion; // From version.cpp
+extern const char *builddate;    // From version.cpp
 
 void kill();
 

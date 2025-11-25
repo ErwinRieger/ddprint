@@ -1856,7 +1856,8 @@ void Printer::cmdGetVersion() {
     txBuffer.sendResponseStart(CmdGetVersion);
     txBuffer.sendResponseUint8(RespOK);
 
-    txBuffer.sendResponseString( gitversion, strlen(gitversion) );
+    txBuffer.sendResponseString( buildversion, strlen(buildversion) );
+    txBuffer.sendResponseString( builddate, strlen(builddate) );
 
     txBuffer.sendResponseEnd();
 }

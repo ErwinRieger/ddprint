@@ -109,14 +109,16 @@ class FilamentSensorEMS22 {
         bool isLimiting() { return false; }
         uint16_t getSlowDown() { return 0; }
         int16_t getSlip128() { return 128; }
-        void cmdGetFSReadings(uint8_t nr) {
-            txBuffer.sendResponseStart(CmdGetFSReadings);
-            uint8_t n = min((uint8_t)10, nr);
+        void cmdGetFSReadings() {
 
-            for (uint8_t i=n; i>0; i--) {
-                txBuffer.sendResponseUInt32(0);
+            txBuffer.sendResponseStart(CmdGetFSReadings);
+
+            for (uint8_t i=0; i<16; i++) {
+                txBuffer.sendResponseUInt16(0);
+                txBuffer.sendResponseInt16(0);
                 txBuffer.sendResponseInt16(0);
             }
+
             txBuffer.sendResponseEnd();
         }
 };

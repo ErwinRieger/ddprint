@@ -20,16 +20,18 @@
 FIRMWARES = um2 ender3 ai3m ramps rumba jp
 
 # .PHONY: $(FIRMWARES)
+.PHONY: version.cpp
 
 all: $(FIRMWARES)
 
-$(FIRMWARES):
+$(FIRMWARES): version.cpp
 	make -f build_files/Makefile.$@
 
 clean: 
 	$(foreach fw, $(FIRMWARES), make -f build_files/Makefile.$(fw) clean;)
 
-gitversion.cpp: ../.git/HEAD ../.git/index
-	echo "const char *gitversion = \"$(shell git rev-parse --short HEAD)\";" > gitversion.cpp
+version.cpp:
+	echo "const char *buildversion = \"$(shell cd ..; ./scripts/getversion.sh)\";" > version.cpp
+	echo "const char *builddate = \"$(shell date -I)\";" >> version.cpp
 
 

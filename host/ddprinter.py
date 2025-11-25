@@ -1042,8 +1042,9 @@ class Printer(Serial):
     def getPrinterVersion(self):
 
         resp = self.query(CmdGetVersion)
-        pn = util.getResponseString(resp[1], 1)
-        return pn.decode()
+        ver = util.getResponseString(resp[1], 1)
+        date = util.getResponseString(resp[1], 1+1+len(ver))
+        return (ver.decode(), date.decode())
 
     #
     # The used printer profile is normally determined by the printername

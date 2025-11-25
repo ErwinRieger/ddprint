@@ -440,7 +440,7 @@ See last chapter in this document for a log/history.
    :width: 200px
    :target: /images/flowsensor_red.jpg
 
-3d printer firmware for cartesian FDM printers (ultimaker clones, atmega and stm32, like um2, ramps, jennyprinter, Anycubic I3M or Ender 5 (pro)).
+3d printer firmware for cartesian FDM printers (atmega based: um2 and ultimaker clones, ramps, Anycubic I3M or Ender 5 (pro), STM32 base: JennyPrinter).
 
 This firmware is part of the *ddprint printing system*, which immproves a common FDM printer by a closed loop E-Axis: http://www.ibrieger.de/close_the_loop_for_e.html.
 
