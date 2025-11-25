@@ -65,6 +65,78 @@ Control of printer speed is done with the `temperature-limiter <#temperature-lim
 ..
    XXX LEVEL 2 XXX
 
+Key features
++++++++++++++
+
+* One of the main features of ddprint: using a flowratesensor 
+* Automatic material profile measurement, determine *into-air* and *printing* volumetric flowrate data.
+* material profiles
+* auto-temp
+* temperatuer-limiter.
+* flowrate-limiter.
+* ddprint uses Integer math instead of floating point because of the weak atmega cpu
+
+Installation
++++++++++++++
+
+Firmware part
+-------------
+
+Requirements, dependencies
+**************************
+
+* `Arduino-Makefile <https://github.com/sudar/Arduino-Makefile>`__
+* avrdude for arduino based firmware upload 
+* stm32flash for stm32 based (jennyprinter) firmware upload 
+
+Host part
+-------------
+
+The host software is written in Python 3.
+
+Requirements:
+
+* python3
+* python3-serial
+* python3-numpy
+* npyscreen (for the TUI)
+
+Use the `scripts/ddinstall.sh` script to install the dependencies.
+
+Usage
++++++
+
+The host software provides a command line interface (`ddprint`) and a text based user interface (`ddprintui`).
+
+Use the `scripts/dd-fw-upload.sh` script to upload the firmware to the printer.
+
+There are explanatory ansciinema screencasts for the following commands:
+
+* `ddprint getstatus` (shortform: `ddprint stat`)
+* `ddprint top`
+* `ddprint mon`
+
+Architecture
+++++++++++++
+
+The software is split into two main parts:
+
+* The host part where the cpu intensive work (gcode preprocessing, path planning, lookahead, acceleration, advance...) is done.
+  The host part is written in Python 3.
+* And the firmware part that runs on the ATMega Controller in the printer. This part executes the move commands from
+  the host and does other things like the temperature control of the printer.
+
+The firmware part is implemented using the `protothreads-cpp <https://github.com/benhoyt/protothreads-cpp>`__ library.
+
+To overcome the limited memory of the atmega, the unused SD card is converted to something like a *swap device*: It buffers the received data. This decouples the USB transfer
+and actual use of the received data, too.
+
+Experimental Features
++++++++++++++++++++++
+
+* RepRap/OctoPrint interface: There is an experimental reprap usbserial interface using a pseudo-tty to use OctoPrint as a frontend for ddPrint. Not much functionality yet: display temperatures and some SD card commands (stubs).
+* `reconnect` command: To reconnect to a running printer, works after download is complete, but not if disconnected while downloading stepper data.
+
 Flowratesensor
 ++++++++++++++
 
