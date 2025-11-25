@@ -440,7 +440,7 @@ See last chapter in this document for a log/history.
    :width: 200px
    :target: /images/flowsensor_red.jpg
 
-3d printer firmware for cartesian FDM printers (ultimaker clones, atmega and stm32, like um2, ramps or jennyprinter).
+3d printer firmware for cartesian FDM printers (ultimaker clones, atmega and stm32, like um2, ramps, jennyprinter, Anycubic I3M or Ender 5 (pro)).
 
 This firmware is part of the *ddprint printing system*, which immproves a common FDM printer by a closed loop E-Axis: http://www.ibrieger.de/close_the_loop_for_e.html.
 
@@ -492,6 +492,8 @@ Requirements, dependencies
 
 * Arduino code/libraries and avr compiler
 * Arduino-Makefile
+* avrdude for arduino based firmware upload 
+* stm32flash for stm32 based (jennyprinter) firmware upload
 
 Install them along the checked out ddprint sources so that the
 directory structure looks like this:
@@ -548,8 +550,8 @@ Host part
 
 Requirements:
 
-* apt-get install python python-serial
-* pip install npyscreen vor the TUI (ddprintui.py)
+* apt-get install python3 python3-serial python3-numpy
+* pip3 install npyscreen vor the TUI (ddprintui.py)
 
 No installation procedure yet, checkout the repository and run *ddprint.py* or *ddprintui.py* from the
 *ddprint/host* subdirectory.
