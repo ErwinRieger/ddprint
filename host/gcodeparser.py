@@ -143,6 +143,7 @@ class UM2GcodeParser:
                 "M205": self.m205_set_jerk,
                 "M501": self.m501_reset_params,
                 "M502": self.m502_reset_params,
+                "M600": self.m600_colorchange,
                 "M900": self.m900_set_kAdvance,
                 "M901": self.m901_set_wp,
                 "M907": self.m907_motor_current,
@@ -468,6 +469,9 @@ class UM2GcodeParser:
 
     def m502_reset_params(self, line, values):
         self.logger.log("ignoring m502 (reset params)")
+
+    def m600_colorchange(self, line, values):
+        self.logger.log("ignoring m600 (COLOR_CHANGE)")
 
     def m900_set_kAdvance(self, line, values):
         self.planner.m900(values)
