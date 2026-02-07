@@ -283,6 +283,12 @@ class Printer(Serial):
             if handleError:
                 raise FatalPrinterError(ResponseNames[respCode])
 
+        elif respCode == RespEndstopError:
+
+            self.gui.logError("ERROR: Endstop Error")
+            if handleError:
+                raise FatalPrinterError(ResponseNames[respCode])
+
         elif respCode == RespUnsolicitedMsg:
 
             self.handleUnsolicitedMsg(respCode, payload)

@@ -137,9 +137,9 @@ def home(args, printer, parser, planner, force=False):
     # Position directly after homing
     (homePosMM, homePosStepped) = planner.getHomePos()
 
-    def liftHead():
+    def liftHead(dim):
 
-        # print "Debug: Tell parser its position [mm]:", homePosMM
+        # print(f"liftHead(): dim: {dim}, tell parser its position [mm]: {homePosMM}")
         parser.setPos(homePosMM)
 
         # print "Debug: Tell printer its position [steps]:", homePosStepped
@@ -180,9 +180,9 @@ def home(args, printer, parser, planner, force=False):
         # Try fast home if endstop is pressed
         if printer.endStopTriggered(dim, args.fakeendstop):
 
-            print("Homing: %s - endstop is triggered, trying fast home." % dimNames[dim])
+            # print("Homing: %s - endstop is triggered, trying fast home." % dimNames[dim])
             if homeBounce(parser, dim, direction, args.fakeendstop):
-                liftHead()
+                liftHead(dim)
                 continue
 
         if not homeMove(parser, dim, direction, planner.MAX_POS[dim] * 1.25, args.fakeendstop): # Move towards endstop fast
@@ -193,7 +193,7 @@ def home(args, printer, parser, planner, force=False):
             print("Error, Bounce %s - endstop!" % dimNames[dim])
             assert(0)
 
-        liftHead()
+        liftHead(dim)
 
     print("*")
     print("* Done homing...")

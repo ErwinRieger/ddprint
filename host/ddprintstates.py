@@ -82,6 +82,7 @@ RespMinTemp         =  10
 RespMaxTemp         =  11
 RespSDWriteError    =  12
 RespUnderrun        =  13
+RespEndstopError    =  14
 
 RespCodeNames = {
         RespOK: "RespOK",
@@ -93,10 +94,11 @@ RespCodeNames = {
         RespFilSensorInit: "RespFilSensorInit",
         RespSDInit: "RespSDInit",
         RespSDReadError: "RespSDReadError",
-        RespSDWriteError: "RespSDWriteError",
         RespMinTemp: "RespMinTemp",
         RespMaxTemp: "RespMaxTemp",
+        RespSDWriteError: "RespSDWriteError",
         RespUnderrun: "RespUnderrun",
+        RespEndstopError: "RespEndstopError",
 }
 
 ############################################################################

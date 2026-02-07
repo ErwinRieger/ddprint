@@ -218,7 +218,6 @@ RespSerNumberError =            7 # Payload: serialNumber (last line)
 RespRXTimeoutError =            8 # Payload: serialNumber (last line)
 RespUnsolicitedMsg =            9 # Payload: message type, params
 # RespRXFullError =              10 # Payload: received len
-RespUnderrun      =            13 # Payload: empty flag, size, message
 
 ResponseNames = {
         RespUnknownCommand: "RespUnknownCommand",
@@ -230,7 +229,6 @@ ResponseNames = {
         RespRXTimeoutError: "RespRXTimeoutError",
         RespUnsolicitedMsg: "RespUnsolicitedMsg",
         # RespRXFullError: "RespRXFullError",
-        RespUnderrun: "RespUnderrun",
 }
 
 

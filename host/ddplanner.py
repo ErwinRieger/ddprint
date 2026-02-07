@@ -566,6 +566,7 @@ class Planner (object):
         # Diese stepper position wird gesetzt falls der drucker 'gehomed' ist
         homePosStepped = vectorMulInt(homePosMM.vector(), self.printer.printerProfile.getStepsPerMMVectorI())
 
+        # print(f"getHomePos(): liftHead: {liftHead}, homePosMM: {homePosMM}")
         return (homePosMM, homePosStepped)
 
     # Called from gcode parser
