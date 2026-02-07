@@ -1632,6 +1632,10 @@ void Printer::underrunError() {
     // kill();
 }
 
+void Printer::endstopError() {
+    killMessage(RespEndstopError, 0);
+}
+
 void Printer::cmdMove(MoveType mt) {
 
     massert(mt != MoveTypeNone);

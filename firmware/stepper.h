@@ -349,12 +349,8 @@ FWINLINE void st_step_motor_es(uint8_t stepBits, uint8_t dirbits) {
 template<>
 FWINLINE void st_step_motor_es<ZAxisSelector>(uint8_t stepBits, uint8_t dirbits) {
 
-    // State of z-homing
-    static enum {
-        MOVEBOTH, // Move both motors
-        MOVEZ0,   // Z1 endtop triggered, move Z0 only
-        MOVEZ1    // Z0 endtop triggered, move Z1 only
-    } zHomingMode = MOVEBOTH;
+    static uint16_t tomove = 3;
+    static uint16_t nPresses = 0;
 
     constexpr uint8_t mask = st_get_move_bit_mask<ZAxisSelector>();
 
@@ -365,53 +361,48 @@ FWINLINE void st_step_motor_es<ZAxisSelector>(uint8_t stepBits, uint8_t dirbits)
 
         bool towardsEndstop = (forward == homeDir);
 
-        if (towardsEndstop && st_endstop_pressed<ZAxisSelector>()) {
-
-            if (zHomingMode == MOVEBOTH) {
-              zHomingMode = MOVEZ1;
+        if (towardsEndstop) {
+            if (st_endstop_pressed<ZAxisSelector>()) {
+                nPresses++;
+                tomove = tomove & 2;
             }
-            else if (zHomingMode == MOVEZ0) {
+            if (st_endstop_pressed<Z1AxisSelector>()) {
+                nPresses++;
+                tomove = tomove & 1;
+            }
+            if (nPresses > EndstopReleaseDebounce(printer.getStepsPerMMZ())) {
                 DISABLE_STEPPER1_DRIVER_INTERRUPT();
-                zHomingMode = MOVEBOTH;
+                tomove = 0;
+                printer.endstopError();
                 return;
             }
         }
-
-        if (towardsEndstop && st_endstop_pressed<Z1AxisSelector>()) {
-
-            if (zHomingMode == MOVEBOTH) {
-              zHomingMode = MOVEZ0;
+        else {
+            if (st_endstop_released<ZAxisSelector>()) {
+                tomove = tomove & 2;
             }
-            else if (zHomingMode == MOVEZ1) {
-                DISABLE_STEPPER1_DRIVER_INTERRUPT();
-                zHomingMode = MOVEBOTH;
-                return;
+            if (st_endstop_released<Z1AxisSelector>()) {
+                tomove = tomove & 1;
             }
         }
 
-        if (!towardsEndstop && st_endstop_released<ZAxisSelector>() && st_endstop_released<Z1AxisSelector>()) {
+        if (! tomove) {
             DISABLE_STEPPER1_DRIVER_INTERRUPT();
-            zHomingMode = MOVEBOTH;
+            tomove = 3;
+            nPresses = 0;
             return;
         }
 
-        switch (zHomingMode) {
-          case MOVEBOTH:
-            activate_step_pin<ZAxisSelector>();
-            break;
-          case MOVEZ0:
+        if (tomove & 1)
             Z_STEP_PIN :: activate();
-            break;
-          case MOVEZ1:
+        if (tomove & 2)
             Z1_STEP_PIN :: activate();
-            break;
-        }
 
         #if defined(STEPPER_MINPULSE)
             delayMicroseconds(STEPPER_MINPULSE);
         #endif
 
-        if (zHomingMode == MOVEBOTH) {
+        if (tomove == 3) {
             if (forward)
                 st_inc_current_pos_steps<ZAxisSelector>();
             else

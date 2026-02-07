@@ -159,6 +159,7 @@
 #define RespMaxTemp            11 // 
 #define RespSDWriteError       12 // 
 #define RespUnderrun           13 // 
+#define RespEndstopError       14 // 
 
 //
 // Unsolicited message types

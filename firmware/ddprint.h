@@ -134,6 +134,7 @@ class Printer {
 
         void cmdMove(MoveType);
         void underrunError();
+        void endstopError();
 
         void setPos( int32_t x, int32_t y, int32_t z);
         void cmdSetTargetTemp(uint8_t heater, int16_t temp, uint8_t pwmOverride=0);
