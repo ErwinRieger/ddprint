@@ -1,2 +1,3 @@
-wc -w $(ls $DDPRINTHOME/host/*.py|grep -v ddconfig.py) $DDPRINTHOME/firmware/*.cpp $DDPRINTHOME/firmware/*.h $DDPRINTHOME/firmware/pins/*.h|tail -1|(read n t; echo $n)
+# wc -w $(ls $DDPRINTHOME/host/*.py|grep -v ddconfig.py) $DDPRINTHOME/firmware/*.cpp $DDPRINTHOME/firmware/*.h $DDPRINTHOME/firmware/pins/*.h|tail -1|(read n t; echo $n)
+wc -w $DDPRINTHOME/firmware/*.cpp $DDPRINTHOME/firmware/*.h $DDPRINTHOME/firmware/pins/*.h $DDPRINTHOME/firmware/src/*/*.cpp $DDPRINTHOME/firmware/src/*/*.h|tail -1|(read n t; echo $n)
 
