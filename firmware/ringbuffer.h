@@ -24,6 +24,8 @@
 template <class ElementType, class IndexType, int BufferSize>
 struct CircularBuffer {
 
+    static_assert(BufferSize > 0 && (BufferSize & (BufferSize - 1)) == 0, "BufferSize must be power of two");
+
     typedef IndexType _IndexType;
 
     ElementType _ringbuffer_array[BufferSize];
