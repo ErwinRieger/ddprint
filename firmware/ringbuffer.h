@@ -87,7 +87,7 @@ struct Buffer256 {
     // For uart ringbuffer
     FWINLINE ElementType &peek() { return _ringbuffer_array[_ringbuffer_tail]; }
     // For uart ringbuffer
-    FWINLINE ElementType &peekN(uint8_t index) { return _ringbuffer_array[_ringbuffer_tail+index]; }
+    FWINLINE ElementType &peekN(uint8_t index) { return _ringbuffer_array[(uint8_t)(_ringbuffer_tail+index)]; }
 
     // For uart ringbuffer/cobs
     FWINLINE void setVal(uint8_t i, ElementType val) {
