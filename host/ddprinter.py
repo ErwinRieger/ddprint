@@ -945,9 +945,9 @@ class Printer(Serial):
 
         valueNames = ["state", "t0", "t1", "Swap", "swapsize", "SDReader", "StepBuffer", "StepBufUnderRuns", "targetT0", "targetT1", "pwmOutput", "slippage", "slowdown", "ePos", "minBuffer", "underTemp", "underGrip"]
 
-        (cmd, payload) = self.query(CmdGetStatus, expectedLen=40)
+        (cmd, payload) = self.query(CmdGetStatus, expectedLen=38)
 
-        tup = struct.unpack("<BhhIIHIhhhBhHiHHH", payload[:40])
+        tup = struct.unpack("<BhhIIHHhhhBhHiHHH", payload[:38])
 
         status = argparse.Namespace()
 
