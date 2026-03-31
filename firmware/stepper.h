@@ -463,10 +463,6 @@ class StepBuffer: public StepBufferBase {
 
             uint16_t continuosTimer;
 
-            // Sum of timer values in buffer
-            uint32_t upcount;
-            uint32_t downcount;
-
             // Steppers to run in continuos mode
             uint8_t contStepBits;
 
@@ -510,7 +506,6 @@ class StepBuffer: public StepBufferBase {
 
             void flush() {
                 ringBufferInit();
-                upcount = downcount = 0;
                 // measureFlag = false;
             }
 
@@ -543,28 +538,6 @@ class StepBuffer: public StepBufferBase {
                 ENABLE_STEPPER1_DRIVER_INTERRUPT();
 
                 // measureFlag = true;
-            }
-
-            // Compute clocktics available in stepper
-            // buffer.
-            FWINLINE uint8_t timeInBuffer() {
-
-                CRITICAL_SECTION_START;
-                uint32_t d = downcount;
-                CRITICAL_SECTION_END;
-
-                // return STD min( (upcount-d)/2000, 255);
-                return STD min( (upcount-d)/2000, (uint32_t)255);
-            }
-
-            // Reserve 50+ ms buffer depth for long usb
-            // transactions, this assumes 2Mhz timer clock tick.
-            FWINLINE bool enough() { 
-                return full() || (timeInBuffer() >= 60); }
-
-            void pushRef(stepData& val)  {
-                upcount += val.timer;
-                StepBufferBase::pushRef(val);
             }
 
             // * Timer 1A is running in CTC mode.
@@ -666,8 +639,6 @@ class StepBuffer: public StepBufferBase {
                 stepData &sd = pop();
 
                 HAL_SET_HOMING_TIMER(sd.timer);
-
-                downcount += sd.timer;
 
                 // * Set direction 
                 if (sd.dirBits & 0x80) {

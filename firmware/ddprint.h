@@ -88,7 +88,7 @@ class Printer {
 
     public:
 
-        uint8_t minBuffer;
+        uint16_t minBuffer;
 
         uint16_t underTemp;
         uint16_t underGrip;

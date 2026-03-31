@@ -945,9 +945,9 @@ class Printer(Serial):
 
         valueNames = ["state", "t0", "t1", "Swap", "swapsize", "SDReader", "StepBuffer", "StepBufUnderRuns", "targetT0", "targetT1", "pwmOutput", "slippage", "slowdown", "ePos", "minBuffer", "underTemp", "underGrip"]
 
-        (cmd, payload) = self.query(CmdGetStatus, expectedLen=39)
+        (cmd, payload) = self.query(CmdGetStatus, expectedLen=40)
 
-        tup = struct.unpack("<BhhIIHIhhhBhHiBHH", payload[:39])
+        tup = struct.unpack("<BhhIIHIhhhBhHiHHH", payload[:40])
 
         status = argparse.Namespace()
 
@@ -1021,7 +1021,7 @@ class Printer(Serial):
             gripstr = "%4.2f" % (1.0/status.slippage)
         if msg:
             print(msg)
-        print("Bed: %5.1f, Hotend: %5.1f(%5.1f), Pwm: %3d, Swap: %10s, MinBuffer: %3d, underrun: %5d, Grip: %.4s, SlowDown: %4.2f, underTemp %5d, underGrip: %5d" % \
+        print("Bed: %5.1f, Hotend: %5.1f(%5.1f), Pwm: %3d, Swap: %10s, MinBuffer: %4d, underrun: %5d, Grip: %.4s, SlowDown: %4.2f, underTemp %5d, underGrip: %5d" % \
             (status.t0, status.t1, status.targetT1, 
              status.pwmOutput, util.sizeof_fmt(status.Swap),
              status.minBuffer, status.StepBufUnderRuns, gripstr, status.slowdown,

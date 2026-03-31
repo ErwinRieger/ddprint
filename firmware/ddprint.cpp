@@ -535,7 +535,7 @@ class FillBufferTask : public Protothread {
 
         if (stepsThisRun == 0) {
 
-            stepsThisRun = (uint8_t)255 - stepBuffer.size();
+            stepsThisRun = (uint8_t)255 - stepBuffer.size(); /// xbug?
             return 0;
         }
 
@@ -609,7 +609,7 @@ class FillBufferTask : public Protothread {
 
 HandleCmdG1:
 
-        PT_WAIT_WHILE( (stepsThisRun = ((uint8_t)255 - stepBuffer.size())) == 0 );
+        PT_WAIT_WHILE( (stepsThisRun = ((uint8_t)255 - stepBuffer.size())) == 0 ); /// xbug?
 
         // Read flag word and stepper direction bits
         sDReader.setBytesToRead2();
@@ -1058,7 +1058,7 @@ HandleCmdG1:
 
             HandleCmdG1Raw:
 
-                PT_WAIT_WHILE( (stepsThisRun = ((uint8_t)255 - stepBuffer.size())) == 0 );
+                PT_WAIT_WHILE( (stepsThisRun = ((uint8_t)255 - stepBuffer.size())) == 0 ); /// xbug?
 
                 // Read flag word and stepper direction bits
                 sDReader.setBytesToRead2();
@@ -1617,7 +1617,7 @@ void Printer::cmdMove(MoveType mt) {
     printerState = StateStart;
     moveType = mt;
 
-    minBuffer = 255;
+    minBuffer = stepBuffer.bufferSize();
 
     underTemp = underGrip = 0;
 
@@ -2012,7 +2012,7 @@ void Printer::cmdGetStatus() {
 #endif
 
     txBuffer.sendResponseInt32(current_pos_steps[E_AXIS]);
-    txBuffer.sendResponseUint8(minBuffer);
+    txBuffer.sendResponseUInt16(minBuffer);
     txBuffer.sendResponseUInt16(underTemp);
     txBuffer.sendResponseUInt16(underGrip);
 
@@ -2857,12 +2857,12 @@ void loop() {
         // Run timer
         timer.run(m);
 
-        // Statistics: time in stepbuffer [mS]
+        // Statistics: minimum number of steps left in stepbuffer
         if (printer.printerState == Printer::StateStart) {
-            printer.minBuffer = min(stepBuffer.timeInBuffer(), printer.minBuffer);
+            printer.minBuffer = min(stepBuffer.bufferSize(), printer.minBuffer);
         }
         else {
-            printer.minBuffer = 255;
+            printer.minBuffer = stepBuffer.bufferSize();
         }
 
 #if defined(HASFILAMENTSENSOR) || defined(RUNFILAMENTSENSOR)
