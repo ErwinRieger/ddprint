@@ -380,16 +380,16 @@ class SDReader: public Protothread {
 
     FWINLINE void setBytesToRead1() {
         Restart();
-        bytesToRead = 1; } // Note: tempBuffer must be big enought to hold this number of bytes.
+        bytesToRead = 1; } // Note: tempBuffer must be big enough to hold this number of bytes.
     FWINLINE void setBytesToRead2() {
         Restart();
-        bytesToRead = 2; } // Note: tempBuffer must be big enought to hold this number of bytes.
+        bytesToRead = 2; } // Note: tempBuffer must be big enough to hold this number of bytes.
     FWINLINE void setBytesToRead3() {
         Restart();
-        bytesToRead = 3; } // Note: tempBuffer must be big enought to hold this number of bytes.
+        bytesToRead = 3; } // Note: tempBuffer must be big enough to hold this number of bytes.
     FWINLINE void setBytesToRead4() {
         Restart();
-        bytesToRead = 4; } // Note: tempBuffer must be big enought to hold this number of bytes.
+        bytesToRead = 4; } // Note: tempBuffer must be big enough to hold this number of bytes.
 
     bool Run() {
 
@@ -833,8 +833,6 @@ HandleCmdG1:
 
                     computeStepBits();
 
-                    // PT_WAIT_WHILE(stepBuffer.enough());
-
                     PT_WAIT_WHILE(decStepsThisRun() == 0);
                     stepBuffer.pushRef(sd);
 
@@ -856,8 +854,6 @@ HandleCmdG1:
                         DEBUGSDTIMER();
 
                         computeStepBits();
-
-                        // PT_WAIT_WHILE(stepBuffer.enough());
 
                         PT_WAIT_WHILE(decStepsThisRun() == 0);
                         stepBuffer.pushRef(sd);
@@ -884,8 +880,6 @@ HandleCmdG1:
 
                     computeStepBits();
 
-                    // PT_WAIT_WHILE(stepBuffer.enough());
-
                     PT_WAIT_WHILE(decStepsThisRun() == 0);
                     stepBuffer.pushRef(sd);
 
@@ -907,8 +901,6 @@ HandleCmdG1:
                         DEBUGSDTIMER();
 
                         computeStepBits();
-
-                        // PT_WAIT_WHILE(stepBuffer.enough());
 
                         PT_WAIT_WHILE(decStepsThisRun() == 0);
                         stepBuffer.pushRef(sd);
@@ -936,8 +928,6 @@ HandleCmdG1:
 
                     computeStepBits();
 
-                    // PT_WAIT_WHILE(stepBuffer.enough());
-
                     PT_WAIT_WHILE(decStepsThisRun() == 0);
                     stepBuffer.pushRef(sd);
 
@@ -946,8 +936,6 @@ HandleCmdG1:
                     if (--step32) do {
 
                         computeStepBits();
-
-                        // PT_WAIT_WHILE(stepBuffer.enough());
 
                         PT_WAIT_WHILE(decStepsThisRun() == 0);
                         stepBuffer.pushRef(sd);
@@ -980,8 +968,6 @@ HandleCmdG1:
 
                     computeStepBits();
 
-                    // PT_WAIT_WHILE(stepBuffer.enough());
-
                     PT_WAIT_WHILE(decStepsThisRun() == 0);
                     stepBuffer.pushRef(sd);
 
@@ -1003,8 +989,6 @@ HandleCmdG1:
                         DEBUGSDTIMER();
 
                         computeStepBits();
-
-                        // PT_WAIT_WHILE(stepBuffer.enough());
 
                         PT_WAIT_WHILE(decStepsThisRun() == 0);
                         stepBuffer.pushRef(sd);
@@ -1031,8 +1015,6 @@ HandleCmdG1:
 
                     computeStepBits();
 
-                    // PT_WAIT_WHILE(stepBuffer.enough());
-
                     PT_WAIT_WHILE(decStepsThisRun() == 0);
                     stepBuffer.pushRef(sd);
 
@@ -1054,8 +1036,6 @@ HandleCmdG1:
                         DEBUGSDTIMER();
 
                         computeStepBits();
-
-                        // PT_WAIT_WHILE(stepBuffer.enough());
 
                         PT_WAIT_WHILE(decStepsThisRun() == 0);
                         stepBuffer.pushRef(sd);
@@ -1211,8 +1191,6 @@ HandleCmdG1:
                 PT_WAIT_THREAD(sDReader);
                 sd.stepBits = *sDReader.readData;
 
-                // PT_WAIT_WHILE(stepBuffer.enough());
-
                 PT_WAIT_WHILE(decStepsThisRun() == 0);
                 stepBuffer.pushRef(sd);
 
@@ -1242,8 +1220,6 @@ HandleCmdG1:
                         PT_WAIT_THREAD(sDReader);
                         sd.stepBits = *sDReader.readData;
 
-                        // PT_WAIT_WHILE(stepBuffer.enough());
-
                         PT_WAIT_WHILE(decStepsThisRun() == 0);
                         stepBuffer.pushRef(sd);
 
@@ -1271,8 +1247,6 @@ HandleCmdG1:
                         PT_WAIT_THREAD(sDReader);
                         sd.stepBits = *sDReader.readData;
 
-                        // PT_WAIT_WHILE(stepBuffer.enough());
-                        
                         PT_WAIT_WHILE(decStepsThisRun() == 0);
                         stepBuffer.pushRef(sd);
 
@@ -1330,7 +1304,6 @@ HandleCmdG1:
 
                 while (nDwell-- > 0) {
 
-                    // PT_WAIT_WHILE(stepBuffer.enough());
                     PT_WAIT_WHILE(stepBuffer.full());
                     stepBuffer.pushRef(sd);
                 }
