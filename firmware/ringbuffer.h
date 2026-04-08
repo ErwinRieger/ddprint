@@ -39,10 +39,11 @@ struct CircularBuffer {
 
     IndexType mask(IndexType val)  { return val & (BufferSize - 1); }
 
-    bool empty()    { return _ringbuffer_head == _ringbuffer_tail; }
-    bool full()     { return size() == (BufferSize - 1); }
-    IndexType size()     { return _ringbuffer_head - _ringbuffer_tail; }
-    IndexType bufferSize()     { return BufferSize-1; }
+    bool empty()           { return _ringbuffer_head == _ringbuffer_tail; }
+    bool full()            { return size() == (BufferSize - 1); }
+    IndexType size()       { return _ringbuffer_head - _ringbuffer_tail; }
+    IndexType bufferSize() { return BufferSize-1; }
+    IndexType free()       { return bufferSize() - size(); }
 
     void pushRef(ElementType& val)  {
         _ringbuffer_array[mask(_ringbuffer_head++)] = val;
@@ -69,10 +70,11 @@ struct Buffer256 {
     Buffer256() { ringBufferInit(); }
     FWINLINE void ringBufferInit() { _ringbuffer_head = _ringbuffer_tail = 0; }
 
-    FWINLINE bool empty()   { return _ringbuffer_head == _ringbuffer_tail; }
-    FWINLINE bool full()    { return size() == bufferSize(); }
-    FWINLINE uint8_t size() { return _ringbuffer_head - _ringbuffer_tail; }
-    FWINLINE uint16_t bufferSize()     { return 256-1; }
+    FWINLINE bool empty()          { return _ringbuffer_head == _ringbuffer_tail; }
+    FWINLINE bool full()           { return size() == bufferSize(); }
+    FWINLINE uint8_t size()        { return _ringbuffer_head - _ringbuffer_tail; }
+    FWINLINE uint16_t bufferSize() { return 256-1; }
+    FWINLINE uint8_t free()        { return bufferSize() - size(); }
 
     FWINLINE void pushRef(ElementType &val)  {
        _ringbuffer_array[_ringbuffer_head++] = val;

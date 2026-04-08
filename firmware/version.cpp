@@ -1,2 +1,2 @@
-const char *buildversion = "78102";
-const char *builddate = "2026-03-31";
+const char *buildversion = "78081";
+const char *builddate = "2026-04-08";

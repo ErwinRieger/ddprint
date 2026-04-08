@@ -506,7 +506,7 @@ class FillBufferTask : public Protothread {
     uint16_t nDwell;
 
     // #if defined(__arm__)
-    uint8_t stepsThisRun;
+    uint16_t stepsThisRun;
     // #endif
 
     // bool cmdSync;
@@ -529,17 +529,15 @@ class FillBufferTask : public Protothread {
         stopRequested = false;
     }
 
-    uint8_t decStepsThisRun() {
-
-        stepsThisRun--;
+    bool stepsForThisRunDone() {
 
         if (stepsThisRun == 0) {
-
-            stepsThisRun = (uint8_t)255 - stepBuffer.size(); /// xbug?
-            return 0;
+            stepsThisRun = stepBuffer.free();
+            return true;
         }
 
-        return stepsThisRun;
+        stepsThisRun--;
+        return false;
     }
 
     bool Run() {
@@ -609,7 +607,7 @@ class FillBufferTask : public Protothread {
 
 HandleCmdG1:
 
-        PT_WAIT_WHILE( (stepsThisRun = ((uint8_t)255 - stepBuffer.size())) == 0 ); /// xbug?
+        PT_WAIT_WHILE( (stepsThisRun = stepBuffer.free()) == 0 );
 
         // Read flag word and stepper direction bits
         sDReader.setBytesToRead2();
@@ -833,7 +831,7 @@ HandleCmdG1:
 
                     computeStepBits();
 
-                    PT_WAIT_WHILE(decStepsThisRun() == 0);
+                    PT_WAIT_WHILE(stepsForThisRunDone());
                     stepBuffer.pushRef(sd);
 
                     sd.dirBits &= ~0x80; // clear set-direction bit (after push)
@@ -855,7 +853,7 @@ HandleCmdG1:
 
                         computeStepBits();
 
-                        PT_WAIT_WHILE(decStepsThisRun() == 0);
+                        PT_WAIT_WHILE(stepsForThisRunDone());
                         stepBuffer.pushRef(sd);
 
                     } while (--nAccel16);
@@ -880,7 +878,7 @@ HandleCmdG1:
 
                     computeStepBits();
 
-                    PT_WAIT_WHILE(decStepsThisRun() == 0);
+                    PT_WAIT_WHILE(stepsForThisRunDone());
                     stepBuffer.pushRef(sd);
 
                     sd.dirBits &= ~0x80; // clear set-direction bit (after push)
@@ -902,7 +900,7 @@ HandleCmdG1:
 
                         computeStepBits();
 
-                        PT_WAIT_WHILE(decStepsThisRun() == 0);
+                        PT_WAIT_WHILE(stepsForThisRunDone());
                         stepBuffer.pushRef(sd);
 
                     } while (--nAccel8);
@@ -928,7 +926,7 @@ HandleCmdG1:
 
                     computeStepBits();
 
-                    PT_WAIT_WHILE(decStepsThisRun() == 0);
+                    PT_WAIT_WHILE(stepsForThisRunDone());
                     stepBuffer.pushRef(sd);
 
                     sd.dirBits &= ~0x80; // clear set-direction bit (after push)
@@ -937,7 +935,7 @@ HandleCmdG1:
 
                         computeStepBits();
 
-                        PT_WAIT_WHILE(decStepsThisRun() == 0);
+                        PT_WAIT_WHILE(stepsForThisRunDone());
                         stepBuffer.pushRef(sd);
 
                     } while (--step32);
@@ -968,7 +966,7 @@ HandleCmdG1:
 
                     computeStepBits();
 
-                    PT_WAIT_WHILE(decStepsThisRun() == 0);
+                    PT_WAIT_WHILE(stepsForThisRunDone());
                     stepBuffer.pushRef(sd);
 
                     sd.dirBits &= ~0x80; // clear set-direction bit (after push)
@@ -990,7 +988,7 @@ HandleCmdG1:
 
                         computeStepBits();
 
-                        PT_WAIT_WHILE(decStepsThisRun() == 0);
+                        PT_WAIT_WHILE(stepsForThisRunDone());
                         stepBuffer.pushRef(sd);
 
                     } while (--nDecel8); 
@@ -1015,7 +1013,7 @@ HandleCmdG1:
 
                     computeStepBits();
 
-                    PT_WAIT_WHILE(decStepsThisRun() == 0);
+                    PT_WAIT_WHILE(stepsForThisRunDone());
                     stepBuffer.pushRef(sd);
 
                     sd.dirBits &= ~0x80; // clear set-direction bit (after push)
@@ -1037,7 +1035,7 @@ HandleCmdG1:
 
                         computeStepBits();
 
-                        PT_WAIT_WHILE(decStepsThisRun() == 0);
+                        PT_WAIT_WHILE(stepsForThisRunDone());
                         stepBuffer.pushRef(sd);
 
                     } while (--nDecel16);
@@ -1058,7 +1056,7 @@ HandleCmdG1:
 
             HandleCmdG1Raw:
 
-                PT_WAIT_WHILE( (stepsThisRun = ((uint8_t)255 - stepBuffer.size())) == 0 ); /// xbug?
+                PT_WAIT_WHILE( (stepsThisRun = stepBuffer.free()) == 0 );
 
                 // Read flag word and stepper direction bits
                 sDReader.setBytesToRead2();
@@ -1191,7 +1189,7 @@ HandleCmdG1:
                 PT_WAIT_THREAD(sDReader);
                 sd.stepBits = *sDReader.readData;
 
-                PT_WAIT_WHILE(decStepsThisRun() == 0);
+                PT_WAIT_WHILE(stepsForThisRunDone());
                 stepBuffer.pushRef(sd);
 
                 sd.dirBits &= ~0x80; // clear set-direction bit (after push)
@@ -1220,7 +1218,7 @@ HandleCmdG1:
                         PT_WAIT_THREAD(sDReader);
                         sd.stepBits = *sDReader.readData;
 
-                        PT_WAIT_WHILE(decStepsThisRun() == 0);
+                        PT_WAIT_WHILE(stepsForThisRunDone());
                         stepBuffer.pushRef(sd);
 
                     } while (--count);
@@ -1247,7 +1245,7 @@ HandleCmdG1:
                         PT_WAIT_THREAD(sDReader);
                         sd.stepBits = *sDReader.readData;
 
-                        PT_WAIT_WHILE(decStepsThisRun() == 0);
+                        PT_WAIT_WHILE(stepsForThisRunDone());
                         stepBuffer.pushRef(sd);
 
                     } while (--count);
@@ -1992,7 +1990,7 @@ void Printer::cmdGetStatus() {
     txBuffer.sendResponseUInt32(swapDev.available());
     txBuffer.sendResponseUInt32(swapDev.getSize());
     txBuffer.sendResponseUInt16(sDReader.available());
-    txBuffer.sendResponseUInt32(stepBuffer.size());
+    txBuffer.sendResponseUInt16(stepBuffer.size());
     txBuffer.sendResponseInt16(bufferLow);
     txBuffer.sendResponseUInt16(target_temperature_bed);
     txBuffer.sendResponseUInt16(target_temperature[0]);
@@ -2859,7 +2857,7 @@ void loop() {
 
         // Statistics: minimum number of steps left in stepbuffer
         if (printer.printerState == Printer::StateStart) {
-            printer.minBuffer = min(stepBuffer.bufferSize(), printer.minBuffer);
+            printer.minBuffer = min(stepBuffer.size(), printer.minBuffer);
         }
         else {
             printer.minBuffer = stepBuffer.bufferSize();
